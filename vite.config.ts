@@ -1,4 +1,5 @@
-import { vitePlugin as remixVitePlugin } from '@remix-run/dev';
+import { vitePlugin as remix } from '@remix-run/dev';
+import { viteCommonjs } from '@originjs/vite-plugin-commonjs'
 import { vercelPreset } from '@vercel/remix/vite';
 import UnoCSS from 'unocss/vite';
 import { defineConfig, type ViteDevServer } from 'vite';
@@ -31,12 +32,18 @@ export default defineConfig((config) => {
     },
     build: {
       target: 'esnext',
+      sourcemap: true, // Enable source maps in production build
+      rollupOptions: {
+        output: {
+          sourcemapExcludeSources: true, // Include source content in the map
+        },
+      },
     },
     plugins: [
       nodePolyfills({
         include: ['path', 'buffer', 'process'],
       }),
-      remixVitePlugin({
+      remix({
         future: {
           v3_fetcherPersist: true,
           v3_relativeSplatPath: true,
@@ -47,9 +54,26 @@ export default defineConfig((config) => {
       }),
       UnoCSS(),
       tsconfigPaths(),
+      viteCommonjs(),
       chrome129IssuePlugin(),
       config.mode === 'production' && optimizeCssModules({ apply: 'build' }),
     ],
+    optimizeDeps: {
+      include: ['react-dom'],
+      // Not excluding these seem to:
+      //   a) always force a refresh after initial load: https://github.com/vitejs/vite/discussions/14801)
+      //   b) optimize an old version!
+      exclude: [
+        '@hanzo/ui/primitives-common',
+        '@hanzo/ui/util',
+      ]
+    },
+    // https://github.com/remix-run/remix/issues/10156#issuecomment-2440234744
+    server: {
+      warmup: {
+        clientFiles: ['app/**/*.tsx'],
+      },
+    },
     envPrefix: ["VITE_","OPENAI_LIKE_API_BASE_URL", "OLLAMA_API_BASE_URL", "LMSTUDIO_API_BASE_URL","TOGETHER_API_BASE_URL"],
     css: {
       preprocessorOptions: {
