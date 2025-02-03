@@ -109,8 +109,8 @@ export class WorkbenchStore {
   attachTerminal(terminal: ITerminal) {
     this.#terminalStore.attachTerminal(terminal);
   }
-  attachBoltTerminal(terminal: ITerminal) {
-    this.#terminalStore.attachBoltTerminal(terminal);
+  attachHanzoTerminal(terminal: ITerminal) {
+    this.#terminalStore.attachHanzoTerminal(terminal);
   }
 
   onTerminalResize(cols: number, rows: number) {

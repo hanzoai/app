@@ -17,9 +17,9 @@ export interface StartAction extends BaseAction {
   type: 'start';
 }
 
-export type BoltAction = FileAction | ShellAction | StartAction;
+export type HanzoAction = FileAction | ShellAction | StartAction;
 
-export type BoltActionData = BoltAction | BaseAction;
+export type HanzoActionData = HanzoAction | BaseAction;
 
 export interface ActionAlert {
   type: string;

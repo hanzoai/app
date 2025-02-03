@@ -236,16 +236,16 @@ export async function getTemplates(templateName: string, title?: string) {
   }
 
   const assistantMessage = `
-<boltArtifact id="imported-files" title="${title || 'Importing Starter Files'}" type="bundled">
+<hanzoArtifact id="imported-files" title="${title || 'Importing Starter Files'}" type="bundled">
 ${filesToImport.files
   .map(
     (file) =>
-      `<boltAction type="file" filePath="${file.path}">
+      `<hanzoAction type="file" filePath="${file.path}">
 ${file.content}
-</boltAction>`,
+</hanzoAction>`,
   )
   .join('\n')}
-</boltArtifact>
+</hanzoArtifact>
 `;
   let userMessage = ``;
   const templatePromptFile = files.filter((x) => x.path.startsWith('.bolt')).find((x) => x.name == 'prompt');

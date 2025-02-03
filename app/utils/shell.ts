@@ -54,7 +54,7 @@ export async function newShellProcess(webcontainer: WebContainer, terminal: ITer
 
 export type ExecutionResult = { output: string; exitCode: number } | undefined;
 
-export class BoltShell {
+export class HanzoShell {
   #initialized: (() => void) | undefined;
   #readyPromise: Promise<void>;
   #webcontainer: WebContainer | undefined;
@@ -80,7 +80,7 @@ export class BoltShell {
     this.#webcontainer = webcontainer;
     this.#terminal = terminal;
 
-    const { process, output } = await this.newBoltShellProcess(webcontainer, terminal);
+    const { process, output } = await this.newHanzoShellProcess(webcontainer, terminal);
     this.#process = process;
     this.#outputStream = output.getReader();
     await this.waitTillOscCode('interactive');
@@ -138,7 +138,7 @@ export class BoltShell {
     return resp;
   }
 
-  async newBoltShellProcess(webcontainer: WebContainer, terminal: ITerminal) {
+  async newHanzoShellProcess(webcontainer: WebContainer, terminal: ITerminal) {
     const args: string[] = [];
 
     // we spawn a JSH process with a fallback cols and rows in case the process is not attached yet to a visible terminal
@@ -289,6 +289,6 @@ export function cleanTerminalOutput(input: string): string {
     .replace(/\u0000/g, ''); // Remove null characters
 }
 
-export function newBoltShellProcess() {
-  return new BoltShell();
+export function newHanzoShellProcess() {
+  return new HanzoShell();
 }

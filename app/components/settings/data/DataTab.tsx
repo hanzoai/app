@@ -241,7 +241,7 @@ export default function DataTab() {
     description: string;
     urlId?: string;
   }> => {
-    // Handle Bolt standard format (single chat)
+    // Handle Hanzo standard format (single chat)
     if (data.messages && Array.isArray(data.messages)) {
       const chatId = crypto.randomUUID();
       return [
@@ -254,7 +254,7 @@ export default function DataTab() {
       ];
     }
 
-    // Handle Bolt export format (multiple chats)
+    // Handle Hanzo export format (multiple chats)
     if (data.chats && Array.isArray(data.chats)) {
       return data.chats.map((chat: { id?: string; messages: Message[]; description?: string; urlId?: string }) => ({
         id: chat.id || crypto.randomUUID(),

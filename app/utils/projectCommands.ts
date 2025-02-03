@@ -72,29 +72,29 @@ export function createCommandsMessage(commands: ProjectCommands): Message | null
 
   if (commands.setupCommand) {
     commandString += `
-<boltAction type="shell">${commands.setupCommand}</boltAction>`;
+<hanzoAction type="shell">${commands.setupCommand}</hanzoAction>`;
   }
 
   if (commands.startCommand) {
     commandString += `
-<boltAction type="start">${commands.startCommand}</boltAction>
+<hanzoAction type="start">${commands.startCommand}</hanzoAction>
 `;
   }
 
   return {
     role: 'assistant',
     content: `
-<boltArtifact id="project-setup" title="Project Setup">
+<hanzoArtifact id="project-setup" title="Project Setup">
 ${commandString}
-</boltArtifact>${commands.followupMessage ? `\n\n${commands.followupMessage}` : ''}`,
+</hanzoArtifact>${commands.followupMessage ? `\n\n${commands.followupMessage}` : ''}`,
     id: generateId(),
     createdAt: new Date(),
   };
 }
 
-export function escapeBoltArtifactTags(input: string) {
-  // Regular expression to match boltArtifact tags and their content
-  const regex = /(<boltArtifact[^>]*>)([\s\S]*?)(<\/boltArtifact>)/g;
+export function escapeHanzoArtifactTags(input: string) {
+  // Regular expression to match hanzoArtifact tags and their content
+  const regex = /(<hanzoArtifact[^>]*>)([\s\S]*?)(<\/hanzoArtifact>)/g;
 
   return input.replace(regex, (match, openTag, content, closeTag) => {
     // Escape the opening tag
@@ -108,9 +108,9 @@ export function escapeBoltArtifactTags(input: string) {
   });
 }
 
-export function escapeBoltAActionTags(input: string) {
-  // Regular expression to match boltArtifact tags and their content
-  const regex = /(<boltAction[^>]*>)([\s\S]*?)(<\/boltAction>)/g;
+export function escapeHanzoAActionTags(input: string) {
+  // Regular expression to match hanzoArtifact tags and their content
+  const regex = /(<hanzoAction[^>]*>)([\s\S]*?)(<\/hanzoAction>)/g;
 
   return input.replace(regex, (match, openTag, content, closeTag) => {
     // Escape the opening tag
@@ -124,6 +124,6 @@ export function escapeBoltAActionTags(input: string) {
   });
 }
 
-export function escapeBoltTags(input: string) {
-  return escapeBoltArtifactTags(escapeBoltAActionTags(input));
+export function escapeHanzoTags(input: string) {
+  return escapeHanzoArtifactTags(escapeHanzoAActionTags(input));
 }
