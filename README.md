@@ -108,7 +108,8 @@ Let's get you up and running with the stable version of Hanzo!
 
 ## Quick Download
 
-[![Download Latest Release](https://img.shields.io/github/v/release/hanzoai/app?label=Download%20Appt&sort=semver)](https://github.com/stackblitz-labs/hanzoai/releases/latest) ← Click here to go the the latest release version!
+[![Download Latest
+Release](https://img.shields.io/github/v/release/hanzoai/app?label=Download%20Appt&sort=semver)](https://github.com/hanzoai/app/releases/latest) ← Click here to go the the latest release version!
 
 - Next **click source.zip**
 
