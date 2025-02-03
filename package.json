@@ -117,6 +117,7 @@
     "@types/js-cookie": "^3.0.6",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@vercel/remix": "^2.15.3",
     "fast-glob": "^3.3.2",
     "husky": "9.1.7",
     "is-ci": "^3.0.1",
