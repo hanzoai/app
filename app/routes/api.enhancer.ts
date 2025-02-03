@@ -1,4 +1,4 @@
-import { type ActionFunctionArgs } from '@remix-run/cloudflare';
+import { type ActionFunctionArgs } from '@remix-run/node';
 import { streamText } from '~/lib/.server/llm/stream-text';
 import { stripIndents } from '~/utils/stripIndent';
 import type { ProviderInfo } from '~/types/model';
@@ -9,16 +9,15 @@ export async function action(args: ActionFunctionArgs) {
 }
 
 async function enhancerAction({ context, request }: ActionFunctionArgs) {
-  const { message, model, provider } = await request.json<{
+  const { message, model, provider } = (await request.json()) as {
     message: string;
     model: string;
     provider: ProviderInfo;
     apiKeys?: Record<string, string>;
-  }>();
+  };
 
   const { name: providerName } = provider;
 
-  // validate 'model' and 'provider' fields
   if (!model || typeof model !== 'string') {
     throw new Response('Invalid or missing model', {
       status: 400,

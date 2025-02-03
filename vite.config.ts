@@ -44,6 +44,7 @@ export default defineConfig((config) => {
         include: ['path', 'buffer', 'process'],
       }),
       remix({
+        buildDirectory: "build",
         future: {
           v3_fetcherPersist: true,
           v3_relativeSplatPath: true,

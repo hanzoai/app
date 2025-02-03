@@ -1,4 +1,4 @@
-import { type ActionFunctionArgs } from '@remix-run/cloudflare';
+import { type ActionFunctionArgs } from '@remix-run/node';
 import { createDataStream, generateId } from 'ai';
 import { MAX_RESPONSE_SEGMENTS, MAX_TOKENS, type FileMap } from '~/lib/.server/llm/constants';
 import { CONTINUE_PROMPT } from '~/lib/common/prompts/prompts';
@@ -12,6 +12,13 @@ import { WORK_DIR } from '~/utils/constants';
 import { createSummary } from '~/lib/.server/llm/create-summary';
 import { extractPropertiesFromMessage } from '~/lib/.server/llm/utils';
 
+interface ChatRequestBody {
+  messages: Messages;
+  files: any;
+  promptId?: string;
+  contextOptimization: boolean;
+}
+
 export async function action(args: ActionFunctionArgs) {
   return chatAction(args);
 }
@@ -20,9 +27,7 @@ const logger = createScopedLogger('api.chat');
 
 function parseCookies(cookieHeader: string): Record<string, string> {
   const cookies: Record<string, string> = {};
-
   const items = cookieHeader.split(';').map((cookie) => cookie.trim());
-
   items.forEach((item) => {
     const [name, ...rest] = item.split('=');
 
@@ -37,12 +42,7 @@ function parseCookies(cookieHeader: string): Record<string, string> {
 }
 
 async function chatAction({ context, request }: ActionFunctionArgs) {
-  const { messages, files, promptId, contextOptimization } = await request.json<{
-    messages: Messages;
-    files: any;
-    promptId?: string;
-    contextOptimization: boolean;
-  }>();
+  const { messages, files, promptId, contextOptimization } = (await request.json()) as ChatRequestBody;
 
   const cookieHeader = request.headers.get('Cookie');
   const apiKeys = JSON.parse(parseCookies(cookieHeader || '').apiKeys || '{}');
@@ -61,7 +61,10 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
   let progressCounter: number = 1;
 
   try {
-    const totalMessageContent = messages.reduce((acc, message) => acc + message.content, '');
+    const totalMessageContent = messages.reduce(
+      (acc: string, message: { content: string }) => acc + message.content,
+      '',
+    );
     logger.debug(`Total message length: ${totalMessageContent.split(' ').length}, words`);
 
     let lastChunk: string | undefined = undefined;
@@ -85,9 +88,8 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             status: 'in-progress',
             order: progressCounter++,
             message: 'Analysing Request',
-          } satisfies ProgressAnnotation);
+          } as ProgressAnnotation);
 
-          // Create a summary of the chat
           console.log(`Messages count: ${messages.length}`);
 
           summary = await createSummary({
@@ -112,7 +114,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             status: 'complete',
             order: progressCounter++,
             message: 'Analysis Complete',
-          } satisfies ProgressAnnotation);
+          } as ProgressAnnotation);
 
           dataStream.writeMessageAnnotation({
             type: 'chatSummary',
@@ -120,7 +122,6 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             chatId: messages.slice(-1)?.[0]?.id,
           } as ContextAnnotation);
 
-          // Update context buffer
           logger.debug('Updating Context Buffer');
           dataStream.writeData({
             type: 'progress',
@@ -128,9 +129,8 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             status: 'in-progress',
             order: progressCounter++,
             message: 'Determining Files to Read',
-          } satisfies ProgressAnnotation);
+          } as ProgressAnnotation);
 
-          // Select context files
           console.log(`Messages count: ${messages.length}`);
           filteredFiles = await selectContext({
             messages: [...messages],
@@ -174,12 +174,9 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             status: 'complete',
             order: progressCounter++,
             message: 'Code Files Selected',
-          } satisfies ProgressAnnotation);
-
-          // logger.debug('Code Files Selected');
+          } as ProgressAnnotation);
         }
 
-        // Stream the text
         const options: StreamingOptions = {
           toolChoice: 'none',
           onFinish: async ({ text: content, finishReason, usage }) => {
@@ -206,10 +203,9 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
                 status: 'complete',
                 order: progressCounter++,
                 message: 'Response Generated',
-              } satisfies ProgressAnnotation);
+              } as ProgressAnnotation);
               await new Promise((resolve) => setTimeout(resolve, 0));
 
-              // stream.close();
               return;
             }
 
@@ -218,10 +214,9 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             }
 
             const switchesLeft = MAX_RESPONSE_SEGMENTS - stream.switches;
-
             logger.info(`Reached max token limit (${MAX_TOKENS}): Continuing message (${switchesLeft} switches left)`);
 
-            const lastUserMessage = messages.filter((x) => x.role == 'user').slice(-1)[0];
+            const lastUserMessage = messages.filter((x: { role: string }) => x.role === 'user').slice(-1)[0];
             const { model, provider } = extractPropertiesFromMessage(lastUserMessage);
             messages.push({ id: generateId(), role: 'assistant', content });
             messages.push({
@@ -243,7 +238,6 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
               summary,
               messageSliceId,
             });
-
             result.mergeIntoDataStream(dataStream);
 
             (async () => {
@@ -267,7 +261,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           status: 'in-progress',
           order: progressCounter++,
           message: 'Generating Response',
-        } satisfies ProgressAnnotation);
+        } as ProgressAnnotation);
 
         const result = await streamText({
           messages,
@@ -327,7 +321,6 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             transformedChunk = `0:${content}\n`;
           }
 
-          // Convert the string stream to a byte stream
           const str = typeof transformedChunk === 'string' ? transformedChunk : JSON.stringify(transformedChunk);
           controller.enqueue(encoder.encode(str));
         },
