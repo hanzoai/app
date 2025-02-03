@@ -2,7 +2,7 @@
 
 [![Hanzo.ai: AI-Powered Full-Stack Web Development in the Browser](./public/social_preview_index.jpg)](https://hanzo.ai)
 
-Welcome to hanzo.ai, the official open source version of Bolt.new (previously known as oTToDev and bolt.new ANY LLM), which allows you to choose the LLM that you use for each prompt! Currently, you can use OpenAI, Anthropic, Ollama, OpenRouter, Gemini, LMStudio, Mistral, xAI, HuggingFace, DeepSeek, or Groq models - and it is easily extended to use any other model supported by the Vercel AI SDK! See the instructions below for running this locally and extending it to include more models.
+Welcome to hanzo.ai, the official open source version of Hanzo.new (previously known as oTToDev and hanzo.new ANY LLM), which allows you to choose the LLM that you use for each prompt! Currently, you can use OpenAI, Anthropic, Ollama, OpenRouter, Gemini, LMStudio, Mistral, xAI, HuggingFace, DeepSeek, or Groq models - and it is easily extended to use any other model supported by the Vercel AI SDK! See the instructions below for running this locally and extending it to include more models.
 
 -----
 Check the [hanzo.ai Docs](https://stackblitz-labs.github.io/hanzo.ai/) for more offical installation instructions and more informations.
@@ -206,7 +206,7 @@ Setting up your API keys in hanzo.ai is straightforward:
 For providers that support custom base URLs (such as Ollama or LM Studio), follow these steps:
 
 1. Click the settings icon in the sidebar to open the settings menu
-   ![Settings Button Location](./docs/images/bolt-settings-button.png)
+   ![Settings Button Location](./docs/images/hanzo-settings-button.png)
 
 2. Navigate to the "Providers" tab
 3. Search for your provider using the search bar

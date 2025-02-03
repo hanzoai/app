@@ -61,9 +61,7 @@ const GITHUB_URLS = {
       const response = await fetch(`https://api.github.com/repos/hanzoai/canvas/commits/${branch}`);
       const data: { sha: string } = await response.json();
 
-      const packageJsonResp = await fetch(
-        `https://raw.githubusercontent.com/hanzoai/canvas/${branch}/package.json`,
-      );
+      const packageJsonResp = await fetch(`https://raw.githubusercontent.com/hanzoai/canvas/${branch}/package.json`);
       const packageJson: { version: string } = await packageJsonResp.json();
 
       return {

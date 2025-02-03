@@ -39,9 +39,7 @@ export function useSettings() {
   // Function to check if we're on stable version
   const checkIsStableVersion = async () => {
     try {
-      const response = await fetch(
-        `https://api.github.com/repos/hanzoai/canvas/git/refs/tags/v${versionData.version}`,
-      );
+      const response = await fetch(`https://api.github.com/repos/hanzoai/canvas/git/refs/tags/v${versionData.version}`);
       const data: { object: { sha: string } } = await response.json();
 
       return versionData.commit.slice(0, 7) === data.object.sha.slice(0, 7);
