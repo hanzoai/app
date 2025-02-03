@@ -7,7 +7,7 @@ import { coloredText } from '~/utils/terminal';
 export class TerminalStore {
   #webcontainer: Promise<WebContainer>;
   #terminals: Array<{ terminal: ITerminal; process: WebContainerProcess }> = [];
-  #boltTerminal = newHanzoShellProcess();
+  #hanzoTerminal = newHanzoShellProcess();
 
   showTerminal: WritableAtom<boolean> = import.meta.hot?.data.showTerminal ?? atom(true);
 
@@ -18,8 +18,8 @@ export class TerminalStore {
       import.meta.hot.data.showTerminal = this.showTerminal;
     }
   }
-  get boltTerminal() {
-    return this.#boltTerminal;
+  get hanzoTerminal() {
+    return this.#hanzoTerminal;
   }
 
   toggleTerminal(value?: boolean) {
@@ -28,9 +28,9 @@ export class TerminalStore {
   async attachHanzoTerminal(terminal: ITerminal) {
     try {
       const wc = await this.#webcontainer;
-      await this.#boltTerminal.init(wc, terminal);
+      await this.#hanzoTerminal.init(wc, terminal);
     } catch (error: any) {
-      terminal.write(coloredText.red('Failed to spawn bolt shell\n\n') + error.message);
+      terminal.write(coloredText.red('Failed to spawn hanzo shell\n\n') + error.message);
       return;
     }
   }

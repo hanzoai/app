@@ -28,7 +28,7 @@ describe('StreamingMessageParser', () => {
       ['Foo bar <', 'Foo bar '],
       ['Foo bar <p', 'Foo bar <p'],
       [['Foo bar <', 's', 'p', 'an>some text</span>'], 'Foo bar <span>some text</span>'],
-    ])('should correctly parse chunks and strip out bolt artifacts (%#)', (input, expected) => {
+    ])('should correctly parse chunks and strip out hanzo artifacts (%#)', (input, expected) => {
       runTest(input, expected);
     });
   });
@@ -38,13 +38,13 @@ describe('StreamingMessageParser', () => {
       ['Foo bar <b', 'Foo bar '],
       ['Foo bar <ba', 'Foo bar <ba'],
       ['Foo bar <bol', 'Foo bar '],
-      ['Foo bar <bolt', 'Foo bar '],
-      ['Foo bar <bolta', 'Foo bar <bolta'],
-      ['Foo bar <boltA', 'Foo bar '],
-      ['Foo bar <boltArtifacs></hanzoArtifact>', 'Foo bar <boltArtifacs></hanzoArtifact>'],
+      ['Foo bar <hanzo', 'Foo bar '],
+      ['Foo bar <hanzoa', 'Foo bar <hanzoa'],
+      ['Foo bar <hanzoA', 'Foo bar '],
+      ['Foo bar <hanzoArtifacs></hanzoArtifact>', 'Foo bar <hanzoArtifacs></hanzoArtifact>'],
       ['Before <oltArtfiact>foo</hanzoArtifact> After', 'Before <oltArtfiact>foo</hanzoArtifact> After'],
       ['Before <hanzoArtifactt>foo</hanzoArtifact> After', 'Before <hanzoArtifactt>foo</hanzoArtifact> After'],
-    ])('should correctly parse chunks and strip out bolt artifacts (%#)', (input, expected) => {
+    ])('should correctly parse chunks and strip out hanzo artifacts (%#)', (input, expected) => {
       runTest(input, expected);
     });
   });
@@ -60,7 +60,7 @@ describe('StreamingMessageParser', () => {
       ],
       [
         [
-          'Some text before <boltArti',
+          'Some text before <hanzoArti',
           'fact',
           ' title="Some title" id="artifact_1" type="bundled" >foo</hanzoArtifact> Some more text',
         ],
@@ -71,7 +71,7 @@ describe('StreamingMessageParser', () => {
       ],
       [
         [
-          'Some text before <boltArti',
+          'Some text before <hanzoArti',
           'fac',
           't title="Some title" id="artifact_1"',
           ' ',
@@ -85,7 +85,7 @@ describe('StreamingMessageParser', () => {
       ],
       [
         [
-          'Some text before <boltArti',
+          'Some text before <hanzoArti',
           'fact',
           ' title="Some title" id="artifact_1"',
           ' >fo',
@@ -98,7 +98,7 @@ describe('StreamingMessageParser', () => {
       ],
       [
         [
-          'Some text before <boltArti',
+          'Some text before <hanzoArti',
           'fact tit',
           'le="Some ',
           'title" id="artifact_1">fo',
@@ -113,7 +113,7 @@ describe('StreamingMessageParser', () => {
       ],
       [
         [
-          'Some text before <boltArti',
+          'Some text before <hanzoArti',
           'fact title="Some title" id="artif',
           'act_1">fo',
           'o<',
@@ -131,7 +131,7 @@ describe('StreamingMessageParser', () => {
           callbacks: { onArtifactOpen: 1, onArtifactClose: 1, onActionOpen: 0, onActionClose: 0 },
         },
       ],
-    ])('should correctly parse chunks and strip out bolt artifacts (%#)', (input, expected) => {
+    ])('should correctly parse chunks and strip out hanzo artifacts (%#)', (input, expected) => {
       runTest(input, expected);
     });
   });
@@ -152,7 +152,7 @@ describe('StreamingMessageParser', () => {
           callbacks: { onArtifactOpen: 1, onArtifactClose: 1, onActionOpen: 2, onActionClose: 2 },
         },
       ],
-    ])('should correctly parse chunks and strip out bolt artifacts (%#)', (input, expected) => {
+    ])('should correctly parse chunks and strip out hanzo artifacts (%#)', (input, expected) => {
       runTest(input, expected);
     });
   });

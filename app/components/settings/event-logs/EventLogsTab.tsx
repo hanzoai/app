@@ -114,7 +114,7 @@ export default function EventLogsTab() {
       case 'debug':
         return 'text-gray-500';
       default:
-        return 'text-bolt-elements-textPrimary';
+        return 'text-hanzo-elements-textPrimary';
     }
   };
 
@@ -123,14 +123,14 @@ export default function EventLogsTab() {
       <div className="flex flex-col space-y-4 mb-4">
         {/* Title and Toggles Row */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h3 className="text-lg font-medium text-bolt-elements-textPrimary">Event Logs</h3>
+          <h3 className="text-lg font-medium text-hanzo-elements-textPrimary">Event Logs</h3>
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center space-x-2">
-              <span className="text-sm text-bolt-elements-textSecondary whitespace-nowrap">Show Actions</span>
+              <span className="text-sm text-hanzo-elements-textSecondary whitespace-nowrap">Show Actions</span>
               <Switch checked={showLogs} onCheckedChange={(checked) => logStore.showLogs.set(checked)} />
             </div>
             <div className="flex items-center space-x-2">
-              <span className="text-sm text-bolt-elements-textSecondary whitespace-nowrap">Auto-scroll</span>
+              <span className="text-sm text-hanzo-elements-textSecondary whitespace-nowrap">Auto-scroll</span>
               <Switch checked={autoScroll} onCheckedChange={setAutoScroll} />
             </div>
           </div>
@@ -141,7 +141,7 @@ export default function EventLogsTab() {
           <select
             value={logLevel}
             onChange={(e) => setLogLevel(e.target.value as LogEntry['level'])}
-            className="flex-1 p-2 rounded-lg border border-bolt-elements-borderColor bg-bolt-elements-prompt-background text-bolt-elements-textPrimary focus:outline-none focus:ring-2 focus:ring-bolt-elements-focus transition-all lg:max-w-[20%] text-sm min-w-[100px]"
+            className="flex-1 p-2 rounded-lg border border-hanzo-elements-borderColor bg-hanzo-elements-prompt-background text-hanzo-elements-textPrimary focus:outline-none focus:ring-2 focus:ring-hanzo-elements-focus transition-all lg:max-w-[20%] text-sm min-w-[100px]"
           >
             <option value="all">All</option>
             <option value="info">Info</option>
@@ -155,7 +155,7 @@ export default function EventLogsTab() {
               placeholder="Search logs..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white dark:bg-bolt-elements-background-depth-4 relative px-2 py-1.5 rounded-md focus:outline-none placeholder-bolt-elements-textTertiary text-bolt-elements-textPrimary dark:text-bolt-elements-textPrimary border border-bolt-elements-borderColor"
+              className="w-full bg-white dark:bg-hanzo-elements-background-depth-4 relative px-2 py-1.5 rounded-md focus:outline-none placeholder-hanzo-elements-textTertiary text-hanzo-elements-textPrimary dark:text-hanzo-elements-textPrimary border border-hanzo-elements-borderColor"
             />
           </div>
           {showLogs && (
@@ -163,10 +163,10 @@ export default function EventLogsTab() {
               <button
                 onClick={handleExportLogs}
                 className={classNames(
-                  'bg-bolt-elements-button-primary-background',
+                  'bg-hanzo-elements-button-primary-background',
                   'rounded-lg px-4 py-2 transition-colors duration-200',
-                  'hover:bg-bolt-elements-button-primary-backgroundHover',
-                  'text-bolt-elements-button-primary-text',
+                  'hover:bg-hanzo-elements-button-primary-backgroundHover',
+                  'text-hanzo-elements-button-primary-text',
                 )}
               >
                 Export Logs
@@ -174,10 +174,10 @@ export default function EventLogsTab() {
               <button
                 onClick={handleClearLogs}
                 className={classNames(
-                  'bg-bolt-elements-button-danger-background',
+                  'bg-hanzo-elements-button-danger-background',
                   'rounded-lg px-4 py-2 transition-colors duration-200',
-                  'hover:bg-bolt-elements-button-danger-backgroundHover',
-                  'text-bolt-elements-button-danger-text',
+                  'hover:bg-hanzo-elements-button-danger-backgroundHover',
+                  'text-hanzo-elements-button-danger-text',
                 )}
               >
                 Clear Logs
@@ -187,26 +187,26 @@ export default function EventLogsTab() {
         </div>
       </div>
 
-      <div className="bg-bolt-elements-bg-depth-1 rounded-lg p-4 h-[calc(100vh - 250px)] min-h-[400px] overflow-y-auto logs-container overflow-y-auto">
+      <div className="bg-hanzo-elements-bg-depth-1 rounded-lg p-4 h-[calc(100vh - 250px)] min-h-[400px] overflow-y-auto logs-container overflow-y-auto">
         {filteredLogs.length === 0 ? (
-          <div className="text-center text-bolt-elements-textSecondary py-8">No logs found</div>
+          <div className="text-center text-hanzo-elements-textSecondary py-8">No logs found</div>
         ) : (
           filteredLogs.map((log, index) => (
             <div
               key={index}
-              className="text-sm mb-3 font-mono border-b border-bolt-elements-borderColor pb-2 last:border-0"
+              className="text-sm mb-3 font-mono border-b border-hanzo-elements-borderColor pb-2 last:border-0"
             >
               <div className="flex items-start space-x-2 flex-wrap">
                 <span className={`font-bold ${getLevelColor(log.level)} whitespace-nowrap`}>
                   [{log.level.toUpperCase()}]
                 </span>
-                <span className="text-bolt-elements-textSecondary whitespace-nowrap">
+                <span className="text-hanzo-elements-textSecondary whitespace-nowrap">
                   {new Date(log.timestamp).toLocaleString()}
                 </span>
-                <span className="text-bolt-elements-textPrimary break-all">{log.message}</span>
+                <span className="text-hanzo-elements-textPrimary break-all">{log.message}</span>
               </div>
               {log.details && (
-                <pre className="mt-2 text-xs text-bolt-elements-textSecondary overflow-x-auto whitespace-pre-wrap break-all">
+                <pre className="mt-2 text-xs text-hanzo-elements-textSecondary overflow-x-auto whitespace-pre-wrap break-all">
                   {JSON.stringify(log.details, null, 2)}
                 </pre>
               )}

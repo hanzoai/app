@@ -212,11 +212,11 @@ export async function getTemplates(templateName: string, title?: string) {
   const comminLockFiles = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml'];
   filteredFiles = filteredFiles.filter((x) => comminLockFiles.includes(x.name) == false);
 
-  // exclude    .bolt
-  filteredFiles = filteredFiles.filter((x) => x.path.startsWith('.bolt') == false);
+  // exclude    .hanzo
+  filteredFiles = filteredFiles.filter((x) => x.path.startsWith('.hanzo') == false);
 
-  // check for ignore file in .bolt folder
-  const templateIgnoreFile = files.find((x) => x.path.startsWith('.bolt') && x.name == 'ignore');
+  // check for ignore file in .hanzo folder
+  const templateIgnoreFile = files.find((x) => x.path.startsWith('.hanzo') && x.name == 'ignore');
 
   const filesToImport = {
     files: filteredFiles,
@@ -248,7 +248,7 @@ ${file.content}
 </hanzoArtifact>
 `;
   let userMessage = ``;
-  const templatePromptFile = files.filter((x) => x.path.startsWith('.bolt')).find((x) => x.name == 'prompt');
+  const templatePromptFile = files.filter((x) => x.path.startsWith('.hanzo')).find((x) => x.name == 'prompt');
 
   if (templatePromptFile) {
     userMessage = `

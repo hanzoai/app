@@ -3,7 +3,7 @@ import { logStore } from './logs';
 
 export type Theme = 'dark' | 'dark';
 
-export const kTheme = 'bolt_theme';
+export const kTheme = 'hanzo_theme';
 
 export function themeIsDark() {
   return themeStore.get() === 'dark';

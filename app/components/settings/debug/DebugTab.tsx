@@ -55,7 +55,7 @@ const versionTag = connitJson.version;
 
 const GITHUB_URLS = {
   original: 'https://api.github.com/repos/hanzoai/canvas/commits/main',
-  fork: 'https://api.github.com/repos/Stijnus/bolt.new-any-llm/commits/main',
+  fork: 'https://api.github.com/repos/Stijnus/hanzo.new-any-llm/commits/main',
   commitJson: async (branch: string) => {
     try {
       const response = await fetch(`https://api.github.com/repos/hanzoai/canvas/commits/${branch}`);
@@ -438,20 +438,20 @@ export default function DebugTab() {
   return (
     <div className="p-4 space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium text-bolt-elements-textPrimary">Debug Information</h3>
+        <h3 className="text-lg font-medium text-hanzo-elements-textPrimary">Debug Information</h3>
         <div className="flex gap-2">
           <button
             onClick={handleCopyToClipboard}
-            className="bg-bolt-elements-button-primary-background rounded-lg px-4 py-2 transition-colors duration-200 hover:bg-bolt-elements-button-primary-backgroundHover text-bolt-elements-button-primary-text"
+            className="bg-hanzo-elements-button-primary-background rounded-lg px-4 py-2 transition-colors duration-200 hover:bg-hanzo-elements-button-primary-backgroundHover text-hanzo-elements-button-primary-text"
           >
             Copy Debug Info
           </button>
           <button
             onClick={handleCheckForUpdate}
             disabled={isCheckingUpdate}
-            className={`bg-bolt-elements-button-primary-background rounded-lg px-4 py-2 transition-colors duration-200
-              ${!isCheckingUpdate ? 'hover:bg-bolt-elements-button-primary-backgroundHover' : 'opacity-75 cursor-not-allowed'}
-              text-bolt-elements-button-primary-text`}
+            className={`bg-hanzo-elements-button-primary-background rounded-lg px-4 py-2 transition-colors duration-200
+              ${!isCheckingUpdate ? 'hover:bg-hanzo-elements-button-primary-backgroundHover' : 'opacity-75 cursor-not-allowed'}
+              text-hanzo-elements-button-primary-text`}
           >
             {isCheckingUpdate ? 'Checking...' : 'Check for Updates'}
           </button>
@@ -460,22 +460,22 @@ export default function DebugTab() {
 
       {updateMessage && (
         <div
-          className={`bg-bolt-elements-surface rounded-lg p-3 ${
+          className={`bg-hanzo-elements-surface rounded-lg p-3 ${
             updateMessage.includes('Update available') ? 'border-l-4 border-yellow-400' : ''
           }`}
         >
-          <p className="text-bolt-elements-textSecondary whitespace-pre-line">{updateMessage}</p>
+          <p className="text-hanzo-elements-textSecondary whitespace-pre-line">{updateMessage}</p>
           {updateMessage.includes('Update available') && (
             <div className="mt-3 text-sm">
-              <p className="font-medium text-bolt-elements-textPrimary">To update:</p>
-              <ol className="list-decimal ml-4 mt-1 text-bolt-elements-textSecondary">
+              <p className="font-medium text-hanzo-elements-textPrimary">To update:</p>
+              <ol className="list-decimal ml-4 mt-1 text-hanzo-elements-textSecondary">
                 <li>
                   Pull the latest changes:{' '}
-                  <code className="bg-bolt-elements-surface-hover px-1 rounded">git pull upstream main</code>
+                  <code className="bg-hanzo-elements-surface-hover px-1 rounded">git pull upstream main</code>
                 </li>
                 <li>
                   Install any new dependencies:{' '}
-                  <code className="bg-bolt-elements-surface-hover px-1 rounded">pnpm install</code>
+                  <code className="bg-hanzo-elements-surface-hover px-1 rounded">pnpm install</code>
                 </li>
                 <li>Restart the application</li>
               </ol>
@@ -486,29 +486,29 @@ export default function DebugTab() {
 
       <section className="space-y-4">
         <div>
-          <h4 className="text-md font-medium text-bolt-elements-textPrimary mb-2">System Information</h4>
-          <div className="bg-bolt-elements-surface rounded-lg p-4">
+          <h4 className="text-md font-medium text-hanzo-elements-textPrimary mb-2">System Information</h4>
+          <div className="bg-hanzo-elements-surface rounded-lg p-4">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div>
-                <p className="text-xs text-bolt-elements-textSecondary">Operating System</p>
-                <p className="text-sm font-medium text-bolt-elements-textPrimary">{systemInfo.os}</p>
+                <p className="text-xs text-hanzo-elements-textSecondary">Operating System</p>
+                <p className="text-sm font-medium text-hanzo-elements-textPrimary">{systemInfo.os}</p>
               </div>
               <div>
-                <p className="text-xs text-bolt-elements-textSecondary">Device Type</p>
-                <p className="text-sm font-medium text-bolt-elements-textPrimary">{systemInfo.deviceType}</p>
+                <p className="text-xs text-hanzo-elements-textSecondary">Device Type</p>
+                <p className="text-sm font-medium text-hanzo-elements-textPrimary">{systemInfo.deviceType}</p>
               </div>
               <div>
-                <p className="text-xs text-bolt-elements-textSecondary">Browser</p>
-                <p className="text-sm font-medium text-bolt-elements-textPrimary">{systemInfo.browser}</p>
+                <p className="text-xs text-hanzo-elements-textSecondary">Browser</p>
+                <p className="text-sm font-medium text-hanzo-elements-textPrimary">{systemInfo.browser}</p>
               </div>
               <div>
-                <p className="text-xs text-bolt-elements-textSecondary">Display</p>
-                <p className="text-sm font-medium text-bolt-elements-textPrimary">
+                <p className="text-xs text-hanzo-elements-textSecondary">Display</p>
+                <p className="text-sm font-medium text-hanzo-elements-textPrimary">
                   {systemInfo.screen} ({systemInfo.colorDepth}) @{systemInfo.pixelRatio}x
                 </p>
               </div>
               <div>
-                <p className="text-xs text-bolt-elements-textSecondary">Connection</p>
+                <p className="text-xs text-hanzo-elements-textSecondary">Connection</p>
                 <p className="text-sm font-medium flex items-center gap-2">
                   <span
                     className={`inline-block w-2 h-2 rounded-full ${systemInfo.online ? 'bg-green-500' : 'bg-red-500'}`}
@@ -519,27 +519,27 @@ export default function DebugTab() {
                 </p>
               </div>
               <div>
-                <p className="text-xs text-bolt-elements-textSecondary">Screen Resolution</p>
-                <p className="text-sm font-medium text-bolt-elements-textPrimary">{systemInfo.screen}</p>
+                <p className="text-xs text-hanzo-elements-textSecondary">Screen Resolution</p>
+                <p className="text-sm font-medium text-hanzo-elements-textPrimary">{systemInfo.screen}</p>
               </div>
               <div>
-                <p className="text-xs text-bolt-elements-textSecondary">Language</p>
-                <p className="text-sm font-medium text-bolt-elements-textPrimary">{systemInfo.language}</p>
+                <p className="text-xs text-hanzo-elements-textSecondary">Language</p>
+                <p className="text-sm font-medium text-hanzo-elements-textPrimary">{systemInfo.language}</p>
               </div>
               <div>
-                <p className="text-xs text-bolt-elements-textSecondary">Timezone</p>
-                <p className="text-sm font-medium text-bolt-elements-textPrimary">{systemInfo.timezone}</p>
+                <p className="text-xs text-hanzo-elements-textSecondary">Timezone</p>
+                <p className="text-sm font-medium text-hanzo-elements-textPrimary">{systemInfo.timezone}</p>
               </div>
               <div>
-                <p className="text-xs text-bolt-elements-textSecondary">CPU Cores</p>
-                <p className="text-sm font-medium text-bolt-elements-textPrimary">{systemInfo.cores}</p>
+                <p className="text-xs text-hanzo-elements-textSecondary">CPU Cores</p>
+                <p className="text-sm font-medium text-hanzo-elements-textPrimary">{systemInfo.cores}</p>
               </div>
             </div>
-            <div className="mt-3 pt-3 border-t border-bolt-elements-surface-hover">
-              <p className="text-xs text-bolt-elements-textSecondary">Version</p>
-              <p className="text-sm font-medium text-bolt-elements-textPrimary font-mono">
+            <div className="mt-3 pt-3 border-t border-hanzo-elements-surface-hover">
+              <p className="text-xs text-hanzo-elements-textSecondary">Version</p>
+              <p className="text-sm font-medium text-hanzo-elements-textPrimary font-mono">
                 {connitJson.commit.slice(0, 7)}
-                <span className="ml-2 text-xs text-bolt-elements-textSecondary">
+                <span className="ml-2 text-xs text-hanzo-elements-textSecondary">
                   (v{versionTag || '0.0.1'}) - {isLatestBranch ? 'nightly' : 'stable'}
                 </span>
               </p>
@@ -548,8 +548,8 @@ export default function DebugTab() {
         </div>
 
         <div>
-          <h4 className="text-md font-medium text-bolt-elements-textPrimary mb-2">Local LLM Status</h4>
-          <div className="bg-bolt-elements-surface rounded-lg">
+          <h4 className="text-md font-medium text-hanzo-elements-textPrimary mb-2">Local LLM Status</h4>
+          <div className="bg-hanzo-elements-surface rounded-lg">
             <div className="grid grid-cols-1 divide-y">
               {activeProviders.map((provider) => (
                 <div key={provider.name} className="p-3 flex flex-col space-y-2">
@@ -563,9 +563,9 @@ export default function DebugTab() {
                         />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-bolt-elements-textPrimary">{provider.name}</p>
+                        <p className="text-sm font-medium text-hanzo-elements-textPrimary">{provider.name}</p>
                         {provider.url && (
-                          <p className="text-xs text-bolt-elements-textSecondary truncate max-w-[300px]">
+                          <p className="text-xs text-hanzo-elements-textSecondary truncate max-w-[300px]">
                             {provider.url}
                           </p>
                         )}
@@ -594,11 +594,11 @@ export default function DebugTab() {
                   <div className="pl-5 flex flex-col space-y-1 text-xs">
                     {/* Status Details */}
                     <div className="flex flex-wrap gap-2">
-                      <span className="text-bolt-elements-textSecondary">
+                      <span className="text-hanzo-elements-textSecondary">
                         Last checked: {new Date(provider.lastChecked).toLocaleTimeString()}
                       </span>
                       {provider.responseTime && (
-                        <span className="text-bolt-elements-textSecondary">
+                        <span className="text-hanzo-elements-textSecondary">
                           Response time: {Math.round(provider.responseTime)}ms
                         </span>
                       )}
@@ -613,7 +613,7 @@ export default function DebugTab() {
 
                     {/* Connection Info */}
                     {provider.url && (
-                      <div className="text-bolt-elements-textSecondary">
+                      <div className="text-hanzo-elements-textSecondary">
                         <span className="font-medium">Endpoints checked:</span>
                         <ul className="list-disc list-inside pl-2 mt-1">
                           <li>{provider.url} (root)</li>
@@ -626,7 +626,7 @@ export default function DebugTab() {
                 </div>
               ))}
               {activeProviders.length === 0 && (
-                <div className="p-4 text-center text-bolt-elements-textSecondary">No local LLMs configured</div>
+                <div className="p-4 text-center text-hanzo-elements-textSecondary">No local LLMs configured</div>
               )}
             </div>
           </div>

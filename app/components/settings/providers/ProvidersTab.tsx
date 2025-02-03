@@ -50,7 +50,7 @@ export default function ProvidersTab() {
     return (
       <div
         key={provider.name}
-        className="flex flex-col provider-item hover:bg-bolt-elements-bg-depth-3 p-4 rounded-lg border border-bolt-elements-borderColor"
+        className="flex flex-col provider-item hover:bg-hanzo-elements-bg-depth-3 p-4 rounded-lg border border-hanzo-elements-borderColor"
       >
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
@@ -62,7 +62,7 @@ export default function ProvidersTab() {
               alt={`${provider.name} icon`}
               className="w-6 h-6 dark:invert"
             />
-            <span className="text-bolt-elements-textPrimary">{provider.name}</span>
+            <span className="text-hanzo-elements-textPrimary">{provider.name}</span>
           </div>
           <Switch
             className="ml-auto"
@@ -81,11 +81,11 @@ export default function ProvidersTab() {
         {isUrlConfigurable && provider.settings.enabled && (
           <div className="mt-2">
             {envBaseUrl && (
-              <label className="block text-xs text-bolt-elements-textSecondary text-green-300 mb-2">
+              <label className="block text-xs text-hanzo-elements-textSecondary text-green-300 mb-2">
                 Set On (.env) : {envBaseUrl}
               </label>
             )}
-            <label className="block text-sm text-bolt-elements-textSecondary mb-2">
+            <label className="block text-sm text-hanzo-elements-textSecondary mb-2">
               {envBaseUrl ? 'Override Base Url' : 'Base URL '}:{' '}
             </label>
             <input
@@ -105,7 +105,7 @@ export default function ProvidersTab() {
                 });
               }}
               placeholder={`Enter ${provider.name} base URL`}
-              className="w-full bg-white dark:bg-bolt-elements-background-depth-4 relative px-2 py-1.5 rounded-md focus:outline-none placeholder-bolt-elements-textTertiary text-bolt-elements-textPrimary dark:text-bolt-elements-textPrimary border border-bolt-elements-borderColor"
+              className="w-full bg-white dark:bg-hanzo-elements-background-depth-4 relative px-2 py-1.5 rounded-md focus:outline-none placeholder-hanzo-elements-textTertiary text-hanzo-elements-textPrimary dark:text-hanzo-elements-textPrimary border border-hanzo-elements-borderColor"
             />
           </div>
         )}
@@ -124,7 +124,7 @@ export default function ProvidersTab() {
           placeholder="Search providers..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full bg-white dark:bg-bolt-elements-background-depth-4 relative px-2 py-1.5 rounded-md focus:outline-none placeholder-bolt-elements-textTertiary text-bolt-elements-textPrimary dark:text-bolt-elements-textPrimary border border-bolt-elements-borderColor"
+          className="w-full bg-white dark:bg-hanzo-elements-background-depth-4 relative px-2 py-1.5 rounded-md focus:outline-none placeholder-hanzo-elements-textTertiary text-hanzo-elements-textPrimary dark:text-hanzo-elements-textPrimary border border-hanzo-elements-borderColor"
         />
       </div>
 
@@ -134,8 +134,8 @@ export default function ProvidersTab() {
       {/* URL Configurable Providers Section */}
       {urlConfigurableProviders.length > 0 && (
         <div className="mt-8">
-          <h3 className="text-lg font-semibold mb-2 text-bolt-elements-textPrimary">Experimental Providers</h3>
-          <p className="text-sm text-bolt-elements-textSecondary mb-4">
+          <h3 className="text-lg font-semibold mb-2 text-hanzo-elements-textPrimary">Experimental Providers</h3>
+          <p className="text-sm text-hanzo-elements-textSecondary mb-4">
             These providers are experimental and allow you to run AI models locally or connect to your own
             infrastructure. They require additional setup but offer more flexibility.
           </p>

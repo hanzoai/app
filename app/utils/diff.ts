@@ -90,12 +90,12 @@ export function extractRelativePath(filePath: string) {
  * Example:
  *
  * ```html
- * <bolt_file_modifications>
+ * <hanzo_file_modifications>
  * <diff path="/home/project/index.js">
  * - console.log('Hello, World!');
  * + console.log('Hello, Hanzo!');
  * </diff>
- * </bolt_file_modifications>
+ * </hanzo_file_modifications>
  * ```
  */
 export function fileModificationsToHTML(modifications: FileModifications) {

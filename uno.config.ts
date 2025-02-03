@@ -5,7 +5,7 @@ import { defineConfig, presetIcons, presetUno, transformerDirectives } from 'uno
 
 const iconPaths = globSync('./icons/*.svg');
 
-const collectionName = 'bolt';
+const collectionName = 'hanzo';
 
 const customIconCollection = iconPaths.reduce(
   (acc, iconPath) => {
@@ -99,12 +99,12 @@ const COLOR_PRIMITIVES = {
 
 export default defineConfig({
   safelist: [
-    ...Object.keys(customIconCollection[collectionName]||{}).map(x=>`i-bolt:${x}`)    
+    ...Object.keys(customIconCollection[collectionName]||{}).map(x=>`i-hanzo:${x}`)    
   ],
   shortcuts: {
-    'bolt-ease-cubic-bezier': 'ease-[cubic-bezier(0.4,0,0.2,1)]',
-    'transition-theme': 'transition-[background-color,border-color,color] duration-150 bolt-ease-cubic-bezier',
-    kdb: 'bg-bolt-elements-code-background text-bolt-elements-code-text py-1 px-1.5 rounded-md',
+    'hanzo-ease-cubic-bezier': 'ease-[cubic-bezier(0.4,0,0.2,1)]',
+    'transition-theme': 'transition-[background-color,border-color,color] duration-150 hanzo-ease-cubic-bezier',
+    kdb: 'bg-hanzo-elements-code-background text-hanzo-elements-code-text py-1 px-1.5 rounded-md',
     'max-w-chat': 'max-w-[var(--chat-max-width)]',
   },
   rules: [
@@ -117,115 +117,115 @@ export default defineConfig({
   theme: {
     colors: {
       ...COLOR_PRIMITIVES,
-      bolt: {
+      hanzo: {
         elements: {
-          borderColor: 'var(--bolt-elements-borderColor)',
-          borderColorActive: 'var(--bolt-elements-borderColorActive)',
+          borderColor: 'var(--hanzo-elements-borderColor)',
+          borderColorActive: 'var(--hanzo-elements-borderColorActive)',
           background: {
             depth: {
-              1: 'var(--bolt-elements-bg-depth-1)',
-              2: 'var(--bolt-elements-bg-depth-2)',
-              3: 'var(--bolt-elements-bg-depth-3)',
-              4: 'var(--bolt-elements-bg-depth-4)',
+              1: 'var(--hanzo-elements-bg-depth-1)',
+              2: 'var(--hanzo-elements-bg-depth-2)',
+              3: 'var(--hanzo-elements-bg-depth-3)',
+              4: 'var(--hanzo-elements-bg-depth-4)',
             },
           },
-          textPrimary: 'var(--bolt-elements-textPrimary)',
-          textSecondary: 'var(--bolt-elements-textSecondary)',
-          textTertiary: 'var(--bolt-elements-textTertiary)',
+          textPrimary: 'var(--hanzo-elements-textPrimary)',
+          textSecondary: 'var(--hanzo-elements-textSecondary)',
+          textTertiary: 'var(--hanzo-elements-textTertiary)',
           code: {
-            background: 'var(--bolt-elements-code-background)',
-            text: 'var(--bolt-elements-code-text)',
+            background: 'var(--hanzo-elements-code-background)',
+            text: 'var(--hanzo-elements-code-text)',
           },
           button: {
             primary: {
-              background: 'var(--bolt-elements-button-primary-background)',
-              backgroundHover: 'var(--bolt-elements-button-primary-backgroundHover)',
-              text: 'var(--bolt-elements-button-primary-text)',
+              background: 'var(--hanzo-elements-button-primary-background)',
+              backgroundHover: 'var(--hanzo-elements-button-primary-backgroundHover)',
+              text: 'var(--hanzo-elements-button-primary-text)',
             },
             secondary: {
-              background: 'var(--bolt-elements-button-secondary-background)',
-              backgroundHover: 'var(--bolt-elements-button-secondary-backgroundHover)',
-              text: 'var(--bolt-elements-button-secondary-text)',
+              background: 'var(--hanzo-elements-button-secondary-background)',
+              backgroundHover: 'var(--hanzo-elements-button-secondary-backgroundHover)',
+              text: 'var(--hanzo-elements-button-secondary-text)',
             },
             danger: {
-              background: 'var(--bolt-elements-button-danger-background)',
-              backgroundHover: 'var(--bolt-elements-button-danger-backgroundHover)',
-              text: 'var(--bolt-elements-button-danger-text)',
+              background: 'var(--hanzo-elements-button-danger-background)',
+              backgroundHover: 'var(--hanzo-elements-button-danger-backgroundHover)',
+              text: 'var(--hanzo-elements-button-danger-text)',
             },
           },
           item: {
-            contentDefault: 'var(--bolt-elements-item-contentDefault)',
-            contentActive: 'var(--bolt-elements-item-contentActive)',
-            contentAccent: 'var(--bolt-elements-item-contentAccent)',
-            contentDanger: 'var(--bolt-elements-item-contentDanger)',
-            backgroundDefault: 'var(--bolt-elements-item-backgroundDefault)',
-            backgroundActive: 'var(--bolt-elements-item-backgroundActive)',
-            backgroundAccent: 'var(--bolt-elements-item-backgroundAccent)',
-            backgroundDanger: 'var(--bolt-elements-item-backgroundDanger)',
+            contentDefault: 'var(--hanzo-elements-item-contentDefault)',
+            contentActive: 'var(--hanzo-elements-item-contentActive)',
+            contentAccent: 'var(--hanzo-elements-item-contentAccent)',
+            contentDanger: 'var(--hanzo-elements-item-contentDanger)',
+            backgroundDefault: 'var(--hanzo-elements-item-backgroundDefault)',
+            backgroundActive: 'var(--hanzo-elements-item-backgroundActive)',
+            backgroundAccent: 'var(--hanzo-elements-item-backgroundAccent)',
+            backgroundDanger: 'var(--hanzo-elements-item-backgroundDanger)',
           },
           actions: {
-            background: 'var(--bolt-elements-actions-background)',
+            background: 'var(--hanzo-elements-actions-background)',
             code: {
-              background: 'var(--bolt-elements-actions-code-background)',
+              background: 'var(--hanzo-elements-actions-code-background)',
             },
           },
           artifacts: {
-            background: 'var(--bolt-elements-artifacts-background)',
-            backgroundHover: 'var(--bolt-elements-artifacts-backgroundHover)',
-            borderColor: 'var(--bolt-elements-artifacts-borderColor)',
+            background: 'var(--hanzo-elements-artifacts-background)',
+            backgroundHover: 'var(--hanzo-elements-artifacts-backgroundHover)',
+            borderColor: 'var(--hanzo-elements-artifacts-borderColor)',
             inlineCode: {
-              background: 'var(--bolt-elements-artifacts-inlineCode-background)',
-              text: 'var(--bolt-elements-artifacts-inlineCode-text)',
+              background: 'var(--hanzo-elements-artifacts-inlineCode-background)',
+              text: 'var(--hanzo-elements-artifacts-inlineCode-text)',
             },
           },
           messages: {
-            background: 'var(--bolt-elements-messages-background)',
-            linkColor: 'var(--bolt-elements-messages-linkColor)',
+            background: 'var(--hanzo-elements-messages-background)',
+            linkColor: 'var(--hanzo-elements-messages-linkColor)',
             code: {
-              background: 'var(--bolt-elements-messages-code-background)',
+              background: 'var(--hanzo-elements-messages-code-background)',
             },
             inlineCode: {
-              background: 'var(--bolt-elements-messages-inlineCode-background)',
-              text: 'var(--bolt-elements-messages-inlineCode-text)',
+              background: 'var(--hanzo-elements-messages-inlineCode-background)',
+              text: 'var(--hanzo-elements-messages-inlineCode-text)',
             },
           },
           icon: {
-            success: 'var(--bolt-elements-icon-success)',
-            error: 'var(--bolt-elements-icon-error)',
-            primary: 'var(--bolt-elements-icon-primary)',
-            secondary: 'var(--bolt-elements-icon-secondary)',
-            tertiary: 'var(--bolt-elements-icon-tertiary)',
+            success: 'var(--hanzo-elements-icon-success)',
+            error: 'var(--hanzo-elements-icon-error)',
+            primary: 'var(--hanzo-elements-icon-primary)',
+            secondary: 'var(--hanzo-elements-icon-secondary)',
+            tertiary: 'var(--hanzo-elements-icon-tertiary)',
           },
           preview: {
             addressBar: {
-              background: 'var(--bolt-elements-preview-addressBar-background)',
-              backgroundHover: 'var(--bolt-elements-preview-addressBar-backgroundHover)',
-              backgroundActive: 'var(--bolt-elements-preview-addressBar-backgroundActive)',
-              text: 'var(--bolt-elements-preview-addressBar-text)',
-              textActive: 'var(--bolt-elements-preview-addressBar-textActive)',
+              background: 'var(--hanzo-elements-preview-addressBar-background)',
+              backgroundHover: 'var(--hanzo-elements-preview-addressBar-backgroundHover)',
+              backgroundActive: 'var(--hanzo-elements-preview-addressBar-backgroundActive)',
+              text: 'var(--hanzo-elements-preview-addressBar-text)',
+              textActive: 'var(--hanzo-elements-preview-addressBar-textActive)',
             },
           },
           terminals: {
-            background: 'var(--bolt-elements-terminals-background)',
-            buttonBackground: 'var(--bolt-elements-terminals-buttonBackground)',
+            background: 'var(--hanzo-elements-terminals-background)',
+            buttonBackground: 'var(--hanzo-elements-terminals-buttonBackground)',
           },
-          dividerColor: 'var(--bolt-elements-dividerColor)',
+          dividerColor: 'var(--hanzo-elements-dividerColor)',
           loader: {
-            background: 'var(--bolt-elements-loader-background)',
-            progress: 'var(--bolt-elements-loader-progress)',
+            background: 'var(--hanzo-elements-loader-background)',
+            progress: 'var(--hanzo-elements-loader-progress)',
           },
           prompt: {
-            background: 'var(--bolt-elements-prompt-background)',
+            background: 'var(--hanzo-elements-prompt-background)',
           },
           sidebar: {
-            dropdownShadow: 'var(--bolt-elements-sidebar-dropdownShadow)',
-            buttonBackgroundDefault: 'var(--bolt-elements-sidebar-buttonBackgroundDefault)',
-            buttonBackgroundHover: 'var(--bolt-elements-sidebar-buttonBackgroundHover)',
-            buttonText: 'var(--bolt-elements-sidebar-buttonText)',
+            dropdownShadow: 'var(--hanzo-elements-sidebar-dropdownShadow)',
+            buttonBackgroundDefault: 'var(--hanzo-elements-sidebar-buttonBackgroundDefault)',
+            buttonBackgroundHover: 'var(--hanzo-elements-sidebar-buttonBackgroundHover)',
+            buttonText: 'var(--hanzo-elements-sidebar-buttonText)',
           },
           cta: {
-            background: 'var(--bolt-elements-cta-background)',
-            text: 'var(--bolt-elements-cta-text)',
+            background: 'var(--hanzo-elements-cta-background)',
+            text: 'var(--hanzo-elements-cta-text)',
           },
         },
       },

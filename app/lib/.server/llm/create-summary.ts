@@ -30,7 +30,7 @@ export async function createSummary(props: {
       let content = message.content;
 
       content = simplifyHanzoActions(content);
-      content = content.replace(/<div class=\\"__boltThought__\\">.*?<\/div>/s, '');
+      content = content.replace(/<div class=\\"__hanzoThought__\\">.*?<\/div>/s, '');
       content = content.replace(/<think>.*?<\/think>/s, '');
 
       return { ...message, content };

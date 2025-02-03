@@ -62,14 +62,14 @@ export function ImportButtons(importChat: ((description: string, messages: Messa
               const input = document.getElementById('chat-import');
               input?.click();
             }}
-            className="px-4 py-2 rounded-lg border border-bolt-elements-borderColor bg-bolt-elements-prompt-background text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-3 transition-all flex items-center gap-2"
+            className="px-4 py-2 rounded-lg border border-hanzo-elements-borderColor bg-hanzo-elements-prompt-background text-hanzo-elements-textPrimary hover:bg-hanzo-elements-background-depth-3 transition-all flex items-center gap-2"
           >
             <div className="i-ph:upload-simple" />
             Import Chat
           </button>
           <ImportFolderButton
             importChat={importChat}
-            className="px-4 py-2 rounded-lg border border-bolt-elements-borderColor bg-bolt-elements-prompt-background text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-3 transition-all flex items-center gap-2"
+            className="px-4 py-2 rounded-lg border border-hanzo-elements-borderColor bg-hanzo-elements-prompt-background text-hanzo-elements-textPrimary hover:bg-hanzo-elements-background-depth-3 transition-all flex items-center gap-2"
           />
         </div>
       </div>

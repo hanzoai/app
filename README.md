@@ -47,7 +47,7 @@ project, please check the [project management guide](./PROJECT.md) to get starte
 - ✅ Mistral API Integration (@ArulGandhi)
 - ✅ "Open AI Like" API Integration (@ZerxZ)
 - ✅ Ability to sync files (one way sync) to local folder (@muzafferkadir)
-- ✅ Containerize the application with Docker for easy installation (@aaronbolton)
+- ✅ Containerize the application with Docker for easy installation (@aaronhanzoon)
 - ✅ Publish projects directly to GitHub (@goncaloalves)
 - ✅ Ability to enter API keys in the UI (@ali00209)
 - ✅ xAI Grok Beta Integration (@milutinke)

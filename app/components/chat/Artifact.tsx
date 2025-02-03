@@ -59,10 +59,10 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
   }, [actions]);
 
   return (
-    <div className="artifact border border-bolt-elements-borderColor flex flex-col overflow-hidden rounded-lg w-full transition-border duration-150">
+    <div className="artifact border border-hanzo-elements-borderColor flex flex-col overflow-hidden rounded-lg w-full transition-border duration-150">
       <div className="flex">
         <button
-          className="flex items-stretch bg-bolt-elements-artifacts-background hover:bg-bolt-elements-artifacts-backgroundHover w-full overflow-hidden"
+          className="flex items-stretch bg-hanzo-elements-artifacts-background hover:bg-hanzo-elements-artifacts-backgroundHover w-full overflow-hidden"
           onClick={() => {
             const showWorkbench = workbenchStore.showWorkbench.get();
             workbenchStore.showWorkbench.set(!showWorkbench);
@@ -77,15 +77,15 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
                   <div className={'i-svg-spinners:90-ring-with-bg'} style={{ fontSize: '2rem' }}></div>
                 )}
               </div>
-              <div className="bg-bolt-elements-artifacts-borderColor w-[1px]" />
+              <div className="bg-hanzo-elements-artifacts-borderColor w-[1px]" />
             </>
           )}
           <div className="px-5 p-3.5 w-full text-left">
-            <div className="w-full text-bolt-elements-textPrimary font-medium leading-5 text-sm">{artifact?.title}</div>
-            <div className="w-full w-full text-bolt-elements-textSecondary text-xs mt-0.5">Click to open Workbench</div>
+            <div className="w-full text-hanzo-elements-textPrimary font-medium leading-5 text-sm">{artifact?.title}</div>
+            <div className="w-full w-full text-hanzo-elements-textSecondary text-xs mt-0.5">Click to open Workbench</div>
           </div>
         </button>
-        <div className="bg-bolt-elements-artifacts-borderColor w-[1px]" />
+        <div className="bg-hanzo-elements-artifacts-borderColor w-[1px]" />
         <AnimatePresence>
           {actions.length && artifact.type !== 'bundled' && (
             <motion.button
@@ -93,7 +93,7 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
               animate={{ width: 'auto' }}
               exit={{ width: 0 }}
               transition={{ duration: 0.15, ease: cubicEasingFn }}
-              className="bg-bolt-elements-artifacts-background hover:bg-bolt-elements-artifacts-backgroundHover"
+              className="bg-hanzo-elements-artifacts-background hover:bg-hanzo-elements-artifacts-backgroundHover"
               onClick={toggleActions}
             >
               <div className="p-4">
@@ -112,9 +112,9 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
             exit={{ height: '0px' }}
             transition={{ duration: 0.15 }}
           >
-            <div className="bg-bolt-elements-artifacts-borderColor h-[1px]" />
+            <div className="bg-hanzo-elements-artifacts-borderColor h-[1px]" />
 
-            <div className="p-5 text-left bg-bolt-elements-actions-background">
+            <div className="p-5 text-left bg-hanzo-elements-actions-background">
               <ActionList actions={actions} />
             </div>
           </motion.div>
@@ -201,7 +201,7 @@ const ActionList = memo(({ actions }: ActionListProps) => {
                   <div>
                     Create{' '}
                     <code
-                      className="bg-bolt-elements-artifacts-inlineCode-background text-bolt-elements-artifacts-inlineCode-text px-1.5 py-1 rounded-md text-bolt-elements-item-contentAccent hover:underline cursor-pointer"
+                      className="bg-hanzo-elements-artifacts-inlineCode-background text-hanzo-elements-artifacts-inlineCode-text px-1.5 py-1 rounded-md text-hanzo-elements-item-contentAccent hover:underline cursor-pointer"
                       onClick={() => openArtifactInWorkbench(action.filePath)}
                     >
                       {action.filePath}
@@ -242,19 +242,19 @@ const ActionList = memo(({ actions }: ActionListProps) => {
 function getIconColor(status: ActionState['status']) {
   switch (status) {
     case 'pending': {
-      return 'text-bolt-elements-textTertiary';
+      return 'text-hanzo-elements-textTertiary';
     }
     case 'running': {
-      return 'text-bolt-elements-loader-progress';
+      return 'text-hanzo-elements-loader-progress';
     }
     case 'complete': {
-      return 'text-bolt-elements-icon-success';
+      return 'text-hanzo-elements-icon-success';
     }
     case 'aborted': {
-      return 'text-bolt-elements-textSecondary';
+      return 'text-hanzo-elements-textSecondary';
     }
     case 'failed': {
-      return 'text-bolt-elements-icon-error';
+      return 'text-hanzo-elements-icon-error';
     }
     default: {
       return undefined;

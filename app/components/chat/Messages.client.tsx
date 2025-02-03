@@ -58,8 +58,8 @@ export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: 
               <div
                 key={index}
                 className={classNames('flex gap-4 p-6 w-full rounded-[calc(0.75rem-1px)]', {
-                  'bg-bolt-elements-messages-background': isUserMessage || !isStreaming || (isStreaming && !isLast),
-                  'bg-gradient-to-b from-bolt-elements-messages-background from-30% to-transparent':
+                  'bg-hanzo-elements-messages-background': isUserMessage || !isStreaming || (isStreaming && !isLast),
+                  'bg-gradient-to-b from-hanzo-elements-messages-background from-30% to-transparent':
                     isStreaming && isLast,
                   'mt-4': !isFirst,
                 })}
@@ -85,7 +85,7 @@ export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: 
                           key="i-ph:arrow-u-up-left"
                           className={classNames(
                             'i-ph:arrow-u-up-left',
-                            'text-xl text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary transition-colors',
+                            'text-xl text-hanzo-elements-textSecondary hover:text-hanzo-elements-textPrimary transition-colors',
                           )}
                         />
                       </WithTooltip>
@@ -97,7 +97,7 @@ export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: 
                         key="i-ph:git-fork"
                         className={classNames(
                           'i-ph:git-fork',
-                          'text-xl text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary transition-colors',
+                          'text-xl text-hanzo-elements-textSecondary hover:text-hanzo-elements-textPrimary transition-colors',
                         )}
                       />
                     </WithTooltip>
@@ -108,7 +108,7 @@ export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: 
           })
         : null}
       {isStreaming && (
-        <div className="text-center w-full text-bolt-elements-textSecondary i-svg-spinners:3-dots-fade text-4xl mt-4"></div>
+        <div className="text-center w-full text-hanzo-elements-textSecondary i-svg-spinners:3-dots-fade text-4xl mt-4"></div>
       )}
     </div>
   );

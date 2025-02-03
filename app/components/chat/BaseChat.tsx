@@ -307,10 +307,10 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
           <div className={classNames(styles.Chat, 'flex flex-col flex-grow lg:min-w-[var(--chat-min-width)] h-full')}>
             {!chatStarted && (
               <div id="intro" className="mt-[16vh] max-w-chat mx-auto text-center px-4 lg:px-0">
-                <h1 className="text-3xl lg:text-6xl font-bold text-bolt-elements-textPrimary mb-4 animate-fade-in">
+                <h1 className="text-3xl lg:text-6xl font-bold text-hanzo-elements-textPrimary mb-4 animate-fade-in">
                   Where ideas begin
                 </h1>
-                <p className="text-md lg:text-xl mb-8 text-bolt-elements-textSecondary animate-fade-in animation-delay-200">
+                <p className="text-md lg:text-xl mb-8 text-hanzo-elements-textSecondary animate-fade-in animation-delay-200">
                   Bring ideas to life in seconds or get help on existing projects.
                 </p>
               </div>
@@ -338,7 +338,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                   'sticky bottom-2': chatStarted,
                 })}
               >
-                <div className="bg-bolt-elements-background-depth-2">
+                <div className="bg-hanzo-elements-background-depth-2">
                   {actionAlert && (
                     <ChatAlert
                       alert={actionAlert}
@@ -353,7 +353,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                 {progressAnnotations && <ProgressCompilation data={progressAnnotations} />}
                 <div
                   className={classNames(
-                    'bg-bolt-elements-background-depth-2 p-3 rounded-lg border border-bolt-elements-borderColor relative w-full max-w-chat mx-auto z-prompt',
+                    'bg-hanzo-elements-background-depth-2 p-3 rounded-lg border border-hanzo-elements-borderColor relative w-full max-w-chat mx-auto z-prompt',
 
                     /*
                      * {
@@ -436,15 +436,15 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                   </ClientOnly>
                   <div
                     className={classNames(
-                      'relative shadow-xs border border-bolt-elements-borderColor backdrop-blur rounded-lg',
+                      'relative shadow-xs border border-hanzo-elements-borderColor backdrop-blur rounded-lg',
                     )}
                   >
                     <textarea
                       ref={textareaRef}
                       className={classNames(
-                        'w-full pl-4 pt-4 pr-16 outline-none resize-none text-bolt-elements-textPrimary placeholder-bolt-elements-textTertiary bg-transparent text-sm',
+                        'w-full pl-4 pt-4 pr-16 outline-none resize-none text-hanzo-elements-textPrimary placeholder-hanzo-elements-textTertiary bg-transparent text-sm',
                         'transition-all duration-200',
-                        'hover:border-bolt-elements-focus',
+                        'hover:border-hanzo-elements-focus',
                       )}
                       onDragEnter={(e) => {
                         e.preventDefault();
@@ -456,11 +456,11 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                       }}
                       onDragLeave={(e) => {
                         e.preventDefault();
-                        e.currentTarget.style.border = '1px solid var(--bolt-elements-borderColor)';
+                        e.currentTarget.style.border = '1px solid var(--hanzo-elements-borderColor)';
                       }}
                       onDrop={(e) => {
                         e.preventDefault();
-                        e.currentTarget.style.border = '1px solid var(--bolt-elements-borderColor)';
+                        e.currentTarget.style.border = '1px solid var(--hanzo-elements-borderColor)';
 
                         const files = Array.from(e.dataTransfer.files);
                         files.forEach((file) => {
@@ -543,9 +543,9 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                           }}
                         >
                           {enhancingPrompt ? (
-                            <div className="i-svg-spinners:90-ring-with-bg text-bolt-elements-loader-progress text-xl animate-spin"></div>
+                            <div className="i-svg-spinners:90-ring-with-bg text-hanzo-elements-loader-progress text-xl animate-spin"></div>
                           ) : (
-                            <div className="i-bolt:stars text-xl"></div>
+                            <div className="i-hanzo:stars text-xl"></div>
                           )}
                         </IconButton>
 
@@ -559,9 +559,9 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                         <IconButton
                           title="Model Settings"
                           className={classNames('transition-all flex items-center gap-1', {
-                            'bg-bolt-elements-item-backgroundAccent text-bolt-elements-item-contentAccent':
+                            'bg-hanzo-elements-item-backgroundAccent text-hanzo-elements-item-contentAccent':
                               isModelSettingsCollapsed,
-                            'bg-bolt-elements-item-backgroundDefault text-bolt-elements-item-contentDefault':
+                            'bg-hanzo-elements-item-backgroundDefault text-hanzo-elements-item-contentDefault':
                               !isModelSettingsCollapsed,
                           })}
                           onClick={() => setIsModelSettingsCollapsed(!isModelSettingsCollapsed)}
@@ -572,9 +572,9 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                         </IconButton>
                       </div>
                       {input.length > 3 ? (
-                        <div className="text-xs text-bolt-elements-textTertiary">
-                          Use <kbd className="kdb px-1.5 py-0.5 rounded bg-bolt-elements-background-depth-2">Shift</kbd>{' '}
-                          + <kbd className="kdb px-1.5 py-0.5 rounded bg-bolt-elements-background-depth-2">Return</kbd>{' '}
+                        <div className="text-xs text-hanzo-elements-textTertiary">
+                          Use <kbd className="kdb px-1.5 py-0.5 rounded bg-hanzo-elements-background-depth-2">Shift</kbd>{' '}
+                          + <kbd className="kdb px-1.5 py-0.5 rounded bg-hanzo-elements-background-depth-2">Return</kbd>{' '}
                           a new line
                         </div>
                       ) : null}
