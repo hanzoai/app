@@ -93,7 +93,7 @@ export const SettingsWindow = ({ open, onClose }: SettingsProps) => {
                 ))}
                 <div className="mt-auto flex flex-col gap-2">
                   <a
-                    href="https://github.com/stackblitz-labs/bolt.diy"
+                    href="https://github.com/hanzoai/canvas"
                     target="_blank"
                     rel="noopener noreferrer"
                     className={classNames(styles['settings-button'], 'flex items-center gap-2')}
@@ -102,7 +102,7 @@ export const SettingsWindow = ({ open, onClose }: SettingsProps) => {
                     GitHub
                   </a>
                   <a
-                    href="https://stackblitz-labs.github.io/bolt.diy/"
+                    href="https://hanzoai.github.io/canvas/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className={classNames(styles['settings-button'], 'flex items-center gap-2')}

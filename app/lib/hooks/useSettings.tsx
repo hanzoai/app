@@ -40,7 +40,7 @@ export function useSettings() {
   const checkIsStableVersion = async () => {
     try {
       const response = await fetch(
-        `https://api.github.com/repos/stackblitz-labs/bolt.diy/git/refs/tags/v${versionData.version}`,
+        `https://api.github.com/repos/hanzoai/canvas/git/refs/tags/v${versionData.version}`,
       );
       const data: { object: { sha: string } } = await response.json();
 

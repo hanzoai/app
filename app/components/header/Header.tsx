@@ -20,7 +20,8 @@ export function Header() {
         <a href="/" className="text-2xl font-semibold text-accent flex items-center">
           {/* <span className="i-bolt:logo-text?mask w-[46px] inline-block" /> */}
           <img src="/logo-light-styled.png" alt="logo" className="w-[90px] inline-block dark:hidden" />
-          <img src="/logo-dark-styled.png" alt="logo" className="w-[90px] inline-block hidden dark:block" />
+          <img src="/logo-dark-styled.png" alt="logo" className="w-[50px] inline-block hidden dark:block" />
+          <span className="text-2xl font-semibold text-accent">Hanzo.ai</span>
         </a>
       </div>
       {chat.started && ( // Display ChatDescription and HeaderActionButtons only when the chat has started.

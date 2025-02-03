@@ -1,5 +1,5 @@
-# Welcome to bolt diy
-bolt.diy allows you to choose the LLM that you use for each prompt! Currently, you can use OpenAI, Anthropic, Ollama, OpenRouter, Gemini, LMStudio, Mistral, xAI, HuggingFace, DeepSeek, or Groq models - and it is easily extended to use any other model supported by the Vercel AI SDK! See the instructions below for running this locally and extending it to include more models.
+# Welcome to hanzo.ai
+hanzo.ai allows you to choose the LLM that you use for each prompt! Currently, you can use OpenAI, Anthropic, Ollama, OpenRouter, Gemini, LMStudio, Mistral, xAI, HuggingFace, DeepSeek, or Groq models - and it is easily extended to use any other model supported by the Vercel AI SDK! See the instructions below for running this locally and extending it to include more models.
 
 ## Table of Contents
 - [Join the community!](#join-the-community)
@@ -25,7 +25,7 @@ bolt.diy allows you to choose the LLM that you use for each prompt! Currently, y
 
 [Join the community!](https://thinktank.ottomator.ai)
 
-Also [this pinned post in our community](https://thinktank.ottomator.ai/t/videos-tutorial-helpful-content/3243) has a bunch of incredible resources for running and deploying bolt.diy yourself!
+Also [this pinned post in our community](https://thinktank.ottomator.ai/t/videos-tutorial-helpful-content/3243) has a bunch of incredible resources for running and deploying hanzo.ai yourself!
 
 ---
 
@@ -60,25 +60,25 @@ If you're new to installing software from GitHub, don't worry! If you encounter 
 
 ### Clone the Repository
 
-Alternatively, you can download the latest version of the project directly from the [Releases Page](https://github.com/stackblitz-labs/bolt.diy/releases/latest). Simply download the .zip file, extract it, and proceed with the setup instructions below. If you are comfertiable using git then run the command below.
+Alternatively, you can download the latest version of the project directly from the [Releases Page](https://github.com/hanzoai/canvas/releases/latest). Simply download the .zip file, extract it, and proceed with the setup instructions below. If you are comfertiable using git then run the command below.
 
 Clone the repository using Git:  
 
 ```bash  
-git clone -b stable https://github.com/stackblitz-labs/bolt.diy  
+git clone -b stable https://github.com/hanzoai/canvas  
 ```
 
 ---
 
 ### Entering API Keys
 
-There are two ways to configure your API keys in bolt.diy:
+There are two ways to configure your API keys in hanzo.ai:
 
 #### 1. Set API Keys in the `.env.local` File
 
 When setting up the application, you will need to add your API keys for the LLMs you wish to use. You can do this by renaming the `.env.example` file to `.env.local` and adding your API keys there. 
 
-- On **Mac**, you can find the file at `[your name]/bolt.diy/.env.example`.
+- On **Mac**, you can find the file at `[your name]/canvas/.env.example`.
 - On **Windows/Linux**, the path will be similar.
 
 If you can't see the file, it's likely because hidden files are not being shown. On **Mac**, open a Terminal window and enter the following command to show hidden files:
@@ -165,7 +165,7 @@ Once you've configured your keys, the application will be ready to use the selec
 
 ### Update Your Local Version to the Latest
 
-To keep your local version of bolt.diy up to date with the latest changes, follow these steps for your operating system:
+To keep your local version of hanzo.ai up to date with the latest changes, follow these steps for your operating system:
 
 #### 1. **Navigate to your project folder**  
    Navigate to the directory where you cloned the repository and open a terminal:
@@ -196,13 +196,13 @@ To keep your local version of bolt.diy up to date with the latest changes, follo
      pnpm run dev  
      ```  
 
-This ensures that you're running the latest version of bolt.diy and can take advantage of all the newest features and bug fixes. 
+This ensures that you're running the latest version of hanzo.ai and can take advantage of all the newest features and bug fixes. 
 
 ---
 
 ## Adding New LLMs:
 
-To make new LLMs available to use in this version of bolt.diy, head on over to `app/utils/constants.ts` and find the constant MODEL_LIST. Each element in this array is an object that has the model ID for the name (get this from the provider's API documentation), a label for the frontend model dropdown, and the provider. 
+To make new LLMs available to use in this version of hanzo.ai, head on over to `app/utils/constants.ts` and find the constant MODEL_LIST. Each element in this array is an object that has the model ID for the name (get this from the provider's API documentation), a label for the frontend model dropdown, and the provider. 
 
 By default, Anthropic, OpenAI, Groq, and Ollama are implemented as providers, but the YouTube video for this repo covers how to extend this to work with more providers if you wish!
 
@@ -237,7 +237,7 @@ This will start the Remix Vite development server. You will need Google Chrome C
 
 ## Tips and Tricks
 
-Here are some tips to get the most out of bolt.diy:
+Here are some tips to get the most out of hanzo.ai:
 
 - **Be specific about your stack**: If you want to use specific frameworks or libraries (like Astro, Tailwind, ShadCN, or any other popular JavaScript framework), mention them in your initial prompt to ensure Bolt scaffolds the project accordingly.
 
