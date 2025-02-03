@@ -1,18 +1,18 @@
-# hanzo.ai (Previously oTToDev)
+# app
 
-[![Hanzo.ai: AI-Powered Full-Stack Web Development in the Browser](./public/social_preview_index.jpg)](https://hanzo.ai)
+[![Hanzo App: AI-Powered Full-Stack Web Development in the Browser](./public/social_preview_index.jpg)](https://hanzo.ai)
 
-Welcome to hanzo.ai, the official open source version of Hanzo.new (previously known as oTToDev and hanzo.new ANY LLM), which allows you to choose the LLM that you use for each prompt! Currently, you can use OpenAI, Anthropic, Ollama, OpenRouter, Gemini, LMStudio, Mistral, xAI, HuggingFace, DeepSeek, or Groq models - and it is easily extended to use any other model supported by the Vercel AI SDK! See the instructions below for running this locally and extending it to include more models.
-
------
-Check the [hanzo.ai Docs](https://stackblitz-labs.github.io/hanzo.ai/) for more offical installation instructions and more informations.
+Welcome to the official open source version of Hanzo, which allows you to choose the LLM that you use for each prompt! Currently, you can use OpenAI, Anthropic, Ollama, OpenRouter, Gemini, LMStudio, Mistral, xAI, HuggingFace, DeepSeek, or Groq models - and it is easily extended to use any other model supported by the Vercel AI SDK! See the instructions below for running this locally and extending it to include more models.
 
 -----
-Also [this pinned post in our community](https://thinktank.ottomator.ai/t/videos-tutorial-helpful-content/3243) has a bunch of incredible resources for running and deploying hanzo.ai yourself!
+Check the [Hanzo Docs](https://docs.hanzo.ai) for more offical installation instructions and more informations.
 
-We have also launched an experimental agent called the "hanzo.ai Expert" that can answer common questions about hanzo.ai. Find it here on the [oTTomator Live Agent Studio](https://studio.ottomator.ai/).
+-----
+Also [this pinned post in our
+community]() has a bunch of incredible resources for running and deploying Hanzo yourself!
 
-hanzo.ai was originally started by [Cole Medin]() but has quickly grown into a massive community effort to build the BEST open source AI coding assistant!
+We have also launched an experimental agent called the "Hanzo Expert" that can
+answer common questions about Hanzo. Find it here on the [Live Agent Studio]().
 
 ## Table of Contents
 
@@ -29,7 +29,7 @@ hanzo.ai was originally started by [Cole Medin]() but has quickly grown into a m
 
 ## Project management
 
-hanzo.ai is a community effort! Still, the core team of contributors aims at organizing the project in way that allows
+Hanzo is a community effort! Still, the core team of contributors aims at organizing the project in way that allows
 you to understand where the current areas of focus are.
 
 If you want to know what we are working on, what we are planning to work on, or if you want to contribute to the
@@ -104,11 +104,11 @@ project, please check the [project management guide](./PROJECT.md) to get starte
 
 If you're new to installing software from GitHub, don't worry! If you encounter any issues, feel free to submit an "issue" using the provided links or improve this documentation by forking the repository, editing the instructions, and submitting a pull request. The following instruction will help you get the stable branch up and running on your local machine in no time.
 
-Let's get you up and running with the stable version of Hanzo.ai!
+Let's get you up and running with the stable version of Hanzo!
 
 ## Quick Download
 
-[![Download Latest Release](https://img.shields.io/github/v/release/stackblitz-labs/hanzo.ai?label=Download%20Bolt&sort=semver)](https://github.com/stackblitz-labs/hanzoai/releases/latest) ← Click here to go the the latest release version!
+[![Download Latest Release](https://img.shields.io/github/v/release/hanzoai/app?label=Download%20Appt&sort=semver)](https://github.com/stackblitz-labs/hanzoai/releases/latest) ← Click here to go the the latest release version!
 
 - Next **click source.zip**
 
@@ -139,7 +139,7 @@ Node.js is required to run the application.
 
 ## Running the Application
 
-You have two options for running Hanzo.ai: directly on your machine or using Docker.
+You have two options for running Hanzo: directly on your machine or using Docker.
 
 ### Option 1: Direct Installation (Recommended for Beginners)
 
@@ -192,7 +192,7 @@ This option requires some familiarity with Docker but provides a more isolated e
 
 ### Adding Your API Keys
 
-Setting up your API keys in hanzo.ai is straightforward:
+Setting up your API keys in Hanzo is straightforward:
 
 1. Open the home page (main interface)
 2. Select your desired provider from the dropdown menu
@@ -340,7 +340,7 @@ We welcome contributions! Check out our [Contributing Guide](CONTRIBUTING.md) to
 
 ## Roadmap
 
-Explore upcoming features and priorities on our [Roadmap](https://roadmap.sh/r/ottodev-roadmap-2ovzo).
+Explore upcoming features and priorities on our [Roadmap]().
 
 ---
 
