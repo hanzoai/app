@@ -50,6 +50,7 @@ export default async function handleRequest(
             if (done) {
               controller.enqueue(new TextEncoder().encode('</div></body></html>'));
               controller.close();
+
               return;
             }
 
