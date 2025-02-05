@@ -32,9 +32,7 @@ function parseCookies(cookieHeader: string): Record<string, string> {
     const [name, ...rest] = item.split('=');
 
     if (name && rest) {
-      const decodedName = decodeURIComponent(name.trim());
-      const decodedValue = decodeURIComponent(rest.join('=').trim());
-      cookies[decodedName] = decodedValue;
+      cookies[decodeURIComponent(name.trim())] = decodeURIComponent(rest.join('=').trim());
     }
   });
 
@@ -42,8 +40,8 @@ function parseCookies(cookieHeader: string): Record<string, string> {
 }
 
 async function chatAction({ context, request }: ActionFunctionArgs) {
+  logger.debug('context', context)
   const { messages, files, promptId, contextOptimization } = (await request.json()) as ChatRequestBody;
-
   const cookieHeader = request.headers.get('Cookie');
   const apiKeys = JSON.parse(parseCookies(cookieHeader || '').apiKeys || '{}');
   const providerSettings: Record<string, IProviderSetting> = JSON.parse(
@@ -51,20 +49,12 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
   );
 
   const stream = new SwitchableStream();
-
-  const cumulativeUsage = {
-    completionTokens: 0,
-    promptTokens: 0,
-    totalTokens: 0,
-  };
-  const encoder: TextEncoder = new TextEncoder();
-  let progressCounter: number = 1;
+  const cumulativeUsage = { completionTokens: 0, promptTokens: 0, totalTokens: 0 };
+  const encoder = new TextEncoder();
+  let progressCounter = 1;
 
   try {
-    const totalMessageContent = messages.reduce(
-      (acc: string, message: { content: string }) => acc + message.content,
-      '',
-    );
+    const totalMessageContent = messages.reduce((acc: string, m: { content: string }) => acc + m.content, '');
     logger.debug(`Total message length: ${totalMessageContent.split(' ').length}, words`);
 
     let lastChunk: string | undefined = undefined;
@@ -72,13 +62,9 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     const dataStream = createDataStream({
       async execute(dataStream) {
         const filePaths = getFilePaths(files || {});
-        let filteredFiles: FileMap | undefined = undefined;
-        let summary: string | undefined = undefined;
-        let messageSliceId = 0;
-
-        if (messages.length > 3) {
-          messageSliceId = messages.length - 3;
-        }
+        let filteredFiles: FileMap | undefined;
+        let summary: string | undefined;
+        const messageSliceId = messages.length > 3 ? messages.length - 3 : 0;
 
         if (filePaths.length > 0 && contextOptimization) {
           logger.debug('Generating Chat Summary');
@@ -90,11 +76,9 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             message: 'Analysing Request',
           } as ProgressAnnotation);
 
-          console.log(`Messages count: ${messages.length}`);
-
           summary = await createSummary({
             messages: [...messages],
-            env: context.cloudflare?.env,
+            env: import.meta.env,
             apiKeys,
             providerSettings,
             promptId,
@@ -108,6 +92,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
               }
             },
           });
+
           dataStream.writeData({
             type: 'progress',
             label: 'summary',
@@ -131,10 +116,9 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             message: 'Determining Files to Read',
           } as ProgressAnnotation);
 
-          console.log(`Messages count: ${messages.length}`);
           filteredFiles = await selectContext({
             messages: [...messages],
-            env: context.cloudflare?.env,
+            env: import.meta.env,
             apiKeys,
             files,
             providerSettings,
@@ -152,20 +136,14 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           });
 
           if (filteredFiles) {
-            logger.debug(`files in context : ${JSON.stringify(Object.keys(filteredFiles))}`);
+            logger.debug(`files in context: ${JSON.stringify(Object.keys(filteredFiles))}`);
           }
 
           dataStream.writeMessageAnnotation({
             type: 'codeContext',
-            files: Object.keys(filteredFiles).map((key) => {
-              let path = key;
-
-              if (path.startsWith(WORK_DIR)) {
-                path = path.replace(WORK_DIR, '');
-              }
-
-              return path;
-            }),
+            files: Object.keys(filteredFiles).map((key) =>
+              key.startsWith(WORK_DIR) ? key.replace(WORK_DIR, '') : key,
+            ),
           } as ContextAnnotation);
 
           dataStream.writeData({
@@ -227,7 +205,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
 
             const result = await streamText({
               messages,
-              env: context.cloudflare?.env,
+              env: import.meta.env,
               options,
               apiKeys,
               files,
@@ -243,9 +221,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             (async () => {
               for await (const part of result.fullStream) {
                 if (part.type === 'error') {
-                  const error: any = part.error;
-                  logger.error(`${error}`);
-
+                  logger.error(`${part.error}`);
                   return;
                 }
               }
@@ -265,7 +241,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
 
         const result = await streamText({
           messages,
-          env: context.cloudflare?.env,
+          env: import.meta.env,
           options,
           apiKeys,
           files,
@@ -280,9 +256,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         (async () => {
           for await (const part of result.fullStream) {
             if (part.type === 'error') {
-              const error: any = part.error;
-              logger.error(`${error}`);
-
+              logger.error(`${part.error}`);
               return;
             }
           }
@@ -315,7 +289,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             let content = chunk.split(':').slice(1).join(':');
 
             if (content.endsWith('\n')) {
-              content = content.slice(0, content.length - 1);
+              content = content.slice(0, -1);
             }
 
             transformedChunk = `0:${content}\n`;
@@ -340,15 +314,9 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     logger.error(error);
 
     if (error.message?.includes('API key')) {
-      throw new Response('Invalid or missing API key', {
-        status: 401,
-        statusText: 'Unauthorized',
-      });
+      throw new Response('Invalid or missing API key', { status: 401, statusText: 'Unauthorized' });
     }
 
-    throw new Response(null, {
-      status: 500,
-      statusText: 'Internal Server Error',
-    });
+    throw new Response(null, { status: 500, statusText: 'Internal Server Error' });
   }
 }

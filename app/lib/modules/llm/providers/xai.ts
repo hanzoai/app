@@ -19,7 +19,7 @@ export default class XAIProvider extends BaseProvider {
 
   getModelInstance(options: {
     model: string;
-    serverEnv: Env;
+    serverEnv: Record<string, string>;
     apiKeys?: Record<string, string>;
     providerSettings?: Record<string, IProviderSetting>;
   }): LanguageModelV1 {
@@ -28,7 +28,7 @@ export default class XAIProvider extends BaseProvider {
     const { apiKey } = this.getProviderBaseUrlAndKey({
       apiKeys,
       providerSettings: providerSettings?.[this.name],
-      serverEnv: serverEnv as any,
+      serverEnv,
       defaultBaseUrlKey: '',
       defaultApiTokenKey: 'XAI_API_KEY',
     });

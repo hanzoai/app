@@ -27,8 +27,8 @@ export default defineConfig((config) => {
   return {
     define: {
       __COMMIT_HASH: JSON.stringify(getGitHash()),
-      __APP_VERSION: JSON.stringify(process.env.npm_package_version),
-      // 'process.env': JSON.stringify(process.env)
+      __APP_VERSION: JSON.stringify(import.meta.env.npm_package_version),
+      // 'import.meta.env': JSON.stringify(import.meta.env)
     },
     build: {
       target: 'esnext',
@@ -75,7 +75,28 @@ export default defineConfig((config) => {
         clientFiles: ['app/**/*.tsx'],
       },
     },
-    envPrefix: ["VITE_","OPENAI_LIKE_API_BASE_URL", "OLLAMA_API_BASE_URL", "LMSTUDIO_API_BASE_URL","TOGETHER_API_BASE_URL"],
+    envPrefix: [
+      "VITE_",
+      "OPENAI_LIKE_API_BASE_URL",
+      "OLLAMA_API_BASE_URL",
+      "LMSTUDIO_API_BASE_URL",
+      "TOGETHER_API_BASE_URL",
+      "ANTHROPIC_API_KEY",
+      "OPENAI_API_KEY",
+      "GROQ_API_KEY",
+      "HUGGINGFACE_API_KEY",
+      "OPEN_ROUTER_API_KEY",
+      "OPENAI_LIKE_API_KEY",
+      "TOGETHER_API_KEY",
+      "DEEPSEEK_API_KEY",
+      "GOOGLE_GENERATIVE_AI_API_KEY",
+      "MISTRAL_API_KEY",
+      "XAI_API_KEY",
+      "PERPLEXITY_API_KEY",
+      "AWS_BEDROCK_CONFIG",
+      "RUNNING_IN_DOCKER",
+      "DEFAULT_NUM_CTX"
+    ],
     css: {
       preprocessorOptions: {
         scss: {

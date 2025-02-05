@@ -25,7 +25,7 @@ export default class GithubProvider extends BaseProvider {
 
   getModelInstance(options: {
     model: string;
-    serverEnv: Env;
+    serverEnv: Record<string, string>;
     apiKeys?: Record<string, string>;
     providerSettings?: Record<string, IProviderSetting>;
   }): LanguageModelV1 {

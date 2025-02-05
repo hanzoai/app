@@ -25,6 +25,8 @@ async function getModelList(options: {
 const logger = createScopedLogger('api.llmcall');
 
 async function llmCallAction({ context, request }: ActionFunctionArgs) {
+  logger.debug('context', context)
+
   const { system, message, model, provider, streamOutput } = (await request.json()) as {
     system: string;
     message: string;
@@ -65,7 +67,7 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
             content: `${message}`,
           },
         ],
-        env: context.cloudflare?.env as any,
+        env: import.meta.env,
         apiKeys,
         providerSettings,
       });
@@ -93,7 +95,7 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
     }
   } else {
     try {
-      const models = await getModelList({ apiKeys, providerSettings, serverEnv: context.cloudflare?.env as any });
+      const models = await getModelList({ apiKeys, providerSettings, serverEnv: import.meta.env });
       const modelDetails = models.find((m: ModelInfo) => m.name === model);
 
       if (!modelDetails) {
@@ -120,7 +122,7 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
         ],
         model: providerInfo.getModelInstance({
           model: modelDetails.name,
-          serverEnv: context.cloudflare?.env as any,
+          serverEnv: import.meta.env,
           apiKeys,
           providerSettings,
         }),

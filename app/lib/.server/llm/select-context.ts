@@ -14,7 +14,7 @@ const logger = createScopedLogger('select-context');
 
 export async function selectContext(props: {
   messages: Message[];
-  env?: Env;
+  env?: Record<string, string>;
   apiKeys?: Record<string, string>;
   files: FileMap;
   providerSettings?: Record<string, IProviderSetting>;
@@ -127,7 +127,7 @@ export async function selectContext(props: {
         ---
         ${filePaths.map((path) => `- ${path}`).join('\n')}
         ---
-        
+
         You have following code loaded in the context buffer that you can refer to:
 
         CURRENT CONTEXT BUFFER
@@ -145,7 +145,7 @@ export async function selectContext(props: {
     <excludeFile path="path/to/file"/>
 </updateContextBuffer>
 ---
-        * Your should start with <updateContextBuffer> and end with </updateContextBuffer>. 
+        * Your should start with <updateContextBuffer> and end with </updateContextBuffer>.
         * You can include multiple <includeFile> and <excludeFile> tags in the response.
         * You should not include any other text in the response.
         * You should not include any file that is not in the list of files above.

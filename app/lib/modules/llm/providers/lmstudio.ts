@@ -58,7 +58,7 @@ export default class LMStudioProvider extends BaseProvider {
   }
   getModelInstance: (options: {
     model: string;
-    serverEnv?: Env;
+    serverEnv?: Record<string, string>;
     apiKeys?: Record<string, string>;
     providerSettings?: Record<string, IProviderSetting>;
   }) => LanguageModelV1 = (options) => {
@@ -75,7 +75,7 @@ export default class LMStudioProvider extends BaseProvider {
       throw new Error('No baseUrl found for LMStudio provider');
     }
 
-    const isDocker = process.env.RUNNING_IN_DOCKER === 'true' || serverEnv?.RUNNING_IN_DOCKER === 'true';
+    const isDocker = import.meta.env.RUNNING_IN_DOCKER === 'true' || serverEnv?.RUNNING_IN_DOCKER === 'true';
 
     if (typeof window === 'undefined') {
       baseUrl = isDocker ? baseUrl.replace('localhost', 'host.docker.internal') : baseUrl;

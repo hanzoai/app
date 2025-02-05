@@ -3,12 +3,16 @@ import { streamText } from '~/lib/.server/llm/stream-text';
 import { stripIndents } from '~/utils/stripIndent';
 import type { ProviderInfo } from '~/types/model';
 import { getApiKeysFromCookie, getProviderSettingsFromCookie } from '~/lib/api/cookies';
+import { createScopedLogger } from '~/utils/logger';
 
 export async function action(args: ActionFunctionArgs) {
   return enhancerAction(args);
 }
 
+const logger = createScopedLogger('api.enhancer');
+
 async function enhancerAction({ context, request }: ActionFunctionArgs) {
+  logger.debug('context', context)
   const { message, model, provider } = (await request.json()) as {
     message: string;
     model: string;
@@ -73,7 +77,7 @@ async function enhancerAction({ context, request }: ActionFunctionArgs) {
           `,
         },
       ],
-      env: context.cloudflare?.env as any,
+      env: import.meta.env as any,
       apiKeys,
       providerSettings,
     });

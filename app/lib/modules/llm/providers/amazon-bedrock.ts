@@ -87,7 +87,7 @@ export default class AmazonBedrockProvider extends BaseProvider {
 
   getModelInstance(options: {
     model: string;
-    serverEnv: any;
+    serverEnv: Record<string, string>;
     apiKeys?: Record<string, string>;
     providerSettings?: Record<string, IProviderSetting>;
   }): LanguageModelV1 {
