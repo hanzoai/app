@@ -48,7 +48,7 @@ const connitJson: CommitData = {
   version: __APP_VERSION,
 };
 
-const LOCAL_PROVIDERS = ['Ollama', 'LMStudio', 'OpenAILike'];
+const LOCAL_PROVIDERS = ['Ollama', 'LMStudio', 'Hanzo'];
 
 const versionHash = connitJson.commit;
 const versionTag = connitJson.version;

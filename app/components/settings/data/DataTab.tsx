@@ -17,7 +17,7 @@ const API_KEY_PROVIDERS = [
   'OpenRouter',
   'Deepseek',
   'Mistral',
-  'OpenAILike',
+  'Hanzo',
   'Together',
   'xAI',
   'Perplexity',

@@ -1,54 +1,41 @@
 import AnthropicProvider from './providers/anthropic';
 import CohereProvider from './providers/cohere';
-
-//import DeepseekProvider from './providers/deepseek';
+import GithubProvider from './providers/github';
 import GoogleProvider from './providers/google';
 import GroqProvider from './providers/groq';
-
-/*
- * import HuggingFaceProvider from './providers/huggingface';
- * import LMStudioProvider from './providers/lmstudio';
- * import MistralProvider from './providers/mistral';
- * import OllamaProvider from './providers/ollama';
- * import OpenRouterProvider from './providers/open-router';
- */
-import OpenAILikeProvider from './providers/openai-like';
+import HanzoProvider from './providers/hanzo';
 import OpenAIProvider from './providers/openai';
 import PerplexityProvider from './providers/perplexity';
 import TogetherProvider from './providers/together';
 import XAIProvider from './providers/xai';
 
-/*
- * import HyperbolicProvider from './providers/hyperbolic';
- * import AmazonBedrockProvider from './providers/amazon-bedrock';
- */
-import GithubProvider from './providers/github';
+// import AmazonBedrockProvider from './providers/amazon-bedrock';
+// import DeepseekProvider from './providers/deepseek';
+// import HuggingFaceProvider from './providers/huggingface';
+// import HyperbolicProvider from './providers/hyperbolic';
+// import LMStudioProvider from './providers/lmstudio';
+// import MistralProvider from './providers/mistral';
+// import OllamaProvider from './providers/ollama';
+// import OpenRouterProvider from './providers/open-router';
 
 export {
   AnthropicProvider,
   CohereProvider,
-
-  // DeepseekProvider,
+  GithubProvider,
   GoogleProvider,
   GroqProvider,
-
-  /*
-   * HuggingFaceProvider,
-   * HyperbolicProvider,
-   * MistralProvider,
-   * OllamaProvider,
-   */
+  HanzoProvider,
   OpenAIProvider,
-
-  // OpenRouterProvider,
-  OpenAILikeProvider,
   PerplexityProvider,
-  XAIProvider,
   TogetherProvider,
+  XAIProvider,
 
-  /*
-   * LMStudioProvider,
-   * AmazonBedrockProvider,
-   */
-  GithubProvider,
+  // AmazonBedrockProvider,
+  // DeepseekProvider,
+  // HuggingFaceProvider,
+  // HyperbolicProvider,
+  // LMStudioProvider,
+  // MistralProvider,
+  // OllamaProvider,
+  // OpenRouterProvider,
 };
