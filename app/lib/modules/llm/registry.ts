@@ -1,6 +1,5 @@
 import AnthropicProvider from './providers/anthropic';
 import CohereProvider from './providers/cohere';
-import GithubProvider from './providers/github';
 import GoogleProvider from './providers/google';
 import GroqProvider from './providers/groq';
 import HanzoProvider from './providers/hanzo';
@@ -11,6 +10,7 @@ import XAIProvider from './providers/xai';
 
 // import AmazonBedrockProvider from './providers/amazon-bedrock';
 // import DeepseekProvider from './providers/deepseek';
+// import GithubProvider from './providers/github';
 // import HuggingFaceProvider from './providers/huggingface';
 // import HyperbolicProvider from './providers/hyperbolic';
 // import LMStudioProvider from './providers/lmstudio';
@@ -21,7 +21,6 @@ import XAIProvider from './providers/xai';
 export {
   AnthropicProvider,
   CohereProvider,
-  GithubProvider,
   GoogleProvider,
   GroqProvider,
   HanzoProvider,
@@ -32,6 +31,7 @@ export {
 
   // AmazonBedrockProvider,
   // DeepseekProvider,
+  // GithubProvider,
   // HuggingFaceProvider,
   // HyperbolicProvider,
   // LMStudioProvider,
