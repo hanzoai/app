@@ -12,6 +12,7 @@ import { classNames } from '~/utils/classNames';
 import { PROVIDER_LIST } from '~/utils/constants';
 import { Messages } from './Messages.client';
 import { SendButton } from './SendButton.client';
+
 //import { APIKeyManager } from './APIKeyManager';
 import { getApiKeysFromCookies } from './APIKeyManager';
 import Cookies from 'js-cookie';
@@ -186,30 +187,36 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       }
     }, [providerList, provider]);
 
-    //const onApiKeysChange = async (providerName: string, apiKey: string) => {
-    //  const newApiKeys = { ...apiKeys, [providerName]: apiKey };
-    //  setApiKeys(newApiKeys);
-    //  Cookies.set('apiKeys', JSON.stringify(newApiKeys));
+    /*
+     * const onApiKeysChange = async (providerName: string, apiKey: string) => {
+     *   const newApiKeys = { ...apiKeys, [providerName]: apiKey };
+     *   setApiKeys(newApiKeys);
+     *   Cookies.set('apiKeys', JSON.stringify(newApiKeys));
+     */
 
     //  setIsModelLoading(providerName);
 
     //  let providerModels: ModelInfo[] = [];
 
-    //  try {
-    //    const response = await fetch(`/api/models/${encodeURIComponent(providerName)}`);
-    //    const data = await response.json();
-    //    providerModels = (data as { modelList: ModelInfo[] }).modelList;
-    //  } catch (error) {
-    //    console.error('Error loading dynamic models for:', providerName, error);
-    //  }
+    /*
+     *  try {
+     *    const response = await fetch(`/api/models/${encodeURIComponent(providerName)}`);
+     *    const data = await response.json();
+     *    providerModels = (data as { modelList: ModelInfo[] }).modelList;
+     *  } catch (error) {
+     *    console.error('Error loading dynamic models for:', providerName, error);
+     *  }
+     */
 
-    //  // Only update models for the specific provider
-    //  setModelList((prevModels) => {
-    //    const otherModels = prevModels.filter((model) => model.provider !== providerName);
-    //    return [...otherModels, ...providerModels];
-    //  });
-    //  setIsModelLoading(undefined);
-    //};
+    /*
+     *   // Only update models for the specific provider
+     *   setModelList((prevModels) => {
+     *     const otherModels = prevModels.filter((model) => model.provider !== providerName);
+     *     return [...otherModels, ...providerModels];
+     *   });
+     *   setIsModelLoading(undefined);
+     * };
+     */
 
     const startListening = () => {
       if (recognition) {
