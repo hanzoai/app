@@ -593,7 +593,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                 </div>
               </div>
             </div>
-            <div className="flex flex-col justify-center gap-5">
+            <div className="flex flex-col justify-center gap-5 text-[10px] sm:text-[16px]">
               {!chatStarted && (
                 <div className="flex justify-center gap-2">
                   {ImportButtons(importChat)}
