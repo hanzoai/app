@@ -40,7 +40,8 @@ function parseCookies(cookieHeader: string): Record<string, string> {
 }
 
 async function chatAction({ context, request }: ActionFunctionArgs) {
-  logger.debug('context', context)
+  logger.debug('context', context);
+
   const { messages, files, promptId, contextOptimization } = (await request.json()) as ChatRequestBody;
   const cookieHeader = request.headers.get('Cookie');
   const apiKeys = JSON.parse(parseCookies(cookieHeader || '').apiKeys || '{}');

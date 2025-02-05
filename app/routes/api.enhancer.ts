@@ -12,7 +12,8 @@ export async function action(args: ActionFunctionArgs) {
 const logger = createScopedLogger('api.enhancer');
 
 async function enhancerAction({ context, request }: ActionFunctionArgs) {
-  logger.debug('context', context)
+  logger.debug('context', context);
+
   const { message, model, provider } = (await request.json()) as {
     message: string;
     model: string;
