@@ -27,7 +27,7 @@ export default defineConfig((config) => {
   return {
     define: {
       __COMMIT_HASH: JSON.stringify(getGitHash()),
-      __APP_VERSION: JSON.stringify(import.meta.env.npm_package_version),
+      __APP_VERSION: JSON.stringify(process.env.npm_package_version),
       // 'import.meta.env': JSON.stringify(import.meta.env)
     },
     build: {

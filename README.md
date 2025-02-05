@@ -220,7 +220,7 @@ For providers that support custom base URLs (such as Ollama or LM Studio), follo
 
 - Ollama
 - LM Studio
-- OpenAILike
+- Hanzo
 
 ## Setup Using Git (For Developers only)
 
