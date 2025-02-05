@@ -7,39 +7,39 @@ import OpenAIProvider from './providers/openai';
 import PerplexityProvider from './providers/perplexity';
 import TogetherProvider from './providers/together';
 import XAIProvider from './providers/xai';
+import DeepseekProvider from './providers/deepseek';
+import HuggingFaceProvider from './providers/huggingface';
+import HyperbolicProvider from './providers/hyperbolic';
+import MistralProvider from './providers/mistral';
+import OpenRouterProvider from './providers/open-router';
 
 /*
  * import AmazonBedrockProvider from './providers/amazon-bedrock';
- * import DeepseekProvider from './providers/deepseek';
  * import GithubProvider from './providers/github';
- * import HuggingFaceProvider from './providers/huggingface';
- * import HyperbolicProvider from './providers/hyperbolic';
  * import LMStudioProvider from './providers/lmstudio';
- * import MistralProvider from './providers/mistral';
  * import OllamaProvider from './providers/ollama';
- * import OpenRouterProvider from './providers/open-router';
  */
 
 export {
   AnthropicProvider,
   CohereProvider,
+  DeepseekProvider,
   GoogleProvider,
   GroqProvider,
   HanzoProvider,
+  HuggingFaceProvider,
+  HyperbolicProvider,
+  MistralProvider,
   OpenAIProvider,
+  OpenRouterProvider,
   PerplexityProvider,
   TogetherProvider,
   XAIProvider,
 
   /*
    * AmazonBedrockProvider,
-   * DeepseekProvider,
    * GithubProvider,
-   * HuggingFaceProvider,
-   * HyperbolicProvider,
    * LMStudioProvider,
-   * MistralProvider,
    * OllamaProvider,
-   * OpenRouterProvider,
    */
 };
