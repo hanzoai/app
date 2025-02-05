@@ -3,6 +3,6 @@ import { createRequestHandler } from '@remix-run/vercel';
 import * as build from '../build/server/index.js';
 
 export default createRequestHandler({
-  build,
+  build: build as any,
   mode: import.meta.env.NODE_ENV
 });

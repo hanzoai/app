@@ -56,7 +56,7 @@ export const ModelSelector = ({
   }
 
   return (
-    <div className="mb-2 flex gap-2 flex-col sm:flex-row">
+    <div className="mt-2 flex gap-2 flex-col sm:flex-row">
       <select
         value={provider?.name ?? ''}
         onChange={(e) => {

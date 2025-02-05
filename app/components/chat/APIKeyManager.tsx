@@ -86,7 +86,7 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({ provider, apiKey, 
   };
 
   return (
-    <div className="flex items-center justify-between py-3 px-1">
+    <div className="flex items-center justify-between pt-3 px-1">
       <div className="flex items-center gap-2 flex-1">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-hanzo-elements-textSecondary">{provider?.name} API Key:</span>
@@ -121,8 +121,8 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({ provider, apiKey, 
               value={tempKey}
               placeholder="Enter API Key"
               onChange={(e) => setTempKey(e.target.value)}
-              className="w-[300px] px-3 py-1.5 text-sm rounded border border-hanzo-elements-borderColor 
-                        bg-hanzo-elements-prompt-background text-hanzo-elements-textPrimary 
+              className="w-[300px] px-3 py-1.5 text-sm rounded border border-hanzo-elements-borderColor
+                        bg-hanzo-elements-prompt-background text-hanzo-elements-textPrimary
                         focus:outline-none focus:ring-2 focus:ring-hanzo-elements-focus"
             />
             <IconButton
