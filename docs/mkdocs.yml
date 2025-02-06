@@ -32,14 +32,14 @@ theme:
   # logo: assets/logo.png
   # favicon: assets/logo.png
 repo_name: canvas
-repo_url: https://github.com/hanzoai/canvas
+repo_url: https://github.com/hanzoai/app
 edit_uri: ""
 
 extra:
   generator: false
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/hanzoai/canvas
+      link: https://github.com/hanzoai/app
       name: hanzo.ai
     - icon: fontawesome/brands/discourse
       link: https://thinktank.ottomator.ai/

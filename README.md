@@ -241,7 +241,7 @@ This method is recommended for developers who want to:
 
    ```bash
    # Using HTTPS
-   git clone https://github.com/hanzoai/canvas.git
+   git clone https://github.com/hanzoai/app.git
    ```
 
 2. **Navigate to Project Directory**:

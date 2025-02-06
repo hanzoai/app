@@ -54,14 +54,14 @@ const versionHash = connitJson.commit;
 const versionTag = connitJson.version;
 
 const GITHUB_URLS = {
-  original: 'https://api.github.com/repos/hanzoai/canvas/commits/main',
+  original: 'https://api.github.com/repos/hanzoai/app/commits/main',
   fork: 'https://api.github.com/repos/Stijnus/hanzo.new-any-llm/commits/main',
   commitJson: async (branch: string) => {
     try {
-      const response = await fetch(`https://api.github.com/repos/hanzoai/canvas/commits/${branch}`);
+      const response = await fetch(`https://api.github.com/repos/hanzoai/app/commits/${branch}`);
       const data: { sha: string } = await response.json();
 
-      const packageJsonResp = await fetch(`https://raw.githubusercontent.com/hanzoai/canvas/${branch}/package.json`);
+      const packageJsonResp = await fetch(`https://raw.githubusercontent.com/hanzoai/app/${branch}/package.json`);
       const packageJson: { version: string } = await packageJsonResp.json();
 
       return {

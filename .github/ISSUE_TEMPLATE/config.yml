@@ -1,7 +1,7 @@
 blank_issues_enabled: false
 contact_links:
   - name: hanzo.new related issues
-    url: https://github.com/hanzoai/canvas/issues/new/choose
+    url: https://github.com/hanzoai/app/issues/new/choose
     about: Report issues related to Hanzo.new (not Hanzo.ai)
   - name: Chat
     url: https://thinktank.ottomator.ai

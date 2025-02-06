@@ -93,7 +93,7 @@ export const SettingsWindow = ({ open, onClose }: SettingsProps) => {
                 ))}
                 <div className="mt-auto flex flex-col gap-2">
                   <a
-                    href="https://github.com/hanzoai/canvas"
+                    href="https://github.com/hanzoai/app"
                     target="_blank"
                     rel="noopener noreferrer"
                     className={classNames(styles['settings-button'], 'flex items-center gap-2')}

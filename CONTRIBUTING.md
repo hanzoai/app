@@ -73,7 +73,7 @@ Interested in maintaining and growing the project? Fill out our [Contributor App
 ### 1️⃣ Initial Setup  
 - Clone the repository:  
   ```bash
-  git clone https://github.com/hanzoai/canvas.git
+  git clone https://github.com/hanzoai/app.git
   ```
 - Install dependencies:  
   ```bash
