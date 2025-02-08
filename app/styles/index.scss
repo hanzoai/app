@@ -13,6 +13,25 @@ body {
   width: 100%;
 }
 
+// Force dark theme
+html {
+  color-scheme: dark;
+}
+
+html,
+html[data-theme='light'] {
+  &[data-theme] {
+    color-scheme: dark !important;
+  }
+}
+
+:root,
+:root[data-theme='light'] {
+  &[data-theme] {
+    color-scheme: dark !important;
+  }
+}
+
 :root {
   --gradient-opacity: 0.8;
   --primary-color: rgba(158, 117, 240, var(--gradient-opacity));

@@ -1,7 +1,7 @@
 import { atom } from 'nanostores';
 import { logStore } from './logs';
 
-export type Theme = 'dark' | 'dark';
+export type Theme = 'dark' | 'light';
 
 export const kTheme = 'hanzo_theme';
 
@@ -9,24 +9,22 @@ export function themeIsDark() {
   return themeStore.get() === 'dark';
 }
 
-export const DEFAULT_THEME = 'dark';
+export const DEFAULT_THEME = 'dark' as const;
 
 export const themeStore = atom<Theme>(initStore());
 
-function initStore() {
+function initStore(): Theme {
   if (!import.meta.env.SSR) {
-    const persistedTheme = localStorage.getItem(kTheme) as Theme | undefined;
-    const themeAttribute = document.querySelector('html')?.getAttribute('data-theme');
-
-    return persistedTheme ?? (themeAttribute as Theme) ?? DEFAULT_THEME;
+    localStorage.setItem(kTheme, DEFAULT_THEME);
+    document.querySelector('html')?.setAttribute('data-theme', 'dark');
+    return 'dark';
   }
-
-  return DEFAULT_THEME;
+  return 'dark';
 }
 
 export function toggleTheme() {
   const currentTheme = themeStore.get();
-  const newTheme = currentTheme === 'dark' ? 'dark' : 'dark';
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
   themeStore.set(newTheme);
   logStore.logSystem(`Theme changed to ${newTheme} mode`);
   localStorage.setItem(kTheme, newTheme);
