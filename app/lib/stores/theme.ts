@@ -17,8 +17,10 @@ function initStore(): Theme {
   if (!import.meta.env.SSR) {
     localStorage.setItem(kTheme, DEFAULT_THEME);
     document.querySelector('html')?.setAttribute('data-theme', 'dark');
+
     return 'dark';
   }
+
   return 'dark';
 }
 
