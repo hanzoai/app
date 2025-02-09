@@ -34,9 +34,9 @@ html[data-theme='light'] {
 
 :root {
   --gradient-opacity: 0.8;
-  --primary-color: rgba(158, 117, 240, var(--gradient-opacity));
-  --secondary-color: rgba(138, 43, 226, var(--gradient-opacity));
-  --accent-color: rgba(128, 59, 239, var(--gradient-opacity));
+  --primary-color: rgba(128, 128, 128, var(--gradient-opacity));
+  --secondary-color: rgba(105, 105, 105, var(--gradient-opacity));
+  --accent-color: rgba(169, 169, 169, var(--gradient-opacity));
   // --primary-color: rgba(147, 112, 219, var(--gradient-opacity));
   // --secondary-color: rgba(138, 43, 226, var(--gradient-opacity));
   // --accent-color: rgba(180, 170, 220, var(--gradient-opacity));
