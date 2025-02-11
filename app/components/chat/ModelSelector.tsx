@@ -72,7 +72,7 @@ export const ModelSelector = ({
             setModel(firstModel.name);
           }
         }}
-        className="flex-1 p-2 rounded-lg border border-hanzo-elements-borderColor bg-hanzo-elements-prompt-background text-hanzo-elements-textPrimary focus:outline-none focus:ring-2 focus:ring-hanzo-elements-focus transition-all"
+        className="flex-1 p-2 rounded-full border border-hanzo-elements-borderColor bg-hanzo-elements-prompt-background text-hanzo-elements-textPrimary focus:outline-none focus:ring-2 focus:ring-hanzo-elements-focus transition-all"
       >
         {providerList.map((provider: ProviderInfo) => (
           <option key={provider.name} value={provider.name}>
@@ -84,7 +84,7 @@ export const ModelSelector = ({
         key={provider?.name}
         value={model}
         onChange={(e) => setModel?.(e.target.value)}
-        className="flex-1 p-2 rounded-lg border border-hanzo-elements-borderColor bg-hanzo-elements-prompt-background text-hanzo-elements-textPrimary focus:outline-none focus:ring-2 focus:ring-hanzo-elements-focus transition-all lg:max-w-[70%]"
+        className="flex-1 p-2 rounded-full border border-hanzo-elements-borderColor bg-hanzo-elements-prompt-background text-hanzo-elements-textPrimary focus:outline-none focus:ring-2 focus:ring-hanzo-elements-focus transition-all lg:max-w-[70%]"
         disabled={modelLoading === 'all' || modelLoading === provider?.name}
       >
         {modelLoading == 'all' || modelLoading == provider?.name ? (
