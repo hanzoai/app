@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Dialog, DialogButton, DialogDescription, DialogRoot, DialogTitle } from '~/components/ui/Dialog';
 
-// import { ThemeSwitch } from '~/components/ui/ThemeSwitch';
 import { SettingsWindow } from '~/components/settings/SettingsWindow';
 import { SettingsButton } from '~/components/ui/SettingsButton';
 import { db, deleteById, getAll, chatId, type ChatHistoryItem, useChatHistory } from '~/lib/persistence';
@@ -13,6 +12,8 @@ import { HistoryItem } from './HistoryItem';
 import { binDates } from './date-binning';
 import { useSearchFilter } from '~/lib/hooks/useSearchFilter';
 import { SidebarToggle } from './SidebarToggle';
+import { sidebarStore } from '~/lib/stores/sidebar';
+import { useStore } from '@nanostores/react';
 
 const menuVariants = {
   closed: {
@@ -60,9 +61,12 @@ export const Menu = () => {
   const { duplicateCurrentChat, exportChat } = useChatHistory();
   const menuRef = useRef<HTMLDivElement>(null);
   const [list, setList] = useState<ChatHistoryItem[]>([]);
-  const [open, setOpen] = useState(false);
   const [dialogContent, setDialogContent] = useState<DialogContent>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const open = useStore(sidebarStore.isOpen);
+  const setOpen = (value: boolean) => sidebarStore.isOpen.set(value);
+
 
   const { filteredItems: filteredList, handleSearchChange } = useSearchFilter({
     items: list,

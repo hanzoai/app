@@ -1,12 +1,35 @@
 import { useStore } from '@nanostores/react';
 import { ClientOnly } from 'remix-utils/client-only';
+import { motion, AnimatePresence } from 'framer-motion';
 import { chatStore } from '~/lib/stores/chat';
+import { sidebarStore } from '~/lib/stores/sidebar';
 import { classNames } from '~/utils/classNames';
 import { HeaderActionButtons } from './HeaderActionButtons.client';
 import { ChatDescription } from '~/lib/persistence/ChatDescription.client';
+import { cubicEasingFn } from '~/utils/easings';
+
+const logoVariants = {
+  hidden: {
+    opacity: 0,
+    x: -20,
+    transition: {
+      duration: 0.2,
+      ease: cubicEasingFn,
+    },
+  },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: {
+      duration: 0.2,
+      ease: cubicEasingFn,
+    },
+  },
+};
 
 export function Header() {
   const chat = useStore(chatStore);
+  const sidebarOpen = useStore(sidebarStore.isOpen);
 
   return (
     <header
@@ -17,8 +40,32 @@ export function Header() {
     >
       <div className="flex items-center gap-2 z-logo text-hanzo-elements-textPrimary cursor-pointer">
         <a href="/" className="text-2xl font-semibold text-accent flex items-center">
-          <span className="i-hanzo:logo?mask w-[46px] inline-block" />
-          <span className="text-2xl font-semibold text-accent">Hanzo</span>
+          <AnimatePresence mode="wait">
+            {!sidebarOpen && (
+              <motion.span
+                key="logo"
+                variants={logoVariants}
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
+                className="i-hanzo:logo?mask w-[24px] inline-block"
+              />
+            )}
+          </AnimatePresence>
+          <AnimatePresence mode="wait">
+            {sidebarOpen && (
+              <motion.span
+                key="text"
+                variants={logoVariants}
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
+                className="text-2xl font-semibold text-accent"
+              >
+                Hanzo
+              </motion.span>
+            )}
+          </AnimatePresence>
         </a>
       </div>
       {chat.started && ( // Display ChatDescription and HeaderActionButtons only when the chat has started.
