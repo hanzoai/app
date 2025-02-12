@@ -12,6 +12,7 @@ import { logger } from '~/utils/logger';
 import { HistoryItem } from './HistoryItem';
 import { binDates } from './date-binning';
 import { useSearchFilter } from '~/lib/hooks/useSearchFilter';
+import { SidebarToggle } from './SidebarToggle';
 
 const menuVariants = {
   closed: {
@@ -139,95 +140,98 @@ export const Menu = () => {
   };
 
   return (
-    <motion.div
-      ref={menuRef}
-      initial="closed"
-      animate={open ? 'open' : 'closed'}
-      variants={menuVariants}
-      className="flex selection-accent flex-col side-menu fixed top-0 w-[350px] h-full bg-hanzo-elements-background-depth-2 border-r rounded-r-3xl border-hanzo-elements-borderColor z-sidebar shadow-xl shadow-hanzo-elements-sidebar-dropdownShadow text-sm"
-    >
-      <div className="h-[60px]" /> {/* Spacer for top margin */}
-      <CurrentDateTime />
-      <div className="flex-1 flex flex-col h-full w-full overflow-hidden">
-        <div className="p-4 select-none">
-          <a
-            href="/"
-            className="flex gap-2 items-center bg-hanzo-elements-sidebar-buttonBackgroundDefault text-hanzo-elements-sidebar-buttonText hover:bg-hanzo-elements-sidebar-buttonBackgroundHover rounded-md p-2 transition-theme mb-4"
-          >
-            <span className="inline-block i-hanzo:chat scale-110" />
-            Start new chat
-          </a>
-          <div className="relative w-full">
-            <input
-              className="w-full bg-white dark:bg-hanzo-elements-background-depth-4 relative px-2 py-1.5 rounded-md focus:outline-none placeholder-hanzo-elements-textTertiary text-hanzo-elements-textPrimary dark:text-hanzo-elements-textPrimary border border-hanzo-elements-borderColor"
-              type="search"
-              placeholder="Search"
-              onChange={handleSearchChange}
-              aria-label="Search chats"
-            />
+    <>
+      <motion.div
+        ref={menuRef}
+        initial="closed"
+        animate={open ? 'open' : 'closed'}
+        variants={menuVariants}
+        className="flex selection-accent flex-col side-menu fixed top-0 w-[350px] h-full bg-hanzo-elements-background-depth-2 border-r rounded-r-3xl border-hanzo-elements-borderColor z-sidebar shadow-xl shadow-hanzo-elements-sidebar-dropdownShadow text-sm"
+      >
+        <div className="h-[60px]" /> {/* Spacer for top margin */}
+        <CurrentDateTime />
+        <div className="flex-1 flex flex-col h-full w-full overflow-hidden">
+          <div className="p-4 select-none">
+            <a
+              href="/"
+              className="flex gap-2 items-center bg-hanzo-elements-sidebar-buttonBackgroundDefault text-hanzo-elements-sidebar-buttonText hover:bg-hanzo-elements-sidebar-buttonBackgroundHover rounded-md p-2 transition-theme mb-4"
+            >
+              <span className="inline-block i-hanzo:chat scale-110" />
+              Start new chat
+            </a>
+            <div className="relative w-full">
+              <input
+                className="w-full bg-white dark:bg-hanzo-elements-background-depth-4 relative px-2 py-1.5 rounded-md focus:outline-none placeholder-hanzo-elements-textTertiary text-hanzo-elements-textPrimary dark:text-hanzo-elements-textPrimary border border-hanzo-elements-borderColor"
+                type="search"
+                placeholder="Search"
+                onChange={handleSearchChange}
+                aria-label="Search chats"
+              />
+            </div>
+          </div>
+          <div className="text-hanzo-elements-textPrimary font-medium pl-6 pr-5 my-2">Your Chats</div>
+          <div className="flex-1 overflow-auto pl-4 pr-5 pb-5">
+            {filteredList.length === 0 && (
+              <div className="pl-2 text-hanzo-elements-textTertiary">
+                {list.length === 0 ? 'No previous conversations' : 'No matches found'}
+              </div>
+            )}
+            <DialogRoot open={dialogContent !== null}>
+              {binDates(filteredList).map(({ category, items }) => (
+                <div key={category} className="mt-4 first:mt-0 space-y-1">
+                  <div className="text-hanzo-elements-textTertiary sticky top-0 z-1 bg-hanzo-elements-background-depth-2 pl-2 pt-2 pb-1">
+                    {category}
+                  </div>
+                  {items.map((item) => (
+                    <HistoryItem
+                      key={item.id}
+                      item={item}
+                      exportChat={exportChat}
+                      onDelete={(event) => handleDeleteClick(event, item)}
+                      onDuplicate={() => handleDuplicate(item.id)}
+                    />
+                  ))}
+                </div>
+              ))}
+              <Dialog onBackdrop={closeDialog} onClose={closeDialog}>
+                {dialogContent?.type === 'delete' && (
+                  <>
+                    <DialogTitle>Delete Chat?</DialogTitle>
+                    <DialogDescription asChild>
+                      <div>
+                        <p>
+                          You are about to delete <strong>{dialogContent.item.description}</strong>.
+                        </p>
+                        <p className="mt-1">Are you sure you want to delete this chat?</p>
+                      </div>
+                    </DialogDescription>
+                    <div className="px-5 pb-4 bg-hanzo-elements-background-depth-2 flex gap-2 justify-end">
+                      <DialogButton type="secondary" onClick={closeDialog}>
+                        Cancel
+                      </DialogButton>
+                      <DialogButton
+                        type="danger"
+                        onClick={(event) => {
+                          deleteItem(event, dialogContent.item);
+                          closeDialog();
+                        }}
+                      >
+                        Delete
+                      </DialogButton>
+                    </div>
+                  </>
+                )}
+              </Dialog>
+            </DialogRoot>
+          </div>
+          <div className="flex items-center justify-between border-t border-hanzo-elements-borderColor p-4">
+            <SettingsButton onClick={() => setIsSettingsOpen(true)} />
+            {/* <ThemeSwitch /> */}
           </div>
         </div>
-        <div className="text-hanzo-elements-textPrimary font-medium pl-6 pr-5 my-2">Your Chats</div>
-        <div className="flex-1 overflow-auto pl-4 pr-5 pb-5">
-          {filteredList.length === 0 && (
-            <div className="pl-2 text-hanzo-elements-textTertiary">
-              {list.length === 0 ? 'No previous conversations' : 'No matches found'}
-            </div>
-          )}
-          <DialogRoot open={dialogContent !== null}>
-            {binDates(filteredList).map(({ category, items }) => (
-              <div key={category} className="mt-4 first:mt-0 space-y-1">
-                <div className="text-hanzo-elements-textTertiary sticky top-0 z-1 bg-hanzo-elements-background-depth-2 pl-2 pt-2 pb-1">
-                  {category}
-                </div>
-                {items.map((item) => (
-                  <HistoryItem
-                    key={item.id}
-                    item={item}
-                    exportChat={exportChat}
-                    onDelete={(event) => handleDeleteClick(event, item)}
-                    onDuplicate={() => handleDuplicate(item.id)}
-                  />
-                ))}
-              </div>
-            ))}
-            <Dialog onBackdrop={closeDialog} onClose={closeDialog}>
-              {dialogContent?.type === 'delete' && (
-                <>
-                  <DialogTitle>Delete Chat?</DialogTitle>
-                  <DialogDescription asChild>
-                    <div>
-                      <p>
-                        You are about to delete <strong>{dialogContent.item.description}</strong>.
-                      </p>
-                      <p className="mt-1">Are you sure you want to delete this chat?</p>
-                    </div>
-                  </DialogDescription>
-                  <div className="px-5 pb-4 bg-hanzo-elements-background-depth-2 flex gap-2 justify-end">
-                    <DialogButton type="secondary" onClick={closeDialog}>
-                      Cancel
-                    </DialogButton>
-                    <DialogButton
-                      type="danger"
-                      onClick={(event) => {
-                        deleteItem(event, dialogContent.item);
-                        closeDialog();
-                      }}
-                    >
-                      Delete
-                    </DialogButton>
-                  </div>
-                </>
-              )}
-            </Dialog>
-          </DialogRoot>
-        </div>
-        <div className="flex items-center justify-between border-t border-hanzo-elements-borderColor p-4">
-          <SettingsButton onClick={() => setIsSettingsOpen(true)} />
-          {/* <ThemeSwitch /> */}
-        </div>
-      </div>
-      <SettingsWindow open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-    </motion.div>
+        <SettingsWindow open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      </motion.div>
+      <SidebarToggle sidebarOpen={open} />
+    </>
   );
 };

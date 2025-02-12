@@ -16,7 +16,6 @@ export function Header() {
       })}
     >
       <div className="flex items-center gap-2 z-logo text-hanzo-elements-textPrimary cursor-pointer">
-        <div className="i-ph:sidebar-simple-duotone text-xl" />
         <a href="/" className="text-2xl font-semibold text-accent flex items-center">
           <span className="i-hanzo:logo?mask w-[46px] inline-block" />
           <span className="text-2xl font-semibold text-accent">Hanzo</span>
