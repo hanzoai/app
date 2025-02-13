@@ -1,6 +1,6 @@
 # app
 
-[![Hanzo App: AI-Powered Full-Stack Web Development in the Browser](./public/social_preview_index.png)](https://hanzo.ai)
+[![Hanzo App: AI-Powered Full-Stack Web Development](./public/social_preview_index.png)](https://hanzo.ai)
 
 Welcome to the official open source version of Hanzo, which allows you to choose the LLM that you use for each prompt! Currently, you can use OpenAI, Anthropic, Ollama, OpenRouter, Gemini, LMStudio, Mistral, xAI, HuggingFace, DeepSeek, or Groq models - and it is easily extended to use any other model supported by the Vercel AI SDK! See the instructions below for running this locally and extending it to include more models.
 
