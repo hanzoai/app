@@ -53,7 +53,6 @@ export default class OpenAIProvider extends BaseProvider {
     );
 
     return data.map((m: any) => {
-      console.log(`Model ${m.id} context window:`, m.context_window);
       return {
         name: m.id,
         label: `${m.id}`,
@@ -70,6 +69,7 @@ export default class OpenAIProvider extends BaseProvider {
     providerSettings?: Record<string, IProviderSetting>;
   }): LanguageModelV1 {
     const { model, serverEnv, apiKeys, providerSettings } = options;
+
     const { apiKey } = this.getProviderBaseUrlAndKey({
       apiKeys,
       providerSettings: providerSettings?.[this.name],
@@ -82,8 +82,17 @@ export default class OpenAIProvider extends BaseProvider {
       throw new Error(`Missing API key for ${this.name} provider`);
     }
 
+    // Log environment info (safely)
+    console.log('Environment:', {
+      isProduction: process.env.NODE_ENV === 'production',
+      model,
+      hasApiKey: !!apiKey,
+      apiKeyLength: apiKey?.length,
+    });
+
     const openai = createOpenAI({
       apiKey,
+      baseURL: 'https://api.openai.com/v1', // Explicitly set the base URL
     });
 
     return openai(model);
