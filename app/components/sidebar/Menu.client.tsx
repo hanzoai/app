@@ -67,7 +67,6 @@ export const Menu = () => {
   const open = useStore(sidebarStore.isOpen);
   const setOpen = (value: boolean) => sidebarStore.isOpen.set(value);
 
-
   const { filteredItems: filteredList, handleSearchChange } = useSearchFilter({
     items: list,
     searchFields: ['description'],
