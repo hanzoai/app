@@ -29,7 +29,6 @@ export default class AnthropicProvider extends BaseProvider {
     { name: 'claude-3-sonnet-20240229', label: 'Claude 3 Sonnet', provider: 'Anthropic', maxTokenAllowed: 8000 },
     { name: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku', provider: 'Anthropic', maxTokenAllowed: 8000 },
   ];
-  ;
   getModelInstance: (options: {
     model: string;
     serverEnv: Record<string, string>;
