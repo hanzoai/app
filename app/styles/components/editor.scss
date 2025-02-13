@@ -68,7 +68,10 @@
     var(--hanzo-elements-item-backgroundActive)
   );
 
-  --cm-search-button-textColor: var(--hanzo-elements-editor-search-button-textColor, var(--hanzo-elements-textSecondary));
+  --cm-search-button-textColor: var(
+    --hanzo-elements-editor-search-button-textColor,
+    var(--hanzo-elements-textSecondary)
+  );
 
   --cm-search-button-textColorHover: var(
     --hanzo-elements-editor-search-button-textColorHover,
@@ -85,7 +88,10 @@
 
   --cm-search-input-backgroundColor: var(--hanzo-elements-editor-search-input-backgroundColor, transparent);
   --cm-search-input-textColor: var(--hanzo-elements-editor-search-input-textColor, var(--hanzo-elements-textPrimary));
-  --cm-search-input-borderColor: var(--hanzo-elements-editor-search-input-borderColor, var(--hanzo-elements-borderColor));
+  --cm-search-input-borderColor: var(
+    --hanzo-elements-editor-search-input-borderColor,
+    var(--hanzo-elements-borderColor)
+  );
 
   --cm-search-input-borderColorFocused: var(
     --hanzo-elements-editor-search-input-borderColorFocused,

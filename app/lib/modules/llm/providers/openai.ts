@@ -43,16 +43,24 @@ export default class OpenAIProvider extends BaseProvider {
     const data = res.data.filter(
       (model: any) =>
         model.object === 'model' &&
-        (model.id.startsWith('gpt-') || model.id.startsWith('o') || model.id.startsWith('chatgpt-')) &&
+        (model.id.startsWith('gpt-4-vision') ||
+          model.id.match(/^gpt-4-\d+/) ||
+          model.id.match(/^gpt-4-turbo/) ||
+          model.id === 'gpt-4' ||
+          (model.id.startsWith('gpt-3.5-turbo') && !model.id.includes('instruct')) ||
+          model.id.match(/^o\d+/)) &&
         !staticModelIds.includes(model.id),
     );
 
-    return data.map((m: any) => ({
-      name: m.id,
-      label: `${m.id}`,
-      provider: this.name,
-      maxTokenAllowed: m.context_window || 16384,
-    }));
+    return data.map((m: any) => {
+      console.log(`Model ${m.id} context window:`, m.context_window);
+      return {
+        name: m.id,
+        label: `${m.id}`,
+        provider: this.name,
+        maxTokenAllowed: m.context_window,
+      };
+    });
   }
 
   getModelInstance(options: {
