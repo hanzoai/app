@@ -1,7 +1,8 @@
 export type DebugLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error';
 import { Chalk } from 'chalk';
 
-const chalk = new Chalk({ level: 3 });
+const isVercel = typeof process !== 'undefined' && !!process.env.VERCEL;
+const chalk = new Chalk({ level: isVercel ? 0 : 3 });
 
 type LoggerFunction = (...messages: any[]) => void;
 

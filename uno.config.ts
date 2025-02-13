@@ -13,7 +13,7 @@ const customIconCollection = iconPaths.reduce(
     acc[collectionName][iconName] = async () => {
       const data = await fs.readFile(iconPath, { encoding: 'utf8' });
       // Ensure the result is a string, even if the type definitions return a Buffer.
-      return typeof data === 'string' ? data : data.toString('utf8');
+      return typeof data === 'string' ? data : (data as any).toString('utf8');
     };
     return acc;
   },
