@@ -3,9 +3,11 @@ import { Chalk } from 'chalk';
 
 // Force disable ANSI colors in Vercel logs.
 const isVercel = typeof process !== 'undefined' && !!process.env.VERCEL;
+
 if (isVercel) {
   process.env.FORCE_COLOR = '0';
 }
+
 const chalk = new Chalk({ level: isVercel ? 0 : 3 });
 
 type LoggerFunction = (...messages: any[]) => void;
