@@ -36,6 +36,7 @@ import ChatAlert from './ChatAlert';
 import type { ModelInfo } from '~/lib/modules/llm/types';
 import ProgressCompilation from './ProgressCompilation';
 import type { ProgressAnnotation } from '~/types/context';
+import Dropdown from '~/components/ui/Dropdown';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -106,10 +107,10 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     },
     ref,
   ) => {
-    const TEXTAREA_MAX_HEIGHT = chatStarted ? 400 : 200;
+    const TEXTAREA_MAX_HEIGHT = chatStarted ? 400 : 300;
     const [apiKeys, setApiKeys] = useState<Record<string, string>>(getApiKeysFromCookies());
     const [modelList, setModelList] = useState<ModelInfo[]>([]);
-    const [isModelSettingsCollapsed, setIsModelSettingsCollapsed] = useState(false);
+    const [isModelSettingsCollapsed, setIsModelSettingsCollapsed] = useState(true);
     const [isListening, setIsListening] = useState(false);
     const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
     const [transcript, setTranscript] = useState('');
@@ -361,7 +362,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                 {progressAnnotations && <ProgressCompilation data={progressAnnotations} />}
                 <div
                   className={classNames(
-                    'bg-hanzo-elements-background-depth-2 p-3 rounded-lg border border-hanzo-elements-borderColor relative w-full max-w-chat mx-auto z-prompt',
+                    'bg-hanzo-elements-background-depth-2 p-3 rounded-3xl border border-hanzo-elements-borderColor relative w-full max-w-chat mx-auto z-prompt',
 
                     /*
                      * {
@@ -370,34 +371,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                      */
                   )}
                 >
-                  <svg className={classNames(styles.PromptEffectContainer)}>
-                    <defs>
-                      <linearGradient
-                        id="line-gradient"
-                        x1="20%"
-                        y1="0%"
-                        x2="-14%"
-                        y2="10%"
-                        gradientUnits="userSpaceOnUse"
-                        gradientTransform="rotate(-45)"
-                      >
-                        <stop offset="0%" stopColor="#a2a0a3" stopOpacity="0%"></stop>
-                        <stop offset="40%" stopColor="#a2a0a3" stopOpacity="80%"></stop>
-                        <stop offset="50%" stopColor="#a2a0a3" stopOpacity="80%"></stop>
-                        <stop offset="100%" stopColor="#a2a0a3" stopOpacity="0%"></stop>
-                      </linearGradient>
-                      <linearGradient id="shine-gradient">
-                        <stop offset="0%" stopColor="white" stopOpacity="0%"></stop>
-                        <stop offset="40%" stopColor="#ffffff" stopOpacity="80%"></stop>
-                        <stop offset="50%" stopColor="#ffffff" stopOpacity="80%"></stop>
-                        <stop offset="100%" stopColor="white" stopOpacity="0%"></stop>
-                      </linearGradient>
-                    </defs>
-                    <rect className={classNames(styles.PromptEffectLine)} pathLength="100" strokeLinecap="round"></rect>
-                    <rect className={classNames(styles.PromptShine)} x="48" y="24" width="70" height="1"></rect>
-                  </svg>
-
-                  <FilePreview
+                 <FilePreview
                     files={uploadedFiles}
                     imageDataList={imageDataList}
                     onRemove={(index) => {
@@ -417,7 +391,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                   </ClientOnly>
                   <div
                     className={classNames(
-                      'relative shadow-xs border border-hanzo-elements-borderColor backdrop-blur rounded-lg',
+                      'relative shadow-xs backdrop-blur rounded-lg',
                     )}
                   >
                     <textarea
@@ -552,14 +526,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                           {isModelSettingsCollapsed ? <span className="text-xs">{model}</span> : <span />}
                         </IconButton>
                       </div>
-                      {input.length > 3 ? (
-                        <div className="text-xs text-hanzo-elements-textTertiary">
-                          Use{' '}
-                          <kbd className="kdb px-1.5 py-0.5 rounded bg-hanzo-elements-background-depth-2">Shift</kbd> +{' '}
-                          <kbd className="kdb px-1.5 py-0.5 rounded bg-hanzo-elements-background-depth-2">Return</kbd> a
-                          new line
-                        </div>
-                      ) : null}
+                      <Dropdown />
                     </div>
                   </div>
                   <div>
@@ -577,15 +544,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                             apiKeys={apiKeys}
                             modelLoading={isModelLoading}
                           />
-                          {/* {(providerList || []).length > 0 && provider && (
-                            <APIKeyManager
-                              provider={provider}
-                              apiKey={apiKeys[provider.name] || ''}
-                              setApiKey={(key) => {
-                                onApiKeysChange(provider.name, key);
-                              }}
-                            />
-                          )} */}
                         </div>
                       )}
                     </ClientOnly>

@@ -26,7 +26,13 @@ export const ModelSelector = ({
 
   // Update enabled providers when cookies change
   useEffect(() => {
-    // If current provider is disabled, switch to first enabled provider
+    if (!model && modelList.length > 0) {
+      const defaultModel = modelList.find((m) => m.name === 'o1');
+      if (defaultModel) {
+        setModel?.(defaultModel.name);
+      }
+    }
+
     if (providerList.length == 0) {
       return;
     }
@@ -35,7 +41,6 @@ export const ModelSelector = ({
       const firstEnabledProvider = providerList[0];
       setProvider?.(firstEnabledProvider);
 
-      // Also update the model to the first available one for the new provider
       const firstModel = modelList.find((m) => m.provider === firstEnabledProvider.name);
 
       if (firstModel) {
