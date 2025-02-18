@@ -395,7 +395,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                       className={classNames(
                         'w-full pl-4 pt-4 pr-16 outline-none resize-none text-hanzo-elements-textPrimary placeholder-hanzo-elements-textTertiary bg-transparent text-sm',
                         'transition-all duration-200',
-                        'hover:border-hanzo-elements-focus',
+                        'hover:border-hanzo-elements-focus outline-none',
                       )}
                       onDragEnter={(e) => {
                         e.preventDefault();
