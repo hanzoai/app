@@ -21,7 +21,7 @@ export function SidebarToggle({ sidebarOpen, className }: SidebarToggleProps) {
           'opacity-100': !sidebarOpen,
           'fixed bottom-4 left-4 z-logo': !className,
         },
-        className
+        className,
       )}
     >
       <div className="i-ph:sidebar-simple-duotone text-xl" />

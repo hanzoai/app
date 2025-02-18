@@ -514,7 +514,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                           {isModelSettingsCollapsed ? <span className="text-xs">{model}</span> : <span />}
                         </IconButton>
                       </div>
-                      <Dropdown direction={chatStarted ? "up" : "down"} />
+                      <Dropdown direction={chatStarted ? 'up' : 'down'} />
                     </div>
                   </div>
                   <div>

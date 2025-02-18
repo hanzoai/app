@@ -17,9 +17,7 @@ const Dropdown: React.FC<DropdownProps> = ({ direction = 'down' }) => {
     setIsOpen(false); // Close the dropdown after selection
   };
 
-  const dropdownPosition = direction === 'up' 
-    ? "absolute bottom-full right-0 mb-2" 
-    : "absolute top-full right-0 mt-2";
+  const dropdownPosition = direction === 'up' ? 'absolute bottom-full right-0 mb-2' : 'absolute top-full right-0 mt-2';
 
   return (
     <div className="relative">
@@ -49,8 +47,10 @@ const Dropdown: React.FC<DropdownProps> = ({ direction = 'down' }) => {
         {selectedOption.charAt(0).toUpperCase() + selectedOption.slice(1)}
       </button>
       {isOpen && (
-        <div className={`${dropdownPosition} w-48 bg-hanzo-elements-background-depth-3 text-white rounded-md shadow-lg`}>
-          <div 
+        <div
+          className={`${dropdownPosition} w-48 bg-hanzo-elements-background-depth-3 text-white rounded-md shadow-lg`}
+        >
+          <div
             className="p-4 hover:bg-hanzo-elements-background-depth-4 transition-colors rounded-t-md cursor-pointer"
             onClick={() => handleOptionChange('public')}
           >
@@ -77,7 +77,7 @@ const Dropdown: React.FC<DropdownProps> = ({ direction = 'down' }) => {
             </div>
             <p className="text-xs">Anyone can view and remix</p>
           </div>
-          <div 
+          <div
             className="p-4 hover:bg-hanzo-elements-background-depth-4 transition-colors rounded-b-md cursor-pointer"
             onClick={() => handleOptionChange('private')}
           >
