@@ -115,7 +115,7 @@ ${escapeHanzoTags(file.content)}
       <button
         onClick={onClick}
         title="Clone a Git Repo"
-        className="px-4 py-2 rounded-lg border border-hanzo-elements-borderColor bg-hanzo-elements-prompt-background text-hanzo-elements-textPrimary hover:bg-hanzo-elements-background-depth-3 transition-all flex items-center gap-2"
+        className="px-4 py-2 rounded-full border border-hanzo-elements-borderColor bg-hanzo-elements-prompt-background text-hanzo-elements-textPrimary hover:bg-hanzo-elements-background-depth-3 transition-all flex items-center gap-2"
       >
         <span className="i-ph:git-branch" />
         Clone a Git Repo

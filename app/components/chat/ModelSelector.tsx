@@ -22,33 +22,25 @@ export const ModelSelector = ({
   providerList,
   modelLoading,
 }: ModelSelectorProps) => {
-  // Load enabled providers from cookies
-
-  // Update enabled providers when cookies change
+  // Set initial model on page load/refresh
   useEffect(() => {
-    if (!model && modelList.length > 0) {
-      const defaultModel = modelList.find((m) => m.name === 'o1');
-
-      if (defaultModel) {
-        setModel?.(defaultModel.name);
+    const hasInitialized = localStorage.getItem('modelSelector_initialized');
+    
+    if (modelList.length > 0 && !hasInitialized) {
+      const o1Model = modelList.find((m) => m.name === 'o1');
+      if (o1Model) {
+        setModel?.(o1Model.name);
+        localStorage.setItem('modelSelector_initialized', 'true');
       }
     }
+  }, [modelList, setModel]);
 
-    if (providerList.length == 0) {
-      return;
-    }
-
-    if (provider && !providerList.map((p) => p.name).includes(provider.name)) {
-      const firstEnabledProvider = providerList[0];
-      setProvider?.(firstEnabledProvider);
-
-      const firstModel = modelList.find((m) => m.provider === firstEnabledProvider.name);
-
-      if (firstModel) {
-        setModel?.(firstModel.name);
-      }
-    }
-  }, [providerList, provider, setProvider, modelList, setModel]);
+  // Clear initialization flag when component unmounts
+  useEffect(() => {
+    return () => {
+      localStorage.removeItem('modelSelector_initialized');
+    };
+  }, []);
 
   if (providerList.length === 0) {
     return (
@@ -66,23 +58,22 @@ export const ModelSelector = ({
       <select
         value={provider?.name ?? ''}
         onChange={(e) => {
-          const newProvider = providerList.find((p: ProviderInfo) => p.name === e.target.value);
-
-          if (newProvider && setProvider) {
-            setProvider(newProvider);
-          }
-
-          const firstModel = [...modelList].find((m) => m.provider === e.target.value);
-
-          if (firstModel && setModel) {
-            setModel(firstModel.name);
+          const selectedProvider = providerList.find((p) => p.name === e.target.value);
+          if (selectedProvider && setProvider) {
+            setProvider(selectedProvider);
+            
+            // Find and set the first model for this provider
+            const providerModels = modelList.filter(m => m.provider === selectedProvider.name);
+            if (providerModels.length > 0 && setModel) {
+              setModel(providerModels[0].name);
+            }
           }
         }}
         className="flex-1 p-2 rounded-full border border-hanzo-elements-borderColor bg-hanzo-elements-prompt-background text-hanzo-elements-textPrimary focus:outline-none focus:ring-2 focus:ring-hanzo-elements-focus transition-all"
       >
-        {providerList.map((provider: ProviderInfo) => (
-          <option key={provider.name} value={provider.name}>
-            {provider.name}
+        {providerList.map((p: ProviderInfo) => (
+          <option key={p.name} value={p.name}>
+            {p.name}
           </option>
         ))}
       </select>
@@ -99,7 +90,7 @@ export const ModelSelector = ({
           </option>
         ) : (
           [...modelList]
-            .filter((e) => e.provider == provider?.name && e.name)
+            .filter((e) => e.provider === provider?.name && e.name)
             .map((modelOption, index) => (
               <option key={index} value={modelOption.name}>
                 {modelOption.label}
