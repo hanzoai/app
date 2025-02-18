@@ -142,7 +142,7 @@ npm run dockerbuild
 docker build . --target hanzo-ai-development
 ```
 
-**Option 3: Docker Compose Profile**  
+**Option 3: Hanzo Compose Profile**  
 ```bash
 docker compose --profile development up
 ```
@@ -169,7 +169,7 @@ npm run dockerbuild:prod
 docker build . --target hanzo-ai-production
 ```
 
-**Option 3: Docker Compose Profile**  
+**Option 3: Hanzo Compose Profile**  
 ```bash
 docker compose --profile production up
 ```
@@ -185,7 +185,7 @@ docker run -p 5173:5173 --env-file .env.local hanzo-ai:production
 
 For an easy deployment process, use [Coolify](https://github.com/coollabsio/coolify):  
 1. Import your Git repository into Coolify.  
-2. Choose **Docker Compose** as the build pack.  
+2. Choose **Hanzo Compose** as the build pack.  
 3. Configure environment variables (e.g., API keys).  
 4. Set the start command:  
    ```bash
