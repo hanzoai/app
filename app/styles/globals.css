@@ -6,3 +6,17 @@
 *:focus {
   outline: none;
 }
+
+/* Add custom focus styles */
+*:focus-visible {
+  @apply ring-2 ring-blue-500 ring-opacity-50;
+}
+
+/* Ensure buttons and interactive elements have proper focus styles */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  @apply ring-2 ring-blue-500 ring-opacity-50 outline-none;
+} 
