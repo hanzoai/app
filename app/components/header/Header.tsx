@@ -1,6 +1,6 @@
 import { useStore } from '@nanostores/react';
 import { ClientOnly } from 'remix-utils/client-only';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { chatStore } from '~/lib/stores/chat';
 import { sidebarStore } from '~/lib/stores/sidebar';
 import { classNames } from '~/utils/classNames';
@@ -49,10 +49,7 @@ export function Header() {
             className="i-hanzo:logo?mask w-[24px] inline-block"
           />
           {sidebarOpen && (
-            <motion.span
-              key="text"
-              className="px-2 text-2xl font-semibold text-accent"
-            >
+            <motion.span key="text" className="px-2 text-2xl font-semibold text-accent">
               Hanzo
             </motion.span>
           )}
