@@ -5,7 +5,7 @@ import type { LanguageModelV1 } from 'ai';
 
 export default class HanzoProvider extends BaseProvider {
   name = 'Hanzo';
-  getApiKeyLink = undefined;
+  getApiKeyLink = 'https://platform.hanzo.ai/api-keys';
 
   config = {
     baseUrlKey: 'OPENAI_LIKE_API_BASE_URL',
