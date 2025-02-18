@@ -22,11 +22,11 @@ export const ModelSelector = ({
   providerList,
   modelLoading,
 }: ModelSelectorProps) => {
-
   // Clear initialization flag when component unmounts or window unloads
   useEffect(() => {
     const clearInitFlag = () => localStorage.removeItem('modelSelector_initialized');
     window.addEventListener('unload', clearInitFlag);
+
     return () => {
       window.removeEventListener('unload', clearInitFlag);
       clearInitFlag();
@@ -50,12 +50,14 @@ export const ModelSelector = ({
         value={provider?.name ?? ''}
         onChange={(e) => {
           const selectedProvider = providerList.find((p) => p.name === e.target.value);
+
           if (selectedProvider && setProvider) {
             setProvider(selectedProvider);
-            
+
             // Find and set the first model for this provider
-            const providerModels = modelList.filter(m => m.provider === selectedProvider.name);
+            const providerModels = modelList.filter((m) => m.provider === selectedProvider.name);
             console.log('providerModels = ', providerModels);
+
             if (providerModels.length > 0 && setModel) {
               setModel(providerModels[0].name);
             }

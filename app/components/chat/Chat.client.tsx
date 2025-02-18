@@ -12,7 +12,7 @@ import { useMessageParser, usePromptEnhancer, useShortcuts, useSnapScroll } from
 import { description, useChatHistory } from '~/lib/persistence';
 import { chatStore } from '~/lib/stores/chat';
 import { workbenchStore } from '~/lib/stores/workbench';
-import { DEFAULT_MODEL, DEFAULT_PROVIDER, PROMPT_COOKIE_KEY, PROVIDER_LIST } from '~/utils/constants';
+import { DEFAULT_PROVIDER, PROMPT_COOKIE_KEY, PROVIDER_LIST } from '~/utils/constants';
 import { cubicEasingFn } from '~/utils/easings';
 import { createScopedLogger, renderLogger } from '~/utils/logger';
 import { BaseChat } from './BaseChat';
@@ -122,15 +122,8 @@ export const ChatImpl = memo(
     const actionAlert = useStore(workbenchStore.alert);
     const { activeProviders, promptId, autoSelectTemplate, contextOptimizationEnabled } = useSettings();
 
-    // const [model, setModel] = useState(() => {
-    //   const savedModel = Cookies.get('selectedModel');
-    //   return savedModel || DEFAULT_MODEL;
-    // });
     const [model, setModel] = useState('o1');
     const [provider, setProvider] = useState(() => {
-      // const savedProvider = Cookies.get('selectedProvider');
-      // return (PROVIDER_LIST.find((p) => p.name === 'savedProvider') || DEFAULT_PROVIDER) as ProviderInfo;
-      const savedProvider = Cookies.get('selectedProvider');
       return (PROVIDER_LIST.find((p) => p.name === 'OpenAI') || DEFAULT_PROVIDER) as ProviderInfo;
     });
 
