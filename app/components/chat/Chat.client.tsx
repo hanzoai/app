@@ -122,13 +122,16 @@ export const ChatImpl = memo(
     const actionAlert = useStore(workbenchStore.alert);
     const { activeProviders, promptId, autoSelectTemplate, contextOptimizationEnabled } = useSettings();
 
-    const [model, setModel] = useState(() => {
-      const savedModel = Cookies.get('selectedModel');
-      return savedModel || DEFAULT_MODEL;
-    });
+    // const [model, setModel] = useState(() => {
+    //   const savedModel = Cookies.get('selectedModel');
+    //   return savedModel || DEFAULT_MODEL;
+    // });
+    const [model, setModel] = useState('o1');
     const [provider, setProvider] = useState(() => {
+      // const savedProvider = Cookies.get('selectedProvider');
+      // return (PROVIDER_LIST.find((p) => p.name === 'savedProvider') || DEFAULT_PROVIDER) as ProviderInfo;
       const savedProvider = Cookies.get('selectedProvider');
-      return (PROVIDER_LIST.find((p) => p.name === savedProvider) || DEFAULT_PROVIDER) as ProviderInfo;
+      return (PROVIDER_LIST.find((p) => p.name === 'OpenAI') || DEFAULT_PROVIDER) as ProviderInfo;
     });
 
     const { showChat } = useStore(chatStore);

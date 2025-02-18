@@ -22,24 +22,14 @@ export const ModelSelector = ({
   providerList,
   modelLoading,
 }: ModelSelectorProps) => {
-  // Set initial model on page load/refresh
+
+  // Clear initialization flag when component unmounts or window unloads
   useEffect(() => {
-    const hasInitialized = localStorage.getItem('modelSelector_initialized');
-
-    if (modelList.length > 0 && !hasInitialized) {
-      const o1Model = modelList.find((m) => m.name === 'o1');
-
-      if (o1Model) {
-        setModel?.(o1Model.name);
-        localStorage.setItem('modelSelector_initialized', 'true');
-      }
-    }
-  }, [modelList, setModel]);
-
-  // Clear initialization flag when component unmounts
-  useEffect(() => {
+    const clearInitFlag = () => localStorage.removeItem('modelSelector_initialized');
+    window.addEventListener('unload', clearInitFlag);
     return () => {
-      localStorage.removeItem('modelSelector_initialized');
+      window.removeEventListener('unload', clearInitFlag);
+      clearInitFlag();
     };
   }, []);
 
@@ -60,13 +50,12 @@ export const ModelSelector = ({
         value={provider?.name ?? ''}
         onChange={(e) => {
           const selectedProvider = providerList.find((p) => p.name === e.target.value);
-
           if (selectedProvider && setProvider) {
             setProvider(selectedProvider);
-
+            
             // Find and set the first model for this provider
-            const providerModels = modelList.filter((m) => m.provider === selectedProvider.name);
-
+            const providerModels = modelList.filter(m => m.provider === selectedProvider.name);
+            console.log('providerModels = ', providerModels);
             if (providerModels.length > 0 && setModel) {
               setModel(providerModels[0].name);
             }
