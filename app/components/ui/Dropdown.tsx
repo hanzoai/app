@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface DropdownProps {
   direction?: 'up' | 'down';
@@ -7,6 +7,20 @@ interface DropdownProps {
 const Dropdown: React.FC<DropdownProps> = ({ direction = 'down' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedOption, setSelectedOption] = useState('public');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const toggleDropdown = () => {
     setIsOpen(!isOpen);
@@ -20,7 +34,7 @@ const Dropdown: React.FC<DropdownProps> = ({ direction = 'down' }) => {
   const dropdownPosition = direction === 'up' ? 'absolute bottom-full right-0 mb-2' : 'absolute top-full right-0 mt-2';
 
   return (
-    <div className="relative">
+    <div className="relative" ref={dropdownRef}>
       <button
         onClick={toggleDropdown}
         className={`whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-ring enabled:hover:bg-hanzo-elements-item-backgroundActive disabled:cursor-not-allowed transition-all text-hanzo-elements-item-contentDefault hover:bg-hanzo-elements-background-depth-4 enabled:hover:text-hanzo-elements-item-contentActive rounded-md ml-auto flex h-fit items-center justify-center gap-1 px-1 py-0.5 focus-visible:ring-0 bg-hanzo-elements-background-depth-2`}
