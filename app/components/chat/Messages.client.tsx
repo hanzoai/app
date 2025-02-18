@@ -58,8 +58,8 @@ export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: 
               <div
                 key={index}
                 className={classNames('flex gap-4 p-6 w-full rounded-[calc(0.75rem-1px)]', {
-                  'bg-hanzo-elements-messages-background': isUserMessage || !isStreaming || (isStreaming && !isLast),
-                  'bg-gradient-to-b from-hanzo-elements-messages-background from-30% to-transparent':
+                  'bg-hanzo-elements-background-depth-2': isUserMessage || !isStreaming || (isStreaming && !isLast),
+                  'bg-gradient-to-b from-hanzo-elements-background-depth-2 from-30% to-transparent':
                     isStreaming && isLast,
                   'mt-4': !isFirst,
                 })}

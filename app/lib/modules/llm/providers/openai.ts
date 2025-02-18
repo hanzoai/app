@@ -82,14 +82,6 @@ export default class OpenAIProvider extends BaseProvider {
       throw new Error(`Missing API key for ${this.name} provider`);
     }
 
-    // Log environment info (safely)
-    console.log('Environment:', {
-      isProduction: process.env.NODE_ENV === 'production',
-      model,
-      hasApiKey: !!apiKey,
-      apiKeyLength: apiKey?.length,
-    });
-
     const openai = createOpenAI({
       apiKey,
       baseURL: 'https://api.openai.com/v1', // Explicitly set the base URL

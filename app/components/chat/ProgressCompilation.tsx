@@ -41,6 +41,7 @@ export default function ProgressCompilation({ data }: { data?: ProgressAnnotatio
           'border border-hanzo-elements-borderColor',
           'shadow-lg rounded-full  relative w-full max-w-chat mx-auto z-prompt',
           'p-1',
+          'mb-2'
         )}
         style={{ transform: 'translateY(1rem)' }}
       >
