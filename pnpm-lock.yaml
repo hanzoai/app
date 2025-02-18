@@ -239,6 +239,9 @@ importers:
       shiki:
         specifier: ^1.24.0
         version: 1.24.0
+      strip-ansi:
+        specifier: ^7.1.0
+        version: 7.1.0
       unist-util-visit:
         specifier: ^5.0.0
         version: 5.0.0
