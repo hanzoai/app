@@ -28,6 +28,7 @@ export const ModelSelector = ({
   useEffect(() => {
     if (!model && modelList.length > 0) {
       const defaultModel = modelList.find((m) => m.name === 'o1');
+
       if (defaultModel) {
         setModel?.(defaultModel.name);
       }

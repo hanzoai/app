@@ -371,7 +371,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                      */
                   )}
                 >
-                 <FilePreview
+                  <FilePreview
                     files={uploadedFiles}
                     imageDataList={imageDataList}
                     onRemove={(index) => {
@@ -389,11 +389,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                       />
                     )}
                   </ClientOnly>
-                  <div
-                    className={classNames(
-                      'relative shadow-xs backdrop-blur rounded-lg',
-                    )}
-                  >
+                  <div className={classNames('relative shadow-xs backdrop-blur rounded-lg')}>
                     <textarea
                       ref={textareaRef}
                       className={classNames(
