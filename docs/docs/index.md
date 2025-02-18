@@ -154,7 +154,7 @@ Once you've configured your keys, the application will be ready to use the selec
    ```  
 
 2. **Run the Container**:  
-   Use Docker Compose profiles to manage environments:  
+   Use Hanzo Compose profiles to manage environments:  
    ```bash  
    docker compose --profile development up 
    ```  
