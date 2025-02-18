@@ -40,32 +40,22 @@ export function Header() {
     >
       <div className="flex items-center gap-2 z-logo text-hanzo-elements-textPrimary cursor-pointer">
         <a href="/" className="text-2xl font-semibold text-accent flex items-center">
-          <AnimatePresence mode="wait">
-            {!sidebarOpen && (
-              <motion.span
-                key="logo"
-                variants={logoVariants}
-                initial="hidden"
-                animate="visible"
-                exit="hidden"
-                className="i-hanzo:logo?mask w-[24px] inline-block"
-              />
-            )}
-          </AnimatePresence>
-          <AnimatePresence mode="wait">
-            {sidebarOpen && (
-              <motion.span
-                key="text"
-                variants={logoVariants}
-                initial="hidden"
-                animate="visible"
-                exit="hidden"
-                className="text-2xl font-semibold text-accent"
-              >
-                Hanzo
-              </motion.span>
-            )}
-          </AnimatePresence>
+          <motion.span
+            key="logo"
+            variants={logoVariants}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+            className="i-hanzo:logo?mask w-[24px] inline-block"
+          />
+          {sidebarOpen && (
+            <motion.span
+              key="text"
+              className="px-2 text-2xl font-semibold text-accent"
+            >
+              Hanzo
+            </motion.span>
+          )}
         </a>
       </div>
       {chat.started && ( // Display ChatDescription and HeaderActionButtons only when the chat has started.
