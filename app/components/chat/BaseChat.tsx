@@ -397,14 +397,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                         'transition-all duration-200',
                         'hover:border-hanzo-elements-focus outline-none',
                       )}
-                      onDragEnter={(e) => {
-                        e.preventDefault();
-                        e.currentTarget.style.border = '2px solid #1488fc';
-                      }}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.currentTarget.style.border = '2px solid #1488fc';
-                      }}
                       onDragLeave={(e) => {
                         e.preventDefault();
                         e.currentTarget.style.border = '1px solid var(--hanzo-elements-borderColor)';
