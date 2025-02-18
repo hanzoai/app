@@ -14,6 +14,7 @@ import { useSearchFilter } from '~/lib/hooks/useSearchFilter';
 import { SidebarToggle } from './SidebarToggle';
 import { sidebarStore } from '~/lib/stores/sidebar';
 import { useStore } from '@nanostores/react';
+import { chatStore } from '~/lib/stores/chat';
 
 const menuVariants = {
   closed: {
@@ -65,6 +66,7 @@ export const Menu = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const open = useStore(sidebarStore.isOpen);
+  const chat = useStore(chatStore);
   const setOpen = (value: boolean) => sidebarStore.isOpen.set(value);
 
   const { filteredItems: filteredList, handleSearchChange } = useSearchFilter({
@@ -234,7 +236,7 @@ export const Menu = () => {
         </div>
         <SettingsWindow open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       </motion.div>
-      <SidebarToggle sidebarOpen={open} />
+      {!chat.started && <SidebarToggle sidebarOpen={open} />}
     </>
   );
 };

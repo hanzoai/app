@@ -39,15 +39,15 @@ export default function ProgressCompilation({ data }: { data?: ProgressAnnotatio
         className={classNames(
           'bg-hanzo-elements-background-depth-2',
           'border border-hanzo-elements-borderColor',
-          'shadow-lg rounded-lg  relative w-full max-w-chat mx-auto z-prompt',
+          'shadow-lg rounded-full  relative w-full max-w-chat mx-auto z-prompt',
           'p-1',
         )}
         style={{ transform: 'translateY(1rem)' }}
       >
         <div
           className={classNames(
-            'bg-hanzo-elements-item-backgroundAccent',
-            'p-1 rounded-lg text-hanzo-elements-item-contentAccent',
+            'bg-hanzo-elements-background-depth-2',
+            'p-1 rounded-full text-hanzo-elements-item-contentAccent',
             'flex ',
           )}
         >
@@ -75,7 +75,7 @@ export default function ProgressCompilation({ data }: { data?: ProgressAnnotatio
             animate={{ width: 'auto' }}
             exit={{ width: 0 }}
             transition={{ duration: 0.15, ease: cubicEasingFn }}
-            className=" p-1 rounded-lg bg-hanzo-elements-item-backgroundAccent hover:bg-hanzo-elements-artifacts-backgroundHover"
+            className=" p-1 rounded-lg bg-hanzo-elements-background-depth-2 hover:bg-hanzo-elements-background-depth-3"
             onClick={() => setExpanded((v) => !v)}
           >
             <div className={expanded ? 'i-ph:caret-up-bold' : 'i-ph:caret-down-bold'}></div>
