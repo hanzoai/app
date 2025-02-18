@@ -1,27 +1,27 @@
-export type DebugLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error';
-import { Chalk } from 'chalk';
+export type DebugLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error'
+import { Chalk } from 'chalk'
+import stripAnsi from 'strip-ansi'
 
 // Force disable ANSI colors in Vercel logs.
-const isVercel = typeof process !== 'undefined' && !!process.env.VERCEL;
-
+const isVercel = typeof process !== 'undefined' && !!process.env.VERCEL
 if (isVercel) {
-  process.env.FORCE_COLOR = '0';
+  process.env.FORCE_COLOR = '0'
 }
 
-const chalk = new Chalk({ level: isVercel ? 0 : 3 });
+const chalk = new Chalk({ level: isVercel ? 0 : 3 })
 
-type LoggerFunction = (...messages: any[]) => void;
+type LoggerFunction = (...messages: any[]) => void
 
 interface Logger {
-  trace: LoggerFunction;
-  debug: LoggerFunction;
-  info: LoggerFunction;
-  warn: LoggerFunction;
-  error: LoggerFunction;
-  setLevel: (level: DebugLevel) => void;
+  trace: LoggerFunction
+  debug: LoggerFunction
+  info: LoggerFunction
+  warn: LoggerFunction
+  error: LoggerFunction
+  setLevel: (level: DebugLevel) => void
 }
 
-let currentLevel: DebugLevel = (import.meta.env.VITE_LOG_LEVEL ?? import.meta.env.DEV) ? 'debug' : 'info';
+let currentLevel: DebugLevel = (import.meta.env.VITE_LOG_LEVEL ?? import.meta.env.DEV) ? 'debug' : 'info'
 
 export const logger: Logger = {
   trace: (...messages: any[]) => log('trace', undefined, messages),
@@ -30,7 +30,7 @@ export const logger: Logger = {
   warn: (...messages: any[]) => log('warn', undefined, messages),
   error: (...messages: any[]) => log('error', undefined, messages),
   setLevel,
-};
+}
 
 export function createScopedLogger(scope: string): Logger {
   return {
@@ -40,88 +40,74 @@ export function createScopedLogger(scope: string): Logger {
     warn: (...messages: any[]) => log('warn', scope, messages),
     error: (...messages: any[]) => log('error', scope, messages),
     setLevel,
-  };
+  }
 }
 
 function setLevel(level: DebugLevel) {
   if ((level === 'trace' || level === 'debug') && import.meta.env.PROD) {
-    return;
+    return
   }
-
-  currentLevel = level;
+  currentLevel = level
 }
 
 function log(level: DebugLevel, scope: string | undefined, messages: any[]) {
-  const levelOrder: DebugLevel[] = ['trace', 'debug', 'info', 'warn', 'error'];
-
+  const levelOrder: DebugLevel[] = ['trace', 'debug', 'info', 'warn', 'error']
   if (levelOrder.indexOf(level) < levelOrder.indexOf(currentLevel)) {
-    return;
+    return
   }
 
   const allMessages = messages.reduce((acc, current) => {
     if (acc.endsWith('\n')) {
-      return acc + current;
+      return acc + current
     }
-
     if (!acc) {
-      return current;
+      return current
     }
+    return `${acc} ${current}`
+  }, '')
 
-    return `${acc} ${current}`;
-  }, '');
+  const labelBackgroundColor = getColorForLevel(level)
+  const labelTextColor = level === 'warn' ? '#000000' : '#FFFFFF'
 
-  const labelBackgroundColor = getColorForLevel(level);
-  const labelTextColor = level === 'warn' ? '#000000' : '#FFFFFF';
-
-  const labelStyles = getLabelStyles(labelBackgroundColor, labelTextColor);
-  const scopeStyles = getLabelStyles('#77828D', 'white');
-
-  const styles = [labelStyles];
-
+  const labelStyles = getLabelStyles(labelBackgroundColor, labelTextColor)
+  const scopeStyles = getLabelStyles('#77828D', 'white')
+  const styles = [labelStyles]
   if (typeof scope === 'string') {
-    styles.push('', scopeStyles);
+    styles.push('', scopeStyles)
   }
 
-  let labelText = formatText(` ${level.toUpperCase()} `, labelTextColor, labelBackgroundColor);
-
+  let labelText = formatText(` ${level.toUpperCase()} `, labelTextColor, labelBackgroundColor)
   if (scope) {
-    labelText = `${labelText} ${formatText(` ${scope} `, '#FFFFFF', '77828D')}`;
+    labelText = `${labelText} ${formatText(` ${scope} `, '#FFFFFF', '77828D')}`
   }
 
-  if (typeof window !== 'undefined') {
-    console.log(`%c${level.toUpperCase()}${scope ? `%c %c${scope}` : ''}`, ...styles, allMessages);
+  // On Vercel, strip ANSI codes; locally, show color.
+  if (isVercel) {
+    const plainLabel = stripAnsi(labelText)
+    const plainMessages = typeof allMessages === 'string' ? stripAnsi(allMessages) : allMessages
+    console.log(plainLabel, plainMessages)
   } else {
-    console.log(`${labelText}`, allMessages);
+    console.log(labelText, allMessages)
   }
 }
 
 function formatText(text: string, color: string, bg: string) {
-  return chalk.bgHex(bg)(chalk.hex(color)(text));
+  return chalk.bgHex(bg)(chalk.hex(color)(text))
 }
 
 function getLabelStyles(color: string, textColor: string) {
-  return `background-color: ${color}; color: white; border: 4px solid ${color}; color: ${textColor};`;
+  return `background-color: ${color}; color: ${textColor}; border: 4px solid ${color};`
 }
 
 function getColorForLevel(level: DebugLevel): string {
   switch (level) {
     case 'trace':
-    case 'debug': {
-      return '#77828D';
-    }
-    case 'info': {
-      return '#1389FD';
-    }
-    case 'warn': {
-      return '#FFDB6C';
-    }
-    case 'error': {
-      return '#EE4744';
-    }
-    default: {
-      return '#000000';
-    }
+    case 'debug': return '#77828D'
+    case 'info': return '#1389FD'
+    case 'warn': return '#FFDB6C'
+    case 'error': return '#EE4744'
+    default: return '#000000'
   }
 }
 
-export const renderLogger = createScopedLogger('Render');
+export const renderLogger = createScopedLogger('Render')

@@ -69,8 +69,8 @@ export function Header() {
             className="i-hanzo:logo?mask w-[24px] inline-block"
           />
           {sidebarOpen && (
-            <motion.span 
-              key="text" 
+            <motion.span
+              key="text"
               variants={textVariants}
               initial="hidden"
               animate="visible"
