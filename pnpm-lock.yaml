@@ -300,6 +300,9 @@ importers:
       sass-embedded:
         specifier: ^1.81.0
         version: 1.81.0
+      strip-ansi:
+        specifier: ^7.1.0
+        version: 7.1.0
       typescript:
         specifier: ^5.7.2
         version: 5.7.2

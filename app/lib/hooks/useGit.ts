@@ -53,7 +53,7 @@ export function useGit() {
       const headers: {
         [x: string]: string;
       } = {
-        'User-Agent': 'hanzo.diy',
+        'User-Agent': 'hanzo.app',
       };
 
       const auth = lookupSavedPassword(url);
