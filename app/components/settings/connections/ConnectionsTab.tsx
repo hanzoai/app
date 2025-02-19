@@ -19,7 +19,7 @@ export default function ConnectionsTab() {
     // Load credentials from environment variables
     const envUsername = import.meta.env.GITHUB_USERNAME;
     const envToken = import.meta.env.GITHUB_TOKEN;
-    
+
     // Get existing cookies
     const cookieUsername = Cookies.get('githubUsername');
     const cookieToken = Cookies.get('githubToken');
@@ -28,8 +28,10 @@ export default function ConnectionsTab() {
     if (envUsername && !cookieUsername) {
       Cookies.set('githubUsername', envUsername);
     }
+
     if (envToken && !cookieToken) {
       Cookies.set('githubToken', envToken);
+
       if (envUsername) {
         // Set git credentials cookie if both username and token are available
         Cookies.set('git:github.com', JSON.stringify({ username: envToken, password: 'x-oauth-basic' }));
@@ -39,7 +41,7 @@ export default function ConnectionsTab() {
     // Now load from cookies (which may have just been set from env vars)
     const finalUsername = Cookies.get('githubUsername') || '';
     const finalToken = Cookies.get('githubToken') || '';
-    
+
     setGithubUsername(finalUsername);
     setGithubToken(finalToken);
 

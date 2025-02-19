@@ -13,10 +13,12 @@ export function initializeGitHubCredentials() {
 
   if (envToken && !Cookies.get('githubToken')) {
     Cookies.set('githubToken', envToken);
+
     if (envUsername) {
       // Set git credentials cookie if both username and token are available
       Cookies.set('git:github.com', JSON.stringify({ username: envToken, password: 'x-oauth-basic' }));
     }
+
     logStore.logSystem('GitHub token initialized from environment');
   }
-} 
+}

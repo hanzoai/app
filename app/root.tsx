@@ -83,7 +83,7 @@ export default function App() {
   useEffect(() => {
     // Initialize GitHub credentials from environment variables
     initializeGitHubCredentials();
-    
+
     logStore.logSystem('Application initialized', {
       theme,
       platform: navigator.platform,
