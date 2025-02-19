@@ -22,7 +22,8 @@ interface Logger {
   setLevel: (level: DebugLevel) => void;
 }
 
-let currentLevel: DebugLevel = (import.meta.env.VITE_LOG_LEVEL ?? import.meta.env.DEV) ? 'debug' : 'info';
+// Updated to use Boolean() to ensure a boolean condition.
+let currentLevel: DebugLevel = (Boolean(import.meta.env.VITE_LOG_LEVEL) || import.meta.env.DEV) ? 'debug' : 'info';
 
 export const logger: Logger = {
   trace: (...messages: any[]) => log('trace', undefined, messages),
