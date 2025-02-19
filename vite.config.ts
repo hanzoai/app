@@ -36,6 +36,19 @@ export default defineConfig((config) => {
       rollupOptions: {
         output: {
           sourcemapExcludeSources: true, // Include source content in the map
+          manualChunks: {
+            vendor: ['react', 'react-dom'],
+          },
+        },
+      },
+      commonjsOptions: {
+        strictRequires: true,
+      },
+      minify: 'terser',
+      terserOptions: {
+        compress: {
+          drop_console: true,
+          drop_debugger: true,
         },
       },
     },
