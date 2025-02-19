@@ -249,15 +249,15 @@
   --hanzo-elements-terminal-color-brightCyan: var(--hanzo-terminal-brightCyan);
   --hanzo-elements-terminal-color-brightWhite: var(--hanzo-terminal-brightWhite);
 
-  --font-family-sans: 'Plus Jakarta Sans', sans-serif;
+  --font-family-sans: 'Inter', sans-serif;
 }
 
 body {
   font-family: var(--font-family-sans);
 }
 
-.font-plus-jakarta-sans {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+.font-inter {
+  font-family: 'Inter', sans-serif;
 }
 
 :focus {

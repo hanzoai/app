@@ -38,7 +38,7 @@ const Dropdown: React.FC<DropdownProps> = ({ direction = 'down' }) => {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={toggleDropdown}
-        className={`whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-ring enabled:hover:bg-hanzo-elements-item-backgroundActive disabled:cursor-not-allowed transition-all text-hanzo-elements-item-contentDefault hover:bg-hanzo-elements-background-depth-4 enabled:hover:text-hanzo-elements-item-contentActive rounded-md ml-auto flex h-fit items-center justify-center gap-1 px-1 py-0.5 focus-visible:ring-0 bg-hanzo-elements-background-depth-2`}
+        className={`whitespace-nowrap text-sm font-medium font-inter transition-colors focus-visible:outline-none focus-visible:ring-ring enabled:hover:bg-hanzo-elements-item-backgroundActive disabled:cursor-not-allowed transition-all text-hanzo-elements-item-contentDefault hover:bg-hanzo-elements-background-depth-4 enabled:hover:text-hanzo-elements-item-contentActive rounded-md ml-auto flex h-fit items-center justify-center gap-1 px-1 py-0.5 focus-visible:ring-0 bg-hanzo-elements-background-depth-2`}
         type="button"
         aria-haspopup="dialog"
         aria-expanded={isOpen}
