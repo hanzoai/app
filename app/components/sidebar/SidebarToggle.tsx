@@ -19,7 +19,7 @@ export function SidebarToggle({ sidebarOpen, className }: SidebarToggleProps) {
         {
           'opacity-0': sidebarOpen,
           'opacity-100': !sidebarOpen,
-          'fixed bottom-4 left-4 z-logo': !className,
+          'fixed bottom-4 left-4': !className,
         },
         className,
       )}
