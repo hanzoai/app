@@ -10,14 +10,41 @@ interface GitHubUserResponse {
 }
 
 export default function ConnectionsTab() {
-  const [githubUsername, setGithubUsername] = useState(Cookies.get('githubUsername') || '');
-  const [githubToken, setGithubToken] = useState(Cookies.get('githubToken') || '');
+  const [githubUsername, setGithubUsername] = useState('');
+  const [githubToken, setGithubToken] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
 
   useEffect(() => {
-    // Check if credentials exist and verify them
-    if (githubUsername && githubToken) {
+    // Load credentials from environment variables
+    const envUsername = import.meta.env.GITHUB_USERNAME;
+    const envToken = import.meta.env.GITHUB_TOKEN;
+    
+    // Get existing cookies
+    const cookieUsername = Cookies.get('githubUsername');
+    const cookieToken = Cookies.get('githubToken');
+
+    // If environment variables exist and cookies don't, set the cookies
+    if (envUsername && !cookieUsername) {
+      Cookies.set('githubUsername', envUsername);
+    }
+    if (envToken && !cookieToken) {
+      Cookies.set('githubToken', envToken);
+      if (envUsername) {
+        // Set git credentials cookie if both username and token are available
+        Cookies.set('git:github.com', JSON.stringify({ username: envToken, password: 'x-oauth-basic' }));
+      }
+    }
+
+    // Now load from cookies (which may have just been set from env vars)
+    const finalUsername = Cookies.get('githubUsername') || '';
+    const finalToken = Cookies.get('githubToken') || '';
+    
+    setGithubUsername(finalUsername);
+    setGithubToken(finalToken);
+
+    // Verify credentials if they exist
+    if (finalUsername && finalToken) {
       verifyGitHubCredentials();
     }
   }, []);

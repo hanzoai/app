@@ -95,7 +95,9 @@ export default defineConfig((config) => {
       "PERPLEXITY_API_KEY",
       "AWS_BEDROCK_CONFIG",
       "RUNNING_IN_DOCKER",
-      "DEFAULT_NUM_CTX"
+      "DEFAULT_NUM_CTX",
+      "GITHUB_USERNAME",
+      "GITHUB_TOKEN"
     ],
     css: {
       preprocessorOptions: {
