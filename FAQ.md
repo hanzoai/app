@@ -17,17 +17,17 @@ For the best experience with hanzo-ai, we recommend using the following models:
 <details>
 <summary><strong>How do I get the best results with hanzo-ai?</strong></summary>
 
-- **Be specific about your stack**:  
+- **Be specific about your stack**:
   Mention the frameworks or libraries you want to use (e.g., Astro, Tailwind, ShadCN) in your initial prompt. This ensures that hanzo-ai scaffolds the project according to your preferences.
 
-- **Use the enhance prompt icon**:  
+- **Use the enhance prompt icon**:
   Before sending your prompt, click the *enhance* icon to let the AI refine your prompt. You can edit the suggested improvements before submitting.
 
-- **Scaffold the basics first, then add features**:  
+- **Scaffold the basics first, then add features**:
   Ensure the foundational structure of your application is in place before introducing advanced functionality. This helps hanzo-ai establish a solid base to build on.
 
-- **Batch simple instructions**:  
-  Combine simple tasks into a single prompt to save time and reduce API credit consumption. For example:  
+- **Batch simple instructions**:
+  Combine simple tasks into a single prompt to save time and reduce API credit consumption. For example:
   *"Change the color scheme, add mobile responsiveness, and restart the dev server."*
 </details>
 
@@ -40,14 +40,14 @@ Check out our [Contribution Guide](CONTRIBUTING.md) for more details on how to g
 <details>
 <summary><strong>What are the future plans for hanzo-ai?</strong></summary>
 
-Visit our [Roadmap](https://roadmap.sh/r/ottodev-roadmap-2ovzo) for the latest updates.  
+Visit our [Roadmap](https://roadmap.sh/r/ottodev-roadmap-2ovzo) for the latest updates.
 New features and improvements are on the way!
 </details>
 
 <details>
 <summary><strong>Why are there so many open issues/pull requests?</strong></summary>
 
-hanzo-ai began as a small showcase project on @ColeMedin's YouTube channel to explore editing open-source projects with local LLMs. However, it quickly grew into a massive community effort!  
+hanzo-ai began as a small showcase project on @ColeMedin's YouTube channel to explore editing open-source projects with local LLMs. However, it quickly grew into a massive community effort!
 
 We're forming a team of maintainers to manage demand and streamline issue resolution. The maintainers are rockstars, and we're also exploring partnerships to help the project thrive.
 </details>
@@ -67,11 +67,11 @@ This generic error message means something went wrong. Check both:
 - The developer console in your browser (press `F12` or right-click > *Inspect*, then go to the *Console* tab).
 
 ### **"x-api-key header missing"**
-This error is sometimes resolved by restarting the Docker container.  
+This error is sometimes resolved by restarting the Docker container.
 If that doesn't work, try switching from Docker to `pnpm` or vice versa. We're actively investigating this issue.
 
 ### **Blank preview when running the app**
-A blank preview often occurs due to hallucinated bad code or incorrect commands.  
+A blank preview often occurs due to hallucinated bad code or incorrect commands.
 To troubleshoot:
 - Check the developer console for errors.
 - Remember, previews are core functionality, so the app isn't broken! We're working on making these errors more transparent.
@@ -82,8 +82,6 @@ Local LLMs like Qwen-2.5-Coder are powerful for small applications but still exp
 ### **"Received structured exception #0xc0000005: access violation"**
 If you are getting this, you are probably on Windows. The fix is generally to update the [Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)
 
-### **"Miniflare or Wrangler errors in Windows"**
-You will need to make sure you have the latest version of Visual Studio C++ installed (14.40.33816), more information here https://github.com/stackblitz-labs/hanzo-ai/issues/19.
 </details>
 
 ---

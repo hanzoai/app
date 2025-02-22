@@ -5,7 +5,9 @@ far from being enterprisy- it's still anarchy all over the place 😉
 
 But we need to organize ourselves somehow, right?
 
-> tl;dr: We've got a project board with epics and features. We use PRs as change log and as materialized features. Find it [here](https://github.com/orgs/stackblitz-labs/projects/4).
+> tl;dr: We've got a project board with epics and features. We use PRs as change
+> log and as materialized features. Find it
+> [here](https://github.com/orgs/hanzoai/projects/2).
 
 Here's how we structure long-term vision, mid-term capabilities of the software and short term improvements.
 
@@ -47,7 +49,7 @@ The feature therefore tries to describe *what* should be improved but not in det
 
 ## PRs as materialized features (short-term)
 
-Once a developer starts working on a feature, a draft-PR *can* be opened asap to share, describe and discuss, how the feature shall be implemented. But: this is not a must. It just helps to get early feedback and get other developers involved. Sometimes, the developer just wants to get started and then open a PR later. 
+Once a developer starts working on a feature, a draft-PR *can* be opened asap to share, describe and discuss, how the feature shall be implemented. But: this is not a must. It just helps to get early feedback and get other developers involved. Sometimes, the developer just wants to get started and then open a PR later.
 
 In a loosely organized project, it may as well happen that multiple PRs are opened for the same feature. This is no real issue: Usually, peoply being passionate about a solution are willing to join forces and get it done together. And if a second developer was just faster getting the same feature realized: Be happy that it's been done, close the PR and look out for the next feature to implement 🤓
 
