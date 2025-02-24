@@ -69,6 +69,9 @@ export default defineConfig((config) => {
         '@hanzo/ui/util',
       ]
     },
+    ssr: {
+      noExternal: ['@nanostores', '@nanostores/react', 'react-dnd', 'react-dnd-html5-backend'],
+    },
     // https://github.com/remix-run/remix/issues/10156#issuecomment-2440234744
     server: {
       warmup: {
