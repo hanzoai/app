@@ -60,9 +60,7 @@ export const Head = createHead(() => (
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <ClientOnly fallback={<>{children}</>}>
-        {() => <ClientLayout>{children}</ClientLayout>}
-      </ClientOnly>
+      <ClientOnly fallback={<>{children}</>}>{() => <ClientLayout>{children}</ClientLayout>}</ClientOnly>
       <ScrollRestoration />
       <Scripts />
     </>
@@ -74,6 +72,7 @@ function ClientLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     document.querySelector('html')?.setAttribute('data-theme', theme);
   }, [theme]);
+
   return <>{children}</>;
 }
 
