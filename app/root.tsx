@@ -13,8 +13,7 @@ import tailwindReset from '@unocss/reset/tailwind-compat.css?url';
 import { themeStore } from './lib/stores/theme';
 import { stripIndents } from './utils/stripIndent';
 import { createHead } from 'remix-island';
-import React, { useEffect, useState, Component } from 'react';
-import type { ErrorInfo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { logStore } from './lib/stores/logs';
 import { initializeGitHubCredentials } from './lib/stores/github';
 import { ClientOnly } from 'remix-utils/client-only';
@@ -77,63 +76,16 @@ function ClientLayout({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-class SafeClientLayout extends Component<{ children: React.ReactNode }, { hasError: boolean }> {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false };
-  }
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    logStore.logSystem('SafeClientLayout error', {
-      error: error.message,
-      componentStack: errorInfo.componentStack
-    });
-  }
-  render() {
-    return this.state.hasError ? <>{this.props.children}</> : this.props.children;
-  }
-}
-
-class SafeOutlet extends Component<{ children?: React.ReactNode }, { hasError: boolean }> {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false };
-  }
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    logStore.logSystem('SafeOutlet error', {
-      error: error.message,
-      componentStack: errorInfo.componentStack
-    });
-  }
-  render() {
-    return this.state.hasError ? (
-      <div style={{ padding: '1rem', textAlign: 'center' }}>
-        Something went wrong. Please try reloading.
-      </div>
-    ) : (
-      this.props.children
-    );
-  }
-}
-
-export function Layout({ children }: { children: React.ReactNode }) {
+export function Layout() {
   return (
     <>
-      <ClientOnly fallback={<>{children}</>}>
+      <ClientOnly fallback={null}>
         {() => (
-          <SafeClientLayout>
-            <ClientLayout>{children}</ClientLayout>
-          </SafeClientLayout>
+          <ClientLayout>
+            <Outlet />
+          </ClientLayout>
         )}
       </ClientOnly>
-      <SafeOutlet>
-        <Outlet />
-      </SafeOutlet>
       <ScrollRestoration />
       <Scripts />
     </>
@@ -150,11 +102,7 @@ export default function App() {
       timestamp: new Date().toISOString()
     });
   }, []);
-  return (
-    <Layout>
-      <Outlet />
-    </Layout>
-  );
+  return <Layout />;
 }
 
 export function ErrorBoundary() {
@@ -165,14 +113,12 @@ export function ErrorBoundary() {
       timestamp: new Date().toISOString()
     });
   }, [error]);
-
   let errorMessage = 'An unexpected error occurred.';
   if (isRouteErrorResponse(error)) {
     errorMessage = `${error.status} ${error.statusText}`;
   } else if (error instanceof Error) {
     errorMessage = error.message;
   }
-
   return (
     <html>
       <head>
