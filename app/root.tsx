@@ -1,14 +1,6 @@
 import { useStore } from '@nanostores/react';
 import type { LinksFunction } from '@remix-run/node';
-import {
-  Links,
-  Meta,
-  Outlet,
-  Scripts,
-  ScrollRestoration,
-  useRouteError,
-  isRouteErrorResponse
-} from '@remix-run/react';
+import { Links, Meta, Outlet, Scripts, ScrollRestoration, useRouteError, isRouteErrorResponse } from '@remix-run/react';
 import tailwindReset from '@unocss/reset/tailwind-compat.css?url';
 import { themeStore } from './lib/stores/theme';
 import { stripIndents } from './utils/stripIndent';
@@ -34,8 +26,8 @@ export const links: LinksFunction = () => [
   { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
   {
     rel: 'stylesheet',
-    href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
-  }
+    href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
+  },
 ];
 
 const inlineThemeCode = stripIndents`
@@ -59,6 +51,7 @@ export const Head = createHead(() => (
 function ClientLayout({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   let theme = 'dark';
+
   try {
     theme = useStore(themeStore) || 'dark';
   } catch (e: any) {
@@ -66,13 +59,18 @@ function ClientLayout({ children }: { children: React.ReactNode }) {
   }
   useEffect(() => {
     setMounted(true);
+
     try {
       document.documentElement.setAttribute('data-theme', theme);
     } catch (e: any) {
       logStore.logSystem('ClientLayout setAttribute error', { error: e.message });
     }
   }, [theme]);
-  if (!mounted) return null;
+
+  if (!mounted) {
+    return null;
+  }
+
   return <>{children}</>;
 }
 
@@ -99,7 +97,7 @@ export default function App() {
       theme: 'dark',
       platform: navigator.platform,
       userAgent: navigator.userAgent,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }, []);
   return <Layout />;
@@ -110,15 +108,18 @@ export function ErrorBoundary() {
   useEffect(() => {
     logStore.logSystem('Unhandled error', {
       error: error instanceof Error ? error.message : JSON.stringify(error),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }, [error]);
+
   let errorMessage = 'An unexpected error occurred.';
+
   if (isRouteErrorResponse(error)) {
     errorMessage = `${error.status} ${error.statusText}`;
   } else if (error instanceof Error) {
     errorMessage = error.message;
   }
+
   return (
     <html>
       <head>
