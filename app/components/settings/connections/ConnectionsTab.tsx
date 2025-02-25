@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import Cookies from 'js-cookie';
 import { logStore } from '~/lib/stores/logs';
@@ -14,42 +14,6 @@ export default function ConnectionsTab() {
   const [githubToken, setGithubToken] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-
-  useEffect(() => {
-    // Load credentials from environment variables
-    const envUsername = import.meta.env.GITHUB_USERNAME;
-    const envToken = import.meta.env.GITHUB_TOKEN;
-
-    // Get existing cookies
-    const cookieUsername = Cookies.get('githubUsername');
-    const cookieToken = Cookies.get('githubToken');
-
-    // If environment variables exist and cookies don't, set the cookies
-    if (envUsername && !cookieUsername) {
-      Cookies.set('githubUsername', envUsername);
-    }
-
-    if (envToken && !cookieToken) {
-      Cookies.set('githubToken', envToken);
-
-      if (envUsername) {
-        // Set git credentials cookie if both username and token are available
-        Cookies.set('git:github.com', JSON.stringify({ username: envToken, password: 'x-oauth-basic' }));
-      }
-    }
-
-    // Now load from cookies (which may have just been set from env vars)
-    const finalUsername = Cookies.get('githubUsername') || '';
-    const finalToken = Cookies.get('githubToken') || '';
-
-    setGithubUsername(finalUsername);
-    setGithubToken(finalToken);
-
-    // Verify credentials if they exist
-    if (finalUsername && finalToken) {
-      verifyGitHubCredentials();
-    }
-  }, []);
 
   const verifyGitHubCredentials = async () => {
     setIsVerifying(true);
@@ -94,21 +58,22 @@ export default function ConnectionsTab() {
     const isValid = await verifyGitHubCredentials();
 
     if (isValid) {
+      // Only set cookies when user explicitly sets credentials
       Cookies.set('githubUsername', githubUsername);
       Cookies.set('githubToken', githubToken);
+      Cookies.set('git:github.com', JSON.stringify({ username: githubToken, password: 'x-oauth-basic' }));
       logStore.logSystem('GitHub connection settings updated', {
         username: githubUsername,
         hasToken: !!githubToken,
       });
       toast.success('GitHub credentials verified and saved successfully!');
-      Cookies.set('git:github.com', JSON.stringify({ username: githubToken, password: 'x-oauth-basic' }));
-      setIsConnected(true);
     } else {
       toast.error('Invalid GitHub credentials. Please check your username and token.');
     }
   };
 
   const handleDisconnect = () => {
+    // Remove cookies when user disconnects
     Cookies.remove('githubUsername');
     Cookies.remove('githubToken');
     Cookies.remove('git:github.com');
@@ -148,7 +113,7 @@ export default function ConnectionsTab() {
         {!isConnected ? (
           <button
             onClick={handleSaveConnection}
-            disabled={isVerifying || !githubUsername || !githubToken}
+            disabled={isVerifying}
             className="bg-hanzo-elements-button-primary-background rounded-lg px-4 py-2 mr-2 transition-colors duration-200 hover:bg-hanzo-elements-button-primary-backgroundHover text-hanzo-elements-button-primary-text disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
           >
             {isVerifying ? (
