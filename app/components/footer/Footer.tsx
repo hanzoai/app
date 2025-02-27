@@ -46,7 +46,7 @@ const Footer = () => {
 
         <div className="mt-2 pt-2 border-t border-gray-800">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <div className="text-gray-500 text-sm">© 2025 Hanzo Industries, Inc. All rights reserved.</div>
+            <div className="text-gray-500 text-sm">© {new Date().getFullYear()} Hanzo Industries, Inc. All rights reserved.</div>
             <div className="flex space-x-6">
               <a
                 href="https://hanzo.industries/privacy"
