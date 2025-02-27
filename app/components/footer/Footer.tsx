@@ -1,7 +1,31 @@
 import { Check } from 'lucide-react';
+import { useEffect, useState } from 'react';
+
 const Footer = () => {
+  const [showFooter, setShowFooter] = useState(false);
+
+  useEffect(() => {
+    const handleMouseWheel = (event: WheelEvent) => {
+      if (event.deltaY > 0) {
+        setShowFooter(true);
+      } else if (event.deltaY < 0 && window.pageYOffset === 0) {
+        setShowFooter(false);
+      }
+    };
+
+    window.addEventListener('wheel', handleMouseWheel);
+
+    return () => {
+      window.removeEventListener('wheel', handleMouseWheel);
+    };
+  }, []);
+
   return (
-    <footer className="border-t border-gray-800">
+    <footer
+      className={`bottom-0 left-0 right-0 transition-transform duration-300 ${
+        showFooter ? 'translate-y-0' : 'translate-y-full'
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8">
           <div className="col-span-2 md:col-span-4 lg:col-span-1">

@@ -20,3 +20,14 @@ select:focus-visible,
 textarea:focus-visible {
   @apply ring-2 ring-blue-500 ring-opacity-50 outline-none;
 } 
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
