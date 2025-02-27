@@ -1,4 +1,4 @@
-site_name: hanzoai Docs
+site_name: Hanzo App Docs
 site_dir: ../site
 theme:
   name: material
@@ -31,7 +31,7 @@ theme:
     repo: fontawesome/brands/github
   # logo: assets/logo.png
   # favicon: assets/logo.png
-repo_name: canvas
+repo_name: hanzoapp
 repo_url: https://github.com/hanzoai/app
 edit_uri: ""
 
