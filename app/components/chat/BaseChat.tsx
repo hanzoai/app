@@ -37,6 +37,7 @@ import type { ModelInfo } from '~/lib/modules/llm/types';
 import ProgressCompilation from './ProgressCompilation';
 import type { ProgressAnnotation } from '~/types/context';
 import Dropdown from '~/components/ui/Dropdown';
+import Footer from '~/components/footer/Footer';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -556,6 +557,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                   handleSendMessage?.(event, messageInput);
                 })}
               {!chatStarted && <StarterTemplates />}
+              {!chatStarted && <Footer />}
             </div>
           </div>
           <ClientOnly>{() => <Workbench chatStarted={chatStarted} isStreaming={isStreaming} />}</ClientOnly>
