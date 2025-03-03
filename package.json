@@ -14,7 +14,7 @@
     "test:watch": "vitest",
     "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint app --fix",
     "lint:fix": "npm run lint -- --fix && prettier app --write",
-    "start": "vite",
+    "start": "vite --host 0.0.0.0",
     "dockerstart": "bindings=$(./bindings.sh) && wrangler pages dev ./build/client $bindings --ip 0.0.0.0 --port 5173 --no-show-interactive-dev-session",
     "dockerrun": "docker run -it -d --name hanzo-ai-live -p 5173:5173 --env-file .env.local hanzo-ai",
     "dockerbuild:prod": "docker build -t hanzo-ai:production -t hanzo-ai:latest --target hanzo-ai-production .",
