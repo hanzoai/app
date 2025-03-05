@@ -43,3 +43,4 @@ app/commit.json
 
 .vercel
 *.orig
+.dev*
