@@ -9,9 +9,11 @@ const collectionName = 'hanzo';
 const customIconCollection = iconPaths.reduce(
   (acc, iconPath) => {
     const [iconName] = basename(iconPath).split('.');
-
     acc[collectionName] ??= {};
-    acc[collectionName][iconName] = async () => fs.readFile(iconPath, 'utf8');
+    acc[collectionName][iconName] = async () => {
+      const buffer = await fs.readFile(iconPath, 'utf8');
+      return buffer.toString();
+    };
 
     return acc;
   },

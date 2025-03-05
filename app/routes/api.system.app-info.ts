@@ -1,5 +1,5 @@
-import type { ActionFunctionArgs, LoaderFunction } from '@remix-run/cloudflare';
-import { json } from '@remix-run/cloudflare';
+import type { ActionFunctionArgs, LoaderFunction } from '@remix-run/node';
+import { json } from '@remix-run/node';
 import { execSync } from 'child_process';
 
 // These are injected by Vite at build time
