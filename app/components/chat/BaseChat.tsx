@@ -12,8 +12,6 @@ import { classNames } from '~/utils/classNames';
 import { PROVIDER_LIST } from '~/utils/constants';
 import { Messages } from './Messages.client';
 import { SendButton } from './SendButton.client';
-
-//import { APIKeyManager } from './APIKeyManager';
 import { getApiKeysFromCookies } from './APIKeyManager';
 import Cookies from 'js-cookie';
 import * as Tooltip from '@radix-ui/react-tooltip';
@@ -36,7 +34,7 @@ import ChatAlert from './ChatAlert';
 import type { ModelInfo } from '~/lib/modules/llm/types';
 import ProgressCompilation from './ProgressCompilation';
 import type { ProgressAnnotation } from '~/types/context';
-import Dropdown from '~/components/ui/Dropdown';
+import type { ActionRunner } from '~/lib/runtime/action-runner';
 import Footer from '~/components/footer/Footer';
 
 const TEXTAREA_MIN_HEIGHT = 76;
@@ -48,6 +46,7 @@ interface BaseChatProps {
   showChat?: boolean;
   chatStarted?: boolean;
   isStreaming?: boolean;
+  onStreamingChange?: (streaming: boolean) => void;
   messages?: Message[];
   description?: string;
   enhancingPrompt?: boolean;
@@ -71,6 +70,7 @@ interface BaseChatProps {
   actionAlert?: ActionAlert;
   clearAlert?: () => void;
   data?: JSONValue[] | undefined;
+  actionRunner?: ActionRunner;
 }
 
 export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
@@ -82,6 +82,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       showChat = true,
       chatStarted = false,
       isStreaming = false,
+      onStreamingChange,
       model,
       setModel,
       provider,
@@ -105,6 +106,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       actionAlert,
       clearAlert,
       data,
+      actionRunner,
     },
     ref,
   ) => {
@@ -128,6 +130,10 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     useEffect(() => {
       console.log(transcript);
     }, [transcript]);
+
+    useEffect(() => {
+      onStreamingChange?.(isStreaming);
+    }, [isStreaming, onStreamingChange]);
 
     useEffect(() => {
       if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
@@ -188,37 +194,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
           });
       }
     }, [providerList, provider]);
-
-    /*
-     * const onApiKeysChange = async (providerName: string, apiKey: string) => {
-     *   const newApiKeys = { ...apiKeys, [providerName]: apiKey };
-     *   setApiKeys(newApiKeys);
-     *   Cookies.set('apiKeys', JSON.stringify(newApiKeys));
-     */
-
-    //  setIsModelLoading(providerName);
-
-    //  let providerModels: ModelInfo[] = [];
-
-    /*
-     *  try {
-     *    const response = await fetch(`/api/models/${encodeURIComponent(providerName)}`);
-     *    const data = await response.json();
-     *    providerModels = (data as { modelList: ModelInfo[] }).modelList;
-     *  } catch (error) {
-     *    console.error('Error loading dynamic models for:', providerName, error);
-     *  }
-     */
-
-    /*
-     *   // Only update models for the specific provider
-     *   setModelList((prevModels) => {
-     *     const otherModels = prevModels.filter((model) => model.provider !== providerName);
-     *     return [...otherModels, ...providerModels];
-     *   });
-     *   setIsModelLoading(undefined);
-     * };
-     */
 
     const startListening = () => {
       if (recognition) {
@@ -398,6 +373,14 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                         'transition-all duration-200',
                         'hover:border-hanzo-elements-focus outline-none',
                       )}
+                      onDragEnter={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.style.border = '1px solid var(--hanzo-elements-borderColor)';
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.style.border = '1px solid var(--hanzo-elements-borderColor)';
+                      }}
                       onDragLeave={(e) => {
                         e.preventDefault();
                         e.currentTarget.style.border = '1px solid var(--hanzo-elements-borderColor)';
@@ -515,7 +498,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                           {isModelSettingsCollapsed ? <span className="text-xs">{model}</span> : <span />}
                         </IconButton>
                       </div>
-                      <Dropdown direction={chatStarted ? 'up' : 'down'} />
                     </div>
                   </div>
                   <div>
@@ -560,7 +542,15 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
               {!chatStarted && <Footer />}
             </div>
           </div>
-          <ClientOnly>{() => <Workbench chatStarted={chatStarted} isStreaming={isStreaming} />}</ClientOnly>
+          <ClientOnly>
+            {() => (
+              <Workbench
+                actionRunner={actionRunner ?? ({} as ActionRunner)}
+                chatStarted={chatStarted}
+                isStreaming={isStreaming}
+              />
+            )}
+          </ClientOnly>
         </div>
       </div>
     );

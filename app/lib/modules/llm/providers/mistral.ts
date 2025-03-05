@@ -26,7 +26,7 @@ export default class MistralProvider extends BaseProvider {
 
   getModelInstance(options: {
     model: string;
-    serverEnv: Record<string, string>;
+    serverEnv: Env;
     apiKeys?: Record<string, string>;
     providerSettings?: Record<string, IProviderSetting>;
   }): LanguageModelV1 {

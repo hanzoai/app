@@ -103,3 +103,19 @@ export const detectProjectType = async (
 
   return { type: '', setupCommand: '', followupMessage: '' };
 };
+
+export const filesToArtifacts = (files: { [path: string]: { content: string } }, id: string): string => {
+  return `
+<hanzoArtifact id="${id}" title="User Updated Files">
+${Object.keys(files)
+  .map(
+    (filePath) => `
+<hanzoAction type="file" filePath="${filePath}">
+${files[filePath].content}
+</hanzoAction>
+`,
+  )
+  .join('\n')}
+</hanzoArtifact>
+  `;
+};

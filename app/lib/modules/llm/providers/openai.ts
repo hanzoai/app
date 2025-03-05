@@ -12,7 +12,13 @@ export default class OpenAIProvider extends BaseProvider {
     apiTokenKey: 'OPENAI_API_KEY',
   };
 
-  staticModels: ModelInfo[] = [];
+  staticModels: ModelInfo[] = [
+    { name: 'gpt-4o', label: 'GPT-4o', provider: 'OpenAI', maxTokenAllowed: 8000 },
+    { name: 'gpt-4o-mini', label: 'GPT-4o Mini', provider: 'OpenAI', maxTokenAllowed: 8000 },
+    { name: 'gpt-4-turbo', label: 'GPT-4 Turbo', provider: 'OpenAI', maxTokenAllowed: 8000 },
+    { name: 'gpt-4', label: 'GPT-4', provider: 'OpenAI', maxTokenAllowed: 8000 },
+    { name: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo', provider: 'OpenAI', maxTokenAllowed: 8000 },
+  ];
 
   async getDynamicModels(
     apiKeys?: Record<string, string>,
@@ -43,28 +49,21 @@ export default class OpenAIProvider extends BaseProvider {
     const data = res.data.filter(
       (model: any) =>
         model.object === 'model' &&
-        (model.id.startsWith('gpt-4-vision') ||
-          model.id.match(/^gpt-4-\d+/) ||
-          model.id.match(/^gpt-4-turbo/) ||
-          model.id === 'gpt-4' ||
-          (model.id.startsWith('gpt-3.5-turbo') && !model.id.includes('instruct')) ||
-          model.id.match(/^o\d+/)) &&
+        (model.id.startsWith('gpt-') || model.id.startsWith('o') || model.id.startsWith('chatgpt-')) &&
         !staticModelIds.includes(model.id),
     );
 
-    return data.map((m: any) => {
-      return {
-        name: m.id,
-        label: `${m.id}`,
-        provider: this.name,
-        maxTokenAllowed: m.context_window,
-      };
-    });
+    return data.map((m: any) => ({
+      name: m.id,
+      label: `${m.id}`,
+      provider: this.name,
+      maxTokenAllowed: m.context_window || 32000,
+    }));
   }
 
   getModelInstance(options: {
     model: string;
-    serverEnv: Record<string, string>;
+    serverEnv: Env;
     apiKeys?: Record<string, string>;
     providerSettings?: Record<string, IProviderSetting>;
   }): LanguageModelV1 {
@@ -84,7 +83,6 @@ export default class OpenAIProvider extends BaseProvider {
 
     const openai = createOpenAI({
       apiKey,
-      baseURL: 'https://api.openai.com/v1', // Explicitly set the base URL
     });
 
     return openai(model);

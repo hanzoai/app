@@ -9,17 +9,16 @@ export class LLMManager {
   private static _instance: LLMManager;
   private _providers: Map<string, BaseProvider> = new Map();
   private _modelList: ModelInfo[] = [];
-  private readonly _env: Record<string, string>;
+  private readonly _env: any = {};
 
-  private constructor(env: Record<string, string>) {
-    this._env = env;
+  private constructor(_env: Record<string, string>) {
+    this._registerProvidersFromDirectory();
+    this._env = _env;
   }
 
   static getInstance(env: Record<string, string> = {}): LLMManager {
     if (!LLMManager._instance) {
-      const instance = new LLMManager(env);
-      instance._registerProvidersFromDirectory();
-      LLMManager._instance = instance;
+      LLMManager._instance = new LLMManager(env);
     }
 
     return LLMManager._instance;
@@ -28,8 +27,14 @@ export class LLMManager {
     return this._env;
   }
 
-  private _registerProvidersFromDirectory() {
+  private async _registerProvidersFromDirectory() {
     try {
+      /*
+       * Dynamically import all files from the providers directory
+       * const providerModules = import.meta.glob('./providers/*.ts', { eager: true });
+       */
+
+      // Look for exported classes that extend BaseProvider
       for (const exportedItem of Object.values(providers)) {
         if (typeof exportedItem === 'function' && exportedItem.prototype instanceof BaseProvider) {
           const provider = new exportedItem();
@@ -75,13 +80,15 @@ export class LLMManager {
     serverEnv?: Record<string, string>;
   }): Promise<ModelInfo[]> {
     const { apiKeys, providerSettings, serverEnv } = options;
+
     let enabledProviders = Array.from(this._providers.values()).map((p) => p.name);
 
     if (providerSettings && Object.keys(providerSettings).length > 0) {
-      enabledProviders = enabledProviders.filter((p) => providerSettings[p]?.enabled);
+      enabledProviders = enabledProviders.filter((p) => providerSettings[p].enabled);
     }
 
-    const dynamicModelsArrays = await Promise.all(
+    // Get dynamic models from all providers that support them
+    const dynamicModels = await Promise.all(
       Array.from(this._providers.values())
         .filter((provider) => enabledProviders.includes(provider.name))
         .filter(
@@ -95,7 +102,7 @@ export class LLMManager {
             return cachedModels;
           }
 
-          return provider
+          const dynamicModels = await provider
             .getDynamicModels(apiKeys, providerSettings?.[provider.name], serverEnv)
             .then((models) => {
               logger.info(`Caching ${models.length} dynamic models for ${provider.name}`);
@@ -104,26 +111,28 @@ export class LLMManager {
               return models;
             })
             .catch((err) => {
-              logger.error(`Error getting dynamic models ${provider.name}:`, err);
+              logger.error(`Error getting dynamic models ${provider.name} :`, err);
               return [];
             });
+
+          return dynamicModels;
         }),
     );
     const staticModels = Array.from(this._providers.values()).flatMap((p) => p.staticModels || []);
-    const dynamicModelsFlat = dynamicModelsArrays.flat();
+    const dynamicModelsFlat = dynamicModels.flat();
     const dynamicModelKeys = dynamicModelsFlat.map((d) => `${d.name}-${d.provider}`);
-    const filteredStaticModels = staticModels.filter((m) => !dynamicModelKeys.includes(`${m.name}-${m.provider}`));
-    const modelList = [...dynamicModelsFlat, ...filteredStaticModels];
+    const filteredStaticModesl = staticModels.filter((m) => !dynamicModelKeys.includes(`${m.name}-${m.provider}`));
+
+    // Combine static and dynamic models
+    const modelList = [...dynamicModelsFlat, ...filteredStaticModesl];
     modelList.sort((a, b) => a.name.localeCompare(b.name));
     this._modelList = modelList;
 
     return modelList;
   }
-
-  getStaticModelList(): ModelInfo[] {
-    return Array.from(this._providers.values()).flatMap((p) => p.staticModels || []);
+  getStaticModelList() {
+    return [...this._providers.values()].flatMap((p) => p.staticModels || []);
   }
-
   async getModelListFromProvider(
     providerArg: BaseProvider,
     options: {
@@ -145,7 +154,12 @@ export class LLMManager {
     }
 
     const { apiKeys, providerSettings, serverEnv } = options;
-    const cachedModels = provider.getModelsFromCache({ apiKeys, providerSettings, serverEnv });
+
+    const cachedModels = provider.getModelsFromCache({
+      apiKeys,
+      providerSettings,
+      serverEnv,
+    });
 
     if (cachedModels) {
       logger.info(`Found ${cachedModels.length} cached models for ${provider.name}`);
@@ -155,7 +169,7 @@ export class LLMManager {
     logger.info(`Getting dynamic models for ${provider.name}`);
 
     const dynamicModels = await provider
-      .getDynamicModels(apiKeys, providerSettings?.[provider.name], serverEnv)
+      .getDynamicModels?.(apiKeys, providerSettings?.[provider.name], serverEnv)
       .then((models) => {
         logger.info(`Got ${models.length} dynamic models for ${provider.name}`);
         provider.storeDynamicModels(options, models);
@@ -163,7 +177,7 @@ export class LLMManager {
         return models;
       })
       .catch((err) => {
-        logger.error(`Error getting dynamic models ${provider.name}:`, err);
+        logger.error(`Error getting dynamic models ${provider.name} :`, err);
         return [];
       });
     const dynamicModelsName = dynamicModels.map((d) => d.name);
@@ -173,15 +187,14 @@ export class LLMManager {
 
     return modelList;
   }
-
-  getStaticModelListFromProvider(providerArg: BaseProvider): ModelInfo[] {
+  getStaticModelListFromProvider(providerArg: BaseProvider) {
     const provider = this._providers.get(providerArg.name);
 
     if (!provider) {
       throw new Error(`Provider ${providerArg.name} not found`);
     }
 
-    return provider.staticModels ? [...provider.staticModels] : [];
+    return [...(provider.staticModels || [])];
   }
 
   getDefaultProvider(): BaseProvider {

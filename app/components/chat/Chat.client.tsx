@@ -12,7 +12,7 @@ import { useMessageParser, usePromptEnhancer, useShortcuts, useSnapScroll } from
 import { description, useChatHistory } from '~/lib/persistence';
 import { chatStore } from '~/lib/stores/chat';
 import { workbenchStore } from '~/lib/stores/workbench';
-import { DEFAULT_PROVIDER, PROMPT_COOKIE_KEY, PROVIDER_LIST } from '~/utils/constants';
+import { DEFAULT_MODEL, DEFAULT_PROVIDER, PROMPT_COOKIE_KEY, PROVIDER_LIST } from '~/utils/constants';
 import { cubicEasingFn } from '~/utils/easings';
 import { createScopedLogger, renderLogger } from '~/utils/logger';
 import { BaseChat } from './BaseChat';
@@ -23,6 +23,9 @@ import type { ProviderInfo } from '~/types/model';
 import { useSearchParams } from '@remix-run/react';
 import { createSampler } from '~/utils/sampler';
 import { getTemplates, selectStarterTemplate } from '~/utils/selectStarterTemplate';
+import { logStore } from '~/lib/stores/logs';
+import { streamingState } from '~/lib/stores/streaming';
+import { filesToArtifacts } from '~/utils/fileUtils';
 
 const toastAnimation = cssTransition({
   enter: 'animated fadeInRight',
@@ -65,10 +68,10 @@ export function Chat() {
            */
           switch (type) {
             case 'success': {
-              return <div className="i-ph:check-bold text-hanzo-elements-icon-success text-2xl" />;
+              return <div className="i-ph:check-bold text-bolt-elements-icon-success text-2xl" />;
             }
             case 'error': {
-              return <div className="i-ph:warning-circle-bold text-hanzo-elements-icon-error text-2xl" />;
+              return <div className="i-ph:warning-circle-bold text-bolt-elements-icon-error text-2xl" />;
             }
           }
 
@@ -114,17 +117,21 @@ export const ChatImpl = memo(
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [chatStarted, setChatStarted] = useState(initialMessages.length > 0);
-    const [uploadedFiles, setUploadedFiles] = useState<File[]>([]); // Move here
-    const [imageDataList, setImageDataList] = useState<string[]>([]); // Move here
+    const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+    const [imageDataList, setImageDataList] = useState<string[]>([]);
     const [searchParams, setSearchParams] = useSearchParams();
     const [fakeLoading, setFakeLoading] = useState(false);
     const files = useStore(workbenchStore.files);
     const actionAlert = useStore(workbenchStore.alert);
     const { activeProviders, promptId, autoSelectTemplate, contextOptimizationEnabled } = useSettings();
 
-    const [model, setModel] = useState('o1');
+    const [model, setModel] = useState(() => {
+      const savedModel = Cookies.get('selectedModel');
+      return savedModel || DEFAULT_MODEL;
+    });
     const [provider, setProvider] = useState(() => {
-      return (PROVIDER_LIST.find((p) => p.name === 'OpenAI') || DEFAULT_PROVIDER) as ProviderInfo;
+      const savedProvider = Cookies.get('selectedProvider');
+      return (PROVIDER_LIST.find((p) => p.name === savedProvider) || DEFAULT_PROVIDER) as ProviderInfo;
     });
 
     const { showChat } = useStore(chatStore);
@@ -157,6 +164,11 @@ export const ChatImpl = memo(
       sendExtraMessageFields: true,
       onError: (e) => {
         logger.error('Request failed\n\n', e, error);
+        logStore.logError('Chat request failed', e, {
+          component: 'Chat',
+          action: 'request',
+          error: e.message,
+        });
         toast.error(
           'There was an error processing your request: ' + (e.message ? e.message : 'No details were returned'),
         );
@@ -167,8 +179,14 @@ export const ChatImpl = memo(
 
         if (usage) {
           console.log('Token usage:', usage);
-
-          // You can now use the usage data as needed
+          logStore.logProvider('Chat response completed', {
+            component: 'Chat',
+            action: 'response',
+            model,
+            provider: provider.name,
+            usage,
+            messageLength: message.content.length,
+          });
         }
 
         logger.debug('Finished streaming');
@@ -227,6 +245,13 @@ export const ChatImpl = memo(
       stop();
       chatStore.setKey('aborted', true);
       workbenchStore.abortAllActions();
+
+      logStore.logProvider('Chat response aborted', {
+        component: 'Chat',
+        action: 'abort',
+        model,
+        provider: provider.name,
+      });
     };
 
     useEffect(() => {
@@ -258,33 +283,69 @@ export const ChatImpl = memo(
     };
 
     const sendMessage = async (_event: React.UIEvent, messageInput?: string) => {
-      const _input = messageInput || input;
+      const messageContent = messageInput || input;
 
-      if (_input.length === 0 || isLoading) {
+      if (!messageContent?.trim()) {
         return;
       }
 
-      /**
-       * @note (delm) Usually saving files shouldn't take long but it may take longer if there
-       * many unsaved files. In that case we need to block user input and show an indicator
-       * of some kind so the user is aware that something is happening. But I consider the
-       * happy case to be no unsaved files and I would expect users to save their changes
-       * before they send another message.
-       */
-      await workbenchStore.saveAllFiles();
-
-      if (error != null) {
-        setMessages(messages.slice(0, -1));
+      if (isLoading) {
+        abort();
+        return;
       }
-
-      const fileModifications = workbenchStore.getFileModifcations();
-
-      chatStore.setKey('aborted', false);
 
       runAnimation();
 
-      if (!chatStarted && _input && autoSelectTemplate) {
+      if (!chatStarted) {
         setFakeLoading(true);
+
+        if (autoSelectTemplate) {
+          const { template, title } = await selectStarterTemplate({
+            message: messageContent,
+            model,
+            provider,
+          });
+
+          if (template !== 'blank') {
+            const temResp = await getTemplates(template, title).catch((e) => {
+              if (e.message.includes('rate limit')) {
+                toast.warning('Rate limit exceeded. Skipping starter template\n Continuing with blank template');
+              } else {
+                toast.warning('Failed to import starter template\n Continuing with blank template');
+              }
+
+              return null;
+            });
+
+            if (temResp) {
+              const { assistantMessage, userMessage } = temResp;
+              setMessages([
+                {
+                  id: `1-${new Date().getTime()}`,
+                  role: 'user',
+                  content: messageContent,
+                },
+                {
+                  id: `2-${new Date().getTime()}`,
+                  role: 'assistant',
+                  content: assistantMessage,
+                },
+                {
+                  id: `3-${new Date().getTime()}`,
+                  role: 'user',
+                  content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${userMessage}`,
+                  annotations: ['hidden'],
+                },
+              ]);
+              reload();
+              setFakeLoading(false);
+
+              return;
+            }
+          }
+        }
+
+        // If autoSelectTemplate is disabled or template selection failed, proceed with normal message
         setMessages([
           {
             id: `${new Date().getTime()}`,
@@ -292,135 +353,45 @@ export const ChatImpl = memo(
             content: [
               {
                 type: 'text',
-                text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${_input}`,
+                text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${messageContent}`,
               },
               ...imageDataList.map((imageData) => ({
                 type: 'image',
                 image: imageData,
               })),
-            ] as any, // Type assertion to bypass compiler check
+            ] as any,
           },
         ]);
+        reload();
+        setFakeLoading(false);
 
-        // reload();
-
-        const { template, title } = await selectStarterTemplate({
-          message: _input,
-          model,
-          provider,
-        });
-
-        if (template !== 'blank') {
-          const temResp = await getTemplates(template, title).catch((e) => {
-            if (e.message.includes('rate limit')) {
-              toast.warning('Rate limit exceeded. Skipping starter template\n Continuing with blank template');
-            } else {
-              toast.warning('Failed to import starter template\n Continuing with blank template');
-            }
-
-            return null;
-          });
-
-          if (temResp) {
-            const { assistantMessage, userMessage } = temResp;
-
-            setMessages([
-              {
-                id: `${new Date().getTime()}`,
-                role: 'user',
-                content: _input,
-
-                // annotations: ['hidden'],
-              },
-              {
-                id: `${new Date().getTime()}`,
-                role: 'assistant',
-                content: assistantMessage,
-              },
-              {
-                id: `${new Date().getTime()}`,
-                role: 'user',
-                content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${userMessage}`,
-                annotations: ['hidden'],
-              },
-            ]);
-
-            reload();
-            setFakeLoading(false);
-
-            return;
-          } else {
-            setMessages([
-              {
-                id: `${new Date().getTime()}`,
-                role: 'user',
-                content: [
-                  {
-                    type: 'text',
-                    text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${_input}`,
-                  },
-                  ...imageDataList.map((imageData) => ({
-                    type: 'image',
-                    image: imageData,
-                  })),
-                ] as any, // Type assertion to bypass compiler check
-              },
-            ]);
-            reload();
-            setFakeLoading(false);
-
-            return;
-          }
-        } else {
-          setMessages([
-            {
-              id: `${new Date().getTime()}`,
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${_input}`,
-                },
-                ...imageDataList.map((imageData) => ({
-                  type: 'image',
-                  image: imageData,
-                })),
-              ] as any, // Type assertion to bypass compiler check
-            },
-          ]);
-          reload();
-          setFakeLoading(false);
-
-          return;
-        }
+        return;
       }
 
-      if (fileModifications !== undefined) {
-        /**
-         * If we have file modifications we append a new user message manually since we have to prefix
-         * the user input with the file modifications and we don't want the new user input to appear
-         * in the prompt. Using `append` is almost the same as `handleSubmit` except that we have to
-         * manually reset the input and we'd have to manually pass in file attachments. However, those
-         * aren't relevant here.
-         */
+      if (error != null) {
+        setMessages(messages.slice(0, -1));
+      }
+
+      const modifiedFiles = workbenchStore.getModifiedFiles();
+
+      chatStore.setKey('aborted', false);
+
+      if (modifiedFiles !== undefined) {
+        const userUpdateArtifact = filesToArtifacts(modifiedFiles, `${Date.now()}`);
         append({
           role: 'user',
           content: [
             {
               type: 'text',
-              text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${_input}`,
+              text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${userUpdateArtifact}${messageContent}`,
             },
             ...imageDataList.map((imageData) => ({
               type: 'image',
               image: imageData,
             })),
-          ] as any, // Type assertion to bypass compiler check
+          ] as any,
         });
 
-        /**
-         * After sending a new message we reset all modifications since the model
-         * should now be aware of all the changes.
-         */
         workbenchStore.resetAllFileModifications();
       } else {
         append({
@@ -428,20 +399,19 @@ export const ChatImpl = memo(
           content: [
             {
               type: 'text',
-              text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${_input}`,
+              text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${messageContent}`,
             },
             ...imageDataList.map((imageData) => ({
               type: 'image',
               image: imageData,
             })),
-          ] as any, // Type assertion to bypass compiler check
+          ] as any,
         });
       }
 
       setInput('');
       Cookies.remove(PROMPT_COOKIE_KEY);
 
-      // Add file cleanup here
       setUploadedFiles([]);
       setImageDataList([]);
 
@@ -498,6 +468,9 @@ export const ChatImpl = memo(
         showChat={showChat}
         chatStarted={chatStarted}
         isStreaming={isLoading || fakeLoading}
+        onStreamingChange={(streaming) => {
+          streamingState.set(streaming);
+        }}
         enhancingPrompt={enhancingPrompt}
         promptEnhanced={promptEnhanced}
         sendMessage={sendMessage}

@@ -111,7 +111,7 @@ export abstract class BaseProvider implements ProviderInfo {
 
   abstract getModelInstance(options: {
     model: string;
-    serverEnv?: Record<string, string>;
+    serverEnv?: Env;
     apiKeys?: Record<string, string>;
     providerSettings?: Record<string, IProviderSetting>;
   }): LanguageModelV1;
@@ -119,7 +119,7 @@ export abstract class BaseProvider implements ProviderInfo {
 
 type OptionalApiKey = string | undefined;
 
-export function getHanzoModel(baseURL: string, apiKey: OptionalApiKey, model: string) {
+export function getOpenAILikeModel(baseURL: string, apiKey: OptionalApiKey, model: string) {
   const openai = createOpenAI({
     baseURL,
     apiKey,

@@ -1,14 +1,13 @@
 import { useStore } from '@nanostores/react';
-import type { LinksFunction } from '@remix-run/node';
-import { Links, Meta, Outlet, Scripts, ScrollRestoration, useRouteError, isRouteErrorResponse } from '@remix-run/react';
+import type { LinksFunction } from '@remix-run/cloudflare';
+import { Links, Meta, Outlet, Scripts, ScrollRestoration } from '@remix-run/react';
 import tailwindReset from '@unocss/reset/tailwind-compat.css?url';
 import { themeStore } from './lib/stores/theme';
 import { stripIndents } from './utils/stripIndent';
 import { createHead } from 'remix-island';
-import React, { useEffect, useState } from 'react';
-import { logStore } from './lib/stores/logs';
-import { initializeGitHubCredentials } from './lib/stores/github';
-import { ClientOnly } from 'remix-utils/client-only';
+import { useEffect } from 'react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 
 import reactToastifyStyles from 'react-toastify/dist/ReactToastify.css?url';
 import globalStyles from './styles/index.scss?url';
@@ -17,13 +16,24 @@ import xtermStyles from '@xterm/xterm/css/xterm.css?url';
 import 'virtual:uno.css';
 
 export const links: LinksFunction = () => [
-  { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
+  {
+    rel: 'icon',
+    href: '/favicon.svg',
+    type: 'image/svg+xml',
+  },
   { rel: 'stylesheet', href: reactToastifyStyles },
   { rel: 'stylesheet', href: tailwindReset },
   { rel: 'stylesheet', href: globalStyles },
   { rel: 'stylesheet', href: xtermStyles },
-  { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-  { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
+  {
+    rel: 'preconnect',
+    href: 'https://fonts.googleapis.com',
+  },
+  {
+    rel: 'preconnect',
+    href: 'https://fonts.gstatic.com',
+    crossOrigin: 'anonymous',
+  },
   {
     rel: 'stylesheet',
     href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
@@ -32,108 +42,61 @@ export const links: LinksFunction = () => [
 
 const inlineThemeCode = stripIndents`
   setTutorialKitTheme();
+
   function setTutorialKitTheme() {
-    localStorage.setItem('hanzo_theme', 'dark');
-    document.documentElement.setAttribute('data-theme', 'dark');
+    let theme = localStorage.getItem('hanzo_theme');
+
+    if (!theme) {
+      theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    document.querySelector('html')?.setAttribute('data-theme', theme);
   }
 `;
 
 export const Head = createHead(() => (
   <>
     <meta charSet="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <Meta />
     <Links />
     <script dangerouslySetInnerHTML={{ __html: inlineThemeCode }} />
   </>
 ));
 
-function ClientLayout({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
-  let theme = 'dark';
+export function Layout({ children }: { children: React.ReactNode }) {
+  const theme = useStore(themeStore);
 
-  try {
-    theme = useStore(themeStore) || 'dark';
-  } catch (e: any) {
-    logStore.logSystem('ClientLayout useStore error', { error: e.message });
-  }
   useEffect(() => {
-    setMounted(true);
-
-    try {
-      document.documentElement.setAttribute('data-theme', theme);
-    } catch (e: any) {
-      logStore.logSystem('ClientLayout setAttribute error', { error: e.message });
-    }
+    document.querySelector('html')?.setAttribute('data-theme', theme);
   }, [theme]);
 
-  if (!mounted) {
-    return null;
-  }
-
-  return <>{children}</>;
-}
-
-export function Layout() {
   return (
-    <>
-      <ClientOnly fallback={null}>
-        {() => (
-          <ClientLayout>
-            <Outlet />
-          </ClientLayout>
-        )}
-      </ClientOnly>
+    <DndProvider backend={HTML5Backend}>
+      {children}
       <ScrollRestoration />
       <Scripts />
-    </>
+    </DndProvider>
   );
 }
 
+import { logStore } from './lib/stores/logs';
+
 export default function App() {
+  const theme = useStore(themeStore);
+
   useEffect(() => {
-    initializeGitHubCredentials();
     logStore.logSystem('Application initialized', {
-      theme: 'dark',
+      theme,
       platform: navigator.platform,
       userAgent: navigator.userAgent,
       timestamp: new Date().toISOString(),
     });
   }, []);
-  return <Layout />;
-}
-
-export function ErrorBoundary() {
-  const error = useRouteError();
-  useEffect(() => {
-    logStore.logSystem('Unhandled error', {
-      error: error instanceof Error ? error.message : JSON.stringify(error),
-      timestamp: new Date().toISOString(),
-    });
-  }, [error]);
-
-  let errorMessage = 'An unexpected error occurred.';
-
-  if (isRouteErrorResponse(error)) {
-    errorMessage = `${error.status} ${error.statusText}`;
-  } else if (error instanceof Error) {
-    errorMessage = error.message;
-  }
 
   return (
-    <html>
-      <head>
-        <title>Error</title>
-        <Meta />
-        <Links />
-      </head>
-      <body style={{ padding: '2rem', textAlign: 'center' }}>
-        <h1>Something went wrong</h1>
-        <p>{errorMessage}</p>
-        <button onClick={() => window.location.reload()}>Reload</button>
-        <Scripts />
-      </body>
-    </html>
+    <Layout>
+      <Outlet />
+    </Layout>
   );
 }

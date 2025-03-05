@@ -143,7 +143,7 @@ export const TerminalTabs = memo(() => {
           {Array.from({ length: terminalCount + 1 }, (_, index) => {
             const isActive = activeTerminal === index;
 
-            logger.debug(`Starting hanzo terminal [${index}]`);
+            logger.debug(`Starting hanzo app terminal [${index}]`);
 
             if (index == 0) {
               return (

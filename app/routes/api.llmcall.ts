@@ -1,4 +1,4 @@
-import { type ActionFunctionArgs } from '@remix-run/node';
+import { type ActionFunctionArgs } from '@remix-run/cloudflare';
 import { streamText } from '~/lib/.server/llm/stream-text';
 import type { IProviderSetting, ProviderInfo } from '~/types/model';
 import { generateText } from 'ai';
@@ -19,34 +19,24 @@ async function getModelList(options: {
   serverEnv?: Record<string, string>;
 }) {
   const llmManager = LLMManager.getInstance(import.meta.env);
-  logger.debug('Updating model list with options', { options });
-
-  const models = await llmManager.updateModelList(options);
-  logger.debug('Model list updated', { models: models.map((m: ModelInfo) => m.name) });
-
-  return models;
+  return llmManager.updateModelList(options);
 }
 
 const logger = createScopedLogger('api.llmcall');
 
 async function llmCallAction({ context, request }: ActionFunctionArgs) {
-  logger.debug('Received context', { context });
-
-  const payload = await request.json();
-  logger.debug('Request payload received', { payload });
-
-  const { system, message, model, provider, streamOutput } = payload as {
+  const { system, message, model, provider, streamOutput } = await request.json<{
     system: string;
     message: string;
     model: string;
     provider: ProviderInfo;
     streamOutput?: boolean;
-  };
+  }>();
 
   const { name: providerName } = provider;
 
+  // validate 'model' and 'provider' fields
   if (!model || typeof model !== 'string') {
-    logger.error('Invalid or missing model', { model });
     throw new Response('Invalid or missing model', {
       status: 400,
       statusText: 'Bad Request',
@@ -54,7 +44,6 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
   }
 
   if (!providerName || typeof providerName !== 'string') {
-    logger.error('Invalid or missing provider', { provider });
     throw new Response('Invalid or missing provider', {
       status: 400,
       statusText: 'Bad Request',
@@ -62,34 +51,34 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
   }
 
   const cookieHeader = request.headers.get('Cookie');
-  logger.debug('Cookie header', { cookieHeader });
-
   const apiKeys = getApiKeysFromCookie(cookieHeader);
-  const providerSettingsRaw = getProviderSettingsFromCookie(cookieHeader);
-  logger.debug('Extracted apiKeys and providerSettingsRaw', { apiKeys, providerSettingsRaw });
+  const providerSettings = getProviderSettingsFromCookie(cookieHeader);
 
   if (streamOutput) {
     try {
-      logger.info('Initiating streamText', { system, providerName, model, message });
-
       const result = await streamText({
-        options: { system },
-        messages: [{ role: 'user', content: message }],
-        env: import.meta.env,
+        options: {
+          system,
+        },
+        messages: [
+          {
+            role: 'user',
+            content: `${message}`,
+          },
+        ],
+        env: context.cloudflare?.env as any,
         apiKeys,
-        providerSettings: providerSettingsRaw,
+        providerSettings,
       });
-      logger.info('streamText call successful');
 
       return new Response(result.textStream, {
         status: 200,
-        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+        },
       });
     } catch (error: unknown) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      const errStack = error instanceof Error ? error.stack : 'no stack available';
-      logger.error('Error during streamText', { error: errMsg, stack: errStack });
-      console.log('streamText error', error);
+      console.log(error);
 
       if (error instanceof Error && error.message?.includes('API key')) {
         throw new Response('Invalid or missing API key', {
@@ -105,66 +94,50 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
     }
   } else {
     try {
-      logger.info('Fetching model list for provider', { providerName });
-
-      const models = await getModelList({
-        apiKeys,
-        providerSettings: providerSettingsRaw ? { [providerName]: providerSettingsRaw } : undefined,
-        serverEnv: import.meta.env,
-      });
+      const models = await getModelList({ apiKeys, providerSettings, serverEnv: context.cloudflare?.env as any });
       const modelDetails = models.find((m: ModelInfo) => m.name === model);
 
       if (!modelDetails) {
-        logger.error('Model not found', {
-          requestedModel: model,
-          availableModels: models.map((m: ModelInfo) => m.name),
-        });
         throw new Error('Model not found');
       }
 
-      const dynamicMaxTokens = modelDetails.maxTokenAllowed || MAX_TOKENS;
-      logger.debug('Selected model details', { model: modelDetails.name, dynamicMaxTokens });
+      const dynamicMaxTokens = modelDetails && modelDetails.maxTokenAllowed ? modelDetails.maxTokenAllowed : MAX_TOKENS;
 
       const providerInfo = PROVIDER_LIST.find((p) => p.name === provider.name);
 
       if (!providerInfo) {
-        logger.error('Provider not found in list', { providerName });
         throw new Error('Provider not found');
       }
 
-      logger.info('Generating text response', {
-        provider: provider.name,
-        model: modelDetails.name,
-        dynamicMaxTokens,
-      });
-
-      const modelInstance = providerInfo.getModelInstance({
-        model: modelDetails.name,
-        serverEnv: import.meta.env,
-        apiKeys,
-        providerSettings: providerSettingsRaw,
-      });
-      logger.debug('Obtained model instance', { modelInstance });
+      logger.info(`Generating response Provider: ${provider.name}, Model: ${modelDetails.name}`);
 
       const result = await generateText({
         system,
-        messages: [{ role: 'user', content: message }],
-        model: modelInstance,
+        messages: [
+          {
+            role: 'user',
+            content: `${message}`,
+          },
+        ],
+        model: providerInfo.getModelInstance({
+          model: modelDetails.name,
+          serverEnv: context.cloudflare?.env as any,
+          apiKeys,
+          providerSettings,
+        }),
         maxTokens: dynamicMaxTokens,
         toolChoice: 'none',
       });
-      logger.info('Text generation successful');
-      logger.debug('Generation result', { result });
+      logger.info(`Generated response`);
 
       return new Response(JSON.stringify(result), {
         status: 200,
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
     } catch (error: unknown) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      const errStack = error instanceof Error ? error.stack : 'no stack available';
-      logger.error('Error during generateText', { error: errMsg, stack: errStack });
-      console.log('generateText error', error);
+      console.log(error);
 
       if (error instanceof Error && error.message?.includes('API key')) {
         throw new Response('Invalid or missing API key', {

@@ -1,4 +1,4 @@
-import { type ActionFunctionArgs } from '@remix-run/node';
+import { type ActionFunctionArgs } from '@remix-run/cloudflare';
 import { createDataStream, generateId } from 'ai';
 import { MAX_RESPONSE_SEGMENTS, MAX_TOKENS, type FileMap } from '~/lib/.server/llm/constants';
 import { CONTINUE_PROMPT } from '~/lib/common/prompts/prompts';
@@ -12,13 +12,6 @@ import { WORK_DIR } from '~/utils/constants';
 import { createSummary } from '~/lib/.server/llm/create-summary';
 import { extractPropertiesFromMessage } from '~/lib/.server/llm/utils';
 
-interface ChatRequestBody {
-  messages: Messages;
-  files: any;
-  promptId?: string;
-  contextOptimization: boolean;
-}
-
 export async function action(args: ActionFunctionArgs) {
   return chatAction(args);
 }
@@ -27,12 +20,16 @@ const logger = createScopedLogger('api.chat');
 
 function parseCookies(cookieHeader: string): Record<string, string> {
   const cookies: Record<string, string> = {};
+
   const items = cookieHeader.split(';').map((cookie) => cookie.trim());
+
   items.forEach((item) => {
     const [name, ...rest] = item.split('=');
 
     if (name && rest) {
-      cookies[decodeURIComponent(name.trim())] = decodeURIComponent(rest.join('=').trim());
+      const decodedName = decodeURIComponent(name.trim());
+      const decodedValue = decodeURIComponent(rest.join('=').trim());
+      cookies[decodedName] = decodedValue;
     }
   });
 
@@ -40,9 +37,13 @@ function parseCookies(cookieHeader: string): Record<string, string> {
 }
 
 async function chatAction({ context, request }: ActionFunctionArgs) {
-  logger.debug('context', context);
+  const { messages, files, promptId, contextOptimization } = await request.json<{
+    messages: Messages;
+    files: any;
+    promptId?: string;
+    contextOptimization: boolean;
+  }>();
 
-  const { messages, files, promptId, contextOptimization } = (await request.json()) as ChatRequestBody;
   const cookieHeader = request.headers.get('Cookie');
   const apiKeys = JSON.parse(parseCookies(cookieHeader || '').apiKeys || '{}');
   const providerSettings: Record<string, IProviderSetting> = JSON.parse(
@@ -50,12 +51,17 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
   );
 
   const stream = new SwitchableStream();
-  const cumulativeUsage = { completionTokens: 0, promptTokens: 0, totalTokens: 0 };
-  const encoder = new TextEncoder();
-  let progressCounter = 1;
+
+  const cumulativeUsage = {
+    completionTokens: 0,
+    promptTokens: 0,
+    totalTokens: 0,
+  };
+  const encoder: TextEncoder = new TextEncoder();
+  let progressCounter: number = 1;
 
   try {
-    const totalMessageContent = messages.reduce((acc: string, m: { content: string }) => acc + m.content, '');
+    const totalMessageContent = messages.reduce((acc, message) => acc + message.content, '');
     logger.debug(`Total message length: ${totalMessageContent.split(' ').length}, words`);
 
     let lastChunk: string | undefined = undefined;
@@ -63,9 +69,13 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     const dataStream = createDataStream({
       async execute(dataStream) {
         const filePaths = getFilePaths(files || {});
-        let filteredFiles: FileMap | undefined;
-        let summary: string | undefined;
-        const messageSliceId = messages.length > 3 ? messages.length - 3 : 0;
+        let filteredFiles: FileMap | undefined = undefined;
+        let summary: string | undefined = undefined;
+        let messageSliceId = 0;
+
+        if (messages.length > 3) {
+          messageSliceId = messages.length - 3;
+        }
 
         if (filePaths.length > 0 && contextOptimization) {
           logger.debug('Generating Chat Summary');
@@ -75,11 +85,14 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             status: 'in-progress',
             order: progressCounter++,
             message: 'Analysing Request',
-          } as ProgressAnnotation);
+          } satisfies ProgressAnnotation);
+
+          // Create a summary of the chat
+          console.log(`Messages count: ${messages.length}`);
 
           summary = await createSummary({
             messages: [...messages],
-            env: import.meta.env,
+            env: context.cloudflare?.env,
             apiKeys,
             providerSettings,
             promptId,
@@ -93,14 +106,13 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
               }
             },
           });
-
           dataStream.writeData({
             type: 'progress',
             label: 'summary',
             status: 'complete',
             order: progressCounter++,
             message: 'Analysis Complete',
-          } as ProgressAnnotation);
+          } satisfies ProgressAnnotation);
 
           dataStream.writeMessageAnnotation({
             type: 'chatSummary',
@@ -108,6 +120,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             chatId: messages.slice(-1)?.[0]?.id,
           } as ContextAnnotation);
 
+          // Update context buffer
           logger.debug('Updating Context Buffer');
           dataStream.writeData({
             type: 'progress',
@@ -115,11 +128,13 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             status: 'in-progress',
             order: progressCounter++,
             message: 'Determining Files to Read',
-          } as ProgressAnnotation);
+          } satisfies ProgressAnnotation);
 
+          // Select context files
+          console.log(`Messages count: ${messages.length}`);
           filteredFiles = await selectContext({
             messages: [...messages],
-            env: import.meta.env,
+            env: context.cloudflare?.env,
             apiKeys,
             files,
             providerSettings,
@@ -137,14 +152,20 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           });
 
           if (filteredFiles) {
-            logger.debug(`files in context: ${JSON.stringify(Object.keys(filteredFiles))}`);
+            logger.debug(`files in context : ${JSON.stringify(Object.keys(filteredFiles))}`);
           }
 
           dataStream.writeMessageAnnotation({
             type: 'codeContext',
-            files: Object.keys(filteredFiles).map((key) =>
-              key.startsWith(WORK_DIR) ? key.replace(WORK_DIR, '') : key,
-            ),
+            files: Object.keys(filteredFiles).map((key) => {
+              let path = key;
+
+              if (path.startsWith(WORK_DIR)) {
+                path = path.replace(WORK_DIR, '');
+              }
+
+              return path;
+            }),
           } as ContextAnnotation);
 
           dataStream.writeData({
@@ -153,9 +174,12 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             status: 'complete',
             order: progressCounter++,
             message: 'Code Files Selected',
-          } as ProgressAnnotation);
+          } satisfies ProgressAnnotation);
+
+          // logger.debug('Code Files Selected');
         }
 
+        // Stream the text
         const options: StreamingOptions = {
           toolChoice: 'none',
           onFinish: async ({ text: content, finishReason, usage }) => {
@@ -182,9 +206,10 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
                 status: 'complete',
                 order: progressCounter++,
                 message: 'Response Generated',
-              } as ProgressAnnotation);
+              } satisfies ProgressAnnotation);
               await new Promise((resolve) => setTimeout(resolve, 0));
 
+              // stream.close();
               return;
             }
 
@@ -193,9 +218,10 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             }
 
             const switchesLeft = MAX_RESPONSE_SEGMENTS - stream.switches;
+
             logger.info(`Reached max token limit (${MAX_TOKENS}): Continuing message (${switchesLeft} switches left)`);
 
-            const lastUserMessage = messages.filter((x: { role: string }) => x.role === 'user').slice(-1)[0];
+            const lastUserMessage = messages.filter((x) => x.role == 'user').slice(-1)[0];
             const { model, provider } = extractPropertiesFromMessage(lastUserMessage);
             messages.push({ id: generateId(), role: 'assistant', content });
             messages.push({
@@ -206,7 +232,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
 
             const result = await streamText({
               messages,
-              env: import.meta.env,
+              env: context.cloudflare?.env,
               options,
               apiKeys,
               files,
@@ -217,12 +243,15 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
               summary,
               messageSliceId,
             });
+
             result.mergeIntoDataStream(dataStream);
 
             (async () => {
               for await (const part of result.fullStream) {
                 if (part.type === 'error') {
-                  logger.error(`${part.error}`);
+                  const error: any = part.error;
+                  logger.error(`${error}`);
+
                   return;
                 }
               }
@@ -238,11 +267,11 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           status: 'in-progress',
           order: progressCounter++,
           message: 'Generating Response',
-        } as ProgressAnnotation);
+        } satisfies ProgressAnnotation);
 
         const result = await streamText({
           messages,
-          env: import.meta.env,
+          env: context.cloudflare?.env,
           options,
           apiKeys,
           files,
@@ -257,7 +286,9 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         (async () => {
           for await (const part of result.fullStream) {
             if (part.type === 'error') {
-              logger.error(`${part.error}`);
+              const error: any = part.error;
+              logger.error(`${error}`);
+
               return;
             }
           }
@@ -290,12 +321,13 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             let content = chunk.split(':').slice(1).join(':');
 
             if (content.endsWith('\n')) {
-              content = content.slice(0, -1);
+              content = content.slice(0, content.length - 1);
             }
 
             transformedChunk = `0:${content}\n`;
           }
 
+          // Convert the string stream to a byte stream
           const str = typeof transformedChunk === 'string' ? transformedChunk : JSON.stringify(transformedChunk);
           controller.enqueue(encoder.encode(str));
         },
@@ -315,9 +347,15 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     logger.error(error);
 
     if (error.message?.includes('API key')) {
-      throw new Response('Invalid or missing API key', { status: 401, statusText: 'Unauthorized' });
+      throw new Response('Invalid or missing API key', {
+        status: 401,
+        statusText: 'Unauthorized',
+      });
     }
 
-    throw new Response(null, { status: 500, statusText: 'Internal Server Error' });
+    throw new Response(null, {
+      status: 500,
+      statusText: 'Internal Server Error',
+    });
   }
 }

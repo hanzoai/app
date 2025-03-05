@@ -27,7 +27,7 @@ export interface OllamaApiResponse {
   models: OllamaModel[];
 }
 
-export const DEFAULT_NUM_CTX = process?.env?.DEFAULT_NUM_CTX ? parseInt(import.meta.env.DEFAULT_NUM_CTX, 10) : 32768;
+export const DEFAULT_NUM_CTX = process?.env?.DEFAULT_NUM_CTX ? parseInt(process.env.DEFAULT_NUM_CTX, 10) : 32768;
 
 export default class OllamaProvider extends BaseProvider {
   name = 'Ollama';
@@ -83,7 +83,7 @@ export default class OllamaProvider extends BaseProvider {
   }
   getModelInstance: (options: {
     model: string;
-    serverEnv?: Record<string, string>;
+    serverEnv?: Env;
     apiKeys?: Record<string, string>;
     providerSettings?: Record<string, IProviderSetting>;
   }) => LanguageModelV1 = (options) => {

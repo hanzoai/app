@@ -30,7 +30,7 @@ export class TerminalStore {
       const wc = await this.#webcontainer;
       await this.#hanzoTerminal.init(wc, terminal);
     } catch (error: any) {
-      terminal.write(coloredText.red('Failed to spawn hanzo shell\n\n') + error.message);
+      terminal.write(coloredText.red('Failed to spawn Hanzo shell\n\n') + error.message);
       return;
     }
   }

@@ -1,6 +1,4 @@
-import { vitePlugin as remix } from '@remix-run/dev';
-import { viteCommonjs } from '@originjs/vite-plugin-commonjs'
-import { vercelPreset } from '@vercel/remix/vite';
+import { cloudflareDevProxyVitePlugin as remixCloudflareDevProxy, vitePlugin as remixVitePlugin } from '@remix-run/dev';
 import UnoCSS from 'unocss/vite';
 import { defineConfig, type ViteDevServer } from 'vite';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
@@ -8,99 +6,117 @@ import { optimizeCssModules } from 'vite-plugin-optimize-css-modules';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import * as dotenv from 'dotenv';
 import { execSync } from 'child_process';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 dotenv.config();
 
-// Get git hash with fallback
-const getGitHash = () => {
+// Get detailed git info with fallbacks
+const getGitInfo = () => {
   try {
-    return execSync('git rev-parse --short HEAD').toString().trim();
+    return {
+      commitHash: execSync('git rev-parse --short HEAD').toString().trim(),
+      branch: execSync('git rev-parse --abbrev-ref HEAD').toString().trim(),
+      commitTime: execSync('git log -1 --format=%cd').toString().trim(),
+      author: execSync('git log -1 --format=%an').toString().trim(),
+      email: execSync('git log -1 --format=%ae').toString().trim(),
+      remoteUrl: execSync('git config --get remote.origin.url').toString().trim(),
+      repoName: execSync('git config --get remote.origin.url')
+        .toString()
+        .trim()
+        .replace(/^.*github.com[:/]/, '')
+        .replace(/\.git$/, ''),
+    };
   } catch {
-    return 'no-git-info';
+    return {
+      commitHash: 'no-git-info',
+      branch: 'unknown',
+      commitTime: 'unknown',
+      author: 'unknown',
+      email: 'unknown',
+      remoteUrl: 'unknown',
+      repoName: 'unknown',
+    };
   }
 };
 
+// Read package.json with detailed dependency info
+const getPackageJson = () => {
+  try {
+    const pkgPath = join(process.cwd(), 'package.json');
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
 
+    return {
+      name: pkg.name,
+      description: pkg.description,
+      license: pkg.license,
+      dependencies: pkg.dependencies || {},
+      devDependencies: pkg.devDependencies || {},
+      peerDependencies: pkg.peerDependencies || {},
+      optionalDependencies: pkg.optionalDependencies || {},
+    };
+  } catch {
+    return {
+      name: 'Hanzo APP',
+      description: 'An APP LLM interface',
+      license: 'MIT',
+      dependencies: {},
+      devDependencies: {},
+      peerDependencies: {},
+      optionalDependencies: {},
+    };
+  }
+};
 
+const pkg = getPackageJson();
+const gitInfo = getGitInfo();
 
 export default defineConfig((config) => {
   return {
     define: {
-      __COMMIT_HASH: JSON.stringify(getGitHash()),
+      __COMMIT_HASH: JSON.stringify(gitInfo.commitHash),
+      __GIT_BRANCH: JSON.stringify(gitInfo.branch),
+      __GIT_COMMIT_TIME: JSON.stringify(gitInfo.commitTime),
+      __GIT_AUTHOR: JSON.stringify(gitInfo.author),
+      __GIT_EMAIL: JSON.stringify(gitInfo.email),
+      __GIT_REMOTE_URL: JSON.stringify(gitInfo.remoteUrl),
+      __GIT_REPO_NAME: JSON.stringify(gitInfo.repoName),
       __APP_VERSION: JSON.stringify(process.env.npm_package_version),
-      // 'import.meta.env': JSON.stringify(import.meta.env)
+      __PKG_NAME: JSON.stringify(pkg.name),
+      __PKG_DESCRIPTION: JSON.stringify(pkg.description),
+      __PKG_LICENSE: JSON.stringify(pkg.license),
+      __PKG_DEPENDENCIES: JSON.stringify(pkg.dependencies),
+      __PKG_DEV_DEPENDENCIES: JSON.stringify(pkg.devDependencies),
+      __PKG_PEER_DEPENDENCIES: JSON.stringify(pkg.peerDependencies),
+      __PKG_OPTIONAL_DEPENDENCIES: JSON.stringify(pkg.optionalDependencies),
     },
     build: {
       target: 'esnext',
-      sourcemap: true, // Enable source maps in production build
-      rollupOptions: {
-        output: {
-          sourcemapExcludeSources: true, // Include source content in the map
-        },
-      },
     },
     plugins: [
       nodePolyfills({
         include: ['path', 'buffer', 'process'],
       }),
-      remix({
-        buildDirectory: "build",
+      config.mode !== 'test' && remixCloudflareDevProxy(),
+      remixVitePlugin({
         future: {
           v3_fetcherPersist: true,
           v3_relativeSplatPath: true,
           v3_throwAbortReason: true,
-          v3_lazyRouteDiscovery: true
+          v3_lazyRouteDiscovery: true,
         },
-        presets: [vercelPreset()]
       }),
       UnoCSS(),
       tsconfigPaths(),
-      viteCommonjs(),
       chrome129IssuePlugin(),
       config.mode === 'production' && optimizeCssModules({ apply: 'build' }),
     ],
-    optimizeDeps: {
-      include: ['react-dom'],
-      // Not excluding these seem to:
-      //   a) always force a refresh after initial load: https://github.com/vitejs/vite/discussions/14801)
-      //   b) optimize an old version!
-      exclude: [
-        '@hanzo/ui/primitives-common',
-        '@hanzo/ui/util',
-      ]
-    },
-    ssr: {
-      noExternal: ['@nanostores', '@nanostores/react', 'react-dnd', 'react-dnd-html5-backend'],
-    },
-    // https://github.com/remix-run/remix/issues/10156#issuecomment-2440234744
-    server: {
-      warmup: {
-        clientFiles: ['app/**/*.tsx'],
-      },
-    },
     envPrefix: [
-      "VITE_",
-      "OPENAI_LIKE_API_BASE_URL",
-      "OLLAMA_API_BASE_URL",
-      "LMSTUDIO_API_BASE_URL",
-      "TOGETHER_API_BASE_URL",
-      "ANTHROPIC_API_KEY",
-      "OPENAI_API_KEY",
-      "GROQ_API_KEY",
-      "HUGGINGFACE_API_KEY",
-      "OPEN_ROUTER_API_KEY",
-      "OPENAI_LIKE_API_KEY",
-      "TOGETHER_API_KEY",
-      "DEEPSEEK_API_KEY",
-      "GOOGLE_GENERATIVE_AI_API_KEY",
-      "MISTRAL_API_KEY",
-      "XAI_API_KEY",
-      "PERPLEXITY_API_KEY",
-      "AWS_BEDROCK_CONFIG",
-      "RUNNING_IN_DOCKER",
-      "DEFAULT_NUM_CTX",
-      "GITHUB_USERNAME",
-      "GITHUB_TOKEN"
+      'VITE_',
+      'OPENAI_LIKE_API_BASE_URL',
+      'OLLAMA_API_BASE_URL',
+      'LMSTUDIO_API_BASE_URL',
+      'TOGETHER_API_BASE_URL',
     ],
     css: {
       preprocessorOptions: {
@@ -137,5 +153,3 @@ function chrome129IssuePlugin() {
     },
   };
 }
-
-

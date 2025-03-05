@@ -9,12 +9,10 @@ const collectionName = 'hanzo';
 const customIconCollection = iconPaths.reduce(
   (acc, iconPath) => {
     const [iconName] = basename(iconPath).split('.');
+
     acc[collectionName] ??= {};
-    acc[collectionName][iconName] = async () => {
-      const data = await fs.readFile(iconPath, { encoding: 'utf8' });
-      // Ensure the result is a string, even if the type definitions return a Buffer.
-      return typeof data === 'string' ? data : (data as any).toString('utf8');
-    };
+    acc[collectionName][iconName] = async () => fs.readFile(iconPath, 'utf8');
+
     return acc;
   },
   {} as Record<string, Record<string, () => Promise<string>>>,
@@ -88,19 +86,6 @@ const BASE_COLORS = {
   },
 };
 
-function generateAlphaPalette(hex: string) {
-  return [1, 2, 3, 4, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].reduce(
-    (acc, opacity) => {
-      const alpha = Math.round((opacity / 100) * 255)
-        .toString(16)
-        .padStart(2, '0');
-      acc[opacity] = `${hex}${alpha}`;
-      return acc;
-    },
-    {} as Record<number, string>,
-  );
-}
-
 const COLOR_PRIMITIVES = {
   ...BASE_COLORS,
   alpha: {
@@ -122,6 +107,10 @@ export default defineConfig({
     'max-w-chat': 'max-w-[var(--chat-max-width)]',
   },
   rules: [
+    /**
+     * This shorthand doesn't exist in Tailwind and we overwrite it to avoid
+     * any conflicts with minified CSS classes.
+     */
     ['b', {}],
   ],
   theme: {
@@ -258,3 +247,34 @@ export default defineConfig({
     }),
   ],
 });
+
+/**
+ * Generates an alpha palette for a given hex color.
+ *
+ * @param hex - The hex color code (without alpha) to generate the palette from.
+ * @returns An object where keys are opacity percentages and values are hex colors with alpha.
+ *
+ * Example:
+ *
+ * ```
+ * {
+ *   '1': '#FFFFFF03',
+ *   '2': '#FFFFFF05',
+ *   '3': '#FFFFFF08',
+ * }
+ * ```
+ */
+function generateAlphaPalette(hex: string) {
+  return [1, 2, 3, 4, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].reduce(
+    (acc, opacity) => {
+      const alpha = Math.round((opacity / 100) * 255)
+        .toString(16)
+        .padStart(2, '0');
+
+      acc[opacity] = `${hex}${alpha}`;
+
+      return acc;
+    },
+    {} as Record<number, string>,
+  );
+}

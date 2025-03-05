@@ -1,4 +1,4 @@
-import { BaseProvider, getHanzoModel } from '~/lib/modules/llm/base-provider';
+import { BaseProvider, getOpenAILikeModel } from '~/lib/modules/llm/base-provider';
 import type { ModelInfo } from '~/lib/modules/llm/types';
 import type { IProviderSetting } from '~/types/model';
 import type { LanguageModelV1 } from 'ai';
@@ -72,7 +72,7 @@ export default class TogetherProvider extends BaseProvider {
 
   getModelInstance(options: {
     model: string;
-    serverEnv: Record<string, string>;
+    serverEnv: Env;
     apiKeys?: Record<string, string>;
     providerSettings?: Record<string, IProviderSetting>;
   }): LanguageModelV1 {
@@ -90,6 +90,6 @@ export default class TogetherProvider extends BaseProvider {
       throw new Error(`Missing configuration for ${this.name} provider`);
     }
 
-    return getHanzoModel(baseUrl, apiKey, model);
+    return getOpenAILikeModel(baseUrl, apiKey, model);
   }
 }

@@ -162,6 +162,10 @@ You have two options for running Hanzo: directly on your machine or using Docker
    pnpm run dev
    ```
 
+
+   **Important Note**: If you're using Google Chrome, you'll need Chrome Canary for local development. [Download it here](https://www.google.com/chrome/canary/)
+
+   
    **Important Note**: If you're using Google Chrome, you'll need Chrome Canary for local development. [Download it here](https://www.google.com/chrome/canary/)
 
 ### Option 2: Using Docker
@@ -247,7 +251,7 @@ This method is recommended for developers who want to:
 2. **Navigate to Project Directory**:
 
    ```bash
-   cd canvas
+   cd app
    ```
 
 3. **Switch to the Main Branch**:

@@ -58,7 +58,7 @@ export function Header() {
         'border-hanzo-elements-borderColor': chat.started,
       })}
     >
-      <div className="flex items-center gap-2 z-logo text-hanzo-elements-textPrimary">
+      <div className="flex items-center gap-2 z-logo text-hanzo-elements-textPrimary cursor-pointer">
         <a href="/" className="text-2xl font-semibold text-accent flex items-center">
           <motion.span
             key="logo"

@@ -14,7 +14,7 @@ const logger = createScopedLogger('select-context');
 
 export async function selectContext(props: {
   messages: Message[];
-  env?: Record<string, string>;
+  env?: Env;
   apiKeys?: Record<string, string>;
   files: FileMap;
   providerSettings?: Record<string, IProviderSetting>;
@@ -138,7 +138,7 @@ export async function selectContext(props: {
         Now, you are given a task. You need to select the files that are relevant to the task from the list of files above.
 
         RESPONSE FORMAT:
-        your response shoudl be in following format:
+        your response should be in following format:
 ---
 <updateContextBuffer>
     <includeFile path="path/to/file"/>
@@ -204,7 +204,10 @@ export async function selectContext(props: {
     }
 
     if (!filePaths.includes(fullPath)) {
-      throw new Error(`File ${path} is not in the list of files above.`);
+      logger.error(`File ${path} is not in the list of files above.`);
+      return;
+
+      // throw new Error(`File ${path} is not in the list of files above.`);
     }
 
     if (currrentFiles.includes(path)) {
@@ -216,6 +219,13 @@ export async function selectContext(props: {
 
   if (onFinish) {
     onFinish(resp);
+  }
+
+  const totalFiles = Object.keys(filteredFiles).length;
+  logger.info(`Total files: ${totalFiles}`);
+
+  if (totalFiles == 0) {
+    throw new Error(`Hanzo failed to select files`);
   }
 
   return filteredFiles;

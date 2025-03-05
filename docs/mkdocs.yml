@@ -33,26 +33,23 @@ theme:
   # favicon: assets/logo.png
 repo_name: hanzoapp
 repo_url: https://github.com/hanzoai/app
-edit_uri: ""
+edit_uri: ''
 
 extra:
   generator: false
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/hanzoai/app
-      name: hanzo.ai
+      name: hanzoapp
     - icon: fontawesome/brands/discourse
       link: https://thinktank.ottomator.ai/
-      name: hanzo.ai Discourse
+      name: hanzoapp Discourse
     - icon: fontawesome/brands/x-twitter
-      link: https://x.com/hanzo_ai
-      name: hanzo.ai on X
+      link: https://x.com/hanzo_diy
+      name: hanzoapp on X
     - icon: fontawesome/brands/bluesky
-      link: https://bsky.app/profile/hanzo.ai
-      name: hanzo.ai on Bluesky
-
-      
-
+      link: https://bsky.app/profile/hanzoapp
+      name: hanzoapp on Bluesky
 
 markdown_extensions:
   - pymdownx.highlight:

@@ -43,5 +43,6 @@ export function UserMessage({ content }: UserMessageProps) {
 }
 
 function stripMetadata(content: string) {
-  return content.replace(MODEL_REGEX, '').replace(PROVIDER_REGEX, '');
+  const artifactRegex = /<hanzoArtifact\s+[^>]*>[\s\S]*?<\/hanzoArtifact>/gm;
+  return content.replace(MODEL_REGEX, '').replace(PROVIDER_REGEX, '').replace(artifactRegex, '');
 }
