@@ -1,11 +1,11 @@
 {
-  "name": "hanzo",
-  "description": "An AI Agent",
+  "name": "hanzo-app",
+  "description": "AI Code Editor and App Builder",
   "private": true,
   "license": "MIT",
   "sideEffects": false,
   "type": "module",
-  "version": "0.0.7",
+  "version": "1.0.0",
   "scripts": {
     "deploy": "npm run build && wrangler pages deploy",
     "build": "remix vite:build",
