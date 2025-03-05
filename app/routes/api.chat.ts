@@ -39,7 +39,7 @@ function parseCookies(cookieHeader: string): Record<string, string> {
 async function chatAction({ context, request }: ActionFunctionArgs) {
   const { messages, files, promptId, contextOptimization } = (await request.json()) as {
     messages: Messages;
-    files: any[];
+    files: FileMap;
     promptId?: string;
     contextOptimization: boolean;
   };
@@ -61,7 +61,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
   let progressCounter: number = 1;
 
   try {
-    const totalMessageContent = messages.reduce((acc: string, message: Message) => acc + message.content, '');
+    const totalMessageContent = messages.reduce((acc: string, message: Messages[number]) => acc + message.content, '');
     logger.debug(`Total message length: ${totalMessageContent.split(' ').length}, words`);
 
     let lastChunk: string | undefined = undefined;
@@ -221,7 +221,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
 
             logger.info(`Reached max token limit (${MAX_TOKENS}): Continuing message (${switchesLeft} switches left)`);
 
-            const lastUserMessage = messages.filter((x: Message) => x.role === 'user').slice(-1)[0];
+            const lastUserMessage = messages.filter((x) => x.role === 'user').slice(-1)[0];
             const { model, provider } = extractPropertiesFromMessage(lastUserMessage);
             messages.push({ id: generateId(), role: 'assistant', content });
             messages.push({
