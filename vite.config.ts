@@ -57,8 +57,8 @@ const getPackageJson = () => {
     };
   } catch {
     return {
-      name: 'Hanzo APP',
-      description: 'An APP LLM interface',
+      name: 'Hanzo App',
+      description: 'AI App Builder and LLM interface',
       license: 'MIT',
       dependencies: {},
       devDependencies: {},
@@ -75,7 +75,7 @@ export default defineConfig((config) => {
   return {
     server: {
       host: true,
-      allowedHosts: (['dev.hanzo.app'] as unknown) as string[] | true
+      allowedHosts: (['dev.hanzo.app', 'hanzo.app'] as unknown) as string[] | true
     },
     define: {
       __COMMIT_HASH: JSON.stringify(gitInfo.commitHash),
