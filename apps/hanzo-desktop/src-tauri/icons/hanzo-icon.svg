@@ -1,0 +1,13 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Black rounded rectangle background -->
+  <rect width="512" height="512" rx="92" fill="#1a1a1a"/>
+  
+  <!-- White H logo -->
+  <g transform="translate(156, 156) scale(3, 3)">
+    <path d="M22.21 67V44.6369H0V67H22.21Z" fill="#ffffff"/>
+    <path d="M66.7038 22.3184H22.2534L0.0878906 44.6367H44.4634L66.7038 22.3184Z" fill="#ffffff"/>
+    <path d="M22.21 0H0V22.3184H22.21V0Z" fill="#ffffff"/>
+    <path d="M66.7198 0H44.5098V22.3184H66.7198V0Z" fill="#ffffff"/>
+    <path d="M66.7198 67V44.6369H44.5098V67H66.7198Z" fill="#ffffff"/>
+  </g>
+</svg>

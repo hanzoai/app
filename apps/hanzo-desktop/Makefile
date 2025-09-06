@@ -1,4 +1,4 @@
-# Hanzo Desktop Makefile - iOS & Android Support
+# Hanzo Desktop Makefile - Complete Build System
 .PHONY: help install dev build test clean ios android
 
 # Default target
@@ -9,11 +9,17 @@ BLUE := \033[0;34m
 GREEN := \033[0;32m
 YELLOW := \033[0;33m
 RED := \033[0;31m
+CYAN := \033[0;36m
+MAGENTA := \033[0;35m
+WHITE := \033[1;37m
 NC := \033[0m # No Color
 
 # Platform detection
 UNAME_S := $(shell uname -s)
 UNAME_M := $(shell uname -m)
+
+# Set NODE_OPTIONS for all commands to prevent memory issues
+export NODE_OPTIONS := --max-old-space-size=8192
 
 # iOS Simulator Device
 IOS_SIMULATOR ?= iPhone 15 Pro
@@ -23,34 +29,46 @@ ANDROID_DEVICE ?= Pixel_8_Pro_API_34
 
 ## Help
 help:
-	@echo "$(BLUE)🎯 Hanzo Desktop Build System$(NC)"
+	@echo "$(CYAN)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(CYAN)║$(WHITE)              🎯 Hanzo Desktop Build System                  $(CYAN)║$(NC)"
+	@echo "$(CYAN)╠══════════════════════════════════════════════════════════════╣$(NC)"
+	@echo "$(CYAN)║$(NC) $(GREEN)Quick Commands:$(NC)                                             $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(YELLOW)make build-ios$(NC)      - Build iOS app                      $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(YELLOW)make build-android$(NC)  - Build Android app                  $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(YELLOW)make dev-ios$(NC)        - Run iOS simulator                  $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(YELLOW)make dev-android$(NC)    - Run Android emulator               $(CYAN)║$(NC)"
+	@echo "$(CYAN)╠══════════════════════════════════════════════════════════════╣$(NC)"
+	@echo "$(CYAN)║$(NC) $(MAGENTA)Desktop Targets:$(NC)                                            $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)dev$(NC)                 - Start desktop development          $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)build$(NC)               - Build for current platform         $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)build-macos$(NC)         - Build macOS DMG                    $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)build-windows$(NC)       - Build Windows installer            $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)build-linux$(NC)         - Build Linux AppImage               $(CYAN)║$(NC)"
+	@echo "$(CYAN)╠══════════════════════════════════════════════════════════════╣$(NC)"
+	@echo "$(CYAN)║$(NC) $(MAGENTA)iOS Targets:$(NC) 📱                                             $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)ios-init$(NC)            - Initialize iOS project             $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)ios-dev$(NC)             - Run in iOS simulator               $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)ios-build$(NC)           - Build iOS release                  $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)ios-list$(NC)            - List iOS simulators                $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)ios-open$(NC)            - Open in Xcode                      $(CYAN)║$(NC)"
+	@echo "$(CYAN)╠══════════════════════════════════════════════════════════════╣$(NC)"
+	@echo "$(CYAN)║$(NC) $(MAGENTA)Android Targets:$(NC) 🤖                                         $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)android-setup$(NC)       - Install Android SDK                $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)android-init$(NC)        - Initialize Android project         $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)android-dev$(NC)         - Run in Android emulator            $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)android-build$(NC)       - Build Android APK                  $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)android-list$(NC)        - List Android devices               $(CYAN)║$(NC)"
+	@echo "$(CYAN)╠══════════════════════════════════════════════════════════════╣$(NC)"
+	@echo "$(CYAN)║$(NC) $(MAGENTA)Utilities:$(NC)                                                  $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)install$(NC)             - Install all dependencies           $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)clean$(NC)               - Clean build artifacts              $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)test$(NC)                - Run all tests                      $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)lint$(NC)                - Run linters                        $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)format$(NC)              - Format code                        $(CYAN)║$(NC)"
+	@echo "$(CYAN)║$(NC)   $(WHITE)icons$(NC)               - Regenerate icons                   $(CYAN)║$(NC)"
+	@echo "$(CYAN)╚══════════════════════════════════════════════════════════════╝$(NC)"
 	@echo ""
-	@echo "$(GREEN)Desktop Targets:$(NC)"
-	@echo "  $(YELLOW)dev$(NC)             Start desktop development server"
-	@echo "  $(YELLOW)build$(NC)           Build desktop app for current platform"
-	@echo "  $(YELLOW)build-dmg$(NC)       Build macOS DMG installer"
-	@echo ""
-	@echo "$(GREEN)iOS Targets (5-star experience):$(NC)"
-	@echo "  $(YELLOW)ios-init$(NC)        Initialize iOS project"
-	@echo "  $(YELLOW)ios-dev$(NC)         Run iOS app in simulator"
-	@echo "  $(YELLOW)ios-build$(NC)       Build iOS app for release"
-	@echo "  $(YELLOW)ios-list$(NC)        List available iOS simulators"
-	@echo "  $(YELLOW)ios-open$(NC)        Open in Xcode"
-	@echo ""
-	@echo "$(GREEN)Android Targets:$(NC)"
-	@echo "  $(YELLOW)android-setup$(NC)   Setup Android SDK via Homebrew"
-	@echo "  $(YELLOW)android-init$(NC)    Initialize Android project"
-	@echo "  $(YELLOW)android-dev$(NC)     Run Android app in emulator"
-	@echo "  $(YELLOW)android-build$(NC)   Build Android APK"
-	@echo "  $(YELLOW)android-list$(NC)    List available Android devices"
-	@echo ""
-	@echo "$(GREEN)Utilities:$(NC)"
-	@echo "  $(YELLOW)install$(NC)         Install all dependencies"
-	@echo "  $(YELLOW)clean$(NC)           Clean build artifacts"
-	@echo "  $(YELLOW)test$(NC)            Run all tests"
-	@echo "  $(YELLOW)lint$(NC)            Run linters"
-	@echo ""
-	@echo "$(BLUE)Platform: $(UNAME_S) ($(UNAME_M))$(NC)"
+	@echo "  Platform: $(GREEN)$(UNAME_S) ($(UNAME_M))$(NC)"
 
 ## Install dependencies
 install:
@@ -68,12 +86,12 @@ dev:
 
 build:
 	@echo "$(BLUE)🔨 Building desktop app...$(NC)"
-	NODE_OPTIONS="--max-old-space-size=16384" npm run build
+	npm run build
 	cd src-tauri && cargo build --release
 
 build-dmg:
 	@echo "$(BLUE)📦 Building macOS DMG...$(NC)"
-	NODE_OPTIONS="--max-old-space-size=16384" npx nx build hanzo-desktop --configuration=production
+	npx nx build hanzo-desktop --configuration=production
 
 ## iOS Development (5-star experience)
 ios-check:
@@ -111,12 +129,12 @@ ios-dev: ios-init
 
 ios-build: ios-init
 	@echo "$(BLUE)📦 Building iOS app for release...$(NC)"
-	NODE_OPTIONS="--max-old-space-size=16384" npm run build
+	npm run build
 	npx tauri ios build --ci --export-method debugging
 
 ios-build-release: ios-init
 	@echo "$(BLUE)📦 Building iOS app for App Store...$(NC)"
-	NODE_OPTIONS="--max-old-space-size=16384" npm run build
+	npm run build
 	npx tauri ios build --ci --export-method app-store-connect
 
 ios-open:
@@ -183,7 +201,7 @@ android-dev: android-init
 
 android-build: android-init
 	@echo "$(BLUE)📦 Building Android APK...$(NC)"
-	NODE_OPTIONS="--max-old-space-size=16384" npm run build
+	npm run build
 	export ANDROID_HOME="$$HOME/Library/Android/sdk" && \
 	npx tauri android build --ci
 
@@ -225,9 +243,73 @@ clean-all: clean
 	rm -rf src-tauri/target
 	@echo "$(GREEN)✅ Deep clean complete!$(NC)"
 
-## Quick commands
+## Quick commands and aliases
 ios: ios-dev  # Alias for iOS development
 android: android-dev  # Alias for Android development
+
+# New naming convention aliases (using different separator for make compatibility)
+dev-ios: ios-dev
+build-ios: ios-build
+ios-init-alias: ios-init
+ios-devices: ios-list
+ios-xcode: ios-open
+
+dev-android: android-dev
+build-android: android-build
+android-init-alias: android-init
+android-devices: android-list
+
+# Desktop platform aliases
+build-macos: build-dmg
+build-windows:
+	@echo "$(RED)Windows builds must be run on Windows or in CI$(NC)"
+build-linux:
+	@echo "$(RED)Linux builds must be run on Linux or in CI$(NC)"
+
+# Utility aliases
+format:
+	@echo "$(BLUE)💅 Formatting code...$(NC)"
+	npx prettier --write "src/**/*.{ts,tsx,css}"
+	cd src-tauri && cargo fmt
+	@echo "$(GREEN)✅ Code formatted!$(NC)"
+
+icons:
+	@echo "$(BLUE)🎨 Regenerating icons...$(NC)"
+	@cd src-tauri/icons && \
+	magick hanzo-icon.svg -resize 512x512 -background none icon.png && \
+	magick hanzo-icon.svg -resize 512x512 -background none app-icon.png && \
+	magick hanzo-icon.svg -resize 32x32 -background none 32x32.png && \
+	magick hanzo-icon.svg -resize 128x128 -background none 128x128.png && \
+	magick hanzo-icon.svg -resize 256x256 -background none 128x128@2x.png && \
+	magick hanzo-icon.svg -resize 30x30 -background none Square30x30Logo.png && \
+	magick hanzo-icon.svg -resize 44x44 -background none Square44x44Logo.png && \
+	magick hanzo-icon.svg -resize 71x71 -background none Square71x71Logo.png && \
+	magick hanzo-icon.svg -resize 89x89 -background none Square89x89Logo.png && \
+	magick hanzo-icon.svg -resize 107x107 -background none Square107x107Logo.png && \
+	magick hanzo-icon.svg -resize 142x142 -background none Square142x142Logo.png && \
+	magick hanzo-icon.svg -resize 150x150 -background none Square150x150Logo.png && \
+	magick hanzo-icon.svg -resize 284x284 -background none Square284x284Logo.png && \
+	magick hanzo-icon.svg -resize 310x310 -background none Square310x310Logo.png && \
+	magick hanzo-icon.svg -resize 50x50 -background none StoreLogo.png && \
+	magick hanzo-icon.svg -resize 620x300 -background none SplashScreen.png && \
+	magick hanzo-icon.svg -resize 24x24 -background none tray-icon.png && \
+	magick hanzo-icon.svg -resize 24x24 -background none tray-icon-macos.png
+	@echo "$(GREEN)✅ Icons regenerated!$(NC)"
+
+screenshot:
+	@echo "$(BLUE)📸 Taking app screenshot...$(NC)"
+	@screencapture -x -W public/onboarding.png
+	@echo "$(GREEN)✅ Screenshot saved to public/onboarding.png$(NC)"
+
+assets: icons screenshot
+	@echo "$(GREEN)✅ All assets generated!$(NC)"
+
+build-hanzo-node:
+	@echo "$(BLUE)🔨 Building hanzo-node from ~/work/hanzo/node...$(NC)"
+	@cd ~/work/hanzo/node && cargo build --release --bin hanzo_node
+	@echo "$(BLUE)📦 Copying hanzo-node binary to src-tauri...$(NC)"
+	@cp ~/work/hanzo/node/target/release/hanzo_node src-tauri/hanzo-node-$(UNAME_M)-$(shell echo $(UNAME_S) | tr '[:upper:]' '[:lower:]')
+	@echo "$(GREEN)✅ hanzo-node binary installed$(NC)"
 
 # Combined mobile setup
 mobile-setup: ios-init android-init
