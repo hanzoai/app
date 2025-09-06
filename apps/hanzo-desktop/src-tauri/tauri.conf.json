@@ -7,7 +7,12 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app", "appimage", "nsis", "dmg"],
+    "targets": [
+      "app",
+      "appimage",
+      "nsis",
+      "dmg"
+    ],
     "externalBin": [
       "external-binaries/hanzo-node/shinkai-node",
       "external-binaries/hanzo-node/shinkai-tools-runner-resources/deno",
@@ -21,7 +26,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": ["llm-models/"],
+    "resources": [
+      "llm-models/"
+    ],
     "macOS": {
       "minimumSystemVersion": "12.0"
     },
@@ -42,7 +49,9 @@
     },
     "deep-link": {
       "desktop": {
-        "schemes": ["hanzo"]
+        "schemes": [
+          "hanzo"
+        ]
       }
     }
   },

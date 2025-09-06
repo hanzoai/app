@@ -1,6 +1,6 @@
 <h1 align="center">
-<img width="36" height="36" src="assets/icon.png"/>
-  Hanzo
+<img width="36" height="36" src="apps/hanzo-desktop/public/hanzo-icon.svg"/>
+  Hanzo AI
   </h1>
 <div align="center">
 
@@ -16,8 +16,8 @@
 
 <p align="center">
   <a href="https://github.com/hanzoai/app/stargazers"><img src="https://img.shields.io/github/stars/hanzoai/app?style=social" alt="GitHub stars"></a>
-  <a href="https://discord.gg/EuA45U3sEu"><img src="https://img.shields.io/discord/1303749220842340412?color=7289DA&label=Discord&logo=discord&logoColor=white" alt="Discord"></a>
-  <a href="https://x.com/HanzoLocalAI"><img src="https://img.shields.io/twitter/follow/HanzoLocalAI?style=social" alt="Twitter Follow"></a>
+  <a href="https://discord.gg/hanzo"><img src="https://img.shields.io/discord/1303749220842340412?color=7289DA&label=Discord&logo=discord&logoColor=white" alt="Discord"></a>
+  <a href="https://x.com/HanzoAI"><img src="https://img.shields.io/twitter/follow/HanzoAI?style=social" alt="Twitter Follow"></a>
 </p>
 
 <p align="center">
@@ -42,7 +42,7 @@
   <a href="#-examples">Examples</a> •
   <a href="#-quick-start">Quick Start</a> •
   <a href="#-development">Development</a> •
-  <a href="https://docs.hanzo.com">Documentation</a>
+  <a href="https://docs.hanzo.ai">Documentation</a>
 </p>
 
 ---
@@ -279,9 +279,9 @@ npx nx run hanzo-i18n:i18n
 
 ### 📚 Additional Resources
 
-- **[Official Documentation](https://docs.hanzo.com)** – Comprehensive guides and API reference
-- **[Discord Community](https://discord.gg/EuA45U3sEu)** – Get help and connect with other developers
-- **[Twitter Updates](https://x.com/HanzoLocalAI)** – Latest news and announcements
+- **[Official Documentation](https://docs.hanzo.ai)** – Comprehensive guides and API reference
+- **[Discord Community](https://discord.gg/hanzo)** – Get help and connect with other developers
+- **[Twitter Updates](https://x.com/HanzoAI)** – Latest news and announcements
 
 ---
 
