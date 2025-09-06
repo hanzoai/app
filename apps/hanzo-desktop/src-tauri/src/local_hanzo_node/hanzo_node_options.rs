@@ -209,11 +209,11 @@ impl Default for HanzoNodeOptions {
 
         HanzoNodeOptions {
             node_api_ip: Some("127.0.0.1".to_string()),
-            node_api_port: Some("9550".to_string()),
-            node_ws_port: Some("9551".to_string()),
+            node_api_port: Some("3690".to_string()),
+            node_ws_port: Some("3691".to_string()),
             node_ip: Some("127.0.0.1".to_string()),
-            node_port: Some("9552".to_string()),
-            node_https_port: Some("9553".to_string()),
+            node_port: Some("3692".to_string()),
+            node_https_port: Some("3693".to_string()),
             global_identity_name: None,
             node_storage_path: Some("./".to_string()),
             embeddings_server_url: Some("http://127.0.0.1:11435".to_string()),

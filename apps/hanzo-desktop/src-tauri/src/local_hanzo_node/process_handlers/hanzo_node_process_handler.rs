@@ -27,7 +27,7 @@ pub struct HanzoNodeProcessHandler {
 impl HanzoNodeProcessHandler {
     const HEALTH_REQUEST_TIMEOUT_MS: u64 = 250;
     const HEALTH_TIMEOUT_MS: u64 = 10000;
-    const PROCESS_NAME: &'static str = "hanzo-node";
+    const PROCESS_NAME: &'static str = "hanzod";
 
     pub fn new(
         app: AppHandle,

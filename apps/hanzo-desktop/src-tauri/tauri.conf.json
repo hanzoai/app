@@ -14,9 +14,9 @@
       "dmg"
     ],
     "externalBin": [
-      "external-binaries/hanzo-node/shinkai-node",
-      "external-binaries/hanzo-node/shinkai-tools-runner-resources/deno",
-      "external-binaries/hanzo-node/shinkai-tools-runner-resources/uv",
+      "external-binaries/hanzo-node/hanzod",
+      "external-binaries/hanzo-node/hanzo-tools-runner-resources/deno",
+      "external-binaries/hanzo-node/hanzo-tools-runner-resources/uv",
       "external-binaries/ollama/ollama"
     ],
     "icon": [
@@ -34,7 +34,7 @@
     },
     "createUpdaterArtifacts": "v1Compatible"
   },
-  "productName": "Hanzo",
+  "productName": "Hanzo AI",
   "version": "../../../package.json",
   "identifier": "com.hanzo.desktop",
   "plugins": {
