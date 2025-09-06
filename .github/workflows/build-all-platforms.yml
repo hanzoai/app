@@ -107,6 +107,40 @@ jobs:
           npm cache verify
           npm ci --no-audit --prefer-offline
 
+      - name: Prepare external binaries
+        shell: bash
+        run: |
+          # Create placeholder hanzod binaries for the build
+          cd apps/hanzo-desktop
+          mkdir -p src-tauri/external-binaries/hanzo-node
+          
+          # Create a placeholder binary for the target platform
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+            echo "@echo off" > "src-tauri/external-binaries/hanzo-node/hanzod-${{ matrix.target }}.exe"
+            echo "echo Placeholder hanzod binary" >> "src-tauri/external-binaries/hanzo-node/hanzod-${{ matrix.target }}.exe"
+          else
+            echo '#!/bin/sh' > "src-tauri/external-binaries/hanzo-node/hanzod-${{ matrix.target }}"
+            echo 'echo "Placeholder hanzod binary"' >> "src-tauri/external-binaries/hanzo-node/hanzod-${{ matrix.target }}"
+            chmod +x "src-tauri/external-binaries/hanzo-node/hanzod-${{ matrix.target }}"
+          fi
+          
+          # Also ensure hanzo-tools-runner-resources exist
+          mkdir -p src-tauri/external-binaries/hanzo-node/hanzo-tools-runner-resources
+          touch src-tauri/external-binaries/hanzo-node/hanzo-tools-runner-resources/deno
+          touch src-tauri/external-binaries/hanzo-node/hanzo-tools-runner-resources/uv
+          chmod +x src-tauri/external-binaries/hanzo-node/hanzo-tools-runner-resources/* || true
+          
+          # Create ollama placeholder
+          mkdir -p src-tauri/external-binaries/ollama
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+            echo "@echo off" > "src-tauri/external-binaries/ollama/ollama-${{ matrix.target }}.exe"
+            echo "echo Placeholder ollama binary" >> "src-tauri/external-binaries/ollama/ollama-${{ matrix.target }}.exe"
+          else
+            echo '#!/bin/sh' > "src-tauri/external-binaries/ollama/ollama-${{ matrix.target }}"
+            echo 'echo "Placeholder ollama binary"' >> "src-tauri/external-binaries/ollama/ollama-${{ matrix.target }}"
+            chmod +x "src-tauri/external-binaries/ollama/ollama-${{ matrix.target }}"
+          fi
+
       - name: Build frontend
         run: |
           NODE_OPTIONS="--max-old-space-size=8192" npm run build
