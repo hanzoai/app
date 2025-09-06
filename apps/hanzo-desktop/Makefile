@@ -274,27 +274,61 @@ format:
 	@echo "$(GREEN)✅ Code formatted!$(NC)"
 
 icons:
-	@echo "$(BLUE)🎨 Regenerating icons...$(NC)"
+	@echo "$(BLUE)🎨 Regenerating all icons from hanzo-icon.svg...$(NC)"
 	@cd src-tauri/icons && \
-	magick hanzo-icon.svg -resize 512x512 -background none icon.png && \
-	magick hanzo-icon.svg -resize 512x512 -background none app-icon.png && \
-	magick hanzo-icon.svg -resize 32x32 -background none 32x32.png && \
-	magick hanzo-icon.svg -resize 128x128 -background none 128x128.png && \
-	magick hanzo-icon.svg -resize 256x256 -background none 128x128@2x.png && \
-	magick hanzo-icon.svg -resize 30x30 -background none Square30x30Logo.png && \
-	magick hanzo-icon.svg -resize 44x44 -background none Square44x44Logo.png && \
-	magick hanzo-icon.svg -resize 71x71 -background none Square71x71Logo.png && \
-	magick hanzo-icon.svg -resize 89x89 -background none Square89x89Logo.png && \
-	magick hanzo-icon.svg -resize 107x107 -background none Square107x107Logo.png && \
-	magick hanzo-icon.svg -resize 142x142 -background none Square142x142Logo.png && \
-	magick hanzo-icon.svg -resize 150x150 -background none Square150x150Logo.png && \
-	magick hanzo-icon.svg -resize 284x284 -background none Square284x284Logo.png && \
-	magick hanzo-icon.svg -resize 310x310 -background none Square310x310Logo.png && \
-	magick hanzo-icon.svg -resize 50x50 -background none StoreLogo.png && \
-	magick hanzo-icon.svg -resize 620x300 -background none SplashScreen.png && \
-	magick hanzo-icon.svg -resize 24x24 -background none tray-icon.png && \
-	magick hanzo-icon.svg -resize 24x24 -background none tray-icon-macos.png
-	@echo "$(GREEN)✅ Icons regenerated!$(NC)"
+	echo "  → Generating PNG icons with proper RGBA format..." && \
+	magick hanzo-icon.svg -resize 512x512 -background none -depth 8 -define png:color-type=6 icon.png && \
+	magick hanzo-icon.svg -resize 512x512 -background none -depth 8 -define png:color-type=6 app-icon.png && \
+	magick hanzo-icon.svg -resize 32x32 -background none -depth 8 -define png:color-type=6 32x32.png && \
+	magick hanzo-icon.svg -resize 128x128 -background none -depth 8 -define png:color-type=6 128x128.png && \
+	magick hanzo-icon.svg -resize 256x256 -background none -depth 8 -define png:color-type=6 128x128@2x.png && \
+	magick hanzo-icon.svg -resize 30x30 -background none -depth 8 -define png:color-type=6 Square30x30Logo.png && \
+	magick hanzo-icon.svg -resize 44x44 -background none -depth 8 -define png:color-type=6 Square44x44Logo.png && \
+	magick hanzo-icon.svg -resize 71x71 -background none -depth 8 -define png:color-type=6 Square71x71Logo.png && \
+	magick hanzo-icon.svg -resize 89x89 -background none -depth 8 -define png:color-type=6 Square89x89Logo.png && \
+	magick hanzo-icon.svg -resize 107x107 -background none -depth 8 -define png:color-type=6 Square107x107Logo.png && \
+	magick hanzo-icon.svg -resize 142x142 -background none -depth 8 -define png:color-type=6 Square142x142Logo.png && \
+	magick hanzo-icon.svg -resize 150x150 -background none -depth 8 -define png:color-type=6 Square150x150Logo.png && \
+	magick hanzo-icon.svg -resize 284x284 -background none -depth 8 -define png:color-type=6 Square284x284Logo.png && \
+	magick hanzo-icon.svg -resize 310x310 -background none -depth 8 -define png:color-type=6 Square310x310Logo.png && \
+	magick hanzo-icon.svg -resize 50x50 -background none -depth 8 -define png:color-type=6 StoreLogo.png && \
+	magick hanzo-icon.svg -resize 620x300 -background none -depth 8 -define png:color-type=6 SplashScreen.png && \
+	magick hanzo-icon.svg -resize 24x24 -background none -depth 8 -define png:color-type=6 tray-icon.png && \
+	magick hanzo-icon.svg -resize 24x24 -background none -depth 8 -define png:color-type=6 tray-icon-macos.png && \
+	echo "  → Generating macOS .icns..." && \
+	rm -rf /tmp/hanzo-icon.iconset && \
+	mkdir -p /tmp/hanzo-icon.iconset && \
+	magick hanzo-icon.svg -resize 16x16 /tmp/hanzo-icon.iconset/icon_16x16.png && \
+	magick hanzo-icon.svg -resize 32x32 /tmp/hanzo-icon.iconset/icon_16x16@2x.png && \
+	magick hanzo-icon.svg -resize 32x32 /tmp/hanzo-icon.iconset/icon_32x32.png && \
+	magick hanzo-icon.svg -resize 64x64 /tmp/hanzo-icon.iconset/icon_32x32@2x.png && \
+	magick hanzo-icon.svg -resize 128x128 /tmp/hanzo-icon.iconset/icon_128x128.png && \
+	magick hanzo-icon.svg -resize 256x256 /tmp/hanzo-icon.iconset/icon_128x128@2x.png && \
+	magick hanzo-icon.svg -resize 256x256 /tmp/hanzo-icon.iconset/icon_256x256.png && \
+	magick hanzo-icon.svg -resize 512x512 /tmp/hanzo-icon.iconset/icon_256x256@2x.png && \
+	magick hanzo-icon.svg -resize 512x512 /tmp/hanzo-icon.iconset/icon_512x512.png && \
+	magick hanzo-icon.svg -resize 1024x1024 /tmp/hanzo-icon.iconset/icon_512x512@2x.png && \
+	iconutil -c icns /tmp/hanzo-icon.iconset -o icon.icns && \
+	echo "  → Generating Windows .ico..." && \
+	magick hanzo-icon.svg -resize 16x16 icon-16.png && \
+	magick hanzo-icon.svg -resize 32x32 icon-32.png && \
+	magick hanzo-icon.svg -resize 48x48 icon-48.png && \
+	magick hanzo-icon.svg -resize 64x64 icon-64.png && \
+	magick hanzo-icon.svg -resize 128x128 icon-128.png && \
+	magick hanzo-icon.svg -resize 256x256 icon-256.png && \
+	magick icon-16.png icon-32.png icon-48.png icon-64.png icon-128.png icon-256.png icon.ico && \
+	rm -f icon-16.png icon-32.png icon-48.png icon-64.png icon-128.png icon-256.png && \
+	echo "  → Generating favicon..." && \
+	cp hanzo-icon.svg ../../public/favicon.svg && \
+	magick hanzo-icon.svg -resize 32x32 -depth 8 -define png:color-type=6 ../../public/favicon.ico && \
+	magick hanzo-icon.svg -resize 180x180 -depth 8 -define png:color-type=6 ../../public/apple-touch-icon.png && \
+	magick hanzo-icon.svg -resize 192x192 -depth 8 -define png:color-type=6 ../../public/icon-192.png && \
+	magick hanzo-icon.svg -resize 512x512 -depth 8 -define png:color-type=6 ../../public/icon-512.png
+	@echo "$(GREEN)✅ All icons regenerated from hanzo-icon.svg!$(NC)"
+	@echo "$(GREEN)   • PNG icons for Tauri$(NC)"
+	@echo "$(GREEN)   • macOS .icns file$(NC)"
+	@echo "$(GREEN)   • Windows .ico file$(NC)"
+	@echo "$(GREEN)   • Web favicons$(NC)"
 
 screenshot:
 	@echo "$(BLUE)📸 Taking app screenshot...$(NC)"
