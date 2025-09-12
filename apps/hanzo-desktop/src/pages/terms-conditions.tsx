@@ -98,7 +98,7 @@ const TermsAndConditionsPage = () => {
   const setupDataForm = useForm<QuickConnectFormSchema>({
     resolver: zodResolver(quickConnectFormSchema),
     defaultValues: {
-      node_address: 'http://127.0.0.1:9550',
+      node_address: 'http://127.0.0.1:3690',
     },
   });
 

@@ -209,6 +209,14 @@ impl HanzoNodeProcessHandler {
         let _ = self.kill_existing_processes_using_ports().await;
     }
 
+    pub fn get_storage_path(&self) -> PathBuf {
+        let options = self.options.clone();
+        options
+            .node_storage_path
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from(""))
+    }
+
     pub fn open_storage_location(&self) -> Result<(), String> {
         let options = self.options.clone();
         let storage_path: PathBuf = options

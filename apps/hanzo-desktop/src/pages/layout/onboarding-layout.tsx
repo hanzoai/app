@@ -4,6 +4,7 @@ import { Outlet } from 'react-router';
 
 import { UpdateBanner } from '../../components/hardware-capabilities/update-banner';
 import { LogoTapContext } from '../terms-conditions';
+import { HanzoLogo } from '../../components/HanzoLogo';
 
 export type OnboardingLayoutProps = React.PropsWithChildren<
   React.HTMLAttributes<HTMLDivElement>
@@ -33,13 +34,13 @@ const OnboardingLayout = ({ className, ...props }: OnboardingLayoutProps) => {
       <UpdateBanner />
       <div className="flex h-[calc(100dvh-100px)] items-center justify-center">
         <div className="mx-auto flex h-[600px] w-full max-w-lg flex-col gap-12">
-          <img
-            alt="hanzo logo"
-            className="w-24 cursor-pointer"
+          <div 
+            className="w-24 cursor-pointer border border-white/20 rounded-lg p-3"
             data-cy="hanzo-logo"
             onClick={handleLogoTap}
-            src={'./visor.svg'}
-          />
+          >
+            <HanzoLogo size={72} />
+          </div>
 
           <div className="flex-1">
             <Outlet />

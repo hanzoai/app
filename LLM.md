@@ -54,10 +54,11 @@ Hanzo Desktop is a privacy-focused AI assistant application built with Tauri 2.x
    - Applied gradient overlays for native look
 
 3. **Naming Updates**:
-   - Renamed from "Shinkai" to "Hanzo" throughout codebase
+   - Renamed to "Hanzo" throughout codebase
    - Updated package names to @hanzo_network
    - Changed product name to "Hanzo Desktop"
    - Updated company references to "Hanzo Industries Inc"
+   - Renamed all binaries from shinkai-node to hanzo-node
 
 4. **Mobile Support**:
    - Initialized iOS support with Tauri 2.x
@@ -70,7 +71,6 @@ Hanzo Desktop is a privacy-focused AI assistant application built with Tauri 2.x
    - Fixed all button and checkbox contrast issues
 
 ### Pending Items
-- Binary files still named "shinkai-node" (external dependencies)
 - Full integration testing with hanzo/node backend
 - Android SDK configuration for mobile builds
 - Production deployment configuration
@@ -143,8 +143,7 @@ TAURI_SIGNING_PRIVATE_KEY_PASSWORD          # Signing key password
 ## Known Issues
 
 1. **Memory Usage**: Frontend build requires increased Node memory (16GB)
-2. **Binary Names**: External binaries still use "shinkai" naming
-3. **Mobile Builds**: Android requires SDK configuration
+2. **Mobile Builds**: Android requires SDK configuration
 
 ## Development Guidelines
 

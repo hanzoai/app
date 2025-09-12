@@ -14,6 +14,8 @@ import {
 import { submitRegistrationNoCodeError } from '@hanzo_network/hanzo-ui/helpers';
 import { XIcon } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import { invoke } from '@tauri-apps/api/core';
+import { toast } from 'sonner';
 
 import {
   useHanzoNodeKillMutation,
@@ -86,11 +88,38 @@ export const ResetConnectionDialog = ({
   });
 
   const handleReset = async () => {
-    await hanzoNodeKill();
-    useAuth.getState().setLogout(); // clean up local storage
-    await hanzoNodeRemoveStorage({ preserveKeys: true });
-    setHanzoNodeOptions(null);
-    await hanzoNodeSpawn();
+    try {
+      // Use the new full reset command that handles everything
+      toast.info('Starting full app reset...', {
+        description: 'Creating backup and resetting app to clean state',
+        duration: 5000,
+      });
+      
+      const result = await invoke<string>('hanzo_node_full_reset');
+      
+      // The app will restart automatically, but show success first
+      toast.success('Reset complete!', {
+        description: result,
+        duration: 3000,
+      });
+      
+      // Clear local state before restart
+      useAuth.getState().setLogout();
+      setHanzoNodeOptions(null);
+      
+    } catch (error) {
+      console.error('Full reset failed:', error);
+      toast.error('Reset failed', {
+        description: 'Trying fallback reset method...',
+      });
+      
+      // Fallback to old method if new command fails
+      await hanzoNodeKill();
+      useAuth.getState().setLogout();
+      await hanzoNodeRemoveStorage({ preserveKeys: false });
+      setHanzoNodeOptions(null);
+      await hanzoNodeSpawn();
+    }
   };
 
   return (

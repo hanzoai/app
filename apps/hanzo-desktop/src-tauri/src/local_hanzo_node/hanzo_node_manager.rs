@@ -185,6 +185,10 @@ impl HanzoNodeManager {
             .await
     }
 
+    pub fn get_storage_path(&self) -> PathBuf {
+        self.hanzo_node_process.get_storage_path()
+    }
+
     pub fn open_storage_location(&self) -> Result<(), String> {
         self.hanzo_node_process.open_storage_location()
     }

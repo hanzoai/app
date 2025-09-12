@@ -60,11 +60,54 @@ export const HanzoNodeRunningOverlay = ({
 
   if (isHealthPending || isHanzoNodeRunningPending) {
     return (
-      <div className="flex size-full flex-col items-center justify-center gap-3 py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-white" />
-        <span className="text-text-secondary text-sm">
-          Checking Hanzo Node Status ...
-        </span>
+      <div className="flex size-full flex-col items-center justify-center gap-6 py-8">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-white" />
+          <span className="text-text-secondary text-sm">
+            Checking Hanzo Node Status ...
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          {isInUse && !isHanzoNodeRunning && (
+            <Button
+              className="min-w-[140px]"
+              onClick={async () => {
+                await openHanzoNodeManagerWindow();
+              }}
+              size="sm"
+              type="button"
+            >
+              Launch Hanzo Node
+            </Button>
+          )}
+          <Button
+            className="min-w-[140px]"
+            onClick={() => {
+              downloadTauriLogs();
+            }}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <DownloadIcon className="size-3.5" />
+            Download Logs
+          </Button>
+          <Button
+            className="min-w-[140px]"
+            onClick={() => setIsResetConnectionDialogOpen(true)}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <ReloadIcon className="size-3.5" />
+            Reset App
+          </Button>
+          <ResetConnectionDialog
+            allowClose
+            isOpen={isResetConnectionDialogOpen}
+            onOpenChange={setIsResetConnectionDialogOpen}
+          />
+        </div>
       </div>
     );
   }

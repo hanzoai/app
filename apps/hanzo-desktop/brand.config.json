@@ -1,0 +1,38 @@
+{
+  "brand": {
+    "name": "Hanzo",
+    "fullName": "Hanzo AI",
+    "description": "Your advanced AI assistant powered by frontier models",
+    "website": "https://hanzo.ai",
+    "copyright": "© 2025 Hanzo AI. All rights reserved.",
+    "colors": {
+      "primary": "#FFFFFF",
+      "secondary": "#DDDDDD",
+      "accent": "#FFFFFF",
+      "background": "#000000",
+      "foreground": "#FFFFFF"
+    },
+    "logo": {
+      "svg": "src-tauri/icons/hanzo-logo.svg",
+      "backgroundColor": "#000000",
+      "foregroundColor": "#FFFFFF"
+    },
+    "models": {
+      "default": {
+        "name": "Hanzo Backend",
+        "base": "hanzo-backend:FREE_TEXT_INFERENCE",
+        "description": "Advanced reasoning and general assistance powered by Hanzo's backend infrastructure"
+      }
+    },
+    "features": {
+      "enableStore": true,
+      "enableBackgroundMode": true,
+      "enableOnboarding": true,
+      "defaultModel": "default"
+    },
+    "paths": {
+      "nodeManager": "hanzo-node-manager",
+      "desktop": "hanzo-desktop"
+    }
+  }
+}

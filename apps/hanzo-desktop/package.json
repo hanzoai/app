@@ -5,10 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "NODE_OPTIONS='--max-old-space-size=8192' tsc && NODE_OPTIONS='--max-old-space-size=8192' vite build",
     "preview": "vite preview",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "tauri": "tauri",
-    "tauri:dev": "tauri dev"
+    "tauri:dev": "tauri dev",
+    "generate-icons": "node generate-icons.mjs",
+    "generate-icns": "./generate-icns.sh",
+    "rebrand": "node generate-icons.mjs && ./generate-icns.sh"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.3"
   }
 }

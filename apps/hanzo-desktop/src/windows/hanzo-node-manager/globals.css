@@ -2,6 +2,16 @@
 @import 'primereact/resources/themes/lara-light-blue/theme.css';
 @import 'primereact/resources/primereact.min.css';
 
+/* Override PrimeReact font to use local Inter font */
+@font-face {
+  font-family: 'Inter var';
+  font-weight: 100 900;
+  font-display: swap;
+  font-style: normal;
+  font-named-instance: 'Regular';
+  src: url('/fonts/InterVariable.woff2') format('woff2');
+}
+
 #root {
   overflow-y: hidden;
 }

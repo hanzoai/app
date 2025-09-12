@@ -32,7 +32,7 @@
     "macOS": {
       "minimumSystemVersion": "12.0"
     },
-    "createUpdaterArtifacts": "v1Compatible"
+    "createUpdaterArtifacts": false
   },
   "productName": "Hanzo AI",
   "version": "../../../package.json",

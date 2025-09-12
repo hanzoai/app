@@ -1,6 +1,7 @@
 export enum OnboardingStep {
   TERMS_CONDITIONS = 'terms-conditions',
   ANALYTICS = 'analytics',
+  MODEL_SELECTION = 'model-selection',
 }
 
 export type OnboardingStepConfig = {
@@ -22,6 +23,11 @@ export const ONBOARDING_STEPS: OnboardingStepConfig[] = [
     path: '/analytics',
     required: true,
   },
+  {
+    id: OnboardingStep.MODEL_SELECTION,
+    path: '/install-ai-models',
+    required: true,
+  },
 ];
 
 export enum ProviderSelectionUser {
@@ -32,12 +38,12 @@ export enum ProviderSelectionUser {
 
 type TermsChoice = boolean;
 type AnalyticsChoice = boolean;
+type ModelSelectionChoice = boolean;
 
 export type StepChoiceMap = {
   [OnboardingStep.TERMS_CONDITIONS]: TermsChoice | null;
   [OnboardingStep.ANALYTICS]: AnalyticsChoice | null;
-  // [OnboardingStep.AI_PROVIDER_SELECTION]: AIProviderChoice | null;
-  // [OnboardingStep.COMPLETE]: null;
+  [OnboardingStep.MODEL_SELECTION]: ModelSelectionChoice | null;
 };
 
 export type OnboardingState = {
@@ -57,6 +63,8 @@ export function validateChoice<T extends OnboardingStep>(
     case OnboardingStep.TERMS_CONDITIONS:
       return (typeof choice === 'boolean' ? choice : null) as StepChoiceMap[T];
     case OnboardingStep.ANALYTICS:
+      return (typeof choice === 'boolean' ? choice : null) as StepChoiceMap[T];
+    case OnboardingStep.MODEL_SELECTION:
       return (typeof choice === 'boolean' ? choice : null) as StepChoiceMap[T];
     default:
       return null as StepChoiceMap[T];

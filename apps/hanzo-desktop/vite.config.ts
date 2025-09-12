@@ -74,7 +74,24 @@ export default defineConfig(() => ({
           'src/windows/hanzo-artifacts/index.html',
         ),
       },
+      onwarn(warning, warn) {
+        // Suppress "Module has been externalized" warnings for node: modules
+        if (warning.message.includes('Module') && warning.message.includes('has been externalized')) {
+          return;
+        }
+        warn(warning);
+      },
     },
+    // Increase chunk size warning limit
+    chunkSizeWarningLimit: 2000,
+    // Disable sourcemaps to reduce memory usage during build
+    sourcemap: false,
+    // Optimize build for production
+    minify: 'esbuild', // Use esbuild for faster minification
+    target: 'esnext',
+  },
+  optimizeDeps: {
+    exclude: ['pyodide'],
   },
   test: {
     watch: false,

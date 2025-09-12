@@ -221,7 +221,7 @@ impl Default for HanzoNodeOptions {
             initial_agent_urls: Some(
                 "https://api.hanzo.com/inference,https://api.hanzo.com/inference".to_string(),
             ),
-            initial_agent_names: Some("hanzo_free_trial,hanzo_code_gen".to_string()),
+            initial_agent_names: Some("hanzo-free-trial,hanzo-code-gen".to_string()),
             initial_agent_models: Some(
                 "hanzo-backend:FREE_TEXT_INFERENCE,hanzo-backend:CODE_GENERATOR".to_string(),
             ),

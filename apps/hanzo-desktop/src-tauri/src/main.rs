@@ -12,7 +12,7 @@ use crate::commands::hanzo_node_manager_commands::{
     hanzo_node_kill, hanzo_node_remove_storage, hanzo_node_set_default_options,
     hanzo_node_set_options, hanzo_node_spawn, show_hanzo_node_manager_window,
     hanzo_node_open_storage_location, hanzo_node_open_storage_location_with_path,
-    hanzo_node_open_chat_folder,
+    hanzo_node_open_chat_folder, hanzo_node_full_reset,
 };
 use crate::commands::mcp_clients_install::{
     check_claude_installed,
@@ -118,6 +118,7 @@ fn main() {
             hanzo_node_open_storage_location_with_path,
             hanzo_node_open_chat_folder,
             hanzo_node_set_default_options,
+            hanzo_node_full_reset,
             hanzo_node_get_ollama_api_url,
             hanzo_node_get_default_model,
             hardware_get_summary,
