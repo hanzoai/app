@@ -1,0 +1,80 @@
+name: Deploy to Hanzo Cloud
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build application
+      run: npm run build
+      env:
+        # Add environment variables for production build
+        MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        HF_CLIENT_ID: ${{ secrets.HF_CLIENT_ID }}
+        HF_CLIENT_SECRET: ${{ secrets.HF_CLIENT_SECRET }}
+        FIREWORKS_API_KEY: ${{ secrets.FIREWORKS_API_KEY }}
+        SAMBANOVA_API_KEY: ${{ secrets.SAMBANOVA_API_KEY }}
+        NOVITA_API_KEY: ${{ secrets.NOVITA_API_KEY }}
+        HYPERBOLIC_API_KEY: ${{ secrets.HYPERBOLIC_API_KEY }}
+        TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
+        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        NEBIUS_API_KEY: ${{ secrets.NEBIUS_API_KEY }}
+    
+    - name: Build Docker image
+      run: docker build -t hanzo-build .
+    
+    - name: Login to Hanzo Registry
+      run: |
+        echo "${{ secrets.HANZO_REGISTRY_PASSWORD }}" | docker login registry.hanzo.ai -u ${{ secrets.HANZO_REGISTRY_USERNAME }} --password-stdin
+    
+    - name: Tag and push to Hanzo Registry
+      run: |
+        docker tag hanzo-build registry.hanzo.ai/hanzoai/build:latest
+        docker tag hanzo-build registry.hanzo.ai/hanzoai/build:${{ github.sha }}
+        docker push registry.hanzo.ai/hanzoai/build:latest
+        docker push registry.hanzo.ai/hanzoai/build:${{ github.sha }}
+    
+    - name: Deploy to Hanzo Cloud
+      run: |
+        # Install Hanzo CLI if needed
+        # npm install -g @hanzo/cli
+        
+        # Deploy using Hanzo CLI
+        # hanzo deploy --app build --image registry.hanzo.ai/hanzoai/build:${{ github.sha }}
+        
+        # Alternative: Direct API deployment
+        curl -X POST https://api.hanzo.ai/v1/deployments \
+          -H "Authorization: Bearer ${{ secrets.HANZO_API_KEY }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "app": "build",
+            "image": "registry.hanzo.ai/hanzoai/build:${{ github.sha }}",
+            "env": {
+              "NODE_ENV": "production",
+              "PORT": "3000"
+            },
+            "resources": {
+              "cpu": "1",
+              "memory": "1Gi"
+            },
+            "replicas": 2,
+            "domains": ["build.hanzo.ai"]
+          }'
+      env:
+        HANZO_API_KEY: ${{ secrets.HANZO_API_KEY }}

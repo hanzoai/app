@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=${MONGODB_URI}
+      - HF_CLIENT_ID=${HF_CLIENT_ID}
+      - HF_CLIENT_SECRET=${HF_CLIENT_SECRET}
+      - HF_TOKEN=${HF_TOKEN}
+      - FIREWORKS_API_KEY=${FIREWORKS_API_KEY}
+      - SAMBANOVA_API_KEY=${SAMBANOVA_API_KEY}
+      - NOVITA_API_KEY=${NOVITA_API_KEY}
+      - HYPERBOLIC_API_KEY=${HYPERBOLIC_API_KEY}
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - NEBIUS_API_KEY=${NEBIUS_API_KEY}
+    depends_on:
+      - mongodb
+    networks:
+      - hanzo-network
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-hanzo_secure_pass_2024}
+      - MONGO_INITDB_DATABASE=hanzo_build
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - hanzo-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - hanzo-network
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  hanzo-network:
+    driver: bridge
