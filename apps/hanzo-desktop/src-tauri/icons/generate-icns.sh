@@ -3,7 +3,8 @@
 # Generate ICNS file for macOS
 # Requires iconutil (comes with Xcode)
 
-ICON_DIR="../../apps/hanzo-desktop/src-tauri/icons"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ICON_DIR="$SCRIPT_DIR"
 ICONSET_DIR="$ICON_DIR/icon.iconset"
 
 # Create iconset directory
