@@ -50,7 +50,7 @@ export const useUser = (initialData?: {
 
   const openLoginWindow = async () => {
     setCurrentRoute(window.location.pathname, getIframeCookieOptions());
-    return router.push("/auth");
+    return router.push("/login");
   };
 
   const loginFromCode = async (code: string) => {

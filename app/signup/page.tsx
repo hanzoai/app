@@ -1,0 +1,168 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { HanzoLogo } from '@/components/HanzoLogo';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { getAuth } from '@/app/actions/auth';
+import { Loader2, Sparkles, Zap, Shield, Rocket } from 'lucide-react';
+
+export default function SignupPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
+  const handleHuggingFaceSignup = async () => {
+    setLoading(true);
+    try {
+      const authUrl = await getAuth();
+      window.location.href = authUrl;
+    } catch (error) {
+      console.error('Signup error:', error);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+      {/* Navigation */}
+      <nav className="border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5">
+            <HanzoLogo className="w-8 h-8 text-white" />
+            <span className="text-xl font-bold">Hanzo</span>
+          </Link>
+          <Link href="/login">
+            <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
+              Sign in
+            </Button>
+          </Link>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <div className="flex-1 flex items-center justify-center p-4 py-12">
+        <div className="w-full max-w-md">
+          <Card className="bg-[#1a1a1a] border-white/10">
+            <CardHeader className="space-y-1 text-center pb-8">
+              <div className="flex justify-center mb-6">
+                <div className="w-16 h-16 bg-gradient-to-r from-violet-500 to-purple-500 rounded-2xl flex items-center justify-center relative">
+                  <HanzoLogo className="w-10 h-10 text-white" />
+                  <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0">
+                    Free
+                  </Badge>
+                </div>
+              </div>
+              <CardTitle className="text-2xl">Create your account</CardTitle>
+              <CardDescription className="text-white/60">
+                Start building with Hanzo AI today
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* What you get section */}
+              <div className="space-y-3 p-4 bg-white/5 rounded-lg border border-white/10">
+                <h3 className="text-sm font-semibold text-white/80 mb-3">What you'll get:</h3>
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="w-4 h-4 text-violet-400" />
+                    <span className="text-sm text-white/70">Access to 100+ AI models</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Zap className="w-4 h-4 text-yellow-400" />
+                    <span className="text-sm text-white/70">$1000 free credits to start</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Shield className="w-4 h-4 text-green-400" />
+                    <span className="text-sm text-white/70">Secure cloud infrastructure</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Rocket className="w-4 h-4 text-blue-400" />
+                    <span className="text-sm text-white/70">Deploy instantly to production</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Hugging Face Signup Button */}
+              <Button
+                onClick={handleHuggingFaceSignup}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-medium h-12"
+                size="lg"
+              >
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+                      <circle cx="9" cy="10" r="1.5"/>
+                      <circle cx="15" cy="10" r="1.5"/>
+                      <path d="M8 15c0 2.21 1.79 4 4 4s4-1.79 4 4-4"/>
+                    </svg>
+                    Sign up with Hugging Face
+                  </>
+                )}
+              </Button>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-white/10"></div>
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-[#1a1a1a] px-2 text-white/40">
+                    No credit card required
+                  </span>
+                </div>
+              </div>
+
+              {/* Trust badges */}
+              <div className="flex items-center justify-center gap-6 pt-2">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-green-500" />
+                  <span className="text-xs text-white/60">SOC 2 Compliant</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-green-500" />
+                  <span className="text-xs text-white/60">GDPR Ready</span>
+                </div>
+              </div>
+
+              {/* Footer Links */}
+              <div className="pt-4 text-center space-y-2">
+                <p className="text-sm text-white/60">
+                  Already have an account?{' '}
+                  <Link href="/login" className="text-violet-400 hover:text-violet-300">
+                    Sign in
+                  </Link>
+                </p>
+                <p className="text-xs text-white/40">
+                  By signing up, you agree to our{' '}
+                  <Link href="/terms" className="underline hover:text-white/60">
+                    Terms
+                  </Link>{' '}
+                  and{' '}
+                  <Link href="/privacy" className="underline hover:text-white/60">
+                    Privacy Policy
+                  </Link>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Social proof */}
+          <div className="mt-8 text-center">
+            <p className="text-sm text-white/40 mb-3">Trusted by developers at</p>
+            <div className="flex items-center justify-center gap-8 opacity-60">
+              <span className="text-white/60 font-semibold">OpenAI</span>
+              <span className="text-white/60 font-semibold">Google</span>
+              <span className="text-white/60 font-semibold">Meta</span>
+              <span className="text-white/60 font-semibold">Microsoft</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

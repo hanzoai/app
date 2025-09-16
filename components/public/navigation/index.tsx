@@ -136,10 +136,14 @@ export default function Navigation() {
             <UserMenu className="!pl-3 !pr-4 !py-2 !h-auto !rounded-lg" />
           ) : (
             <>
-              <Button variant="link" size={"sm"} onClick={openLoginWindow}>
-                Log In
-              </Button>
-              <Button size={"sm"}>Sign Up</Button>
+              <Link href="/login">
+                <Button variant="link" size={"sm"}>
+                  Log In
+                </Button>
+              </Link>
+              <Link href="/signup">
+                <Button size={"sm"}>Sign Up</Button>
+              </Link>
             </>
           )}
         </div>
