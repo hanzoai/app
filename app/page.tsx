@@ -1,689 +1,733 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { HanzoLogo } from "@/components/HanzoLogo";
-import { 
+import {
   ArrowRight,
-  MessageSquare,
-  Github,
-  Download,
+  Plus,
+  Loader2,
+  Globe2,
+  Mic,
   Sparkles,
-  Globe,
-  Shield,
-  Users,
   Zap,
-  Code2,
-  Layers,
-  Building2,
-  Rocket,
-  Brain,
-  LineChart,
-  X,
-  Send,
-  Copy,
-  RefreshCw
+  Menu,
+  X
 } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
 import { useRouter } from "next/navigation";
 
+interface Project {
+  namespace: string;
+  id: string;
+  name: string;
+  emoji: string;
+  short_description?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export default function LandingPage() {
   const { openLoginWindow, user } = useUser();
   const router = useRouter();
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [chatMessage, setChatMessage] = useState("");
-  const [chatMessages, setChatMessages] = useState<{text: string, sender: 'user' | 'ai'}[]>([
-    { text: "Hey! I'm Hanzo. Tell me what you want to build and I'll create it for you.", sender: 'ai' }
-  ]);
+  const [prompt, setPrompt] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("Popular");
+  const [inputFocused, setInputFocused] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const templates = [
-    {
-      id: "fintech",
-      name: "fintech-template",
-      type: "Website",
-      remixes: 4710,
-      description: "Build modern, secure finance apps with ease.",
-      icon: "💸",
-      gradient: "from-emerald-500 to-teal-600"
-    },
-    {
-      id: "glow",
-      name: "glow-convert-sell",
-      type: "Website", 
-      remixes: 3264,
-      description: "A sleek landing page for product-led growth.",
-      icon: "✨",
-      gradient: "from-purple-500 to-pink-600"
-    },
-    {
-      id: "crypto",
-      name: "cryptocurrency-trading-dashboard",
-      type: "Website",
-      remixes: 17411,
-      description: "Full-featured dashboard for real-time crypto tracking.",
-      icon: "📊",
-      gradient: "from-blue-500 to-cyan-600"
-    },
-    {
-      id: "cortex",
-      name: "cortex-second-brain",
-      type: "Consumer App",
-      remixes: 6319,
-      description: "Organize your digital life with AI.",
-      icon: "🧠",
-      gradient: "from-violet-500 to-purple-600"
-    },
-    {
-      id: "pulse",
-      name: "pulse-robot-template",
-      type: "Website",
-      remixes: 32980,
-      description: "Our most remixed startup landing page — fast and flexible.",
-      icon: "🚀",
-      gradient: "from-orange-500 to-red-600"
-    }
-  ];
-
-  const categories = [
-    { name: "Websites", icon: Globe },
-    { name: "Consumer Apps", icon: Brain },
-    { name: "Internal Tools", icon: Building2 },
-    { name: "Prototypes", icon: Rocket },
-    { name: "B2B SaaS", icon: LineChart },
-    { name: "Landing Pages", icon: Layers }
-  ];
-
-  const handleStartBuilding = () => {
+  // Fetch user's projects if logged in
+  useEffect(() => {
     if (user) {
-      router.push("/projects/new");
-    } else {
-      openLoginWindow();
+      setLoadingProjects(true);
+      fetch("/api/me/projects")
+        .then(res => res.json())
+        .then(data => {
+          setProjects(data.projects || []);
+        })
+        .catch(console.error)
+        .finally(() => setLoadingProjects(false));
     }
+  }, [user]);
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [mobileMenuOpen]);
+
+  const handleCreateProject = async () => {
+    if (!prompt.trim()) return;
+
+    if (!user) {
+      openLoginWindow();
+      return;
+    }
+
+    setIsCreating(true);
+    localStorage.setItem("initialPrompt", prompt);
+    router.push("/projects/new");
   };
 
-  const handleSendMessage = () => {
-    if (chatMessage.trim()) {
-      setChatMessages([...chatMessages, 
-        { text: chatMessage, sender: 'user' },
-        { text: "I'll help you build that! Let me create a project for you...", sender: 'ai' }
-      ]);
-      setChatMessage("");
-      // In production, this would trigger actual AI generation
+  const showcaseProjects = [
+    {
+      id: "ai-dashboard",
+      title: "AI Analytics Dashboard",
+      author: "hanzo-showcase",
+      authorAvatar: "📊",
+      category: "Website",
+      description: "Real-time AI model performance monitoring with beautiful visualizations",
+      url: "https://analytics.hanzo.ai",
+      remixes: 8420,
+      featured: true
+    },
+    {
+      id: "crypto-defi",
+      title: "DeFi Trading Platform",
+      author: "hanzo-labs",
+      authorAvatar: "💎",
+      category: "Website",
+      description: "Decentralized exchange with advanced trading features and portfolio tracking",
+      url: "https://defi.hanzo.ai",
+      remixes: 15600,
+      featured: true
+    },
+    {
+      id: "saas-platform",
+      title: "Team Collaboration Suite",
+      author: "hanzo-enterprise",
+      authorAvatar: "🚀",
+      category: "B2B App",
+      description: "Complete project management solution with AI-powered insights",
+      url: "https://teams.hanzo.ai",
+      remixes: 22100
+    },
+    {
+      id: "ecommerce",
+      title: "Modern E-commerce Store",
+      author: "hanzo-commerce",
+      authorAvatar: "🛍️",
+      category: "Website",
+      description: "Beautiful online store with AI-powered recommendations",
+      url: "https://shop.hanzo.ai",
+      remixes: 19800
+    },
+    {
+      id: "social-app",
+      title: "Social Media Platform",
+      author: "hanzo-social",
+      authorAvatar: "💬",
+      category: "Consumer App",
+      description: "Next-gen social platform with AI content moderation",
+      url: "https://social.hanzo.ai",
+      remixes: 31200
+    },
+    {
+      id: "portfolio",
+      title: "Developer Portfolio",
+      author: "hanzo-design",
+      authorAvatar: "🎨",
+      category: "Website",
+      description: "Stunning portfolio site with interactive 3D elements",
+      url: "https://portfolio.hanzo.ai",
+      remixes: 11300
+    },
+    {
+      id: "ai-chatbot",
+      title: "Customer Support Bot",
+      author: "hanzo-ai",
+      authorAvatar: "🤖",
+      category: "Internal Tools",
+      description: "Intelligent support system with natural language processing",
+      url: "https://support.hanzo.ai",
+      remixes: 9750
+    },
+    {
+      id: "video-platform",
+      title: "Video Streaming Platform",
+      author: "hanzo-media",
+      authorAvatar: "🎬",
+      category: "Consumer App",
+      description: "Netflix-like streaming service with AI recommendations",
+      url: "https://stream.hanzo.ai",
+      remixes: 28900
     }
-  };
+  ];
+
+  const categories = ["Popular", "Discover", "Internal Tools", "Website", "Personal", "Consumer App", "B2B App", "Prototype"];
+
+  const filteredProjects = selectedCategory === "Popular"
+    ? showcaseProjects
+    : showcaseProjects.filter(p => p.category === selectedCategory || selectedCategory === "Discover");
 
   return (
-    <div className="min-h-screen bg-black text-white overflow-x-hidden">
-      {/* Animated gradient background */}
-      <div className="fixed inset-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-950/20 via-black to-blue-950/20" />
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-white/[0.02] to-transparent rounded-full" />
+    <div className="bg-[#0a0a0a] text-white">
+      {/* Gradient background - subtle but dynamic */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0a0a0a] to-[#0a0a0a]" />
+        <div className="absolute top-[30%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[800px] bg-gradient-radial from-violet-500/15 via-purple-500/5 to-transparent blur-3xl animate-pulse" />
+        <div className="absolute bottom-0 left-0 right-0 h-[600px] bg-gradient-to-t from-blue-500/10 via-purple-500/5 to-transparent blur-3xl" />
       </div>
-      
-      {/* Navigation */}
-      <nav className="relative z-10 flex items-center justify-between p-6 border-b border-white/5 backdrop-blur-sm">
-        <Link href="/" className="flex items-center gap-3 group">
-          <HanzoLogo className="w-8 h-8 text-white transition-transform group-hover:scale-110" />
-          <span className="text-xl font-bold">Hanzo</span>
-        </Link>
-        
-        <div className="flex items-center gap-4">
-          <Link 
-            href="https://github.com/hanzoai" 
-            target="_blank"
-            className="text-white/60 hover:text-white transition-colors"
-          >
-            <Github className="w-5 h-5" />
+
+      {/* Navigation - responsive */}
+      <nav className="relative z-20 flex items-center justify-between px-4 md:px-8 py-4 md:py-5">
+        <div className="flex items-center gap-6 md:gap-10">
+          <Link href="/" className="flex items-center gap-2.5">
+            <HanzoLogo className="w-8 md:w-9 h-8 md:h-9 text-white" />
+            <span className="text-xl md:text-2xl font-bold">Hanzo</span>
           </Link>
-          
-          <Link 
-            href="https://github.com/hanzoai/hanzo-code/releases" 
-            target="_blank"
-            className="text-white/60 hover:text-white transition-colors"
-          >
-            <Download className="w-5 h-5" />
-          </Link>
-          
+
+          <div className="hidden md:flex items-center gap-8">
+            <Link href="/community" className="text-white/70 hover:text-white text-sm font-medium transition-colors">
+              Community
+            </Link>
+            <Link href="/pricing" className="text-white/70 hover:text-white text-sm font-medium transition-colors">
+              Pricing
+            </Link>
+            <Link href="/enterprise" className="text-white/70 hover:text-white text-sm font-medium transition-colors">
+              Enterprise
+            </Link>
+            <Link href="/learn" className="text-white/70 hover:text-white text-sm font-medium transition-colors">
+              Learn
+            </Link>
+            <Link href="/launched" className="text-white/70 hover:text-white text-sm font-medium transition-colors">
+              Launched
+            </Link>
+          </div>
+        </div>
+
+        {/* Desktop Nav Actions */}
+        <div className="hidden md:flex items-center gap-4">
           {user ? (
-            <Button 
-              onClick={handleStartBuilding}
-              className="bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-white border-0"
-            >
-              Launch Studio
-              <Sparkles className="ml-2 w-4 h-4" />
-            </Button>
+            <>
+              <Button
+                onClick={() => router.push('/projects')}
+                variant="ghost"
+                className="text-white/70 hover:text-white text-sm font-medium"
+              >
+                Dashboard
+              </Button>
+              <Button
+                onClick={() => router.push('/projects/new')}
+                className="bg-white text-black hover:bg-white/90 text-sm font-semibold px-5 py-2.5 rounded-xl"
+              >
+                Get started
+              </Button>
+            </>
           ) : (
             <>
-              <Button 
-                variant="ghost"
+              <Button
                 onClick={openLoginWindow}
-                className="text-white/70 hover:text-white hover:bg-white/10"
+                variant="ghost"
+                className="text-white/70 hover:text-white text-sm font-medium"
               >
-                Log In
+                Log in
               </Button>
-              <Button 
-                onClick={handleStartBuilding}
-                className="bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-white border-0"
+              <Button
+                onClick={openLoginWindow}
+                className="bg-white text-black hover:bg-white/90 text-sm font-semibold px-5 py-2.5 rounded-xl"
               >
-                Get Started
-                <ArrowRight className="ml-2 w-4 h-4" />
+                Get started
               </Button>
             </>
           )}
         </div>
+
+        {/* Mobile Menu Button */}
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="md:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
+        >
+          {mobileMenuOpen ? (
+            <X className="w-6 h-6" />
+          ) : (
+            <Menu className="w-6 h-6" />
+          )}
+        </button>
+
+        {/* Mobile Menu Overlay */}
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-50 md:hidden">
+            <div className="flex flex-col h-full">
+              {/* Mobile Menu Header */}
+              <div className="flex items-center justify-between p-4 border-b border-white/10">
+                <Link href="/" className="flex items-center gap-2.5">
+                  <HanzoLogo className="w-8 h-8 text-white" />
+                  <span className="text-xl font-bold">Hanzo</span>
+                </Link>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Mobile Menu Links */}
+              <div className="flex-1 overflow-y-auto py-8 px-4">
+                <div className="space-y-6">
+                  <Link href="/community" className="block text-2xl font-medium text-white/90 hover:text-white transition-colors">
+                    Community
+                  </Link>
+                  <Link href="/pricing" className="block text-2xl font-medium text-white/90 hover:text-white transition-colors">
+                    Pricing
+                  </Link>
+                  <Link href="/enterprise" className="block text-2xl font-medium text-white/90 hover:text-white transition-colors">
+                    Enterprise
+                  </Link>
+                  <Link href="/learn" className="block text-2xl font-medium text-white/90 hover:text-white transition-colors">
+                    Learn
+                  </Link>
+                  <Link href="/launched" className="block text-2xl font-medium text-white/90 hover:text-white transition-colors">
+                    Launched
+                  </Link>
+                </div>
+              </div>
+
+              {/* Mobile Menu Actions */}
+              <div className="p-4 border-t border-white/10 space-y-3">
+                {user ? (
+                  <>
+                    <Button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        router.push('/projects');
+                      }}
+                      className="w-full bg-white/10 text-white hover:bg-white/20"
+                    >
+                      Dashboard
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        router.push('/projects/new');
+                      }}
+                      className="w-full bg-white text-black hover:bg-white/90"
+                    >
+                      Get started
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        openLoginWindow();
+                      }}
+                      className="w-full bg-white/10 text-white hover:bg-white/20"
+                    >
+                      Log in
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        openLoginWindow();
+                      }}
+                      className="w-full bg-white text-black hover:bg-white/90"
+                    >
+                      Get started
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       <main className="relative z-10">
-        {/* Hero Section */}
-        <section className="px-6 pt-20 pb-16 max-w-6xl mx-auto text-center">
-          <Badge variant="outline" className="mb-6 border-violet-500/50 text-violet-300 bg-violet-500/10">
-            <Sparkles className="w-3 h-3 mr-1" />
-            AI-Powered Builder
-          </Badge>
-          
-          <h1 className="text-5xl lg:text-7xl font-bold mb-6 bg-gradient-to-r from-white via-white/90 to-white/60 bg-clip-text text-transparent">
-            Build Something Lovable
-          </h1>
-          
-          <p className="text-xl text-white/70 mb-8 max-w-2xl mx-auto">
-            Create apps and websites by chatting with AI. Launch stunning projects in minutes. 
-            No code. No hassle. Just creativity.
-          </p>
-          
-          <div className="flex gap-4 justify-center">
-            <Button 
-              size="lg"
-              onClick={handleStartBuilding}
-              className="bg-white text-black hover:bg-white/90 text-lg px-8 py-6 group"
-            >
-              <Zap className="mr-2 w-5 h-5" />
-              Start Building
-              <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
-            </Button>
-            <Button 
-              size="lg"
-              variant="outline"
-              className="border-white/20 text-white hover:bg-white/10 text-lg px-8 py-6"
-              onClick={() => setIsChatOpen(true)}
-            >
-              <MessageSquare className="mr-2 w-5 h-5" />
-              Try Chat Demo
-            </Button>
-          </div>
-        </section>
-
-        {/* From the Community Section */}
-        <section className="px-6 py-16 border-t border-white/5">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-12">
-              <Badge className="mb-4 bg-gradient-to-r from-purple-600 to-pink-600 border-0">
-                <Users className="w-3 h-3 mr-1" />
-                From the Community
-              </Badge>
-              <h2 className="text-4xl font-bold mb-4">Trending Templates</h2>
-              <p className="text-white/60 text-lg">
-                Explore thousands of projects built and remixed by makers like you
-              </p>
+        {/* Hero Section - Big, engaging input */}
+        <section className="px-4 md:px-8 pt-16 md:pt-24 pb-20 md:pb-32">
+          <div className="max-w-5xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-6 md:mb-8 bg-violet-500/10 border border-violet-500/20 rounded-full">
+              <Sparkles className="w-4 h-4 text-violet-400" />
+              <span className="text-sm text-violet-300">Powered by Hanzo AI</span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {templates.map((template) => (
-                <Card 
-                  key={template.id} 
-                  className="bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20 transition-all group cursor-pointer"
-                >
-                  <CardHeader>
-                    <div className="flex items-start justify-between mb-2">
-                      <span className="text-3xl">{template.icon}</span>
-                      <Badge variant="secondary" className="bg-white/10 text-white/70 border-0">
-                        {template.type}
-                      </Badge>
-                    </div>
-                    <CardTitle className="text-white text-xl">{template.name}</CardTitle>
-                    <CardDescription className="text-white/60">
-                      {template.description}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardFooter className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 text-sm text-white/50">
-                      <span className="flex items-center gap-1">
-                        <RefreshCw className="w-4 h-4" />
-                        {template.remixes.toLocaleString()} remixes
-                      </span>
-                    </div>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      className="text-white/70 hover:text-white hover:bg-white/10"
-                    >
-                      <Copy className="w-4 h-4 mr-1" />
-                      Remix
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-
-            <div className="text-center mt-8">
-              <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
-                Browse All Templates
-                <ArrowRight className="ml-2 w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        {/* Build Anything Section */}
-        <section className="px-6 py-16 border-t border-white/5">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-12">
-              <Badge className="mb-4 bg-gradient-to-r from-blue-600 to-cyan-600 border-0">
-                <Code2 className="w-3 h-3 mr-1" />
-                Build Anything
-              </Badge>
-              <h2 className="text-4xl font-bold mb-4">Just describe what you need</h2>
-              <p className="text-white/60 text-lg">
-                Hanzo turns your ideas into working products — instantly
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {categories.map((category) => (
-                <div 
-                  key={category.name}
-                  className="p-4 rounded-xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 hover:from-white/10 hover:to-white/5 hover:border-white/20 transition-all text-center group cursor-pointer"
-                >
-                  <category.icon className="w-8 h-8 mx-auto mb-2 text-white/60 group-hover:text-white transition-colors" />
-                  <span className="text-sm text-white/80">{category.name}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Powered by Community Section */}
-        <section className="px-6 py-16 border-t border-white/5">
-          <div className="max-w-6xl mx-auto">
-            <Card className="bg-gradient-to-br from-violet-950/50 to-blue-950/50 border-white/10">
-              <CardContent className="p-12 text-center">
-                <Badge className="mb-6 bg-gradient-to-r from-violet-600 to-purple-600 border-0">
-                  <Users className="w-3 h-3 mr-1" />
-                  Powered by Community
-                </Badge>
-                <h2 className="text-4xl font-bold mb-4">
-                  Join thousands of builders
-                </h2>
-                <p className="text-white/70 text-lg mb-8 max-w-2xl mx-auto">
-                  Remixing, sharing, and collaborating in real time
-                </p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-white mb-1">✅</div>
-                    <span className="text-sm text-white/70">1-click remix</span>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-white mb-1">✅</div>
-                    <span className="text-sm text-white/70">No-code customization</span>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-white mb-1">✅</div>
-                    <span className="text-sm text-white/70">AI chat builder</span>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-white mb-1">✅</div>
-                    <span className="text-sm text-white/70">Share instantly</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-
-        {/* Zen of Hanzo Section */}
-        <section className="px-6 py-20 border-t border-white/5">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-16">
-              <Badge className="mb-6 bg-gradient-to-r from-amber-600 to-orange-600 border-0">
-                <Sparkles className="w-3 h-3 mr-1" />
-                The Zen of Hanzo
-              </Badge>
-              <h2 className="text-4xl lg:text-5xl font-bold mb-6">Our Guiding Principles</h2>
-              <p className="text-white/60 text-lg max-w-3xl mx-auto">
-                64 principles across 8 disciplines that guide everything we build. 
-                These are the foundations of engineering excellence.
-              </p>
-            </div>
-
-            {/* Disciplines Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-12">
-              {[
-                { name: "Empathy", emoji: "❤️", color: "from-pink-500 to-rose-500" },
-                { name: "Science", emoji: "🔬", color: "from-blue-500 to-cyan-500" },
-                { name: "Design", emoji: "🎨", color: "from-purple-500 to-violet-500" },
-                { name: "Engineering", emoji: "⚙️", color: "from-gray-500 to-zinc-500" },
-                { name: "Scale", emoji: "📈", color: "from-green-500 to-emerald-500" },
-                { name: "Wisdom", emoji: "🦉", color: "from-amber-500 to-yellow-500" },
-                { name: "Execution", emoji: "⚡", color: "from-orange-500 to-red-500" },
-                { name: "Innovation", emoji: "💡", color: "from-indigo-500 to-blue-500" }
-              ].map((discipline) => (
-                <div 
-                  key={discipline.name}
-                  className="relative group cursor-pointer"
-                >
-                  <div className={`absolute inset-0 bg-gradient-to-br ${discipline.color} opacity-0 group-hover:opacity-20 rounded-xl transition-opacity blur-xl`} />
-                  <div className="relative p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all text-center">
-                    <div className="text-2xl mb-2">{discipline.emoji}</div>
-                    <div className="text-xs font-medium text-white/80">{discipline.name}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Sample Principles */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[
-                {
-                  emoji: "🦅",
-                  title: "Autonomy",
-                  description: "Trust fully; freedom fuels genius.",
-                  discipline: "Empathy"
-                },
-                {
-                  emoji: "🔬",
-                  title: "Empiricism",
-                  description: "Hypothesize, measure; reality defines truth.",
-                  discipline: "Science"
-                },
-                {
-                  emoji: "🎨",
-                  title: "Beauty",
-                  description: "Aesthetics matter; delight drives adoption.",
-                  discipline: "Design"
-                },
-                {
-                  emoji: "🔧",
-                  title: "Composability",
-                  description: "Build blocks; combine infinitely.",
-                  discipline: "Engineering"
-                },
-                {
-                  emoji: "🚀",
-                  title: "Velocity",
-                  description: "Ship fast; learn faster.",
-                  discipline: "Scale"
-                },
-                {
-                  emoji: "🔐",
-                  title: "Security",
-                  description: "Paranoia justified; trust earned slowly.",
-                  discipline: "Wisdom"
-                }
-              ].map((principle, i) => (
-                <Card 
-                  key={i}
-                  className="bg-gradient-to-br from-white/5 to-white/[0.02] border-white/10 hover:from-white/10 hover:to-white/5 hover:border-white/20 transition-all group"
-                >
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center text-xl">
-                          {principle.emoji}
-                        </div>
-                        <div>
-                          <CardTitle className="text-white text-lg">{principle.title}</CardTitle>
-                          <Badge variant="outline" className="mt-1 text-xs border-white/20 text-white/60">
-                            {principle.discipline}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-white/70 italic">&ldquo;{principle.description}&rdquo;</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            <div className="text-center mt-12">
-              <Button 
-                variant="outline" 
-                className="border-white/20 text-white hover:bg-white/10"
-                onClick={() => window.open('https://hanzo.ai/zen', '_blank')}
-              >
-                Explore All 64 Principles
-                <ArrowRight className="ml-2 w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        {/* Hexagrams Section */}
-        <section className="px-6 py-16 border-t border-white/5">
-          <div className="max-w-6xl mx-auto">
-            <Card className="bg-gradient-to-br from-amber-950/30 to-orange-950/30 border-amber-500/20">
-              <CardContent className="p-12">
-                <div className="grid md:grid-cols-2 gap-8 items-center">
-                  <div>
-                    <Badge className="mb-4 bg-gradient-to-r from-amber-600 to-orange-600 border-0">
-                      ☯️ I Ching Wisdom
-                    </Badge>
-                    <h3 className="text-3xl font-bold mb-4">Engineering Hexagrams</h3>
-                    <p className="text-white/70 mb-6">
-                      Ancient wisdom meets modern engineering. Each hexagram represents a fundamental pattern 
-                      in system design and problem-solving.
-                    </p>
-                    <div className="space-y-2">
-                      {[
-                        { hex: "乾", meaning: "Adapt to new contexts while maintaining principles" },
-                        { hex: "巽", meaning: "Use subtle persuasion over force" },
-                        { hex: "兌", meaning: "Create positive experiences to motivate" },
-                        { hex: "中孚", meaning: "Maintain integrity in all actions" }
-                      ].map((item, i) => (
-                        <div key={i} className="flex items-center gap-3 text-sm">
-                          <span className="text-2xl text-amber-400">{item.hex}</span>
-                          <span className="text-white/60">{item.meaning}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex justify-center">
-                    <div className="relative w-48 h-48">
-                      <div className="absolute inset-0 bg-gradient-radial from-amber-500/20 to-transparent rounded-full blur-3xl" />
-                      <div className="relative w-full h-full rounded-full border-2 border-amber-500/30 flex items-center justify-center">
-                        <div className="text-6xl text-amber-400">☯️</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-
-        {/* For Teams Section */}
-        <section className="px-6 py-16 border-t border-white/5">
-          <div className="max-w-6xl mx-auto text-center">
-            <Badge className="mb-4 bg-gradient-to-r from-blue-600 to-green-600 border-0">
-              <Building2 className="w-3 h-3 mr-1" />
-              For Teams & Enterprises
-            </Badge>
-            <h2 className="text-3xl font-bold mb-4">Looking for secure, scalable internal tools?</h2>
-            <p className="text-white/60 mb-8">Enterprise-grade security and a focus on privacy</p>
-            <div className="flex gap-4 justify-center">
-              <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
-                Explore Hanzo for Enterprise
-                <ArrowRight className="ml-2 w-4 h-4" />
-              </Button>
-              <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10">
-                <Shield className="mr-2 w-4 h-4" />
-                Visit Trust Center
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        {/* CTA Section */}
-        <section className="px-6 py-24 border-t border-white/5">
-          <div className="max-w-4xl mx-auto text-center">
-            <Badge className="mb-6 bg-gradient-to-r from-yellow-600 to-orange-600 border-0">
-              <Sparkles className="w-3 h-3 mr-1" />
-              Join the Movement
-            </Badge>
-            <h2 className="text-4xl lg:text-5xl font-bold mb-6">
-              Thousands of makers are already using Hanzo
-            </h2>
-            <p className="text-xl text-white/60 mb-8">
-              Whether you&apos;re a solo founder, designer, or enterprise team — Hanzo empowers you to ship fast and often
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-4 md:mb-6">
+              Build something{" "}
+              <span className="relative inline-block">
+                <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  amazing
+                </span>
+                <div className="absolute -inset-2 bg-gradient-to-r from-violet-400/20 via-purple-400/20 to-pink-400/20 blur-2xl -z-10" />
+              </span>
+            </h1>
+            <p className="text-lg md:text-xl text-white/60 mb-8 md:mb-16 max-w-2xl mx-auto px-4">
+              Describe your dream app and watch Hanzo AI bring it to life in seconds
             </p>
-            <Button 
-              size="lg"
-              onClick={handleStartBuilding}
-              className="bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-white text-lg px-10 py-7 border-0"
-            >
-              Get Started for Free
-              <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
-          </div>
-        </section>
 
-        {/* Footer */}
-        <footer className="px-6 py-12 border-t border-white/5">
-          <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
-              <div>
-                <h3 className="text-sm font-semibold text-white mb-4">Company</h3>
-                <ul className="space-y-2">
-                  <li><Link href="#" className="text-sm text-white/60 hover:text-white">Careers</Link></li>
-                  <li><Link href="#" className="text-sm text-white/60 hover:text-white">Press</Link></li>
-                  <li><Link href="#" className="text-sm text-white/60 hover:text-white">Enterprise</Link></li>
-                  <li><Link href="#" className="text-sm text-white/60 hover:text-white">Partnerships</Link></li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-white mb-4">Product</h3>
-                <ul className="space-y-2">
-                  <li><Link href="#" className="text-sm text-white/60 hover:text-white">Pricing</Link></li>
-                  <li><Link href="#" className="text-sm text-white/60 hover:text-white">Changelog</Link></li>
-                  <li><Link href="#" className="text-sm text-white/60 hover:text-white">Student Discount</Link></li>
-                  <li><Link href="#" className="text-sm text-white/60 hover:text-white">Connections</Link></li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-white mb-4">Resources</h3>
-                <ul className="space-y-2">
-                  <li><Link href="#" className="text-sm text-white/60 hover:text-white">Guides</Link></li>
-                  <li><Link href="#" className="text-sm text-white/60 hover:text-white">Videos</Link></li>
-                  <li><Link href="#" className="text-sm text-white/60 hover:text-white">Blog</Link></li>
-                  <li><Link href="#" className="text-sm text-white/60 hover:text-white">Support</Link></li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-white mb-4">Legal</h3>
-                <ul className="space-y-2">
-                  <li><Link href="#" className="text-sm text-white/60 hover:text-white">Privacy</Link></li>
-                  <li><Link href="#" className="text-sm text-white/60 hover:text-white">Terms</Link></li>
-                  <li><Link href="#" className="text-sm text-white/60 hover:text-white">Cookies</Link></li>
-                  <li><Link href="#" className="text-sm text-white/60 hover:text-white">Report Abuse</Link></li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-white mb-4">Community</h3>
-                <ul className="space-y-2">
-                  <li><Link href="#" className="text-sm text-white/60 hover:text-white">Discord</Link></li>
-                  <li><Link href="#" className="text-sm text-white/60 hover:text-white">Reddit</Link></li>
-                  <li><Link href="#" className="text-sm text-white/60 hover:text-white">Twitter</Link></li>
-                  <li><Link href="#" className="text-sm text-white/60 hover:text-white">GitHub</Link></li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
-              <div className="flex items-center gap-3">
-                <HanzoLogo className="w-6 h-6 text-white" />
-                <span className="text-sm text-white/60">© 2025 Hanzo AI. All rights reserved.</span>
-              </div>
-              <div className="flex items-center gap-4">
-                <Input 
-                  type="email" 
-                  placeholder="Subscribe to updates" 
-                  className="w-64 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+            {/* Large, prominent input box - responsive */}
+            <div className="max-w-3xl mx-auto px-4 md:px-0">
+              <div className={`relative bg-[#141414] rounded-xl md:rounded-2xl shadow-2xl border transition-all duration-300 ${
+                inputFocused ? 'border-violet-500/50 shadow-violet-500/20' : 'border-white/10'
+              }`}>
+                <div className="absolute -inset-[1px] bg-gradient-to-r from-violet-500/20 via-purple-500/20 to-pink-500/20 rounded-xl md:rounded-2xl blur opacity-0 transition-opacity duration-300"
+                  style={{ opacity: inputFocused ? 0.6 : 0 }}
                 />
-                <Button variant="secondary" className="bg-white/10 hover:bg-white/20 text-white border-0">
-                  Subscribe
-                </Button>
-              </div>
-            </div>
-          </div>
-        </footer>
-      </main>
-
-      {/* Enhanced Chat Widget */}
-      <div className={`fixed bottom-6 right-6 z-50 transition-all ${isChatOpen ? 'w-96' : 'w-auto'}`}>
-        {!isChatOpen ? (
-          <button
-            onClick={() => setIsChatOpen(true)}
-            className="p-4 bg-gradient-to-r from-violet-600 to-blue-600 text-white rounded-full shadow-2xl hover:scale-110 transition-all group"
-          >
-            <MessageSquare className="w-6 h-6" />
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-          </button>
-        ) : (
-          <Card className="w-full h-[500px] bg-neutral-950/95 backdrop-blur-xl border-white/20 shadow-2xl">
-            <CardHeader className="bg-gradient-to-r from-violet-600 to-blue-600 text-white rounded-t-lg">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                  <CardTitle className="text-lg">Chat with Hanzo</CardTitle>
+                <div className="relative flex flex-col md:flex-row items-stretch md:items-center gap-3 p-3 md:p-4">
+                  <input
+                    type="text"
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleCreateProject()}
+                    onFocus={() => setInputFocused(true)}
+                    onBlur={() => setInputFocused(false)}
+                    placeholder="Create a SaaS dashboard with user authentication..."
+                    className="flex-1 bg-transparent border-0 text-white placeholder:text-white/30 text-base md:text-lg focus:outline-none px-2 py-2 md:py-0"
+                    disabled={isCreating}
+                  />
+                  <div className="flex items-center gap-2 justify-between md:justify-end">
+                    <div className="flex items-center gap-2">
+                      <button className="p-2 md:p-2.5 hover:bg-white/5 rounded-lg md:rounded-xl transition-all group">
+                        <Plus className="w-5 h-5 text-white/40 group-hover:text-white/60" />
+                      </button>
+                      <button className="p-2 md:p-2.5 hover:bg-white/5 rounded-lg md:rounded-xl transition-all group flex items-center gap-1.5">
+                        <Globe2 className="w-5 h-5 text-white/40 group-hover:text-white/60" />
+                        <span className="hidden sm:inline text-xs text-white/40 group-hover:text-white/60">Public</span>
+                      </button>
+                      <button className="p-2 md:p-2.5 hover:bg-white/5 rounded-lg md:rounded-xl transition-all group">
+                        <Mic className="w-5 h-5 text-white/40 group-hover:text-white/60" />
+                      </button>
+                    </div>
+                    <Button
+                      onClick={handleCreateProject}
+                      disabled={isCreating || !prompt.trim()}
+                      className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-400 hover:to-purple-400 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-lg md:rounded-xl font-semibold shadow-lg shadow-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isCreating ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <>
+                          <Zap className="w-5 h-5 mr-2" />
+                          Create
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
-                <button 
-                  onClick={() => setIsChatOpen(false)}
-                  className="text-white/80 hover:text-white transition-colors"
+              </div>
+
+              {/* Quick action prompts - responsive grid */}
+              <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2 justify-center mt-6 md:mt-8">
+                <button
+                  onClick={() => setPrompt("Build a modern SaaS landing page with pricing tiers")}
+                  className="px-3 md:px-4 py-2 rounded-lg md:rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all text-xs md:text-sm font-medium"
                 >
-                  <X className="w-4 h-4" />
+                  ✨ SaaS Landing
+                </button>
+                <button
+                  onClick={() => setPrompt("Create an AI chatbot interface with conversation history")}
+                  className="px-3 md:px-4 py-2 rounded-lg md:rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all text-xs md:text-sm font-medium"
+                >
+                  🤖 AI Chatbot
+                </button>
+                <button
+                  onClick={() => setPrompt("Design a crypto trading dashboard with real-time charts")}
+                  className="px-3 md:px-4 py-2 rounded-lg md:rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all text-xs md:text-sm font-medium"
+                >
+                  📊 Trading Dashboard
+                </button>
+                <button
+                  onClick={() => setPrompt("Build a social media app with posts and comments")}
+                  className="px-3 md:px-4 py-2 rounded-lg md:rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all text-xs md:text-sm font-medium"
+                >
+                  💬 Social App
                 </button>
               </div>
-            </CardHeader>
-            <CardContent className="p-4 h-[380px] overflow-y-auto space-y-3">
-              {chatMessages.map((msg, i) => (
-                <div key={i} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                    msg.sender === 'user' 
-                      ? 'bg-gradient-to-r from-violet-600 to-blue-600 text-white' 
-                      : 'bg-white/10 text-white/90'
-                  }`}>
-                    <p className="text-sm">{msg.text}</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Showcase Section - Made with Hanzo */}
+        <section className="px-4 md:px-8 py-16 md:py-20 bg-gradient-to-b from-transparent via-violet-950/10 to-transparent">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-8 md:mb-12">
+              <Badge className="mb-4 bg-gradient-to-r from-violet-600 to-purple-600 text-white border-0 px-3 md:px-4 py-1.5">
+                <Sparkles className="w-4 h-4 mr-2" />
+                Built with Hanzo AI
+              </Badge>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Incredible apps created by our community</h2>
+              <p className="text-base md:text-lg text-white/60 max-w-2xl mx-auto px-4">
+                From startups to enterprises, see what teams are building with Hanzo
+              </p>
+            </div>
+
+            {/* Category Filter - horizontal scroll on mobile */}
+            <div className="flex items-center gap-2 md:gap-3 mb-8 md:mb-12 overflow-x-auto pb-2 px-2 md:px-0 md:justify-center scrollbar-hide">
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-3 md:px-5 py-2 md:py-2.5 rounded-lg md:rounded-xl text-xs md:text-sm font-medium transition-all whitespace-nowrap ${
+                    selectedCategory === cat
+                      ? 'bg-white text-black'
+                      : 'bg-white/5 text-white/70 hover:text-white hover:bg-white/10 border border-white/10'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Project Grid - responsive */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+              {filteredProjects.map((project) => (
+                <div
+                  key={project.id}
+                  className="group cursor-pointer relative"
+                  onClick={() => window.open(project.url, '_blank')}
+                >
+                  {project.featured && (
+                    <div className="absolute -top-2 -right-2 z-10">
+                      <div className="bg-gradient-to-r from-violet-500 to-purple-500 text-white text-xs px-2 py-1 rounded-lg font-semibold shadow-lg">
+                        Featured
+                      </div>
+                    </div>
+                  )}
+                  <div className="bg-[#1a1a1a] rounded-xl md:rounded-2xl overflow-hidden border border-white/10 hover:border-violet-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-violet-500/10 hover:-translate-y-1">
+                    <div className="aspect-video bg-gradient-to-br from-violet-900/30 via-purple-900/30 to-pink-900/30 relative overflow-hidden">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-4xl md:text-6xl">{project.authorAvatar}</span>
+                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    </div>
+                    <div className="p-4 md:p-5">
+                      <h3 className="font-semibold text-sm md:text-base mb-2 group-hover:text-violet-400 transition-colors">
+                        {project.title}
+                      </h3>
+                      <p className="text-xs md:text-sm text-white/60 mb-3 line-clamp-2">
+                        {project.description}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 md:w-6 h-5 md:h-6 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
+                            <span className="text-[10px] md:text-xs">{project.authorAvatar}</span>
+                          </div>
+                          <span className="text-xs text-white/50">{project.author}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-white/40">
+                          <Sparkles className="w-3 h-3" />
+                          {project.remixes.toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
-            </CardContent>
-            <CardFooter className="p-4 border-t border-white/10">
-              <div className="flex w-full gap-2">
-                <Input 
-                  type="text"
-                  value={chatMessage}
-                  onChange={(e) => setChatMessage(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                  placeholder="Describe what you want to build..."
-                  className="flex-1 bg-white/5 border-white/20 text-white placeholder:text-white/40"
-                />
-                <Button 
-                  onClick={handleSendMessage}
-                  className="bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-white border-0"
+            </div>
+
+            <div className="text-center mt-8 md:mt-12">
+              <Button
+                onClick={() => router.push('/community')}
+                variant="outline"
+                className="border-white/20 text-white hover:bg-white/10 px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold"
+              >
+                Explore All Projects
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        {/* User's Recent Projects (if logged in) */}
+        {user && projects.length > 0 && (
+          <section className="px-4 md:px-8 py-16 md:py-20">
+            <div className="max-w-7xl mx-auto">
+              <div className="flex items-center justify-between mb-8 md:mb-10">
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-bold mb-2">Continue Building</h2>
+                  <p className="text-white/60 text-sm md:text-base">Jump back into your recent projects</p>
+                </div>
+                <Button
+                  onClick={() => router.push('/projects')}
+                  variant="outline"
+                  className="border-white/20 text-white hover:bg-white/10 text-sm md:text-base"
                 >
-                  <Send className="w-4 h-4" />
+                  View All
                 </Button>
               </div>
-            </CardFooter>
-          </Card>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                {projects.slice(0, 4).map((project) => (
+                  <div
+                    key={`${project.namespace}/${project.id}`}
+                    className="group cursor-pointer"
+                    onClick={() => router.push(`/projects/${project.namespace}/${project.id}`)}
+                  >
+                    <div className="bg-[#1a1a1a] rounded-xl md:rounded-2xl overflow-hidden border border-white/10 hover:border-white/20 transition-all hover:shadow-xl">
+                      <div className="aspect-video bg-gradient-to-br from-violet-900/20 to-purple-900/20 relative">
+                        <div className="absolute inset-0 flex items-center justify-center text-4xl md:text-5xl">
+                          {project.emoji || "🚀"}
+                        </div>
+                      </div>
+                      <div className="p-4 md:p-5">
+                        <h3 className="font-semibold text-sm md:text-base mb-1">
+                          {project.name}
+                        </h3>
+                        {project.short_description && (
+                          <p className="text-xs md:text-sm text-white/60 line-clamp-2">
+                            {project.short_description}
+                          </p>
+                        )}
+                        <div className="mt-3 text-xs text-white/40">
+                          Updated {new Date(project.updated_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
         )}
-      </div>
+      </main>
+
+      {/* Footer - responsive */}
+      <footer className="relative z-10 bg-[#0a0a0a] border-t border-white/10 mt-16 md:mt-32">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-16">
+          {/* Top Footer Section - responsive grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 md:gap-8 mb-8 md:mb-12">
+            {/* Product Column */}
+            <div>
+              <h3 className="text-white font-semibold text-sm mb-3 md:mb-4">Product</h3>
+              <ul className="space-y-2 md:space-y-3">
+                <li><Link href="/features" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Features</Link></li>
+                <li><Link href="/integrations" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Integrations</Link></li>
+                <li><Link href="/pricing" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Pricing</Link></li>
+                <li><Link href="/changelog" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Changelog</Link></li>
+                <li><Link href="/roadmap" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Roadmap</Link></li>
+              </ul>
+            </div>
+
+            {/* Solutions Column */}
+            <div>
+              <h3 className="text-white font-semibold text-sm mb-3 md:mb-4">Solutions</h3>
+              <ul className="space-y-2 md:space-y-3">
+                <li><Link href="/startups" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">For Startups</Link></li>
+                <li><Link href="/enterprise" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">For Enterprise</Link></li>
+                <li><Link href="/agencies" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">For Agencies</Link></li>
+                <li><Link href="/developers" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">For Developers</Link></li>
+                <li><Link href="/designers" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">For Designers</Link></li>
+              </ul>
+            </div>
+
+            {/* Resources Column */}
+            <div>
+              <h3 className="text-white font-semibold text-sm mb-3 md:mb-4">Resources</h3>
+              <ul className="space-y-2 md:space-y-3">
+                <li><Link href="/docs" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Documentation</Link></li>
+                <li><Link href="/tutorials" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Tutorials</Link></li>
+                <li><Link href="/blog" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Blog</Link></li>
+                <li><Link href="/community" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Community</Link></li>
+                <li><Link href="/templates" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Templates</Link></li>
+              </ul>
+            </div>
+
+            {/* Company Column */}
+            <div>
+              <h3 className="text-white font-semibold text-sm mb-3 md:mb-4">Company</h3>
+              <ul className="space-y-2 md:space-y-3">
+                <li><Link href="/about" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">About</Link></li>
+                <li><Link href="/careers" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Careers</Link></li>
+                <li><Link href="/press" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Press</Link></li>
+                <li><Link href="/partners" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Partners</Link></li>
+                <li><Link href="/contact" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Contact</Link></li>
+              </ul>
+            </div>
+
+            {/* Support Column */}
+            <div>
+              <h3 className="text-white font-semibold text-sm mb-3 md:mb-4">Support</h3>
+              <ul className="space-y-2 md:space-y-3">
+                <li><Link href="/help" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Help Center</Link></li>
+                <li><Link href="/status" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Status</Link></li>
+                <li><Link href="/security" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Security</Link></li>
+                <li><Link href="/api" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">API</Link></li>
+                <li><Link href="/report" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Report Issue</Link></li>
+              </ul>
+            </div>
+
+            {/* Legal Column */}
+            <div>
+              <h3 className="text-white font-semibold text-sm mb-3 md:mb-4">Legal</h3>
+              <ul className="space-y-2 md:space-y-3">
+                <li><Link href="/privacy" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Privacy</Link></li>
+                <li><Link href="/terms" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Terms</Link></li>
+                <li><Link href="/cookies" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Cookies</Link></li>
+                <li><Link href="/licenses" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Licenses</Link></li>
+                <li><Link href="/compliance" className="text-white/60 hover:text-white text-xs md:text-sm transition-colors">Compliance</Link></li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Bottom Footer - responsive */}
+          <div className="pt-6 md:pt-8 border-t border-white/10">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6">
+              {/* Logo and Copyright */}
+              <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8 text-center md:text-left">
+                <div className="flex items-center gap-3">
+                  <HanzoLogo className="w-6 md:w-7 h-6 md:h-7 text-white" />
+                  <span className="text-base md:text-lg font-bold">Hanzo</span>
+                </div>
+                <span className="text-xs md:text-sm text-white/40">
+                  © 2025 Hanzo AI, Inc. All rights reserved.
+                </span>
+              </div>
+
+              {/* Social Links */}
+              <div className="flex items-center gap-4 md:gap-5">
+                <Link href="https://twitter.com/hanzoai" className="text-white/40 hover:text-white transition-colors">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                  </svg>
+                </Link>
+                <Link href="https://github.com/hanzoai" className="text-white/40 hover:text-white transition-colors">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path fillRule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.462-1.11-1.462-.908-.62.069-.607.069-.607 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z" clipRule="evenodd"/>
+                  </svg>
+                </Link>
+                <Link href="https://discord.gg/hanzoai" className="text-white/40 hover:text-white transition-colors">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20.317 4.369a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.865-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.369a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.182 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+                  </svg>
+                </Link>
+                <Link href="https://linkedin.com/company/hanzoai" className="text-white/40 hover:text-white transition-colors">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                  </svg>
+                </Link>
+                <Link href="https://youtube.com/@hanzoai" className="text-white/40 hover:text-white transition-colors">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                  </svg>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      {/* Add custom scrollbar styles for mobile */}
+      <style jsx global>{`
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
     </div>
   );
 }
