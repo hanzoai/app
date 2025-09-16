@@ -74,7 +74,7 @@ jobs:
               "memory": "1Gi"
             },
             "replicas": 2,
-            "domains": ["build.hanzo.ai"]
+            "domains": ["build.hanzo.ai", "hanzo.app", "hanzo.build"]
           }'
       env:
         HANZO_API_KEY: ${{ secrets.HANZO_API_KEY }}
