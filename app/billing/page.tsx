@@ -244,6 +244,9 @@ export default function BillingPage() {
                   <span className="text-2xl font-bold">${credits.toFixed(2)}</span>
                   <TrendingUp className="w-5 h-5 text-green-500" />
                 </div>
+                {credits === 5 && (
+                  <p className="text-xs text-white/40">Expires in 909 days</p>
+                )}
                 <Button
                   onClick={() => setCreditModalOpen(true)}
                   variant="outline"

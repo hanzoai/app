@@ -71,7 +71,7 @@ export default function SignupPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <Zap className="w-4 h-4 text-yellow-400" />
-                    <span className="text-sm text-white/70">$1000 free credits to start</span>
+                    <span className="text-sm text-white/70">$5 free cloud credits to start</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <Shield className="w-4 h-4 text-green-400" />

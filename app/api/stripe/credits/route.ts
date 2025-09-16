@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
     // Check if Stripe is configured
     if (!isStripeConfigured()) {
       return NextResponse.json({
-        credits: 1000, // Default credits for demo
+        credits: 5, // Default $5 free credits for demo
         message: 'Using demo credits. Stripe not configured.',
       });
     }
