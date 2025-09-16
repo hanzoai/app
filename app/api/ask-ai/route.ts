@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
       } finally {
         try {
           await writer?.close();
-        } catch (closeError) {
+        } catch {
           // Stream already closed, ignore
         }
       }

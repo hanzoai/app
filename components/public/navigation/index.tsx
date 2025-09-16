@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useMount, useUnmount } from "react-use";
 import classNames from "classnames";
