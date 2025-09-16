@@ -7,7 +7,7 @@ import { useMount, useUnmount } from "react-use";
 import classNames from "classnames";
 
 import { Button } from "@/components/ui/button";
-import Logo from "@/assets/logo.svg";
+import { HanzoLogo } from "@/components/HanzoLogo";
 import { useUser } from "@/hooks/useUser";
 import { UserMenu } from "@/components/user-menu";
 
@@ -86,14 +86,8 @@ export default function Navigation() {
       )}
     >
       <nav className="grid grid-cols-2 p-4 container mx-auto">
-        <Link href="/" className="flex items-center gap-1">
-          <Image
-            src={Logo}
-            className="w-9 mr-1"
-            alt="Hanzo Logo"
-            width={64}
-            height={64}
-          />
+        <Link href="/" className="flex items-center gap-2">
+          <HanzoLogo className="w-9 h-9 text-white" />
           <p className="font-sans text-white text-xl font-bold">Hanzo</p>
         </Link>
         <ul className="items-center justify-center gap-6 hidden">
