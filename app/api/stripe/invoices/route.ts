@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOrCreateCustomer, getCustomerInvoices, isStripeConfigured } from '@/lib/stripe';
-import { headers as getHeaders } from 'next/headers';
-import { cookies as getCookies } from 'next/headers';
+import { getOrCreateCustomer, isStripeConfigured, stripe } from '@/lib/stripe';
+import { cookies } from 'next/headers';
 
-// Get user session (integrate with Hugging Face auth)
-async function getUserSession(req: NextRequest) {
-  const headers = await getHeaders();
-  const cookies = await getCookies();
-  const authToken = cookies.get('hanzo-auth-token')?.value || headers.get('Authorization');
+// Get user session
+async function getUserSession() {
+  const cookieStore = await cookies();
+  const authToken = cookieStore.get('hanzo-auth-token')?.value;
 
   if (!authToken) {
     return null;
   }
 
-  // Verify with Hugging Face
   try {
     const response = await fetch('https://huggingface.co/api/whoami-v2', {
       headers: {
@@ -35,35 +32,15 @@ async function getUserSession(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    // Check if Stripe is configured
-    if (!isStripeConfigured()) {
-      // Return mock data for development
-      return NextResponse.json({
-        invoices: [
-          {
-            id: 'demo_inv_1',
-            number: 'INV-2024-001',
-            amount: 20,
-            status: 'paid',
-            date: new Date('2024-01-15'),
-            description: 'Pro Plan - Monthly',
-            period: {
-              start: new Date('2024-01-01'),
-              end: new Date('2024-01-31'),
-            },
-          },
-        ],
-        hasMore: false,
-      });
+    const user = await getUserSession();
+    
+    if (!user) {
+      return NextResponse.json({ invoices: [] });
     }
 
-    const user = await getUserSession(req);
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    // Check if Stripe is configured
+    if (!isStripeConfigured()) {
+      return NextResponse.json({ invoices: [] });
     }
 
     // Get or create Stripe customer
@@ -73,16 +50,34 @@ export async function GET(req: NextRequest) {
       name: user.name,
     });
 
-    // Get invoices
-    const searchParams = req.nextUrl.searchParams;
-    const limit = parseInt(searchParams.get('limit') || '10', 10);
+    // Check if stripe is configured
+    if (!stripe) {
+      return NextResponse.json({ invoices: [] });
+    }
 
-    const invoicesData = await getCustomerInvoices({
-      customerId: customer.id,
-      limit,
+    // Get invoices from Stripe
+    const invoices = await stripe.invoices.list({
+      customer: customer.id,
+      limit: 10,
     });
 
-    return NextResponse.json(invoicesData);
+    // Format invoices for response
+    const formattedInvoices = invoices.data.map((invoice) => ({
+      id: invoice.id,
+      amount_paid: invoice.amount_paid / 100, // Convert from cents to dollars
+      amount_due: invoice.amount_due / 100,
+      currency: invoice.currency,
+      status: invoice.status,
+      created: invoice.created,
+      period_start: invoice.period_start,
+      period_end: invoice.period_end,
+      hosted_invoice_url: invoice.hosted_invoice_url,
+      invoice_pdf: invoice.invoice_pdf,
+      description: invoice.description,
+      number: invoice.number,
+    }));
+
+    return NextResponse.json({ invoices: formattedInvoices });
   } catch (error) {
     console.error('Error fetching invoices:', error);
     return NextResponse.json(

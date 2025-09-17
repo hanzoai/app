@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createPortalSession, getOrCreateCustomer, isStripeConfigured } from '@/lib/stripe';
-import { headers as getHeaders } from 'next/headers';
-import { cookies as getCookies } from 'next/headers';
+import { getOrCreateCustomer, isStripeConfigured, stripe } from '@/lib/stripe';
+import { cookies } from 'next/headers';
 
-// Get user session (integrate with Hugging Face auth)
-async function getUserSession(req: NextRequest) {
-  const headers = await getHeaders();
-  const cookies = await getCookies();
-  const authToken = cookies.get('hanzo-auth-token')?.value || headers.get('Authorization');
+// Get user session
+async function getUserSession() {
+  const cookieStore = await cookies();
+  const authToken = cookieStore.get('hanzo-auth-token')?.value;
 
   if (!authToken) {
     return null;
   }
 
-  // Verify with Hugging Face
   try {
     const response = await fetch('https://huggingface.co/api/whoami-v2', {
       headers: {
@@ -35,20 +32,20 @@ async function getUserSession(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    // Check if Stripe is configured
-    if (!isStripeConfigured()) {
-      return NextResponse.json(
-        { error: 'Payment system not configured. Please contact support.' },
-        { status: 503 }
-      );
-    }
-
-    const user = await getUserSession(req);
+    const user = await getUserSession();
 
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
+      );
+    }
+
+    // Check if Stripe is configured
+    if (!isStripeConfigured()) {
+      return NextResponse.json(
+        { error: 'Billing system not configured' },
+        { status: 503 }
       );
     }
 
@@ -59,13 +56,20 @@ export async function POST(req: NextRequest) {
       name: user.name,
     });
 
-    const origin = req.headers.get('origin') || 'http://localhost:3000';
-    const returnUrl = `${origin}/billing`;
+    // Check if stripe is configured
+    if (!stripe) {
+      return NextResponse.json(
+        { error: 'Billing portal not available' },
+        { status: 503 }
+      );
+    }
 
-    // Create portal session
-    const session = await createPortalSession({
-      customerId: customer.id,
-      returnUrl,
+    const origin = req.headers.get('origin') || 'http://localhost:3000';
+
+    // Create a portal session for the customer
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customer.id,
+      return_url: `${origin}/billing`,
     });
 
     return NextResponse.json({ url: session.url });
@@ -75,45 +79,5 @@ export async function POST(req: NextRequest) {
       { error: 'Failed to create portal session' },
       { status: 500 }
     );
-  }
-}
-
-export async function GET(req: NextRequest) {
-  try {
-    // Check if Stripe is configured
-    if (!isStripeConfigured()) {
-      const origin = req.headers.get('origin') || 'http://localhost:3002';
-      return NextResponse.redirect(`${origin}/billing?error=payment_not_configured`);
-    }
-
-    const user = await getUserSession(req);
-
-    if (!user) {
-      const origin = req.headers.get('origin') || 'http://localhost:3002';
-      return NextResponse.redirect(`${origin}/auth?error=unauthorized`);
-    }
-
-    // Get or create Stripe customer
-    const customer = await getOrCreateCustomer({
-      userId: user.id,
-      email: user.email,
-      name: user.name,
-    });
-
-    const origin = req.headers.get('origin') || 'http://localhost:3000';
-    const returnUrl = `${origin}/billing`;
-
-    // Create portal session
-    const session = await createPortalSession({
-      customerId: customer.id,
-      returnUrl,
-    });
-
-    // Redirect to portal
-    return NextResponse.redirect(session.url);
-  } catch (error) {
-    console.error('Error creating portal session:', error);
-    const origin = req.headers.get('origin') || 'http://localhost:3002';
-    return NextResponse.redirect(`${origin}/billing?error=portal_failed`);
   }
 }

@@ -69,12 +69,23 @@ export default function BillingPage() {
   ];
 
   useEffect(() => {
-    if (!user) {
-      router.push('/auth');
-      return;
-    }
-    fetchBillingData();
-  }, [user]);
+    // Simple auth check - just check if we have a token
+    const checkAuth = () => {
+      const cookies = document.cookie.split(';');
+      const hasAuthToken = cookies.some(cookie =>
+        cookie.trim().startsWith('hanzo-auth-token=') ||
+        cookie.trim().startsWith('hanzo-access-token=')
+      );
+
+      if (!hasAuthToken && !user) {
+        router.push('/auth');
+        return;
+      }
+      fetchBillingData();
+    };
+
+    checkAuth();
+  }, [user, router]);
 
   const fetchBillingData = async () => {
     try {

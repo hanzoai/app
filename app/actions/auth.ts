@@ -13,6 +13,15 @@ export async function getAuth() {
     url +
     "/auth/callback";
 
-  const loginRedirectUrl = `https://huggingface.co/oauth/authorize?client_id=${process.env.OAUTH_CLIENT_ID}&redirect_uri=${redirect_uri}&response_type=code&scope=openid%20profile%20write-repos%20manage-repos%20inference-api&prompt=consent&state=1234567890`;
+  const clientId = process.env.OAUTH_CLIENT_ID || process.env.HF_CLIENT_ID;
+
+  if (!clientId) {
+    console.error('OAuth client ID not found in environment variables');
+    throw new Error('OAuth configuration missing');
+  }
+
+  const loginRedirectUrl = `https://huggingface.co/oauth/authorize?client_id=${clientId}&redirect_uri=${redirect_uri}&response_type=code&scope=openid%20profile%20write-repos%20manage-repos%20inference-api&prompt=consent&state=1234567890`;
+
+  console.log('Auth URL generated:', loginRedirectUrl);
   return loginRedirectUrl;
 }

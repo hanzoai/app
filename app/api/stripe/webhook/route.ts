@@ -1,130 +1,135 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe, STRIPE_WEBHOOK_SECRET, isStripeConfigured } from '@/lib/stripe';
-import Stripe from 'stripe';
+import { stripe } from '@/lib/stripe';
+import { headers } from 'next/headers';
+
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+
+async function handleCheckoutSessionCompleted(session: any) {
+  console.log('Checkout session completed:', session.id);
+  
+  // Extract metadata
+  const userId = session.metadata?.userId;
+  const amount = session.amount_total / 100; // Convert from cents
+  
+  if (userId) {
+    // Add credits to user account
+    // This would typically update your database
+    console.log(`Adding $${amount} credits to user ${userId}`);
+    
+    // Example: Update user credits in database
+    // await prisma.user.update({
+    //   where: { id: userId },
+    //   data: { 
+    //     credits: { increment: amount }
+    //   }
+    // });
+  }
+}
+
+async function handleSubscriptionUpdated(subscription: any) {
+  console.log('Subscription updated:', subscription.id);
+  
+  // Update subscription status in your database
+  const customerId = subscription.customer;
+  
+  // Example: Update subscription status
+  // await prisma.subscription.upsert({
+  //   where: { stripeCustomerId: customerId },
+  //   update: {
+  //     status: subscription.status,
+  //     currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+  //   },
+  //   create: {
+  //     stripeCustomerId: customerId,
+  //     stripeSubscriptionId: subscription.id,
+  //     status: subscription.status,
+  //     currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+  //   }
+  // });
+}
+
+async function handleInvoicePaymentSucceeded(invoice: any) {
+  console.log('Invoice payment succeeded:', invoice.id);
+  
+  // Add credits for subscription payment
+  const customerId = invoice.customer;
+  const amount = invoice.amount_paid / 100;
+  
+  console.log(`Payment of $${amount} received from customer ${customerId}`);
+}
 
 export async function POST(req: NextRequest) {
-  // Check if Stripe is configured
-  if (!isStripeConfigured() || !stripe) {
-    return NextResponse.json(
-      { error: 'Payment system not configured' },
-      { status: 503 }
-    );
-  }
-
-  const body = await req.text();
-  const signature = req.headers.get('stripe-signature')!;
-
-  let event: Stripe.Event;
-
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      STRIPE_WEBHOOK_SECRET
-    );
-  } catch (err: any) {
-    console.error('Webhook signature verification failed:', err.message);
-    return NextResponse.json(
-      { error: 'Invalid signature' },
-      { status: 400 }
-    );
-  }
+    // Check if Stripe is configured
+    if (!stripe) {
+      return NextResponse.json(
+        { error: 'Webhook handler not configured' },
+        { status: 503 }
+      );
+    }
 
-  try {
+    const body = await req.text();
+    const headersList = await headers();
+    const signature = headersList.get('stripe-signature');
+
+    if (!signature) {
+      return NextResponse.json(
+        { error: 'Missing stripe-signature header' },
+        { status: 400 }
+      );
+    }
+
+    let event;
+    
+    try {
+      event = stripe.webhooks.constructEvent(
+        body,
+        signature,
+        webhookSecret
+      );
+    } catch (err: any) {
+      console.error('Webhook signature verification failed:', err.message);
+      return NextResponse.json(
+        { error: 'Invalid signature' },
+        { status: 400 }
+      );
+    }
+
+    // Handle the event
     switch (event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.Checkout.Session;
-        console.log('Checkout session completed:', session.id);
-
-        // Handle successful checkout
-        // Update user's subscription status in your database
-        const customerId = session.customer as string;
-        const userId = session.metadata?.userId;
-
-        if (userId && customerId) {
-          // TODO: Update user subscription status in database
-          console.log(`User ${userId} subscribed with customer ID ${customerId}`);
-        }
+      case 'checkout.session.completed':
+        await handleCheckoutSessionCompleted(event.data.object);
         break;
-      }
-
+        
       case 'customer.subscription.created':
-      case 'customer.subscription.updated': {
-        const subscription = event.data.object as Stripe.Subscription;
-        console.log('Subscription updated:', subscription.id);
-
-        // Update subscription status
-        const customerId = subscription.customer as string;
-        const status = subscription.status;
-
-        // TODO: Update subscription in database
-        console.log(`Subscription ${subscription.id} status: ${status}`);
+      case 'customer.subscription.updated':
+      case 'customer.subscription.deleted':
+        await handleSubscriptionUpdated(event.data.object);
         break;
-      }
-
-      case 'customer.subscription.deleted': {
-        const subscription = event.data.object as Stripe.Subscription;
-        console.log('Subscription canceled:', subscription.id);
-
-        // Handle subscription cancellation
-        const customerId = subscription.customer as string;
-
-        // TODO: Update user to free tier in database
-        console.log(`Subscription ${subscription.id} canceled for customer ${customerId}`);
+        
+      case 'invoice.payment_succeeded':
+        await handleInvoicePaymentSucceeded(event.data.object);
         break;
-      }
-
-      case 'invoice.payment_succeeded': {
-        const invoice = event.data.object as Stripe.Invoice;
-        console.log('Payment succeeded:', invoice.id);
-
-        // Handle successful payment
-        const customerId = invoice.customer as string;
-
-        // TODO: Record payment in database
-        console.log(`Payment successful for customer ${customerId}`);
+        
+      case 'payment_intent.succeeded':
+        console.log('Payment intent succeeded:', event.data.object.id);
         break;
-      }
-
-      case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice;
-        console.log('Payment failed:', invoice.id);
-
-        // Handle failed payment
-        const customerId = invoice.customer as string;
-
-        // TODO: Send notification to user
-        console.log(`Payment failed for customer ${customerId}`);
-        break;
-      }
-
-      case 'customer.subscription.trial_will_end': {
-        const subscription = event.data.object as Stripe.Subscription;
-        console.log('Trial ending soon:', subscription.id);
-
-        // Send reminder email about trial ending
-        const customerId = subscription.customer as string;
-
-        // TODO: Send trial ending notification
-        console.log(`Trial ending soon for customer ${customerId}`);
-        break;
-      }
-
+        
       default:
         console.log(`Unhandled event type: ${event.type}`);
     }
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error('Error processing webhook:', error);
+    console.error('Webhook error:', error);
     return NextResponse.json(
-      { error: 'Webhook processing failed' },
+      { error: 'Webhook handler failed' },
       { status: 500 }
     );
   }
 }
 
-// Stripe webhooks require the raw body, so we need to disable body parsing
+// Disable body parsing for webhook endpoint
 export const config = {
   api: {
     bodyParser: false,

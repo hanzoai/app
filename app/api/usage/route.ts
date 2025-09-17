@@ -1,15 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAuthenticated } from '@/lib/auth';
+import { cookies } from 'next/headers';
+
+// Get user session
+async function getUserSession() {
+  const cookieStore = await cookies();
+  const authToken = cookieStore.get('hanzo-auth-token')?.value;
+
+  if (!authToken) {
+    return null;
+  }
+
+  try {
+    const response = await fetch('https://huggingface.co/api/whoami-v2', {
+      headers: {
+        Authorization: authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const user = await response.json();
+    return user;
+  } catch (error) {
+    console.error('Error verifying user session:', error);
+    return null;
+  }
+}
 
 export async function GET() {
   try {
-    const authResult = await isAuthenticated();
-    if (!authResult || !('id' in authResult)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const user = authResult;
-
-    // Mock usage data - in production, fetch from database
+    const user = await getUserSession();
+    
+    // Mock usage data - always return data for demo
     const usage = {
       api_calls: {
         used: Math.floor(Math.random() * 500) + 400, // 400-900
@@ -52,16 +76,13 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const authResult = await isAuthenticated();
-    if (!authResult || !('id' in authResult)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const user = authResult;
-
+    const user = await getUserSession();
+    
+    // Allow tracking even without auth for demo
     const { event, metadata } = await req.json();
 
     // Track usage event
-    console.log('Usage event:', { event, metadata, userId: user.id });
+    console.log('Usage event:', { event, metadata, userId: user?.id || 'anonymous' });
 
     // In production, save to database
     // await trackUsageEvent(user.id, event, metadata);

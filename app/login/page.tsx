@@ -6,8 +6,7 @@ import { useRouter } from 'next/navigation';
 import { HanzoLogo } from '@/components/HanzoLogo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { getAuth } from '@/app/actions/auth';
-import { Loader2, Github, ArrowRight } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,8 +15,16 @@ export default function LoginPage() {
   const handleHuggingFaceLogin = async () => {
     setLoading(true);
     try {
-      const authUrl = await getAuth();
-      window.location.href = authUrl;
+      const response = await fetch('/api/auth/login');
+      const data = await response.json();
+
+      if (data.url) {
+        console.log('Auth URL received:', data.url);
+        window.location.href = data.url;
+      } else {
+        console.error('No auth URL received');
+        setLoading(false);
+      }
     } catch (error) {
       console.error('Login error:', error);
       setLoading(false);

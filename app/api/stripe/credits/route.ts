@@ -5,14 +5,12 @@ import {
   getCustomerCredits,
   isStripeConfigured
 } from '@/lib/stripe';
-import { headers as getHeaders } from 'next/headers';
-import { cookies as getCookies } from 'next/headers';
+import { cookies } from 'next/headers';
 
 // Get user session (integrate with Hugging Face auth)
-async function getUserSession(req: NextRequest) {
-  const headers = await getHeaders();
-  const cookies = await getCookies();
-  const authToken = cookies.get('hanzo-auth-token')?.value || headers.get('Authorization');
+async function getUserSession() {
+  const cookieStore = await cookies();
+  const authToken = cookieStore.get('hanzo-auth-token')?.value;
 
   if (!authToken) {
     return null;
@@ -41,21 +39,23 @@ async function getUserSession(req: NextRequest) {
 // GET - Get current credit balance
 export async function GET(req: NextRequest) {
   try {
-    // Check if Stripe is configured
-    if (!isStripeConfigured()) {
+    // Check if user is logged in
+    const user = await getUserSession();
+    
+    if (!user) {
       return NextResponse.json({
-        credits: 5, // Default $5 free credits for demo
-        message: 'Using demo credits. Stripe not configured.',
+        credits: 5, // Default $5 free credits for non-authenticated users
+        message: 'Free trial credits',
       });
     }
 
-    const user = await getUserSession(req);
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    // Check if Stripe is configured
+    if (!isStripeConfigured()) {
+      // Even without Stripe, give logged-in users their free credits
+      return NextResponse.json({
+        credits: 5, // $5 free credits
+        message: 'Free trial credits',
+      });
     }
 
     // Get or create Stripe customer
@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
       name: user.name,
     });
 
-    // Get credit balance
+    // Get credit balance from Stripe
     const { credits } = await getCustomerCredits(customer.id);
 
     return NextResponse.json({ credits });
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const user = await getUserSession(req);
+    const user = await getUserSession();
 
     if (!user) {
       return NextResponse.json(
