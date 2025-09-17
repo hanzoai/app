@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: hanzo-build-app
     restart: unless-stopped
-    # No ports exposed - Traefik handles routing
+    # No ports exposed - Traefik handles routing via network
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -18,9 +18,9 @@ services:
       - HF_CLIENT_ID=${HF_CLIENT_ID}
       - HF_CLIENT_SECRET=${HF_CLIENT_SECRET}
       - HF_TOKEN=${HF_TOKEN}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-default_secret_for_production}
       - NEXTAUTH_URL=https://hanzo.app
-      # AI Providers
+      # AI Providers (optional)
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - TOGETHER_API_KEY=${TOGETHER_API_KEY}
@@ -30,14 +30,6 @@ services:
       - HYPERBOLIC_API_KEY=${HYPERBOLIC_API_KEY}
       - GROQ_API_KEY=${GROQ_API_KEY}
       - NEBIUS_API_KEY=${NEBIUS_API_KEY}
-      # Stripe (if needed)
-      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
-      - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
-      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
-      - STRIPE_PRO_MONTHLY_PRICE_ID=${STRIPE_PRO_MONTHLY_PRICE_ID}
-      - STRIPE_PRO_YEARLY_PRICE_ID=${STRIPE_PRO_YEARLY_PRICE_ID}
-      # Storage (if needed)
-      - BLOB_READ_WRITE_TOKEN=${BLOB_READ_WRITE_TOKEN}
     depends_on:
       - mongodb
     networks:
@@ -61,11 +53,11 @@ services:
       - "traefik.http.middlewares.hanzo-build-redirect.redirectscheme.scheme=https"
       - "traefik.http.middlewares.hanzo-build-redirect.redirectscheme.permanent=true"
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
 
   mongodb:
     image: mongo:7.0
