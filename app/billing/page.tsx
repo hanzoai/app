@@ -79,16 +79,18 @@ export default function BillingPage() {
   const fetchBillingData = async () => {
     try {
       // Fetch all billing data in parallel
-      const [subResponse, creditsResponse, invoicesResponse] = await Promise.all([
+      const [subResponse, creditsResponse, invoicesResponse, usageResponse] = await Promise.all([
         fetch('/api/stripe/subscription'),
         fetch('/api/stripe/credits'),
-        fetch('/api/stripe/invoices')
+        fetch('/api/stripe/invoices'),
+        fetch('/api/usage')
       ]);
 
-      const [subData, creditsData, invoicesData] = await Promise.all([
+      const [subData, creditsData, invoicesData, usageData] = await Promise.all([
         subResponse.json(),
         creditsResponse.json(),
-        invoicesResponse.json()
+        invoicesResponse.json(),
+        usageResponse.json()
       ]);
 
       if (subData.plan) {
