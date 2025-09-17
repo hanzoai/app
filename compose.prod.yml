@@ -5,15 +5,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: hanzo-build-app
     restart: unless-stopped
     # No ports exposed - Traefik handles routing via network
     environment:
       - NODE_ENV=production
       - PORT=3000
       - HOSTNAME=0.0.0.0
-      # MongoDB connection
-      - MONGODB_URI=mongodb://hanzo:${MONGO_PASSWORD:-hanzo_secure_pass_2024}@mongodb:27017/hanzo_build?authSource=admin
+      # MongoDB connection with retry logic
+      - MONGODB_URI=mongodb://hanzo:${MONGO_PASSWORD:-hanzo_secure_pass_2024}@mongodb:27017/hanzo_build?authSource=admin&retryWrites=true&w=majority
       # Auth
       - HF_CLIENT_ID=${HF_CLIENT_ID}
       - HF_CLIENT_SECRET=${HF_CLIENT_SECRET}
@@ -31,7 +30,8 @@ services:
       - GROQ_API_KEY=${GROQ_API_KEY}
       - NEBIUS_API_KEY=${NEBIUS_API_KEY}
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     networks:
       - hanzo-network
     labels:
@@ -53,15 +53,14 @@ services:
       - "traefik.http.middlewares.hanzo-build-redirect.redirectscheme.scheme=https"
       - "traefik.http.middlewares.hanzo-build-redirect.redirectscheme.permanent=true"
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
+      test: ["CMD-SHELL", "node -e 'require(\"http\").get(\"http://localhost:3000/api/health\", (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on(\"error\", () => { process.exit(1); });' || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 90s
 
   mongodb:
     image: mongo:7.0
-    container_name: hanzo-build-mongodb
     restart: unless-stopped
     environment:
       - MONGO_INITDB_ROOT_USERNAME=hanzo
@@ -76,7 +75,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 30s
 
 volumes:
   mongodb_data:
