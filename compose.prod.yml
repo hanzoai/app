@@ -7,8 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: hanzo-build-app
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    # No ports exposed - Traefik handles routing
     environment:
       - NODE_ENV=production
       - PORT=3000
