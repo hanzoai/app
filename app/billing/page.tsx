@@ -245,7 +245,7 @@ export default function BillingPage() {
                   <TrendingUp className="w-5 h-5 text-green-500" />
                 </div>
                 {credits === 5 && (
-                  <p className="text-xs text-white/40">Expires in 909 days</p>
+                  <p className="text-xs text-white/40">Expires in 90 days</p>
                 )}
                 <Button
                   onClick={() => setCreditModalOpen(true)}
