@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 // Server-side Stripe client - with safe initialization
 export const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2024-12-18.acacia',
+      apiVersion: '2025-08-27.basil',
       typescript: true,
     })
   : null;
@@ -158,12 +158,12 @@ export async function getSubscriptionStatus(customerId: string) {
     return null;
   }
 
-  const subscription = subscriptions.data[0];
+  const subscription = subscriptions.data[0] as any;
   return {
     id: subscription.id,
     status: subscription.status,
-    currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-    cancelAtPeriodEnd: subscription.cancel_at_period_end,
+    currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : new Date(),
+    cancelAtPeriodEnd: subscription.cancel_at_period_end || false,
     priceId: subscription.items.data[0]?.price.id,
   };
 }
@@ -204,8 +204,8 @@ export async function recordUsage({
     throw new Error('No metered subscription item found');
   }
 
-  // Record the usage
-  await stripe.subscriptionItems.createUsageRecord(subscriptionItem.id, {
+  // Record the usage - method name changed in newer API
+  await (stripe as any).subscriptionItems.createUsageRecord(subscriptionItem.id, {
     quantity,
     timestamp,
     action: 'increment',

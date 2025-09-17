@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUser } from '@/lib/auth';
+import { isAuthenticated } from '@/lib/auth';
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const user = await getUser();
-    if (!user) {
+    const authResult = await isAuthenticated();
+    if (!authResult || !('id' in authResult)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const user = authResult;
 
     // Mock usage data - in production, fetch from database
     const usage = {
@@ -51,10 +52,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getUser();
-    if (!user) {
+    const authResult = await isAuthenticated();
+    if (!authResult || !('id' in authResult)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const user = authResult;
 
     const { event, metadata } = await req.json();
 

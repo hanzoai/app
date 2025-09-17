@@ -54,7 +54,7 @@ export default function BillingPage() {
   const [credits, setCredits] = useState(0);
   const [subscription, setSubscription] = useState<any>(null);
   const [invoices, setInvoices] = useState<any[]>([]);
-  const [usage, setUsage] = useState({
+  const [usage, setUsage] = useState<any>({
     api_calls: { used: 423, limit: 10000 },
     storage: { used: 2.1, limit: 100 },
     ai_responses: { used: 89, limit: 1000 }
@@ -92,6 +92,11 @@ export default function BillingPage() {
         invoicesResponse.json(),
         usageResponse.json()
       ]);
+
+      // Update usage data from API
+      if (usageData.usage) {
+        setUsage(usageData.usage);
+      }
 
       if (subData.plan) {
         setSubscription({
