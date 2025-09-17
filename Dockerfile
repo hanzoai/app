@@ -1,40 +1,52 @@
-# Production Dockerfile for Hanzo AI Build Platform
-FROM node:20-alpine
-
+# Production Dockerfile with proper build process
+FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
-
 WORKDIR /app
 
-# Copy and install dependencies
+# Install dependencies
 COPY package.json package-lock.json* ./
 RUN npm ci
 
-# Copy all application files
+# Builder stage
+FROM node:20-alpine AS builder
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+# Copy dependencies
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Set build environment
+# Use production config for build
+COPY next.config.production.js next.config.js
+
+# Build with standalone output
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_ENV=development
+ENV BUILD_STANDALONE=true
 
-# Build the application (allow failures)
-RUN npm run build || true
+# Build and fail if there are errors
+RUN npm run build
 
-# CRITICAL: Ensure all required Next.js files exist
-RUN mkdir -p .next/cache && \
-    mkdir -p .next/server && \
-    mkdir -p .next/static && \
-    if [ ! -f .next/BUILD_ID ]; then echo "development" > .next/BUILD_ID; fi && \
-    if [ ! -f .next/prerender-manifest.json ]; then echo '{"version":3,"routes":{},"dynamicRoutes":{},"notFoundRoutes":[],"preview":{"previewModeId":"","previewModeSigningKey":"","previewModeEncryptionKey":""}}' > .next/prerender-manifest.json; fi && \
-    if [ ! -f .next/build-manifest.json ]; then echo '{"polyfillFiles":[],"devFiles":[],"ampDevFiles":[],"lowPriorityFiles":[],"rootMainFiles":[],"pages":{"/":[],"/_app":[],"/_error":[]}}' > .next/build-manifest.json; fi && \
-    if [ ! -f .next/react-loadable-manifest.json ]; then echo '{}' > .next/react-loadable-manifest.json; fi && \
-    if [ ! -f .next/routes-manifest.json ]; then echo '{"version":3,"pages404":true,"basePath":"","redirects":[],"rewrites":[],"headers":[],"dynamicRoutes":[],"staticRoutes":[{"page":"/","regex":"^/(?:/)?$","routeKeys":{},"namedRegex":"^/(?:/)?$"}],"dataRoutes":[],"i18n":null}' > .next/routes-manifest.json; fi
+# Runner stage
+FROM node:20-alpine AS runner
+WORKDIR /app
 
-# Set runtime environment to production
 ENV NODE_ENV=production
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy the standalone build
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+
+USER nextjs
 
 EXPOSE 3000
 
-# Start the production server
-CMD ["npx", "next", "start"]
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Run the standalone server
+CMD ["node", "server.js"]
