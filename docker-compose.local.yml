@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hanzo-build-app-local
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      # MongoDB connection
+      - MONGODB_URI=mongodb://hanzo:hanzo_local_pass@mongodb:27017/hanzo_build?authSource=admin
+      # Auth (minimal for testing)
+      - HF_CLIENT_ID=test
+      - HF_CLIENT_SECRET=test
+      - HF_TOKEN=test
+      - NEXTAUTH_SECRET=test_secret_key_for_local_testing_only
+      - NEXTAUTH_URL=http://localhost:3000
+    depends_on:
+      - mongodb
+    networks:
+      - hanzo-local
+
+  mongodb:
+    image: mongo:7.0
+    container_name: hanzo-build-mongodb-local
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=hanzo
+      - MONGO_INITDB_ROOT_PASSWORD=hanzo_local_pass
+      - MONGO_INITDB_DATABASE=hanzo_build
+    volumes:
+      - mongodb_local_data:/data/db
+    networks:
+      - hanzo-local
+
+volumes:
+  mongodb_local_data:
+    driver: local
+
+networks:
+  hanzo-local:
+    driver: bridge

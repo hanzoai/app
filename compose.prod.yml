@@ -12,33 +12,34 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - HOSTNAME=0.0.0.0
-      # Database
-      - DATABASE_URL=postgresql://hanzo:${DB_PASSWORD}@postgres:5432/hanzo_build
-      # Redis
-      - REDIS_URL=redis://redis:6379
+      # MongoDB connection
+      - MONGODB_URI=mongodb://hanzo:${MONGO_PASSWORD:-hanzo_secure_pass_2024}@mongodb:27017/hanzo_build?authSource=admin
       # Auth
       - HF_CLIENT_ID=${HF_CLIENT_ID}
       - HF_CLIENT_SECRET=${HF_CLIENT_SECRET}
+      - HF_TOKEN=${HF_TOKEN}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - NEXTAUTH_URL=https://hanzo.app
-      # Stripe
+      # AI Providers
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY}
+      - FIREWORKS_API_KEY=${FIREWORKS_API_KEY}
+      - SAMBANOVA_API_KEY=${SAMBANOVA_API_KEY}
+      - NOVITA_API_KEY=${NOVITA_API_KEY}
+      - HYPERBOLIC_API_KEY=${HYPERBOLIC_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - NEBIUS_API_KEY=${NEBIUS_API_KEY}
+      # Stripe (if needed)
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
       - STRIPE_PRO_MONTHLY_PRICE_ID=${STRIPE_PRO_MONTHLY_PRICE_ID}
       - STRIPE_PRO_YEARLY_PRICE_ID=${STRIPE_PRO_YEARLY_PRICE_ID}
-      # AI Providers
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - TOGETHER_API_KEY=${TOGETHER_API_KEY}
-      # Storage
+      # Storage (if needed)
       - BLOB_READ_WRITE_TOKEN=${BLOB_READ_WRITE_TOKEN}
-      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
-      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
-      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
     depends_on:
-      - postgres
-      - redis
+      - mongodb
     networks:
       - hanzo-network
     labels:
@@ -66,44 +67,27 @@ services:
       retries: 3
       start_period: 40s
 
-  postgres:
-    image: postgres:16-alpine
-    container_name: hanzo-build-postgres
+  mongodb:
+    image: mongo:7.0
+    container_name: hanzo-build-mongodb
     restart: unless-stopped
     environment:
-      - POSTGRES_USER=hanzo
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=hanzo_build
-      - PGDATA=/var/lib/postgresql/data/pgdata
+      - MONGO_INITDB_ROOT_USERNAME=hanzo
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-hanzo_secure_pass_2024}
+      - MONGO_INITDB_DATABASE=hanzo_build
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mongodb_data:/data/db
     networks:
       - hanzo-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hanzo -d hanzo_build"]
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
-
-  redis:
-    image: redis:7-alpine
-    container_name: hanzo-build-redis
-    restart: unless-stopped
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
-    volumes:
-      - redis_data:/data
-    networks:
-      - hanzo-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      start_period: 20s
 
 volumes:
-  postgres_data:
-    driver: local
-  redis_data:
+  mongodb_data:
     driver: local
 
 networks:
