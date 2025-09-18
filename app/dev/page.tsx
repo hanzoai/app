@@ -1,72 +1,129 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { AppEditor } from "@/components/editor";
-import { Sparkles, Code2, Palette, Zap, Rocket, Brain } from "lucide-react";
-
-const animatedIdeas = [
-  { icon: <Sparkles className="w-5 h-5" />, text: "AI-powered dashboard with real-time analytics" },
-  { icon: <Code2 className="w-5 h-5" />, text: "Full-stack app with authentication and database" },
-  { icon: <Palette className="w-5 h-5" />, text: "Beautiful landing page with animations" },
-  { icon: <Zap className="w-5 h-5" />, text: "Interactive data visualization platform" },
-  { icon: <Rocket className="w-5 h-5" />, text: "SaaS platform with subscription billing" },
-  { icon: <Brain className="w-5 h-5" />, text: "Machine learning model deployment interface" }
-];
+import { DevOnboarding } from "@/components/dev-onboarding";
+import { TemplateLoader } from "@/components/template-loader";
 
 export default function DevPage() {
-  const [currentIdea, setCurrentIdea] = useState(0);
-  const [isTyping, setIsTyping] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
+  const searchParams = useSearchParams();
+  const initialPrompt = searchParams.get("prompt") || localStorage.getItem("initialPrompt") || "";
+  const repoUrl = searchParams.get("repo") || searchParams.get("template") || "";
+  const action = searchParams.get("action") || "edit"; // edit or deploy
 
-  // Cycle through ideas
+  const [showOnboarding, setShowOnboarding] = useState(!repoUrl);
+  const [showTemplateLoader, setShowTemplateLoader] = useState(false);
+  const [finalPrompt, setFinalPrompt] = useState("");
+  const [generatedPlan, setGeneratedPlan] = useState("");
+  const [repoData, setRepoData] = useState<any>(null);
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      setIsTyping(false);
-      setTimeout(() => {
-        setCurrentIdea((prev) => (prev + 1) % animatedIdeas.length);
-        setIsTyping(true);
-      }, 300);
-    }, 3000);
+    if (repoUrl) {
+      // Parse repo URL to extract info
+      let repoInfo: any = {};
 
-    return () => clearInterval(interval);
-  }, []);
+      // Handle different URL formats
+      if (repoUrl.includes("github.com")) {
+        // GitHub URL: https://github.com/owner/repo or https://github.com/hanzo-community/template-name
+        const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/\?]+)/);
+        if (match) {
+          repoInfo = {
+            platform: "github",
+            owner: match[1],
+            name: match[2],
+            fullUrl: repoUrl
+          };
+        }
+      } else if (repoUrl.includes("huggingface.co")) {
+        // HuggingFace URL: https://huggingface.co/spaces/Hanzo-Community/template-name
+        const match = repoUrl.match(/huggingface\.co\/spaces\/([^\/]+)\/([^\/\?]+)/);
+        if (match) {
+          repoInfo = {
+            platform: "huggingface",
+            owner: match[1],
+            name: match[2],
+            fullUrl: repoUrl
+          };
+        }
+      } else if (repoUrl.includes("/")) {
+        // Simple owner/repo format
+        const [owner, name] = repoUrl.split("/");
+        repoInfo = {
+          platform: "github",
+          owner,
+          name,
+          fullUrl: `https://github.com/${owner}/${name}`
+        };
+      }
 
-  // Simulate loading and preload
-  useEffect(() => {
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
-  }, []);
+      setRepoData(repoInfo);
 
-  if (isLoading) {
+      // If we have repo data, show the template loader
+      if (repoInfo.name) {
+        setShowTemplateLoader(true);
+        setShowOnboarding(false);
+        (window as any).__templateRepo = repoInfo;
+      }
+    }
+  }, [repoUrl, action]);
+
+  const handleOnboardingComplete = (prompt: string, plan?: string) => {
+    setFinalPrompt(prompt);
+    setGeneratedPlan(plan || "");
+    setShowOnboarding(false);
+    setShowTemplateLoader(false);
+
+    // Store prompt for AskAI component
+    (window as any).__initialPrompt = prompt;
+    (window as any).__generatedPlan = plan;
+    if (repoData) {
+      (window as any).__templateRepo = repoData;
+    }
+  };
+
+  const handleTemplateAction = (mode: "fork" | "edit" | "deploy") => {
+    let prompt = "";
+
+    switch(mode) {
+      case "edit":
+        prompt = `Load and edit the ${repoData.name} template from ${repoData.platform}. Make it ready for customization.`;
+        break;
+      case "fork":
+        prompt = `Fork the ${repoData.name} template and set it up as a new project with my own repository.`;
+        break;
+      case "deploy":
+        prompt = `Deploy the ${repoData.name} template to Hanzo Cloud with automatic SSL and a custom subdomain.`;
+        break;
+    }
+
+    handleOnboardingComplete(prompt);
+  };
+
+  if (showTemplateLoader && repoData) {
     return (
-      <div className="h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl flex items-center justify-center mb-4 mx-auto animate-pulse">
-            <span className="text-white font-bold text-2xl">H</span>
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Hanzo Dev</h2>
-          <p className="text-gray-400">Initializing development environment...</p>
-
-          <div className="mt-8 space-y-2">
-            <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
-              Loading AI models...
-            </div>
-            <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
-              Setting up MCP tools...
-            </div>
-            <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
-              Preparing workspace...
-            </div>
-          </div>
-        </div>
-      </div>
+      <TemplateLoader
+        templateRepo={repoData}
+        action={action as "edit" | "deploy"}
+        onProceed={handleTemplateAction}
+      />
     );
   }
 
-  // Start with empty project - AppEditor will handle the rest
-  return <AppEditor isNew />;
+  if (showOnboarding) {
+    return (
+      <DevOnboarding
+        initialPrompt={initialPrompt}
+        onComplete={handleOnboardingComplete}
+      />
+    );
+  }
+
+  // Pass the prompt to AppEditor
+  return (
+    <AppEditor
+      isNew
+      initialPrompt={finalPrompt}
+    />
+  );
 }

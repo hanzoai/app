@@ -4,6 +4,11 @@ import {
   FolderCode,
   Import,
   LogOut,
+  Settings,
+  Home,
+  MessageCircle,
+  Sparkles,
+  User,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -40,48 +45,98 @@ export const UserMenu = ({ className }: { className?: string }) => {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="start">
-        <DropdownMenuLabel className="font-bold flex items-center gap-2 justify-center">
-          My Account
+        <DropdownMenuLabel>
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">{user?.fullname}</p>
+            <p className="text-xs leading-none text-muted-foreground">
+              {user?.email || user?.username}
+            </p>
+          </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+
+        {/* Quick Actions */}
         <DropdownMenuGroup>
+          <Link href="/dashboard">
+            <DropdownMenuItem>
+              <Home className="size-4 text-neutral-400" />
+              Dashboard
+            </DropdownMenuItem>
+          </Link>
+          <Link href="/chat">
+            <DropdownMenuItem>
+              <MessageCircle className="size-4 text-neutral-400" />
+              Chat
+            </DropdownMenuItem>
+          </Link>
           <Link href="/dev">
             <DropdownMenuItem>
-              <CirclePlus className="size-4 text-neutral-100" />
+              <CirclePlus className="size-4 text-neutral-400" />
               New Project
             </DropdownMenuItem>
           </Link>
+        </DropdownMenuGroup>
+
+        <DropdownMenuSeparator />
+
+        {/* Projects */}
+        <DropdownMenuGroup>
           <Link href="/projects">
             <DropdownMenuItem>
-              <Import className="size-4 text-neutral-100" />
-              Import Project
+              <FolderCode className="size-4 text-neutral-400" />
+              My Projects
             </DropdownMenuItem>
           </Link>
           <Link href="/projects">
             <DropdownMenuItem>
-              <FolderCode className="size-4 text-neutral-100" />
-              View Projects
+              <Import className="size-4 text-neutral-400" />
+              Import Project
+            </DropdownMenuItem>
+          </Link>
+          <a href="https://huggingface.co/spaces/hanzoai/gallery" target="_blank">
+            <DropdownMenuItem>
+              <Sparkles className="size-4 text-neutral-400" />
+              Gallery
+            </DropdownMenuItem>
+          </a>
+        </DropdownMenuGroup>
+
+        <DropdownMenuSeparator />
+
+        {/* Account */}
+        <DropdownMenuGroup>
+          <Link href="/settings">
+            <DropdownMenuItem>
+              <Settings className="size-4 text-neutral-400" />
+              Settings
+            </DropdownMenuItem>
+          </Link>
+          <Link href="/profile">
+            <DropdownMenuItem>
+              <User className="size-4 text-neutral-400" />
+              Profile
             </DropdownMenuItem>
           </Link>
           <a href="https://huggingface.co/settings/billing" target="_blank">
             <DropdownMenuItem>
-              <ChartSpline className="size-4 text-neutral-100" />
-              Usage Quota
+              <ChartSpline className="size-4 text-neutral-400" />
+              Usage & Billing
             </DropdownMenuItem>
           </a>
         </DropdownMenuGroup>
+
         <DropdownMenuSeparator />
+
         <DropdownMenuItem
           onClick={() => {
             if (confirm("Are you sure you want to log out?")) {
               logout();
             }
           }}
+          className="text-red-500 focus:text-red-600"
         >
-          <Button size="xs" variant="destructive" className="w-full">
-            <LogOut className="size-4" />
-            Log out
-          </Button>
+          <LogOut className="size-4" />
+          Log out
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

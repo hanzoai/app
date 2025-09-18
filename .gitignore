@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# Temporary files
+hf-templates/
+temp_gallery/
+temp_template_repos/
+temp_static_*/
+test-template/

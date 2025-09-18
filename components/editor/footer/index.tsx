@@ -108,7 +108,7 @@ export function Footer({
         </a>
         <a
           target="_blank"
-          href="https://huggingface.co/spaces/enzostvs/hanzo/discussions/157"
+          href="https://huggingface.co/spaces/hanzoai/app/discussions?status=open&type=discussion&sort=recently-created"
         >
           <Button size="sm" variant="outline">
             <HelpCircle className="size-3.5" />

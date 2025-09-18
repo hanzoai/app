@@ -85,6 +85,10 @@ export function AskAI({
   const [isUploading, setIsUploading] = useState(false);
   const [files, setFiles] = useState<string[]>(images ?? []);
 
+  // Message queue state
+  const [messageQueue, setMessageQueue] = useState<Array<{id: string; message: string; timestamp: Date}>>([]);
+  const [isProcessingQueue, setIsProcessingQueue] = useState(false);
+
   const {
     callAiNewProject,
     callAiFollowUp,
@@ -107,9 +111,23 @@ export function AskAI({
     return MODELS.find((m: { value: string }) => m.value === model);
   }, [model]);
 
-  const callAi = async (redesignMarkdown?: string) => {
-    if (isAiWorking) return;
-    if (!redesignMarkdown && !prompt.trim()) return;
+  const callAi = async (redesignMarkdown?: string, queuedPrompt?: string) => {
+    // If AI is working, add to queue instead of blocking
+    if (isAiWorking && prompt.trim() && !queuedPrompt) {
+      const newMessage = {
+        id: `msg-${Date.now()}-${Math.random()}`,
+        message: prompt,
+        timestamp: new Date()
+      };
+      setMessageQueue(prev => [...prev, newMessage]);
+      setPrompt("");
+      return;
+    }
+
+    // Use queued prompt if provided, otherwise use current prompt
+    const promptToUse = queuedPrompt || prompt;
+
+    if (!redesignMarkdown && !promptToUse.trim()) return;
 
     if (isFollowUp && !redesignMarkdown && !isSameHtml) {
       // Use follow-up function for existing projects
@@ -118,7 +136,7 @@ export function AskAI({
         : "";
 
       const result = await callAiFollowUp(
-        prompt,
+        promptToUse,
         model,
         provider,
         previousPrompts,
@@ -132,11 +150,13 @@ export function AskAI({
       }
 
       if (result?.success) {
-        setPrompt("");
+        if (!queuedPrompt) {
+          setPrompt("");
+        }
       }
     } else if (isFollowUp && pages.length > 1 && isSameHtml) {
       const result = await callAiNewPage(
-        prompt,
+        promptToUse,
         model,
         provider,
         currentPage.path,
@@ -151,11 +171,13 @@ export function AskAI({
       }
 
       if (result?.success) {
-        setPrompt("");
+        if (!queuedPrompt) {
+          setPrompt("");
+        }
       }
     } else {
       const result = await callAiNewProject(
-        prompt,
+        promptToUse,
         model,
         provider,
         redesignMarkdown,
@@ -171,7 +193,9 @@ export function AskAI({
       }
 
       if (result?.success) {
-        setPrompt("");
+        if (!queuedPrompt) {
+          setPrompt("");
+        }
         if (selectedModel?.isThinker) {
           setModel(MODELS[0].value);
         }
@@ -207,6 +231,22 @@ export function AskAI({
         toast.error("An unexpected error occurred");
     }
   };
+
+  // Process message queue when AI stops working
+  useEffect(() => {
+    if (!isAiWorking && messageQueue.length > 0 && !isProcessingQueue) {
+      setIsProcessingQueue(true);
+      const nextMessage = messageQueue[0];
+      setMessageQueue(prev => prev.slice(1));
+
+      // Small delay to ensure state updates properly
+      setTimeout(() => {
+        callAi(undefined, nextMessage.message).finally(() => {
+          setIsProcessingQueue(false);
+        });
+      }, 500);
+    }
+  }, [isAiWorking, messageQueue, isProcessingQueue]);
 
   // Handle initial prompt for new projects
   useEffect(() => {
@@ -252,6 +292,73 @@ export function AskAI({
 
   return (
     <div className="px-3">
+      {/* Stacked Message Queue Cards */}
+      {messageQueue.length > 0 && (
+        <div className="mb-4 space-y-2">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-purple-400 font-medium">
+              Queued Messages ({messageQueue.length})
+            </span>
+            <button
+              onClick={() => setMessageQueue([])}
+              className="text-xs text-purple-400 hover:text-purple-300 underline"
+            >
+              Clear all
+            </button>
+          </div>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {messageQueue.map((msg, index) => (
+              <div
+                key={msg.id}
+                className="relative bg-neutral-800/50 border border-purple-500/20 rounded-lg p-3 animate-slideIn"
+                style={{
+                  animationDelay: `${index * 0.05}s`,
+                }}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm text-gray-300 flex-1">{msg.message}</p>
+                  <button
+                    onClick={() => setMessageQueue(prev => prev.filter(m => m.id !== msg.id))}
+                    className="text-gray-500 hover:text-gray-300"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs text-gray-500">
+                    {msg.timestamp.toLocaleTimeString()}
+                  </span>
+                  {index === 0 && (
+                    <span className="text-xs text-purple-400 flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-pulse" />
+                      Next in queue
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-slideIn {
+          animation: slideIn 0.3s ease-out forwards;
+        }
+      `}</style>
+
       <div className="relative bg-neutral-800 border border-neutral-700 rounded-2xl ring-[4px] focus-within:ring-neutral-500/30 focus-within:border-neutral-600 ring-transparent z-10 w-full group">
         {think && (
           <div className="w-full border-b border-neutral-700 relative overflow-hidden">
@@ -308,14 +415,21 @@ export function AskAI({
         )}
         <div className="w-full relative flex items-center justify-between">
           {(isAiWorking || isUploading) && (
-            <div className="absolute bg-neutral-800 top-0 left-4 w-[calc(100%-30px)] h-full z-1 flex items-start pt-3.5 justify-between max-lg:text-sm">
-              <div className="flex items-center justify-start gap-2">
-                <Loading overlay={false} className="!size-4 opacity-50" />
-                <p className="text-neutral-400 text-sm">
+            <div className="absolute top-0 left-4 right-12 h-8 z-10 flex items-center justify-between pointer-events-none">
+              <div className="flex items-center justify-start gap-2 bg-neutral-800 px-2 py-1 rounded-md">
+                <Loading overlay={false} className="!size-3 opacity-50" />
+                <p className="text-neutral-400 text-xs">
                   {isUploading ? (
                     "Uploading images..."
                   ) : isAiWorking && !isSameHtml ? (
-                    "AI is working..."
+                    <>
+                      AI is working...
+                      {messageQueue.length > 0 && (
+                        <span className="ml-1 text-purple-400">
+                          ({messageQueue.length} queued)
+                        </span>
+                      )}
+                    </>
                   ) : (
                     <span className="inline-flex">
                       {[
@@ -369,31 +483,30 @@ export function AskAI({
                           {char === " " ? "\u00A0" : char}
                         </span>
                       ))}
+                      {messageQueue.length > 0 && (
+                        <span className="ml-2 text-purple-400">
+                          ({messageQueue.length} queued)
+                        </span>
+                      )}
                     </span>
                   )}
                 </p>
               </div>
-              {isAiWorking && (
-                <div
-                  className="text-xs text-neutral-400 px-1 py-0.5 rounded-md border border-neutral-600 flex items-center justify-center gap-1.5 bg-neutral-800 hover:brightness-110 transition-all duration-200 cursor-pointer"
-                  onClick={stopController}
-                >
-                  <FaStopCircle />
-                  Stop generation
-                </div>
-              )}
             </div>
           )}
           <textarea
-            disabled={isAiWorking}
+            disabled={isUploading}
             className={classNames(
               "w-full bg-transparent text-sm outline-none text-white placeholder:text-neutral-400 p-4 resize-none",
               {
                 "!pt-2.5": selectedElement && !isAiWorking,
+                "opacity-100": isAiWorking && !isUploading,
               }
             )}
             placeholder={
-              selectedElement
+              isAiWorking && messageQueue.length > 0
+                ? "Type your message... (will be queued)"
+                : selectedElement
                 ? `Ask Hanzo about ${selectedElement.tagName.toLowerCase()}...`
                 : isFollowUp && (!isSameHtml || pages?.length > 1)
                 ? "Ask Hanzo for edits"
@@ -403,6 +516,7 @@ export function AskAI({
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
                 callAi();
               }
             }}
@@ -467,13 +581,25 @@ export function AskAI({
               isFollowUp={!isSameHtml && isFollowUp}
               onClose={setOpenProvider}
             />
-            <Button
-              size="iconXs"
-              disabled={isAiWorking || !prompt.trim()}
-              onClick={() => callAi()}
-            >
-              <ArrowUp className="size-4" />
-            </Button>
+            {isAiWorking ? (
+              <Button
+                size="iconXs"
+                variant="destructive"
+                onClick={stopController}
+                className="gap-1"
+              >
+                <FaStopCircle className="size-4" />
+              </Button>
+            ) : (
+              <Button
+                size="iconXs"
+                disabled={isUploading || !prompt.trim()}
+                onClick={() => callAi()}
+                className={messageQueue.length > 0 ? "bg-purple-600 hover:bg-purple-700" : ""}
+              >
+                <ArrowUp className="size-4" />
+              </Button>
+            )}
           </div>
         </div>
         <LoginModal open={open} onClose={() => setOpen(false)} pages={pages} />

@@ -30,6 +30,7 @@ import { ListPages } from "./pages";
 import { PageNavigator } from "./page-navigator";
 import { ShareModal } from "./share-modal";
 import { VisualEditor } from "./visual-editor";
+import { AISupervisor } from "./ai-supervisor";
 import { Button } from "@/components/ui/button";
 
 export const AppEditor = ({
@@ -76,6 +77,7 @@ export const AppEditor = ({
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [currentPreviewPath, setCurrentPreviewPath] = useState("/");
+  const [showSupervisor, setShowSupervisor] = useState(false);
 
   const resetLayout = () => {
     if (!editor.current || !preview.current) return;
@@ -445,6 +447,34 @@ export const AppEditor = ({
           )}
         </div>
       </main>
+
+      {/* AI Supervisor Panel */}
+      {showSupervisor && (
+        <div className="absolute bottom-16 right-4 w-96 max-h-[60vh] overflow-hidden shadow-2xl z-50">
+          <AISupervisor
+            pages={pages}
+            iframeRef={iframeRef}
+            isAiWorking={isAiWorking}
+            onAutoFix={(fixes) => {
+              // Apply fixes to the current page
+              fixes.forEach(fix => {
+                toast.info(`Applying fix: ${fix}`);
+              });
+              // Trigger re-render with fixes
+              const currentHtml = currentPageData.html;
+              // In real implementation, apply the actual code fixes here
+              setPages((prev) =>
+                prev.map((page) =>
+                  page.path === currentPage
+                    ? { ...page, html: currentHtml }
+                    : page
+                )
+              );
+            }}
+          />
+        </div>
+      )}
+
       <Footer
         pages={pages}
         htmlHistory={htmlHistory}
@@ -454,6 +484,33 @@ export const AppEditor = ({
         isNew={isNew}
         setDevice={setDevice}
       />
+
+      {/* Supervisor Toggle Button */}
+      <button
+        onClick={() => setShowSupervisor(!showSupervisor)}
+        className={classNames(
+          "fixed bottom-20 right-4 p-3 rounded-full shadow-lg transition-all z-40",
+          showSupervisor
+            ? "bg-purple-600 text-white"
+            : "bg-neutral-800 text-gray-400 hover:bg-neutral-700"
+        )}
+        title="AI Supervisor"
+      >
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
+          />
+        </svg>
+      </button>
+
       <ShareModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
