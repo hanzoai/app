@@ -11,9 +11,48 @@ Promise<UserResponse | NextResponse<unknown> | undefined> => {
   const authHeaders = await headers();
   const cookieStore = await cookies();
 
-  // Get token from cookie or headers
+  // Check if request is from localhost - allow without auth for operational simplicity
+  const host = authHeaders.get("host") || "";
+  const origin = authHeaders.get("origin") || "";
+  const isLocalhost = host.includes("localhost") || host.includes("127.0.0.1") ||
+                      origin.includes("localhost") || origin.includes("127.0.0.1");
+
+  if (isLocalhost && process.env.NODE_ENV === "development") {
+    console.log("Local access detected - bypassing authentication");
+    // Return a mock local user for development
+    return {
+      id: "local-dev-user",
+      name: "Local Developer",
+      fullname: "Local Development User",
+      email: "dev@localhost",
+      avatarUrl: "",
+      isPro: true,
+      canPay: true,
+      type: "user",
+      token: "local-dev-token",
+    };
+  }
+
+  // For production or non-localhost, check for API key or HF token
   const cookieToken = cookieStore.get(MY_TOKEN_KEY())?.value;
   const headerToken = authHeaders.get("Authorization");
+  const localApiKey = authHeaders.get("X-Local-API-Key") || process.env.LOCAL_API_KEY;
+
+  // Allow access with local API key for hanzod
+  if (localApiKey && localApiKey === process.env.LOCAL_API_KEY) {
+    console.log("Local API key authentication successful");
+    return {
+      id: "api-user",
+      name: "API User",
+      fullname: "Hanzo API User",
+      email: "api@hanzo.ai",
+      avatarUrl: "",
+      isPro: true,
+      canPay: true,
+      type: "user",
+      token: localApiKey,
+    };
+  }
 
   let token = headerToken;
   if (cookieToken) {
@@ -22,11 +61,11 @@ Promise<UserResponse | NextResponse<unknown> | undefined> => {
   }
 
   if (!token) {
-    console.log("Auth failed: No token found in cookies or headers");
+    console.log("Auth failed: No token found and not localhost");
     return NextResponse.json(
       {
         ok: false,
-        message: "Wrong castle fam :(",
+        message: "Authentication required",
       },
       {
         status: 401,

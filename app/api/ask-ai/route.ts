@@ -19,6 +19,7 @@ import {
 } from "@/lib/prompts";
 import MY_TOKEN_KEY from "@/lib/get-cookie-name";
 import { Page } from "@/types";
+import { checkHanzoDaemon, callHanzoDaemon } from "@/lib/hanzo-daemon";
 
 const ipAddresses = new Map();
 
@@ -56,6 +57,47 @@ export async function POST(request: NextRequest) {
       },
       { status: 400 }
     );
+  }
+
+  // Check if local Hanzo daemon is available first
+  const isLocalDaemonAvailable = await checkHanzoDaemon();
+
+  if (isLocalDaemonAvailable) {
+    try {
+      console.log("Using local Hanzo daemon for AI processing");
+
+      // Prepare messages for local daemon
+      const messages = [
+        {
+          role: "system",
+          content: previousPrompts
+            ? FOLLOW_UP_SYSTEM_PROMPT
+            : INITIAL_SYSTEM_PROMPT,
+        },
+        {
+          role: "user",
+          content: prompt || redesignMarkdown,
+        },
+      ];
+
+      // Call local daemon
+      const response = await callHanzoDaemon('/v1/chat/completions', {
+        model: model || 'local-model',
+        messages,
+        temperature: 0.7,
+        max_tokens: 8192,
+      });
+
+      // Return the response in the expected format
+      return NextResponse.json({
+        ok: true,
+        content: response.choices?.[0]?.message?.content || response.content,
+        provider: 'local',
+      });
+    } catch (error) {
+      console.error("Local daemon error, falling back to cloud:", error);
+      // Fall through to cloud providers if local fails
+    }
   }
 
   let token = userToken;
