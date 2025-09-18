@@ -6,15 +6,22 @@ export const defaultHTML = `<!DOCTYPE html>
     <meta charset="utf-8">
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
-  <body class="flex justify-center items-center h-screen overflow-hidden bg-white font-sans text-center px-6">
-    <div class="w-full">
-      <span class="text-xs rounded-full mb-2 inline-block px-2 py-1 border border-amber-500/15 bg-amber-500/15 text-amber-500">🔥 New version dropped!</span>
-      <h1 class="text-4xl lg:text-6xl font-bold font-sans">
-        <span class="text-2xl lg:text-4xl text-gray-400 block font-medium">I'm ready to work,</span>
-        Ask me anything.
-      </h1>
+  <body class="bg-gray-50 font-sans">
+    <div class="container mx-auto px-4 py-12">
+      <header class="text-center mb-12">
+        <h1 class="text-4xl font-bold text-gray-900 mb-2">Welcome</h1>
+        <p class="text-gray-600">Start building your app</p>
+      </header>
+
+      <main class="max-w-4xl mx-auto">
+        <section class="bg-white rounded-lg shadow-lg p-8 mb-8">
+          <h2 class="text-2xl font-semibold mb-4">Getting Started</h2>
+          <p class="text-gray-700 mb-4">
+            This is your starting template. Edit this HTML to create your application.
+          </p>
+        </section>
+      </main>
     </div>
-      <img src="https://hanzo.ai/arrow.svg" class="absolute bottom-8 left-0 w-[100px] transform rotate-[30deg]" />
     <script></script>
   </body>
 </html>

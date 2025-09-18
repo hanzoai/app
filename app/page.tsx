@@ -69,13 +69,17 @@ export default function LandingPage() {
   const handleCreateProject = async () => {
     if (!prompt.trim()) return;
 
+    // Always store the prompt, even if not logged in
+    localStorage.setItem("initialPrompt", prompt);
+
     if (!user) {
+      // Store that we should redirect to new project after login
+      localStorage.setItem("redirectAfterLogin", "/projects/new");
       openLoginWindow();
       return;
     }
 
     setIsCreating(true);
-    localStorage.setItem("initialPrompt", prompt);
     router.push("/projects/new");
   };
 
@@ -182,9 +186,8 @@ export default function LandingPage() {
       {/* Navigation - responsive */}
       <nav className="relative z-20 flex items-center justify-between px-4 md:px-8 py-4 md:py-5">
         <div className="flex items-center gap-6 md:gap-10">
-          <Link href="/" className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center">
             <HanzoLogo className="w-8 md:w-9 h-8 md:h-9 text-white" />
-            <span className="text-xl md:text-2xl font-bold">Hanzo</span>
           </Link>
 
           <div className="hidden md:flex items-center gap-8">
@@ -258,9 +261,8 @@ export default function LandingPage() {
             <div className="flex flex-col h-full">
               {/* Mobile Menu Header */}
               <div className="flex items-center justify-between p-4 border-b border-white/10">
-                <Link href="/" className="flex items-center gap-2.5">
+                <Link href="/" className="flex items-center">
                   <HanzoLogo className="w-8 h-8 text-white" />
-                  <span className="text-xl font-bold">Hanzo</span>
                 </Link>
                 <button
                   onClick={() => setMobileMenuOpen(false)}

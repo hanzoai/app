@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { HanzoLogo } from '@/components/HanzoLogo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Download, Monitor, Apple, Terminal, Smartphone } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -36,9 +36,8 @@ export default function LoginPage() {
       {/* Navigation */}
       <nav className="border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center">
             <HanzoLogo className="w-8 h-8 text-white" />
-            <span className="text-xl font-bold">Hanzo</span>
           </Link>
           <Link href="/signup">
             <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
@@ -148,6 +147,89 @@ export default function LoginPage() {
                   <Link href="/privacy" className="underline hover:text-white/60">
                     Privacy Policy
                   </Link>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Desktop App Download Section */}
+          <Card className="bg-[#1a1a1a] border-white/10 mt-6">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Download className="w-5 h-5" />
+                Or use Hanzo Desktop
+              </CardTitle>
+              <CardDescription className="text-white/60">
+                Run AI locally without login - available for all platforms
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {/* Desktop Download Buttons */}
+              <div className="grid grid-cols-1 gap-2">
+                <a
+                  href="https://github.com/hanzoai/app/releases/latest"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <Monitor className="w-5 h-5 text-blue-400" />
+                    <div>
+                      <p className="text-sm font-medium">Windows</p>
+                      <p className="text-xs text-white/40">.exe installer</p>
+                    </div>
+                  </div>
+                  <Download className="w-4 h-4 text-white/40 group-hover:text-white/60" />
+                </a>
+
+                <a
+                  href="https://github.com/hanzoai/app/releases/latest"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <Apple className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <p className="text-sm font-medium">macOS</p>
+                      <p className="text-xs text-white/40">.dmg installer</p>
+                    </div>
+                  </div>
+                  <Download className="w-4 h-4 text-white/40 group-hover:text-white/60" />
+                </a>
+
+                <a
+                  href="https://github.com/hanzoai/app/releases/latest"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <Terminal className="w-5 h-5 text-orange-400" />
+                    <div>
+                      <p className="text-sm font-medium">Linux</p>
+                      <p className="text-xs text-white/40">.AppImage / .deb</p>
+                    </div>
+                  </div>
+                  <Download className="w-4 h-4 text-white/40 group-hover:text-white/60" />
+                </a>
+
+                {/* Mobile Coming Soon */}
+                <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10 opacity-60">
+                  <div className="flex items-center gap-3">
+                    <Smartphone className="w-5 h-5 text-green-400" />
+                    <div>
+                      <p className="text-sm font-medium">Mobile</p>
+                      <p className="text-xs text-white/40">iOS & Android</p>
+                    </div>
+                  </div>
+                  <span className="text-xs text-violet-400 font-medium px-2 py-1 bg-violet-500/10 rounded-full">Coming Soon</span>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <p className="text-xs text-white/40 text-center">
+                  Desktop app includes local AI models • No account required • Your data stays private
                 </p>
               </div>
             </CardContent>

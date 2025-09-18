@@ -67,12 +67,21 @@ export const useUser = (initialData?: {
           errCode: null,
         });
 
-        toast.success("Login successful! Redirecting to chat...");
+        toast.success("Login successful!");
 
-        // Always redirect to projects/chat after successful login
-        setTimeout(() => {
-          router.push("/projects");
-        }, 500);
+        // Check for redirect after login
+        const redirectPath = localStorage.getItem("redirectAfterLogin");
+        if (redirectPath) {
+          localStorage.removeItem("redirectAfterLogin");
+          setTimeout(() => {
+            router.push(redirectPath);
+          }, 500);
+        } else {
+          // Default redirect to projects
+          setTimeout(() => {
+            router.push("/projects");
+          }, 500);
+        }
       } else {
         throw new Error("No access token received");
       }
