@@ -3,7 +3,7 @@ import { FaMobileAlt } from "react-icons/fa";
 import { HelpCircle, LogIn, RefreshCcw, SparkleIcon } from "lucide-react";
 import { FaLaptopCode } from "react-icons/fa6";
 import { HtmlHistory, Page } from "@/types";
-import { Button } from "@/components/ui/button";
+import { Button } from "@hanzo/ui";
 import { MdAdd } from "react-icons/md";
 import { History } from "@/components/editor/history";
 import { UserMenu } from "@/components/user-menu";

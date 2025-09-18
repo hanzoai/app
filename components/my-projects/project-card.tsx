@@ -3,14 +3,14 @@ import { formatDistance } from "date-fns";
 import { EllipsisVertical, Settings } from "lucide-react";
 
 import { Project } from "@/types";
-import { Button } from "@/components/ui/button";
+import { Button } from "@hanzo/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@hanzo/ui";
 
 export function ProjectCard({ project }: { project: Project }) {
   return (

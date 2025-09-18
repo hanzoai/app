@@ -2,12 +2,12 @@
 import { useState } from "react";
 import { MdSave } from "react-icons/md";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@hanzo/ui";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@hanzo/ui";
 import { LoginModal } from "@/components/login-modal";
 import { useUser } from "@/hooks/useUser";
 import { Page } from "@/types";

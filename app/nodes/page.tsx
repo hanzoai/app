@@ -41,23 +41,23 @@ import {
   Lock,
   Unlock
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@hanzo/ui";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@hanzo/ui";
+import { Badge } from "@hanzo/ui";
+import { Progress } from "@hanzo/ui";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@hanzo/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator
-} from "@/components/ui/dropdown-menu";
+} from "@hanzo/ui";
 import { HanzoLogo } from "@/components/HanzoLogo";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Input } from "@hanzo/ui";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@hanzo/ui";
 
 interface Node {
   id: string;

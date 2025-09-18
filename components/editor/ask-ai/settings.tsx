@@ -6,9 +6,9 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@hanzo/ui";
 import { PROVIDERS, MODELS } from "@/lib/providers";
-import { Button } from "@/components/ui/button";
+import { Button } from "@hanzo/ui";
 import {
   Select,
   SelectContent,
@@ -17,7 +17,7 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@hanzo/ui";
 import { useMemo } from "react";
 import { useUpdateEffect } from "react-use";
 import Image from "next/image";

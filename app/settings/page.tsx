@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save, Key, Bell, Palette, Shield, CreditCard } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@hanzo/ui";
 import { useUser } from "@/hooks/useUser";
 import { toast } from "sonner";
 

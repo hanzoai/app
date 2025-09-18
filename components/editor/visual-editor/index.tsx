@@ -20,10 +20,10 @@ import {
   ChevronRight,
   Box
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@hanzo/ui";
+import { Input } from "@hanzo/ui";
+import { Label } from "@hanzo/ui";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@hanzo/ui";
 import { cn } from "@/lib/utils";
 import { HexColorPicker } from "react-colorful";
 import { editor } from "monaco-editor";

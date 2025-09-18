@@ -31,7 +31,7 @@ import { PageNavigator } from "./page-navigator";
 import { ShareModal } from "./share-modal";
 import { VisualEditor } from "./visual-editor";
 import { AISupervisor } from "./ai-supervisor";
-import { Button } from "@/components/ui/button";
+import { Button } from "@hanzo/ui";
 
 export const AppEditor = ({
   project,

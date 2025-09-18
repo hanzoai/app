@@ -1,6 +1,6 @@
 import { useLocalStorage } from "react-use";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@hanzo/ui";
+import { Dialog, DialogContent, DialogTitle } from "@hanzo/ui";
 import { CheckCheck } from "lucide-react";
 import { isTheSameHtml } from "@/lib/compare-html-diff";
 import { Page } from "@/types";

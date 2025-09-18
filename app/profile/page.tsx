@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save, Camera, Link as LinkIcon, Twitter, Github, Globe } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@hanzo/ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@hanzo/ui";
 import { useUser } from "@/hooks/useUser";
 import { toast } from "sonner";
 

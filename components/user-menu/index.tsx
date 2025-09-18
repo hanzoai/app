@@ -25,9 +25,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+} from "@hanzo/ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@hanzo/ui";
+import { Button } from "@hanzo/ui";
 import { useUser } from "@/hooks/useUser";
 
 export const UserMenu = ({ className }: { className?: string }) => {

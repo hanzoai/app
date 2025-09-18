@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import { Button } from "@hanzo/ui";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@hanzo/ui";
+import { Input } from "@hanzo/ui";
+import { Label } from "@hanzo/ui";
+import { Badge } from "@hanzo/ui";
 import { Loader2, CheckCircle, XCircle, Server } from 'lucide-react';
 import { toast } from 'sonner';
 

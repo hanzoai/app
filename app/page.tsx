@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@hanzo/ui";
+import { Badge } from "@hanzo/ui";
 import Link from "next/link";
 import { HanzoLogo } from "@/components/HanzoLogo";
 import { UserMenu } from "@/components/user-menu";
@@ -46,11 +46,19 @@ export default function LandingPage() {
     if (user) {
       setLoadingProjects(true);
       fetch("/api/me/projects")
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+          }
+          return res.json();
+        })
         .then(data => {
           setProjects(data.projects || []);
         })
-        .catch(console.error)
+        .catch(err => {
+          console.error("Failed to load projects:", err);
+          setProjects([]);
+        })
         .finally(() => setLoadingProjects(false));
     }
   }, [user]);

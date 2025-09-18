@@ -4,8 +4,8 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
+} from "@hanzo/ui";
+import { Button } from "@hanzo/ui";
 
 export function History({
   history,

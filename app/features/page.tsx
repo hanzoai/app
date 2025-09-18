@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@hanzo/ui";
+import { Badge } from "@hanzo/ui";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@hanzo/ui";
 import Link from "next/link";
 import { HanzoLogo } from "@/components/HanzoLogo";
 import {

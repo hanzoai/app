@@ -5,7 +5,7 @@ import { MdSave } from "react-icons/md";
 import { useParams } from "next/navigation";
 
 import Loading from "@/components/loading";
-import { Button } from "@/components/ui/button";
+import { Button } from "@hanzo/ui";
 import { api } from "@/lib/api";
 import { Page } from "@/types";
 

@@ -2,8 +2,8 @@ import { Rocket } from "lucide-react";
 import Image from "next/image";
 
 import Loading from "@/components/loading";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@hanzo/ui";
+import { Input } from "@hanzo/ui";
 import SpaceIcon from "@/assets/space.svg";
 import { Page } from "@/types";
 import { api } from "@/lib/api";

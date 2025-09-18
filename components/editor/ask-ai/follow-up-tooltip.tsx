@@ -2,7 +2,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@hanzo/ui";
 import { Info } from "lucide-react";
 
 export const FollowUpTooltip = () => {

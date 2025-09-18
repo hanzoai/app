@@ -6,8 +6,8 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
+} from "@hanzo/ui";
+import { Button } from "@hanzo/ui";
 import { Page, Project } from "@/types";
 import Loading from "@/components/loading";
 import { RiCheckboxCircleFill } from "react-icons/ri";

@@ -2,13 +2,13 @@ import { useState } from "react";
 import { Paintbrush } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@hanzo/ui";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
+} from "@hanzo/ui";
+import { Input } from "@hanzo/ui";
 import Loading from "@/components/loading";
 import { api } from "@/lib/api";
 

@@ -14,7 +14,7 @@ import {
   RotateCw,
   Shield
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@hanzo/ui";
 import Loading from "@/components/loading";
 
 interface TestResult {

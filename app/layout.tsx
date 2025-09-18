@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 
 import TanstackProvider from "@/components/providers/tanstack-query-provider";
 import "@/assets/globals.css";
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "@hanzo/ui";
 import MY_TOKEN_KEY from "@/lib/get-cookie-name";
 import { apiServer } from "@/lib/api";
 import AppContext from "@/components/contexts/app-context";

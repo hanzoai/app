@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { HanzoLogo } from "@/components/HanzoLogo";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@hanzo/ui";
 import classNames from "classnames";
 
 const TABS = [

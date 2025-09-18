@@ -1,9 +1,5 @@
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+// Re-export cn from @hanzo/ui for consistency
+export { cn } from "@hanzo/ui/utils";
 
 export const COLORS = [
   "red",

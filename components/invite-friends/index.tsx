@@ -4,13 +4,13 @@ import { FaXTwitter } from "react-icons/fa6";
 import { useCopyToClipboard } from "react-use";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@hanzo/ui";
 import {
   Dialog,
   DialogContent,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@hanzo/ui";
 
 export function InviteFriends() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

@@ -7,13 +7,13 @@ import { useUser } from '@/hooks/useUser';
 import { HanzoLogo } from '@/components/HanzoLogo';
 
 // UI Components
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import { Button } from "@hanzo/ui";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@hanzo/ui";
+import { Badge } from "@hanzo/ui";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@hanzo/ui";
+import { Progress } from "@hanzo/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@hanzo/ui";
+import { Input } from "@hanzo/ui";
 
 // Icons
 import {

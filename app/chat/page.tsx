@@ -30,10 +30,10 @@ import {
   ArrowUp,
   MoreHorizontal
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@hanzo/ui";
+import { Input } from "@hanzo/ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@hanzo/ui";
+import { ScrollArea } from "@hanzo/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,15 +41,15 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuLabel
-} from "@/components/ui/dropdown-menu";
+} from "@hanzo/ui";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+} from "@hanzo/ui";
+import { Textarea } from "@hanzo/ui";
 import { cn } from "@/lib/utils";
 
 interface Message {

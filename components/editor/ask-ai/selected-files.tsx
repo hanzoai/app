@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@hanzo/ui";
 import { Minus } from "lucide-react";
 
 export const SelectedFiles = ({

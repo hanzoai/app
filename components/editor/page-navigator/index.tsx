@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import { ChevronDown, RotateCw, Home, Check, ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@hanzo/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@hanzo/ui";
 
 interface DetectedRoute {
   path: string;

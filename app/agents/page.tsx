@@ -35,11 +35,11 @@ import {
   Eye,
   Copy
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { Button } from "@hanzo/ui";
+import { Input } from "@hanzo/ui";
+import { Badge } from "@hanzo/ui";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@hanzo/ui";
+import { Progress } from "@hanzo/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,8 +47,8 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuLabel
-} from "@/components/ui/dropdown-menu";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from "@hanzo/ui";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@hanzo/ui";
 import { HanzoLogo } from "@/components/HanzoLogo";
 import { cn } from "@/lib/utils";
 import Link from "next/link";

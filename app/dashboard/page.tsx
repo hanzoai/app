@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { MyProjects } from "@/components/my-projects";
 import { useUser } from "@/hooks/useUser";
-import { Button } from "@/components/ui/button";
+import { Button } from "@hanzo/ui";
 import Link from "next/link";
 import { Plus, LogOut, User } from "lucide-react";
 import { HanzoLogo } from "@/components/HanzoLogo";

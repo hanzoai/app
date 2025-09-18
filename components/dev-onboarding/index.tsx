@@ -21,12 +21,12 @@ import {
   Globe,
   Terminal
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { Button } from "@hanzo/ui";
+import { Input } from "@hanzo/ui";
+import { Textarea } from "@hanzo/ui";
+import { Card } from "@hanzo/ui";
+import { Badge } from "@hanzo/ui";
+import { Progress } from "@hanzo/ui";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 

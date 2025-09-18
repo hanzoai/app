@@ -28,20 +28,20 @@ import {
   History,
   BarChart3
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { Button } from "@hanzo/ui";
+import { Textarea } from "@hanzo/ui";
+import { Badge } from "@hanzo/ui";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@hanzo/ui";
+import { Slider } from "@hanzo/ui";
+import { Switch } from "@hanzo/ui";
+import { Label } from "@hanzo/ui";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@hanzo/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,9 +49,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuLabel
-} from "@/components/ui/dropdown-menu";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
+} from "@hanzo/ui";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@hanzo/ui";
+import { ScrollArea } from "@hanzo/ui";
 import { HanzoLogo } from "@/components/HanzoLogo";
 import { cn } from "@/lib/utils";
 import Link from "next/link";

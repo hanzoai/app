@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Button } from "@hanzo/ui";
 import { HanzoLogo } from "@/components/HanzoLogo";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@hanzo/ui";
 import { Rocket, TrendingUp, Users, Globe, Calendar, ExternalLink, Star, Award } from "lucide-react";
 import { useState } from "react";
 

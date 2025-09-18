@@ -3,13 +3,13 @@ import { useState } from "react";
 import { Import } from "lucide-react";
 
 import { Project } from "@/types";
-import { Button } from "@/components/ui/button";
+import { Button } from "@hanzo/ui";
 import {
   Dialog,
   DialogContent,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@hanzo/ui";
 import Loading from "@/components/loading";
 import { Input } from "../ui/input";
 import { toast } from "sonner";

@@ -8,13 +8,13 @@ import {
   CardFooter,
   CardHeader,
   CardTitle
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
+} from "@hanzo/ui";
+import { Button } from "@hanzo/ui";
+import { Input } from "@hanzo/ui";
+import { ScrollArea } from "@hanzo/ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@hanzo/ui";
+import { Badge } from "@hanzo/ui";
+import { Textarea } from "@hanzo/ui";
 import {
   Send,
   Bot,

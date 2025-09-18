@@ -4,9 +4,9 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { HanzoLogo } from '@/components/HanzoLogo';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Button } from "@hanzo/ui";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@hanzo/ui";
+import { Badge } from "@hanzo/ui";
 import { getAuth } from '@/app/actions/auth';
 import { Loader2, Sparkles, Zap, Shield, Rocket } from 'lucide-react';
 
