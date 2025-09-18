@@ -72,9 +72,13 @@ const QuickConnectionPage = () => {
   const { encryptionKeys } = useGetEncryptionKeys();
   const locationState = useLocation().state;
   const isHanzoPrivate = locationState?.connectionType === 'local';
-  const { nodeInfo, isSuccess: isNodeInfoSuccess } = useGetHealth(
-    { nodeAddress: LOCAL_NODE_ADDRESS },
-    { enabled: isHanzoPrivate },
+  const [nodeAddress, setNodeAddress] = React.useState('');
+  const [requiresAuth, setRequiresAuth] = React.useState(false);
+  const [apiKey, setApiKey] = React.useState('');
+
+  const { nodeInfo, isSuccess: isNodeInfoSuccess, refetch: refetchHealth } = useGetHealth(
+    { nodeAddress: nodeAddress || LOCAL_NODE_ADDRESS },
+    { enabled: !!nodeAddress || isHanzoPrivate },
   );
 
   const completeStep = useSettings((state) => state.completeStep);
@@ -84,7 +88,7 @@ const QuickConnectionPage = () => {
     defaultValues: {
       node_address: isHanzoPrivate
         ? LOCAL_NODE_ADDRESS
-        : 'http://127.0.0.1:9550',
+        : 'http://127.0.0.1:3690',
     },
   });
 
@@ -116,12 +120,52 @@ const QuickConnectionPage = () => {
   });
 
   async function onSubmit(currentValues: QuickConnectFormSchema) {
-    if (!encryptionKeys) return;
-    await submitRegistrationNoCode({
-      nodeAddress: currentValues.node_address,
-      profileEncryptionPk: encryptionKeys.profile_encryption_pk,
-      profileIdentityPk: encryptionKeys.profile_identity_pk,
+    // First, check if the node exists and its status
+    setNodeAddress(currentValues.node_address);
+
+    // Wait a moment for the health check to complete
+    setTimeout(async () => {
+      const healthResult = await refetchHealth();
+
+      if (healthResult.data) {
+        if (healthResult.data.is_pristine) {
+          // Node is new/pristine, register without auth
+          if (!encryptionKeys) return;
+          await submitRegistrationNoCode({
+            nodeAddress: currentValues.node_address,
+            profileEncryptionPk: encryptionKeys.profile_encryption_pk,
+            profileIdentityPk: encryptionKeys.profile_identity_pk,
+          });
+        } else {
+          // Node exists and is locked, require authentication
+          setRequiresAuth(true);
+        }
+      } else {
+        toast.error('Unable to connect to node. Please check the address and try again.');
+      }
+    }, 500);
+  }
+
+  async function authenticateWithKey() {
+    if (!apiKey) {
+      toast.error('Please enter your API key');
+      return;
+    }
+
+    // Authenticate with the existing node using the provided key
+    setAuth({
+      api_v2_key: apiKey,
+      node_address: nodeAddress,
+      profile: 'main',
+      hanzo_identity: nodeInfo?.node_name || 'external-node',
+      encryption_pk: '',
+      identity_pk: '',
     });
+
+    completeStep(OnboardingStep.TERMS_CONDITIONS, true);
+    completeStep(OnboardingStep.ANALYTICS, false);
+    toast.success('Connected to node successfully!');
+    void navigate(HOME_PATH);
   }
 
   useEffect(() => {
@@ -152,35 +196,76 @@ const QuickConnectionPage = () => {
             {t('quickConnection.label')} <span aria-hidden>⚡</span>
           </h1>
         </div>
-        <Form {...setupDataForm}>
-          <form
-            className="space-y-6"
-            onSubmit={setupDataForm.handleSubmit(onSubmit)}
-          >
-            <div className="space-y-4">
-              <FormField
-                control={setupDataForm.control}
-                name="node_address"
-                render={({ field }) => (
-                  <TextField
-                    field={field}
-                    label={t('quickConnection.form.nodeAddress')}
-                  />
-                )}
-              />
-              {isError && <ErrorMessage message={error.message} />}
-            </div>
-            <Button
-              className="w-full"
-              disabled={isPending}
-              isLoading={isPending}
-              type="submit"
-              variant="default"
+        {!requiresAuth ? (
+          <Form {...setupDataForm}>
+            <form
+              className="space-y-6"
+              onSubmit={setupDataForm.handleSubmit(onSubmit)}
             >
-              {t('quickConnection.form.connect')}
-            </Button>
-          </form>
-        </Form>
+              <div className="space-y-4">
+                <FormField
+                  control={setupDataForm.control}
+                  name="node_address"
+                  render={({ field }) => (
+                    <TextField
+                      field={field}
+                      label={t('quickConnection.form.nodeAddress')}
+                    />
+                  )}
+                />
+                {isError && <ErrorMessage message={error.message} />}
+              </div>
+              <Button
+                className="w-full"
+                disabled={isPending}
+                isLoading={isPending}
+                type="submit"
+                variant="default"
+              >
+                {t('quickConnection.form.connect')}
+              </Button>
+            </form>
+          </Form>
+        ) : (
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <div className="rounded-lg bg-yellow-50 dark:bg-yellow-900/20 p-4">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  This node is already initialized. Please enter your API key to authenticate.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">API Key</label>
+                <input
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="Enter your node API key"
+                  className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                className="flex-1"
+                variant="outline"
+                onClick={() => {
+                  setRequiresAuth(false);
+                  setApiKey('');
+                }}
+              >
+                Back
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={authenticateWithKey}
+                disabled={!apiKey}
+              >
+                Authenticate
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-4 flex flex-row justify-between gap-4">
