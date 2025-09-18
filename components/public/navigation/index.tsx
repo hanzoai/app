@@ -16,6 +16,11 @@ const navigationLinks = [
     href: "/projects/new",
   },
   {
+    name: "Gallery",
+    href: "https://huggingface.co/spaces/hanzoai/gallery",
+    external: true,
+  },
+  {
     name: "Features",
     href: "#features",
   },
@@ -103,20 +108,31 @@ export default function Navigation() {
               }}
               className="inline-block font-sans text-sm"
             >
-              <Link
-                href={link.href}
-                className={classNames(
-                  "text-neutral-500 hover:text-primary transition-colors",
-                  {
-                    "text-primary": hash === link.href,
-                  }
-                )}
-                onClick={() => {
-                  handleClick(link.href);
-                }}
-              >
-                {link.name}
-              </Link>
+              {link.external ? (
+                <a
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-neutral-500 hover:text-primary transition-colors"
+                >
+                  {link.name}
+                </a>
+              ) : (
+                <Link
+                  href={link.href}
+                  className={classNames(
+                    "text-neutral-500 hover:text-primary transition-colors",
+                    {
+                      "text-primary": hash === link.href,
+                    }
+                  )}
+                  onClick={() => {
+                    handleClick(link.href);
+                  }}
+                >
+                  {link.name}
+                </Link>
+              )}
             </li>
           ))}
           <div

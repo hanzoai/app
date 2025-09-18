@@ -44,6 +44,25 @@ export const DeployButtonContent = ({
         prompts,
       });
       if (res.data.ok) {
+        // Add to public gallery
+        try {
+          const mainHtml = pages.find(p => p.path === 'index.html')?.html || pages[0]?.html || '';
+          await api.post("/gallery", {
+            project: {
+              id: res.data.path?.split('/').pop() || config.title.toLowerCase().replace(/\s+/g, '-'),
+              name: config.title,
+              prompt: prompts[0] || '',
+              emoji: '🚀',
+              html: mainHtml,
+              tags: ['ai-generated', 'hanzo'],
+            }
+          });
+          toast.success("Project added to public gallery!");
+        } catch (galleryError) {
+          console.error("Failed to add to gallery:", galleryError);
+          // Don't fail the main operation if gallery fails
+        }
+
         router.push(`/projects/${res.data.path}?deploy=true`);
       } else {
         toast.error(res?.data?.error || "Failed to create space");

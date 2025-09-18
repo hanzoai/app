@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Disable dev indicators in production
+  devIndicators: {
+    appIsrStatus: process.env.NODE_ENV !== 'production',
+    buildActivity: process.env.NODE_ENV !== 'production',
+    buildActivityPosition: 'bottom-right',
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },

@@ -523,15 +523,27 @@ export default function LandingPage() {
               ))}
             </div>
 
-            <div className="text-center mt-8 md:mt-12">
-              <Button
-                onClick={() => router.push('/community')}
-                variant="outline"
-                className="border-white/20 text-white hover:bg-white/10 px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold"
-              >
-                Explore All Projects
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
+            <div className="text-center mt-8 md:mt-12 space-y-4">
+              <p className="text-sm text-white/60">
+                Want to see more amazing projects? Check out our community gallery!
+              </p>
+              <div className="flex items-center justify-center gap-4">
+                <Button
+                  onClick={() => window.open('https://huggingface.co/spaces/hanzoai/gallery', '_blank')}
+                  className="bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700"
+                >
+                  <Globe2 className="w-4 h-4 mr-2" />
+                  View Full Gallery
+                </Button>
+                <Button
+                  onClick={() => router.push('/community')}
+                  variant="outline"
+                  className="border-white/20 text-white hover:bg-white/10 px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold"
+                >
+                  Explore Community
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </Button>
+              </div>
             </div>
           </div>
         </section>

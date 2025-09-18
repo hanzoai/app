@@ -3,6 +3,13 @@ const nextConfig = {
   // Disable static optimization to avoid prerendering errors
   output: 'standalone',
 
+  // Disable development indicators in production
+  devIndicators: {
+    appIsrStatus: false,
+    buildActivity: false,
+    buildActivityPosition: 'bottom-right',
+  },
+
   eslint: {
     ignoreDuringBuilds: true,
   },
