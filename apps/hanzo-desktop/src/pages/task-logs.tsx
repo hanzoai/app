@@ -1,11 +1,11 @@
 import { DialogClose } from '@radix-ui/react-dialog';
 import { DotsVerticalIcon } from '@radix-ui/react-icons';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { buildInboxIdFromJobId } from '@hanzo_network/hanzo-message-ts/utils/inbox_name_handler';
-import { useRemoveRecurringTask } from '@hanzo_network/hanzo-node-state/v2/mutations/removeRecurringTask/useRemoveRecurringTask';
-import { useRunTaskNow } from '@hanzo_network/hanzo-node-state/v2/mutations/runTaskNow/useRunTaskNow';
-import { useGetRecurringTask } from '@hanzo_network/hanzo-node-state/v2/queries/getRecurringTask/useGetRecurringTask';
-import { useGetRecurringTaskLogs } from '@hanzo_network/hanzo-node-state/v2/queries/getRecurringTaskLogs/useGetRecurringTaskLogs';
+import { useTranslation } from '@hanzo/i18n';
+import { buildInboxIdFromJobId } from '@hanzo/message/utils/inbox_name_handler';
+import { useRemoveRecurringTask } from '@hanzo/node/v2/mutations/removeRecurringTask/useRemoveRecurringTask';
+import { useRunTaskNow } from '@hanzo/node/v2/mutations/runTaskNow/useRunTaskNow';
+import { useGetRecurringTask } from '@hanzo/node/v2/queries/getRecurringTask/useGetRecurringTask';
+import { useGetRecurringTaskLogs } from '@hanzo/node/v2/queries/getRecurringTaskLogs/useGetRecurringTaskLogs';
 import {
   Badge,
   Button,
@@ -26,8 +26,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Skeleton,
-} from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 import cronstrue from 'cronstrue';
 import { format } from 'date-fns';
 import {

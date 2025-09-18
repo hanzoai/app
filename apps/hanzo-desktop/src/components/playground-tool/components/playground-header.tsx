@@ -1,7 +1,7 @@
-import { type ToolMetadata } from '@hanzo_network/hanzo-message-ts/api/tools/types';
-import { extractJobIdFromInbox } from '@hanzo_network/hanzo-message-ts/utils';
-import { usePublishTool } from '@hanzo_network/hanzo-node-state/v2/mutations/publishTool/usePublishTool';
-import { useRestoreToolConversation } from '@hanzo_network/hanzo-node-state/v2/mutations/restoreToolConversation/useRestoreToolConversation';
+import { type ToolMetadata } from '@hanzo/message/api/tools/types';
+import { extractJobIdFromInbox } from '@hanzo/message/utils';
+import { usePublishTool } from '@hanzo/node/v2/mutations/publishTool/usePublishTool';
+import { useRestoreToolConversation } from '@hanzo/node/v2/mutations/restoreToolConversation/useRestoreToolConversation';
 import {
   Button,
   Popover,
@@ -13,9 +13,9 @@ import {
   Badge,
   Separator,
   Tooltip,
-} from '@hanzo_network/hanzo-ui';
-import { StoreIcon } from '@hanzo_network/hanzo-ui/assets';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { StoreIcon } from '@hanzo/ui/assets';
+import { cn } from '@hanzo/ui/utils';
 import { open } from '@tauri-apps/plugin-shell';
 import {
   ArrowLeft,

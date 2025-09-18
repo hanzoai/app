@@ -1,6 +1,6 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { type CodeLanguage } from '@hanzo_network/hanzo-message-ts/api/tools/types';
-import { type ChatConversationInfiniteData } from '@hanzo_network/hanzo-node-state/v2/queries/getChatConversation/types';
+import { useTranslation } from '@hanzo/i18n';
+import { type CodeLanguage } from '@hanzo/message/api/tools/types';
+import { type ChatConversationInfiniteData } from '@hanzo/node/v2/queries/getChatConversation/types';
 import {
   Button,
   ChatInputArea,
@@ -8,9 +8,9 @@ import {
   FormField,
   FormItem,
   FormLabel,
-} from '@hanzo_network/hanzo-ui';
-import { SendIcon } from '@hanzo_network/hanzo-ui/assets';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { SendIcon } from '@hanzo/ui/assets';
+import { cn } from '@hanzo/ui/utils';
 import {
   type InfiniteQueryObserverResult,
   type FetchPreviousPageOptions,

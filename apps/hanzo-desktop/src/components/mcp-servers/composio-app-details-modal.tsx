@@ -1,4 +1,4 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   Dialog,
   DialogContent,
@@ -7,7 +7,7 @@ import {
   DialogDescription,
   MarkdownText,
   Skeleton,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import { useState } from 'react';
 import { useApp } from '../../lib/composio';
 

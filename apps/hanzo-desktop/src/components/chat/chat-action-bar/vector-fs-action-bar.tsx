@@ -1,22 +1,22 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { extractJobIdFromInbox } from '@hanzo_network/hanzo-message-ts/utils';
-import { useUpdateJobScope } from '@hanzo_network/hanzo-node-state/v2/mutations/updateJobScope/useUpdateJobScope';
-import { useGetListDirectoryContents } from '@hanzo_network/hanzo-node-state/v2/queries/getDirectoryContents/useGetListDirectoryContents';
-import { useGetJobFolderName } from '@hanzo_network/hanzo-node-state/v2/queries/getJobFolderName/useGetJobFolderName';
-import { useGetJobScope } from '@hanzo_network/hanzo-node-state/v2/queries/getJobScope/useGetJobScope';
+import { useTranslation } from '@hanzo/i18n';
+import { extractJobIdFromInbox } from '@hanzo/message/utils';
+import { useUpdateJobScope } from '@hanzo/node/v2/mutations/updateJobScope/useUpdateJobScope';
+import { useGetListDirectoryContents } from '@hanzo/node/v2/queries/getDirectoryContents/useGetListDirectoryContents';
+import { useGetJobFolderName } from '@hanzo/node/v2/queries/getJobFolderName/useGetJobFolderName';
+import { useGetJobScope } from '@hanzo/node/v2/queries/getJobScope/useGetJobScope';
 import {
   Badge,
   Tooltip,
   TooltipContent,
   TooltipPortal,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import {
   DirectoryTypeIcon,
   FilesIcon,
   FileTypeIcon,
-} from '@hanzo_network/hanzo-ui/assets';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui/assets';
+import { cn } from '@hanzo/ui/utils';
 import { X } from 'lucide-react';
 import { useParams } from 'react-router';
 import { toast } from 'sonner';

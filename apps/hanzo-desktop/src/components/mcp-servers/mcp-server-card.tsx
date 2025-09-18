@@ -1,8 +1,8 @@
 import { DialogClose } from '@radix-ui/react-dialog';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { type McpServer } from '@hanzo_network/hanzo-message-ts/api/mcp-servers/types';
-import { useDeleteMcpServer } from '@hanzo_network/hanzo-node-state/v2/mutations/deleteMcpServer/useDeleteMcpServer';
-import { useGetMCPServerTools } from '@hanzo_network/hanzo-node-state/v2/queries/getMCPServerTools/useGetMCPServerTool';
+import { useTranslation } from '@hanzo/i18n';
+import { type McpServer } from '@hanzo/message/api/mcp-servers/types';
+import { useDeleteMcpServer } from '@hanzo/node/v2/mutations/deleteMcpServer/useDeleteMcpServer';
+import { useGetMCPServerTools } from '@hanzo/node/v2/queries/getMCPServerTools/useGetMCPServerTool';
 import {
   Badge,
   Button,
@@ -26,9 +26,9 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
-import { ToolsIcon } from '@hanzo_network/hanzo-ui/assets';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { ToolsIcon } from '@hanzo/ui/assets';
+import { cn } from '@hanzo/ui/utils';
 import { BoltIcon, ChevronDown, MoreVertical, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';

@@ -1,21 +1,21 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   buildInboxIdFromJobId,
   extractJobIdFromInbox,
-} from '@hanzo_network/hanzo-message-ts/utils';
+} from '@hanzo/message/utils';
 import {
   FunctionKeyV2,
   generateOptimisticAssistantMessage,
-} from '@hanzo_network/hanzo-node-state/v2/constants';
-import { useForkJobMessages } from '@hanzo_network/hanzo-node-state/v2/mutations/forkJobMessages/useForkJobMessages';
-import { useRetryMessage } from '@hanzo_network/hanzo-node-state/v2/mutations/retryMessage/useRetryMessage';
-import { useSendMessageToJob } from '@hanzo_network/hanzo-node-state/v2/mutations/sendMessageToJob/useSendMessageToJob';
+} from '@hanzo/node/v2/constants';
+import { useForkJobMessages } from '@hanzo/node/v2/mutations/forkJobMessages/useForkJobMessages';
+import { useRetryMessage } from '@hanzo/node/v2/mutations/retryMessage/useRetryMessage';
+import { useSendMessageToJob } from '@hanzo/node/v2/mutations/sendMessageToJob/useSendMessageToJob';
 
-import { useGetChatConfig } from '@hanzo_network/hanzo-node-state/v2/queries/getChatConfig/useGetChatConfig';
-import { type ChatConversationInfiniteData } from '@hanzo_network/hanzo-node-state/v2/queries/getChatConversation/types';
-import { useGetChatConversationWithPagination } from '@hanzo_network/hanzo-node-state/v2/queries/getChatConversation/useGetChatConversationWithPagination';
+import { useGetChatConfig } from '@hanzo/node/v2/queries/getChatConfig/useGetChatConfig';
+import { type ChatConversationInfiniteData } from '@hanzo/node/v2/queries/getChatConversation/types';
+import { useGetChatConversationWithPagination } from '@hanzo/node/v2/queries/getChatConversation/useGetChatConversationWithPagination';
 
-import { useGetProviderFromJob } from '@hanzo_network/hanzo-node-state/v2/queries/getProviderFromJob/useGetProviderFromJob';
+import { useGetProviderFromJob } from '@hanzo/node/v2/queries/getProviderFromJob/useGetProviderFromJob';
 import { useQueryClient } from '@tanstack/react-query';
 import { produce } from 'immer';
 import { useEffect, useMemo } from 'react';

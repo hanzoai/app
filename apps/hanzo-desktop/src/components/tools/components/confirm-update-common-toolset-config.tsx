@@ -1,4 +1,4 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   Button,
   Dialog,
@@ -7,8 +7,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@hanzo_network/hanzo-ui';
-import { formatText } from '@hanzo_network/hanzo-ui/helpers';
+} from '@hanzo/ui';
+import { formatText } from '@hanzo/ui/helpers';
 
 interface ConfirmToolsetUpdateDialogProps {
   isOpen: boolean;

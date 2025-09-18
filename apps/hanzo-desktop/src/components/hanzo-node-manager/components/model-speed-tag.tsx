@@ -1,4 +1,4 @@
-import { Badge } from '@hanzo_network/hanzo-ui';
+import { Badge } from '@hanzo/ui';
 
 import { OllamaModelSpeed } from '../../../lib/hanzo-node-manager/ollama-models';
 

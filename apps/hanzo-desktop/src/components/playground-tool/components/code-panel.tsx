@@ -1,7 +1,7 @@
-// import { ToolMetadata } from '@hanzo_network/hanzo-message-ts/api/tools/types';
-import { Button, Skeleton } from '@hanzo_network/hanzo-ui';
-import { debounce } from '@hanzo_network/hanzo-ui/helpers';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+// import { ToolMetadata } from '@hanzo/message/api/tools/types';
+import { Button, Skeleton } from '@hanzo/ui';
+import { debounce } from '@hanzo/ui/helpers';
+import { cn } from '@hanzo/ui/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { memo, useCallback } from 'react';
 

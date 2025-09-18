@@ -2,7 +2,7 @@ import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import { type ReactNode } from 'react';
 
 import { useSettings } from '../../store/settings';

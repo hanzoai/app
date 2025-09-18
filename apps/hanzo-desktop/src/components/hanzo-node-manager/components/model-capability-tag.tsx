@@ -1,6 +1,6 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { Badge } from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+import { useTranslation } from '@hanzo/i18n';
+import { Badge } from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 import { ALargeSmall, Brain, Images, Wrench } from 'lucide-react';
 import { type ReactNode } from 'react';
 

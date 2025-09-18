@@ -1,6 +1,6 @@
 // ToolCreationStatus.tsx
-import { Skeleton } from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+import { Skeleton } from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LoaderIcon } from 'lucide-react';
 import { memo } from 'react';

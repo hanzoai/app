@@ -1,17 +1,17 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { encryptMessageWithPassphrase } from '@hanzo_network/hanzo-message-ts/cryptography';
+import { useTranslation } from '@hanzo/i18n';
+import { encryptMessageWithPassphrase } from '@hanzo/message/cryptography';
 import {
   type ExportConnectionFormSchema,
   exportConnectionFormSchema,
-} from '@hanzo_network/hanzo-node-state/forms/settings/export-connection';
+} from '@hanzo/node/forms/settings/export-connection';
 import {
   Button,
   Form,
   FormField,
   Input,
   TextField,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import {} from '@tauri-apps/api';
 import { save } from '@tauri-apps/plugin-dialog';
 import { BaseDirectory } from '@tauri-apps/plugin-fs';

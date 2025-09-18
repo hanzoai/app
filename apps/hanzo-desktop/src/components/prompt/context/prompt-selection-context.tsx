@@ -1,12 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { type Prompt } from '@hanzo_network/hanzo-message-ts/api/tools/types';
-import { useCreatePrompt } from '@hanzo_network/hanzo-node-state/v2/mutations/createPrompt/useCreatePrompt';
-import { useRemovePrompt } from '@hanzo_network/hanzo-node-state/v2/mutations/removePrompt/useRemovePrompt';
-import { useUpdatePrompt } from '@hanzo_network/hanzo-node-state/v2/mutations/updatePrompt/useUpdatePrompt';
-// import { useUpdatePrompt } from '@hanzo_network/hanzo-node-state/v2/mutations/updatePrompt/useUpdatePrompt';
-import { useGetPromptList } from '@hanzo_network/hanzo-node-state/v2/queries/getPromptList/useGetPromptList';
-import { useGetPromptSearch } from '@hanzo_network/hanzo-node-state/v2/queries/getPromptSearch/useGetPromptSearch';
+import { useTranslation } from '@hanzo/i18n';
+import { type Prompt } from '@hanzo/message/api/tools/types';
+import { useCreatePrompt } from '@hanzo/node/v2/mutations/createPrompt/useCreatePrompt';
+import { useRemovePrompt } from '@hanzo/node/v2/mutations/removePrompt/useRemovePrompt';
+import { useUpdatePrompt } from '@hanzo/node/v2/mutations/updatePrompt/useUpdatePrompt';
+// import { useUpdatePrompt } from '@hanzo/node/v2/mutations/updatePrompt/useUpdatePrompt';
+import { useGetPromptList } from '@hanzo/node/v2/queries/getPromptList/useGetPromptList';
+import { useGetPromptSearch } from '@hanzo/node/v2/queries/getPromptSearch/useGetPromptSearch';
 import {
   Button,
   Dialog,
@@ -29,8 +29,8 @@ import {
   SheetTitle,
   Textarea,
   TextField,
-} from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 import {
   Edit3Icon,
   // Edit3Icon,

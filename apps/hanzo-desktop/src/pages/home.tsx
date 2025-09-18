@@ -1,16 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { buildInboxIdFromJobId } from '@hanzo_network/hanzo-message-ts/utils/inbox_name_handler';
+import { useTranslation } from '@hanzo/i18n';
+import { buildInboxIdFromJobId } from '@hanzo/message/utils/inbox_name_handler';
 import {
   type ChatMessageFormSchema,
   chatMessageFormSchema,
-} from '@hanzo_network/hanzo-node-state/forms/chat/chat-message';
-import { DEFAULT_CHAT_CONFIG } from '@hanzo_network/hanzo-node-state/v2/constants';
-import { useCreateJob } from '@hanzo_network/hanzo-node-state/v2/mutations/createJob/useCreateJob';
-import { useGetAgents } from '@hanzo_network/hanzo-node-state/v2/queries/getAgents/useGetAgents';
-import { useGetLLMProviders } from '@hanzo_network/hanzo-node-state/v2/queries/getLLMProviders/useGetLLMProviders';
-import { useGetTools } from '@hanzo_network/hanzo-node-state/v2/queries/getToolsList/useGetToolsList';
-import { useGetSearchTools } from '@hanzo_network/hanzo-node-state/v2/queries/getToolsSearch/useGetToolsSearch';
+} from '@hanzo/node/forms/chat/chat-message';
+import { DEFAULT_CHAT_CONFIG } from '@hanzo/node/v2/constants';
+import { useCreateJob } from '@hanzo/node/v2/mutations/createJob/useCreateJob';
+import { useGetAgents } from '@hanzo/node/v2/queries/getAgents/useGetAgents';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
+import { useGetTools } from '@hanzo/node/v2/queries/getToolsList/useGetToolsList';
+import { useGetSearchTools } from '@hanzo/node/v2/queries/getToolsSearch/useGetToolsSearch';
 import {
   Badge,
   Button,
@@ -30,7 +30,7 @@ import {
   TooltipContent,
   TooltipPortal,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import {
   AIAgentIcon,
   DirectoryTypeIcon,
@@ -38,10 +38,10 @@ import {
   PlusIcon,
   SendIcon,
   ToolsIcon,
-} from '@hanzo_network/hanzo-ui/assets';
-import { formatText } from '@hanzo_network/hanzo-ui/helpers';
-import { useDebounce } from '@hanzo_network/hanzo-ui/hooks';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui/assets';
+import { formatText } from '@hanzo/ui/helpers';
+import { useDebounce } from '@hanzo/ui/hooks';
+import { cn } from '@hanzo/ui/utils';
 import { invoke } from '@tauri-apps/api/core';
 import axios from 'axios';
 import { motion } from 'framer-motion';

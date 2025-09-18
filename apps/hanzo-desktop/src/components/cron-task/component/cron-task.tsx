@@ -1,10 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { type RecurringTask } from '@hanzo_network/hanzo-message-ts/api/recurring-tasks/types';
-import { DEFAULT_CHAT_CONFIG } from '@hanzo_network/hanzo-node-state/v2/constants';
-import { useCreateRecurringTask } from '@hanzo_network/hanzo-node-state/v2/mutations/createRecurringTask/useCreateRecurringTask';
-import { useUpdateRecurringTask } from '@hanzo_network/hanzo-node-state/v2/mutations/updateRecurringTask/useUpdateRecurringTask';
-import { useGetTools } from '@hanzo_network/hanzo-node-state/v2/queries/getToolsList/useGetToolsList';
+import { useTranslation } from '@hanzo/i18n';
+import { type RecurringTask } from '@hanzo/message/api/recurring-tasks/types';
+import { DEFAULT_CHAT_CONFIG } from '@hanzo/node/v2/constants';
+import { useCreateRecurringTask } from '@hanzo/node/v2/mutations/createRecurringTask/useCreateRecurringTask';
+import { useUpdateRecurringTask } from '@hanzo/node/v2/mutations/updateRecurringTask/useUpdateRecurringTask';
+import { useGetTools } from '@hanzo/node/v2/queries/getToolsList/useGetToolsList';
 import {
   Badge,
   Button,
@@ -30,10 +30,10 @@ import {
   Switch,
   Textarea,
   TextField,
-} from '@hanzo_network/hanzo-ui';
-import { ScheduledTasksIcon, ToolsIcon } from '@hanzo_network/hanzo-ui/assets';
-import { formatText } from '@hanzo_network/hanzo-ui/helpers';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { ScheduledTasksIcon, ToolsIcon } from '@hanzo/ui/assets';
+import { formatText } from '@hanzo/ui/helpers';
+import { cn } from '@hanzo/ui/utils';
 import cronstrue from 'cronstrue';
 import { ChevronDownIcon } from 'lucide-react';
 import { useEffect, useMemo } from 'react';

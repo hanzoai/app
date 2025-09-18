@@ -1,4 +1,4 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   Accordion,
   AccordionContent,
@@ -10,12 +10,12 @@ import {
   PopoverContent,
   PopoverTrigger,
   Progress,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import {
   ToolsIcon,
   // FilesIcon
-} from '@hanzo_network/hanzo-ui/assets';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui/assets';
+import { cn } from '@hanzo/ui/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, Globe, PlusIcon, Sparkles, XIcon } from 'lucide-react';
 import { type ReactNode, useState } from 'react';

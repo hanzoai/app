@@ -17,7 +17,7 @@ import {
   QwenIcon,
   HanzoIcon,
   TogetherAI,
-} from '@hanzo_network/hanzo-ui/assets';
+} from '@hanzo/ui/assets';
 
 export enum ModelProvider {
   Aya = 'aya',

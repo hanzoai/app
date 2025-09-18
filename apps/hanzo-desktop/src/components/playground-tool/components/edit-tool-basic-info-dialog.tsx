@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PopoverClose } from '@radix-ui/react-popover';
-import { type ToolMetadata } from '@hanzo_network/hanzo-message-ts/api/tools/types';
+import { type ToolMetadata } from '@hanzo/message/api/tools/types';
 import {
   Badge,
   Button,
@@ -14,8 +14,8 @@ import {
   PopoverTrigger,
   Textarea,
   Form,
-} from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 import { useEffect, useState } from 'react';
 import { useForm, useFormContext } from 'react-hook-form';
 import { toast } from 'sonner';

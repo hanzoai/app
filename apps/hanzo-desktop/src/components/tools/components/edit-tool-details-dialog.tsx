@@ -3,8 +3,8 @@ import { PopoverClose } from '@radix-ui/react-popover';
 import {
   type HanzoTool,
   type HanzoToolType,
-} from '@hanzo_network/hanzo-message-ts/api/tools/types';
-import { useUpdateTool } from '@hanzo_network/hanzo-node-state/v2/mutations/updateTool/useUpdateTool';
+} from '@hanzo/message/api/tools/types';
+import { useUpdateTool } from '@hanzo/node/v2/mutations/updateTool/useUpdateTool';
 import {
   Button,
   Form,
@@ -17,8 +17,8 @@ import {
   PopoverContent,
   PopoverTrigger,
   Textarea,
-} from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';

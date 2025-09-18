@@ -1,4 +1,4 @@
-import { CodeLanguage } from '@hanzo_network/hanzo-message-ts/api/tools/types';
+import { CodeLanguage } from '@hanzo/message/api/tools/types';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,9 +10,9 @@ import {
   TooltipPortal,
   TooltipProvider,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
-import { PythonIcon, TypeScriptIcon } from '@hanzo_network/hanzo-ui/assets';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { PythonIcon, TypeScriptIcon } from '@hanzo/ui/assets';
+import { cn } from '@hanzo/ui/utils';
 import { ChevronDownIcon } from 'lucide-react';
 
 import { actionButtonClassnames } from '../../chat/conversation-footer';

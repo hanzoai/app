@@ -4,9 +4,9 @@ import {
   TooltipPortal,
   TooltipProvider,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
-import { PromptLibraryIcon } from '@hanzo_network/hanzo-ui/assets';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { PromptLibraryIcon } from '@hanzo/ui/assets';
+import { cn } from '@hanzo/ui/utils';
 import { memo } from 'react';
 
 import { usePromptSelectionStore } from '../../prompt/context/prompt-selection-context';

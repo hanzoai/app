@@ -1,5 +1,5 @@
 import { type AlertDialogProps } from '@radix-ui/react-alert-dialog';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -9,7 +9,7 @@ import {
   AlertDialogTitle,
   // AlertTitle,
   Button,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 
 import {
   useHanzoNodeKillMutation,

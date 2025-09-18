@@ -1,13 +1,13 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { useCopyFolder } from '@hanzo_network/hanzo-node-state/v2/mutations/copyFolder/useCopyFolder';
-import { useMoveFolder } from '@hanzo_network/hanzo-node-state/v2/mutations/moveFolder/useMoveFolder';
-import { useRemoveFolder } from '@hanzo_network/hanzo-node-state/v2/mutations/removeFolder/useRemoveFolder';
+import { useTranslation } from '@hanzo/i18n';
+import { useCopyFolder } from '@hanzo/node/v2/mutations/copyFolder/useCopyFolder';
+import { useMoveFolder } from '@hanzo/node/v2/mutations/moveFolder/useMoveFolder';
+import { useRemoveFolder } from '@hanzo/node/v2/mutations/removeFolder/useRemoveFolder';
 import {
   Button,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import React from 'react';
 import { toast } from 'sonner';
 

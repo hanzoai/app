@@ -1,19 +1,19 @@
 import {
   type WidgetToolType,
   type WsMessage,
-} from '@hanzo_network/hanzo-message-ts/api/general/types';
-import { extractJobIdFromInbox } from '@hanzo_network/hanzo-message-ts/utils/inbox_name_handler';
+} from '@hanzo/message/api/general/types';
+import { extractJobIdFromInbox } from '@hanzo/message/utils/inbox_name_handler';
 import {
   FunctionKeyV2,
   generateOptimisticAssistantMessage,
   OPTIMISTIC_ASSISTANT_MESSAGE_ID,
-} from '@hanzo_network/hanzo-node-state/v2/constants';
+} from '@hanzo/node/v2/constants';
 import {
   type FormattedMessage,
   type ChatConversationInfiniteData,
   type ToolCall,
-} from '@hanzo_network/hanzo-node-state/v2/queries/getChatConversation/types';
-import { useGetProviderFromJob } from '@hanzo_network/hanzo-node-state/v2/queries/getProviderFromJob/useGetProviderFromJob';
+} from '@hanzo/node/v2/queries/getChatConversation/types';
+import { useGetProviderFromJob } from '@hanzo/node/v2/queries/getProviderFromJob/useGetProviderFromJob';
 import { useQueryClient } from '@tanstack/react-query';
 import { produce } from 'immer';
 import { createContext, useEffect, useMemo, useRef, useState } from 'react';

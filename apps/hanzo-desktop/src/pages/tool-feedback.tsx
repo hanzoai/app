@@ -1,4 +1,4 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   Button,
   ChatInputArea,
@@ -14,9 +14,9 @@ import {
   FormItem,
   FormLabel,
   Skeleton,
-} from '@hanzo_network/hanzo-ui';
-import { SendIcon } from '@hanzo_network/hanzo-ui/assets';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { SendIcon } from '@hanzo/ui/assets';
+import { cn } from '@hanzo/ui/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LoaderIcon, LogOut } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';

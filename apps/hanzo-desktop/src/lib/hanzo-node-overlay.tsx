@@ -1,6 +1,6 @@
 import { ReloadIcon } from '@radix-ui/react-icons';
-import { useGetHealth } from '@hanzo_network/hanzo-node-state/v2/queries/getHealth/useGetHealth';
-import { Button } from '@hanzo_network/hanzo-ui';
+import { useGetHealth } from '@hanzo/node/v2/queries/getHealth/useGetHealth';
+import { Button } from '@hanzo/ui';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { DownloadIcon, Loader2 } from 'lucide-react';
 import React, { useState } from 'react';

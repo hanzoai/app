@@ -1,10 +1,10 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { removeLLMProvider } from '@hanzo_network/hanzo-node-state/v2/mutations/removeLLMProvider/index';
-import { useSyncOllamaModels } from '@hanzo_network/hanzo-node-state/v2/mutations/syncOllamaModels/useSyncOllamaModels';
-import { useGetLLMProviders } from '@hanzo_network/hanzo-node-state/v2/queries/getLLMProviders/useGetLLMProviders';
-import { Button, Progress } from '@hanzo_network/hanzo-ui';
-import { useMap } from '@hanzo_network/hanzo-ui/hooks';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+import { useTranslation } from '@hanzo/i18n';
+import { removeLLMProvider } from '@hanzo/node/v2/mutations/removeLLMProvider/index';
+import { useSyncOllamaModels } from '@hanzo/node/v2/mutations/syncOllamaModels/useSyncOllamaModels';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
+import { Button, Progress } from '@hanzo/ui';
+import { useMap } from '@hanzo/ui/hooks';
+import { cn } from '@hanzo/ui/utils';
 import { motion } from 'framer-motion';
 import { CheckCircle, Download, Loader2, Minus } from 'lucide-react';
 import { type ModelResponse, type ProgressResponse } from 'ollama/browser';

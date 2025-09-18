@@ -7,8 +7,8 @@ import {
   TooltipPortal,
   TooltipProvider,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, XIcon } from 'lucide-react';
 

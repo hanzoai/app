@@ -1,4 +1,4 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   Badge,
   Button,
@@ -14,9 +14,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+import { cn } from '@hanzo/ui/utils';
 import { BookOpenText, Database, Sparkles, StarIcon } from 'lucide-react';
 import React, { useState } from 'react';
 import AutoSizer from 'react-virtualized-auto-sizer';

@@ -1,16 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { retrieveVectorResource } from '@hanzo_network/hanzo-message-ts/api/vector-fs/index';
-import { extractJobIdFromInbox } from '@hanzo_network/hanzo-message-ts/utils/inbox_name_handler';
+import { useTranslation } from '@hanzo/i18n';
+import { retrieveVectorResource } from '@hanzo/message/api/vector-fs/index';
+import { extractJobIdFromInbox } from '@hanzo/message/utils/inbox_name_handler';
 import {
   type SearchVectorFormSchema,
   searchVectorFormSchema,
-} from '@hanzo_network/hanzo-node-state/forms/vector-fs/vector-search';
-import { transformDataToTreeNodes } from '@hanzo_network/hanzo-node-state/lib/utils/files';
-import { useUpdateJobScope } from '@hanzo_network/hanzo-node-state/v2/mutations/updateJobScope/useUpdateJobScope';
-import { useGetListDirectoryContents } from '@hanzo_network/hanzo-node-state/v2/queries/getDirectoryContents/useGetListDirectoryContents';
-import { useGetJobFolderName } from '@hanzo_network/hanzo-node-state/v2/queries/getJobFolderName/useGetJobFolderName';
-import { useGetVRSeachSimplified } from '@hanzo_network/hanzo-node-state/v2/queries/getVRSearchSimplified/useGetSearchVRItems';
+} from '@hanzo/node/forms/vector-fs/vector-search';
+import { transformDataToTreeNodes } from '@hanzo/node/lib/utils/files';
+import { useUpdateJobScope } from '@hanzo/node/v2/mutations/updateJobScope/useUpdateJobScope';
+import { useGetListDirectoryContents } from '@hanzo/node/v2/queries/getDirectoryContents/useGetListDirectoryContents';
+import { useGetJobFolderName } from '@hanzo/node/v2/queries/getJobFolderName/useGetJobFolderName';
+import { useGetVRSeachSimplified } from '@hanzo/node/v2/queries/getVRSearchSimplified/useGetSearchVRItems';
 import {
   Badge,
   Button,
@@ -23,8 +23,8 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-} from '@hanzo_network/hanzo-ui';
-import { FileTypeIcon } from '@hanzo_network/hanzo-ui/assets';
+} from '@hanzo/ui';
+import { FileTypeIcon } from '@hanzo/ui/assets';
 import { SearchIcon } from 'lucide-react';
 import { Checkbox } from 'primereact/checkbox';
 import { Tree, type TreeCheckboxSelectionKeys } from 'primereact/tree';

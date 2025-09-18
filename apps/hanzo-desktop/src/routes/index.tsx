@@ -1,6 +1,6 @@
-import { FunctionKeyV2 } from '@hanzo_network/hanzo-node-state/v2/constants';
-import { useGetLLMProviders } from '@hanzo_network/hanzo-node-state/v2/queries/getLLMProviders/useGetLLMProviders';
-import { TooltipProvider } from '@hanzo_network/hanzo-ui';
+import { FunctionKeyV2 } from '@hanzo/node/v2/constants';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
+import { TooltipProvider } from '@hanzo/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { listen } from '@tauri-apps/api/event';
 import { debug } from '@tauri-apps/plugin-log';

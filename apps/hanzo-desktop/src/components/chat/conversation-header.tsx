@@ -1,10 +1,10 @@
 import { DotsVerticalIcon } from '@radix-ui/react-icons';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { extractJobIdFromInbox } from '@hanzo_network/hanzo-message-ts/utils';
-import { useExportMessagesFromInbox } from '@hanzo_network/hanzo-node-state/v2/mutations/exportMessagesFromInbox/useExportMessagesFromInbox';
-import { useGetAgents } from '@hanzo_network/hanzo-node-state/v2/queries/getAgents/useGetAgents';
-import { useGetLLMProviders } from '@hanzo_network/hanzo-node-state/v2/queries/getLLMProviders/useGetLLMProviders';
-import { useGetProviderFromJob } from '@hanzo_network/hanzo-node-state/v2/queries/getProviderFromJob/useGetProviderFromJob';
+import { useTranslation } from '@hanzo/i18n';
+import { extractJobIdFromInbox } from '@hanzo/message/utils';
+import { useExportMessagesFromInbox } from '@hanzo/node/v2/mutations/exportMessagesFromInbox/useExportMessagesFromInbox';
+import { useGetAgents } from '@hanzo/node/v2/queries/getAgents/useGetAgents';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
+import { useGetProviderFromJob } from '@hanzo/node/v2/queries/getProviderFromJob/useGetProviderFromJob';
 import {
   Accordion,
   AccordionContent,
@@ -28,14 +28,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import {
   AgentIcon,
   ScheduledTasksIcon,
   ToolsIcon,
-} from '@hanzo_network/hanzo-ui/assets';
-import { formatText } from '@hanzo_network/hanzo-ui/helpers';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui/assets';
+import { formatText } from '@hanzo/ui/helpers';
+import { cn } from '@hanzo/ui/utils';
 import { save } from '@tauri-apps/plugin-dialog';
 import * as fs from '@tauri-apps/plugin-fs';
 import { BaseDirectory } from '@tauri-apps/plugin-fs';

@@ -1,16 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   type ToolArgs,
   ToolStatusType,
-} from '@hanzo_network/hanzo-message-ts/api/general/types';
+} from '@hanzo/message/api/general/types';
 
 import {
   type AssistantMessage,
   type FormattedMessage,
   type TextStatus,
   type ToolCall,
-} from '@hanzo_network/hanzo-node-state/v2/queries/getChatConversation/types';
+} from '@hanzo/node/v2/queries/getChatConversation/types';
 import {
   Accordion,
   AccordionContent,
@@ -29,14 +29,14 @@ import {
   TooltipPortal,
   TooltipTrigger,
   PrettyJsonPrint,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import {
   AIAgentIcon,
   ReasoningIcon,
   ToolsIcon,
-} from '@hanzo_network/hanzo-ui/assets';
-import { formatText } from '@hanzo_network/hanzo-ui/helpers';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui/assets';
+import { formatText } from '@hanzo/ui/helpers';
+import { cn } from '@hanzo/ui/utils';
 
 import equal from 'fast-deep-equal';
 import { AnimatePresence, motion } from 'framer-motion';

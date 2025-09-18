@@ -1,25 +1,25 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PlusCircledIcon, StopIcon } from '@radix-ui/react-icons';
 import validator from '@rjsf/validator-ajv8';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   extractJobIdFromInbox,
   isJobInbox,
-} from '@hanzo_network/hanzo-message-ts/utils/inbox_name_handler';
+} from '@hanzo/message/utils/inbox_name_handler';
 import {
   type ChatMessageFormSchema,
   chatMessageFormSchema,
-} from '@hanzo_network/hanzo-node-state/forms/chat/chat-message';
-import { DEFAULT_CHAT_CONFIG } from '@hanzo_network/hanzo-node-state/v2/constants';
-import { useSendMessageToJob } from '@hanzo_network/hanzo-node-state/v2/mutations/sendMessageToJob/useSendMessageToJob';
-import { useStopGeneratingLLM } from '@hanzo_network/hanzo-node-state/v2/mutations/stopGeneratingLLM/useStopGeneratingLLM';
-import { useGetAgents } from '@hanzo_network/hanzo-node-state/v2/queries/getAgents/useGetAgents';
-import { useGetChatConfig } from '@hanzo_network/hanzo-node-state/v2/queries/getChatConfig/useGetChatConfig';
-import { useGetJobFolderName } from '@hanzo_network/hanzo-node-state/v2/queries/getJobFolderName/useGetJobFolderName';
-import { useGetNodeStorageLocation } from '@hanzo_network/hanzo-node-state/v2/queries/getNodeStorageLocation/useGetNodeStorageLocation';
-import { useGetProviderFromJob } from '@hanzo_network/hanzo-node-state/v2/queries/getProviderFromJob/useGetProviderFromJob';
-import { useGetTools } from '@hanzo_network/hanzo-node-state/v2/queries/getToolsList/useGetToolsList';
-import { useGetSearchTools } from '@hanzo_network/hanzo-node-state/v2/queries/getToolsSearch/useGetToolsSearch';
+} from '@hanzo/node/forms/chat/chat-message';
+import { DEFAULT_CHAT_CONFIG } from '@hanzo/node/v2/constants';
+import { useSendMessageToJob } from '@hanzo/node/v2/mutations/sendMessageToJob/useSendMessageToJob';
+import { useStopGeneratingLLM } from '@hanzo/node/v2/mutations/stopGeneratingLLM/useStopGeneratingLLM';
+import { useGetAgents } from '@hanzo/node/v2/queries/getAgents/useGetAgents';
+import { useGetChatConfig } from '@hanzo/node/v2/queries/getChatConfig/useGetChatConfig';
+import { useGetJobFolderName } from '@hanzo/node/v2/queries/getJobFolderName/useGetJobFolderName';
+import { useGetNodeStorageLocation } from '@hanzo/node/v2/queries/getNodeStorageLocation/useGetNodeStorageLocation';
+import { useGetProviderFromJob } from '@hanzo/node/v2/queries/getProviderFromJob/useGetProviderFromJob';
+import { useGetTools } from '@hanzo/node/v2/queries/getToolsList/useGetToolsList';
+import { useGetSearchTools } from '@hanzo/node/v2/queries/getToolsSearch/useGetToolsSearch';
 import {
   Button,
   buttonVariants,
@@ -43,17 +43,17 @@ import {
   TooltipContent,
   TooltipPortal,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import {
   fileIconMap,
   FileTypeIcon,
   PlusIcon,
   SendIcon,
   ToolsIcon,
-} from '@hanzo_network/hanzo-ui/assets';
-import { formatText, getFileExt } from '@hanzo_network/hanzo-ui/helpers';
-import { useDebounce } from '@hanzo_network/hanzo-ui/hooks';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui/assets';
+import { formatText, getFileExt } from '@hanzo/ui/helpers';
+import { useDebounce } from '@hanzo/ui/hooks';
+import { cn } from '@hanzo/ui/utils';
 import { invoke } from '@tauri-apps/api/core';
 import equal from 'fast-deep-equal';
 import { partial } from 'filesize';

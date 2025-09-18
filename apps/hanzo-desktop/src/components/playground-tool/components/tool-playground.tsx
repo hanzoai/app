@@ -1,19 +1,19 @@
-import { type ToolMetadata } from '@hanzo_network/hanzo-message-ts/api/tools/types';
-import { useCopyToolAssets } from '@hanzo_network/hanzo-node-state/v2/mutations/copyToolAssets/useCopyToolAssets';
+import { type ToolMetadata } from '@hanzo/message/api/tools/types';
+import { useCopyToolAssets } from '@hanzo/node/v2/mutations/copyToolAssets/useCopyToolAssets';
 import {
   Form,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import {
   MetadataIcon,
   PythonIcon,
   TypeScriptIcon,
   UnknownLanguageIcon,
-} from '@hanzo_network/hanzo-ui/assets';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui/assets';
+import { cn } from '@hanzo/ui/utils';
 import { LoaderIcon } from 'lucide-react';
 import { useCallback, useEffect } from 'react';
 import { useParams } from 'react-router';

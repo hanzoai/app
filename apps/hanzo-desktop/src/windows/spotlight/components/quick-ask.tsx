@@ -1,21 +1,21 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { type HanzoToolHeader } from '@hanzo_network/hanzo-message-ts/api/tools/types';
+import { useTranslation } from '@hanzo/i18n';
+import { type HanzoToolHeader } from '@hanzo/message/api/tools/types';
 import {
   buildInboxIdFromJobId,
   extractJobIdFromInbox,
-} from '@hanzo_network/hanzo-message-ts/utils/inbox_name_handler';
+} from '@hanzo/message/utils/inbox_name_handler';
 import {
   type CreateJobFormSchema,
   createJobFormSchema,
-} from '@hanzo_network/hanzo-node-state/forms/chat/create-job';
-import { DEFAULT_CHAT_CONFIG } from '@hanzo_network/hanzo-node-state/v2/constants';
-import { useCreateJob } from '@hanzo_network/hanzo-node-state/v2/mutations/createJob/useCreateJob';
-import { useRetryMessage } from '@hanzo_network/hanzo-node-state/v2/mutations/retryMessage/useRetryMessage';
-import { useSendMessageToJob } from '@hanzo_network/hanzo-node-state/v2/mutations/sendMessageToJob/useSendMessageToJob';
-import { useGetAgents } from '@hanzo_network/hanzo-node-state/v2/queries/getAgents/useGetAgents';
-import { useGetLLMProviders } from '@hanzo_network/hanzo-node-state/v2/queries/getLLMProviders/useGetLLMProviders';
-import { useGetTools } from '@hanzo_network/hanzo-node-state/v2/queries/getToolsList/useGetToolsList';
+} from '@hanzo/node/forms/chat/create-job';
+import { DEFAULT_CHAT_CONFIG } from '@hanzo/node/v2/constants';
+import { useCreateJob } from '@hanzo/node/v2/mutations/createJob/useCreateJob';
+import { useRetryMessage } from '@hanzo/node/v2/mutations/retryMessage/useRetryMessage';
+import { useSendMessageToJob } from '@hanzo/node/v2/mutations/sendMessageToJob/useSendMessageToJob';
+import { useGetAgents } from '@hanzo/node/v2/queries/getAgents/useGetAgents';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
+import { useGetTools } from '@hanzo/node/v2/queries/getToolsList/useGetToolsList';
 import {
   Button,
   ChatInputArea,
@@ -31,10 +31,10 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
-import { SendIcon, ToolsIcon } from '@hanzo_network/hanzo-ui/assets';
-import { formatText } from '@hanzo_network/hanzo-ui/helpers';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { SendIcon, ToolsIcon } from '@hanzo/ui/assets';
+import { formatText } from '@hanzo/ui/helpers';
+import { cn } from '@hanzo/ui/utils';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 

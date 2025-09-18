@@ -1,8 +1,8 @@
 import './globals.css';
 
 import * as Babel from '@babel/standalone';
-import * as shadcnComponents from '@hanzo_network/hanzo-artifacts';
-import { DotPattern } from '@hanzo_network/hanzo-ui';
+import * as shadcnComponents from '@hanzo/artifacts';
+import { DotPattern } from '@hanzo/ui';
 import { Loader2 } from 'lucide-react';
 import * as lucideReactIcons from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';

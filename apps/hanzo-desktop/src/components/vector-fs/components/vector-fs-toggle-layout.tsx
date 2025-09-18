@@ -1,4 +1,4 @@
-import { ToggleGroup, ToggleGroupItem } from '@hanzo_network/hanzo-ui';
+import { ToggleGroup, ToggleGroupItem } from '@hanzo/ui';
 import { LayoutGrid, List } from 'lucide-react';
 
 import { useVectorFsStore, VectorFSLayout } from '../context/vector-fs-context';

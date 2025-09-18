@@ -1,6 +1,6 @@
 import { DotsVerticalIcon } from '@radix-ui/react-icons';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { type DirectoryContent } from '@hanzo_network/hanzo-message-ts/api/vector-fs/types';
+import { useTranslation } from '@hanzo/i18n';
+import { type DirectoryContent } from '@hanzo/message/api/vector-fs/types';
 import {
   buttonVariants,
   Checkbox,
@@ -14,17 +14,17 @@ import {
   TooltipPortal,
   TooltipProvider,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import {
   CreateAIIcon,
   EmbeddingsGeneratedIcon,
   FileTypeIcon,
-} from '@hanzo_network/hanzo-ui/assets';
+} from '@hanzo/ui/assets';
 import {
   formatDateToUSLocaleString,
   getFileExt,
-} from '@hanzo_network/hanzo-ui/helpers';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui/helpers';
+import { cn } from '@hanzo/ui/utils';
 import { partial } from 'filesize';
 import { CopyIcon, Edit2Icon, FileInputIcon, TrashIcon } from 'lucide-react';
 import React from 'react';

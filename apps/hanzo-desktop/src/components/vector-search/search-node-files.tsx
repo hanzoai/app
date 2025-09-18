@@ -1,12 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { type HanzoPath } from '@hanzo_network/hanzo-message-ts/api/jobs/types';
-import { retrieveVectorResource } from '@hanzo_network/hanzo-message-ts/api/vector-fs/index';
+import { useTranslation } from '@hanzo/i18n';
+import { type HanzoPath } from '@hanzo/message/api/jobs/types';
+import { retrieveVectorResource } from '@hanzo/message/api/vector-fs/index';
 import {
   type SearchVectorFormSchema,
   searchVectorFormSchema,
-} from '@hanzo_network/hanzo-node-state/forms/vector-fs/vector-search';
-import { useGetVRSeachSimplified } from '@hanzo_network/hanzo-node-state/v2/queries/getVRSearchSimplified/useGetSearchVRItems';
+} from '@hanzo/node/forms/vector-fs/vector-search';
+import { useGetVRSeachSimplified } from '@hanzo/node/v2/queries/getVRSearchSimplified/useGetSearchVRItems';
 import {
   Badge,
   Button,
@@ -27,9 +27,9 @@ import {
   TooltipPortal,
   TooltipProvider,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
-import { FileTypeIcon } from '@hanzo_network/hanzo-ui/assets';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { FileTypeIcon } from '@hanzo/ui/assets';
+import { cn } from '@hanzo/ui/utils';
 import { motion } from 'framer-motion';
 import { SearchIcon } from 'lucide-react';
 import { Checkbox } from 'primereact/checkbox';

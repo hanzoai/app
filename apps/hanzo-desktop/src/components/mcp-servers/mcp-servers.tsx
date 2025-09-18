@@ -1,8 +1,8 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { McpServerType } from '@hanzo_network/hanzo-message-ts/api/mcp-servers/types';
-import { type ImportMCPServerFromGithubURLOutput } from '@hanzo_network/hanzo-node-state/v2/mutations/importMCPServerFromGithubURL/types';
-import { useSetEnableMcpServer } from '@hanzo_network/hanzo-node-state/v2/mutations/setEnableMcpServer/useSetEnableMcpServer';
-import { useGetMcpServers } from '@hanzo_network/hanzo-node-state/v2/queries/getMcpServers/useGetMcpServers';
+import { useTranslation } from '@hanzo/i18n';
+import { McpServerType } from '@hanzo/message/api/mcp-servers/types';
+import { type ImportMCPServerFromGithubURLOutput } from '@hanzo/node/v2/mutations/importMCPServerFromGithubURL/types';
+import { useSetEnableMcpServer } from '@hanzo/node/v2/mutations/setEnableMcpServer/useSetEnableMcpServer';
+import { useGetMcpServers } from '@hanzo/node/v2/queries/getMcpServers/useGetMcpServers';
 import {
   Button,
   DropdownMenu,
@@ -15,7 +15,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';

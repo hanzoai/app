@@ -3,14 +3,14 @@ import {
   type LocaleMode,
   localeOptions,
   useTranslation,
-} from '@hanzo_network/hanzo-i18n';
-import { isHanzoIdentityLocalhost } from '@hanzo_network/hanzo-message-ts/utils/inbox_name_handler';
-import { useSetMaxChatIterations } from '@hanzo_network/hanzo-node-state/v2/mutations/setMaxChatIterations/useSetMaxChatIterations';
-import { useUpdateNodeName } from '@hanzo_network/hanzo-node-state/v2/mutations/updateNodeName/useUpdateNodeName';
-import { useGetHealth } from '@hanzo_network/hanzo-node-state/v2/queries/getHealth/useGetHealth';
-import { useGetLLMProviders } from '@hanzo_network/hanzo-node-state/v2/queries/getLLMProviders/useGetLLMProviders';
-import { useGetPreferences } from '@hanzo_network/hanzo-node-state/v2/queries/getPreferences/useGetPreferences';
-import { useGetHanzoFreeModelQuota } from '@hanzo_network/hanzo-node-state/v2/queries/getHanzoFreeModelQuota/useGetHanzoFreeModelQuota';
+} from '@hanzo/i18n';
+import { isHanzoIdentityLocalhost } from '@hanzo/message/utils/inbox_name_handler';
+import { useSetMaxChatIterations } from '@hanzo/node/v2/mutations/setMaxChatIterations/useSetMaxChatIterations';
+import { useUpdateNodeName } from '@hanzo/node/v2/mutations/updateNodeName/useUpdateNodeName';
+import { useGetHealth } from '@hanzo/node/v2/queries/getHealth/useGetHealth';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
+import { useGetPreferences } from '@hanzo/node/v2/queries/getPreferences/useGetPreferences';
+import { useGetHanzoFreeModelQuota } from '@hanzo/node/v2/queries/getHanzoFreeModelQuota/useGetHanzoFreeModelQuota';
 import {
   Badge,
   Button,
@@ -35,9 +35,9 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
-import { useDebounce } from '@hanzo_network/hanzo-ui/hooks';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { useDebounce } from '@hanzo/ui/hooks';
+import { cn } from '@hanzo/ui/utils';
 import { getVersion } from '@tauri-apps/api/app';
 import { formatDuration, intervalToDuration } from 'date-fns';
 import { motion } from 'framer-motion';

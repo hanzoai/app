@@ -1,4 +1,4 @@
-import { useGetTools } from '@hanzo_network/hanzo-node-state/v2/queries/getToolsList/useGetToolsList';
+import { useGetTools } from '@hanzo/node/v2/queries/getToolsList/useGetToolsList';
 import {
   Badge,
   FormControl,
@@ -13,10 +13,10 @@ import {
   TooltipPortal,
   TooltipProvider,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
-import { ToolsIcon } from '@hanzo_network/hanzo-ui/assets';
-import { formatText } from '@hanzo_network/hanzo-ui/helpers';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { ToolsIcon } from '@hanzo/ui/assets';
+import { formatText } from '@hanzo/ui/helpers';
+import { cn } from '@hanzo/ui/utils';
 import { BoltIcon } from 'lucide-react';
 import { InfoCircleIcon } from 'primereact/icons/infocircle';
 import { useFormContext } from 'react-hook-form';

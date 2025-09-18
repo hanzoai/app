@@ -1,4 +1,4 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -6,8 +6,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   buttonVariants,
-} from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 import { CheckCircle, ExternalLink, Loader2 } from 'lucide-react';
 import React from 'react';
 

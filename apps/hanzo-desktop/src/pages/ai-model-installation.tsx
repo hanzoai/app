@@ -1,7 +1,7 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { ModelPrefix } from '@hanzo_network/hanzo-message-ts/api/jobs/index';
-import { Models } from '@hanzo_network/hanzo-node-state/lib/utils/models';
-import { useGetLLMProviders } from '@hanzo_network/hanzo-node-state/v2/queries/getLLMProviders/useGetLLMProviders';
+import { useTranslation } from '@hanzo/i18n';
+import { ModelPrefix } from '@hanzo/message/api/jobs/index';
+import { Models } from '@hanzo/node/lib/utils/models';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
 import {
   Button,
   buttonVariants,
@@ -13,8 +13,8 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ArrowRight, Plus, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';

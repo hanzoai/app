@@ -1,14 +1,14 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { useCopyFsItem } from '@hanzo_network/hanzo-node-state/v2/mutations/copyFsItem/useCopyFsItem';
-import { useMoveFsItem } from '@hanzo_network/hanzo-node-state/v2/mutations/moveFsItem/useMoveFsItem';
-import { useRemoveFsItem } from '@hanzo_network/hanzo-node-state/v2/mutations/removeFsItem/useRemoveFsItem';
-import { useGetDownloadFile } from '@hanzo_network/hanzo-node-state/v2/queries/getDownloadFile/useGetDownloadFile';
+import { useTranslation } from '@hanzo/i18n';
+import { useCopyFsItem } from '@hanzo/node/v2/mutations/copyFsItem/useCopyFsItem';
+import { useMoveFsItem } from '@hanzo/node/v2/mutations/moveFsItem/useMoveFsItem';
+import { useRemoveFsItem } from '@hanzo/node/v2/mutations/removeFsItem/useRemoveFsItem';
+import { useGetDownloadFile } from '@hanzo/node/v2/queries/getDownloadFile/useGetDownloadFile';
 import {
   Button,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import React, { useEffect } from 'react';
 import { toast } from 'sonner';
 

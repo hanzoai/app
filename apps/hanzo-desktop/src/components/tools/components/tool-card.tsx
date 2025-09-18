@@ -1,7 +1,7 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { type HanzoToolHeader } from '@hanzo_network/hanzo-message-ts/api/tools/types';
-import { FunctionKeyV2 } from '@hanzo_network/hanzo-node-state/v2/constants';
-import { useToggleEnableTool } from '@hanzo_network/hanzo-node-state/v2/mutations/toggleEnableTool/useToggleEnableTool';
+import { useTranslation } from '@hanzo/i18n';
+import { type HanzoToolHeader } from '@hanzo/message/api/tools/types';
+import { FunctionKeyV2 } from '@hanzo/node/v2/constants';
+import { useToggleEnableTool } from '@hanzo/node/v2/mutations/toggleEnableTool/useToggleEnableTool';
 import {
   Badge,
   buttonVariants,
@@ -10,13 +10,13 @@ import {
   TooltipContent,
   TooltipPortal,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 
 import {
   formatText,
   getVersionFromTool,
-} from '@hanzo_network/hanzo-ui/helpers';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui/helpers';
+import { cn } from '@hanzo/ui/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { BoltIcon, PlayCircle } from 'lucide-react';
 import { useMemo } from 'react';

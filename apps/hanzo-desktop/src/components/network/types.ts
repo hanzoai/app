@@ -1,4 +1,4 @@
-import { type NetworkToolWithOffering } from '@hanzo_network/hanzo-message-ts/api/tools/types';
+import { type NetworkToolWithOffering } from '@hanzo/message/api/tools/types';
 
 export type FormattedNetworkAgent = {
   id: string;

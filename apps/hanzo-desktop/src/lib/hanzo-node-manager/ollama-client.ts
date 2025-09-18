@@ -1,4 +1,4 @@
-import { FunctionKey } from '@hanzo_network/hanzo-node-state/lib/constants';
+import { FunctionKey } from '@hanzo/node/lib/constants';
 import {
   type QueryObserverOptions,
   useMutation,

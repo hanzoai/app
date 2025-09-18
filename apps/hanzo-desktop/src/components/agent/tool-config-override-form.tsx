@@ -3,8 +3,8 @@ import validator from '@rjsf/validator-ajv8';
 import {
   type HanzoTool,
   type ToolConfigBase,
-} from '@hanzo_network/hanzo-message-ts/api/tools/types';
-import { useGetTool } from '@hanzo_network/hanzo-node-state/v2/queries/getTool/useGetTool';
+} from '@hanzo/message/api/tools/types';
+import { useGetTool } from '@hanzo/node/v2/queries/getTool/useGetTool';
 import {
   Button,
   generateTemplates,
@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import { Trash } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 

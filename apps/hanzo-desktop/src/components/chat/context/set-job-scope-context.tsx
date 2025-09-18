@@ -1,4 +1,4 @@
-import { type HanzoPath } from '@hanzo_network/hanzo-message-ts/api/jobs/types';
+import { type HanzoPath } from '@hanzo/message/api/jobs/types';
 import { type TreeCheckboxSelectionKeys } from 'primereact/tree';
 import React, { createContext, useContext, useState } from 'react';
 import { createStore, useStore } from 'zustand';

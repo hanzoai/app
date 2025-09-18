@@ -1,12 +1,12 @@
 import { DialogClose } from '@radix-ui/react-dialog';
 import { DotsVerticalIcon } from '@radix-ui/react-icons';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { type JobConfig } from '@hanzo_network/hanzo-message-ts/api/jobs/types';
-import { useRemoveRecurringTask } from '@hanzo_network/hanzo-node-state/v2/mutations/removeRecurringTask/useRemoveRecurringTask';
-import { useRunTaskNow } from '@hanzo_network/hanzo-node-state/v2/mutations/runTaskNow/useRunTaskNow';
-import { useUpdateRecurringTask } from '@hanzo_network/hanzo-node-state/v2/mutations/updateRecurringTask/useUpdateRecurringTask';
-import { useGetRecurringTaskNextExecutionTime } from '@hanzo_network/hanzo-node-state/v2/queries/getRecurringTaskNextExecutionTime/useGetRecurringTaskNextExecutionTime';
-import { useGetRecurringTasks } from '@hanzo_network/hanzo-node-state/v2/queries/getRecurringTasks/useGetRecurringTasks';
+import { useTranslation } from '@hanzo/i18n';
+import { type JobConfig } from '@hanzo/message/api/jobs/types';
+import { useRemoveRecurringTask } from '@hanzo/node/v2/mutations/removeRecurringTask/useRemoveRecurringTask';
+import { useRunTaskNow } from '@hanzo/node/v2/mutations/runTaskNow/useRunTaskNow';
+import { useUpdateRecurringTask } from '@hanzo/node/v2/mutations/updateRecurringTask/useUpdateRecurringTask';
+import { useGetRecurringTaskNextExecutionTime } from '@hanzo/node/v2/queries/getRecurringTaskNextExecutionTime/useGetRecurringTaskNextExecutionTime';
+import { useGetRecurringTasks } from '@hanzo/node/v2/queries/getRecurringTasks/useGetRecurringTasks';
 import {
   Button,
   buttonVariants,
@@ -25,12 +25,12 @@ import {
   PopoverTrigger,
   Skeleton,
   Switch,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import {
   ScheduledTasksComingSoonIcon,
   ScheduledTasksIcon,
-} from '@hanzo_network/hanzo-ui/assets';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui/assets';
+import { cn } from '@hanzo/ui/utils';
 import cronstrue from 'cronstrue';
 import { formatDistance } from 'date-fns';
 import {

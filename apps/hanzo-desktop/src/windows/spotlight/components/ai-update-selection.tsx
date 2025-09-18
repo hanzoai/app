@@ -1,11 +1,11 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { extractJobIdFromInbox } from '@hanzo_network/hanzo-message-ts/utils/inbox_name_handler';
-import { useUpdateAgentInJob } from '@hanzo_network/hanzo-node-state/v2/mutations/updateAgentInJob/useUpdateAgentInJob';
-import { useUpdateChatConfig } from '@hanzo_network/hanzo-node-state/v2/mutations/updateChatConfig/useUpdateChatConfig';
-import { useGetAgents } from '@hanzo_network/hanzo-node-state/v2/queries/getAgents/useGetAgents';
-import { useGetChatConfig } from '@hanzo_network/hanzo-node-state/v2/queries/getChatConfig/useGetChatConfig';
-import { useGetLLMProviders } from '@hanzo_network/hanzo-node-state/v2/queries/getLLMProviders/useGetLLMProviders';
-import { useGetProviderFromJob } from '@hanzo_network/hanzo-node-state/v2/queries/getProviderFromJob/useGetProviderFromJob';
+import { useTranslation } from '@hanzo/i18n';
+import { extractJobIdFromInbox } from '@hanzo/message/utils/inbox_name_handler';
+import { useUpdateAgentInJob } from '@hanzo/node/v2/mutations/updateAgentInJob/useUpdateAgentInJob';
+import { useUpdateChatConfig } from '@hanzo/node/v2/mutations/updateChatConfig/useUpdateChatConfig';
+import { useGetAgents } from '@hanzo/node/v2/queries/getAgents/useGetAgents';
+import { useGetChatConfig } from '@hanzo/node/v2/queries/getChatConfig/useGetChatConfig';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
+import { useGetProviderFromJob } from '@hanzo/node/v2/queries/getProviderFromJob/useGetProviderFromJob';
 import {
   Command,
   CommandEmpty,
@@ -17,10 +17,10 @@ import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-} from '@hanzo_network/hanzo-ui';
-import { AIAgentIcon } from '@hanzo_network/hanzo-ui/assets';
-import { formatText } from '@hanzo_network/hanzo-ui/helpers';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { AIAgentIcon } from '@hanzo/ui/assets';
+import { formatText } from '@hanzo/ui/helpers';
+import { cn } from '@hanzo/ui/utils';
 import { BotIcon, ChevronDownIcon } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 import { toast } from 'sonner';

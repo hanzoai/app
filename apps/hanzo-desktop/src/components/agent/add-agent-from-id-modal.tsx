@@ -1,4 +1,4 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   Button,
   Dialog,
@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
   Input,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import { useState, useEffect } from 'react';
 
 export default function AddAgentFromIdModal() {

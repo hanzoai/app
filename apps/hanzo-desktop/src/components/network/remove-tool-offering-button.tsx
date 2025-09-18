@@ -1,6 +1,6 @@
 import { DialogClose } from '@radix-ui/react-dialog';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { useRemoveToolOffering } from '@hanzo_network/hanzo-node-state/v2/mutations/removeToolOffering/useRemoveToolOffering';
+import { useTranslation } from '@hanzo/i18n';
+import { useRemoveToolOffering } from '@hanzo/node/v2/mutations/removeToolOffering/useRemoveToolOffering';
 import {
   Button,
   buttonVariants,
@@ -13,8 +13,8 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 
 import { EyeOffIcon } from 'lucide-react';
 import { useState } from 'react';

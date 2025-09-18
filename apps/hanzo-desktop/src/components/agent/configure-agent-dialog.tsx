@@ -1,10 +1,10 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   type ToolOffering,
   type ToolUsageType,
-} from '@hanzo_network/hanzo-message-ts/api/tools/types';
-import { useSetToolOffering } from '@hanzo_network/hanzo-node-state/v2/mutations/setToolOffering/useSetToolOffering';
-import { type FormattedNetworkAgent } from '@hanzo_network/hanzo-node-state/v2/queries/getNetworkAgents/types';
+} from '@hanzo/message/api/tools/types';
+import { useSetToolOffering } from '@hanzo/node/v2/mutations/setToolOffering/useSetToolOffering';
+import { type FormattedNetworkAgent } from '@hanzo/node/v2/queries/getNetworkAgents/types';
 import { useGetWalletList } from '@hanzonet/wallet-hooks';
 import {
   Dialog,
@@ -20,7 +20,7 @@ import {
   RadioGroup,
   Label,
   RadioGroupItem,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 
 import { AnimatePresence, motion } from 'framer-motion';
 import { Settings } from 'lucide-react';

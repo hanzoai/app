@@ -1,7 +1,7 @@
 import { DialogClose } from '@radix-ui/react-dialog';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { FunctionKeyV2 } from '@hanzo_network/hanzo-node-state/v2/constants';
-import { useRemoveTool } from '@hanzo_network/hanzo-node-state/v2/mutations/removeTool/useRemoveTool';
+import { useTranslation } from '@hanzo/i18n';
+import { FunctionKeyV2 } from '@hanzo/node/v2/constants';
+import { useRemoveTool } from '@hanzo/node/v2/mutations/removeTool/useRemoveTool';
 import {
   Button,
   buttonVariants,
@@ -14,8 +14,8 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
 import { useState } from 'react';

@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { DialogClose } from '@radix-ui/react-dialog';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { useSubmitFeedback } from '@hanzo_network/hanzo-node-state/v2/mutations/submitFeedback/useSubmitFeedback';
+import { useTranslation } from '@hanzo/i18n';
+import { useSubmitFeedback } from '@hanzo/node/v2/mutations/submitFeedback/useSubmitFeedback';
 import {
   Button,
   type ButtonProps,
@@ -17,7 +17,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import { MessageSquare, XIcon } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';

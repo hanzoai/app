@@ -1,18 +1,18 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   type ToolArgs,
   ToolStatusType,
-} from '@hanzo_network/hanzo-message-ts/api/general/types';
-import { type MessageTrace } from '@hanzo_network/hanzo-message-ts/api/jobs/types';
-import { extractJobIdFromInbox } from '@hanzo_network/hanzo-message-ts/utils';
+} from '@hanzo/message/api/general/types';
+import { type MessageTrace } from '@hanzo/message/api/jobs/types';
+import { extractJobIdFromInbox } from '@hanzo/message/utils';
 import {
   type AssistantMessage,
   type FormattedMessage,
   type TextStatus,
-} from '@hanzo_network/hanzo-node-state/v2/queries/getChatConversation/types';
-import { useGetMessageTraces } from '@hanzo_network/hanzo-node-state/v2/queries/getMessageTraces/useGetMessageTraces';
-import { useGetNetworkAgents } from '@hanzo_network/hanzo-node-state/v2/queries/getNetworkAgents/useGetNetworkAgents';
+} from '@hanzo/node/v2/queries/getChatConversation/types';
+import { useGetMessageTraces } from '@hanzo/node/v2/queries/getMessageTraces/useGetMessageTraces';
+import { useGetNetworkAgents } from '@hanzo/node/v2/queries/getNetworkAgents/useGetNetworkAgents';
 import {
   Accordion,
   AccordionContent,
@@ -38,7 +38,7 @@ import {
   TooltipPortal,
   TooltipTrigger,
   PrettyJsonPrint,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import {
   AIAgentIcon,
   AisIcon,
@@ -46,9 +46,9 @@ import {
   ReasoningIcon,
   ToolsIcon,
   TracingIcon,
-} from '@hanzo_network/hanzo-ui/assets';
-import { formatText } from '@hanzo_network/hanzo-ui/helpers';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui/assets';
+import { formatText } from '@hanzo/ui/helpers';
+import { cn } from '@hanzo/ui/utils';
 import { format } from 'date-fns';
 import equal from 'fast-deep-equal';
 import { AnimatePresence, motion } from 'framer-motion';

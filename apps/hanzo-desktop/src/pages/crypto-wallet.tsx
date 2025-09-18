@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { DialogClose } from '@radix-ui/react-dialog';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   NetworkIdentifier,
   WalletRole,
@@ -48,15 +48,15 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import {
   AddCryptoWalletIcon,
   EthereumIcon,
   USDCIcon,
-} from '@hanzo_network/hanzo-ui/assets';
-import { formatText } from '@hanzo_network/hanzo-ui/helpers';
-import { useCopyClipboard, useMeasure } from '@hanzo_network/hanzo-ui/hooks';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui/assets';
+import { formatText } from '@hanzo/ui/helpers';
+import { useCopyClipboard, useMeasure } from '@hanzo/ui/hooks';
+import { cn } from '@hanzo/ui/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft,

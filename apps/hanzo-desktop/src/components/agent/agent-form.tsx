@@ -2,41 +2,41 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { DialogClose } from '@radix-ui/react-dialog';
 import { PlusIcon } from '@radix-ui/react-icons';
 import * as SelectPrimitive from '@radix-ui/react-select'; // <-- Import SelectPrimitive
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   type HanzoTool,
   type HanzoToolHeader,
   type HanzoToolType,
-} from '@hanzo_network/hanzo-message-ts/api/tools/types';
+} from '@hanzo/message/api/tools/types';
 import {
   buildInboxIdFromJobId,
   extractJobIdFromInbox,
-} from '@hanzo_network/hanzo-message-ts/utils/inbox_name_handler';
+} from '@hanzo/message/utils/inbox_name_handler';
 import {
   type UploadVRFilesFormSchema,
   uploadVRFilesFormSchema,
-} from '@hanzo_network/hanzo-node-state/forms/vector-fs/folder';
-import { transformDataToTreeNodes } from '@hanzo_network/hanzo-node-state/lib/utils/files';
+} from '@hanzo/node/forms/vector-fs/folder';
+import { transformDataToTreeNodes } from '@hanzo/node/lib/utils/files';
 import {
   DEFAULT_CHAT_CONFIG,
   FunctionKeyV2,
-} from '@hanzo_network/hanzo-node-state/v2/constants';
-import { useCreateAgent } from '@hanzo_network/hanzo-node-state/v2/mutations/createAgent/useCreateAgent';
-import { useCreateJob } from '@hanzo_network/hanzo-node-state/v2/mutations/createJob/useCreateJob';
-import { useCreateRecurringTask } from '@hanzo_network/hanzo-node-state/v2/mutations/createRecurringTask/useCreateRecurringTask';
-import { useRemoveRecurringTask } from '@hanzo_network/hanzo-node-state/v2/mutations/removeRecurringTask/useRemoveRecurringTask';
-import { useRetryMessage } from '@hanzo_network/hanzo-node-state/v2/mutations/retryMessage/useRetryMessage';
-import { useSendMessageToJob } from '@hanzo_network/hanzo-node-state/v2/mutations/sendMessageToJob/useSendMessageToJob';
-import { useUpdateAgent } from '@hanzo_network/hanzo-node-state/v2/mutations/updateAgent/useUpdateAgent';
-import { useUploadVRFiles } from '@hanzo_network/hanzo-node-state/v2/mutations/uploadVRFiles/useUploadVRFiles';
-import { useGetAgent } from '@hanzo_network/hanzo-node-state/v2/queries/getAgent/useGetAgent';
-import { useGetListDirectoryContents } from '@hanzo_network/hanzo-node-state/v2/queries/getDirectoryContents/useGetListDirectoryContents';
-import { useGetAgentInboxes } from '@hanzo_network/hanzo-node-state/v2/queries/getInboxes/useGetAgentInboxes';
-import { useGetLLMProviders } from '@hanzo_network/hanzo-node-state/v2/queries/getLLMProviders/useGetLLMProviders';
-import { useGetSearchDirectoryContents } from '@hanzo_network/hanzo-node-state/v2/queries/getSearchDirectoryContents/useGetSearchDirectoryContents';
-import { useGetTool } from '@hanzo_network/hanzo-node-state/v2/queries/getTool/useGetTool';
-import { useGetTools } from '@hanzo_network/hanzo-node-state/v2/queries/getToolsList/useGetToolsList';
-import { useGetSearchTools } from '@hanzo_network/hanzo-node-state/v2/queries/getToolsSearch/useGetToolsSearch';
+} from '@hanzo/node/v2/constants';
+import { useCreateAgent } from '@hanzo/node/v2/mutations/createAgent/useCreateAgent';
+import { useCreateJob } from '@hanzo/node/v2/mutations/createJob/useCreateJob';
+import { useCreateRecurringTask } from '@hanzo/node/v2/mutations/createRecurringTask/useCreateRecurringTask';
+import { useRemoveRecurringTask } from '@hanzo/node/v2/mutations/removeRecurringTask/useRemoveRecurringTask';
+import { useRetryMessage } from '@hanzo/node/v2/mutations/retryMessage/useRetryMessage';
+import { useSendMessageToJob } from '@hanzo/node/v2/mutations/sendMessageToJob/useSendMessageToJob';
+import { useUpdateAgent } from '@hanzo/node/v2/mutations/updateAgent/useUpdateAgent';
+import { useUploadVRFiles } from '@hanzo/node/v2/mutations/uploadVRFiles/useUploadVRFiles';
+import { useGetAgent } from '@hanzo/node/v2/queries/getAgent/useGetAgent';
+import { useGetListDirectoryContents } from '@hanzo/node/v2/queries/getDirectoryContents/useGetListDirectoryContents';
+import { useGetAgentInboxes } from '@hanzo/node/v2/queries/getInboxes/useGetAgentInboxes';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
+import { useGetSearchDirectoryContents } from '@hanzo/node/v2/queries/getSearchDirectoryContents/useGetSearchDirectoryContents';
+import { useGetTool } from '@hanzo/node/v2/queries/getTool/useGetTool';
+import { useGetTools } from '@hanzo/node/v2/queries/getToolsList/useGetToolsList';
+import { useGetSearchTools } from '@hanzo/node/v2/queries/getToolsSearch/useGetToolsSearch';
 import {
   Badge,
   Button,
@@ -86,20 +86,20 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import {
   DirectoryTypeIcon,
   FileTypeIcon,
   ScheduledTasksIcon,
   SendIcon,
-} from '@hanzo_network/hanzo-ui/assets';
+} from '@hanzo/ui/assets';
 import {
   formatDateToLocaleStringWithTime,
   formatText,
   getFileExt,
-} from '@hanzo_network/hanzo-ui/helpers';
-import { useDebounce } from '@hanzo_network/hanzo-ui/hooks';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui/helpers';
+import { useDebounce } from '@hanzo/ui/hooks';
+import { cn } from '@hanzo/ui/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import cronstrue from 'cronstrue';
 import {

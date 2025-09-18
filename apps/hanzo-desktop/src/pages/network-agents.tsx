@@ -1,10 +1,10 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { useAddNetworkTool } from '@hanzo_network/hanzo-node-state/v2/mutations/addNetworkTool/useAddNetworkTool';
-import { useGetAgents } from '@hanzo_network/hanzo-node-state/v2/queries/getAgents/useGetAgents';
-import { useGetInstalledNetworkTools } from '@hanzo_network/hanzo-node-state/v2/queries/getInstalledNetworkTools/useGetInstalledNetworkTools';
-import { type FormattedNetworkAgent } from '@hanzo_network/hanzo-node-state/v2/queries/getNetworkAgents/types';
-import { useGetNetworkAgents } from '@hanzo_network/hanzo-node-state/v2/queries/getNetworkAgents/useGetNetworkAgents';
-import { useGetToolsWithOfferings } from '@hanzo_network/hanzo-node-state/v2/queries/getToolsWithOfferings/useGetToolsWithOfferings';
+import { useTranslation } from '@hanzo/i18n';
+import { useAddNetworkTool } from '@hanzo/node/v2/mutations/addNetworkTool/useAddNetworkTool';
+import { useGetAgents } from '@hanzo/node/v2/queries/getAgents/useGetAgents';
+import { useGetInstalledNetworkTools } from '@hanzo/node/v2/queries/getInstalledNetworkTools/useGetInstalledNetworkTools';
+import { type FormattedNetworkAgent } from '@hanzo/node/v2/queries/getNetworkAgents/types';
+import { useGetNetworkAgents } from '@hanzo/node/v2/queries/getNetworkAgents/useGetNetworkAgents';
+import { useGetToolsWithOfferings } from '@hanzo/node/v2/queries/getToolsWithOfferings/useGetToolsWithOfferings';
 import { useGetWalletBalance, useGetWalletList } from '@hanzonet/wallet-hooks';
 import {
   Card,
@@ -40,13 +40,13 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import {
   CryptoWalletIcon,
   EthereumIcon,
   USDCIcon,
-} from '@hanzo_network/hanzo-ui/assets';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui/assets';
+import { cn } from '@hanzo/ui/utils';
 
 import {
   User,

@@ -1,17 +1,17 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { type LLMProviderInterface } from '@hanzo_network/hanzo-message-ts/api/jobs/types';
+import { useTranslation } from '@hanzo/i18n';
+import { type LLMProviderInterface } from '@hanzo/message/api/jobs/types';
 import {
   addAiModelFormDefault,
   type AddAiModelFormSchema,
   addAiModelSchema,
-} from '@hanzo_network/hanzo-node-state/forms/agents/add-ai';
+} from '@hanzo/node/forms/agents/add-ai';
 import {
   Models,
   modelsConfig,
-} from '@hanzo_network/hanzo-node-state/lib/utils/models';
-import { useAddLLMProvider } from '@hanzo_network/hanzo-node-state/v2/mutations/addLLMProvider/useAddLLMProvider';
-import { useScanOllamaModels } from '@hanzo_network/hanzo-node-state/v2/queries/scanOllamaModels/useScanOllamaModels';
+} from '@hanzo/node/lib/utils/models';
+import { useAddLLMProvider } from '@hanzo/node/v2/mutations/addLLMProvider/useAddLLMProvider';
+import { useScanOllamaModels } from '@hanzo/node/v2/queries/scanOllamaModels/useScanOllamaModels';
 import {
   Button,
   buttonVariants,
@@ -28,8 +28,8 @@ import {
   SelectValue,
   Switch,
   TextField,
-} from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 import { HelpCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';

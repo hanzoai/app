@@ -1,14 +1,14 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   type PaymentRequest,
   type WidgetToolData,
   type WidgetToolType,
-} from '@hanzo_network/hanzo-message-ts/api/general/types';
-import { usePayInvoice } from '@hanzo_network/hanzo-node-state/v2/mutations/payInvoice/usePayInvoice';
-import { useRejectInvoice } from '@hanzo_network/hanzo-node-state/v2/mutations/rejectInvoice/useRejectInvoice';
+} from '@hanzo/message/api/general/types';
+import { usePayInvoice } from '@hanzo/node/v2/mutations/payInvoice/usePayInvoice';
+import { useRejectInvoice } from '@hanzo/node/v2/mutations/rejectInvoice/useRejectInvoice';
 import { useGetWalletList } from '@hanzonet/wallet-hooks';
-import { Button, Dialog, DialogContent } from '@hanzo_network/hanzo-ui';
-import { CryptoWalletIcon } from '@hanzo_network/hanzo-ui/assets';
+import { Button, Dialog, DialogContent } from '@hanzo/ui';
+import { CryptoWalletIcon } from '@hanzo/ui/assets';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CheckCircle, ExternalLinkIcon, Loader2, XCircle } from 'lucide-react';
 import React from 'react';

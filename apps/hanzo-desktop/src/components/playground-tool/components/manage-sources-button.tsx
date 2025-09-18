@@ -1,8 +1,8 @@
 import { DialogClose } from '@radix-ui/react-dialog';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { useRemoveAssetTool } from '@hanzo_network/hanzo-node-state/v2/mutations/removeAssetTool/useRemoveAssetTool';
-import { useUploadAssetsTool } from '@hanzo_network/hanzo-node-state/v2/mutations/uploadAssetsTool/useUploadAssetsTool';
-import { useGetAllToolAssets } from '@hanzo_network/hanzo-node-state/v2/queries/getAllToolAssets/useGetAllToolAssets';
+import { useTranslation } from '@hanzo/i18n';
+import { useRemoveAssetTool } from '@hanzo/node/v2/mutations/removeAssetTool/useRemoveAssetTool';
+import { useUploadAssetsTool } from '@hanzo/node/v2/mutations/uploadAssetsTool/useUploadAssetsTool';
+import { useGetAllToolAssets } from '@hanzo/node/v2/queries/getAllToolAssets/useGetAllToolAssets';
 import {
   Badge,
   Button,
@@ -17,14 +17,14 @@ import {
   TooltipContent,
   TooltipPortal,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import {
   fileIconMap,
   FileTypeIcon,
   ToolAssetsIcon,
-} from '@hanzo_network/hanzo-ui/assets';
-import { getFileExt } from '@hanzo_network/hanzo-ui/helpers';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui/assets';
+import { getFileExt } from '@hanzo/ui/helpers';
+import { cn } from '@hanzo/ui/utils';
 import { Loader2, Paperclip, Upload, XIcon } from 'lucide-react';
 import { memo } from 'react';
 import { useDropzone } from 'react-dropzone';

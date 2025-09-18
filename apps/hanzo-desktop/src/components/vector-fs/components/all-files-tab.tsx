@@ -1,8 +1,8 @@
 import { HomeIcon } from '@radix-ui/react-icons';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { type DirectoryContent } from '@hanzo_network/hanzo-message-ts/api/vector-fs/types';
-import { useGetListDirectoryContents } from '@hanzo_network/hanzo-node-state/v2/queries/getDirectoryContents/useGetListDirectoryContents';
-import { useGetSearchDirectoryContents } from '@hanzo_network/hanzo-node-state/v2/queries/getSearchDirectoryContents/useGetSearchDirectoryContents';
+import { useTranslation } from '@hanzo/i18n';
+import { type DirectoryContent } from '@hanzo/message/api/vector-fs/types';
+import { useGetListDirectoryContents } from '@hanzo/node/v2/queries/getDirectoryContents/useGetListDirectoryContents';
+import { useGetSearchDirectoryContents } from '@hanzo/node/v2/queries/getSearchDirectoryContents/useGetSearchDirectoryContents';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -28,15 +28,15 @@ import {
   TooltipPortal,
   TooltipProvider,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import {
   AddNewFolderIcon,
   CreateAIIcon,
   FileEmptyStateIcon,
   FileTypeIcon,
   GenerateDocIcon,
-} from '@hanzo_network/hanzo-ui/assets';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui/assets';
+import { cn } from '@hanzo/ui/utils';
 import { motion } from 'framer-motion';
 import { ChevronRight, FileType2Icon, PlusIcon, XIcon } from 'lucide-react';
 import React, { useEffect } from 'react';

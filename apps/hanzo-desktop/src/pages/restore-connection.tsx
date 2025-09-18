@@ -1,10 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { decryptMessageWithPassphrase } from '@hanzo_network/hanzo-message-ts/cryptography';
+import { useTranslation } from '@hanzo/i18n';
+import { decryptMessageWithPassphrase } from '@hanzo/message/cryptography';
 import {
   type RestoreConnectionFormSchema,
   restoreConnectionFormSchema,
-} from '@hanzo_network/hanzo-node-state/forms/settings/restore-connection';
+} from '@hanzo/node/forms/settings/restore-connection';
 import {
   Button,
   buttonVariants,
@@ -17,8 +17,8 @@ import {
   FormLabel,
   FormMessage,
   TextField,
-} from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';

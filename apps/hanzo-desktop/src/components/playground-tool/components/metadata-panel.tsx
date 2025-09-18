@@ -1,5 +1,5 @@
 import { ReloadIcon } from '@radix-ui/react-icons';
-import { type ToolMetadata } from '@hanzo_network/hanzo-message-ts/api/tools/types';
+import { type ToolMetadata } from '@hanzo/message/api/tools/types';
 import {
   Button,
   Skeleton,
@@ -7,9 +7,9 @@ import {
   TooltipContent,
   TooltipPortal,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
-import { debounce } from '@hanzo_network/hanzo-ui/helpers';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { debounce } from '@hanzo/ui/helpers';
+import { cn } from '@hanzo/ui/utils';
 import { AlertTriangleIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useFormContext } from 'react-hook-form';

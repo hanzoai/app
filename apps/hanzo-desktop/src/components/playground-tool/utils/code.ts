@@ -1,4 +1,4 @@
-import { CodeLanguage } from '@hanzo_network/hanzo-message-ts/api/tools/types';
+import { CodeLanguage } from '@hanzo/message/api/tools/types';
 
 export function extractCodeLanguage(input: string): CodeLanguage | null {
   const match = input.match(/```(\w+)/);

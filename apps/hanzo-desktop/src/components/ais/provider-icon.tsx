@@ -1,4 +1,4 @@
-import { AisIcon } from '@hanzo_network/hanzo-ui/assets';
+import { AisIcon } from '@hanzo/ui/assets';
 import { useMemo } from 'react';
 
 import { type ModelProviderKey, providerMappings } from './constants';

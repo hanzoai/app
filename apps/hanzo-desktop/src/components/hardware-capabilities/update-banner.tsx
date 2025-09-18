@@ -1,6 +1,6 @@
-import { Alert, Button, Progress } from '@hanzo_network/hanzo-ui';
-import { PartyIcon } from '@hanzo_network/hanzo-ui/assets';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+import { Alert, Button, Progress } from '@hanzo/ui';
+import { PartyIcon } from '@hanzo/ui/assets';
+import { cn } from '@hanzo/ui/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Loader2, XIcon } from 'lucide-react';
 import React, { useCallback, useState } from 'react';

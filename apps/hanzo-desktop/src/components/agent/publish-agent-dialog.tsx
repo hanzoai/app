@@ -1,12 +1,12 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { type Agent } from '@hanzo_network/hanzo-message-ts/api/agents/types';
+import { useTranslation } from '@hanzo/i18n';
+import { type Agent } from '@hanzo/message/api/agents/types';
 import {
   type ToolOffering,
   type ToolUsageType,
-} from '@hanzo_network/hanzo-message-ts/api/tools/types';
-import { useSetToolOffering } from '@hanzo_network/hanzo-node-state/v2/mutations/setToolOffering/useSetToolOffering';
-import { useGetAgents } from '@hanzo_network/hanzo-node-state/v2/queries/getAgents/useGetAgents';
-import { useGetToolsWithOfferings } from '@hanzo_network/hanzo-node-state/v2/queries/getToolsWithOfferings/useGetToolsWithOfferings';
+} from '@hanzo/message/api/tools/types';
+import { useSetToolOffering } from '@hanzo/node/v2/mutations/setToolOffering/useSetToolOffering';
+import { useGetAgents } from '@hanzo/node/v2/queries/getAgents/useGetAgents';
+import { useGetToolsWithOfferings } from '@hanzo/node/v2/queries/getToolsWithOfferings/useGetToolsWithOfferings';
 import { useGetWalletList } from '@hanzonet/wallet-hooks';
 import {
   Dialog,
@@ -25,9 +25,9 @@ import {
   RadioGroupItem,
   Checkbox,
   Badge,
-} from '@hanzo_network/hanzo-ui';
-import { AIAgentIcon } from '@hanzo_network/hanzo-ui/assets';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { AIAgentIcon } from '@hanzo/ui/assets';
+import { cn } from '@hanzo/ui/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRightIcon, PlusIcon } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';

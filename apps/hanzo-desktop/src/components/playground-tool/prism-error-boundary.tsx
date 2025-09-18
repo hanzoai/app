@@ -1,4 +1,4 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import { type ComponentProps, type ReactNode } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 

@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   Badge,
   Form,
@@ -16,9 +16,9 @@ import {
   TableHeader,
   TableRow,
   TextField,
-} from '@hanzo_network/hanzo-ui';
-import { useDebounce, useMap } from '@hanzo_network/hanzo-ui/hooks';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { useDebounce, useMap } from '@hanzo/ui/hooks';
+import { cn } from '@hanzo/ui/utils';
 import {
   type ColumnDef,
   flexRender,

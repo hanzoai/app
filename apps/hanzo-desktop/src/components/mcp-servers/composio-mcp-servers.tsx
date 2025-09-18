@@ -1,13 +1,13 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   type McpServer,
   McpServerType,
-} from '@hanzo_network/hanzo-message-ts/api/mcp-servers/types';
-import { buildInboxIdFromJobId } from '@hanzo_network/hanzo-message-ts/utils';
-import { DEFAULT_CHAT_CONFIG } from '@hanzo_network/hanzo-node-state/v2/constants';
-import { useCreateJob } from '@hanzo_network/hanzo-node-state/v2/mutations/createJob/useCreateJob';
-import { useDeleteMcpServer } from '@hanzo_network/hanzo-node-state/v2/mutations/deleteMcpServer/useDeleteMcpServer';
-import { Button, SearchInput, Skeleton } from '@hanzo_network/hanzo-ui';
+} from '@hanzo/message/api/mcp-servers/types';
+import { buildInboxIdFromJobId } from '@hanzo/message/utils';
+import { DEFAULT_CHAT_CONFIG } from '@hanzo/node/v2/constants';
+import { useCreateJob } from '@hanzo/node/v2/mutations/createJob/useCreateJob';
+import { useDeleteMcpServer } from '@hanzo/node/v2/mutations/deleteMcpServer/useDeleteMcpServer';
+import { Button, SearchInput, Skeleton } from '@hanzo/ui';
 import { PlusIcon, Trash } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';

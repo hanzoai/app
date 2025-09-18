@@ -1,6 +1,6 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { useInitialRegistration } from '@hanzo_network/hanzo-node-state/v2/mutations/initialRegistration/useInitialRegistration';
-import { useGetEncryptionKeys } from '@hanzo_network/hanzo-node-state/v2/queries/getEncryptionKeys/useGetEncryptionKeys';
+import { useTranslation } from '@hanzo/i18n';
+import { useInitialRegistration } from '@hanzo/node/v2/mutations/initialRegistration/useInitialRegistration';
+import { useGetEncryptionKeys } from '@hanzo/node/v2/queries/getEncryptionKeys/useGetEncryptionKeys';
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -10,8 +10,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Button,
-} from '@hanzo_network/hanzo-ui';
-import { submitRegistrationNoCodeError } from '@hanzo_network/hanzo-ui/helpers';
+} from '@hanzo/ui';
+import { submitRegistrationNoCodeError } from '@hanzo/ui/helpers';
 import { XIcon } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { invoke } from '@tauri-apps/api/core';

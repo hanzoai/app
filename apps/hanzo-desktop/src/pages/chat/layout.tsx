@@ -1,20 +1,20 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { DialogClose } from '@radix-ui/react-dialog';
-import { t, useTranslation } from '@hanzo_network/hanzo-i18n';
+import { t, useTranslation } from '@hanzo/i18n';
 import {
   extractJobIdFromInbox,
   isJobInbox,
-} from '@hanzo_network/hanzo-message-ts/utils';
+} from '@hanzo/message/utils';
 import {
   type UpdateInboxNameFormSchema,
   updateInboxNameFormSchema,
-} from '@hanzo_network/hanzo-node-state/forms/chat/inbox';
-import { useRemoveJob } from '@hanzo_network/hanzo-node-state/v2/mutations/removeJob/useRemoveJob';
-import { useUpdateInboxName } from '@hanzo_network/hanzo-node-state/v2/mutations/updateInboxName/useUpdateInboxName';
-import { useGetAgent } from '@hanzo_network/hanzo-node-state/v2/queries/getAgent/useGetAgent';
-import { useGetAgents } from '@hanzo_network/hanzo-node-state/v2/queries/getAgents/useGetAgents';
-import { useGetAgentInboxes } from '@hanzo_network/hanzo-node-state/v2/queries/getInboxes/useGetAgentInboxes';
-import { useGetInboxesWithPagination } from '@hanzo_network/hanzo-node-state/v2/queries/getInboxes/useGetInboxesWithPagination';
+} from '@hanzo/node/forms/chat/inbox';
+import { useRemoveJob } from '@hanzo/node/v2/mutations/removeJob/useRemoveJob';
+import { useUpdateInboxName } from '@hanzo/node/v2/mutations/updateInboxName/useUpdateInboxName';
+import { useGetAgent } from '@hanzo/node/v2/queries/getAgent/useGetAgent';
+import { useGetAgents } from '@hanzo/node/v2/queries/getAgents/useGetAgents';
+import { useGetAgentInboxes } from '@hanzo/node/v2/queries/getInboxes/useGetAgentInboxes';
+import { useGetInboxesWithPagination } from '@hanzo/node/v2/queries/getInboxes/useGetInboxesWithPagination';
 import {
   Button,
   buttonVariants,
@@ -37,13 +37,13 @@ import {
   TooltipContent,
   TooltipPortal,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import {
   AIAgentIcon,
   ScheduledTasksIcon,
-} from '@hanzo_network/hanzo-ui/assets';
-import { formatDateToLocaleStringWithTime } from '@hanzo_network/hanzo-ui/helpers';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui/assets';
+import { formatDateToLocaleStringWithTime } from '@hanzo/ui/helpers';
+import { cn } from '@hanzo/ui/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ChevronLeft,

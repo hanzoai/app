@@ -1,10 +1,10 @@
 import { DialogClose } from '@radix-ui/react-dialog';
 import { DotsVerticalIcon } from '@radix-ui/react-icons';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { type RecurringTask } from '@hanzo_network/hanzo-message-ts/api/recurring-tasks/types';
-import { useExportAgent } from '@hanzo_network/hanzo-node-state/v2/mutations/exportAgent/useExportAgent';
-import { useRemoveAgent } from '@hanzo_network/hanzo-node-state/v2/mutations/removeAgent/useRemoveAgent';
-import { useGetAgents } from '@hanzo_network/hanzo-node-state/v2/queries/getAgents/useGetAgents';
+import { useTranslation } from '@hanzo/i18n';
+import { type RecurringTask } from '@hanzo/message/api/recurring-tasks/types';
+import { useExportAgent } from '@hanzo/node/v2/mutations/exportAgent/useExportAgent';
+import { useRemoveAgent } from '@hanzo/node/v2/mutations/removeAgent/useRemoveAgent';
+import { useGetAgents } from '@hanzo/node/v2/queries/getAgents/useGetAgents';
 import {
   Badge,
   Button,
@@ -34,7 +34,7 @@ import {
   CardDescription,
   AvatarFallback,
   Avatar,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import {
   AIAgentIcon,
   appIcon,
@@ -42,8 +42,8 @@ import {
   CreateAIIcon,
   DownloadIcon,
   ScheduledTasksIcon,
-} from '@hanzo_network/hanzo-ui/assets';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui/assets';
+import { cn } from '@hanzo/ui/utils';
 import { save } from '@tauri-apps/plugin-dialog';
 import * as fs from '@tauri-apps/plugin-fs';
 import { BaseDirectory } from '@tauri-apps/plugin-fs';

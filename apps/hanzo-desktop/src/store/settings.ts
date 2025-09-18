@@ -1,4 +1,4 @@
-import { type LocaleMode, switchLanguage } from '@hanzo_network/hanzo-i18n';
+import { type LocaleMode, switchLanguage } from '@hanzo/i18n';
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 

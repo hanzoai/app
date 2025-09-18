@@ -1,4 +1,4 @@
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+import { cn } from '@hanzo/ui/utils';
 import React, { useContext } from 'react';
 import { Outlet } from 'react-router';
 

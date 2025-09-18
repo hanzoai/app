@@ -1,6 +1,6 @@
 import { HomeIcon } from '@radix-ui/react-icons';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { useGetListDirectoryContents } from '@hanzo_network/hanzo-node-state/v2/queries/getDirectoryContents/useGetListDirectoryContents';
+import { useTranslation } from '@hanzo/i18n';
+import { useGetListDirectoryContents } from '@hanzo/node/v2/queries/getDirectoryContents/useGetListDirectoryContents';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -10,9 +10,9 @@ import {
   BreadcrumbSeparator,
   ScrollArea,
   Skeleton,
-} from '@hanzo_network/hanzo-ui';
-import { DirectoryTypeIcon } from '@hanzo_network/hanzo-ui/assets';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { DirectoryTypeIcon } from '@hanzo/ui/assets';
+import { cn } from '@hanzo/ui/utils';
 import { ChevronRight } from 'lucide-react';
 import React, { createContext, useContext, useState } from 'react';
 import { createStore, useStore } from 'zustand';

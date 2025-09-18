@@ -1,8 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { useImportTool } from '@hanzo_network/hanzo-node-state/v2/mutations/importTool/useImportTool';
-import { useImportToolZip } from '@hanzo_network/hanzo-node-state/v2/mutations/importToolZip/useImportToolZip';
+import { useTranslation } from '@hanzo/i18n';
+import { useImportTool } from '@hanzo/node/v2/mutations/importTool/useImportTool';
+import { useImportToolZip } from '@hanzo/node/v2/mutations/importToolZip/useImportToolZip';
 import {
   Button,
   buttonVariants,
@@ -20,10 +20,10 @@ import {
   FormLabel,
   FormMessage,
   TextField,
-} from '@hanzo_network/hanzo-ui';
-import { ImportIcon } from '@hanzo_network/hanzo-ui/assets';
-import { useMeasure } from '@hanzo_network/hanzo-ui/hooks';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { ImportIcon } from '@hanzo/ui/assets';
+import { useMeasure } from '@hanzo/ui/hooks';
+import { cn } from '@hanzo/ui/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Link, Package2Icon, XIcon } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';

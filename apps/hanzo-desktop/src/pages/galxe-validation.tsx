@@ -1,7 +1,7 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { QuestNames } from '@hanzo_network/hanzo-message-ts/api/quests/types';
-import { useUpdateQuestsStatus } from '@hanzo_network/hanzo-node-state/v2/mutations/updateQuestsStatus/useUpdateQuestsStatus';
-import { useGetQuestsStatus } from '@hanzo_network/hanzo-node-state/v2/queries/getQuestsStatus/useGetQuestsStatus';
+import { useTranslation } from '@hanzo/i18n';
+import { QuestNames } from '@hanzo/message/api/quests/types';
+import { useUpdateQuestsStatus } from '@hanzo/node/v2/mutations/updateQuestsStatus/useUpdateQuestsStatus';
+import { useGetQuestsStatus } from '@hanzo/node/v2/queries/getQuestsStatus/useGetQuestsStatus';
 import {
   Alert,
   AlertDescription,
@@ -12,7 +12,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import { Check, CircleIcon, Info, RefreshCw } from 'lucide-react';
 import { useMemo } from 'react';
 

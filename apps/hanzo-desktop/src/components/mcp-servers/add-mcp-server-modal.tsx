@@ -1,14 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   type McpServer,
   McpServerType,
-} from '@hanzo_network/hanzo-message-ts/api/mcp-servers/types';
-import { type AddMcpServerInput } from '@hanzo_network/hanzo-node-state/v2/mutations/addMcpServer/types';
-import { useAddMcpServer } from '@hanzo_network/hanzo-node-state/v2/mutations/addMcpServer/useAddMcpServer';
-import { type ImportMCPServerFromGithubURLOutput } from '@hanzo_network/hanzo-node-state/v2/mutations/importMCPServerFromGithubURL/types';
-import { type UpdateMcpServerInput } from '@hanzo_network/hanzo-node-state/v2/mutations/updateMcpServer/types';
-import { useUpdateMcpServer } from '@hanzo_network/hanzo-node-state/v2/mutations/updateMcpServer/useUpdateMcpServer';
+} from '@hanzo/message/api/mcp-servers/types';
+import { type AddMcpServerInput } from '@hanzo/node/v2/mutations/addMcpServer/types';
+import { useAddMcpServer } from '@hanzo/node/v2/mutations/addMcpServer/useAddMcpServer';
+import { type ImportMCPServerFromGithubURLOutput } from '@hanzo/node/v2/mutations/importMCPServerFromGithubURL/types';
+import { type UpdateMcpServerInput } from '@hanzo/node/v2/mutations/updateMcpServer/types';
+import { useUpdateMcpServer } from '@hanzo/node/v2/mutations/updateMcpServer/useUpdateMcpServer';
 import {
   Button,
   Dialog,
@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
   TextField,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import { AlertTriangle, PlusCircle, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';

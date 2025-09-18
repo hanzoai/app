@@ -1,6 +1,6 @@
-import { t } from '@hanzo_network/hanzo-i18n';
-import { Badge } from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+import { t } from '@hanzo/i18n';
+import { Badge } from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 import { Sparkles } from 'lucide-react';
 
 import { type OllamaModelQuality } from '../../../lib/hanzo-node-manager/ollama-models';

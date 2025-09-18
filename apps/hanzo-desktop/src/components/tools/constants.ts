@@ -1,4 +1,4 @@
-import { CodeLanguage } from '@hanzo_network/hanzo-message-ts/api/tools/types';
+import { CodeLanguage } from '@hanzo/message/api/tools/types';
 
 export const TOOL_HOMEPAGE_SUGGESTIONS = [
   {

@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { Button } from '@hanzo_network/hanzo-ui';
-import { Input } from '@hanzo_network/hanzo-ui';
-import { Label } from '@hanzo_network/hanzo-ui';
-import { RadioGroup, RadioGroupItem } from '@hanzo_network/hanzo-ui';
+import { Button } from '@hanzo/ui';
+import { Input } from '@hanzo/ui';
+import { Label } from '@hanzo/ui';
+import { RadioGroup, RadioGroupItem } from '@hanzo/ui';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import { AlertCircle, Globe, Lock, Server, DollarSign } from 'lucide-react';
-import { Alert, AlertDescription } from '@hanzo_network/hanzo-ui';
+import { Alert, AlertDescription } from '@hanzo/ui';
 
 export type NetworkExposureType = 'none' | 'localxpose' | 'ngrok' | 'public';
 

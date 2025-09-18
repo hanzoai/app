@@ -1,9 +1,9 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { buildInboxIdFromJobId } from '@hanzo_network/hanzo-message-ts/utils/inbox_name_handler';
-import { DEFAULT_CHAT_CONFIG } from '@hanzo_network/hanzo-node-state/v2/constants';
-import { useCreateJob } from '@hanzo_network/hanzo-node-state/v2/mutations/createJob/useCreateJob';
-import { useGetLLMProviders } from '@hanzo_network/hanzo-node-state/v2/queries/getLLMProviders/useGetLLMProviders';
-import { Badge, buttonVariants } from '@hanzo_network/hanzo-ui';
+import { useTranslation } from '@hanzo/i18n';
+import { buildInboxIdFromJobId } from '@hanzo/message/utils/inbox_name_handler';
+import { DEFAULT_CHAT_CONFIG } from '@hanzo/node/v2/constants';
+import { useCreateJob } from '@hanzo/node/v2/mutations/createJob/useCreateJob';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
+import { Badge, buttonVariants } from '@hanzo/ui';
 import { invoke } from '@tauri-apps/api/core';
 import { motion } from 'framer-motion';
 import { ArrowUpRight } from 'lucide-react';

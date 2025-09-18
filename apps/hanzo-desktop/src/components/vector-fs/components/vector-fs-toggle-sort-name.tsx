@@ -1,5 +1,5 @@
-import { Toggle } from '@hanzo_network/hanzo-ui';
-import { SortingAToZ, SortingZToA } from '@hanzo_network/hanzo-ui/assets';
+import { Toggle } from '@hanzo/ui';
+import { SortingAToZ, SortingZToA } from '@hanzo/ui/assets';
 
 import { useVectorFsStore } from '../context/vector-fs-context';
 

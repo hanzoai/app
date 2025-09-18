@@ -1,7 +1,7 @@
-import { BackgroundBeams, buttonVariants } from '@hanzo_network/hanzo-ui';
+import { BackgroundBeams, buttonVariants } from '@hanzo/ui';
 
-import { useScrollRestoration } from '@hanzo_network/hanzo-ui/hooks';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+import { useScrollRestoration } from '@hanzo/ui/hooks';
+import { cn } from '@hanzo/ui/utils';
 import { ArrowRight } from 'lucide-react';
 import { FeedbackModal } from '../components/feedback/feedback-modal';
 

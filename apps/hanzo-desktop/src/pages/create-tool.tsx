@@ -1,9 +1,9 @@
 import { DialogClose } from '@radix-ui/react-dialog';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { type CodeLanguage } from '@hanzo_network/hanzo-message-ts/api/tools/types';
-import { useOpenToolInCodeEditor } from '@hanzo_network/hanzo-node-state/v2/mutations/openToolnCodeEditor/useOpenToolInCodeEditor';
-import { useGetLLMProviders } from '@hanzo_network/hanzo-node-state/v2/queries/getLLMProviders/useGetLLMProviders';
-import { useGetToolProtocols } from '@hanzo_network/hanzo-node-state/v2/queries/getToolProtocols/useGetToolProtocols';
+import { useTranslation } from '@hanzo/i18n';
+import { type CodeLanguage } from '@hanzo/message/api/tools/types';
+import { useOpenToolInCodeEditor } from '@hanzo/node/v2/mutations/openToolnCodeEditor/useOpenToolInCodeEditor';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
+import { useGetToolProtocols } from '@hanzo/node/v2/queries/getToolProtocols/useGetToolProtocols';
 import {
   Button,
   buttonVariants,
@@ -25,10 +25,10 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
-} from '@hanzo_network/hanzo-ui';
-import { SendIcon, ToolsIcon } from '@hanzo_network/hanzo-ui/assets';
+} from '@hanzo/ui';
+import { SendIcon, ToolsIcon } from '@hanzo/ui/assets';
 
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+import { cn } from '@hanzo/ui/utils';
 import {
   ArrowLeft,
   ArrowRight,

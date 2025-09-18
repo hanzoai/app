@@ -1,11 +1,11 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   Card,
   RadioGroup,
   RadioGroupItem,
   Label,
-} from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 
 import { type ChatFontSize, useSettings } from '../store/settings';
 import { SimpleLayout } from './layout/simple-layout';

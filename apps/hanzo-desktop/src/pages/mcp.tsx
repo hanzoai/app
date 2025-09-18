@@ -1,6 +1,6 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { useSetToolMcpEnabled } from '@hanzo_network/hanzo-node-state/v2/mutations/setToolMcpEnabled/useSetToolMcpEnabled';
-import { useGetTools } from '@hanzo_network/hanzo-node-state/v2/queries/getToolsList/useGetToolsList';
+import { useTranslation } from '@hanzo/i18n';
+import { useSetToolMcpEnabled } from '@hanzo/node/v2/mutations/setToolMcpEnabled/useSetToolMcpEnabled';
+import { useGetTools } from '@hanzo/node/v2/queries/getToolsList/useGetToolsList';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,8 +30,8 @@ import {
   TooltipContent,
   TooltipPortal,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 import { type TFunction } from 'i18next';
 import { BoltIcon, MoveRightIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';

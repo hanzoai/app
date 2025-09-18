@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Button } from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+import { Button } from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 import { RefreshCw, Check, X, AlertCircle } from 'lucide-react';
 
 interface NodeStatus {

@@ -1,5 +1,5 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+import { useTranslation } from '@hanzo/i18n';
+import { cn } from '@hanzo/ui/utils';
 import { LucideArrowLeft } from 'lucide-react';
 import React from 'react';
 import { Link, type To } from 'react-router';

@@ -1,10 +1,10 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { type GetToolsCategory } from '@hanzo_network/hanzo-message-ts/api/tools/types';
-import { useDisableAllTools } from '@hanzo_network/hanzo-node-state/v2/mutations/disableAllTools/useDisableAllTools';
-import { useEnableAllTools } from '@hanzo_network/hanzo-node-state/v2/mutations/enableAllTools/useEnableAllTools';
+import { useTranslation } from '@hanzo/i18n';
+import { type GetToolsCategory } from '@hanzo/message/api/tools/types';
+import { useDisableAllTools } from '@hanzo/node/v2/mutations/disableAllTools/useDisableAllTools';
+import { useEnableAllTools } from '@hanzo/node/v2/mutations/enableAllTools/useEnableAllTools';
 
-import { useGetTools } from '@hanzo_network/hanzo-node-state/v2/queries/getToolsList/useGetToolsList';
-import { useGetSearchTools } from '@hanzo_network/hanzo-node-state/v2/queries/getToolsSearch/useGetToolsSearch';
+import { useGetTools } from '@hanzo/node/v2/queries/getToolsList/useGetToolsList';
+import { useGetSearchTools } from '@hanzo/node/v2/queries/getToolsSearch/useGetToolsSearch';
 import {
   Button,
   buttonVariants,
@@ -16,9 +16,9 @@ import {
   Skeleton,
   ToggleGroup,
   ToggleGroupItem,
-} from '@hanzo_network/hanzo-ui';
-import { StoreIcon } from '@hanzo_network/hanzo-ui/assets';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { StoreIcon } from '@hanzo/ui/assets';
+import { cn } from '@hanzo/ui/utils';
 import { Eye, EyeOff, MoreVerticalIcon, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';

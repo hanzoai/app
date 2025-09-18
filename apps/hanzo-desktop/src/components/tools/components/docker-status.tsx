@@ -1,5 +1,5 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { useGetDockerStatus } from '@hanzo_network/hanzo-node-state/v2/queries/getDockerStatus/useGetDockerStatus';
+import { useTranslation } from '@hanzo/i18n';
+import { useGetDockerStatus } from '@hanzo/node/v2/queries/getDockerStatus/useGetDockerStatus';
 import {
   Alert,
   AlertDescription,
@@ -8,8 +8,8 @@ import {
   TooltipContent,
   TooltipPortal,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 import { useAuth } from '../../../store/auth';
 
 export function DockerStatus() {

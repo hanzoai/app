@@ -1,5 +1,5 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { TooltipProvider } from '@hanzo_network/hanzo-ui';
+import { useTranslation } from '@hanzo/i18n';
+import { TooltipProvider } from '@hanzo/ui';
 
 import { SimpleLayout } from '../../pages/layout/simple-layout';
 import AllFilesTab from './components/all-files-tab';

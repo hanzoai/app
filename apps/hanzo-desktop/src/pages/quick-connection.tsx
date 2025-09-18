@@ -1,12 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   type QuickConnectFormSchema,
   quickConnectFormSchema,
-} from '@hanzo_network/hanzo-node-state/forms/auth/quick-connection';
-import { useInitialRegistration } from '@hanzo_network/hanzo-node-state/v2/mutations/initialRegistration/useInitialRegistration';
-import { useGetEncryptionKeys } from '@hanzo_network/hanzo-node-state/v2/queries/getEncryptionKeys/useGetEncryptionKeys';
-import { useGetHealth } from '@hanzo_network/hanzo-node-state/v2/queries/getHealth/useGetHealth';
+} from '@hanzo/node/forms/auth/quick-connection';
+import { useInitialRegistration } from '@hanzo/node/v2/mutations/initialRegistration/useInitialRegistration';
+import { useGetEncryptionKeys } from '@hanzo/node/v2/queries/getEncryptionKeys/useGetEncryptionKeys';
+import { useGetHealth } from '@hanzo/node/v2/queries/getHealth/useGetHealth';
 import { useGetWalletList } from '@hanzonet/wallet-hooks';
 import {
   Button,
@@ -16,12 +16,12 @@ import {
   Form,
   FormField,
   TextField,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import {
   submitRegistrationNoCodeError,
   submitRegistrationNoCodeNonPristineError,
-} from '@hanzo_network/hanzo-ui/helpers';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui/helpers';
+import { cn } from '@hanzo/ui/utils';
 import { ArrowLeft, Key, Wallet } from 'lucide-react';
 import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';

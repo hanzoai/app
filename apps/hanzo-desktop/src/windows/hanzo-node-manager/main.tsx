@@ -1,7 +1,7 @@
 import './globals.css';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useSyncOllamaModels } from '@hanzo_network/hanzo-node-state/v2/mutations/syncOllamaModels/useSyncOllamaModels';
+import { useSyncOllamaModels } from '@hanzo/node/v2/mutations/syncOllamaModels/useSyncOllamaModels';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,7 +25,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { info } from '@tauri-apps/plugin-log';
 import {

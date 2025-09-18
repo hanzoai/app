@@ -1,22 +1,22 @@
 import { type FormProps } from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   CodeLanguage,
   type OAuth,
   type HanzoTool,
   type HanzoToolType,
-} from '@hanzo_network/hanzo-message-ts/api/tools/types';
-import { useDuplicateTool } from '@hanzo_network/hanzo-node-state/v2/mutations/duplicateTool/useDuplicateTool';
-import { useExecuteToolCode } from '@hanzo_network/hanzo-node-state/v2/mutations/executeToolCode/useExecuteToolCode';
-import { useExportTool } from '@hanzo_network/hanzo-node-state/v2/mutations/exportTool/useExportTool';
-import { usePublishTool } from '@hanzo_network/hanzo-node-state/v2/mutations/publishTool/usePublishTool';
-import { useSetCommonToolsetConfig } from '@hanzo_network/hanzo-node-state/v2/mutations/setCommonToolsetConfig/useSetCommonToolsetConfig';
-import { useToggleEnableTool } from '@hanzo_network/hanzo-node-state/v2/mutations/toggleEnableTool/useToggleEnableTool';
-import { useUpdateTool } from '@hanzo_network/hanzo-node-state/v2/mutations/updateTool/useUpdateTool';
-import { useGetToolPlaygroundMetadata } from '@hanzo_network/hanzo-node-state/v2/queries/getToolPlaygroundMetadata/useGetToolPlaygroundMetadata';
-import { useGetToolsFromToolset } from '@hanzo_network/hanzo-node-state/v2/queries/getToolsFromToolset/useGetToolsFromToolset';
-import { useGetToolStoreDetails } from '@hanzo_network/hanzo-node-state/v2/queries/getToolStoreDetails/useGetToolStoreDetails';
+} from '@hanzo/message/api/tools/types';
+import { useDuplicateTool } from '@hanzo/node/v2/mutations/duplicateTool/useDuplicateTool';
+import { useExecuteToolCode } from '@hanzo/node/v2/mutations/executeToolCode/useExecuteToolCode';
+import { useExportTool } from '@hanzo/node/v2/mutations/exportTool/useExportTool';
+import { usePublishTool } from '@hanzo/node/v2/mutations/publishTool/usePublishTool';
+import { useSetCommonToolsetConfig } from '@hanzo/node/v2/mutations/setCommonToolsetConfig/useSetCommonToolsetConfig';
+import { useToggleEnableTool } from '@hanzo/node/v2/mutations/toggleEnableTool/useToggleEnableTool';
+import { useUpdateTool } from '@hanzo/node/v2/mutations/updateTool/useUpdateTool';
+import { useGetToolPlaygroundMetadata } from '@hanzo/node/v2/queries/getToolPlaygroundMetadata/useGetToolPlaygroundMetadata';
+import { useGetToolsFromToolset } from '@hanzo/node/v2/queries/getToolsFromToolset/useGetToolsFromToolset';
+import { useGetToolStoreDetails } from '@hanzo/node/v2/queries/getToolStoreDetails/useGetToolStoreDetails';
 import {
   Alert,
   AlertDescription,
@@ -37,10 +37,10 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
-import { ToolsIcon } from '@hanzo_network/hanzo-ui/assets';
-import { formatText } from '@hanzo_network/hanzo-ui/helpers';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { ToolsIcon } from '@hanzo/ui/assets';
+import { formatText } from '@hanzo/ui/helpers';
+import { cn } from '@hanzo/ui/utils';
 import { save } from '@tauri-apps/plugin-dialog';
 import * as fs from '@tauri-apps/plugin-fs';
 import { BaseDirectory } from '@tauri-apps/plugin-fs';

@@ -1,11 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PopoverClose } from '@radix-ui/react-popover';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { extractJobIdFromInbox } from '@hanzo_network/hanzo-message-ts/utils/inbox_name_handler';
-import { useUpdateChatConfig } from '@hanzo_network/hanzo-node-state/v2/mutations/updateChatConfig/useUpdateChatConfig';
-import { useGetChatConfig } from '@hanzo_network/hanzo-node-state/v2/queries/getChatConfig/useGetChatConfig';
-import { useGetLLMProviders } from '@hanzo_network/hanzo-node-state/v2/queries/getLLMProviders/useGetLLMProviders';
-import { useGetProviderFromJob } from '@hanzo_network/hanzo-node-state/v2/queries/getProviderFromJob/useGetProviderFromJob';
+import { useTranslation } from '@hanzo/i18n';
+import { extractJobIdFromInbox } from '@hanzo/message/utils/inbox_name_handler';
+import { useUpdateChatConfig } from '@hanzo/node/v2/mutations/updateChatConfig/useUpdateChatConfig';
+import { useGetChatConfig } from '@hanzo/node/v2/queries/getChatConfig/useGetChatConfig';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
+import { useGetProviderFromJob } from '@hanzo/node/v2/queries/getProviderFromJob/useGetProviderFromJob';
 import {
   Button,
   Form,
@@ -32,10 +32,10 @@ import {
   Slider,
   Switch,
   Textarea,
-} from '@hanzo_network/hanzo-ui';
-import { ChatSettingsIcon } from '@hanzo_network/hanzo-ui/assets';
+} from '@hanzo/ui';
+import { ChatSettingsIcon } from '@hanzo/ui/assets';
 
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+import { cn } from '@hanzo/ui/utils';
 import { memo, useEffect, useMemo } from 'react';
 import { useForm, type UseFormReturn } from 'react-hook-form';
 import { useParams } from 'react-router';

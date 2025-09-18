@@ -1,5 +1,5 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { Button } from '@hanzo_network/hanzo-ui';
+import { useTranslation } from '@hanzo/i18n';
+import { Button } from '@hanzo/ui';
 
 const FullPageErrorFallback = ({ error }: { error: Error }) => {
   const { t } = useTranslation();

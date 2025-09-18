@@ -1,10 +1,10 @@
 import { ExitIcon, GearIcon } from '@radix-ui/react-icons';
 import { PopoverClose } from '@radix-ui/react-popover';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { useImportAgentFromUrl } from '@hanzo_network/hanzo-node-state/v2/mutations/importAgentFromUrl/useImportAgentFromUrl';
-import { useImportTool } from '@hanzo_network/hanzo-node-state/v2/mutations/importTool/useImportTool';
-import { useGetHealth } from '@hanzo_network/hanzo-node-state/v2/queries/getHealth/useGetHealth';
-import { useGetInboxesWithPagination } from '@hanzo_network/hanzo-node-state/v2/queries/getInboxes/useGetInboxesWithPagination';
+import { useTranslation } from '@hanzo/i18n';
+import { useImportAgentFromUrl } from '@hanzo/node/v2/mutations/importAgentFromUrl/useImportAgentFromUrl';
+import { useImportTool } from '@hanzo/node/v2/mutations/importTool/useImportTool';
+import { useGetHealth } from '@hanzo/node/v2/queries/getHealth/useGetHealth';
+import { useGetInboxesWithPagination } from '@hanzo/node/v2/queries/getInboxes/useGetInboxesWithPagination';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,7 +24,7 @@ import {
   TooltipPortal,
   TooltipProvider,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import {
   AIAgentIcon,
   AISearchContentIcon,
@@ -37,8 +37,8 @@ import {
   ScheduledTasksIcon,
   HanzoCombinationMarkIcon,
   ToolsIcon,
-} from '@hanzo_network/hanzo-ui/assets';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui/assets';
+import { cn } from '@hanzo/ui/utils';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { AnimatePresence, motion } from 'framer-motion';

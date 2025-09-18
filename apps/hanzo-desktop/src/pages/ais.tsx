@@ -1,15 +1,15 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { DialogClose } from '@radix-ui/react-dialog';
 import { DotsVerticalIcon } from '@radix-ui/react-icons';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   type EditAIModelFormSchema,
   editAIModelSchema,
-} from '@hanzo_network/hanzo-node-state/forms/agents/edit-ai';
-import { Models } from '@hanzo_network/hanzo-node-state/lib/utils/models';
-import { useRemoveLLMProvider } from '@hanzo_network/hanzo-node-state/v2/mutations/removeLLMProvider/useRemoveLLMProvider';
-import { useUpdateLLMProvider } from '@hanzo_network/hanzo-node-state/v2/mutations/updateLLMProvider/useUpdateLLMProvider';
-import { useGetLLMProviders } from '@hanzo_network/hanzo-node-state/v2/queries/getLLMProviders/useGetLLMProviders';
+} from '@hanzo/node/forms/agents/edit-ai';
+import { Models } from '@hanzo/node/lib/utils/models';
+import { useRemoveLLMProvider } from '@hanzo/node/v2/mutations/removeLLMProvider/useRemoveLLMProvider';
+import { useUpdateLLMProvider } from '@hanzo/node/v2/mutations/updateLLMProvider/useUpdateLLMProvider';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
 import {
   Badge,
   Button,
@@ -36,9 +36,9 @@ import {
   TooltipPortal,
   TooltipProvider,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
-import { CreateAIIcon } from '@hanzo_network/hanzo-ui/assets';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { CreateAIIcon } from '@hanzo/ui/assets';
+import { cn } from '@hanzo/ui/utils';
 import { Edit, Plus, TrashIcon } from 'lucide-react';
 import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';

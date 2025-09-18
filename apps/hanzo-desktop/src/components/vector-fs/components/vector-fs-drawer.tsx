@@ -1,6 +1,6 @@
-import { DialogClose } from '@hanzo_network/hanzo-artifacts';
-import { buttonVariants, Dialog, DialogContent } from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+import { DialogClose } from '@hanzo/artifacts';
+import { buttonVariants, Dialog, DialogContent } from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 import { XIcon } from 'lucide-react';
 
 import { useVectorFsStore } from '../context/vector-fs-context';

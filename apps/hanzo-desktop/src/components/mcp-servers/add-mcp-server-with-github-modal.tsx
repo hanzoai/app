@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { type ImportMCPServerFromGithubURLOutput } from '@hanzo_network/hanzo-node-state/v2/mutations/importMCPServerFromGithubURL/types';
-import { useImportMCPServerFromGithubURL } from '@hanzo_network/hanzo-node-state/v2/mutations/importMCPServerFromGithubURL/useImportMCPServerFromGithubURL';
+import { useTranslation } from '@hanzo/i18n';
+import { type ImportMCPServerFromGithubURLOutput } from '@hanzo/node/v2/mutations/importMCPServerFromGithubURL/types';
+import { useImportMCPServerFromGithubURL } from '@hanzo/node/v2/mutations/importMCPServerFromGithubURL/useImportMCPServerFromGithubURL';
 import {
   Button,
   Dialog,
@@ -17,7 +17,7 @@ import {
   FormLabel,
   FormMessage,
   Input,
-} from '@hanzo_network/hanzo-ui';
+} from '@hanzo/ui';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';

@@ -1,8 +1,8 @@
 import { type FormProps } from '@rjsf/core';
 import { type FieldProps } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import { useUploadPlaygroundToolFiles } from '@hanzo_network/hanzo-node-state/v2/mutations/uploadPlaygroundToolFiles/useUploadPlaygroundToolFiles';
-import { useGetHanzoFileProtocol } from '@hanzo_network/hanzo-node-state/v2/queries/getHanzoFileProtocol/useGetHanzoFileProtocol';
+import { useUploadPlaygroundToolFiles } from '@hanzo/node/v2/mutations/uploadPlaygroundToolFiles/useUploadPlaygroundToolFiles';
+import { useGetHanzoFileProtocol } from '@hanzo/node/v2/queries/getHanzoFileProtocol/useGetHanzoFileProtocol';
 import {
   Button,
   CommandShortcut,
@@ -16,8 +16,8 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 import equal from 'fast-deep-equal';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AppWindow, LoaderIcon, TerminalIcon } from 'lucide-react';

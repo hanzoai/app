@@ -1,12 +1,12 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
-import { type Prompt } from '@hanzo_network/hanzo-message-ts/api/tools/types';
-import { buildInboxIdFromJobId } from '@hanzo_network/hanzo-message-ts/utils/inbox_name_handler';
-import { useCreateJob } from '@hanzo_network/hanzo-node-state/v2/mutations/createJob/useCreateJob';
-import { useRemovePrompt } from '@hanzo_network/hanzo-node-state/v2/mutations/removePrompt/useRemovePrompt';
-import { useUpdatePrompt } from '@hanzo_network/hanzo-node-state/v2/mutations/updatePrompt/useUpdatePrompt';
+import { useTranslation } from '@hanzo/i18n';
+import { type Prompt } from '@hanzo/message/api/tools/types';
+import { buildInboxIdFromJobId } from '@hanzo/message/utils/inbox_name_handler';
+import { useCreateJob } from '@hanzo/node/v2/mutations/createJob/useCreateJob';
+import { useRemovePrompt } from '@hanzo/node/v2/mutations/removePrompt/useRemovePrompt';
+import { useUpdatePrompt } from '@hanzo/node/v2/mutations/updatePrompt/useUpdatePrompt';
 
-import { useGetPromptList } from '@hanzo_network/hanzo-node-state/v2/queries/getPromptList/useGetPromptList';
-import { useGetPromptSearch } from '@hanzo_network/hanzo-node-state/v2/queries/getPromptSearch/useGetPromptSearch';
+import { useGetPromptList } from '@hanzo/node/v2/queries/getPromptList/useGetPromptList';
+import { useGetPromptSearch } from '@hanzo/node/v2/queries/getPromptSearch/useGetPromptSearch';
 import {
   Button,
   CopyToClipboardIcon,
@@ -20,8 +20,8 @@ import {
   TooltipPortal,
   TooltipProvider,
   TooltipTrigger,
-} from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   CirclePlayIcon,

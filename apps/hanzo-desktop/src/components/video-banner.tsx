@@ -1,11 +1,11 @@
-import { useTranslation } from '@hanzo_network/hanzo-i18n';
+import { useTranslation } from '@hanzo/i18n';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@hanzo_network/hanzo-ui';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+} from '@hanzo/ui';
+import { cn } from '@hanzo/ui/utils';
 import React from 'react';
 
 interface VideoBannerProps {

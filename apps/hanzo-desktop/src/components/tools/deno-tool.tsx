@@ -1,4 +1,4 @@
-import { type DenoHanzoTool } from '@hanzo_network/hanzo-message-ts/api/tools/types';
+import { type DenoHanzoTool } from '@hanzo/message/api/tools/types';
 
 import ToolDetailsCard from './components/tool-details-card';
 

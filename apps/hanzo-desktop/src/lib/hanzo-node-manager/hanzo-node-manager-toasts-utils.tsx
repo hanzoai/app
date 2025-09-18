@@ -1,5 +1,5 @@
-import { t } from '@hanzo_network/hanzo-i18n';
-import { cn } from '@hanzo_network/hanzo-ui/utils';
+import { t } from '@hanzo/i18n';
+import { cn } from '@hanzo/ui/utils';
 import React from 'react';
 import { type ExternalToast, toast } from 'sonner';
 
