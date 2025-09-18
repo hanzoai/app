@@ -15,7 +15,7 @@
     "validate": "pnpm run lint && pnpm run test:ci && pnpm run build"
   },
   "dependencies": {
-    "@hanzo/ui": "file:../ui/pkg/ui",
+    "@hanzo/ui": "^4.5.4",
     "@codesandbox/sandpack-react": "^2.20.0",
     "@huggingface/hub": "^2.6.4",
     "@huggingface/inference": "^4.8.0",
