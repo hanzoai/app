@@ -2,15 +2,40 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { HanzoLogo } from '@/components/HanzoLogo';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Download, Monitor, Apple, Terminal, Smartphone } from 'lucide-react';
+import { Loader2, Sparkles, ArrowRight, Monitor, Apple, Terminal, Smartphone, Zap } from 'lucide-react';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [currentIdea, setCurrentIdea] = useState(0);
+  const [isTyping, setIsTyping] = useState(true);
+
+  // Animated ideas/prompts
+  const ideas = [
+    "Build a SaaS dashboard with real-time analytics",
+    "Create an AI-powered chat application",
+    "Design a modern e-commerce platform",
+    "Develop a social media scheduler with AI",
+    "Build a cryptocurrency trading dashboard",
+    "Create a video streaming platform like Netflix",
+    "Design a project management tool with AI insights",
+    "Build a marketplace for digital products",
+    "Create a learning management system",
+    "Develop a fitness tracking app with AI coach"
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsTyping(false);
+      setTimeout(() => {
+        setCurrentIdea((prev) => (prev + 1) % ideas.length);
+        setIsTyping(true);
+      }, 500);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [ideas.length]);
 
   const handleHuggingFaceLogin = async () => {
     setLoading(true);
@@ -32,42 +57,41 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-black text-white">
       {/* Navigation */}
-      <nav className="border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
+      <nav className="absolute top-0 left-0 right-0 z-50">
+        <div className="max-w-[1400px] mx-auto px-6 py-5 flex items-center justify-between">
           <Link href="/" className="flex items-center">
             <HanzoLogo className="w-8 h-8 text-white" />
           </Link>
-          <Link href="/signup">
-            <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
-              Sign up
-            </Button>
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/signup">
+              <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10">
+                Sign up
+              </Button>
+            </Link>
+          </div>
         </div>
       </nav>
 
       {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <Card className="bg-[#1a1a1a] border-white/10">
-            <CardHeader className="space-y-1 text-center pb-8">
-              <div className="flex justify-center mb-6">
-                <div className="w-16 h-16 bg-gradient-to-r from-violet-500 to-purple-500 rounded-2xl flex items-center justify-center">
-                  <HanzoLogo className="w-10 h-10 text-white" />
-                </div>
-              </div>
-              <CardTitle className="text-2xl">Welcome back</CardTitle>
-              <CardDescription className="text-white/60">
-                Sign in to your Hanzo account
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+      <div className="min-h-screen flex">
+        {/* Left Side - Login Form */}
+        <div className="w-full lg:w-1/2 flex items-center justify-center px-6 py-20">
+          <div className="w-full max-w-md">
+            {/* Main Card */}
+            <div className="text-center mb-12">
+              <h1 className="text-5xl font-bold mb-4 tracking-tight">Welcome back</h1>
+              <p className="text-white/50 text-lg">Sign in to continue building</p>
+            </div>
+
+            {/* Login Options */}
+            <div className="space-y-4">
               {/* Hugging Face Login Button */}
               <Button
                 onClick={handleHuggingFaceLogin}
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-medium h-12"
+                className="w-full bg-white text-black hover:bg-white/90 h-12 font-medium relative group"
                 size="lg"
               >
                 {loading ? (
@@ -81,6 +105,7 @@ export default function LoginPage() {
                       <path d="M8 15c0 2.21 1.79 4 4 4s4-1.79 4-4"/>
                     </svg>
                     Continue with Hugging Face
+                    <ArrowRight className="w-4 h-4 ml-auto opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                   </>
                 )}
               </Button>
@@ -90,150 +115,153 @@ export default function LoginPage() {
                   <div className="w-full border-t border-white/10"></div>
                 </div>
                 <div className="relative flex justify-center text-xs">
-                  <span className="bg-[#1a1a1a] px-2 text-white/40">
-                    Secure authentication via Hugging Face
-                  </span>
+                  <span className="bg-black px-4 text-white/40">or</span>
                 </div>
               </div>
 
-              {/* Benefits */}
-              <div className="space-y-2 pt-4">
-                <div className="flex items-start gap-2">
-                  <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center mt-0.5">
-                    <svg className="w-3 h-3 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <p className="text-sm text-white/60">
-                    Access to all Hanzo AI Build features
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center mt-0.5">
-                    <svg className="w-3 h-3 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <p className="text-sm text-white/60">
-                    Seamless integration with HF repositories
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center mt-0.5">
-                    <svg className="w-3 h-3 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <p className="text-sm text-white/60">
-                    No additional passwords to remember
-                  </p>
-                </div>
-              </div>
+              {/* Desktop App Options */}
+              <div className="space-y-4 pt-2">
+                <p className="text-sm text-white/40 text-center">Or run locally without login</p>
 
-              {/* Footer Links */}
-              <div className="pt-6 text-center space-y-2">
-                <p className="text-sm text-white/60">
-                  Don't have an account?{' '}
-                  <Link href="/signup" className="text-violet-400 hover:text-violet-300">
-                    Sign up
-                  </Link>
-                </p>
-                <p className="text-xs text-white/40">
-                  By signing in, you agree to our{' '}
-                  <Link href="/terms" className="underline hover:text-white/60">
-                    Terms
-                  </Link>{' '}
-                  and{' '}
-                  <Link href="/privacy" className="underline hover:text-white/60">
-                    Privacy Policy
-                  </Link>
+                <div className="grid grid-cols-2 gap-3">
+                  <a
+                    href="https://github.com/hanzoai/app/releases/latest"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 p-3.5 bg-white/[0.02] hover:bg-white/[0.06] rounded-xl border border-white/[0.06] transition-all group"
+                  >
+                    <Monitor className="w-4 h-4 text-white/40 group-hover:text-white/60" />
+                    <span className="text-sm text-white/60 group-hover:text-white/80">Windows</span>
+                  </a>
+
+                  <a
+                    href="https://github.com/hanzoai/app/releases/latest"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 p-3.5 bg-white/[0.02] hover:bg-white/[0.06] rounded-xl border border-white/[0.06] transition-all group"
+                  >
+                    <Apple className="w-4 h-4 text-white/40 group-hover:text-white/60" />
+                    <span className="text-sm text-white/60 group-hover:text-white/80">macOS</span>
+                  </a>
+
+                  <a
+                    href="https://github.com/hanzoai/app/releases/latest"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 p-3.5 bg-white/[0.02] hover:bg-white/[0.06] rounded-xl border border-white/[0.06] transition-all group"
+                  >
+                    <Terminal className="w-4 h-4 text-white/40 group-hover:text-white/60" />
+                    <span className="text-sm text-white/60 group-hover:text-white/80">Linux</span>
+                  </a>
+
+                  <div className="flex items-center justify-center gap-2 p-3.5 bg-white/[0.02] rounded-xl border border-white/[0.06] opacity-40 cursor-not-allowed">
+                    <Smartphone className="w-4 h-4 text-white/30" />
+                    <span className="text-sm text-white/40">Mobile</span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-white/30 text-center">
+                  Mobile coming soon • Local AI models included
                 </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Desktop App Download Section */}
-          <Card className="bg-[#1a1a1a] border-white/10 mt-6">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Download className="w-5 h-5" />
-                Or use Hanzo Desktop
-              </CardTitle>
-              <CardDescription className="text-white/60">
-                Run AI locally without login - available for all platforms
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {/* Desktop Download Buttons */}
-              <div className="grid grid-cols-1 gap-2">
-                <a
-                  href="https://github.com/hanzoai/app/releases/latest"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-all group"
-                >
-                  <div className="flex items-center gap-3">
-                    <Monitor className="w-5 h-5 text-blue-400" />
-                    <div>
-                      <p className="text-sm font-medium">Windows</p>
-                      <p className="text-xs text-white/40">.exe installer</p>
-                    </div>
-                  </div>
-                  <Download className="w-4 h-4 text-white/40 group-hover:text-white/60" />
-                </a>
+            {/* Footer */}
+            <div className="mt-12 text-center">
+              <p className="text-sm text-white/40">
+                Don&apos;t have an account?{' '}
+                <Link href="/signup" className="text-white hover:text-white/80 underline underline-offset-4">
+                  Sign up
+                </Link>
+              </p>
+            </div>
+          </div>
+        </div>
 
-                <a
-                  href="https://github.com/hanzoai/app/releases/latest"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-all group"
-                >
-                  <div className="flex items-center gap-3">
-                    <Apple className="w-5 h-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm font-medium">macOS</p>
-                      <p className="text-xs text-white/40">.dmg installer</p>
-                    </div>
-                  </div>
-                  <Download className="w-4 h-4 text-white/40 group-hover:text-white/60" />
-                </a>
+        {/* Right Side - Animated Ideas */}
+        <div className="hidden lg:flex w-1/2 items-center justify-center px-6 py-20 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute inset-0" style={{
+              backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 1px)`,
+              backgroundSize: '40px 40px'
+            }} />
+          </div>
 
-                <a
-                  href="https://github.com/hanzoai/app/releases/latest"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-all group"
-                >
-                  <div className="flex items-center gap-3">
-                    <Terminal className="w-5 h-5 text-orange-400" />
-                    <div>
-                      <p className="text-sm font-medium">Linux</p>
-                      <p className="text-xs text-white/40">.AppImage / .deb</p>
-                    </div>
-                  </div>
-                  <Download className="w-4 h-4 text-white/40 group-hover:text-white/60" />
-                </a>
+          {/* Animated Gradient Orbs */}
+          <div className="absolute top-1/4 -right-32 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 -left-32 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
 
-                {/* Mobile Coming Soon */}
-                <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10 opacity-60">
-                  <div className="flex items-center gap-3">
-                    <Smartphone className="w-5 h-5 text-green-400" />
-                    <div>
-                      <p className="text-sm font-medium">Mobile</p>
-                      <p className="text-xs text-white/40">iOS & Android</p>
-                    </div>
+          {/* Content */}
+          <div className="relative z-10 max-w-xl w-full">
+            <div className="mb-8">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 mb-6">
+                <Sparkles className="w-4 h-4 text-yellow-400" />
+                <span className="text-sm text-white/80">AI-powered development</span>
+              </div>
+
+              <h2 className="text-3xl font-bold mb-4">
+                Start building in seconds
+              </h2>
+
+              <p className="text-white/60 mb-8">
+                Describe your idea and watch AI bring it to life instantly
+              </p>
+            </div>
+
+            {/* Chat-like Input Preview */}
+            <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl border border-white/[0.08] p-6">
+              <div className="flex items-start gap-3">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full mt-2 animate-pulse" />
+                <div className="flex-1">
+                  <p className="text-white/30 text-xs uppercase tracking-wider mb-3">Try something like</p>
+                  <div className="min-h-[60px]">
+                    <p className={`text-xl text-white/90 transition-all duration-500 font-light ${isTyping ? 'opacity-100' : 'opacity-0'}`}>
+                      {ideas[currentIdea]}
+                      <span className="inline-block w-0.5 h-6 bg-white/60 ml-1 animate-pulse" />
+                    </p>
                   </div>
-                  <span className="text-xs text-violet-400 font-medium px-2 py-1 bg-violet-500/10 rounded-full">Coming Soon</span>
                 </div>
               </div>
 
-              <div className="pt-2">
-                <p className="text-xs text-white/40 text-center">
-                  Desktop app includes local AI models • No account required • Your data stays private
-                </p>
+              <div className="mt-6 pt-6 border-t border-white/[0.06]">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <button className="text-white/20 hover:text-white/40 transition-colors">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                      </svg>
+                    </button>
+                    <button className="text-white/20 hover:text-white/40 transition-colors">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                      </svg>
+                    </button>
+                  </div>
+                  <button className="flex items-center gap-2 px-5 py-2.5 bg-white text-black rounded-xl hover:bg-white/90 transition-all font-medium text-sm">
+                    <Zap className="w-3.5 h-3.5" />
+                    Generate
+                  </button>
+                </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-3 gap-6 mt-10">
+              <div className="text-center">
+                <p className="text-3xl font-light text-white/80">10k+</p>
+                <p className="text-xs text-white/30 mt-1">Apps built</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-light text-white/80">50ms</p>
+                <p className="text-xs text-white/30 mt-1">Response time</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-light text-white/80">100+</p>
+                <p className="text-xs text-white/30 mt-1">AI models</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
