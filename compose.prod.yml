@@ -4,7 +4,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile.dev  # Using dev mode until build issues are fixed
+      dockerfile: Dockerfile.production
     restart: unless-stopped
     # No ports exposed - Traefik handles routing via network
     environment:
