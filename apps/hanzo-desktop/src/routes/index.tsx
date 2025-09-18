@@ -49,6 +49,7 @@ import AIsPage from '../pages/ais';
 import AnalyticsPage from '../pages/analytics';
 import AnalyticsSettingsPage from '../pages/analytics-settings';
 import AppearancePage from '../pages/appearance';
+import NetworkSetupPage from '../pages/network-setup';
 import ChatConversation from '../pages/chat/chat-conversation';
 import ChatLayout from '../pages/chat/layout';
 import CreateTaskPage from '../pages/create-task';
@@ -96,8 +97,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { data: hanzoNodeIsRunning } = useHanzoNodeIsRunningQuery({
     refetchInterval: 1000,
   });
-  const { mutateAsync: hanzoNodeSetOptions } =
-    useHanzoNodeSetOptionsMutation();
+  const { mutateAsync: hanzoNodeSetOptions } = useHanzoNodeSetOptionsMutation();
   const { mutateAsync: hanzoNodeSpawn } = useHanzoNodeSpawnMutation();
   const location = useLocation();
 
@@ -114,11 +114,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     void debug(
       `initializing autoStartHanzoNodeTried.current:${autoStartHanzoNodeTried.current} isInUse:${isInUse} hanzoNodeIsRunning:${hanzoNodeIsRunning}`,
     );
-    if (
-      !autoStartHanzoNodeTried.current &&
-      isInUse &&
-      !hanzoNodeIsRunning
-    ) {
+    if (!autoStartHanzoNodeTried.current && isInUse && !hanzoNodeIsRunning) {
       autoStartHanzoNodeTried.current = true;
       void Promise.resolve().then(async () => {
         if (hanzoNodeOptions) {
@@ -302,6 +298,7 @@ const AppRoutes = () => {
               path={'terms-conditions'}
             />
             <Route element={<AnalyticsPage />} path={'analytics'} />
+            <Route element={<NetworkSetupPage />} path={'network-setup'} />
             <Route
               element={<QuickConnectionPage />}
               path={'quick-connection'}

@@ -1,6 +1,9 @@
 import { httpClient } from '../../http-client';
 import { urlJoin } from '../../utils/url-join';
-import { type GetQuestsStatusResponse, type UpdateQuestsStatusResponse } from './types';
+import {
+  type GetQuestsStatusResponse,
+  type UpdateQuestsStatusResponse,
+} from './types';
 
 export const getQuestsStatus = async (
   nodeAddress: string,

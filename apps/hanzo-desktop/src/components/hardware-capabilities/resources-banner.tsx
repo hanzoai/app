@@ -92,7 +92,7 @@ export const ResourcesBanner = ({
         </div>
       </AlertDescription>
       <button
-        className="absolute right-2 top-2 z-[100] text-gray-500 hover:text-gray-700"
+        className="absolute top-2 right-2 z-[100] text-gray-500 hover:text-gray-700"
         onClick={() => setCompatibilityBannerDismissed(true)}
         type="button"
       >
@@ -118,7 +118,7 @@ export const ResourcesBanner = ({
                   {sidebarExpanded && (
                     <motion.span
                       animate="show"
-                      className="whitespace-nowrap text-xs"
+                      className="text-xs whitespace-nowrap"
                       exit="hidden"
                       initial="hidden"
                       variants={showAnimation}

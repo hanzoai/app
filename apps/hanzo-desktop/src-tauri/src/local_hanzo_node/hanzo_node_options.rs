@@ -33,10 +33,7 @@ pub struct HanzoNodeOptions {
 }
 
 impl HanzoNodeOptions {
-    pub fn with_app_options(
-        app_resource_dir: PathBuf,
-        app_data_dir: PathBuf,
-    ) -> HanzoNodeOptions {
+    pub fn with_app_options(app_resource_dir: PathBuf, app_data_dir: PathBuf) -> HanzoNodeOptions {
         let default_node_storage_path = app_data_dir
             .join("node_storage")
             .to_string_lossy()
@@ -93,7 +90,7 @@ impl HanzoNodeOptions {
                 options
                     .global_identity_name
                     .or(base_options.global_identity_name)
-                    .unwrap_or_default(),
+                    .unwrap_or_else(|| "hanzod".to_string()),
             ),
             node_storage_path: Some(
                 options
@@ -214,7 +211,7 @@ impl Default for HanzoNodeOptions {
             node_ip: Some("127.0.0.1".to_string()),
             node_port: Some("3692".to_string()),
             node_https_port: Some("3693".to_string()),
-            global_identity_name: None,
+            global_identity_name: Some("hanzod".to_string()),
             node_storage_path: Some("./".to_string()),
             embeddings_server_url: Some("http://127.0.0.1:11435".to_string()),
             first_device_needs_registration_code: Some("false".to_string()),
@@ -225,10 +222,10 @@ impl Default for HanzoNodeOptions {
             initial_agent_models: Some(
                 "hanzo-backend:FREE_TEXT_INFERENCE,hanzo-backend:CODE_GENERATOR".to_string(),
             ),
-            initial_agent_api_keys: Some("'',''".to_string()),
+            initial_agent_api_keys: Some(" , ".to_string()), // Two empty API keys with space to ensure proper parsing
             starting_num_qr_devices: Some("0".to_string()),
             log_all: Some("1".to_string()),
-            proxy_identity: Some("@@libp2p_relayer.sep-hanzo".to_string()),
+            proxy_identity: Some("libp2p_relayer.sep-hanzo".to_string()),
             rpc_url: Some("https://sepolia.base.org".to_string()),
             default_embedding_model: Some("snowflake-arctic-embed:xs".to_string()),
             supported_embedding_models: Some("snowflake-arctic-embed:xs".to_string()),
@@ -240,5 +237,178 @@ impl Default for HanzoNodeOptions {
             )
             .and_then(|s| Some(s.to_string())),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_proxy_identity_no_invalid_chars() {
+        // Test that proxy_identity doesn't contain invalid characters like @@
+        let options = HanzoNodeOptions::default();
+
+        // Check proxy_identity is set
+        assert!(options.proxy_identity.is_some());
+
+        let proxy_id = options.proxy_identity.unwrap();
+
+        // Ensure no @@ prefix (which was causing the crash)
+        assert!(
+            !proxy_id.starts_with("@@"),
+            "proxy_identity should not start with @@, got: {}",
+            proxy_id
+        );
+
+        // Ensure it has the correct value
+        assert_eq!(
+            proxy_id, "libp2p_relayer.sep-hanzo",
+            "proxy_identity should be 'libp2p_relayer.sep-hanzo', got: {}",
+            proxy_id
+        );
+
+        // Check for any invalid characters that would cause node to fail
+        assert!(
+            !proxy_id.contains("@@"),
+            "proxy_identity should not contain @@ anywhere, got: {}",
+            proxy_id
+        );
+    }
+
+    #[test]
+    fn test_port_configuration() {
+        // Test that ports are configured correctly (3690, 3691, 3692, 3693)
+        let options = HanzoNodeOptions::default();
+
+        assert_eq!(
+            options.node_api_port,
+            Some("3690".to_string()),
+            "API port should be 3690"
+        );
+
+        assert_eq!(
+            options.node_ws_port,
+            Some("3691".to_string()),
+            "WebSocket port should be 3691"
+        );
+
+        assert_eq!(
+            options.node_port,
+            Some("3692".to_string()),
+            "Node port should be 3692"
+        );
+
+        assert_eq!(
+            options.node_https_port,
+            Some("3693".to_string()),
+            "HTTPS port should be 3693"
+        );
+    }
+
+    #[test]
+    fn test_global_identity_name_valid() {
+        // Test that global_identity_name is set and valid
+        let options = HanzoNodeOptions::default();
+
+        // Check global_identity_name is set
+        assert!(
+            options.global_identity_name.is_some(),
+            "global_identity_name should be set"
+        );
+
+        let global_id = options.global_identity_name.unwrap();
+
+        // Ensure it's not empty
+        assert!(
+            !global_id.is_empty(),
+            "global_identity_name should not be empty"
+        );
+
+        // Ensure no @@ prefix
+        assert!(
+            !global_id.starts_with("@@"),
+            "global_identity_name should not start with @@, got: {}",
+            global_id
+        );
+
+        // Ensure it has the correct value
+        assert_eq!(
+            global_id, "hanzod",
+            "global_identity_name should be 'hanzod', got: {}",
+            global_id
+        );
+    }
+
+    #[test]
+    fn test_merge_preserves_valid_proxy_identity() {
+        // Test that merging options preserves the valid proxy_identity
+        let base = HanzoNodeOptions::default();
+        let override_opts = HanzoNodeOptions {
+            node_api_port: Some("9999".to_string()),
+            ..Default::default()
+        };
+
+        let merged = HanzoNodeOptions::from_merge(base, override_opts);
+
+        // proxy_identity should remain valid after merge
+        assert_eq!(
+            merged.proxy_identity,
+            Some("libp2p_relayer.sep-hanzo".to_string()),
+            "Merged options should preserve valid proxy_identity"
+        );
+
+        // API port should be overridden
+        assert_eq!(
+            merged.node_api_port,
+            Some("9999".to_string()),
+            "API port should be overridden in merge"
+        );
+    }
+
+    #[test]
+    fn test_with_app_options() {
+        // Test that app options are properly set
+        let app_resource_dir = PathBuf::from("/test/resource");
+        let app_data_dir = PathBuf::from("/test/data");
+
+        let options = HanzoNodeOptions::with_app_options(app_resource_dir, app_data_dir.clone());
+
+        // Check node_storage_path is set correctly
+        let expected_storage = app_data_dir
+            .join("node_storage")
+            .to_string_lossy()
+            .to_string();
+        assert_eq!(
+            options.node_storage_path,
+            Some(expected_storage),
+            "node_storage_path should be set to app_data_dir/node_storage"
+        );
+    }
+
+    #[test]
+    fn test_initial_agents_configuration() {
+        // Test that initial agents are configured correctly
+        let options = HanzoNodeOptions::default();
+
+        assert!(options.initial_agent_urls.is_some());
+        assert!(options.initial_agent_names.is_some());
+        assert!(options.initial_agent_models.is_some());
+
+        // Check URLs point to hanzo.com
+        let urls = options.initial_agent_urls.unwrap();
+        assert!(
+            urls.contains("hanzo.com"),
+            "Agent URLs should point to hanzo.com, got: {}",
+            urls
+        );
+
+        // Check agent names contain hanzo
+        let names = options.initial_agent_names.unwrap();
+        assert!(
+            names.contains("hanzo"),
+            "Agent names should contain 'hanzo', got: {}",
+            names
+        );
     }
 }

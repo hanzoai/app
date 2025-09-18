@@ -12,7 +12,6 @@ function useCombinedRefs<T>(
       if (typeof ref === 'function') {
         ref(targetRef.current);
       } else {
-         
         ref.current = targetRef.current;
       }
     });

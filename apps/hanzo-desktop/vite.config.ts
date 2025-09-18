@@ -29,12 +29,20 @@ export default defineConfig(() => ({
     },
   },
 
+  // Resolve aliases
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src'),
+    },
+  },
+
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent vite from obscuring rust errors
   clearScreen: false,
   // 2. tauri expects a fixed port, fail if that port is not available
   server: {
+    host: '127.0.0.1',
     port: 1420,
     strictPort: true,
     watch: {
@@ -60,6 +68,7 @@ export default defineConfig(() => ({
   ],
 
   build: {
+    sourcemap: true,
     rollupOptions: {
       input: {
         index: resolve(__dirname, 'index.html'),
@@ -76,7 +85,10 @@ export default defineConfig(() => ({
       },
       onwarn(warning, warn) {
         // Suppress "Module has been externalized" warnings for node: modules
-        if (warning.message.includes('Module') && warning.message.includes('has been externalized')) {
+        if (
+          warning.message.includes('Module') &&
+          warning.message.includes('has been externalized')
+        ) {
           return;
         }
         warn(warning);
@@ -84,8 +96,6 @@ export default defineConfig(() => ({
     },
     // Increase chunk size warning limit
     chunkSizeWarningLimit: 2000,
-    // Disable sourcemaps to reduce memory usage during build
-    sourcemap: false,
     // Optimize build for production
     minify: 'esbuild', // Use esbuild for faster minification
     target: 'esnext',

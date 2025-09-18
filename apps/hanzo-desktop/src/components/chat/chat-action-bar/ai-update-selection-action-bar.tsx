@@ -50,10 +50,8 @@ const ollamaDescriptionMap = OLLAMA_MODELS_REPOSITORY.reduce(
 );
 
 const nonOllamaProviderModels = {
-  'hanzo-backend:free_text_inference':
-    'Hanzo AI model for text generation.',
-  'hanzo-backend:code_generator':
-    'Hanzo AI model for generating tool code.',
+  'hanzo-backend:free_text_inference': 'Hanzo AI model for text generation.',
+  'hanzo-backend:code_generator': 'Hanzo AI model for generating tool code.',
   'openai:gpt-4o':
     'Powerful OpenAI model known for its ability to generate human-like text and handle complex tasks.',
   'openai:gpt-4o-mini':
@@ -173,9 +171,7 @@ export function AIModelSelectorBase({
     return '';
   }, [agents, llmProviders, value]);
 
-  const isLocalHanzoNodeIsUse = useHanzoNodeManager(
-    (state) => state.isInUse,
-  );
+  const isLocalHanzoNodeIsUse = useHanzoNodeManager((state) => state.isInUse);
 
   return (
     <Dialog onOpenChange={setIsDialogOpen} open={isDialogOpen}>

@@ -6,4 +6,4 @@ export type DeleteMcpServerInput = Token & {
   id: number;
 };
 
-export type DeleteMcpServerResponse = McpServer; 
+export type DeleteMcpServerResponse = McpServer;

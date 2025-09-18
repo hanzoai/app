@@ -735,7 +735,10 @@ const EmptyMessage = () => {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <CreateChatConfigActionBar form={chatConfigForm} currentAI={currentAI} />
+                        <CreateChatConfigActionBar
+                          form={chatConfigForm}
+                          currentAI={currentAI}
+                        />
 
                         <Button
                           className={cn('size-[36px] p-2')}

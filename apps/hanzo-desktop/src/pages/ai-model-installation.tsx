@@ -23,6 +23,7 @@ import { Link, useNavigate } from 'react-router';
 import { ModelProvider } from '../components/ais/constants';
 import ProviderIcon from '../components/ais/provider-icon';
 import { ResourcesBanner } from '../components/hardware-capabilities/resources-banner';
+import { HanzoModelBrowser } from '../components/hanzo-node-manager/hanzo-model-browser';
 import { OllamaModels } from '../components/hanzo-node-manager/ollama-models';
 import { useURLQueryParams } from '../hooks/use-url-query-params';
 import { hanzoNodeQueryClient } from '../lib/hanzo-node-manager/hanzo-node-manager-client';
@@ -116,6 +117,7 @@ const AIModelInstallation = ({
   );
 
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const auth = useAuth((state) => state.auth);
   const [showAllOllamaModels, setShowAllOllamaModels] = useState(false);
 
@@ -159,7 +161,6 @@ const AIModelInstallation = ({
     }));
   }, [providerModels]);
 
-  const navigate = useNavigate();
   return (
     <Tabs
       className="flex h-screen w-full flex-col overflow-hidden"
@@ -245,9 +246,9 @@ const AIModelInstallation = ({
                 </span>
               </Button>
             </div>
-            <OllamaModels
-              parentSetShowAllOllamaModels={setShowAllOllamaModels}
-              parentShowAllOllamaModels={showAllOllamaModels}
+            <HanzoModelBrowser
+              isOnboardingStep={isOnboardingStep}
+              onContinue={() => navigate('/')}
             />
             {isOnboardingStep && (
               <div className="flex w-full justify-center">

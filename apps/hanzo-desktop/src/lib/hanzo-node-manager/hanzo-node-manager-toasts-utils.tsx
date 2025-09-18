@@ -49,8 +49,8 @@ export const hanzoNodeStartedToast = () => {
 export const hanzoNodeStartErrorToast = () => {
   toast.error(
     <div>
-      Error starting your local Hanzo Node, see <HanzoNodeLogsLabel /> for
-      more information
+      Error starting your local Hanzo Node, see <HanzoNodeLogsLabel /> for more
+      information
     </div>,
     {
       ...defaultToastOptions,
@@ -88,8 +88,8 @@ export const stoppingHanzoNodeToast = () => {
 export const hanzoNodeStopErrorToast = () => {
   toast.error(
     <div>
-      Error stopping your local Hanzo Node, see <HanzoNodeLogsLabel /> for
-      more information
+      Error stopping your local Hanzo Node, see <HanzoNodeLogsLabel /> for more
+      information
     </div>,
     {
       ...defaultToastOptions,
@@ -133,8 +133,8 @@ export const successRemovingHanzoNodeStorageToast = () => {
 export const errorRemovingHanzoNodeStorageToast = () => {
   return toast.error(
     <div>
-      Error removing your local Hanzo Node storage, see{' '}
-      <HanzoNodeLogsLabel /> for more information
+      Error removing your local Hanzo Node storage, see <HanzoNodeLogsLabel />{' '}
+      for more information
     </div>,
     { ...defaultToastOptions },
   );

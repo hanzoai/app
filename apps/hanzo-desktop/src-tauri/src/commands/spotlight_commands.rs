@@ -1,4 +1,4 @@
-use crate::windows::{hide_spotlight_window, show_spotlight_window, open_main_window_with_path};
+use crate::windows::{hide_spotlight_window, open_main_window_with_path, show_spotlight_window};
 
 #[tauri::command]
 pub async fn hide_spotlight_window_app(app_handle: tauri::AppHandle) {

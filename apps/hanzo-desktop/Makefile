@@ -231,17 +231,141 @@ lint:
 
 ## Cleaning
 clean: ios-clean android-clean
-	@echo "$(BLUE)🧹 Cleaning build artifacts...$(NC)"
+	@echo "$(BLUE)🧹 Cleaning all build artifacts and caches...$(NC)"
+	@echo "  → Removing dist directories..."
 	rm -rf dist
-	rm -rf src-tauri/target/release/bundle
+	rm -rf .next
+	@echo "  → Removing Rust target directories..."
+	rm -rf src-tauri/target
+	rm -rf /Users/z/work/hanzo/app/target
+	@echo "  → Removing Vite cache..."
 	rm -rf node_modules/.vite
+	@echo "  → Removing TypeScript build info..."
+	rm -rf tsconfig.tsbuildinfo
+	rm -rf src-tauri/tsconfig.tsbuildinfo
+	@echo "  → Removing temp files..."
+	rm -rf .turbo
+	rm -rf .nx
+	rm -rf /tmp/hanzo-*
+	@echo "  → Killing all running processes..."
+	@pkill -f "hanzo-desktop" || true
+	@pkill -f "pnpm tauri" || true
+	@pkill -f "cargo build" || true
+	@pkill -f "hanzod" || true
 	@echo "$(GREEN)✅ Clean complete!$(NC)"
 
 clean-all: clean
-	@echo "$(BLUE)🧹 Deep cleaning...$(NC)"
+	@echo "$(BLUE)🧹 Deep cleaning (including dependencies)...$(NC)"
 	rm -rf node_modules
-	rm -rf src-tauri/target
-	@echo "$(GREEN)✅ Deep clean complete!$(NC)"
+	rm -rf pnpm-lock.yaml
+	rm -rf package-lock.json
+	rm -rf src-tauri/Cargo.lock
+	@echo "$(GREEN)✅ Deep clean complete! Run 'make install' to reinstall dependencies.$(NC)"
+
+## Fresh build from scratch
+fresh-build: clean
+	@echo "$(BLUE)🚀 Building fresh Hanzo Desktop app from scratch...$(NC)"
+	@echo "$(YELLOW)Step 1: Installing dependencies...$(NC)"
+	pnpm install
+	cd src-tauri && cargo fetch
+	@echo "$(YELLOW)Step 2: Building release app...$(NC)"
+	pnpm tauri build
+	@echo "$(YELLOW)Step 3: Deploying to /Applications...$(NC)"
+	@rm -rf "/Applications/Hanzo.app"
+	@if [ -d "/Users/z/work/hanzo/app/target/release/bundle/macos/Hanzo AI.app" ]; then \
+		cp -R "/Users/z/work/hanzo/app/target/release/bundle/macos/Hanzo AI.app" "/Applications/Hanzo.app"; \
+		echo "$(GREEN)✅ Deployed from /Users/z/work/hanzo/app/target/release/bundle/macos/$(NC)"; \
+	elif [ -d "src-tauri/target/release/bundle/macos/Hanzo AI.app" ]; then \
+		cp -R "src-tauri/target/release/bundle/macos/Hanzo AI.app" "/Applications/Hanzo.app"; \
+		echo "$(GREEN)✅ Deployed from src-tauri/target/release/bundle/macos/$(NC)"; \
+	else \
+		echo "$(RED)❌ Could not find built app bundle!$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)✅ Fresh build complete! Launching Hanzo.app...$(NC)"
+	@open "/Applications/Hanzo.app"
+
+## Development with Hot Reload (No Rust rebuilds needed!)
+dev-install: ## 🔗 Install development app with symlinks (one-time setup)
+	@echo "$(BLUE)🔗 Creating development app with symlinks...$(NC)"
+	@echo "$(YELLOW)This links /Applications/Hanzo-Dev.app to your source code$(NC)"
+	# Build a development version first
+	@echo "$(CYAN)Building development binary...$(NC)"
+	cd src-tauri && cargo build
+	# Create the app structure
+	@rm -rf "/Applications/Hanzo-Dev.app"
+	@mkdir -p "/Applications/Hanzo-Dev.app/Contents/MacOS"
+	@mkdir -p "/Applications/Hanzo-Dev.app/Contents/Resources"
+	# Symlink the binary from target/debug (development build)
+	@ln -sf "$(PWD)/../../target/debug/hanzo-desktop" "/Applications/Hanzo-Dev.app/Contents/MacOS/hanzo-desktop"
+	# Copy Info.plist
+	@if [ -f "src-tauri/Info.plist" ]; then \
+		cp src-tauri/Info.plist "/Applications/Hanzo-Dev.app/Contents/Info.plist"; \
+	else \
+		echo '<?xml version="1.0" encoding="UTF-8"?>' > "/Applications/Hanzo-Dev.app/Contents/Info.plist"; \
+		echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' >> "/Applications/Hanzo-Dev.app/Contents/Info.plist"; \
+		echo '<plist version="1.0"><dict>' >> "/Applications/Hanzo-Dev.app/Contents/Info.plist"; \
+		echo '<key>CFBundleExecutable</key><string>hanzo-desktop</string>' >> "/Applications/Hanzo-Dev.app/Contents/Info.plist"; \
+		echo '<key>CFBundleIdentifier</key><string>ai.hanzo.desktop.dev</string>' >> "/Applications/Hanzo-Dev.app/Contents/Info.plist"; \
+		echo '<key>CFBundleName</key><string>Hanzo Dev</string>' >> "/Applications/Hanzo-Dev.app/Contents/Info.plist"; \
+		echo '<key>CFBundlePackageType</key><string>APPL</string>' >> "/Applications/Hanzo-Dev.app/Contents/Info.plist"; \
+		echo '<key>CFBundleShortVersionString</key><string>0.5.0-dev</string>' >> "/Applications/Hanzo-Dev.app/Contents/Info.plist"; \
+		echo '<key>LSMinimumSystemVersion</key><string>10.15</string>' >> "/Applications/Hanzo-Dev.app/Contents/Info.plist"; \
+		echo '</dict></plist>' >> "/Applications/Hanzo-Dev.app/Contents/Info.plist"; \
+	fi
+	# Symlink icon
+	@if [ -f "src-tauri/icons/icon.icns" ]; then \
+		ln -sf "$(PWD)/src-tauri/icons/icon.icns" "/Applications/Hanzo-Dev.app/Contents/Resources/icon.icns"; \
+	fi
+	@echo "$(GREEN)✅ Development app installed at /Applications/Hanzo-Dev.app$(NC)"
+	@echo "$(CYAN)📝 Edit source files in $(PWD)$(NC)"
+	@echo "$(YELLOW)🔄 Run 'make dev-app' to start with hot reload$(NC)"
+
+dev-app: ## 🚀 Run development app with hot reload
+	@echo "$(BLUE)🚀 Starting Hanzo Dev app with hot reload...$(NC)"
+	@echo "$(GREEN)✅ Frontend changes reload instantly$(NC)"
+	@echo "$(YELLOW)⚠️  Rust changes: run 'make dev-rebuild'$(NC)"
+	@echo "$(CYAN)🔗 Using symlinked app at /Applications/Hanzo-Dev.app$(NC)"
+	# Start Vite dev server in background
+	@pnpm dev &
+	@sleep 2
+	# Run the development app
+	@WEBKIT_DISABLE_COMPOSITING_MODE=1 /Applications/Hanzo-Dev.app/Contents/MacOS/hanzo-desktop
+
+build-rust: ## 🦀 Build Rust backend only (debug mode)
+	@echo "$(BLUE)🦀 Building Rust backend (debug)...$(NC)"
+	cd src-tauri && cargo build
+	@echo "$(GREEN)✅ Rust backend built (debug mode)$(NC)"
+
+build-tauri: ## 🚀 Build Rust backend in release mode
+	@echo "$(BLUE)🚀 Building Rust backend (release)...$(NC)"
+	cd src-tauri && cargo build --release
+	@echo "$(GREEN)✅ Rust backend built (release mode)$(NC)"
+
+dev-rebuild: build-rust ## 🔨 Rebuild Rust code only (alias)
+
+hot: ## 🔥 Start hot reload development (frontend only, fastest!)
+	@echo "$(BLUE)🔥 Starting HOT RELOAD mode - Frontend changes auto-refresh!$(NC)"
+	@echo "$(YELLOW)📝 Edit any .tsx/.ts file and see changes instantly$(NC)"
+	@echo "$(YELLOW)🌐 Access at http://localhost:1420$(NC)"
+	@echo "$(CYAN)⚡ No rebuilds needed for frontend changes!$(NC)"
+	pnpm dev
+
+hot-tauri: ## 🚀 Start Tauri with hot reload (full app experience)
+	@echo "$(BLUE)🚀 Starting Tauri with HOT RELOAD enabled!$(NC)"
+	@echo "$(GREEN)✅ Frontend: Hot reloads on save$(NC)"
+	@echo "$(YELLOW)⚠️  Rust: Requires restart (use Ctrl+C and re-run)$(NC)"
+	@echo "$(CYAN)💡 Tip: Use 'make hot' for pure frontend development$(NC)"
+	pnpm tauri:dev
+
+hot-ui: ## 🌐 Remote UI mode (develop in browser)
+	@echo "$(BLUE)🌐 Starting REMOTE UI mode - Use your browser!$(NC)"
+	@echo "$(GREEN)✅ Fastest iteration for UI development$(NC)"
+	@echo "$(YELLOW)🔗 Will open in your default browser$(NC)"
+	TAURI_REMOTE_UI=1 pnpm tauri:dev
+
+dev-frontend: hot  ## Alias for hot reload
+dev-full: hot-tauri  ## Alias for full Tauri hot reload
 
 ## Quick commands and aliases
 ios: ios-dev  # Alias for iOS development

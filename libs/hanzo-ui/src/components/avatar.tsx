@@ -3,7 +3,9 @@ import * as React from 'react';
 
 import { cn } from '../utils';
 
-type AvatarProps = React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root> & {
+type AvatarProps = React.ComponentPropsWithoutRef<
+  typeof AvatarPrimitive.Root
+> & {
   ref?: React.RefObject<React.ComponentRef<typeof AvatarPrimitive.Root>>;
 };
 
@@ -19,7 +21,9 @@ const Avatar = ({ className, ref, ...props }: AvatarProps) => (
 );
 Avatar.displayName = AvatarPrimitive.Root.displayName;
 
-type AvatarImageProps = React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image> & {
+type AvatarImageProps = React.ComponentPropsWithoutRef<
+  typeof AvatarPrimitive.Image
+> & {
   ref?: React.RefObject<React.ComponentRef<typeof AvatarPrimitive.Image>>;
 };
 
@@ -32,7 +36,9 @@ const AvatarImage = ({ className, ref, ...props }: AvatarImageProps) => (
 );
 AvatarImage.displayName = AvatarPrimitive.Image.displayName;
 
-type AvatarFallbackProps = React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback> & {
+type AvatarFallbackProps = React.ComponentPropsWithoutRef<
+  typeof AvatarPrimitive.Fallback
+> & {
   ref?: React.RefObject<React.ComponentRef<typeof AvatarPrimitive.Fallback>>;
 };
 

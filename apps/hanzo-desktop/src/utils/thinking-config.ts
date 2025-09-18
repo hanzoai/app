@@ -10,9 +10,15 @@ export interface ThinkingConfig {
  * Utility function for thinking model detection
  * Checks if a model supports thinking capabilities and returns configuration
  */
-export const getThinkingConfig = (modelName: string | undefined): ThinkingConfig => {
+export const getThinkingConfig = (
+  modelName: string | undefined,
+): ThinkingConfig => {
   if (!modelName) {
-    return { supportsThinking: false, forceEnabled: false, reasoningLevel: false };
+    return {
+      supportsThinking: false,
+      forceEnabled: false,
+      reasoningLevel: false,
+    };
   }
 
   const currentModel = modelName.toLowerCase();
@@ -20,11 +26,15 @@ export const getThinkingConfig = (modelName: string | undefined): ThinkingConfig
     (supportedModel) => {
       const normalizedSupported = supportedModel.toLowerCase();
       return currentModel === normalizedSupported;
-    }
+    },
   );
 
   if (!supportedModel) {
-    return { supportsThinking: false, forceEnabled: false, reasoningLevel: false };
+    return {
+      supportsThinking: false,
+      forceEnabled: false,
+      reasoningLevel: false,
+    };
   }
 
   const config =

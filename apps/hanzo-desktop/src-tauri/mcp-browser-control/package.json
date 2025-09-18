@@ -1,0 +1,16 @@
+{
+  "name": "@hanzo/mcp-browser-control",
+  "version": "1.0.0",
+  "description": "MCP server for controlling Hanzo desktop app via browser automation",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "playwright": "^1.40.0",
+    "ws": "^8.16.0"
+  }
+}

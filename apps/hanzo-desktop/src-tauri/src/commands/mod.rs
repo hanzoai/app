@@ -1,7 +1,10 @@
 pub mod fetch;
 pub mod galxe;
+pub mod hanzo_node_manager_commands;
 pub mod hardware;
 pub mod logs;
-pub mod hanzo_node_manager_commands;
 pub mod mcp_clients_install;
+pub mod node;
+pub mod remote_control;
+pub mod remote_ui_commands;
 pub mod spotlight_commands;

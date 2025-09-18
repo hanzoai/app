@@ -20,7 +20,9 @@ export const getDenoBinPath = async (): Promise<string> => {
     const options = await invoke<HanzoNodeOptions>('hanzo_node_get_options');
     const denoPath = options?.hanzo_tools_runner_deno_binary_path;
     if (!denoPath) {
-      console.warn('Deno binary path not found in options, defaulting to "deno"');
+      console.warn(
+        'Deno binary path not found in options, defaulting to "deno"',
+      );
       return 'deno'; // Default or fallback
     }
     return denoPath;

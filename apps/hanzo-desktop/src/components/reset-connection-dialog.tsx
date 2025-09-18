@@ -37,19 +37,17 @@ export const ResetConnectionDialog = ({
   const { t } = useTranslation();
   const { mutateAsync: hanzoNodeKill, isPending: isHanzoNodeKillPending } =
     useHanzoNodeKillMutation();
-  const {
-    mutateAsync: hanzoNodeSpawn,
-    isPending: isHanzoNodeSpawnPending,
-  } = useHanzoNodeSpawnMutation({
-    onSuccess: async () => {
-      if (!encryptionKeys) return;
-      await submitRegistrationNoCode({
-        nodeAddress: 'http://127.0.0.1:9550',
-        profileEncryptionPk: encryptionKeys.profile_encryption_pk,
-        profileIdentityPk: encryptionKeys.profile_identity_pk,
-      });
-    },
-  });
+  const { mutateAsync: hanzoNodeSpawn, isPending: isHanzoNodeSpawnPending } =
+    useHanzoNodeSpawnMutation({
+      onSuccess: async () => {
+        if (!encryptionKeys) return;
+        await submitRegistrationNoCode({
+          nodeAddress: 'http://127.0.0.1:9550',
+          profileEncryptionPk: encryptionKeys.profile_encryption_pk,
+          profileIdentityPk: encryptionKeys.profile_identity_pk,
+        });
+      },
+    });
   const {
     mutateAsync: hanzoNodeRemoveStorage,
     isPending: isHanzoNodeRemoveStoragePending,
@@ -94,25 +92,24 @@ export const ResetConnectionDialog = ({
         description: 'Creating backup and resetting app to clean state',
         duration: 5000,
       });
-      
+
       const result = await invoke<string>('hanzo_node_full_reset');
-      
+
       // The app will restart automatically, but show success first
       toast.success('Reset complete!', {
         description: result,
         duration: 3000,
       });
-      
+
       // Clear local state before restart
       useAuth.getState().setLogout();
       setHanzoNodeOptions(null);
-      
     } catch (error) {
       console.error('Full reset failed:', error);
       toast.error('Reset failed', {
         description: 'Trying fallback reset method...',
       });
-      
+
       // Fallback to old method if new command fails
       await hanzoNodeKill();
       useAuth.getState().setLogout();

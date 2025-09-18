@@ -1,6 +1,6 @@
 import { getAgents as getAgentsApi } from '@hanzo_network/hanzo-message-ts/api/agents/index';
 
-import  { type GetAgentsInput } from './types';
+import { type GetAgentsInput } from './types';
 
 export const getAgents = async ({
   nodeAddress,

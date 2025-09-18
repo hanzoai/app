@@ -15,7 +15,7 @@ pub fn global_shortcut_handler(app: &tauri::AppHandle, shortcut: Shortcut, event
             toggle_spotlight::toggle_spotlight(app, shortcut, event);
         }
         _ => {
-          log::warn!("unhandled shortcut: {:?}", shortcut);
+            log::warn!("unhandled shortcut: {:?}", shortcut);
         }
     }
 }

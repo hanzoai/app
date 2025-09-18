@@ -1,0 +1,38 @@
+{
+  "name": "@hanzo/brand",
+  "version": "1.0.0",
+  "description": "hanzo brand assets and icon generation tools",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "assets",
+    "scripts"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "generate-icons": "node scripts/generate-icons.mjs",
+    "generate-desktop-icons": "node scripts/generate-desktop-icons.mjs"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./assets/*": "./assets/*",
+    "./logo": "./assets/logo.svg",
+    "./scripts/*": "./scripts/*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "sharp": "^0.33.5",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "hanzo",
+    "brand",
+    "logo",
+    "icons"
+  ],
+  "license": "MIT"
+}

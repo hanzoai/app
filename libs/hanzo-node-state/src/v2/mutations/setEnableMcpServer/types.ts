@@ -8,4 +8,4 @@ export type SetEnableMcpServerInput = Token & {
   nodeAddress: string;
   mcpServerId: number;
   isEnabled: boolean;
-}; 
+};

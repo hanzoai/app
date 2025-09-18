@@ -10,11 +10,31 @@
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
+    "tauri:dev:setup": "./scripts/setup-hanzod-link.sh && tauri dev",
+    "dev:tauri-ui": "TAURI_REMOTE_UI=1 tauri dev",
     "generate-icons": "node generate-icons.mjs",
     "generate-icns": "./generate-icns.sh",
-    "rebrand": "node generate-icons.mjs && ./generate-icns.sh"
+    "rebrand": "node generate-icons.mjs && ./generate-icns.sh",
+    "test": "cd e2e-tests && pnpm test",
+    "test:e2e": "cd e2e-tests && pnpm test",
+    "test:e2e:install": "cd e2e-tests && pnpm install",
+    "test:playwright": "cd e2e-tests && npx playwright test",
+    "test:get-started": "npx playwright test tests/playwright/get-started.test.js --headed",
+    "test:automated": "npx playwright test tests/playwright/ --reporter=list"
   },
   "devDependencies": {
-    "sharp": "^0.34.3"
+    "@playwright/test": "^1.55.0",
+    "@wdio/cli": "^9.19.2",
+    "@wdio/local-runner": "^9.19.2",
+    "@wdio/mocha-framework": "^9.19.2",
+    "@wdio/spec-reporter": "^9.19.2",
+    "playwright": "^1.55.0",
+    "sharp": "^0.34.3",
+    "vite": "^7.1.5",
+    "webdriverio": "^9.19.2"
+  },
+  "dependencies": {
+    "recharts": "^3.2.1",
+    "tauri-remote-ui": "^0.27.0"
   }
 }

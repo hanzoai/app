@@ -1,9 +1,4 @@
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  Input,
-} from '@hanzo_network/hanzo-ui';
+import { Button, Dialog, DialogContent, Input } from '@hanzo_network/hanzo-ui';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { DownloadIcon, Loader2, RotateCw, Search } from 'lucide-react';

@@ -1,0 +1,59 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install Rust dependencies
+        run: |
+          cargo install tauri-cli
+          cargo install tauri-driver
+      
+      - name: Install dependencies
+        run: |
+          pnpm install
+          cd e2e-tests && pnpm install
+      
+      - name: Build Tauri app (debug mode)
+        run: pnpm tauri build --debug --no-bundle
+      
+      - name: Run E2E tests
+        run: pnpm test:e2e
+        env:
+          CI: true
+      
+      - name: Upload test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: |
+            e2e-tests/screenshots/
+            e2e-tests/logs/
+            e2e-tests/test-results/

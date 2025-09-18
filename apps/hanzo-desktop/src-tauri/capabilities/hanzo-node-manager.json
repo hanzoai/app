@@ -23,7 +23,7 @@
     "hanzo_node_is_running",
     "hanzo_node_get_options",
     "hanzo_node_set_options",
-    "hanzo_node_spawn",
+    "hanzod_spawn",
     "hanzo_node_kill",
     "hanzo_node_remove_storage",
     "hanzo_node_set_default_options",

@@ -1,4 +1,3 @@
- 
 import { loadPyodide, type PyodideInterface } from 'pyodide';
 
 export type CodeOutput = {

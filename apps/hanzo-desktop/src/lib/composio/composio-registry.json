@@ -11,12 +11,7 @@
       "status": "offline",
       "usageCount": 648,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": true,
       "popularityMetric": 0,
       "enabled": true,
@@ -43,12 +38,7 @@
       "status": "offline",
       "usageCount": 391,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -75,12 +65,7 @@
       "status": "offline",
       "usageCount": 136,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": true,
       "popularityMetric": 0,
       "enabled": true,
@@ -107,12 +92,7 @@
       "status": "offline",
       "usageCount": 81,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": true,
       "popularityMetric": 0,
       "enabled": true,
@@ -139,12 +119,7 @@
       "status": "offline",
       "usageCount": 917,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": true,
       "popularityMetric": 0,
       "enabled": true,
@@ -171,12 +146,7 @@
       "status": "offline",
       "usageCount": 108,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": true,
       "popularityMetric": 0,
       "enabled": true,
@@ -203,12 +173,7 @@
       "status": "offline",
       "usageCount": 597,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": true,
       "popularityMetric": 0,
       "enabled": true,
@@ -239,12 +204,7 @@
       "status": "offline",
       "usageCount": 756,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -271,12 +231,7 @@
       "status": "offline",
       "usageCount": 220,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -303,12 +258,7 @@
       "status": "offline",
       "usageCount": 445,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -335,12 +285,7 @@
       "status": "offline",
       "usageCount": 407,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -375,12 +320,7 @@
       "status": "offline",
       "usageCount": 883,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -407,12 +347,7 @@
       "status": "offline",
       "usageCount": 92,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -443,12 +378,7 @@
       "status": "offline",
       "usageCount": 186,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -483,12 +413,7 @@
       "status": "offline",
       "usageCount": 780,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": true,
       "popularityMetric": 0,
       "enabled": true,
@@ -515,12 +440,7 @@
       "status": "offline",
       "usageCount": 865,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -551,12 +471,7 @@
       "status": "offline",
       "usageCount": 424,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -587,12 +502,7 @@
       "status": "offline",
       "usageCount": 831,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -619,12 +529,7 @@
       "status": "offline",
       "usageCount": 329,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -659,12 +564,7 @@
       "status": "offline",
       "usageCount": 357,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -691,12 +591,7 @@
       "status": "offline",
       "usageCount": 243,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -723,12 +618,7 @@
       "status": "offline",
       "usageCount": 429,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -755,12 +645,7 @@
       "status": "offline",
       "usageCount": 374,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -787,12 +672,7 @@
       "status": "offline",
       "usageCount": 976,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -819,12 +699,7 @@
       "status": "offline",
       "usageCount": 261,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -851,12 +726,7 @@
       "status": "offline",
       "usageCount": 984,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -883,12 +753,7 @@
       "status": "offline",
       "usageCount": 361,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -923,12 +788,7 @@
       "status": "offline",
       "usageCount": 691,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -959,12 +819,7 @@
       "status": "offline",
       "usageCount": 902,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -991,12 +846,7 @@
       "status": "offline",
       "usageCount": 455,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1027,12 +877,7 @@
       "status": "offline",
       "usageCount": 805,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1059,12 +904,7 @@
       "status": "offline",
       "usageCount": 118,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1091,12 +931,7 @@
       "status": "offline",
       "usageCount": 242,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1123,12 +958,7 @@
       "status": "offline",
       "usageCount": 679,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1155,12 +985,7 @@
       "status": "offline",
       "usageCount": 178,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1187,12 +1012,7 @@
       "status": "offline",
       "usageCount": 586,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1219,12 +1039,7 @@
       "status": "offline",
       "usageCount": 153,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1255,12 +1070,7 @@
       "status": "offline",
       "usageCount": 431,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1287,12 +1097,7 @@
       "status": "offline",
       "usageCount": 35,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1323,12 +1128,7 @@
       "status": "offline",
       "usageCount": 504,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1355,12 +1155,7 @@
       "status": "offline",
       "usageCount": 157,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1387,12 +1182,7 @@
       "status": "offline",
       "usageCount": 895,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1419,12 +1209,7 @@
       "status": "offline",
       "usageCount": 120,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1451,12 +1236,7 @@
       "status": "offline",
       "usageCount": 819,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1483,12 +1263,7 @@
       "status": "offline",
       "usageCount": 249,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1515,12 +1290,7 @@
       "status": "offline",
       "usageCount": 945,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1547,12 +1317,7 @@
       "status": "offline",
       "usageCount": 707,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1583,12 +1348,7 @@
       "status": "offline",
       "usageCount": 118,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1615,12 +1375,7 @@
       "status": "offline",
       "usageCount": 979,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1647,12 +1402,7 @@
       "status": "offline",
       "usageCount": 531,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": true,
       "popularityMetric": 0,
       "enabled": true,
@@ -1687,12 +1437,7 @@
       "status": "offline",
       "usageCount": 214,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1723,12 +1468,7 @@
       "status": "offline",
       "usageCount": 709,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1755,12 +1495,7 @@
       "status": "offline",
       "usageCount": 715,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1791,12 +1526,7 @@
       "status": "offline",
       "usageCount": 300,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1823,12 +1553,7 @@
       "status": "offline",
       "usageCount": 424,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1855,12 +1580,7 @@
       "status": "offline",
       "usageCount": 681,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1887,12 +1607,7 @@
       "status": "offline",
       "usageCount": 409,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1919,12 +1634,7 @@
       "status": "offline",
       "usageCount": 462,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1959,12 +1669,7 @@
       "status": "offline",
       "usageCount": 579,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -1995,12 +1700,7 @@
       "status": "offline",
       "usageCount": 366,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2027,12 +1727,7 @@
       "status": "offline",
       "usageCount": 967,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2059,12 +1754,7 @@
       "status": "offline",
       "usageCount": 283,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2091,12 +1781,7 @@
       "status": "offline",
       "usageCount": 393,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2123,12 +1808,7 @@
       "status": "offline",
       "usageCount": 971,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2155,12 +1835,7 @@
       "status": "offline",
       "usageCount": 282,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2187,12 +1862,7 @@
       "status": "offline",
       "usageCount": 827,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2227,12 +1897,7 @@
       "status": "offline",
       "usageCount": 7,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2259,12 +1924,7 @@
       "status": "offline",
       "usageCount": 563,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2291,12 +1951,7 @@
       "status": "offline",
       "usageCount": 147,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2323,12 +1978,7 @@
       "status": "offline",
       "usageCount": 729,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2359,12 +2009,7 @@
       "status": "offline",
       "usageCount": 199,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2391,12 +2036,7 @@
       "status": "offline",
       "usageCount": 107,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2423,12 +2063,7 @@
       "status": "offline",
       "usageCount": 379,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2455,12 +2090,7 @@
       "status": "offline",
       "usageCount": 749,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2487,12 +2117,7 @@
       "status": "offline",
       "usageCount": 799,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2519,12 +2144,7 @@
       "status": "offline",
       "usageCount": 602,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2551,12 +2171,7 @@
       "status": "offline",
       "usageCount": 810,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2583,12 +2198,7 @@
       "status": "offline",
       "usageCount": 216,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2615,12 +2225,7 @@
       "status": "offline",
       "usageCount": 101,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2647,12 +2252,7 @@
       "status": "offline",
       "usageCount": 716,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2679,12 +2279,7 @@
       "status": "offline",
       "usageCount": 411,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2711,12 +2306,7 @@
       "status": "offline",
       "usageCount": 927,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2743,12 +2333,7 @@
       "status": "offline",
       "usageCount": 605,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2775,12 +2360,7 @@
       "status": "offline",
       "usageCount": 95,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2807,12 +2387,7 @@
       "status": "offline",
       "usageCount": 633,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2839,12 +2414,7 @@
       "status": "offline",
       "usageCount": 244,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2875,12 +2445,7 @@
       "status": "offline",
       "usageCount": 671,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2911,12 +2476,7 @@
       "status": "offline",
       "usageCount": 538,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2947,12 +2507,7 @@
       "status": "offline",
       "usageCount": 101,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -2983,12 +2538,7 @@
       "status": "offline",
       "usageCount": 759,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3023,12 +2573,7 @@
       "status": "offline",
       "usageCount": 910,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3059,12 +2604,7 @@
       "status": "offline",
       "usageCount": 378,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3091,12 +2631,7 @@
       "status": "offline",
       "usageCount": 850,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3127,12 +2662,7 @@
       "status": "offline",
       "usageCount": 96,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3159,12 +2689,7 @@
       "status": "offline",
       "usageCount": 621,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3191,12 +2716,7 @@
       "status": "offline",
       "usageCount": 506,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3243,12 +2763,7 @@
       "status": "offline",
       "usageCount": 742,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3275,12 +2790,7 @@
       "status": "offline",
       "usageCount": 59,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3307,12 +2817,7 @@
       "status": "offline",
       "usageCount": 913,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3343,12 +2848,7 @@
       "status": "offline",
       "usageCount": 235,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3375,12 +2875,7 @@
       "status": "offline",
       "usageCount": 784,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3411,12 +2906,7 @@
       "status": "offline",
       "usageCount": 277,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3455,12 +2945,7 @@
       "status": "offline",
       "usageCount": 349,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3487,12 +2972,7 @@
       "status": "offline",
       "usageCount": 417,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3519,12 +2999,7 @@
       "status": "offline",
       "usageCount": 56,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3555,12 +3030,7 @@
       "status": "offline",
       "usageCount": 549,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3587,12 +3057,7 @@
       "status": "offline",
       "usageCount": 410,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3619,12 +3084,7 @@
       "status": "offline",
       "usageCount": 235,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3651,12 +3111,7 @@
       "status": "offline",
       "usageCount": 821,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3683,12 +3138,7 @@
       "status": "offline",
       "usageCount": 63,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3715,12 +3165,7 @@
       "status": "offline",
       "usageCount": 937,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3751,12 +3196,7 @@
       "status": "offline",
       "usageCount": 693,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3791,12 +3231,7 @@
       "status": "offline",
       "usageCount": 513,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3827,12 +3262,7 @@
       "status": "offline",
       "usageCount": 842,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3859,12 +3289,7 @@
       "status": "offline",
       "usageCount": 754,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3891,12 +3316,7 @@
       "status": "offline",
       "usageCount": 709,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3931,12 +3351,7 @@
       "status": "offline",
       "usageCount": 384,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3963,12 +3378,7 @@
       "status": "offline",
       "usageCount": 793,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -3995,12 +3405,7 @@
       "status": "offline",
       "usageCount": 675,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4031,12 +3436,7 @@
       "status": "offline",
       "usageCount": 207,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4067,12 +3467,7 @@
       "status": "offline",
       "usageCount": 987,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4099,12 +3494,7 @@
       "status": "offline",
       "usageCount": 686,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4131,12 +3521,7 @@
       "status": "offline",
       "usageCount": 399,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4163,12 +3548,7 @@
       "status": "offline",
       "usageCount": 679,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4199,12 +3579,7 @@
       "status": "offline",
       "usageCount": 621,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4231,12 +3606,7 @@
       "status": "offline",
       "usageCount": 710,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4267,12 +3637,7 @@
       "status": "offline",
       "usageCount": 48,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4307,12 +3672,7 @@
       "status": "offline",
       "usageCount": 902,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4343,12 +3703,7 @@
       "status": "offline",
       "usageCount": 506,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4375,12 +3730,7 @@
       "status": "offline",
       "usageCount": 987,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4411,12 +3761,7 @@
       "status": "offline",
       "usageCount": 855,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4447,12 +3792,7 @@
       "status": "offline",
       "usageCount": 334,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4483,12 +3823,7 @@
       "status": "offline",
       "usageCount": 701,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4523,12 +3858,7 @@
       "status": "offline",
       "usageCount": 786,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4555,12 +3885,7 @@
       "status": "offline",
       "usageCount": 893,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4595,12 +3920,7 @@
       "status": "offline",
       "usageCount": 454,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4635,12 +3955,7 @@
       "status": "offline",
       "usageCount": 679,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4667,12 +3982,7 @@
       "status": "offline",
       "usageCount": 883,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4699,12 +4009,7 @@
       "status": "offline",
       "usageCount": 230,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4731,12 +4036,7 @@
       "status": "offline",
       "usageCount": 569,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4763,12 +4063,7 @@
       "status": "offline",
       "usageCount": 872,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4799,12 +4094,7 @@
       "status": "offline",
       "usageCount": 671,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4831,12 +4121,7 @@
       "status": "offline",
       "usageCount": 82,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4863,12 +4148,7 @@
       "status": "offline",
       "usageCount": 391,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4895,12 +4175,7 @@
       "status": "offline",
       "usageCount": 462,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4927,12 +4202,7 @@
       "status": "offline",
       "usageCount": 377,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4963,12 +4233,7 @@
       "status": "offline",
       "usageCount": 9,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -4995,12 +4260,7 @@
       "status": "offline",
       "usageCount": 969,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5031,12 +4291,7 @@
       "status": "offline",
       "usageCount": 674,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5071,12 +4326,7 @@
       "status": "offline",
       "usageCount": 278,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5103,12 +4353,7 @@
       "status": "offline",
       "usageCount": 182,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5143,12 +4388,7 @@
       "status": "offline",
       "usageCount": 380,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5183,12 +4423,7 @@
       "status": "offline",
       "usageCount": 767,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5215,12 +4450,7 @@
       "status": "offline",
       "usageCount": 152,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5251,12 +4481,7 @@
       "status": "offline",
       "usageCount": 219,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5283,12 +4508,7 @@
       "status": "offline",
       "usageCount": 0,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5315,12 +4535,7 @@
       "status": "offline",
       "usageCount": 310,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5367,12 +4582,7 @@
       "status": "offline",
       "usageCount": 213,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5399,12 +4609,7 @@
       "status": "offline",
       "usageCount": 743,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5431,12 +4636,7 @@
       "status": "offline",
       "usageCount": 402,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5475,12 +4675,7 @@
       "status": "offline",
       "usageCount": 894,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5515,12 +4710,7 @@
       "status": "offline",
       "usageCount": 62,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5555,12 +4745,7 @@
       "status": "offline",
       "usageCount": 584,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5591,12 +4776,7 @@
       "status": "offline",
       "usageCount": 554,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5627,12 +4807,7 @@
       "status": "offline",
       "usageCount": 186,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5667,12 +4842,7 @@
       "status": "offline",
       "usageCount": 836,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5707,12 +4877,7 @@
       "status": "offline",
       "usageCount": 228,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5743,12 +4908,7 @@
       "status": "offline",
       "usageCount": 482,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5783,12 +4943,7 @@
       "status": "offline",
       "usageCount": 533,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5823,12 +4978,7 @@
       "status": "offline",
       "usageCount": 733,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5859,12 +5009,7 @@
       "status": "offline",
       "usageCount": 226,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5899,12 +5044,7 @@
       "status": "offline",
       "usageCount": 502,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5931,12 +5071,7 @@
       "status": "offline",
       "usageCount": 377,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -5971,12 +5106,7 @@
       "status": "offline",
       "usageCount": 674,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -6011,12 +5141,7 @@
       "status": "offline",
       "usageCount": 415,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -6051,12 +5176,7 @@
       "status": "offline",
       "usageCount": 506,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -6091,12 +5211,7 @@
       "status": "offline",
       "usageCount": 977,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -6123,12 +5238,7 @@
       "status": "offline",
       "usageCount": 342,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -6163,12 +5273,7 @@
       "status": "offline",
       "usageCount": 965,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -6195,12 +5300,7 @@
       "status": "offline",
       "usageCount": 926,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -6227,12 +5327,7 @@
       "status": "offline",
       "usageCount": 858,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -6275,12 +5370,7 @@
       "status": "offline",
       "usageCount": 175,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -6315,12 +5405,7 @@
       "status": "offline",
       "usageCount": 205,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -6351,12 +5436,7 @@
       "status": "offline",
       "usageCount": 768,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -6391,12 +5471,7 @@
       "status": "offline",
       "usageCount": 866,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -6431,12 +5506,7 @@
       "status": "offline",
       "usageCount": 664,
       "integrations": [],
-      "platform": [
-        "web",
-        "cursor",
-        "claude",
-        "windsurf"
-      ],
+      "platform": ["web", "cursor", "claude", "windsurf"],
       "popular": false,
       "popularityMetric": 0,
       "enabled": true,
@@ -6466,9 +5536,7 @@
       "name": "Gmail",
       "slug": "gmail",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "gmail_oauth",
@@ -6720,9 +5788,7 @@
       "name": "GitHub",
       "slug": "github",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "github_oauth",
@@ -6843,9 +5909,7 @@
       "name": "Googlecalendar",
       "slug": "googlecalendar",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "googlecalendar_oauth",
@@ -6963,9 +6027,7 @@
       "name": "Notion",
       "slug": "notion",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "notion_oauth",
@@ -7144,9 +6206,7 @@
       "name": "Googlesheets",
       "slug": "googlesheets",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "google_sheets_oauth",
@@ -7283,9 +6343,7 @@
       "name": "Slack",
       "slug": "slack",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "slack_oauth",
@@ -7460,9 +6518,7 @@
       "name": "Supabase",
       "slug": "supabase",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "supabase_oauth",
@@ -7593,9 +6649,7 @@
       "name": "Outlook",
       "slug": "outlook",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "outlook_oauth",
@@ -7802,9 +6856,7 @@
       "name": "Twitter",
       "slug": "twitter",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "twitter_oauth",
@@ -7945,9 +6997,7 @@
       "name": "Googledrive",
       "slug": "googledrive",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "google_drive_oauth",
@@ -8065,9 +7115,7 @@
       "name": "Googledocs",
       "slug": "googledocs",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "google_docs_oauth",
@@ -8205,9 +7253,7 @@
       "name": "Hubspot",
       "slug": "hubspot",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "hubspot_oauth",
@@ -8374,9 +7420,7 @@
       "name": "Linear",
       "slug": "linear",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "linear_oauth",
@@ -8516,9 +7560,7 @@
       "name": "Airtable",
       "slug": "airtable",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "airtable_oauth2",
@@ -9270,9 +8312,7 @@
       "name": "Youtube",
       "slug": "youtube",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "OAUTH2",
@@ -9377,9 +8417,7 @@
       "name": "Slackbot",
       "slug": "slackbot",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "slack_oauth",
@@ -9713,9 +8751,7 @@
       "name": "Bitbucket",
       "slug": "bitbucket",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "OAuth2",
@@ -9868,9 +8904,7 @@
       "name": "Googletasks",
       "slug": "googletasks",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "oauth2",
@@ -10003,9 +9037,7 @@
       "name": "Discord",
       "slug": "discord",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "discord_oauth",
@@ -10131,9 +9163,7 @@
       "name": "Figma",
       "slug": "figma",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "figma_oauth2",
@@ -10383,9 +9413,7 @@
       "name": "Reddit",
       "slug": "reddit",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "reddit_oauth2",
@@ -10656,9 +9684,7 @@
       "name": "Wrike",
       "slug": "wrike",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "canva_oauth",
@@ -11252,9 +10278,7 @@
       "name": "Microsoft teams",
       "slug": "microsoft_teams",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "microsoft-teams_oauth",
@@ -11351,9 +10375,7 @@
       "name": "Asana",
       "slug": "asana",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "asana_oauth",
@@ -11749,9 +10771,7 @@
       "name": "Linkedin",
       "slug": "linkedin",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "linkedin_oauth",
@@ -11856,9 +10876,7 @@
       "name": "Google maps",
       "slug": "google_maps",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "google_photos_oauth2",
@@ -11989,9 +11007,7 @@
       "name": "One drive",
       "slug": "one_drive",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "one-drive_oauth",
@@ -12241,9 +11257,7 @@
       "name": "Discordbot",
       "slug": "discordbot",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "discord_oauth",
@@ -12406,9 +11420,7 @@
       "name": "Salesforce",
       "slug": "salesforce",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "salesforce_oauth2",
@@ -12574,9 +11586,7 @@
       "name": "Twitter media",
       "slug": "twitter_media",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH1"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH1"],
       "auth_config_details": [
         {
           "name": "twitter_oauth",
@@ -12686,9 +11696,7 @@
       "name": "Calendly",
       "slug": "calendly",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "calendly_oauth",
@@ -12789,9 +11797,7 @@
       "name": "Trello",
       "slug": "trello",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH1"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH1"],
       "auth_config_details": [
         {
           "name": "trello_oauth",
@@ -13454,9 +12460,7 @@
       "name": "Clickup",
       "slug": "clickup",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "clickup_oauth",
@@ -13948,9 +12952,7 @@
       "name": "Klaviyo",
       "slug": "klaviyo",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "klaviyo_oauth",
@@ -14192,9 +13194,7 @@
       "name": "Mailchimp",
       "slug": "mailchimp",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "mailchimp_oauth",
@@ -14316,9 +13316,7 @@
       "name": "Attio",
       "slug": "attio",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "attio_oauth",
@@ -14459,9 +13457,7 @@
       "name": "Googlemeet",
       "slug": "googlemeet",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "googler-meet",
@@ -14615,9 +13611,7 @@
       "name": "Zoho",
       "slug": "zoho",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "zoho_oauth2",
@@ -14862,9 +13856,7 @@
       "name": "Dropbox",
       "slug": "dropbox",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "dropbox_oauth",
@@ -16346,9 +15338,7 @@
       "name": "Monday",
       "slug": "monday",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "monday_oauth",
@@ -16775,9 +15765,7 @@
       "name": "Pipedrive",
       "slug": "pipedrive",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "pipedrive_oauth",
@@ -17149,9 +16137,7 @@
       "name": "Dynamics365",
       "slug": "dynamics365",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "microsoft_dynamics_365_crm_oauth",
@@ -17261,9 +16247,7 @@
       "name": "Zendesk",
       "slug": "zendesk",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "zendesk_oauth",
@@ -17409,9 +16393,7 @@
       "name": "Googlephotos",
       "slug": "googlephotos",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "google_photos_oauth2",
@@ -18814,9 +17796,7 @@
       "name": "Zoom",
       "slug": "zoom",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "zoom_oauth2",
@@ -19420,9 +18400,7 @@
       "name": "Pagerduty",
       "slug": "pagerduty",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "pagerduty_oauth2",
@@ -19873,9 +18851,7 @@
       "name": "Share point",
       "slug": "share_point",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "microsoft_sharepoint_oauth",
@@ -19996,9 +18972,7 @@
       "name": "Contentful",
       "slug": "contentful",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "contentful_oauth2",
@@ -21057,9 +20031,7 @@
       "name": "Linkhut",
       "slug": "linkhut",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "linkhut_oauth",
@@ -21176,9 +20148,7 @@
       "name": "Box",
       "slug": "box",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "OAUTH2",
@@ -22002,9 +20972,7 @@
       "name": "Chatwork",
       "slug": "chatwork",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "chatwork_oauth",
@@ -22757,9 +21725,7 @@
       "name": "Gorgias",
       "slug": "gorgias",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "gorgias_oauth2",
@@ -22865,9 +21831,7 @@
       "name": "Todoist",
       "slug": "todoist",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "todoist_oauth",
@@ -24967,9 +23931,7 @@
       "name": "Intercom",
       "slug": "intercom",
       "enabled": true,
-      "composio_managed_auth_schemes": [
-        "OAUTH2"
-      ],
+      "composio_managed_auth_schemes": ["OAUTH2"],
       "auth_config_details": [
         {
           "name": "OAuth2",

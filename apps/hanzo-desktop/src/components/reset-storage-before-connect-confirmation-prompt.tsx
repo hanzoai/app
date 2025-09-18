@@ -32,10 +32,8 @@ export const ResetStorageBeforeConnectConfirmationPrompt = ({
   const { setHanzoNodeOptions } = useHanzoNodeManager();
   const { mutateAsync: hanzoNodeKill, isPending: isHanzoNodeKillPending } =
     useHanzoNodeKillMutation();
-  const {
-    mutateAsync: hanzoNodeSpawn,
-    isPending: isHanzoNodeSpawnPending,
-  } = useHanzoNodeSpawnMutation();
+  const { mutateAsync: hanzoNodeSpawn, isPending: isHanzoNodeSpawnPending } =
+    useHanzoNodeSpawnMutation();
   const {
     mutateAsync: hanzoNodeRemoveStorage,
     isPending: isHanzoNodeRemoveStoragePending,

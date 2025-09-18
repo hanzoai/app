@@ -19,19 +19,37 @@ export const MODELS_WITH_THINKING_SUPPORT = {
     OLLAMA_MODELS_REPOSITORY.filter((model) => model.thinking)
       .map((model) => model.tags)
       .flat()
-      .map((tags) => [`ollama:${tags.name}`, { forceEnabled: true, reasoningLevel: false }])
+      .map((tags) => [
+        `ollama:${tags.name}`,
+        { forceEnabled: true, reasoningLevel: false },
+      ]),
   ),
-  
+
   // Claude models
-  'claude:claude-opus-4-1-20250805': { forceEnabled: false, reasoningLevel: true },
+  'claude:claude-opus-4-1-20250805': {
+    forceEnabled: false,
+    reasoningLevel: true,
+  },
   'claude:claude-opus-4-1': { forceEnabled: false, reasoningLevel: true },
-  'claude:claude-opus-4-20250514': { forceEnabled: false, reasoningLevel: true },
+  'claude:claude-opus-4-20250514': {
+    forceEnabled: false,
+    reasoningLevel: true,
+  },
   'claude:claude-opus-4-0': { forceEnabled: false, reasoningLevel: true },
-  'claude:claude-sonnet-4-20250514': { forceEnabled: false, reasoningLevel: true },
+  'claude:claude-sonnet-4-20250514': {
+    forceEnabled: false,
+    reasoningLevel: true,
+  },
   'claude:claude-sonnet-4-0': { forceEnabled: false, reasoningLevel: true },
-  'claude:claude-3-7-sonnet-20250219': { forceEnabled: false, reasoningLevel: true },
-  'claude:claude-3-7-sonnet-latest': { forceEnabled: false, reasoningLevel: true },
-  
+  'claude:claude-3-7-sonnet-20250219': {
+    forceEnabled: false,
+    reasoningLevel: true,
+  },
+  'claude:claude-3-7-sonnet-latest': {
+    forceEnabled: false,
+    reasoningLevel: true,
+  },
+
   // DeepSeek models
   'deepseek:deepseek-reasoner': { forceEnabled: true, reasoningLevel: false },
 
@@ -39,17 +57,32 @@ export const MODELS_WITH_THINKING_SUPPORT = {
   'groq:openai/gpt-oss-20b': { forceEnabled: true, reasoningLevel: true },
   'groq:openai/gpt-oss-120b': { forceEnabled: true, reasoningLevel: true },
   'groq:qwen/qwen3-32b': { forceEnabled: true, reasoningLevel: false },
-  'groq:deepseek-r1-distill-llama-70b': { forceEnabled: true, reasoningLevel: false },
+  'groq:deepseek-r1-distill-llama-70b': {
+    forceEnabled: true,
+    reasoningLevel: false,
+  },
 
   // Gemini models
   'gemini:gemini-2.5-pro': { forceEnabled: false, reasoningLevel: true },
   'gemini:gemini-2.5-flash': { forceEnabled: false, reasoningLevel: true },
-  'gemini:gemini-2.5-flash-preview-05-20': { forceEnabled: false, reasoningLevel: true },
+  'gemini:gemini-2.5-flash-preview-05-20': {
+    forceEnabled: false,
+    reasoningLevel: true,
+  },
   'gemini:gemini-2.5-flash-lite': { forceEnabled: false, reasoningLevel: true },
-  'gemini:gemini-2.5-flash-lite-preview-06-17': { forceEnabled: false, reasoningLevel: true },
+  'gemini:gemini-2.5-flash-lite-preview-06-17': {
+    forceEnabled: false,
+    reasoningLevel: true,
+  },
   'gemini:gemini-2.0-flash-exp': { forceEnabled: false, reasoningLevel: true },
 
   // Hanzo Backend
-  'hanzo-backend:free_text_inference': { forceEnabled: true, reasoningLevel: true },
-  'hanzo-backend:standard_text_inference': { forceEnabled: true, reasoningLevel: true },
+  'hanzo-backend:free_text_inference': {
+    forceEnabled: true,
+    reasoningLevel: true,
+  },
+  'hanzo-backend:standard_text_inference': {
+    forceEnabled: true,
+    reasoningLevel: true,
+  },
 } as const;

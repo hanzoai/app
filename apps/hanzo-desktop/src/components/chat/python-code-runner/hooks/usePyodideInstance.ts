@@ -1,7 +1,10 @@
 import { loadPyodide, type PyodideInterface } from 'pyodide';
 import { useCallback, useRef } from 'react';
 
-import { type IFileSystemService, PyodideFileSystemService } from '../services/file-system-service';
+import {
+  type IFileSystemService,
+  PyodideFileSystemService,
+} from '../services/file-system-service';
 
 export function usePyodideInstance() {
   const pyodideRef = useRef<PyodideInterface | null>(null);
@@ -10,7 +13,10 @@ export function usePyodideInstance() {
   const initializePyodide = useCallback(async () => {
     if (pyodideRef.current) {
       console.log('Pyodide is already initialized.');
-      return { pyodide: pyodideRef.current, fileSystemService: fileSystemServiceRef.current! };
+      return {
+        pyodide: pyodideRef.current,
+        fileSystemService: fileSystemServiceRef.current!,
+      };
     }
 
     console.time('initialize pyodide');
@@ -40,4 +46,4 @@ export function usePyodideInstance() {
     fileSystemService: fileSystemServiceRef.current,
     initializePyodide,
   };
-} 
+}

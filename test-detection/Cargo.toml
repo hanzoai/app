@@ -1,0 +1,13 @@
+[package]
+name = "test-detection"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+hanzo-node = { path = "../crates/hanzo-node" }
+hanzo-node-manager = { path = "../crates/hanzo-node-manager" }
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"

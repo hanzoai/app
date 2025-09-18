@@ -142,9 +142,7 @@ export const GalxeValidation = () => {
       <div className="space-y-4 py-2 pb-10">
         <Alert className="rounded-xs border-none bg-cyan-900/20 p-3.5 shadow-none">
           <Info className="mt-1 size-4 text-cyan-400" />
-          <AlertTitle className="text-sm">
-            Setup Your Hanzo Identity
-          </AlertTitle>
+          <AlertTitle className="text-sm">Setup Your Hanzo Identity</AlertTitle>
           <AlertDescription className="text-text-secondary text-xs">
             Before you can sync and track your quest progress, you&apos;ll need
             to set up your Hanzo identity.

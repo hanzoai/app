@@ -60,12 +60,11 @@ function ThinkingSwitchActionBarBase({
         <TooltipPortal>
           <TooltipContent>
             <p className="text-text-secondary mt-1 text-xs">
-              {forceEnabled 
+              {forceEnabled
                 ? 'Thinking Mode is always enabled for this model and cannot be turned off.'
-                : checked 
+                : checked
                   ? 'Click to disable AI Thinking Mode'
-                  : 'Click to enable AI Thinking Mode'
-              }
+                  : 'Click to enable AI Thinking Mode'}
             </p>
           </TooltipContent>
         </TooltipPortal>
@@ -82,7 +81,11 @@ export const ThinkingSwitchActionBar = memo(
     prevProps.forceEnabled === nextProps.forceEnabled,
 );
 
-export function UpdateThinkingSwitchActionBarBase({ forceEnabled = false }: { forceEnabled?: boolean }) {
+export function UpdateThinkingSwitchActionBarBase({
+  forceEnabled = false,
+}: {
+  forceEnabled?: boolean;
+}) {
   const auth = useAuth((state) => state.auth);
   const { inboxId: encodedInboxId = '' } = useParams();
   const inboxId = decodeURIComponent(encodedInboxId);
@@ -106,7 +109,7 @@ export function UpdateThinkingSwitchActionBarBase({ forceEnabled = false }: { fo
 
   const handleUpdateThinking = async () => {
     if (forceEnabled) return; // Don't allow toggling when forced enabled
-    
+
     await updateChatConfig({
       nodeAddress: auth?.node_address ?? '',
       token: auth?.api_v2_key ?? '',

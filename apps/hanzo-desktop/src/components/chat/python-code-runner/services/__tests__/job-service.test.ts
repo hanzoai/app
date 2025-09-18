@@ -291,11 +291,11 @@ describe('JobService', () => {
         path: 'subdir/test.txt',
       });
       expect(mockFileSystemService.ensureDirectory).toHaveBeenCalledWith(
-        '/home/pyodide/subdir'
+        '/home/pyodide/subdir',
       );
       expect(mockFileSystemService.writeFile).toHaveBeenCalledWith(
         '/home/pyodide/subdir/test.txt',
-        'nested content'
+        'nested content',
       );
     });
 

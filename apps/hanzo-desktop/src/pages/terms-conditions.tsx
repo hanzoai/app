@@ -11,7 +11,7 @@ import { submitRegistrationNoCodeError } from '@hanzo_network/hanzo-ui/helpers';
 import { cn } from '@hanzo_network/hanzo-ui/utils';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 import { OnboardingStep } from '../components/onboarding/constants';
 import { ResetStorageBeforeConnectConfirmationPrompt } from '../components/reset-storage-before-connect-confirmation-prompt';
@@ -67,6 +67,7 @@ export const LogoTapProvider = ({
 
 const TermsAndConditionsPage = () => {
   const { t, Trans } = useTranslation();
+  const navigate = useNavigate();
   const [termsAndConditionsAccepted, setTermsAndConditionsAccepted] =
     useState(false);
   const { showLocalNodeOption } = useLogoTap();
@@ -76,9 +77,7 @@ const TermsAndConditionsPage = () => {
   const termsAndConditionsAcceptedLegacy = useSettings((state) =>
     state.getTermsAndConditionsAccepted(),
   );
-  const isLocalHanzoNodeInUse = useHanzoNodeManager(
-    (state) => state.isInUse,
-  );
+  const isLocalHanzoNodeInUse = useHanzoNodeManager((state) => state.isInUse);
   useEffect(() => {
     if (
       termsAndConditionsAcceptedLegacy !== undefined &&
@@ -126,12 +125,18 @@ const TermsAndConditionsPage = () => {
   });
   const { isPending: hanzoNodeRemoveStorageIsPending } =
     useHanzoNodeRemoveStorageMutation();
+  const [hanzoNodeSpawned, setHanzoNodeSpawned] = useState(false);
   const {
     isPending: hanzoNodeSpawnIsPending,
     mutateAsync: hanzoNodeSpawn,
   } = useHanzoNodeSpawnMutation({
     onSuccess: () => {
-      void onSubmit(setupDataForm.getValues());
+      console.log('✅ HANZO NODE SPAWN SUCCESS - WAITING FOR ENCRYPTION KEYS');
+      setHanzoNodeSpawned(true);
+    },
+    onError: (error) => {
+      console.error('❌ HANZO NODE SPAWN FAILED:', error);
+      alert(`Failed to spawn hanzo node: ${error}`);
     },
   });
   const { isPending: hanzoNodeKillIsPending } = useHanzoNodeKillMutation();
@@ -140,7 +145,8 @@ const TermsAndConditionsPage = () => {
     hanzoNodeSpawnIsPending ||
     hanzoNodeKillIsPending ||
     hanzoNodeRemoveStorageIsPending ||
-    submitRegistrationNodeCodeIsPending;
+    submitRegistrationNodeCodeIsPending ||
+    (hanzoNodeSpawned && !encryptionKeys);
 
   async function onSubmit(currentValues: QuickConnectFormSchema) {
     if (!encryptionKeys) return;
@@ -150,6 +156,14 @@ const TermsAndConditionsPage = () => {
       profileIdentityPk: encryptionKeys.profile_identity_pk,
     });
   }
+
+  // Handle race between node spawn and encryption keys availability
+  useEffect(() => {
+    if (hanzoNodeSpawned && encryptionKeys) {
+      console.log('🔐 ENCRYPTION KEYS READY - SUBMITTING REGISTRATION');
+      void onSubmit(setupDataForm.getValues());
+    }
+  }, [hanzoNodeSpawned, encryptionKeys, setupDataForm]);
 
   const onCancelConfirmation = () => {
     setResetStorageBeforeConnectConfirmationPrompt(false);
@@ -227,22 +241,40 @@ const TermsAndConditionsPage = () => {
           )}
           disabled={!termsAndConditionsAccepted || isStartLocalButtonLoading}
           isLoading={isStartLocalButtonLoading}
-          onClick={() => hanzoNodeSpawn()}
+          onClick={async () => {
+            console.log(
+              '🚀 GET STARTED BUTTON CLICKED - ATTEMPTING TO SPAWN/CONNECT TO HANZOD',
+            );
+            // The spawn function will auto-detect if hanzod is already running
+            await hanzoNodeSpawn();
+          }}
         >
           {t('common.getStarted')}
         </Button>
 
-        {(config.isDev || showLocalNodeOption) && (
-          <div className="text-text-secondary items-center space-x-2 text-center text-sm">
-            <span>{t('common.alreadyHaveNode')}</span>
-            <Link
-              className="text-text-default font-semibold underline"
-              to="/quick-connection"
-            >
-              {t('common.quickConnect')}
-            </Link>
-          </div>
-        )}
+        {/* Single animated status line */}
+        <div className="text-center text-sm">
+          {isStartLocalButtonLoading ? (
+            <div className="flex items-center justify-center gap-2 text-cyan-400">
+              <span className="animate-spin">⚡</span>
+              <span className="animate-pulse">
+                {hanzoNodeSpawned && !encryptionKeys
+                  ? 'Initializing node...'
+                  : 'Connecting to port 3690...'}
+              </span>
+            </div>
+          ) : (
+            <div className="text-text-secondary">
+              <span>Local node on port 3690 • </span>
+              <Link
+                className="text-cyan-400 hover:text-cyan-300 underline transition-colors"
+                to="/quick-connection"
+              >
+                Connect to different node →
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
       <ResetStorageBeforeConnectConfirmationPrompt
         onCancel={() => onCancelConfirmation()}

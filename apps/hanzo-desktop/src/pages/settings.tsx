@@ -69,6 +69,7 @@ import { type Auth, useAuth } from '../store/auth';
 import { useSettings } from '../store/settings';
 import { useHanzoNodeManager } from '../store/hanzo-node-manager';
 import { SimpleLayout } from './layout/simple-layout';
+import { RemoteUIToggle } from '../components/remote-ui-toggle';
 
 const formSchema = z.object({
   defaultAgentId: z.string(),
@@ -91,9 +92,7 @@ const MotionButton = motion(Button);
 const SettingsPage = () => {
   const { t } = useTranslation();
   const auth = useAuth((authStore) => authStore.auth);
-  const isLocalHanzoNodeInUse = useHanzoNodeManager(
-    (state) => state.isInUse,
-  );
+  const isLocalHanzoNodeInUse = useHanzoNodeManager((state) => state.isInUse);
   const userLanguage = useSettings((state) => state.userLanguage);
   const setUserLanguage = useSettings((state) => state.setUserLanguage);
   const optInAnalytics = useSettings((state) =>
@@ -521,9 +520,7 @@ const SettingsPage = () => {
                         field={{
                           ...field,
                           onKeyDown: (event) => {
-                            if (
-                              currentHanzoIdentity === auth?.hanzo_identity
-                            )
+                            if (currentHanzoIdentity === auth?.hanzo_identity)
                               return;
                             if (event.key === 'Enter') {
                               void handleUpdateNodeName();
@@ -546,9 +543,7 @@ const SettingsPage = () => {
                                   rel="noreferrer"
                                   target="_blank"
                                 >
-                                  {t(
-                                    'settings.hanzoIdentity.registerIdentity',
-                                  )}
+                                  {t('settings.hanzoIdentity.registerIdentity')}
                                 </a>
                               ) : (
                                 <a
@@ -721,6 +716,16 @@ const SettingsPage = () => {
                 />
               </form>
             </Form>
+          </div>
+
+          <div className="bg-bg-secondary space-y-4 rounded-lg p-4">
+            <div>
+              <h2 className="text-text-default text-base font-semibold">Remote Control</h2>
+              <p className="text-text-secondary text-sm">
+                Enable the Remote UI server for Playwright or MCP control.
+              </p>
+            </div>
+            <RemoteUIToggle />
           </div>
 
           <div className="bg-bg-secondary mb-10 space-y-4 rounded-lg p-4">

@@ -1,4 +1,7 @@
-use tauri::{utils::config::BackgroundThrottlingPolicy, AppHandle, Error, Manager, WebviewWindow, WebviewWindowBuilder, Emitter};
+use tauri::{
+    utils::config::BackgroundThrottlingPolicy, AppHandle, Emitter, Error, Manager, WebviewWindow,
+    WebviewWindowBuilder,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Window {
@@ -19,7 +22,11 @@ impl Window {
     }
 }
 
-pub fn get_window(app_handle: AppHandle, window_name: Window, focus: bool) -> tauri::Result<WebviewWindow> {
+pub fn get_window(
+    app_handle: AppHandle,
+    window_name: Window,
+    focus: bool,
+) -> tauri::Result<WebviewWindow> {
     let label = window_name.as_str();
     if let Some(window) = app_handle.get_webview_window(label) {
         log::info!("window {} found, bringing to front", label);
@@ -38,7 +45,11 @@ pub fn get_window(app_handle: AppHandle, window_name: Window, focus: bool) -> ta
     Err(Error::WindowNotFound)
 }
 
-pub fn recreate_window(app_handle: AppHandle, window_name: Window, focus: bool) -> tauri::Result<WebviewWindow> {
+pub fn recreate_window(
+    app_handle: AppHandle,
+    window_name: Window,
+    focus: bool,
+) -> tauri::Result<WebviewWindow> {
     let label = window_name.as_str();
     if let Some(window) = app_handle.get_webview_window(label) {
         log::info!("window {} found, bringing to front", label);
@@ -74,7 +85,7 @@ pub fn recreate_window(app_handle: AppHandle, window_name: Window, focus: bool) 
                 Err(e) => {
                     log::error!("failed to recreate window: {}", e);
                     Err(e)
-                },
+                }
             },
             Err(e) => {
                 log::error!("failed to recreate window from config: {}", e);

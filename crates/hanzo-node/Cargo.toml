@@ -1,0 +1,21 @@
+[package]
+name = "hanzo-node"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Core library for Hanzo node daemon functionality"
+
+[dependencies]
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+reqwest = { workspace = true }
+anyhow = { workspace = true }
+which = "4.4"
+dirs = "5.0"
+
+[dev-dependencies]
+tokio-test = "0.4"

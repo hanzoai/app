@@ -9,4 +9,4 @@ export interface ComposioApp {
   repository?: string;
   features?: string[];
   requirements?: string[];
-} 
+}

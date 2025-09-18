@@ -28,9 +28,7 @@ const EmptyMessage = () => {
     nodeAddress: auth?.node_address ?? '',
     token: auth?.api_v2_key ?? '',
   });
-  const isLocalHanzoNodeIsUse = useHanzoNodeManager(
-    (state) => state.isInUse,
-  );
+  const isLocalHanzoNodeIsUse = useHanzoNodeManager((state) => state.isInUse);
   const { t } = useTranslation();
 
   const resetJobScope = useSetJobScope((state) => state.resetJobScope);

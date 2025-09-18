@@ -262,8 +262,7 @@ export const getChatConversation = async ({
 
   for (const message of uniqueMessages) {
     const role: 'user' | 'assistant' =
-      message.sender === hanzoIdentity &&
-      message.sender_subidentity === profile
+      message.sender === hanzoIdentity && message.sender_subidentity === profile
         ? 'user'
         : 'assistant';
 

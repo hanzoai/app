@@ -1,7 +1,10 @@
 import { type QueryObserverOptions, useQuery } from '@tanstack/react-query';
 
 import { FunctionKeyV2 } from '../../constants';
-import { type ScanOllamaModelsInput, type ScanOllamaModelsOutput } from './types';
+import {
+  type ScanOllamaModelsInput,
+  type ScanOllamaModelsOutput,
+} from './types';
 import { scanOllamaModels } from '.';
 
 type UseScanOllamaModels = [

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(timeout 30 pnpm tauri dev)",
+      "Bash(pnpm tauri:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -4,3 +4,10 @@
 /.nx/cache
 
 /.nx/workspace-data
+
+# Generated build artifacts
+apps/hanzo-desktop/src-tauri/target
+apps/hanzo-desktop/src-tauri/target/**
+apps/hanzo-desktop/public/*.ico
+apps/hanzo-desktop/public/*.png
+apps/hanzo-desktop/*.png

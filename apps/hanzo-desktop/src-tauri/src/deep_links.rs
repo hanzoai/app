@@ -122,7 +122,7 @@ pub fn setup_deep_links(app: &tauri::AppHandle) -> tauri::Result<()> {
                         .find(|(key, _)| key == "tool")
                         .map(|(_, value)| value.to_string())
                         .unwrap_or_default();
-                    
+
                     let payload = ConfigDeepLinkPayload {
                         tool_router_key,
                     };

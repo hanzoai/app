@@ -1,4 +1,4 @@
-import  { type UseMutationOptions, useMutation  } from '@tanstack/react-query';
+import { type UseMutationOptions, useMutation } from '@tanstack/react-query';
 
 import { type APIError } from '../../types';
 import { type AddLLMProviderInput, type AddLLMProviderOutput } from './types';

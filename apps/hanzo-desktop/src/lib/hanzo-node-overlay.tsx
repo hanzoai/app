@@ -166,9 +166,7 @@ export const HanzoNodeRunningOverlay = ({
     <div className="flex h-screen flex-col items-center justify-center gap-10">
       <div className="mx-auto flex max-w-lg flex-col items-center gap-4">
         <span className="text-4xl">⚠️</span>
-        <h1 className="text-3xl font-bold">
-          Unable to Connect to Hanzo Node
-        </h1>
+        <h1 className="text-3xl font-bold">Unable to Connect to Hanzo Node</h1>
         <p className="text-text-secondary text-base">
           Please make sure the Hanzo Node is running and try again.
         </p>

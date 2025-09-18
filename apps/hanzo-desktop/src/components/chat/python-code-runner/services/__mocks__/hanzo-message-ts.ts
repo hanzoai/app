@@ -18,4 +18,4 @@ export interface DirectoryContent {
   modified_time: string;
   has_embeddings: boolean;
   size: number;
-} 
+}

@@ -8,4 +8,3 @@ export type UploadVRFilesInput = {
   destinationPath: string;
   files: File[];
 };
-

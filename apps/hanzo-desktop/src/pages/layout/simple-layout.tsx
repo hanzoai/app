@@ -19,7 +19,7 @@ export const SubpageLayout = ({
 }) => {
   const { t } = useTranslation();
   return (
-    <div className={cn('container relative py-10', className)}>
+    <div className={cn('relative container py-10', className)}>
       <div className="mb-8 flex items-center gap-2">
         <div
           className={cn(

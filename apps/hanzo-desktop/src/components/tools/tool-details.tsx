@@ -26,9 +26,7 @@ export function isDenoHanzoTool(tool: HanzoTool): tool is DenoHanzoTool {
   return (tool as DenoHanzoTool).js_code !== undefined;
 }
 
-export function isPythonHanzoTool(
-  tool: HanzoTool,
-): tool is PythonHanzoTool {
+export function isPythonHanzoTool(tool: HanzoTool): tool is PythonHanzoTool {
   return (tool as PythonHanzoTool).py_code !== undefined;
 }
 

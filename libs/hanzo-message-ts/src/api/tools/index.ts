@@ -915,12 +915,9 @@ export const setToolMcpEnabled = async (
 };
 
 export const getToolProtocols = async () => {
-  const response = await httpClient.get(
-    'https://api.hanzo.com/kb/index.json',
-    {
-      responseType: 'json',
-    },
-  );
+  const response = await httpClient.get('https://api.hanzo.com/kb/index.json', {
+    responseType: 'json',
+  });
   return response.data as GetToolProtocolsResponse;
 };
 

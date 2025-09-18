@@ -33,8 +33,7 @@ export const useHanzoNodeGetOptionsQuery = (
 ): UseQueryResult<HanzoNodeOptions, Error> => {
   const query = useQuery({
     queryKey: ['hanzo_node_get_options'],
-    queryFn: (): Promise<HanzoNodeOptions> =>
-      invoke('hanzo_node_get_options'),
+    queryFn: (): Promise<HanzoNodeOptions> => invoke('hanzo_node_get_options'),
     ...options,
   });
   return { ...query } as UseQueryResult<HanzoNodeOptions, Error>;
@@ -75,7 +74,7 @@ export const useHanzoNodeSpawnMutation = (options?: UseMutationOptions) => {
   const queryClient = useQueryClient();
   const response = useMutation({
     mutationFn: () => {
-      return invoke('hanzo_node_spawn');
+      return invoke('hanzod_spawn');
     },
     ...options,
     onSuccess: (...onSuccessParameters) => {

@@ -40,8 +40,9 @@ impl HanzoNodeProcessHandler {
 
         let node_api_ip = options.clone().node_api_ip.unwrap_or_default();
         let node_api_port = options.clone().node_api_port.unwrap_or_default();
+        // Match the actual output from hanzod: "Node API address: 127.0.0.1:3690"
         let ready_matcher =
-            Regex::new(format!("listening on http://{}:{}", node_api_ip, node_api_port).as_str())
+            Regex::new(format!("Node API address: {}:{}", node_api_ip, node_api_port).as_str())
                 .unwrap();
         let process_handler = ProcessHandler::new(
             app.clone(),
@@ -67,25 +68,36 @@ impl HanzoNodeProcessHandler {
     }
 
     async fn health(base_url: &str, timeout: Duration) -> bool {
-        let url = format!("{}/v2/health_check", base_url);
         let client = reqwest::Client::new();
-        log::info!(
-            "checking hanzo-nodehealth of {} with timeout {:?}",
-            url,
-            timeout
-        );
-        match client.get(&url).timeout(timeout).send().await {
-            Ok(response) => {
-                let status = response.status();
-                let text = response.text().await;
-                log::info!("health check response: {:?} {:?}", status, text);
-                status == reqwest::StatusCode::OK
-            }
-            Err(e) => {
-                log::info!("health check failed {:?}", e);
-                false
+        let candidates = [
+            "/v2/health_check",
+            "/health_check",
+            "/healthz",
+            "/health",
+        ];
+
+        for path in candidates.iter() {
+            let url = format!("{}{}", base_url, path);
+            log::info!(
+                "checking hanzo-node health of {} with timeout {:?}",
+                url,
+                timeout
+            );
+            match client.get(&url).timeout(timeout).send().await {
+                Ok(response) => {
+                    let status = response.status();
+                    let text = response.text().await;
+                    log::info!("health check response ({}): {:?} {:?}", path, status, text);
+                    if status == reqwest::StatusCode::OK {
+                        return true;
+                    }
+                }
+                Err(e) => {
+                    log::info!("health check failed for {}: {:?}", path, e);
+                }
             }
         }
+        false
     }
 
     async fn wait_hanzo_node_server(&self) -> Result<(), String> {
@@ -162,10 +174,19 @@ impl HanzoNodeProcessHandler {
     }
 
     pub async fn spawn(&self) -> Result<(), String> {
+        log::info!("HanzoNodeProcessHandler::spawn() called");
         let _ = self.kill().await;
 
-        let env = options_to_env(&self.options.clone());
+        let mut env = options_to_env(&self.options.clone());
+        
+        // Add critical environment variables that hanzod needs
+        env.insert("NO_SECRET_FILE".to_string(), "true".to_string());
+        env.insert("FIRST_DEVICE_NEEDS_REGISTRATION_CODE".to_string(), "false".to_string());
+        
+        log::info!("Environment variables prepared for hanzo node");
+        log::info!("Calling process_handler.spawn() for hanzod binary");
         self.process_handler.spawn(env, [].to_vec(), None).await?;
+        log::info!("hanzod process spawned, waiting for server...");
         if let Err(e) = self.wait_hanzo_node_server().await {
             self.process_handler.kill().await;
             return Err(e);

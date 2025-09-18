@@ -1,7 +1,7 @@
-use serde::Serialize;
-use std::collections::HashMap;
 use reqwest::header::HeaderMap;
+use serde::Serialize;
 use serde_json;
+use std::collections::HashMap;
 
 #[derive(Serialize)]
 pub struct FetchResponse {
@@ -12,14 +12,14 @@ pub struct FetchResponse {
 
 /// Converts a `HeaderMap` to a `HashMap<String, Vec<String>>`.
 pub fn header_map_to_hashmap(headers: &HeaderMap) -> HashMap<String, Vec<String>> {
-    headers.iter().fold(HashMap::new(), |mut acc, (key, value)| {
-        let key_str = key.to_string();
-        let value_str = value.to_str().unwrap_or("").to_string();
-        acc.entry(key_str)
-            .or_default()
-            .push(value_str);
-        acc
-    })
+    headers
+        .iter()
+        .fold(HashMap::new(), |mut acc, (key, value)| {
+            let key_str = key.to_string();
+            let value_str = value.to_str().unwrap_or("").to_string();
+            acc.entry(key_str).or_default().push(value_str);
+            acc
+        })
 }
 
 #[tauri::command]
@@ -30,8 +30,8 @@ pub async fn get_request(url: String, custom_headers: String) -> Result<FetchRes
     eprintln!("get_request");
 
     // Deserialize the JSON string into a HashMap
-    let custom_headers: HashMap<String, String> = serde_json::from_str(&custom_headers)
-        .map_err(|e| e.to_string())?;
+    let custom_headers: HashMap<String, String> =
+        serde_json::from_str(&custom_headers).map_err(|e| e.to_string())?;
 
     // Create a client
     let client = reqwest::Client::new();
@@ -45,7 +45,8 @@ pub async fn get_request(url: String, custom_headers: String) -> Result<FetchRes
     }
 
     // Perform the HTTP GET request with headers
-    let response = client.get(&url)
+    let response = client
+        .get(&url)
         .headers(headers)
         .send()
         .await
@@ -61,18 +62,26 @@ pub async fn get_request(url: String, custom_headers: String) -> Result<FetchRes
     let body = response.text().await.map_err(|e| e.to_string())?;
 
     // Construct the FetchResponse
-    Ok(FetchResponse { status, headers: response_headers, body })
+    Ok(FetchResponse {
+        status,
+        headers: response_headers,
+        body,
+    })
 }
 
 #[tauri::command]
-pub async fn post_request(url: String, custom_headers: String, body: String) -> Result<FetchResponse, String> {
+pub async fn post_request(
+    url: String,
+    custom_headers: String,
+    body: String,
+) -> Result<FetchResponse, String> {
     log::debug!("post_request called with url: {}", url);
     println!("post_request called with url: {}", url);
     eprintln!("posting data");
 
     // Deserialize the JSON string into a HashMap
-    let custom_headers: HashMap<String, String> = serde_json::from_str(&custom_headers)
-        .map_err(|e| e.to_string())?;
+    let custom_headers: HashMap<String, String> =
+        serde_json::from_str(&custom_headers).map_err(|e| e.to_string())?;
 
     // Create a client
     let client = reqwest::Client::new();
@@ -86,7 +95,8 @@ pub async fn post_request(url: String, custom_headers: String, body: String) -> 
     }
 
     // Perform the HTTP POST request with headers and body
-    let response = client.post(&url)
+    let response = client
+        .post(&url)
         .headers(headers)
         .body(body)
         .send()
@@ -103,5 +113,9 @@ pub async fn post_request(url: String, custom_headers: String, body: String) -> 
     let response_body = response.text().await.map_err(|e| e.to_string())?;
 
     // Construct the FetchResponse
-    Ok(FetchResponse { status, headers: response_headers, body: response_body })
+    Ok(FetchResponse {
+        status,
+        headers: response_headers,
+        body: response_body,
+    })
 }

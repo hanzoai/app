@@ -9,7 +9,7 @@ const FullPageErrorFallback = ({ error }: { error: Error }) => {
       role="alert"
     >
       <p>{t('errorBoundary.genericError')}</p>
-      <pre className="mb-4 whitespace-pre-wrap text-balance break-all text-center">
+      <pre className="mb-4 text-center text-balance break-all whitespace-pre-wrap">
         {error.message}
       </pre>
       <Button

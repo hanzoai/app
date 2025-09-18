@@ -4,12 +4,12 @@ import { useTranslation } from '@hanzo_network/hanzo-i18n';
 import {
   NetworkIdentifier,
   WalletRole,
-} from '@hanzo_network/hanzo-message-ts/api/wallets';
-import { useCreateLocalWallet } from '@hanzo_network/hanzo-node-state/v2/mutations/createLocalWallet/useCreateLocalWallet';
-import { useRestoreCoinbaseMpcWallet } from '@hanzo_network/hanzo-node-state/v2/mutations/restoreCoinbaseMpcWallet/useRestoreCoinbaseMpcWallet';
-import { useRestoreLocalWallet } from '@hanzo_network/hanzo-node-state/v2/mutations/restoreLocalWallet/useRestoreLocalWallet';
-import { useGetWalletBalance } from '@hanzo_network/hanzo-node-state/v2/queries/getWalletBalance/useGetWalletBalance';
-import { useGetWalletList } from '@hanzo_network/hanzo-node-state/v2/queries/getWalletList/useGetWalletList';
+} from '@hanzonet/hanzo-message-ts/api/wallets';
+import { useCreateLocalWallet } from '@hanzonet/hanzo-node-state/v2/mutations/createLocalWallet/useCreateLocalWallet';
+import { useRestoreCoinbaseMpcWallet } from '@hanzonet/hanzo-node-state/v2/mutations/restoreCoinbaseMpcWallet/useRestoreCoinbaseMpcWallet';
+import { useRestoreLocalWallet } from '@hanzonet/hanzo-node-state/v2/mutations/restoreLocalWallet/useRestoreLocalWallet';
+import { useGetWalletBalance } from '@hanzonet/hanzo-node-state/v2/queries/getWalletBalance/useGetWalletBalance';
+import { useGetWalletList } from '@hanzonet/hanzo-node-state/v2/queries/getWalletList/useGetWalletList';
 import {
   Alert,
   AlertDescription,
@@ -53,10 +53,7 @@ import {
   USDCIcon,
 } from '@hanzo_network/hanzo-ui/assets';
 import { formatText } from '@hanzo_network/hanzo-ui/helpers';
-import {
-  useCopyClipboard,
-  useMeasure,
-} from '@hanzo_network/hanzo-ui/hooks';
+import { useCopyClipboard, useMeasure } from '@hanzo_network/hanzo-ui/hooks';
 import { cn } from '@hanzo_network/hanzo-ui/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import {

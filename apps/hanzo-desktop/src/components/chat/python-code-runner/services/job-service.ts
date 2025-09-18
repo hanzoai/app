@@ -1,7 +1,13 @@
-import  { type DirectoryContent } from '@hanzo_network/hanzo-message-ts/api/vector-fs/types';
+import { type DirectoryContent } from '@hanzo_network/hanzo-message-ts/api/vector-fs/types';
 
-import  { type AddFileToInboxResponse, type AddFileToJobRequest } from './__mocks__/hanzo-message-ts';
-import { type FileSystemEntry, type IFileSystemService } from './file-system-service';
+import {
+  type AddFileToInboxResponse,
+  type AddFileToJobRequest,
+} from './__mocks__/hanzo-message-ts';
+import {
+  type FileSystemEntry,
+  type IFileSystemService,
+} from './file-system-service';
 
 export interface IJobService {
   syncJobFilesToIDBFS(contents: DirectoryContent[] | null): Promise<void>;
@@ -11,8 +17,16 @@ export interface IJobService {
 
 export interface JobServiceDependencies {
   fileSystemService: IFileSystemService;
-  downloadFile: (params: { nodeAddress: string; token: string; path: string }) => Promise<string>;
-  addFileToJob: (nodeAddress: string, bearerToken: string, payload: AddFileToJobRequest) => Promise<AddFileToInboxResponse>;
+  downloadFile: (params: {
+    nodeAddress: string;
+    token: string;
+    path: string;
+  }) => Promise<string>;
+  addFileToJob: (
+    nodeAddress: string,
+    bearerToken: string,
+    payload: AddFileToJobRequest,
+  ) => Promise<AddFileToInboxResponse>;
   nodeAddress: string;
   token: string;
   jobId: string;
@@ -20,8 +34,16 @@ export interface JobServiceDependencies {
 
 export class JobService implements IJobService {
   private fileSystemService: IFileSystemService;
-  private downloadFile: (params: { nodeAddress: string; token: string; path: string }) => Promise<string>;
-  private addFileToJob: (nodeAddress: string, bearerToken: string, payload: AddFileToJobRequest) => Promise<AddFileToInboxResponse>;
+  private downloadFile: (params: {
+    nodeAddress: string;
+    token: string;
+    path: string;
+  }) => Promise<string>;
+  private addFileToJob: (
+    nodeAddress: string,
+    bearerToken: string,
+    payload: AddFileToJobRequest,
+  ) => Promise<AddFileToInboxResponse>;
   private nodeAddress: string;
   private token: string;
   private jobId: string;
@@ -35,14 +57,23 @@ export class JobService implements IJobService {
     this.jobId = dependencies.jobId;
   }
 
-  async syncJobFilesToIDBFS(contents: DirectoryContent[] | null): Promise<void> {
+  async syncJobFilesToIDBFS(
+    contents: DirectoryContent[] | null,
+  ): Promise<void> {
     console.time('Sync Job Files to IDBFS');
     try {
       // Log current state
       console.group('Initial State');
-      console.log('Job Contents:', contents ? JSON.stringify(contents, null, 2) : 'empty');
-      const currentIDBFSContents = this.fileSystemService.readContentsWithMtime('/home/pyodide');
-      console.log('Current IDBFS Contents:', JSON.stringify(currentIDBFSContents, null, 2));
+      console.log(
+        'Job Contents:',
+        contents ? JSON.stringify(contents, null, 2) : 'empty',
+      );
+      const currentIDBFSContents =
+        this.fileSystemService.readContentsWithMtime('/home/pyodide');
+      console.log(
+        'Current IDBFS Contents:',
+        JSON.stringify(currentIDBFSContents, null, 2),
+      );
       console.groupEnd();
 
       // Create empty Set if no job contents
@@ -67,15 +98,15 @@ export class JobService implements IJobService {
         console.group('Syncing New/Updated Items');
         for (const entry of contents) {
           const fullPath = `/home/pyodide/${entry.name}`;
-          
+
           if (entry.is_directory) {
             this.fileSystemService.ensureDirectory(fullPath);
           } else {
             const dirOnly = fullPath.substring(0, fullPath.lastIndexOf('/'));
             this.fileSystemService.ensureDirectory(dirOnly);
-            
+
             const existingContent = this.fileSystemService.readFile(fullPath);
-            
+
             if (existingContent) {
               // Compare with new content before syncing
               const currentContent = await this.downloadFile({
@@ -83,16 +114,18 @@ export class JobService implements IJobService {
                 token: this.token,
                 path: entry.path,
               });
-              
+
               if (existingContent === currentContent) {
-                console.log(`File ${entry.name} content unchanged, skipping sync`);
+                console.log(
+                  `File ${entry.name} content unchanged, skipping sync`,
+                );
                 continue;
               }
             }
 
             await this.syncFileToIDBFS({
               path: entry.path,
-              name: entry.name
+              name: entry.name,
             });
           }
         }
@@ -101,10 +134,16 @@ export class JobService implements IJobService {
 
       // Final sync to IndexedDB
       await this.fileSystemService.syncToIndexedDB();
-      
-      // Log final state
-      console.log('Final IDBFS Contents:', JSON.stringify(this.fileSystemService.readContentsWithMtime('/home/pyodide'), null, 2));
 
+      // Log final state
+      console.log(
+        'Final IDBFS Contents:',
+        JSON.stringify(
+          this.fileSystemService.readContentsWithMtime('/home/pyodide'),
+          null,
+          2,
+        ),
+      );
     } catch (error) {
       console.error('Failed to sync job files:', error);
       throw error;
@@ -114,7 +153,7 @@ export class JobService implements IJobService {
   private async traverseAndUpload(
     entries: FileSystemEntry[],
     basePath: string,
-    timeBefore: number
+    timeBefore: number,
   ): Promise<void> {
     for (const entry of entries) {
       const fullPath = `${basePath}/${entry.name}`;
@@ -123,7 +162,9 @@ export class JobService implements IJobService {
         if (mtimeInMs > timeBefore) {
           console.log(`Uploading changed file: ${fullPath}`);
           try {
-            const blob = new Blob([entry.content ?? ''], { type: 'text/plain' });
+            const blob = new Blob([entry.content ?? ''], {
+              type: 'text/plain',
+            });
             const file = new File([blob], entry.name, { type: 'text/plain' });
             await this.addFileToJob(this.nodeAddress, this.token, {
               filename: fullPath.replace('/home/pyodide/', ''),
@@ -143,7 +184,8 @@ export class JobService implements IJobService {
   async compareAndUploadFiles(timeBefore: number): Promise<void> {
     console.time('Compare and Upload Files');
     try {
-      const idbfsContents = this.fileSystemService.readContentsWithMtime('/home/pyodide');
+      const idbfsContents =
+        this.fileSystemService.readContentsWithMtime('/home/pyodide');
       if (!idbfsContents) {
         console.warn('No contents found in /home/pyodide.');
         return;
@@ -176,4 +218,4 @@ export class JobService implements IJobService {
       throw error;
     }
   }
-} 
+}

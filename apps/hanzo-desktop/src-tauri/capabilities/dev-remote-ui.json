@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "dev-remote-ui",
+  "description": "Development capability for remote UI testing",
+  "windows": ["*"],
+  "permissions": [
+    "core:default"
+  ],
+  "platforms": ["macOS", "linux", "windows"]
+}

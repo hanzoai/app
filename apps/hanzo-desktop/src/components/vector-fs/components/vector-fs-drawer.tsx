@@ -1,9 +1,5 @@
 import { DialogClose } from '@hanzo_network/hanzo-artifacts';
-import {
-  buttonVariants,
-  Dialog,
-  DialogContent,
-} from '@hanzo_network/hanzo-ui';
+import { buttonVariants, Dialog, DialogContent } from '@hanzo_network/hanzo-ui';
 import { cn } from '@hanzo_network/hanzo-ui/utils';
 import { XIcon } from 'lucide-react';
 
@@ -71,9 +67,9 @@ const VectorFSDrawer = () => {
         <DialogClose
           className={cn(
             buttonVariants({ variant: 'tertiary', size: 'icon' }),
-            'absolute right-3 top-3 p-1',
+            'absolute top-3 right-3 p-1',
             activeDrawerMenuOption === VectorFsGlobalAction.VectorFileDetails &&
-              'right-5 top-5',
+              'top-5 right-5',
           )}
         >
           <XIcon className="size-4" />

@@ -60,9 +60,7 @@ const AIsPage = () => {
     token: auth?.api_v2_key ?? '',
   });
 
-  const isLocalHanzoNodeIsUse = useHanzoNodeManager(
-    (state) => state.isInUse,
-  );
+  const isLocalHanzoNodeIsUse = useHanzoNodeManager((state) => state.isInUse);
 
   const onAddAgentClick = () => {
     if (isLocalHanzoNodeIsUse) {

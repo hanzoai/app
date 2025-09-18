@@ -1,6 +1,6 @@
-import { getNodeStorageLocation as getNodeStorageLocationApi } from "@hanzo_network/hanzo-message-ts/api/general/index";
+import { getNodeStorageLocation as getNodeStorageLocationApi } from '@hanzo_network/hanzo-message-ts/api/general/index';
 
-import { type GetNodeStorageLocationInput } from "./types";
+import { type GetNodeStorageLocationInput } from './types';
 
 export const getNodeStorageLocation = async ({
   nodeAddress,

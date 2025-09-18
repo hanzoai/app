@@ -30,11 +30,17 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { info } from '@tauri-apps/plugin-log';
 import {
   Bot,
+  Cpu,
+  Database,
+  HardDrive,
   ListRestart,
   Loader2,
+  Network,
   PlayCircle,
+  Settings,
   StopCircle,
   Trash,
+  Zap,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
@@ -44,6 +50,10 @@ import { z } from 'zod';
 import logo from '../../../src-tauri/icons/128x128@2x.png';
 import { OllamaModels } from '../../components/hanzo-node-manager/ollama-models';
 import { ALLOWED_OLLAMA_MODELS } from '../../lib/hanzo-node-manager/ollama-models';
+import { detectSystem, type SystemInfo } from '../../lib/hardware-detection';
+import { INFERENCE_ENGINES, getEnginesForPlatform } from '../../lib/hanzo-node-manager/inference-engines';
+import { EMBEDDING_MODELS } from '../../lib/hanzo-node-manager/embedding-models';
+import { ALL_MODELS as HANZO_MODELS, canRunModel } from '../../lib/hanzo-node-manager/hanzo-models';
 import {
   hanzoNodeQueryClient,
   useHanzoNodeGetOptionsQuery,
@@ -75,8 +85,14 @@ import { useSyncStorageSecondary } from '../../store/sync-utils';
 import { Logs } from './components/logs';
 
 const App = () => {
+  const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
+  const [selectedEngine, setSelectedEngine] = useState<string>('hanzo-engine');
+  const [selectedEmbedding, setSelectedEmbedding] = useState<string>('bge-small-en');
+
   useEffect(() => {
     void info('initializing hanzo-node-manager');
+    // Detect hardware on load
+    detectSystem().then(setSystemInfo);
   }, []);
   useSyncStorageSecondary();
   const auth = useAuth((auth) => auth.auth);
@@ -91,20 +107,18 @@ const App = () => {
     refetchInterval: 1000,
   });
 
-  const {
-    isPending: hanzoNodeSpawnIsPending,
-    mutateAsync: hanzoNodeSpawn,
-  } = useHanzoNodeSpawnMutation({
-    onMutate: () => {
-      startingHanzoNodeToast();
-    },
-    onSuccess: () => {
-      hanzoNodeStartedToast();
-    },
-    onError: () => {
-      hanzoNodeStartErrorToast();
-    },
-  });
+  const { isPending: hanzoNodeSpawnIsPending, mutateAsync: hanzoNodeSpawn } =
+    useHanzoNodeSpawnMutation({
+      onMutate: () => {
+        startingHanzoNodeToast();
+      },
+      onSuccess: () => {
+        hanzoNodeStartedToast();
+      },
+      onError: () => {
+        hanzoNodeStartErrorToast();
+      },
+    });
   const { isPending: hanzoNodeKillIsPending, mutateAsync: hanzoNodeKill } =
     useHanzoNodeKillMutation({
       onMutate: () => {
@@ -130,12 +144,11 @@ const App = () => {
       errorRemovingHanzoNodeStorageToast();
     },
   });
-  const { mutateAsync: hanzoNodeSetOptions } =
-    useHanzoNodeSetOptionsMutation({
-      onSuccess: (options) => {
-        setHanzoNodeOptions(options);
-      },
-    });
+  const { mutateAsync: hanzoNodeSetOptions } = useHanzoNodeSetOptionsMutation({
+    onSuccess: (options) => {
+      setHanzoNodeOptions(options);
+    },
+  });
   const { mutateAsync: hanzoNodeSetDefaultOptions } =
     useHanzoNodeSetDefaultOptionsMutation({
       onSuccess: (options) => {
@@ -316,19 +329,152 @@ const App = () => {
 
       <Tabs
         className="mt-4 flex h-full w-full flex-col overflow-hidden p-4"
-        defaultValue="app-logs"
+        defaultValue="hardware"
       >
         <TabsList className="w-full">
-          <TabsTrigger className="grow" value="app-logs">
-            App Logs
-          </TabsTrigger>
-          <TabsTrigger className="grow" value="options">
-            Options
+          <TabsTrigger className="grow" value="hardware">
+            <Cpu className="mr-1 h-4 w-4" />
+            Hardware
           </TabsTrigger>
           <TabsTrigger className="grow" value="models">
+            <Bot className="mr-1 h-4 w-4" />
             Models
           </TabsTrigger>
+          <TabsTrigger className="grow" value="engines">
+            <Zap className="mr-1 h-4 w-4" />
+            Engines
+          </TabsTrigger>
+          <TabsTrigger className="grow" value="embeddings">
+            <Database className="mr-1 h-4 w-4" />
+            Embeddings
+          </TabsTrigger>
+          <TabsTrigger className="grow" value="network">
+            <Network className="mr-1 h-4 w-4" />
+            Network
+          </TabsTrigger>
+          <TabsTrigger className="grow" value="options">
+            <Settings className="mr-1 h-4 w-4" />
+            Options
+          </TabsTrigger>
+          <TabsTrigger className="grow" value="app-logs">
+            <HardDrive className="mr-1 h-4 w-4" />
+            Logs
+          </TabsTrigger>
         </TabsList>
+        {/* Hardware Tab */}
+        <TabsContent className="h-full overflow-hidden" value="hardware">
+          <ScrollArea className="h-full">
+            <div className="space-y-4 p-4">
+              {systemInfo && (
+                <>
+                  {/* System Overview */}
+                  <div className="rounded-lg border border-border bg-card p-4">
+                    <h3 className="mb-3 text-lg font-semibold">System Information</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-sm text-muted-foreground">Platform</span>
+                        <p className="font-medium capitalize">{systemInfo.platform}</p>
+                      </div>
+                      <div>
+                        <span className="text-sm text-muted-foreground">CPU Cores</span>
+                        <p className="font-medium">{systemInfo.cores}</p>
+                      </div>
+                      <div>
+                        <span className="text-sm text-muted-foreground">System Memory</span>
+                        <p className="font-medium">{systemInfo.memory}GB RAM</p>
+                      </div>
+                      <div>
+                        <span className="text-sm text-muted-foreground">Available Memory</span>
+                        <p className="font-medium">{(systemInfo.memory * 0.7).toFixed(1)}GB</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* GPU Information */}
+                  <div className="rounded-lg border border-border bg-card p-4">
+                    <h3 className="mb-3 text-lg font-semibold">GPU Information</h3>
+                    {systemInfo.gpu.available ? (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <span className="text-sm text-muted-foreground">Vendor</span>
+                            <p className="font-medium">{systemInfo.gpu.vendor || 'Unknown'}</p>
+                          </div>
+                          <div>
+                            <span className="text-sm text-muted-foreground">VRAM</span>
+                            <p className="font-medium">{((systemInfo.gpu.vram || 0) / 1024).toFixed(1)}GB</p>
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-sm text-muted-foreground">Renderer</span>
+                          <p className="font-medium text-xs">{systemInfo.gpu.renderer || 'Unknown'}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-muted-foreground">Capabilities</span>
+                          <div className="mt-1 flex flex-wrap gap-2">
+                            {systemInfo.gpu.capabilities.map((cap) => (
+                              <span
+                                key={cap}
+                                className="rounded-md bg-primary/10 px-2 py-1 text-xs font-medium uppercase"
+                              >
+                                {cap}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No GPU detected</p>
+                    )}
+                  </div>
+
+                  {/* Supported Engines */}
+                  <div className="rounded-lg border border-border bg-card p-4">
+                    <h3 className="mb-3 text-lg font-semibold">Supported Inference Engines</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {systemInfo.supportedEngines.map((engine) => (
+                        <span
+                          key={engine}
+                          className="rounded-md bg-green-500/10 px-3 py-1 text-sm font-medium text-green-400"
+                        >
+                          {engine}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Recommended Models */}
+                  <div className="rounded-lg border border-border bg-card p-4">
+                    <h3 className="mb-3 text-lg font-semibold">Recommended Models for Your Hardware</h3>
+                    <div className="space-y-2">
+                      {HANZO_MODELS
+                        .filter((model) => {
+                          const check = canRunModel(model.size, systemInfo);
+                          return check.canRun && !check.warning;
+                        })
+                        .slice(0, 5)
+                        .map((model) => {
+                          const runCheck = canRunModel(model.size, systemInfo);
+                          return (
+                            <div key={model.id} className="flex items-center justify-between rounded-lg border border-border/50 p-2">
+                              <div>
+                                <p className="font-medium">{model.name}</p>
+                                <p className="text-xs text-muted-foreground">{model.size}GB</p>
+                              </div>
+                              {runCheck.warning && (
+                                <span className="text-xs text-yellow-500">{runCheck.warning}</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+
         <TabsContent className="h-full overflow-hidden" value="app-logs">
           <Logs />
         </TabsContent>
@@ -376,6 +522,229 @@ const App = () => {
 
         <TabsContent className="h-full overflow-hidden pb-2" value="models">
           <OllamaModels />
+        </TabsContent>
+
+        {/* Inference Engines Tab */}
+        <TabsContent className="h-full overflow-hidden" value="engines">
+          <ScrollArea className="h-full">
+            <div className="space-y-4 p-4">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold">Select Inference Engine</h3>
+                <p className="text-sm text-muted-foreground">
+                  Choose the backend engine for running models locally
+                </p>
+              </div>
+
+              <div className="grid gap-4">
+                {(systemInfo ? getEnginesForPlatform(systemInfo.platform) : INFERENCE_ENGINES).map((engine) => (
+                  <div
+                    key={engine.id}
+                    className={`cursor-pointer rounded-lg border p-4 transition-all ${
+                      selectedEngine === engine.id
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                    onClick={() => setSelectedEngine(engine.id)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">{engine.icon}</span>
+                          <h4 className="text-lg font-semibold">{engine.name}</h4>
+                          {engine.defaultEngine && (
+                            <span className="rounded-md bg-primary/20 px-2 py-0.5 text-xs font-medium">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-sm text-muted-foreground">{engine.description}</p>
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span className="rounded-md bg-background px-2 py-1 text-xs">
+                            Speed: <span className="font-medium">{engine.performance}</span>
+                          </span>
+                          <span className="rounded-md bg-background px-2 py-1 text-xs">
+                            Memory: <span className="font-medium">{engine.memory}</span>
+                          </span>
+                        </div>
+
+                        <div className="mt-3">
+                          <p className="text-xs font-medium text-muted-foreground">Features:</p>
+                          <ul className="mt-1 grid grid-cols-2 gap-1">
+                            {engine.features.slice(0, 4).map((feature, idx) => (
+                              <li key={idx} className="text-xs text-muted-foreground">• {feature}</li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        {engine.requirements.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-xs font-medium text-yellow-600">Requirements:</p>
+                            <p className="text-xs text-yellow-600/80">{engine.requirements.join(', ')}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </ScrollArea>
+        </TabsContent>
+
+        {/* Embeddings Tab */}
+        <TabsContent className="h-full overflow-hidden" value="embeddings">
+          <ScrollArea className="h-full">
+            <div className="space-y-4 p-4">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold">Embedding Models</h3>
+                <p className="text-sm text-muted-foreground">
+                  Vector models for search and RAG applications
+                </p>
+              </div>
+
+              <div className="grid gap-3">
+                {EMBEDDING_MODELS.map((model) => (
+                  <div
+                    key={model.id}
+                    className={`cursor-pointer rounded-lg border p-3 transition-all ${
+                      selectedEmbedding === model.id
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                    onClick={() => setSelectedEmbedding(model.id)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold">{model.name}</h4>
+                          {model.recommended && (
+                            <span className="rounded-md bg-green-500/20 px-2 py-0.5 text-xs font-medium text-green-400">
+                              Recommended
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">{model.description}</p>
+
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <span className="rounded-md bg-background px-2 py-0.5 text-xs">
+                            Dims: <span className="font-medium">{model.dimensions}</span>
+                          </span>
+                          <span className="rounded-md bg-background px-2 py-0.5 text-xs">
+                            Context: <span className="font-medium">{model.contextLength}</span>
+                          </span>
+                          <span className="rounded-md bg-background px-2 py-0.5 text-xs">
+                            Size: <span className="font-medium">{model.size}GB</span>
+                          </span>
+                          <span className="rounded-md bg-background px-2 py-0.5 text-xs">
+                            Speed: <span className="font-medium">{model.performance}</span>
+                          </span>
+                        </div>
+
+                        <div className="mt-2 flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">{model.provider}</span>
+                          {systemInfo && !canRunModel(model.size, systemInfo).canRun && (
+                            <span className="text-xs text-red-500">Insufficient memory</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </ScrollArea>
+        </TabsContent>
+
+        {/* Network Mining Tab */}
+        <TabsContent className="h-full overflow-hidden" value="network">
+          <ScrollArea className="h-full">
+            <div className="space-y-4 p-4">
+              <div className="rounded-lg border border-border bg-card p-4">
+                <h3 className="mb-3 text-lg font-semibold">Network Mining</h3>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  Commit your resources to the Hanzo network and earn rewards
+                </p>
+
+                <div className="space-y-4">
+                  <div className="rounded-lg border border-border/50 bg-background/50 p-3">
+                    <h4 className="font-medium">Resource Allocation</h4>
+                    <div className="mt-3 space-y-3">
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">CPU Cores</span>
+                          <span className="text-sm font-medium">{systemInfo?.cores ? Math.floor(systemInfo.cores / 2) : 0} / {systemInfo?.cores || 0}</span>
+                        </div>
+                        <div className="mt-1 h-2 w-full rounded-full bg-secondary">
+                          <div className="h-2 rounded-full bg-primary" style={{ width: '50%' }} />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Memory</span>
+                          <span className="text-sm font-medium">
+                            {systemInfo?.memory ? (systemInfo.memory * 0.3).toFixed(1) : 0}GB / {systemInfo?.memory || 0}GB
+                          </span>
+                        </div>
+                        <div className="mt-1 h-2 w-full rounded-full bg-secondary">
+                          <div className="h-2 rounded-full bg-primary" style={{ width: '30%' }} />
+                        </div>
+                      </div>
+
+                      {systemInfo?.gpu.available && (
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm">GPU</span>
+                            <span className="text-sm font-medium">50%</span>
+                          </div>
+                          <div className="mt-1 h-2 w-full rounded-full bg-secondary">
+                            <div className="h-2 rounded-full bg-primary" style={{ width: '50%' }} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-border/50 bg-background/50 p-3">
+                    <h4 className="font-medium">Network Selection</h4>
+                    <div className="mt-3 space-y-2">
+                      <label className="flex items-center gap-2">
+                        <input className="rounded" defaultChecked type="radio" name="network" />
+                        <span className="text-sm">Hanzo Mainnet</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input className="rounded" type="radio" name="network" />
+                        <span className="text-sm">Testnet</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input className="rounded" type="radio" name="network" />
+                        <span className="text-sm">Custom Network</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button className="flex-1" variant="default">
+                      <PlayCircle className="mr-2 h-4 w-4" />
+                      Start Mining
+                    </Button>
+                    <Button className="flex-1" variant="outline" disabled>
+                      <StopCircle className="mr-2 h-4 w-4" />
+                      Stop Mining
+                    </Button>
+                  </div>
+
+                  <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                    <p className="text-xs text-yellow-600">
+                      ⚠️ Mining will use your allocated resources to process network tasks.
+                      Ensure your system has adequate cooling and stable power.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
         </TabsContent>
       </Tabs>
       <AlertDialog

@@ -1,7 +1,10 @@
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
 
 import { FunctionKeyV2 } from '../../constants';
-import { type GetToolPlaygroundMetadataInput, type GetToolPlaygroundMetadataOutput } from './types';
+import {
+  type GetToolPlaygroundMetadataInput,
+  type GetToolPlaygroundMetadataOutput,
+} from './types';
 import { getToolPlaygroundMetadata } from '.';
 
 export const useGetToolPlaygroundMetadata = (

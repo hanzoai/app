@@ -134,8 +134,7 @@ function QuickAsk() {
       token: auth?.api_v2_key ?? '',
     },
     {
-      select: (data: HanzoToolHeader[]) =>
-        data.filter((tool) => tool.enabled),
+      select: (data: HanzoToolHeader[]) => data.filter((tool) => tool.enabled),
     },
   );
 

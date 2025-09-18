@@ -1,11 +1,19 @@
-import { useMutation, UseMutationOptions, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  UseMutationOptions,
+  useQueryClient,
+} from '@tanstack/react-query';
 
 import { FunctionKeyV2 } from '../../constants';
 import { updateMcpServer } from './index';
 import { UpdateMcpServerInput, UpdateMcpServerResponse } from './types';
 
 export const useUpdateMcpServer = (
-  options?: UseMutationOptions<UpdateMcpServerResponse, Error, UpdateMcpServerInput>
+  options?: UseMutationOptions<
+    UpdateMcpServerResponse,
+    Error,
+    UpdateMcpServerInput
+  >,
 ) => {
   const queryClient = useQueryClient();
 

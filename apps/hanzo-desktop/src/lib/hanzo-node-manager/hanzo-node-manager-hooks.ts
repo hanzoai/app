@@ -54,9 +54,7 @@ export const useHanzoNodeStateChange = (
   );
 };
 
-export const mapEvent = (
-  event: object | string,
-): HanzoNodeManagerEventMap => {
+export const mapEvent = (event: object | string): HanzoNodeManagerEventMap => {
   if (typeof event === 'object') {
     return {
       type: Object.keys(event)[0] as HanzoNodeManagerEvent,
@@ -132,9 +130,7 @@ export const useHanzoNodeEventsToast = () => {
         pullingModelErrorToast(hanzoNodeEvent.payload.model);
         break;
       default:
-        void warn(
-          `unhandled hanzo node state change:${hanzoNodeEvent.type}`,
-        );
+        void warn(`unhandled hanzo node state change:${hanzoNodeEvent.type}`);
     }
   });
   return hanzoNodeEventState;

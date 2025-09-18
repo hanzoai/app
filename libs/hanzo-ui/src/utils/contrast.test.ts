@@ -3,11 +3,11 @@ import { describe, it, expect } from 'vitest';
 /**
  * Calculate relative luminance of a color
  * @param r Red component (0-255)
- * @param g Green component (0-255)  
+ * @param g Green component (0-255)
  * @param b Blue component (0-255)
  */
 function getLuminance(r: number, g: number, b: number): number {
-  const [rs, gs, bs] = [r, g, b].map(c => {
+  const [rs, gs, bs] = [r, g, b].map((c) => {
     c = c / 255;
     return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
   });
@@ -19,7 +19,10 @@ function getLuminance(r: number, g: number, b: number): number {
  * @param rgb1 First color [r, g, b]
  * @param rgb2 Second color [r, g, b]
  */
-function getContrastRatio(rgb1: [number, number, number], rgb2: [number, number, number]): number {
+function getContrastRatio(
+  rgb1: [number, number, number],
+  rgb2: [number, number, number],
+): number {
   const l1 = getLuminance(...rgb1);
   const l2 = getLuminance(...rgb2);
   const lighter = Math.max(l1, l2);
@@ -98,7 +101,7 @@ describe('UI Color Contrast Tests', () => {
         { bg: colors.black, fg: colors.gray300, name: 'Secondary text' },
       ];
 
-      interactiveTests.forEach(test => {
+      interactiveTests.forEach((test) => {
         const ratio = getContrastRatio(test.bg, test.fg);
         expect(ratio).toBeGreaterThanOrEqual(4.5);
         console.log(`${test.name}: ${ratio.toFixed(2)}:1`);

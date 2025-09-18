@@ -24,7 +24,6 @@ import {
 import React from 'react';
 import { Link, Outlet, useMatch } from 'react-router';
 
-
 import { openHanzoNodeManagerWindow } from '../../lib/hanzo-node-manager/hanzo-node-manager-windows-utils';
 import { useAuth } from '../../store/auth';
 import { useHanzoNodeManager } from '../../store/hanzo-node-manager';
@@ -101,9 +100,7 @@ const NavLink = ({
 
 export function MainNav() {
   const { t } = useTranslation();
-  const isLocalHanzoNodeInUse = useHanzoNodeManager(
-    (state) => state.isInUse,
-  );
+  const isLocalHanzoNodeInUse = useHanzoNodeManager((state) => state.isInUse);
 
   const navigationLinks = [
     {

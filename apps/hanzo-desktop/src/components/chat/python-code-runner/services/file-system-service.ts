@@ -34,7 +34,7 @@ export class PyodideFileSystemService implements IFileSystemService {
       this.pyodide.FS.mount(
         this.pyodide.FS.filesystems.IDBFS,
         {},
-        this.rootPath
+        this.rootPath,
       );
       await this.syncFromIndexedDB();
     } catch (error) {
@@ -46,27 +46,30 @@ export class PyodideFileSystemService implements IFileSystemService {
   readContents(path: string): FileSystemEntry[] | null {
     try {
       const entries = this.pyodide.FS.readdir(path);
-      const contents = entries.filter((entry: string) => 
-        entry !== '.' && entry !== '..' && entry !== '.matplotlib'
+      const contents = entries.filter(
+        (entry: string) =>
+          entry !== '.' && entry !== '..' && entry !== '.matplotlib',
       );
-      
+
       return contents.map((entry: string) => {
         const fullPath = `${path}/${entry}`;
         const stat = this.pyodide.FS.stat(fullPath);
         const isDirectory = this.pyodide.FS.isDir(stat.mode);
-        
+
         if (isDirectory) {
-          return { 
-            name: entry, 
-            type: 'directory' as const, 
-            contents: this.readContents(fullPath) 
+          return {
+            name: entry,
+            type: 'directory' as const,
+            contents: this.readContents(fullPath),
           };
         } else {
-          const content = this.pyodide.FS.readFile(fullPath, { encoding: 'utf8' });
-          return { 
-            name: entry, 
-            type: 'file' as const, 
-            content: content as string 
+          const content = this.pyodide.FS.readFile(fullPath, {
+            encoding: 'utf8',
+          });
+          return {
+            name: entry,
+            type: 'file' as const,
+            content: content as string,
           };
         }
       });
@@ -79,8 +82,9 @@ export class PyodideFileSystemService implements IFileSystemService {
   readContentsWithMtime(path: string): FileSystemEntry[] | null {
     try {
       const entries = this.pyodide.FS.readdir(path);
-      const contents = entries.filter((entry: string) => 
-        entry !== '.' && entry !== '..' && entry !== '.matplotlib'
+      const contents = entries.filter(
+        (entry: string) =>
+          entry !== '.' && entry !== '..' && entry !== '.matplotlib',
       );
 
       return contents.map((entry: string) => {
@@ -90,18 +94,20 @@ export class PyodideFileSystemService implements IFileSystemService {
         const mtimeMs = stat ? stat.mtime * 1000 : 0;
 
         if (isDirectory) {
-          return { 
-            name: entry, 
-            type: 'directory' as const, 
-            contents: this.readContentsWithMtime(fullPath) 
+          return {
+            name: entry,
+            type: 'directory' as const,
+            contents: this.readContentsWithMtime(fullPath),
           };
         } else {
-          const content = this.pyodide.FS.readFile(fullPath, { encoding: 'utf8' });
-          return { 
-            name: entry, 
-            type: 'file' as const, 
+          const content = this.pyodide.FS.readFile(fullPath, {
+            encoding: 'utf8',
+          });
+          return {
+            name: entry,
+            type: 'file' as const,
             content: content as string,
-            mtimeMs
+            mtimeMs,
           };
         }
       });
@@ -136,7 +142,7 @@ export class PyodideFileSystemService implements IFileSystemService {
 
     const parts = dirPath.split('/').filter(Boolean);
     let currentPath = '';
-    
+
     for (const part of parts) {
       currentPath += '/' + part;
       try {
@@ -210,4 +216,4 @@ export class PyodideFileSystemService implements IFileSystemService {
       });
     });
   }
-} 
+}

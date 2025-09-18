@@ -1,6 +1,6 @@
 import { getRecurringTask as getRecurringTaskApi } from '@hanzo_network/hanzo-message-ts/api/recurring-tasks/index';
 
-import  { type GetRecurringTaskInput } from './types';
+import { type GetRecurringTaskInput } from './types';
 
 export const getRecurringTask = async ({
   nodeAddress,

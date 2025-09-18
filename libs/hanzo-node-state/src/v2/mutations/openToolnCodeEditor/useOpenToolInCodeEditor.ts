@@ -2,7 +2,10 @@ import { useMutation, type UseMutationOptions } from '@tanstack/react-query';
 
 import { type FunctionKeyV2 } from '../../constants';
 import { type APIError } from '../../types';
-import { type OpenToolInCodeEditorInput, type OpenToolInCodeEditorOutput } from './types';
+import {
+  type OpenToolInCodeEditorInput,
+  type OpenToolInCodeEditorOutput,
+} from './types';
 import { openToolInCodeEditor } from '.';
 
 export type UseOpenToolInCodeEditor = [

@@ -12,11 +12,11 @@ interface DefaultLlmProviderUpdaterProps {
  * Component that updates the default LLM provider in the backend.
  * This component doesn't render anything, it just calls the API endpoint when mounted.
  */
-export const DefaultLlmProviderUpdater: React.FC<DefaultLlmProviderUpdaterProps> = ({
-  defaultAgentId,
-}) => {
+export const DefaultLlmProviderUpdater: React.FC<
+  DefaultLlmProviderUpdaterProps
+> = ({ defaultAgentId }) => {
   const auth = useAuth((state) => state.auth);
-  
+
   const { mutate } = useMutation({
     mutationFn: async (llmProvider: string) => {
       if (!auth?.node_address || !auth?.api_v2_key) {
@@ -25,7 +25,7 @@ export const DefaultLlmProviderUpdater: React.FC<DefaultLlmProviderUpdaterProps>
       return hanzoNodeSetDefaultLlmProvider(
         llmProvider,
         auth.node_address,
-        auth.api_v2_key
+        auth.api_v2_key,
       );
     },
     onError: (error) => {

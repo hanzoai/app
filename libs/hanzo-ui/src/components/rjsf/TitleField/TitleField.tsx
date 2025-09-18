@@ -17,7 +17,7 @@ export default function TitleField<
 
   return (
     <div id={id}>
-      <h5 className={cn('mb-2 inline-block text-xs uppercase text-gray-50')}>
+      <h5 className={cn('mb-2 inline-block text-xs text-gray-50 uppercase')}>
         {uiOptions.title || title}
       </h5>
       {/*<hr className="my-1 border-t border-gray-200" />*/}

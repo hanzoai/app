@@ -16,7 +16,11 @@ type Options = UseMutationOptions<
 export const useImportMCPServerFromGithubURL = (options?: Options) => {
   return useMutation({
     mutationFn: (input: ImportMCPServerFromGithubURLInput) =>
-      importMCPServerFromGithubURL(input.nodeAddress, input.token, input.githubUrl),
+      importMCPServerFromGithubURL(
+        input.nodeAddress,
+        input.token,
+        input.githubUrl,
+      ),
     ...options,
   });
 };

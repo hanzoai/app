@@ -34,26 +34,39 @@ icons-check: ## Check if required tools for icon generation are installed
 	@which iconutil > /dev/null 2>&1 && echo "✅ iconutil found (macOS)" || echo "⚠️  iconutil not found (only available on macOS)"
 
 .PHONY: install-deps
-install-deps: ## Install dependencies for the desktop app
-	@echo "$(GREEN)Installing dependencies...$(NC)"
-	cd $(DESKTOP_DIR) && pnpm install
+install-deps: ## Install dependencies (root-managed with pnpm)
+	@echo "$(GREEN)Installing dependencies (root workspace)...$(NC)"
+	pnpm install
 	@echo "$(GREEN)✅ Dependencies installed!$(NC)"
 
 .PHONY: dev
 dev: ## Run the desktop app in development mode
 	@echo "$(GREEN)Starting Hanzo desktop app in development mode...$(NC)"
-	cd $(DESKTOP_DIR) && pnpm tauri dev
+	cd $(DESKTOP_DIR) && NX_DAEMON=false pnpm exec tauri dev
+
+.PHONY: dev-local
+dev-local: ## Use Node from .nvmrc (if available), install, run dev with Remote UI
+	@echo "$(GREEN)Starting local dev with Node from .nvmrc (if available)...$(NC)"
+	@if [ -s "$(HOME)/.nvm/nvm.sh" ]; then \
+	  echo "Using nvm at $(HOME)/.nvm"; \
+	  . "$(HOME)/.nvm/nvm.sh" && nvm use || true; \
+	else \
+	  echo "nvm not found; continuing with current Node: $$(node -v)"; \
+	fi
+	@pnpm install
+	@echo "$(GREEN)Launching Tauri dev with Remote UI enabled$(NC)"
+	@cd $(DESKTOP_DIR) && NX_DAEMON=false TAURI_REMOTE_UI=1 HANZO_ENABLE_REMOTE_UI=1 pnpm exec tauri dev
 
 .PHONY: build
 build: icons ## Build the desktop app for production
 	@echo "$(GREEN)Building Hanzo desktop app...$(NC)"
-	cd $(DESKTOP_DIR) && pnpm tauri build
+	cd $(DESKTOP_DIR) && NX_DAEMON=false pnpm exec tauri build
 	@echo "$(GREEN)✅ Build complete!$(NC)"
 
 .PHONY: build-mac
 build-mac: icons ## Build the desktop app for macOS only
 	@echo "$(GREEN)Building Hanzo desktop app for macOS...$(NC)"
-	cd $(DESKTOP_DIR) && pnpm tauri build --target universal-apple-darwin
+	cd $(DESKTOP_DIR) && NX_DAEMON=false pnpm exec tauri build --target universal-apple-darwin
 	@echo "$(GREEN)✅ macOS build complete!$(NC)"
 
 .PHONY: clean
@@ -83,24 +96,24 @@ setup-macos: ## Install required tools for icon generation on macOS
 	@echo "$(GREEN)✅ Tools installed!$(NC)"
 
 .PHONY: test
-test: ## Run tests for the desktop app
+test: ## Run unit tests (Vitest)
 	@echo "$(GREEN)Running tests...$(NC)"
-	cd $(DESKTOP_DIR) && pnpm test
+	npm run test:contrast
 
 .PHONY: lint
-lint: ## Run linting for the desktop app
+lint: ## Run linting (root ESLint against desktop app)
 	@echo "$(GREEN)Running linter...$(NC)"
-	cd $(DESKTOP_DIR) && pnpm lint
+	pnpm exec eslint --ext .js,.jsx,.ts,.tsx $(DESKTOP_DIR)
 
 .PHONY: format
-format: ## Format code using prettier
+format: ## Format code using Prettier (root)
 	@echo "$(GREEN)Formatting code...$(NC)"
-	cd $(DESKTOP_DIR) && pnpm format
+	pnpm exec prettier --write "apps/**/*.{js,jsx,ts,tsx,css,md,mjs,cjs,html,json}" "libs/**/*.{js,jsx,ts,tsx,css,md,mjs,cjs,html,json}"
 
 .PHONY: update-tauri
-update-tauri: ## Update Tauri dependencies
+update-tauri: ## Update Tauri dependencies (root-managed)
 	@echo "$(GREEN)Updating Tauri...$(NC)"
-	cd $(DESKTOP_DIR) && pnpm update @tauri-apps/cli @tauri-apps/api
+	pnpm update @tauri-apps/cli @tauri-apps/api
 
 .PHONY: rust-check
 rust-check: ## Check Rust code in src-tauri

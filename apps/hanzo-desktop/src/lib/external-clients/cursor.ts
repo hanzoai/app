@@ -40,7 +40,9 @@ export const handleConfigureCursor = async (serverId: string, t: TFunction) => {
     } catch (helpError) {
       console.error('Failed to fetch Cursor config help text:', helpError);
       // Throw regular error if fetching help text fails
-      throw new Error(`${errorMessage} Could not retrieve manual setup instructions.`);
+      throw new Error(
+        `${errorMessage} Could not retrieve manual setup instructions.`,
+      );
     }
 
     // If helpText was successfully fetched in the try block above, throw ConfigError now.
@@ -48,7 +50,9 @@ export const handleConfigureCursor = async (serverId: string, t: TFunction) => {
       throw new ConfigError(errorMessage, helpText);
     } else {
       // Added for robustness, similar to claude-desktop.ts
-      throw new Error(`${errorMessage} Could not retrieve manual setup instructions (unexpected state).`);
+      throw new Error(
+        `${errorMessage} Could not retrieve manual setup instructions (unexpected state).`,
+      );
     }
   }
 };

@@ -15,4 +15,4 @@ export const setEnableMcpServer = async ({
     isEnabled,
   );
   return response;
-}; 
+};

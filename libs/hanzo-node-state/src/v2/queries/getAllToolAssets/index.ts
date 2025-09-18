@@ -1,6 +1,6 @@
 import { getAllToolAssets as getAllToolAssetsApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
 
-import  { type GetAllToolAssetsInput } from './types';
+import { type GetAllToolAssetsInput } from './types';
 
 export const getAllToolAssets = async ({
   nodeAddress,

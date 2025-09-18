@@ -1,4 +1,4 @@
-import { type UseMutationOptions, useMutation  } from '@tanstack/react-query';
+import { type UseMutationOptions, useMutation } from '@tanstack/react-query';
 
 import { type APIError } from '../../types';
 import { type UpdateNodeNameInput, type UpdateNodeNameOutput } from './types';

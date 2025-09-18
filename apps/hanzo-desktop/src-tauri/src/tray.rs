@@ -6,7 +6,7 @@ use tauri::{
 
 use crate::{
     globals::HANZO_NODE_MANAGER_INSTANCE,
-    windows::{recreate_window, Window, show_spotlight_window},
+    windows::{recreate_window, show_spotlight_window, Window},
 };
 
 pub fn create_tray(app: &tauri::AppHandle) -> tauri::Result<()> {

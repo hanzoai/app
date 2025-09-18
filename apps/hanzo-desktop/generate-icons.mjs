@@ -38,7 +38,7 @@ const ICON_SIZES = {
   '32x32.png': 32,
   '128x128.png': 128,
   '128x128@2x.png': 256,
-  
+
   // Windows icons
   'Square30x30Logo.png': 30,
   'Square44x44Logo.png': 44,
@@ -54,8 +54,8 @@ const ICON_SIZES = {
 
 // Tray icon sizes (special handling - no background)
 const TRAY_SIZES = {
-  'tray-icon-macos.png': 22,  // macOS tray icon standard size (menu bar height)
-  'tray-icon-macos@2x.png': 44,  // macOS tray icon retina (2x menu bar height)
+  'tray-icon-macos.png': 22, // macOS tray icon standard size (menu bar height)
+  'tray-icon-macos@2x.png': 44, // macOS tray icon retina (2x menu bar height)
   'tray-icon.png': 32,
 };
 
@@ -69,202 +69,219 @@ function createRoundedRectSVG(size, cornerRadius) {
 async function generateIcons() {
   try {
     console.log('🎨 Generating icons from Hanzo logo SVG');
-    
+
     // Output directory
     const outputDir = path.resolve(__dirname, 'src-tauri/icons');
     await fs.mkdir(outputDir, { recursive: true });
-    
+
     // Save master SVG files
     await fs.writeFile(path.join(outputDir, 'hanzo-logo.svg'), LOGO_SVG);
     console.log('✅ Saved master SVG file');
-    
+
     // Generate main app icons with rounded corners and black background
     for (const [filename, size] of Object.entries(ICON_SIZES)) {
       const outputPath = path.join(outputDir, filename);
-      
+
       // Calculate padding (about 20% of the icon size for good spacing)
-      const padding = Math.round(size * 0.20);
-      const logoSize = size - (padding * 2);
-      
+      const padding = Math.round(size * 0.2);
+      const logoSize = size - padding * 2;
+
       // For main app icons, create rounded corner version
       if (filename === 'icon.png' || filename === 'app-icon.png') {
         // Create a rounded rectangle mask
         const cornerRadius = Math.round(size * 0.18); // 18% radius like macOS icons
-        
+
         // First, resize the logo
         const logoBuffer = await sharp(Buffer.from(LOGO_SVG))
           .resize(logoSize, logoSize, {
             fit: 'contain',
-            background: { r: 0, g: 0, b: 0, alpha: 0 }
+            background: { r: 0, g: 0, b: 0, alpha: 0 },
           })
           .png()
           .toBuffer();
-        
+
         // Create black background with logo composited on top
         const iconWithLogo = await sharp({
           create: {
             width: size,
             height: size,
             channels: 4,
-            background: { r: 0, g: 0, b: 0, alpha: 1 }
-          }
+            background: { r: 0, g: 0, b: 0, alpha: 1 },
+          },
         })
-          .composite([{
-            input: logoBuffer,
-            top: padding,
-            left: padding
-          }])
+          .composite([
+            {
+              input: logoBuffer,
+              top: padding,
+              left: padding,
+            },
+          ])
           .png()
           .toBuffer();
-        
+
         // Apply rounded corners mask
-        const roundedMask = Buffer.from(createRoundedRectSVG(size, cornerRadius));
-        
+        const roundedMask = Buffer.from(
+          createRoundedRectSVG(size, cornerRadius),
+        );
+
         await sharp(iconWithLogo)
-          .composite([{
-            input: roundedMask,
-            blend: 'dest-in'
-          }])
+          .composite([
+            {
+              input: roundedMask,
+              blend: 'dest-in',
+            },
+          ])
           .png()
           .toFile(outputPath);
-          
       } else if (filename.includes('Square')) {
         // Windows Square logos - no rounded corners but with padding
         const winPadding = Math.round(size * 0.15);
-        const winLogoSize = size - (winPadding * 2);
-        
+        const winLogoSize = size - winPadding * 2;
+
         const logoBuffer = await sharp(Buffer.from(LOGO_SVG))
           .resize(winLogoSize, winLogoSize, {
             fit: 'contain',
-            background: { r: 0, g: 0, b: 0, alpha: 0 }
+            background: { r: 0, g: 0, b: 0, alpha: 0 },
           })
           .png()
           .toBuffer();
-        
+
         await sharp({
           create: {
             width: size,
             height: size,
             channels: 4,
-            background: { r: 0, g: 0, b: 0, alpha: 1 }
-          }
+            background: { r: 0, g: 0, b: 0, alpha: 1 },
+          },
         })
-          .composite([{
-            input: logoBuffer,
-            top: winPadding,
-            left: winPadding
-          }])
+          .composite([
+            {
+              input: logoBuffer,
+              top: winPadding,
+              left: winPadding,
+            },
+          ])
           .png()
           .toFile(outputPath);
-          
       } else {
         // Other icons with padding but smaller corner radius
         const otherPadding = Math.round(size * 0.15);
-        const otherLogoSize = size - (otherPadding * 2);
-        const cornerRadius = Math.round(size * 0.10);
-        
+        const otherLogoSize = size - otherPadding * 2;
+        const cornerRadius = Math.round(size * 0.1);
+
         const logoBuffer = await sharp(Buffer.from(LOGO_SVG))
           .resize(otherLogoSize, otherLogoSize, {
             fit: 'contain',
-            background: { r: 0, g: 0, b: 0, alpha: 0 }
+            background: { r: 0, g: 0, b: 0, alpha: 0 },
           })
           .png()
           .toBuffer();
-        
+
         const iconWithLogo = await sharp({
           create: {
             width: size,
             height: size,
             channels: 4,
-            background: { r: 0, g: 0, b: 0, alpha: 1 }
-          }
+            background: { r: 0, g: 0, b: 0, alpha: 1 },
+          },
         })
-          .composite([{
-            input: logoBuffer,
-            top: otherPadding,
-            left: otherPadding
-          }])
+          .composite([
+            {
+              input: logoBuffer,
+              top: otherPadding,
+              left: otherPadding,
+            },
+          ])
           .png()
           .toBuffer();
-        
-        const roundedMask = Buffer.from(createRoundedRectSVG(size, cornerRadius));
-        
+
+        const roundedMask = Buffer.from(
+          createRoundedRectSVG(size, cornerRadius),
+        );
+
         await sharp(iconWithLogo)
-          .composite([{
-            input: roundedMask,
-            blend: 'dest-in'
-          }])
+          .composite([
+            {
+              input: roundedMask,
+              blend: 'dest-in',
+            },
+          ])
           .png()
           .toFile(outputPath);
       }
-      
+
       console.log(`✅ Generated ${filename} (${size}x${size})`);
     }
-    
+
     // Generate tray icons with transparent background (no rounded corners)
     // Using black SVG for proper macOS template image support
     for (const [filename, size] of Object.entries(TRAY_SIZES)) {
       const outputPath = path.join(outputDir, filename);
-      
+
       await sharp(Buffer.from(TRAY_LOGO_SVG))
         .resize(size, size, {
           fit: 'contain',
-          background: { r: 0, g: 0, b: 0, alpha: 0 } // Transparent background
+          background: { r: 0, g: 0, b: 0, alpha: 0 }, // Transparent background
         })
         .png()
         .toFile(outputPath);
-      
-      console.log(`✅ Generated ${filename} (${size}x${size}) - Tray icon (template)`);
+
+      console.log(
+        `✅ Generated ${filename} (${size}x${size}) - Tray icon (template)`,
+      );
     }
-    
+
     // Generate ICO file for Windows (with padding, no rounded corners)
     const icoPath = path.join(outputDir, 'icon.ico');
     const icoSize = 256;
     const icoPadding = Math.round(icoSize * 0.15);
-    const icoLogoSize = icoSize - (icoPadding * 2);
-    
+    const icoLogoSize = icoSize - icoPadding * 2;
+
     const icoLogoBuffer = await sharp(Buffer.from(LOGO_SVG))
       .resize(icoLogoSize, icoLogoSize, {
         fit: 'contain',
-        background: { r: 0, g: 0, b: 0, alpha: 0 }
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
       })
       .png()
       .toBuffer();
-    
+
     await sharp({
       create: {
         width: icoSize,
         height: icoSize,
         channels: 4,
-        background: { r: 0, g: 0, b: 0, alpha: 1 }
-      }
+        background: { r: 0, g: 0, b: 0, alpha: 1 },
+      },
     })
-      .composite([{
-        input: icoLogoBuffer,
-        top: icoPadding,
-        left: icoPadding
-      }])
+      .composite([
+        {
+          input: icoLogoBuffer,
+          top: icoPadding,
+          left: icoPadding,
+        },
+      ])
       .png()
       .toFile(icoPath);
-      
+
     console.log('✅ Generated icon.ico');
-    
+
     // Generate ICNS for macOS (requires additional tooling)
-    console.log('⚠️  Note: icon.icns needs to be generated using macOS iconutil');
+    console.log(
+      '⚠️  Note: icon.icns needs to be generated using macOS iconutil',
+    );
     console.log('   Run: ./generate-icns.sh');
-    
+
     // Copy logo SVG to public directory
     const publicDir = path.resolve(__dirname, 'public');
     await fs.mkdir(publicDir, { recursive: true });
     await fs.writeFile(path.join(publicDir, 'hanzo-logo.svg'), LOGO_SVG);
     await fs.writeFile(path.join(publicDir, 'logo.svg'), LOGO_SVG);
     console.log('✅ Copied logo SVGs to public directory');
-    
+
     // Update Logo component
     await updateLogoComponent();
-    
+
     console.log('\n🎉 Icon generation complete!');
-    
   } catch (error) {
     console.error('❌ Error generating icons:', error);
     process.exit(1);
@@ -274,10 +291,10 @@ async function generateIcons() {
 async function updateLogoComponent() {
   // Update Logo component to use the master SVG
   const logoComponentPath = path.resolve(__dirname, 'src/components/Logo.tsx');
-  
+
   try {
     await fs.mkdir(path.dirname(logoComponentPath), { recursive: true });
-    
+
     const logoComponent = `import React from 'react';
 
 export const Logo: React.FC<{ className?: string }> = ({ className = '' }) => {
@@ -292,7 +309,7 @@ export const Logo: React.FC<{ className?: string }> = ({ className = '' }) => {
 
 export default Logo;
 `;
-    
+
     await fs.writeFile(logoComponentPath, logoComponent);
     console.log('✅ Updated Logo component');
   } catch (error) {
@@ -333,7 +350,7 @@ rm -rf "$ICONSET_DIR"
 
 echo "✅ Generated icon.icns"
 `;
-  
+
   await fs.writeFile('generate-icns.sh', script);
   await fs.chmod('generate-icns.sh', 0o755);
   console.log('✅ Created generate-icns.sh script');

@@ -17,7 +17,9 @@ export function ToolErrorFallback({
     >
       <div className="space-y-2 text-center">
         <p>{t('playgroundTool.metadataError')}</p>
-        <pre className="whitespace-break-spaces break-words px-4">{error.message}</pre>
+        <pre className="px-4 break-words whitespace-break-spaces">
+          {error.message}
+        </pre>
       </div>
       <Button
         className="bg-gray-400 text-white"

@@ -1,1 +1,1 @@
-pub mod embedding_model; 
+pub mod embedding_model;

@@ -45,5 +45,4 @@ export const TOOL_HOMEPAGE_SUGGESTIONS = [
 ];
 
 export const CODE_GENERATOR_MODEL_ID = 'hanzo-backend:CODE_GENERATOR';
-export const HANZO_FREE_TRIAL_MODEL_ID =
-  'hanzo-backend:FREE_TEXT_INFERENCE';
+export const HANZO_FREE_TRIAL_MODEL_ID = 'hanzo-backend:FREE_TEXT_INFERENCE';

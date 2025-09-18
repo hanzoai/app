@@ -31,10 +31,7 @@ import {
   Textarea,
   TextField,
 } from '@hanzo_network/hanzo-ui';
-import {
-  ScheduledTasksIcon,
-  ToolsIcon,
-} from '@hanzo_network/hanzo-ui/assets';
+import { ScheduledTasksIcon, ToolsIcon } from '@hanzo_network/hanzo-ui/assets';
 import { formatText } from '@hanzo_network/hanzo-ui/helpers';
 import { cn } from '@hanzo_network/hanzo-ui/utils';
 import cronstrue from 'cronstrue';

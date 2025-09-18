@@ -92,6 +92,11 @@ impl ProcessHandler {
             args,
             env
         );
+        log::info!(
+            "[{}] Current directory: {:?}",
+            self.process_name,
+            current_dir
+        );
         {
             let process = self.process.read().await;
             if process.is_some() {
@@ -101,11 +106,21 @@ impl ProcessHandler {
         }
 
         let shell = self.app.shell();
-        let (mut rx, child) = shell
-            .sidecar(self.process_name.clone())
+        log::info!("[{}] Attempting to spawn sidecar binary", self.process_name);
+        log::info!(
+            "[{}] Using sidecar name: {}",
+            self.process_name,
+            self.process_name
+        );
+
+        let sidecar_cmd = shell.sidecar(self.process_name.clone());
+        log::info!("[{}] Created sidecar command", self.process_name);
+
+        let (mut rx, child) = sidecar_cmd
             .map_err(|error| {
-                let message = format!("failed to spawn, error: {}", error);
+                let message = format!("failed to create sidecar command, error: {}", error);
                 log::error!("[{}] {}", self.process_name, message);
+                log::error!("[{}] Make sure the binary '{}' exists in the resources or is configured in tauri.conf.json", self.process_name, self.process_name);
                 message
             })?
             .envs(env.clone())
@@ -113,8 +128,9 @@ impl ProcessHandler {
             .args(args)
             .spawn()
             .map_err(|error| {
-                let message = format!("failed to spawn error: {}", error);
+                let message = format!("failed to spawn process, error: {:?}", error);
                 log::error!("[{}] {}", self.process_name, message);
+                log::error!("[{}] This might mean the binary is not executable or not found", self.process_name);
                 message
             })?;
 

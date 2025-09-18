@@ -1,7 +1,7 @@
 import { getHanzoFileProtocol as getHanzoFileProtocolApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
 
 import { generateFilePreview } from '../../utils/file-preview';
-import  {
+import {
   type GetHanzoFileProtocolInput,
   type GetHanzoFilesProtocolInput,
 } from './types';

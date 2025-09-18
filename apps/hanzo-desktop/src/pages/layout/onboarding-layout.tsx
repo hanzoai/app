@@ -34,8 +34,8 @@ const OnboardingLayout = ({ className, ...props }: OnboardingLayoutProps) => {
       <UpdateBanner />
       <div className="flex h-[calc(100dvh-100px)] items-center justify-center">
         <div className="mx-auto flex h-[600px] w-full max-w-lg flex-col gap-12">
-          <div 
-            className="w-24 cursor-pointer border border-white/20 rounded-lg p-3"
+          <div
+            className="w-24 cursor-pointer rounded-lg border border-white/20 p-3"
             data-cy="hanzo-logo"
             onClick={handleLogoTap}
           >

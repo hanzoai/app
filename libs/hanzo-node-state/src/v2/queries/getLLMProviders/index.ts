@@ -1,6 +1,6 @@
 import { getLLMProviders as getLLMProvidersAPI } from '@hanzo_network/hanzo-message-ts/api/jobs/index';
 
-import  { type GetLLMProvidersInput } from './types';
+import { type GetLLMProvidersInput } from './types';
 
 const EMBEDDING_MODEL = 'ollama:snowflake-arctic-embed:xs';
 

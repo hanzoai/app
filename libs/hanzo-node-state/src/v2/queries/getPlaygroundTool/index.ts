@@ -8,8 +8,13 @@ export const getPlaygroundTool = async ({
   toolRouterKey,
   xHanzoOriginalToolRouterKey,
 }: GetPlaygroundToolInput) => {
-  const response = await getPlaygroundToolApi(nodeAddress, token, {
-    tool_key: toolRouterKey,
-  }, xHanzoOriginalToolRouterKey);
+  const response = await getPlaygroundToolApi(
+    nodeAddress,
+    token,
+    {
+      tool_key: toolRouterKey,
+    },
+    xHanzoOriginalToolRouterKey,
+  );
   return response;
 };

@@ -58,7 +58,8 @@
   "app": {
     "withGlobalTauri": false,
     "security": {
-      "csp": null
+      "csp": null,
+      "devCsp": null
     },
     "windows": [
       {

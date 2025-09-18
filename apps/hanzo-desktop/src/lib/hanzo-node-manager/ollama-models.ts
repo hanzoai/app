@@ -1,5 +1,4 @@
-import { platform } from '@tauri-apps/plugin-os';
-
+import { getPlatformSync } from '../platform-utils';
 import { ModelProvider } from '../../components/ais/constants';
 import OLLAMA_MODELS_REPOSITORY from './ollama-models-repository.json';
 
@@ -44,7 +43,8 @@ export const ALLOWED_OLLAMA_MODELS = FILTERED_OLLAMA_MODELS_REPOSITORY.flatMap(
   (model) => model.tags.map((tag) => tag.name),
 );
 
-const currentPlatform = platform();
+// Use safe platform detection that works in all contexts
+const currentPlatform = getPlatformSync();
 
 export const OLLAMA_MODELS: OllamaModel[] = [
   ...(currentPlatform === 'windows' || currentPlatform === 'linux'
@@ -77,7 +77,7 @@ export const OLLAMA_MODELS: OllamaModel[] = [
           quality: OllamaModelQuality.Medium,
           speed: OllamaModelSpeed.Fast,
           capabilities: [
-          OllamaModelCapability.TextGeneration,
+            OllamaModelCapability.TextGeneration,
             OllamaModelCapability.ToolCalling,
           ],
           size: 4.7,
@@ -128,12 +128,67 @@ export const OLLAMA_MODELS: OllamaModel[] = [
         },
       ]
     : []),
+  // Qwen3 Models - from smallest to largest
   {
     model: 'qwen3',
-    tag: '30b-a3b',
-    name: 'Qwen 3 30B-A3B',
+    tag: '1.7b',
+    name: 'Qwen3 1.7B Nano',
     description:
-      'Qwen 3 30B-A3B is a mixture-of-experts (MoE) model with 30B total parameters and 3B active parameters. It features seamless switching between thinking and non-thinking modes, excelling at complex reasoning, math, coding, and general dialogue while being highly efficient.',
+      'Qwen3 1.7B is an ultra-lightweight model perfect for quick tasks, basic conversations, and edge deployment while maintaining surprisingly good performance.',
+    contextLength: 32768,
+    quality: OllamaModelQuality.Good,
+    speed: OllamaModelSpeed.VeryFast,
+    capabilities: [
+      OllamaModelCapability.TextGeneration,
+      OllamaModelCapability.ToolCalling,
+    ],
+    size: 1.4,
+    fullName: '',
+    provider: ModelProvider.Qwen,
+    platforms: ['windows', 'linux', 'macos'],
+  },
+  {
+    model: 'qwen3',
+    tag: '4b',
+    name: 'Qwen3 4B',
+    description:
+      'Qwen3 4B provides excellent balance between size and capability, ideal for coding, reasoning, and general conversation with fast response times.',
+    contextLength: 32768,
+    quality: OllamaModelQuality.Good,
+    speed: OllamaModelSpeed.Fast,
+    capabilities: [
+      OllamaModelCapability.TextGeneration,
+      OllamaModelCapability.ToolCalling,
+    ],
+    size: 2.5,
+    fullName: '',
+    provider: ModelProvider.Qwen,
+    platforms: ['windows', 'linux', 'macos'],
+  },
+  {
+    model: 'qwen3-coder',
+    tag: '32b-q4',
+    name: 'Qwen3-Coder 32B (4-bit)',
+    description:
+      'Qwen3-Coder 32B is a specialized coding model with exceptional programming capabilities across 100+ languages, optimized with 4-bit quantization for efficiency.',
+    contextLength: 128000,
+    quality: OllamaModelQuality.Good,
+    speed: OllamaModelSpeed.Average,
+    capabilities: [
+      OllamaModelCapability.TextGeneration,
+      OllamaModelCapability.ToolCalling,
+    ],
+    size: 18.5,
+    fullName: '',
+    provider: ModelProvider.Qwen,
+    platforms: ['windows', 'linux', 'macos'],
+  },
+  {
+    model: 'qwen3-next',
+    tag: '80b-3b-active',
+    name: 'Qwen3-Next 80B (3B Active)',
+    description:
+      'Qwen3-Next 80B is a cutting-edge mixture-of-experts model with 80B total parameters but only 3B active, delivering GPT-4 level performance with incredible efficiency.',
     contextLength: 128000,
     quality: OllamaModelQuality.Good,
     speed: OllamaModelSpeed.Fast,
@@ -142,7 +197,7 @@ export const OLLAMA_MODELS: OllamaModel[] = [
       OllamaModelCapability.Thinking,
       OllamaModelCapability.ToolCalling,
     ],
-    size: 15.6,
+    size: 42.0,
     fullName: '',
     provider: ModelProvider.Qwen,
     platforms: ['windows', 'linux', 'macos'],

@@ -9,10 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@hanzo_network/hanzo-ui';
-import {
-  ToolsDisabledIcon,
-  ToolsIcon,
-} from '@hanzo_network/hanzo-ui/assets';
+import { ToolsDisabledIcon, ToolsIcon } from '@hanzo_network/hanzo-ui/assets';
 import { cn } from '@hanzo_network/hanzo-ui/utils';
 import { memo } from 'react';
 import { useParams } from 'react-router';

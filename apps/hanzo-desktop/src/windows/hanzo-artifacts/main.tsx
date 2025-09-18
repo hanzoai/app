@@ -26,7 +26,7 @@ class ErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="whitespace-pre-wrap border bg-red-100 p-4 text-sm text-red-700">
+        <div className="border bg-red-100 p-4 text-sm whitespace-pre-wrap text-red-700">
           <h3 className="font-medium">Runtime Error:</h3>
           <pre>{this.state.error?.message}</pre>
         </div>

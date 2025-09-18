@@ -6,9 +6,7 @@ export class HanzoNameError extends Error {
   }
 }
 
-export const isHanzoIdentityLocalhost = (
-  hanzoIdentity: string,
-): boolean => {
+export const isHanzoIdentityLocalhost = (hanzoIdentity: string): boolean => {
   return (
     hanzoIdentity.includes('localhost.arb-sep-hanzo') ||
     hanzoIdentity.includes('localhost.sep-hanzo') ||

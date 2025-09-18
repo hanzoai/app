@@ -1,6 +1,6 @@
 import { type Artifact } from '@hanzo_network/hanzo-node-state/v2/queries/getChatConversation/types';
 import { createContext, useContext, useState } from 'react';
-import { createStore, useStore  } from 'zustand';
+import { createStore, useStore } from 'zustand';
 
 export type ToolView = 'form' | 'raw';
 

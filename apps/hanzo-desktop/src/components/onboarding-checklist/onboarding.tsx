@@ -17,16 +17,18 @@ import {
 } from '@hanzo_network/hanzo-ui/assets';
 import { cn } from '@hanzo_network/hanzo-ui/utils';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, PlusIcon, Sparkles, XIcon } from 'lucide-react';
+import { ChevronDown, Globe, PlusIcon, Sparkles, XIcon } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { showAnimation } from '../../pages/layout/main-layout';
 import { useSettings } from '../../store/settings';
+import { useHanzoNodeSpawnMutation } from '../../lib/hanzo-node-manager/hanzo-node-manager-client';
 import { useOnboardingSteps } from './use-onboarding-stepper';
 
 export enum GetStartedSteps {
   SetupHanzoNode = 'SetupHanzoNode',
+  ConfigureNetwork = 'ConfigureNetwork',
   CreateAIAgent = 'CreateAIAgent',
   CreateAIChatWithAgent = 'CreateAIChatWithAgent',
   CreateTool = 'CreateTool',
@@ -42,16 +44,65 @@ export default function OnboardingStepper() {
   const currentStepsMap = useOnboardingSteps();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const hanzoNodeSpawnMutation = useHanzoNodeSpawnMutation();
+
+  const nodeStatus = currentStepsMap.get(GetStartedSteps.SetupHanzoNode) ?? GetStartedStatus.NotStarted;
+
   return (
     <Stepper
       steps={[
         {
           label: GetStartedSteps.SetupHanzoNode,
-          status:
-            currentStepsMap.get(GetStartedSteps.SetupHanzoNode) ??
-            GetStartedStatus.NotStarted,
+          status: nodeStatus,
           title: t('onboardingChecklist.setupHanzoDesktop'),
-          body: t('onboardingChecklist.setupHanzoDesktopDescription'),
+          body: nodeStatus === GetStartedStatus.Done ? (
+            <span>{t('onboardingChecklist.setupHanzoDesktopDescription')}</span>
+          ) : (
+            <div className="flex flex-col items-start gap-2">
+              <span>{t('onboardingChecklist.setupHanzoDesktopDescription')}</span>
+              <Button
+                className="h-auto gap-1 px-3 py-2"
+                onClick={() => {
+                  hanzoNodeSpawnMutation.mutate();
+                }}
+                disabled={hanzoNodeSpawnMutation.isPending}
+                size="sm"
+                variant="outline"
+              >
+                {hanzoNodeSpawnMutation.isPending ? (
+                  <>Starting...</>
+                ) : (
+                  <>
+                    <PlusIcon className="h-4 w-4" />
+                    Start Hanzo Node
+                  </>
+                )}
+              </Button>
+            </div>
+          ),
+        },
+        {
+          label: GetStartedSteps.ConfigureNetwork,
+          status:
+            currentStepsMap.get(GetStartedSteps.ConfigureNetwork) ??
+            GetStartedStatus.NotStarted,
+          title: 'Configure Network',
+          body: (
+            <div className="flex flex-col items-start gap-2">
+              <span>Setup how your node connects to the network</span>
+              <Button
+                className="h-auto gap-1 px-3 py-2"
+                onClick={() => {
+                  void navigate('/network-setup');
+                }}
+                size="sm"
+                variant="outline"
+              >
+                <Globe className="h-4 w-4" />
+                Configure Network
+              </Button>
+            </div>
+          ),
         },
         {
           label: GetStartedSteps.CreateAIAgent,

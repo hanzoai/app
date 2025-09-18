@@ -5,8 +5,8 @@ import { useGetInstalledNetworkTools } from '@hanzo_network/hanzo-node-state/v2/
 import { type FormattedNetworkAgent } from '@hanzo_network/hanzo-node-state/v2/queries/getNetworkAgents/types';
 import { useGetNetworkAgents } from '@hanzo_network/hanzo-node-state/v2/queries/getNetworkAgents/useGetNetworkAgents';
 import { useGetToolsWithOfferings } from '@hanzo_network/hanzo-node-state/v2/queries/getToolsWithOfferings/useGetToolsWithOfferings';
-import { useGetWalletBalance } from '@hanzo_network/hanzo-node-state/v2/queries/getWalletBalance/useGetWalletBalance';
-import { useGetWalletList } from '@hanzo_network/hanzo-node-state/v2/queries/getWalletList/useGetWalletList';
+import { useGetWalletBalance } from '@hanzonet/hanzo-node-state/v2/queries/getWalletBalance/useGetWalletBalance';
+import { useGetWalletList } from '@hanzonet/hanzo-node-state/v2/queries/getWalletList/useGetWalletList';
 import {
   Card,
   CardContent,

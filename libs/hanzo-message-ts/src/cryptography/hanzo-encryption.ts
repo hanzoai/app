@@ -1,4 +1,3 @@
- 
 // @ts-ignore
 import sodium from 'libsodium-wrappers-sumo';
 

@@ -73,7 +73,8 @@ pub async fn kill_existing_processes_using_ports(
         for process in processes {
             log::info!(
                 "terminating process: PID={}, Name={}",
-                process.pid, process.name
+                process.pid,
+                process.name
             );
             kill_process_by_pid(app.clone(), &process.pid.to_string()).await;
         }

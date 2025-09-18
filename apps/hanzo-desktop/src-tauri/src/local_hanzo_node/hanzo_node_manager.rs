@@ -1,10 +1,11 @@
 use std::fs;
 use std::path::PathBuf;
+use std::time::Duration;
 
 use super::ollama_api::ollama_api_client::OllamaApiClient;
 use super::ollama_api::ollama_api_types::OllamaApiPullResponse;
-use super::process_handlers::ollama_process_handler::OllamaProcessHandler;
 use super::process_handlers::hanzo_node_process_handler::HanzoNodeProcessHandler;
+use super::process_handlers::ollama_process_handler::OllamaProcessHandler;
 use crate::local_hanzo_node::hanzo_node_options::HanzoNodeOptions;
 use crate::models::embedding_model;
 use anyhow::Result;
@@ -87,83 +88,49 @@ impl HanzoNodeManager {
     }
 
     pub async fn is_running(&self) -> bool {
-        self.hanzo_node_process.is_running().await && self.ollama_process.is_running().await
+        // Prefer external node if available
+        if self
+            .check_external_node("127.0.0.1", 3690, Duration::from_millis(500))
+            .await
+        {
+            return true;
+        }
+
+        // Otherwise, check managed process (only hanzod)
+        self.hanzo_node_process.is_running().await
     }
 
     pub async fn spawn(&mut self) -> Result<(), String> {
-        self.emit_event(HanzoNodeManagerEvent::StartingOllama);
-        match self.ollama_process.spawn(None).await {
-            Ok(_) => {
-                self.emit_event(HanzoNodeManagerEvent::OllamaStarted);
-            }
-            Err(e) => {
-                log::info!("failed spawning ollama process {:?}", e);
-                self.kill().await;
-                self.emit_event(HanzoNodeManagerEvent::OllamaStartError { error: e.clone() });
-                return Err(e);
-            }
+        log::info!("NodeManager::spawn() called");
+
+        // Check if node is already running externally
+        log::info!("Checking for existing node service on port 3690");
+        // Allow a generous timeout to avoid false negatives on slower systems
+        let check_timeout = Duration::from_millis(1000);
+
+        if self.check_external_node("127.0.0.1", 3690, check_timeout).await {
+            log::info!("Found existing node service, using it instead of spawning new instance");
+            return Ok(());
         }
 
-        let ollama_api_url = self.ollama_process.get_ollama_api_base_url();
-        let ollama_api = OllamaApiClient::new(ollama_api_url);
-
-        let installed_models = match ollama_api.tags().await {
-            Ok(response) => response.models.iter().map(|m| m.model.clone()).collect(),
-            Err(e) => {
-                log::warn!("ollama api tags request failed, fallback asuming there are not local models {:?}", e);
-                vec![]
-            }
-        };
-
-        let default_embedding_model = self
-            .hanzo_node_process
-            .get_options()
-            .default_embedding_model
-            .unwrap();
-        if !installed_models.contains(&default_embedding_model.to_string()) {
-            log::info!(
-                "default embedding model {} not found in local models list [{}], creating it",
-                default_embedding_model,
-                installed_models.join(", ")
-            );
-            self.emit_event(HanzoNodeManagerEvent::CreatingModelStart {
-                model: default_embedding_model.to_string(),
-            });
-
-            // Use the embedded GGUF model
-            let gguf_data = embedding_model::get_model_data(&self.llm_models_path);
-
-            match ollama_api
-                .create_model_from_gguf(&default_embedding_model, gguf_data)
-                .await
-            {
-                Ok(_) => {
-                    self.emit_event(HanzoNodeManagerEvent::CreatingModelDone {
-                        model: default_embedding_model.to_string(),
-                    });
-                }
-                Err(e) => {
-                    error!("failed to create model from gguf: {}", e);
-                    self.kill().await;
-                    self.emit_event(HanzoNodeManagerEvent::CreatingModelError {
-                        model: default_embedding_model.to_string(),
-                        error: e.to_string(),
-                    });
-                    return Err(e.to_string());
-                }
-            }
+        log::info!("No external node found, checking if our managed instance is running...");
+        if self.hanzo_node_process.is_running().await {
+            log::info!("Already running our managed instance, returning early");
+            return Ok(());
         }
 
+        // Skip Ollama startup - only start hanzod
+        log::info!("Starting Hanzo Node process...");
         self.emit_event(HanzoNodeManagerEvent::StartingHanzoNode);
         match self.hanzo_node_process.spawn().await {
             Ok(_) => {
+                log::info!("Hanzo Node started successfully");
                 self.emit_event(HanzoNodeManagerEvent::HanzoNodeStarted);
             }
             Err(e) => {
+                log::error!("Failed to start Hanzo Node: {}", e);
                 self.kill().await;
-                self.emit_event(HanzoNodeManagerEvent::HanzoNodeStartError {
-                    error: e.clone(),
-                });
+                self.emit_event(HanzoNodeManagerEvent::HanzoNodeStartError { error: e.clone() });
                 return Err(e);
             }
         }
@@ -180,9 +147,7 @@ impl HanzoNodeManager {
     }
 
     pub async fn remove_storage(&self, preserve_keys: bool) -> Result<(), String> {
-        self.hanzo_node_process
-            .remove_storage(preserve_keys)
-            .await
+        self.hanzo_node_process.remove_storage(preserve_keys).await
     }
 
     pub fn get_storage_path(&self) -> PathBuf {
@@ -211,10 +176,7 @@ impl HanzoNodeManager {
         self.hanzo_node_process.set_default_options()
     }
 
-    pub async fn set_hanzo_node_options(
-        &mut self,
-        options: HanzoNodeOptions,
-    ) -> HanzoNodeOptions {
+    pub async fn set_hanzo_node_options(&mut self, options: HanzoNodeOptions) -> HanzoNodeOptions {
         self.hanzo_node_process.set_options(options)
     }
 
@@ -226,6 +188,33 @@ impl HanzoNodeManager {
         &mut self,
     ) -> tokio::sync::broadcast::Receiver<HanzoNodeManagerEvent> {
         self.event_broadcaster.subscribe()
+    }
+
+    /// Check if node is already running externally
+    async fn check_external_node(&self, host: &str, port: u16, timeout: Duration) -> bool {
+        let client = reqwest::Client::new();
+        let url = format!("http://{}:{}/v2/health_check", host, port);
+
+        log::debug!("Checking external node at {} (timeout: {}ms)", url, timeout.as_millis());
+
+        match tokio::time::timeout(timeout, client.get(&url).send()).await {
+            Ok(Ok(response)) if response.status().is_success() => {
+                log::info!("External node service detected at {}:{}", host, port);
+                true
+            }
+            Ok(Ok(response)) => {
+                log::debug!("Health check returned status: {}", response.status());
+                false
+            }
+            Ok(Err(e)) => {
+                log::debug!("Health check failed: {}", e);
+                false
+            }
+            Err(_) => {
+                log::debug!("Health check timed out");
+                false
+            }
+        }
     }
 
     pub fn get_ollama_api_url(&self) -> String {
