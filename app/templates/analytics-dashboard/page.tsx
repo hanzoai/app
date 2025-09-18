@@ -1,11 +1,11 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@hanzo/ui/primitives/card";
-import { Button } from "@hanzo/ui/primitives/button";
-import { Badge } from "@hanzo/ui/primitives/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@hanzo/ui/primitives/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@hanzo/ui/primitives/select";
-import { Progress } from "@hanzo/ui/primitives/progress";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 import {
   TrendingUp,
   TrendingDown,

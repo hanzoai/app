@@ -9,6 +9,11 @@ import {
   MessageCircle,
   Sparkles,
   User,
+  CreditCard,
+  Palette,
+  Shield,
+  HelpCircle,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 

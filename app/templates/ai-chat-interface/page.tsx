@@ -8,13 +8,13 @@ import {
   CardFooter,
   CardHeader,
   CardTitle
-} from "@hanzo/ui/primitives/card";
-import { Button } from "@hanzo/ui/primitives/button";
-import { Input } from "@hanzo/ui/primitives/input";
-import { ScrollArea } from "@hanzo/ui/primitives/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "@hanzo/ui/primitives/avatar";
-import { Badge } from "@hanzo/ui/primitives/badge";
-import { Textarea } from "@hanzo/ui/primitives/textarea";
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Send,
   Bot,
@@ -26,7 +26,7 @@ import {
   Sparkles,
   Settings
 } from "lucide-react";
-import { cn } from "@hanzo/ui/util";
+import { cn } from "@/lib/utils";
 
 interface Message {
   id: string;

@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardFooter, CardHeader } from "@hanzo/ui/primitives/card";
-import { Button } from "@hanzo/ui/primitives/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@hanzo/ui/primitives/avatar";
-import { Textarea } from "@hanzo/ui/primitives/textarea";
-import { Badge } from "@hanzo/ui/primitives/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@hanzo/ui/primitives/tabs";
-import { ScrollArea } from "@hanzo/ui/primitives/scroll-area";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Heart,
   MessageCircle,

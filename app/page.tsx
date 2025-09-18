@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { HanzoLogo } from "@/components/HanzoLogo";
+import { UserMenu } from "@/components/user-menu";
 import {
   ArrowRight,
   Plus,
@@ -210,12 +211,7 @@ export default function LandingPage() {
         <div className="hidden md:flex items-center gap-4">
           {user ? (
             <>
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10">
-                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-xs text-white font-bold">
-                  {user.name?.charAt(0).toUpperCase() || 'U'}
-                </div>
-                <span className="text-sm text-white/90">{user.name || user.id}</span>
-              </div>
+              <UserMenu />
               <Button
                 onClick={() => router.push('/dashboard')}
                 variant="ghost"
@@ -300,14 +296,8 @@ export default function LandingPage() {
               <div className="p-4 border-t border-white/10 space-y-3">
                 {user ? (
                   <>
-                    <div className="flex items-center gap-3 px-3 py-2 mb-3 rounded-lg bg-white/10">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-bold">
-                        {user.name?.charAt(0).toUpperCase() || 'U'}
-                      </div>
-                      <div>
-                        <p className="text-white font-medium">{user.name || 'User'}</p>
-                        <p className="text-white/60 text-sm">{user.id}</p>
-                      </div>
+                    <div className="flex items-center justify-between mb-3">
+                      <UserMenu className="w-full" />
                     </div>
                     <Button
                       onClick={() => {
@@ -321,7 +311,7 @@ export default function LandingPage() {
                     <Button
                       onClick={() => {
                         setMobileMenuOpen(false);
-                        router.push('/projects/new');
+                        router.push('/dev');
                       }}
                       className="w-full bg-white text-black hover:bg-white/90"
                     >

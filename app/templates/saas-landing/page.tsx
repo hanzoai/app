@@ -1,9 +1,9 @@
 "use client";
 
-import { Button } from "@hanzo/ui/primitives/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@hanzo/ui/primitives/card";
-import { Badge } from "@hanzo/ui/primitives/badge";
-import { Input } from "@hanzo/ui/primitives/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { CheckCircle, ArrowRight, Star, Zap, Shield, Globe } from "lucide-react";
 
 const features = [

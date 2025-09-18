@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@hanzo/ui/primitives/card";
-import { Button } from "@hanzo/ui/primitives/button";
-import { Textarea } from "@hanzo/ui/primitives/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@hanzo/ui/primitives/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@hanzo/ui/primitives/select";
-import { Separator } from "@hanzo/ui/primitives/separator";
-import { ScrollArea } from "@hanzo/ui/primitives/scroll-area";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Bold,
   Italic,
@@ -42,8 +42,8 @@ Built with **@hanzo/ui components** for a seamless writing experience.
 ## Code Example
 
 \`\`\`typescript
-import { Card } from "@hanzo/ui/primitives/card";
-import { Button } from "@hanzo/ui/primitives/button";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 export function MyComponent() {
   return (
