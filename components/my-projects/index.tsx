@@ -41,7 +41,7 @@ export function MyProjects({
         </header>
         <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           <Link
-            href="/dev"
+            href="/new"
             className="bg-neutral-900 rounded-xl h-44 flex items-center justify-center text-neutral-300 border border-neutral-800 hover:brightness-110 transition-all duration-200"
           >
             <Plus className="size-5 mr-1.5" />

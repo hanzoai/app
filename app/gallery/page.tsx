@@ -255,7 +255,7 @@ export default function TemplateGallery() {
                 <Button
                   className="flex-1 gap-1 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
                   size="sm"
-                  onClick={() => window.location.href = `/dev?template=https://github.com/Hanzo-Community/template-${template.id}&action=deploy`}
+                  onClick={() => window.location.href = `/new`}
                 >
                   <Zap className="w-3 h-3" />
                   Deploy
@@ -264,7 +264,7 @@ export default function TemplateGallery() {
                   variant="outline"
                   size="sm"
                   className="flex-1 gap-1"
-                  onClick={() => window.location.href = `/dev?template=https://github.com/Hanzo-Community/template-${template.id}&action=edit`}
+                  onClick={() => window.location.href = `/new`}
                 >
                   <Code className="w-3 h-3" />
                   Edit

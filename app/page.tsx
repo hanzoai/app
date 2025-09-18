@@ -89,7 +89,7 @@ export default function LandingPage() {
     }
 
     setIsCreating(true);
-    router.push("/dev");
+    router.push("/new");
   };
 
   const showcaseProjects = [
@@ -228,7 +228,7 @@ export default function LandingPage() {
                 Dashboard
               </Button>
               <Button
-                onClick={() => router.push('/dev')}
+                onClick={() => router.push('/new')}
                 className="bg-white text-black hover:bg-white/90 text-sm font-semibold px-5 py-2.5 rounded-xl"
               >
                 New Project
@@ -319,7 +319,7 @@ export default function LandingPage() {
                     <Button
                       onClick={() => {
                         setMobileMenuOpen(false);
-                        router.push('/dev');
+                        router.push('/new');
                       }}
                       className="w-full bg-white text-black hover:bg-white/90"
                     >

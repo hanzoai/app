@@ -74,7 +74,7 @@ export const UserMenu = ({ className }: { className?: string }) => {
               Chat
             </DropdownMenuItem>
           </Link>
-          <Link href="/dev">
+          <Link href="/new">
             <DropdownMenuItem>
               <CirclePlus className="size-4 text-neutral-400" />
               New Project
