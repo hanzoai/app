@@ -11,9 +11,9 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # Step 1: Lint and Type Check
-  lint:
-    name: Lint & Type Check
+  # Step 1: Quick Validation - Fail fast on basic issues
+  validate:
+    name: Quick Validation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,16 +33,22 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run linter
-        run: pnpm run lint || true  # Don't fail on lint warnings
+        run: pnpm run lint || echo "::warning::Linting failed but continuing..."
 
       - name: Type check
-        run: pnpm exec tsc --noEmit || true  # Don't fail on type errors for now
+        run: pnpm exec tsc --noEmit || echo "::warning::Type checking failed but continuing..."
 
-  # Step 2: Build and Test
+      - name: Run tests (REQUIRED)
+        run: pnpm run test:ci
+
+      - name: Verify build can complete
+        run: pnpm run build || echo "::error::Build failed but continuing to show all issues"
+
+  # Step 2: Full Build
   build:
-    name: Build & Test
+    name: Full Build
     runs-on: ubuntu-latest
-    needs: lint
+    needs: validate  # Only proceed if validation passes
     steps:
       - uses: actions/checkout@v4
 
@@ -187,7 +193,7 @@ jobs:
   notify:
     name: Send Notifications
     runs-on: ubuntu-latest
-    needs: [lint, build, docker, deploy]
+    needs: [validate, build, docker, deploy]
     if: always()
     steps:
       - name: Determine status
