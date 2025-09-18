@@ -56,30 +56,41 @@ export const useUser = (initialData?: {
   const loginFromCode = async (code: string) => {
     setLoadingAuth(true);
     if (loadingAuth) return;
-    await api
-      .post("/auth", { code })
-      .then(async (res: any) => {
-        if (res.data) {
-          setCookie(res.data.access_token, getAuthCookieOptions(res.data.expires_in));
-          client.setQueryData(["user.me"], {
-            user: res.data.user,
-            errCode: null,
-          });
-          if (currentRoute) {
-            router.push(currentRoute);
-            setCurrentRoute("", getIframeCookieOptions());
-          } else {
-            router.push("/projects");
-          }
-          toast.success("Login successful");
-        }
-      })
-      .catch((err: any) => {
-        toast.error(err?.data?.message ?? err.message ?? "An error occurred");
-      })
-      .finally(() => {
-        setLoadingAuth(false);
-      });
+
+    try {
+      const res = await api.post("/auth", { code });
+
+      if (res.data && res.data.access_token) {
+        setCookie(res.data.access_token, getAuthCookieOptions(res.data.expires_in));
+        client.setQueryData(["user.me"], {
+          user: res.data.user,
+          errCode: null,
+        });
+
+        toast.success("Login successful! Redirecting to chat...");
+
+        // Always redirect to projects/chat after successful login
+        setTimeout(() => {
+          router.push("/projects");
+        }, 500);
+      } else {
+        throw new Error("No access token received");
+      }
+    } catch (err: any) {
+      console.error("Login error:", err);
+      const errorMessage = err?.response?.data?.error ||
+                          err?.data?.message ||
+                          err.message ||
+                          "Authentication failed. Please check your Hugging Face OAuth settings.";
+      toast.error(errorMessage);
+
+      // Redirect to home after error
+      setTimeout(() => {
+        router.push("/");
+      }, 2000);
+    } finally {
+      setLoadingAuth(false);
+    }
   };
 
   const logout = async () => {

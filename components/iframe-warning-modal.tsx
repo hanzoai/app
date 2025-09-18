@@ -52,7 +52,7 @@ IframeWarningModalProps) {
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button onClick={handleVisitSite} className="w-full sm:w-auto">
             <ExternalLink className="mr-2 h-4 w-4" />
-            Visit Deepsite.hf.co
+            Visit Hanzo.App
           </Button>
         </DialogFooter>
       </DialogContent>
