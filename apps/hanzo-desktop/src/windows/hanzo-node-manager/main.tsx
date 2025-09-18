@@ -28,7 +28,9 @@ import {
 } from '@hanzo/ui';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { info } from '@tauri-apps/plugin-log';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import {
+  ArrowLeft,
   Bot,
   Cpu,
   Database,
@@ -40,6 +42,7 @@ import {
   Settings,
   StopCircle,
   Trash,
+  X,
   Zap,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
@@ -224,6 +227,24 @@ const App = () => {
         data-tauri-drag-region={true}
       />
       <div className="flex flex-row items-center p-4">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger>
+              <Button
+                onClick={() => getCurrentWindow().close()}
+                size="icon"
+                variant="ghost"
+                className="mr-2"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Back to Main App</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
         <img alt="hanzo logo" className="h-10 w-10" src={logo} />
         <div className="ml-4 flex flex-col">
           <span className="text-lg">Local Hanzo Node</span>
@@ -321,6 +342,25 @@ const App = () => {
               </TooltipTrigger>
               <TooltipContent side="bottom">
                 <p>Sync Ollama Models</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <div className="ml-4 h-8 w-px bg-border" />
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <Button
+                  onClick={() => getCurrentWindow().close()}
+                  size="icon"
+                  variant="ghost"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Close Window</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
