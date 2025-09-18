@@ -7,6 +7,7 @@ import {
 import { useInitialRegistration } from '@hanzo_network/hanzo-node-state/v2/mutations/initialRegistration/useInitialRegistration';
 import { useGetEncryptionKeys } from '@hanzo_network/hanzo-node-state/v2/queries/getEncryptionKeys/useGetEncryptionKeys';
 import { useGetHealth } from '@hanzo_network/hanzo-node-state/v2/queries/getHealth/useGetHealth';
+import { useGetWalletList } from '@hanzo_network/hanzo-node-state/v2/queries/getWalletList/useGetWalletList';
 import {
   Button,
   type ButtonProps,
@@ -21,7 +22,7 @@ import {
   submitRegistrationNoCodeNonPristineError,
 } from '@hanzo_network/hanzo-ui/helpers';
 import { cn } from '@hanzo_network/hanzo-ui/utils';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Key, Wallet } from 'lucide-react';
 import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, type To, useLocation, useNavigate } from 'react-router';
@@ -75,6 +76,7 @@ const QuickConnectionPage = () => {
   const [nodeAddress, setNodeAddress] = React.useState('');
   const [requiresAuth, setRequiresAuth] = React.useState(false);
   const [apiKey, setApiKey] = React.useState('');
+  const [authMethod, setAuthMethod] = React.useState<'apikey' | 'wallet'>('apikey');
 
   const { nodeInfo, isSuccess: isNodeInfoSuccess, refetch: refetchHealth } = useGetHealth(
     { nodeAddress: nodeAddress || LOCAL_NODE_ADDRESS },
@@ -168,6 +170,19 @@ const QuickConnectionPage = () => {
     void navigate(HOME_PATH);
   }
 
+  async function authenticateWithWallet() {
+    // Navigate to the crypto wallet page with return context
+    navigate('/settings/wallets', {
+      state: {
+        returnTo: '/quick-connection',
+        authRequired: true,
+        nodeAddress: nodeAddress,
+        nodeInfo: nodeInfo,
+        message: 'Please unlock your wallet to authenticate with the node'
+      }
+    });
+  }
+
   useEffect(() => {
     if (isNodeInfoSuccess && isHanzoPrivate && nodeInfo?.is_pristine) {
       toast.loading(t('quickConnection.connectingToNode'), {
@@ -231,38 +246,113 @@ const QuickConnectionPage = () => {
             <div className="space-y-4">
               <div className="rounded-lg bg-yellow-50 dark:bg-yellow-900/20 p-4">
                 <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                  This node is already initialized. Please enter your API key to authenticate.
+                  This node is already initialized. Please authenticate to continue.
                 </p>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">API Key</label>
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="Enter your node API key"
-                  className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
-                />
+
+              {/* Authentication method selector */}
+              <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                <button
+                  onClick={() => setAuthMethod('apikey')}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md transition-all",
+                    authMethod === 'apikey'
+                      ? "bg-white dark:bg-gray-900 shadow-sm"
+                      : "hover:bg-gray-50 dark:hover:bg-gray-700"
+                  )}
+                >
+                  <Key className="w-4 h-4" />
+                  <span className="text-sm font-medium">API Key</span>
+                </button>
+                <button
+                  onClick={() => setAuthMethod('wallet')}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md transition-all",
+                    authMethod === 'wallet'
+                      ? "bg-white dark:bg-gray-900 shadow-sm"
+                      : "hover:bg-gray-50 dark:hover:bg-gray-700"
+                  )}
+                >
+                  <Wallet className="w-4 h-4" />
+                  <span className="text-sm font-medium">Wallet File</span>
+                </button>
               </div>
+
+              {/* API Key input */}
+              {authMethod === 'apikey' && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">API Key</label>
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="Enter your node API key"
+                    className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
+                  />
+                </div>
+              )}
+
+              {/* Wallet authentication */}
+              {authMethod === 'wallet' && (
+                <div className="space-y-4">
+                  <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <div className="flex items-start gap-3">
+                      <Wallet className="w-5 h-5 mt-0.5 text-purple-500" />
+                      <div className="flex-1 space-y-2">
+                        <p className="text-sm font-medium">Authenticate with Hanzo Wallet</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Use your existing Hanzo wallet to securely authenticate with this node.
+                          Your wallet credentials will be used to establish a secure connection.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={authenticateWithWallet}
+                    variant="default"
+                    className="w-full"
+                  >
+                    <Wallet className="w-4 h-4 mr-2" />
+                    Open Wallet
+                  </Button>
+                </div>
+              )}
             </div>
+
             <div className="flex gap-2">
-              <Button
-                className="flex-1"
-                variant="outline"
-                onClick={() => {
-                  setRequiresAuth(false);
-                  setApiKey('');
-                }}
-              >
-                Back
-              </Button>
-              <Button
-                className="flex-1"
-                onClick={authenticateWithKey}
-                disabled={!apiKey}
-              >
-                Authenticate
-              </Button>
+              {authMethod === 'apikey' && (
+                <>
+                  <Button
+                    className="flex-1"
+                    variant="outline"
+                    onClick={() => {
+                      setRequiresAuth(false);
+                      setApiKey('');
+                    }}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    onClick={authenticateWithKey}
+                    disabled={!apiKey}
+                  >
+                    Authenticate
+                  </Button>
+                </>
+              )}
+              {authMethod === 'wallet' && (
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  onClick={() => {
+                    setRequiresAuth(false);
+                    setApiKey('');
+                  }}
+                >
+                  Back
+                </Button>
+              )}
             </div>
           </div>
         )}
