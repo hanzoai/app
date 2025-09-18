@@ -4,7 +4,7 @@ import {
   type HanzoTool,
   type ToolConfigBase,
 } from '@hanzo/message/api/tools/types';
-import { useGetTool } from '@hanzo/node/v2/queries/getTool/useGetTool';
+import { useGetTool } from '@hanzo/node/v2/queries/getTool';
 import {
   Button,
   generateTemplates,

@@ -1,4 +1,4 @@
-import { runTaskNowApi } from '@hanzo_network/hanzo-message-ts/api/recurring-tasks/index';
+import { runTaskNowApi } from '@hanzo-app/message/api/recurring-tasks/index';
 
 import { type RunTaskNowInput } from './types';
 
@@ -10,3 +10,4 @@ export const runTaskNow = async ({
   const response = await runTaskNowApi(nodeAddress, token, taskId);
   return response;
 };
+export * from './useRunTaskNow';

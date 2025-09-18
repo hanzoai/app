@@ -1,4 +1,4 @@
-import { forkJobMessages as forkJobMessagesApi } from '@hanzo_network/hanzo-message-ts/api/jobs/index';
+import { forkJobMessages as forkJobMessagesApi } from '@hanzo-app/message/api/jobs/index';
 
 import { type ForkJobMessagesInput } from './types';
 
@@ -13,3 +13,4 @@ export const forkJobMessages = async ({
     job_id: jobId,
   });
 };
+export * from './useForkJobMessages';

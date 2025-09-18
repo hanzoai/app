@@ -1,4 +1,4 @@
-import { payInvoice as payInvoiceApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { payInvoice as payInvoiceApi } from '@hanzo-app/message/api/tools/index';
 
 import { type PayInvoiceInput } from './types';
 
@@ -10,3 +10,4 @@ export const payInvoice = async ({
   const response = await payInvoiceApi(nodeAddress, token, payload);
   return response;
 };
+export * from './usePayInvoice';

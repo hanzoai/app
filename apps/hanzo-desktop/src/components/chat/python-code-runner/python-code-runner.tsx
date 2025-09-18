@@ -1,8 +1,8 @@
 import { useTranslation } from '@hanzo/i18n';
-import { addFileToJob } from '@hanzo/message/api/jobs/index';
+import { addFileToJob } from '@hanzo/message/api/jobs';
 import { type DirectoryContent } from '@hanzo/message/api/vector-fs/types';
-import { useGetDownloadFile } from '@hanzo/node/v2/queries/getDownloadFile/useGetDownloadFile';
-import { useGetJobContents } from '@hanzo/node/v2/queries/getJobContents/useGetJobContents';
+import { useGetDownloadFile } from '@hanzo/node/v2/queries/getDownloadFile';
+import { useGetJobContents } from '@hanzo/node/v2/queries/getJobContents';
 import { Button } from '@hanzo/ui';
 import { useMutation, type UseMutationOptions } from '@tanstack/react-query';
 import { invoke } from '@tauri-apps/api/core';

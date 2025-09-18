@@ -1,4 +1,4 @@
-import { updateAgent as updateAgentApi } from '@hanzo_network/hanzo-message-ts/api/agents/index';
+import { updateAgent as updateAgentApi } from '@hanzo-app/message/api/agents/index';
 
 import { type UpdateAgentInput } from './types';
 
@@ -12,3 +12,4 @@ export const updateAgent = async ({
   });
   return response;
 };
+export * from './useUpdateAgent';

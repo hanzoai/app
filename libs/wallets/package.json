@@ -1,0 +1,10 @@
+{
+  "name": "@hanzo/wallet",
+  "version": "0.0.1",
+  "main": "src/index.ts",
+  "module": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "echo 'No build required'"
+  }
+}

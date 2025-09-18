@@ -1,12 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from '@hanzo/i18n';
 import { type HanzoPath } from '@hanzo/message/api/jobs/types';
-import { retrieveVectorResource } from '@hanzo/message/api/vector-fs/index';
+import { retrieveVectorResource } from '@hanzo/message/api/vector-fs';
 import {
   type SearchVectorFormSchema,
   searchVectorFormSchema,
 } from '@hanzo/node/forms/vector-fs/vector-search';
-import { useGetVRSeachSimplified } from '@hanzo/node/v2/queries/getVRSearchSimplified/useGetSearchVRItems';
+import { useGetVRSeachSimplified } from '@hanzo/node/v2/queries/getVRSearchSimplified';
 import {
   Badge,
   Button,

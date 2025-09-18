@@ -1,6 +1,6 @@
 import { useTranslation } from '@hanzo/i18n';
-import { useInitialRegistration } from '@hanzo/node/v2/mutations/initialRegistration/useInitialRegistration';
-import { useGetEncryptionKeys } from '@hanzo/node/v2/queries/getEncryptionKeys/useGetEncryptionKeys';
+import { useInitialRegistration } from '@hanzo/node/v2/mutations/initialRegistration';
+import { useGetEncryptionKeys } from '@hanzo/node/v2/queries/getEncryptionKeys';
 import {
   AlertDialog,
   AlertDialogCancel,

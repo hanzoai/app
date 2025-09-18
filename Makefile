@@ -1,4 +1,4 @@
-# Hanzo Desktop App Makefile
+# Hanzo App Makefile
 # Commands for building and managing the Hanzo desktop application
 
 # Variables

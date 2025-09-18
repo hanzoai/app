@@ -1,4 +1,4 @@
-import { importToolZip as importToolZipApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { importToolZip as importToolZipApi } from '@hanzo-app/message/api/tools/index';
 
 import { type ImportToolFromZipInput } from './types';
 
@@ -11,3 +11,4 @@ export const importToolFromZip = async ({
     file,
   });
 };
+export * from './useImportToolZip';

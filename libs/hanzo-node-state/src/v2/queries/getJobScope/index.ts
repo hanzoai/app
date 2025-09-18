@@ -1,4 +1,4 @@
-import { getJobScope as getJobScopeApi } from '@hanzo_network/hanzo-message-ts/api/jobs/index';
+import { getJobScope as getJobScopeApi } from '@hanzo-app/message/api/jobs/index';
 
 import { type GetJobScopeInput } from './types';
 
@@ -12,3 +12,4 @@ export const getJobScope = async ({
   });
   return result;
 };
+export * from './useGetJobScope';

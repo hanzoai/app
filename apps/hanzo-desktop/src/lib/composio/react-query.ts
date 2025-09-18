@@ -1,5 +1,5 @@
 import { McpServerType } from '@hanzo/message/api/mcp-servers/types';
-import { useAddMcpServer } from '@hanzo/node/v2/mutations/addMcpServer/useAddMcpServer';
+import { useAddMcpServer } from '@hanzo/node/v2/mutations/addMcpServer';
 import {
   useMutation,
   type UseMutationOptions,

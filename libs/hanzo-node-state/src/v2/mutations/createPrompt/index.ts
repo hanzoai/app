@@ -1,4 +1,4 @@
-import { createPrompt as createPromptApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { createPrompt as createPromptApi } from '@hanzo-app/message/api/tools/index';
 
 import { type CreatePromptInput } from './types';
 
@@ -17,3 +17,4 @@ export const createPrompt = async ({
     version: '1',
   });
 };
+export * from './useCreatePrompt';

@@ -1,16 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from '@hanzo/i18n';
-import { retrieveVectorResource } from '@hanzo/message/api/vector-fs/index';
+import { retrieveVectorResource } from '@hanzo/message/api/vector-fs';
 import { extractJobIdFromInbox } from '@hanzo/message/utils/inbox_name_handler';
 import {
   type SearchVectorFormSchema,
   searchVectorFormSchema,
 } from '@hanzo/node/forms/vector-fs/vector-search';
 import { transformDataToTreeNodes } from '@hanzo/node/lib/utils/files';
-import { useUpdateJobScope } from '@hanzo/node/v2/mutations/updateJobScope/useUpdateJobScope';
-import { useGetListDirectoryContents } from '@hanzo/node/v2/queries/getDirectoryContents/useGetListDirectoryContents';
-import { useGetJobFolderName } from '@hanzo/node/v2/queries/getJobFolderName/useGetJobFolderName';
-import { useGetVRSeachSimplified } from '@hanzo/node/v2/queries/getVRSearchSimplified/useGetSearchVRItems';
+import { useUpdateJobScope } from '@hanzo/node/v2/mutations/updateJobScope';
+import { useGetListDirectoryContents } from '@hanzo/node/v2/queries/getDirectoryContents';
+import { useGetJobFolderName } from '@hanzo/node/v2/queries/getJobFolderName';
+import { useGetVRSeachSimplified } from '@hanzo/node/v2/queries/getVRSearchSimplified';
 import {
   Badge,
   Button,

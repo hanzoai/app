@@ -1,9 +1,9 @@
-import { Token } from '@hanzo_network/hanzo-message-ts/api/general/types';
+import { Token } from '@hanzo-app/message/api/general/types';
 import {
   McpServer,
   McpServerType,
-} from '@hanzo_network/hanzo-message-ts/api/mcp-servers/types';
-import { UpdateMcpServerRequest } from '@hanzo_network/hanzo-message-ts/api/mcp-servers/types';
+} from '@hanzo-app/message/api/mcp-servers/types';
+import { UpdateMcpServerRequest } from '@hanzo-app/message/api/mcp-servers/types';
 
 export type UpdateMcpServerInput = Token & {
   nodeAddress: string;

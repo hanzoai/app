@@ -1,7 +1,7 @@
 import { useTranslation } from '@hanzo/i18n';
-import { ModelPrefix } from '@hanzo/message/api/jobs/index';
+import { ModelPrefix } from '@hanzo/message/api/jobs';
 import { Models } from '@hanzo/node/lib/utils/models';
-import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders';
 import {
   Button,
   buttonVariants,

@@ -1,12 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from '@hanzo/i18n';
 import { type Prompt } from '@hanzo/message/api/tools/types';
-import { useCreatePrompt } from '@hanzo/node/v2/mutations/createPrompt/useCreatePrompt';
-import { useRemovePrompt } from '@hanzo/node/v2/mutations/removePrompt/useRemovePrompt';
-import { useUpdatePrompt } from '@hanzo/node/v2/mutations/updatePrompt/useUpdatePrompt';
-// import { useUpdatePrompt } from '@hanzo/node/v2/mutations/updatePrompt/useUpdatePrompt';
-import { useGetPromptList } from '@hanzo/node/v2/queries/getPromptList/useGetPromptList';
-import { useGetPromptSearch } from '@hanzo/node/v2/queries/getPromptSearch/useGetPromptSearch';
+import { useCreatePrompt } from '@hanzo/node/v2/mutations/createPrompt';
+import { useRemovePrompt } from '@hanzo/node/v2/mutations/removePrompt';
+import { useUpdatePrompt } from '@hanzo/node/v2/mutations/updatePrompt';
+// import { useUpdatePrompt } from '@hanzo/node/v2/mutations/updatePrompt';
+import { useGetPromptList } from '@hanzo/node/v2/queries/getPromptList';
+import { useGetPromptSearch } from '@hanzo/node/v2/queries/getPromptSearch';
 import {
   Button,
   Dialog,

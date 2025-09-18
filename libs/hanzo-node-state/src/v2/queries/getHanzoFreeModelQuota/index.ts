@@ -1,5 +1,5 @@
-import { getHanzoFreeModelQuota as getHanzoFreeModelQuotaApi } from '@hanzo_network/hanzo-message-ts/api/general/index';
-import { type GetHanzoFreeModelQuotaResponse } from '@hanzo_network/hanzo-message-ts/api/general/types';
+import { getHanzoFreeModelQuota as getHanzoFreeModelQuotaApi } from '@hanzo-app/message/api/general/index';
+import { type GetHanzoFreeModelQuotaResponse } from '@hanzo-app/message/api/general/types';
 
 import {
   type GetHanzoFreeModelQuotaInput,
@@ -31,3 +31,4 @@ export const getHanzoFreeModelQuota = async ({
   const parsedResponse = parseQuotaToMessages(response);
   return parsedResponse;
 };
+export * from './useGetHanzoFreeModelQuota';

@@ -1,8 +1,8 @@
 import { useTranslation } from '@hanzo/i18n';
-import { useCopyFsItem } from '@hanzo/node/v2/mutations/copyFsItem/useCopyFsItem';
-import { useMoveFsItem } from '@hanzo/node/v2/mutations/moveFsItem/useMoveFsItem';
-import { useRemoveFsItem } from '@hanzo/node/v2/mutations/removeFsItem/useRemoveFsItem';
-import { useGetDownloadFile } from '@hanzo/node/v2/queries/getDownloadFile/useGetDownloadFile';
+import { useCopyFsItem } from '@hanzo/node/v2/mutations/copyFsItem';
+import { useMoveFsItem } from '@hanzo/node/v2/mutations/moveFsItem';
+import { useRemoveFsItem } from '@hanzo/node/v2/mutations/removeFsItem';
+import { useGetDownloadFile } from '@hanzo/node/v2/queries/getDownloadFile';
 import {
   Button,
   DialogFooter,

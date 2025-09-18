@@ -1,4 +1,4 @@
-import { moveFsItem as moveFsItemApi } from '@hanzo_network/hanzo-message-ts/api/vector-fs/index';
+import { moveFsItem as moveFsItemApi } from '@hanzo-app/message/api/vector-fs/index';
 
 import { type MoveFsItemInput } from './types';
 
@@ -13,3 +13,4 @@ export const moveFsItem = async ({
     destination_path: destinationPath,
   });
 };
+export * from './useMoveFsItem';

@@ -1,4 +1,4 @@
-import { updateNodeName as updateNodeNameApi } from '@hanzo_network/hanzo-message-ts/api/general/index';
+import { updateNodeName as updateNodeNameApi } from '@hanzo-app/message/api/general/index';
 
 import { type UpdateNodeNameInput, type UpdateNodeNameOutput } from './types';
 
@@ -10,3 +10,4 @@ export const updateNodeName = async ({
   const response = await updateNodeNameApi(nodeAddress, token, newNodeName);
   return response;
 };
+export * from './useUpdateNodeName';

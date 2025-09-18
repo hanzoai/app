@@ -1,4 +1,4 @@
-import { copyFsItem as copyFsItemApi } from '@hanzo_network/hanzo-message-ts/api/vector-fs/index';
+import { copyFsItem as copyFsItemApi } from '@hanzo-app/message/api/vector-fs/index';
 
 import { type CopyVRItemInput } from './types';
 
@@ -13,3 +13,4 @@ export const copyFsItem = async ({
     origin_path: originPath,
   });
 };
+export * from './useCopyFsItem';

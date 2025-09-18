@@ -11,8 +11,8 @@ import {
   type FormattedMessage,
   type TextStatus,
 } from '@hanzo/node/v2/queries/getChatConversation/types';
-import { useGetMessageTraces } from '@hanzo/node/v2/queries/getMessageTraces/useGetMessageTraces';
-import { useGetNetworkAgents } from '@hanzo/node/v2/queries/getNetworkAgents/useGetNetworkAgents';
+import { useGetMessageTraces } from '@hanzo/node/v2/queries/getMessageTraces';
+import { useGetNetworkAgents } from '@hanzo/node/v2/queries/getNetworkAgents';
 import {
   Accordion,
   AccordionContent,

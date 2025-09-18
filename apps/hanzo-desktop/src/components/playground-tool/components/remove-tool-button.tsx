@@ -1,7 +1,7 @@
 import { DialogClose } from '@radix-ui/react-dialog';
 import { useTranslation } from '@hanzo/i18n';
 import { FunctionKeyV2 } from '@hanzo/node/v2/constants';
-import { useRemoveTool } from '@hanzo/node/v2/mutations/removeTool/useRemoveTool';
+import { useRemoveTool } from '@hanzo/node/v2/mutations/removeTool';
 import {
   Button,
   buttonVariants,

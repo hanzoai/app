@@ -34,6 +34,14 @@
     "webdriverio": "^9.19.2"
   },
   "dependencies": {
+    "@hanzo-app/artifacts": "link:../../libs/hanzo-artifacts",
+    "@hanzo-app/i18n": "link:../../libs/hanzo-i18n",
+    "@hanzo-app/message": "link:../../libs/hanzo-message-ts",
+    "@hanzo-app/node-state": "link:../../libs/hanzo-node-state",
+    "@hanzo/ui": "latest",
+    "@hanzo/brand": "latest",
+    "@hanzo/wallet": "link:../../libs/wallets",
+    "@hanzo/wallet-hooks": "link:../../libs/wallet-hooks",
     "recharts": "^3.2.1",
     "tauri-remote-ui": "^0.27.0"
   }

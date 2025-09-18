@@ -1,4 +1,4 @@
-import { getToolPlaygroundMetadata as getToolPlaygroundMetadataApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { getToolPlaygroundMetadata as getToolPlaygroundMetadataApi } from '@hanzo-app/message/api/tools/index';
 
 import {
   type GetToolPlaygroundMetadataInput,
@@ -15,3 +15,4 @@ export const getToolPlaygroundMetadata = async ({
   });
   return response;
 };
+export * from './useGetToolPlaygroundMetadata';

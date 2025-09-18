@@ -13,7 +13,7 @@ import {
   type ChatConversationInfiniteData,
   type ToolCall,
 } from '@hanzo/node/v2/queries/getChatConversation/types';
-import { useGetProviderFromJob } from '@hanzo/node/v2/queries/getProviderFromJob/useGetProviderFromJob';
+import { useGetProviderFromJob } from '@hanzo/node/v2/queries/getProviderFromJob';
 import { useQueryClient } from '@tanstack/react-query';
 import { produce } from 'immer';
 import { createContext, useEffect, useMemo, useRef, useState } from 'react';

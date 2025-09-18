@@ -1,4 +1,4 @@
-import { getHanzoFileProtocol as getHanzoFileProtocolApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { getHanzoFileProtocol as getHanzoFileProtocolApi } from '@hanzo-app/message/api/tools/index';
 
 import { generateFilePreview } from '../../utils/file-preview';
 import {
@@ -33,3 +33,5 @@ export const getHanzoFilesProtocol = async ({
 
   return results;
 };
+export * from './useGetHanzoFileProtocol';
+export * from './useGetHanzoFilesProtocol';

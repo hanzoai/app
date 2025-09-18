@@ -1,4 +1,4 @@
-import { copyToolAssets as copyToolAssetsApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { copyToolAssets as copyToolAssetsApi } from '@hanzo-app/message/api/tools/index';
 
 import { type CopyToolAssetsInput } from './types';
 
@@ -15,3 +15,4 @@ export const copyToolAssets = async ({
     is_second_playground: true,
   });
 };
+export * from './useCopyToolAssets';

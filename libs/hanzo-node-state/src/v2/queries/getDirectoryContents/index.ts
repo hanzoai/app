@@ -1,4 +1,4 @@
-import { getListDirectoryContents as getListDirectoryContentsApi } from '@hanzo_network/hanzo-message-ts/api/vector-fs/index';
+import { getListDirectoryContents as getListDirectoryContentsApi } from '@hanzo-app/message/api/vector-fs/index';
 
 import { type GetVRPathSimplifiedInput } from './types';
 
@@ -15,3 +15,4 @@ export const getListDirectoryContents = async ({
 
   return response;
 };
+export * from './useGetListDirectoryContents';

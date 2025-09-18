@@ -7,9 +7,9 @@ import {
   editAIModelSchema,
 } from '@hanzo/node/forms/agents/edit-ai';
 import { Models } from '@hanzo/node/lib/utils/models';
-import { useRemoveLLMProvider } from '@hanzo/node/v2/mutations/removeLLMProvider/useRemoveLLMProvider';
-import { useUpdateLLMProvider } from '@hanzo/node/v2/mutations/updateLLMProvider/useUpdateLLMProvider';
-import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
+import { useRemoveLLMProvider } from '@hanzo/node/v2/mutations/removeLLMProvider';
+import { useUpdateLLMProvider } from '@hanzo/node/v2/mutations/updateLLMProvider';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders';
 import {
   Badge,
   Button,

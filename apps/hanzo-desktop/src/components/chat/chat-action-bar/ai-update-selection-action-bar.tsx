@@ -1,11 +1,11 @@
 import { useTranslation } from '@hanzo/i18n';
 import { extractJobIdFromInbox } from '@hanzo/message/utils/inbox_name_handler';
-import { useUpdateAgentInJob } from '@hanzo/node/v2/mutations/updateAgentInJob/useUpdateAgentInJob';
-import { useUpdateChatConfig } from '@hanzo/node/v2/mutations/updateChatConfig/useUpdateChatConfig';
-import { useGetAgents } from '@hanzo/node/v2/queries/getAgents/useGetAgents';
-import { useGetChatConfig } from '@hanzo/node/v2/queries/getChatConfig/useGetChatConfig';
-import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
-import { useGetProviderFromJob } from '@hanzo/node/v2/queries/getProviderFromJob/useGetProviderFromJob';
+import { useUpdateAgentInJob } from '@hanzo/node/v2/mutations/updateAgentInJob';
+import { useUpdateChatConfig } from '@hanzo/node/v2/mutations/updateChatConfig';
+import { useGetAgents } from '@hanzo/node/v2/queries/getAgents';
+import { useGetChatConfig } from '@hanzo/node/v2/queries/getChatConfig';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders';
+import { useGetProviderFromJob } from '@hanzo/node/v2/queries/getProviderFromJob';
 import {
   Badge,
   buttonVariants,

@@ -1,4 +1,4 @@
-import { removeToolOffering as removeToolOfferingApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { removeToolOffering as removeToolOfferingApi } from '@hanzo-app/message/api/tools/index';
 
 import { type RemoveToolInput } from './types';
 
@@ -11,3 +11,4 @@ export const removeToolOffering = async ({
     tool_key_name: toolKey,
   });
 };
+export * from './useRemoveToolOffering';

@@ -1,7 +1,7 @@
 import {
   addLLMProvider as addLLMProviderAPI,
   testLLMProvider,
-} from '@hanzo_network/hanzo-message-ts/api/jobs/index';
+} from '@hanzo-app/message/api/jobs/index';
 
 import { type AddLLMProviderInput } from './types';
 
@@ -17,3 +17,4 @@ export const addLLMProvider = async ({
   const data = await addLLMProviderAPI(nodeAddress, token, agent);
   return data;
 };
+export * from './useAddLLMProvider';

@@ -1,4 +1,4 @@
-import { getToolsWithOfferings as getToolsWithOfferingsApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { getToolsWithOfferings as getToolsWithOfferingsApi } from '@hanzo-app/message/api/tools/index';
 
 import { type GetToolsWithOfferingsInput } from './types';
 
@@ -9,3 +9,4 @@ export const getToolsWithOfferings = async ({
   const result = await getToolsWithOfferingsApi(nodeAddress, token);
   return result;
 };
+export * from './useGetToolsWithOfferings';

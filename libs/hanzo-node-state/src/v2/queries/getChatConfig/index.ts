@@ -1,4 +1,4 @@
-import { getJobConfig as getJobConfigApi } from '@hanzo_network/hanzo-message-ts/api/jobs/index';
+import { getJobConfig as getJobConfigApi } from '@hanzo-app/message/api/jobs/index';
 
 import { type GetChatConfigInput } from './types';
 
@@ -12,3 +12,4 @@ export const getChatConfig = async ({
   });
   return response;
 };
+export * from './useGetChatConfig';

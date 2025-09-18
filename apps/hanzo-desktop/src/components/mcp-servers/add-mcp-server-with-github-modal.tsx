@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from '@hanzo/i18n';
 import { type ImportMCPServerFromGithubURLOutput } from '@hanzo/node/v2/mutations/importMCPServerFromGithubURL/types';
-import { useImportMCPServerFromGithubURL } from '@hanzo/node/v2/mutations/importMCPServerFromGithubURL/useImportMCPServerFromGithubURL';
+import { useImportMCPServerFromGithubURL } from '@hanzo/node/v2/mutations/importMCPServerFromGithubURL';
 import {
   Button,
   Dialog,

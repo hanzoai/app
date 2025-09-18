@@ -1,4 +1,4 @@
-import { openToolInCodeEditor as openToolInCodeEditorApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { openToolInCodeEditor as openToolInCodeEditorApi } from '@hanzo-app/message/api/tools/index';
 
 import {
   type OpenToolInCodeEditorInput,
@@ -23,3 +23,4 @@ export const openToolInCodeEditor = async ({
   );
   return response;
 };
+export * from './useOpenToolInCodeEditor';

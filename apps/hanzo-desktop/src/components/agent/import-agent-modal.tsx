@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from '@hanzo/i18n';
-import { useImportAgent } from '@hanzo/node/v2/mutations/importAgent/useImportAgent';
+import { useImportAgent } from '@hanzo/node/v2/mutations/importAgent';
 import {
   Button,
   buttonVariants,

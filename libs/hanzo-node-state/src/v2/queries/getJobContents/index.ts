@@ -1,4 +1,4 @@
-import { retrieveFilesForJob as retrieveFilesForJobApi } from '@hanzo_network/hanzo-message-ts/api/vector-fs/index';
+import { retrieveFilesForJob as retrieveFilesForJobApi } from '@hanzo-app/message/api/vector-fs/index';
 
 import { type GetJobContentsInput } from './types';
 
@@ -13,3 +13,4 @@ export const getJobContents = async ({
 
   return response;
 };
+export * from './useGetJobContents';

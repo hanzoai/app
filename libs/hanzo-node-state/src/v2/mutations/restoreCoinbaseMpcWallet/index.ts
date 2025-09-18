@@ -1,4 +1,4 @@
-import { restoreCoinbaseMPCWallet as restoreCoinbaseMPCWalletApi } from '@hanzo_network/hanzo-message-ts/api/wallets';
+import { restoreCoinbaseMPCWallet as restoreCoinbaseMPCWalletApi } from '@hanzo-app/message/api/wallets';
 
 import { type RestoreCoinbaseMpcWalletInput } from './types';
 
@@ -25,3 +25,4 @@ export const restoreCoinbaseMPCWallet = async ({
   });
   return data;
 };
+export * from './useRestoreCoinbaseMpcWallet';

@@ -1,7 +1,7 @@
 import { type ToolMetadata } from '@hanzo/message/api/tools/types';
 import { extractJobIdFromInbox } from '@hanzo/message/utils';
-import { usePublishTool } from '@hanzo/node/v2/mutations/publishTool/usePublishTool';
-import { useRestoreToolConversation } from '@hanzo/node/v2/mutations/restoreToolConversation/useRestoreToolConversation';
+import { usePublishTool } from '@hanzo/node/v2/mutations/publishTool';
+import { useRestoreToolConversation } from '@hanzo/node/v2/mutations/restoreToolConversation';
 import {
   Button,
   Popover,

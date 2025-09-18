@@ -5,8 +5,8 @@ import {
 } from '@hanzo/message/api/mcp-servers/types';
 import { buildInboxIdFromJobId } from '@hanzo/message/utils';
 import { DEFAULT_CHAT_CONFIG } from '@hanzo/node/v2/constants';
-import { useCreateJob } from '@hanzo/node/v2/mutations/createJob/useCreateJob';
-import { useDeleteMcpServer } from '@hanzo/node/v2/mutations/deleteMcpServer/useDeleteMcpServer';
+import { useCreateJob } from '@hanzo/node/v2/mutations/createJob';
+import { useDeleteMcpServer } from '@hanzo/node/v2/mutations/deleteMcpServer';
 import { Button, SearchInput, Skeleton } from '@hanzo/ui';
 import { PlusIcon, Trash } from 'lucide-react';
 import { useMemo, useState } from 'react';

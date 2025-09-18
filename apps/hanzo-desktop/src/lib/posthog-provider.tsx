@@ -1,4 +1,4 @@
-import { useGetHealth } from '@hanzo/node/v2/queries/getHealth/useGetHealth';
+import { useGetHealth } from '@hanzo/node/v2/queries/getHealth';
 import { PostHogProvider, usePostHog } from 'posthog-js/react';
 import React, { useEffect } from 'react';
 

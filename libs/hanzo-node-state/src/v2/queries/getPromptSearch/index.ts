@@ -1,4 +1,4 @@
-import { searchPrompt as searchPromptApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { searchPrompt as searchPromptApi } from '@hanzo-app/message/api/tools/index';
 
 import { type GetPromptSearchInput } from './types';
 
@@ -10,3 +10,4 @@ export const getPromptSearch = async ({
   const response = await searchPromptApi(nodeAddress, token, search);
   return response;
 };
+export * from './useGetPromptSearch';

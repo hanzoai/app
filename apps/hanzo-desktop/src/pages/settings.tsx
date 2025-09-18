@@ -5,12 +5,12 @@ import {
   useTranslation,
 } from '@hanzo/i18n';
 import { isHanzoIdentityLocalhost } from '@hanzo/message/utils/inbox_name_handler';
-import { useSetMaxChatIterations } from '@hanzo/node/v2/mutations/setMaxChatIterations/useSetMaxChatIterations';
-import { useUpdateNodeName } from '@hanzo/node/v2/mutations/updateNodeName/useUpdateNodeName';
-import { useGetHealth } from '@hanzo/node/v2/queries/getHealth/useGetHealth';
-import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
-import { useGetPreferences } from '@hanzo/node/v2/queries/getPreferences/useGetPreferences';
-import { useGetHanzoFreeModelQuota } from '@hanzo/node/v2/queries/getHanzoFreeModelQuota/useGetHanzoFreeModelQuota';
+import { useSetMaxChatIterations } from '@hanzo/node/v2/mutations/setMaxChatIterations';
+import { useUpdateNodeName } from '@hanzo/node/v2/mutations/updateNodeName';
+import { useGetHealth } from '@hanzo/node/v2/queries/getHealth';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders';
+import { useGetPreferences } from '@hanzo/node/v2/queries/getPreferences';
+import { useGetHanzoFreeModelQuota } from '@hanzo/node/v2/queries/getHanzoFreeModelQuota';
 import {
   Badge,
   Button,

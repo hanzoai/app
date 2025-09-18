@@ -1,4 +1,4 @@
-import { getToolStoreDetails as getToolStoreDetailsApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { getToolStoreDetails as getToolStoreDetailsApi } from '@hanzo-app/message/api/tools/index';
 
 import { type GetToolStoreDetailsInput } from './types';
 
@@ -12,3 +12,4 @@ export const getToolStoreDetails = async ({
   });
   return response;
 };
+export * from './useGetToolStoreDetails';

@@ -1,4 +1,4 @@
-import { getRecurringTaskLogs as getRecurringTaskLogsApi } from '@hanzo_network/hanzo-message-ts/api/recurring-tasks/index';
+import { getRecurringTaskLogs as getRecurringTaskLogsApi } from '@hanzo-app/message/api/recurring-tasks/index';
 
 import { type GetRecurringTaskLogsInput } from './types';
 
@@ -12,3 +12,4 @@ export const getRecurringTaskLogs = async ({
   });
   return result;
 };
+export * from './useGetRecurringTaskLogs';

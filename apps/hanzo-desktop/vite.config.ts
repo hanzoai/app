@@ -33,6 +33,17 @@ export default defineConfig(() => ({
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
+      '@hanzo/i18n': '@hanzo-app/i18n',
+      '@hanzo/ui/utils': '@hanzo/ui/util',
+      '@hanzo/ui/helpers': '@hanzo/ui/util',
+      '@hanzo/ui/assets': '@hanzo/ui/primitives',
+      '@hanzo/ui/hooks': '@hanzo/ui/util',
+      '@hanzo/ui': '@hanzo/ui/primitives',
+      '@hanzo/node': '@hanzo-app/node-state',
+      '@hanzo/message': '@hanzo-app/message',
+      '@hanzo/artifacts': '@hanzo-app/artifacts',
+      '@hanzonet/wallets': '@hanzo/wallet',
+      '@hanzonet/wallet-hooks': '@hanzo/wallet-hooks',
     },
   },
 

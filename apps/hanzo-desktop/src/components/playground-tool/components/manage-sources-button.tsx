@@ -1,8 +1,8 @@
 import { DialogClose } from '@radix-ui/react-dialog';
 import { useTranslation } from '@hanzo/i18n';
-import { useRemoveAssetTool } from '@hanzo/node/v2/mutations/removeAssetTool/useRemoveAssetTool';
-import { useUploadAssetsTool } from '@hanzo/node/v2/mutations/uploadAssetsTool/useUploadAssetsTool';
-import { useGetAllToolAssets } from '@hanzo/node/v2/queries/getAllToolAssets/useGetAllToolAssets';
+import { useRemoveAssetTool } from '@hanzo/node/v2/mutations/removeAssetTool';
+import { useUploadAssetsTool } from '@hanzo/node/v2/mutations/uploadAssetsTool';
+import { useGetAllToolAssets } from '@hanzo/node/v2/queries/getAllToolAssets';
 import {
   Badge,
   Button,

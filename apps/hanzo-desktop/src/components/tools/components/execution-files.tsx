@@ -1,4 +1,4 @@
-import { useGetHanzoFilesProtocol } from '@hanzo/node/v2/queries/getHanzoFileProtocol/useGetHanzoFilesProtocol';
+import { useGetHanzoFilesProtocol } from '@hanzo/node/v2/queries/getHanzoFileProtocol';
 import { FileList } from '@hanzo/ui';
 import { cn } from '@hanzo/ui/utils';
 

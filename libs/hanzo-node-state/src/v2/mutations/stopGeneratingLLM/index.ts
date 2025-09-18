@@ -1,4 +1,4 @@
-import { stopGeneratingLLM as stopGeneratingLLMApi } from '@hanzo_network/hanzo-message-ts/api/jobs/index';
+import { stopGeneratingLLM as stopGeneratingLLMApi } from '@hanzo-app/message/api/jobs/index';
 
 import { type StopGeneratingLLMInput } from './types';
 
@@ -10,3 +10,4 @@ export const stopGeneratingLLM = async ({
   const response = await stopGeneratingLLMApi(nodeAddress, token, jobId);
   return response;
 };
+export * from './useStopGeneratingLLM';

@@ -1,8 +1,8 @@
 import validator from '@rjsf/validator-ajv8';
 import { type ToolMetadata } from '@hanzo/message/api/tools/types';
 import { buildInboxIdFromJobId } from '@hanzo/message/utils/inbox_name_handler';
-import { useGetPlaygroundTool } from '@hanzo/node/v2/queries/getPlaygroundTool/useGetPlaygroundTool';
-import { useGetProviderFromJob } from '@hanzo/node/v2/queries/getProviderFromJob/useGetProviderFromJob';
+import { useGetPlaygroundTool } from '@hanzo/node/v2/queries/getPlaygroundTool';
+import { useGetProviderFromJob } from '@hanzo/node/v2/queries/getProviderFromJob';
 import { useMemo } from 'react';
 import { useParams } from 'react-router';
 

@@ -2,9 +2,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from '@hanzo/i18n';
 import { type RecurringTask } from '@hanzo/message/api/recurring-tasks/types';
 import { DEFAULT_CHAT_CONFIG } from '@hanzo/node/v2/constants';
-import { useCreateRecurringTask } from '@hanzo/node/v2/mutations/createRecurringTask/useCreateRecurringTask';
-import { useUpdateRecurringTask } from '@hanzo/node/v2/mutations/updateRecurringTask/useUpdateRecurringTask';
-import { useGetTools } from '@hanzo/node/v2/queries/getToolsList/useGetToolsList';
+import { useCreateRecurringTask } from '@hanzo/node/v2/mutations/createRecurringTask';
+import { useUpdateRecurringTask } from '@hanzo/node/v2/mutations/updateRecurringTask';
+import { useGetTools } from '@hanzo/node/v2/queries/getToolsList';
 import {
   Badge,
   Button,

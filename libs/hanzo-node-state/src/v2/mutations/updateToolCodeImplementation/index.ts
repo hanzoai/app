@@ -1,4 +1,4 @@
-import { updateToolCodeImplementation as updateToolCodeImplementationApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { updateToolCodeImplementation as updateToolCodeImplementationApi } from '@hanzo-app/message/api/tools/index';
 
 import { type UpdateToolCodeImplementationInput } from './types';
 
@@ -13,3 +13,4 @@ export const updateToolCodeImplementation = async ({
     code,
   });
 };
+export * from './useUpdateToolCodeImplementation';

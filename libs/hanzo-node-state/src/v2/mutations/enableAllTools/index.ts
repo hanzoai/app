@@ -1,4 +1,4 @@
-import { enableAllTools as enableAllToolsApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { enableAllTools as enableAllToolsApi } from '@hanzo-app/message/api/tools/index';
 
 import { type EnableAllToolsInput } from './types';
 
@@ -8,3 +8,4 @@ export const enableAllTools = async ({
 }: EnableAllToolsInput) => {
   return await enableAllToolsApi(nodeAddress, token);
 };
+export * from './useEnableAllTools';

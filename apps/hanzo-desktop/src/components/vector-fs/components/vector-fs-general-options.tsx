@@ -10,9 +10,9 @@ import {
   type UploadVRFilesFormSchema,
   uploadVRFilesFormSchema,
 } from '@hanzo/node/forms/vector-fs/folder';
-import { useCreateFolder } from '@hanzo/node/v2/mutations/createFolder/useCreateFolder';
-import { useRemoveFsItem } from '@hanzo/node/v2/mutations/removeFsItem/useRemoveFsItem';
-import { useUploadVRFiles } from '@hanzo/node/v2/mutations/uploadVRFiles/useUploadVRFiles';
+import { useCreateFolder } from '@hanzo/node/v2/mutations/createFolder';
+import { useRemoveFsItem } from '@hanzo/node/v2/mutations/removeFsItem';
+import { useUploadVRFiles } from '@hanzo/node/v2/mutations/uploadVRFiles';
 import {
   Button,
   DialogHeader,

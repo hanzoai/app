@@ -1,8 +1,8 @@
-import { type Token } from '@hanzo_network/hanzo-message-ts/api/general/types';
+import { type Token } from '@hanzo-app/message/api/general/types';
 import {
   type CodeLanguage,
   type SaveToolCodeResponse,
-} from '@hanzo_network/hanzo-message-ts/api/tools/types';
+} from '@hanzo-app/message/api/tools/types';
 
 export type SaveToolCodeInput = Token & {
   nodeAddress: string;

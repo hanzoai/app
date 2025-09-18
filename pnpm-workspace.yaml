@@ -1,0 +1,3 @@
+overrides:
+  hanzonet-wallet-hooks: link:../../libs/hanzonet-wallet-hooks
+  hanzonet-wallets: link:../../libs/hanzonet-wallets

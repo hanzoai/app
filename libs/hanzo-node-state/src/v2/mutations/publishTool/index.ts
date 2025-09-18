@@ -1,4 +1,4 @@
-import { publishTool as publishToolApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { publishTool as publishToolApi } from '@hanzo-app/message/api/tools/index';
 
 import { type PublishToolInput } from './types';
 
@@ -12,3 +12,4 @@ export const publishTool = async ({
   });
   return response;
 };
+export * from './usePublishTool';

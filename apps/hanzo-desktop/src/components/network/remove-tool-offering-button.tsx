@@ -1,6 +1,6 @@
 import { DialogClose } from '@radix-ui/react-dialog';
 import { useTranslation } from '@hanzo/i18n';
-import { useRemoveToolOffering } from '@hanzo/node/v2/mutations/removeToolOffering/useRemoveToolOffering';
+import { useRemoveToolOffering } from '@hanzo/node/v2/mutations/removeToolOffering';
 import {
   Button,
   buttonVariants,

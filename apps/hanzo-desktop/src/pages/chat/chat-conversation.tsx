@@ -7,15 +7,15 @@ import {
   FunctionKeyV2,
   generateOptimisticAssistantMessage,
 } from '@hanzo/node/v2/constants';
-import { useForkJobMessages } from '@hanzo/node/v2/mutations/forkJobMessages/useForkJobMessages';
-import { useRetryMessage } from '@hanzo/node/v2/mutations/retryMessage/useRetryMessage';
-import { useSendMessageToJob } from '@hanzo/node/v2/mutations/sendMessageToJob/useSendMessageToJob';
+import { useForkJobMessages } from '@hanzo/node/v2/mutations/forkJobMessages';
+import { useRetryMessage } from '@hanzo/node/v2/mutations/retryMessage';
+import { useSendMessageToJob } from '@hanzo/node/v2/mutations/sendMessageToJob';
 
-import { useGetChatConfig } from '@hanzo/node/v2/queries/getChatConfig/useGetChatConfig';
+import { useGetChatConfig } from '@hanzo/node/v2/queries/getChatConfig';
 import { type ChatConversationInfiniteData } from '@hanzo/node/v2/queries/getChatConversation/types';
-import { useGetChatConversationWithPagination } from '@hanzo/node/v2/queries/getChatConversation/useGetChatConversationWithPagination';
+import { useGetChatConversationWithPagination } from '@hanzo/node/v2/queries/getChatConversation';
 
-import { useGetProviderFromJob } from '@hanzo/node/v2/queries/getProviderFromJob/useGetProviderFromJob';
+import { useGetProviderFromJob } from '@hanzo/node/v2/queries/getProviderFromJob';
 import { useQueryClient } from '@tanstack/react-query';
 import { produce } from 'immer';
 import { useEffect, useMemo } from 'react';

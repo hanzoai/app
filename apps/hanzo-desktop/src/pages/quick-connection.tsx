@@ -4,9 +4,9 @@ import {
   type QuickConnectFormSchema,
   quickConnectFormSchema,
 } from '@hanzo/node/forms/auth/quick-connection';
-import { useInitialRegistration } from '@hanzo/node/v2/mutations/initialRegistration/useInitialRegistration';
-import { useGetEncryptionKeys } from '@hanzo/node/v2/queries/getEncryptionKeys/useGetEncryptionKeys';
-import { useGetHealth } from '@hanzo/node/v2/queries/getHealth/useGetHealth';
+import { useInitialRegistration } from '@hanzo/node/v2/mutations/initialRegistration';
+import { useGetEncryptionKeys } from '@hanzo/node/v2/queries/getEncryptionKeys';
+import { useGetHealth } from '@hanzo/node/v2/queries/getHealth';
 import { useGetWalletList } from '@hanzonet/wallet-hooks';
 import {
   Button,

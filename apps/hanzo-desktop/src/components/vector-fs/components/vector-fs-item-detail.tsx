@@ -1,4 +1,4 @@
-import { useGetDownloadFile } from '@hanzo/node/v2/queries/getDownloadFile/useGetDownloadFile';
+import { useGetDownloadFile } from '@hanzo/node/v2/queries/getDownloadFile';
 import {
   Badge,
   Button,

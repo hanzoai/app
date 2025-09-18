@@ -1,4 +1,4 @@
-import { setCommonToolsetConfig as setCommonToolsetConfigApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { setCommonToolsetConfig as setCommonToolsetConfigApi } from '@hanzo-app/message/api/tools/index';
 
 import { type SetCommonToolsetConfigInput } from './types';
 
@@ -14,3 +14,4 @@ export const setCommonToolsetConfig = async ({
   });
   return data;
 };
+export * from './useSetCommonToolsetConfig';

@@ -1,7 +1,7 @@
 import {
   setNgrokAuthToken as setNgrokAuthTokenApi,
   setNgrokEnabled,
-} from '@hanzo_network/hanzo-message-ts/api/ngrok';
+} from '@hanzo-app/message/api/ngrok';
 import { type SetNgrokAuthTokenInput } from './types';
 
 export const setNgrokAuthToken = async ({
@@ -12,3 +12,4 @@ export const setNgrokAuthToken = async ({
   await setNgrokAuthTokenApi(nodeAddress, token, authToken);
   await setNgrokEnabled(nodeAddress, token, true);
 };
+export * from './useSetNgrokAuthToken';

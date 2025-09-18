@@ -4,9 +4,9 @@ import {
   type ToolOffering,
   type ToolUsageType,
 } from '@hanzo/message/api/tools/types';
-import { useSetToolOffering } from '@hanzo/node/v2/mutations/setToolOffering/useSetToolOffering';
-import { useGetAgents } from '@hanzo/node/v2/queries/getAgents/useGetAgents';
-import { useGetToolsWithOfferings } from '@hanzo/node/v2/queries/getToolsWithOfferings/useGetToolsWithOfferings';
+import { useSetToolOffering } from '@hanzo/node/v2/mutations/setToolOffering';
+import { useGetAgents } from '@hanzo/node/v2/queries/getAgents';
+import { useGetToolsWithOfferings } from '@hanzo/node/v2/queries/getToolsWithOfferings';
 import { useGetWalletList } from '@hanzonet/wallet-hooks';
 import {
   Dialog,

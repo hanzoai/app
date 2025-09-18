@@ -577,7 +577,7 @@ export default {
     logInHanzoHosting: 'Log In To Hanzo Hosting',
     signUpHanzoHosting: 'Sign up For Hanzo Hosting',
     quickConnect: 'Quick Connect',
-    alreadyHaveNode: 'Already have a Node?',
+    alreadyHaveNode: '',
     hanzoPrivate: 'Setup Your Local AI',
     seeOptions: 'See Options',
     termsAndConditionsText:

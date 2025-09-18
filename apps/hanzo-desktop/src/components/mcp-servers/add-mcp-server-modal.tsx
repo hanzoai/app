@@ -5,10 +5,10 @@ import {
   McpServerType,
 } from '@hanzo/message/api/mcp-servers/types';
 import { type AddMcpServerInput } from '@hanzo/node/v2/mutations/addMcpServer/types';
-import { useAddMcpServer } from '@hanzo/node/v2/mutations/addMcpServer/useAddMcpServer';
+import { useAddMcpServer } from '@hanzo/node/v2/mutations/addMcpServer';
 import { type ImportMCPServerFromGithubURLOutput } from '@hanzo/node/v2/mutations/importMCPServerFromGithubURL/types';
 import { type UpdateMcpServerInput } from '@hanzo/node/v2/mutations/updateMcpServer/types';
-import { useUpdateMcpServer } from '@hanzo/node/v2/mutations/updateMcpServer/useUpdateMcpServer';
+import { useUpdateMcpServer } from '@hanzo/node/v2/mutations/updateMcpServer';
 import {
   Button,
   Dialog,

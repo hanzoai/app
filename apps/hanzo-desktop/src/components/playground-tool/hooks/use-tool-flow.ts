@@ -5,10 +5,10 @@ import {
   buildInboxIdFromJobId,
   extractJobIdFromInbox,
 } from '@hanzo/message/utils/inbox_name_handler';
-import { useCreateToolCode } from '@hanzo/node/v2/mutations/createToolCode/useCreateToolCode';
-import { useCreateToolMetadata } from '@hanzo/node/v2/mutations/createToolMetadata/useCreateToolMetadata';
-import { useExecuteToolCode } from '@hanzo/node/v2/mutations/executeToolCode/useExecuteToolCode';
-import { useUpdateToolCodeImplementation } from '@hanzo/node/v2/mutations/updateToolCodeImplementation/useUpdateToolCodeImplementation';
+import { useCreateToolCode } from '@hanzo/node/v2/mutations/createToolCode';
+import { useCreateToolMetadata } from '@hanzo/node/v2/mutations/createToolMetadata';
+import { useExecuteToolCode } from '@hanzo/node/v2/mutations/executeToolCode';
+import { useUpdateToolCodeImplementation } from '@hanzo/node/v2/mutations/updateToolCodeImplementation';
 import { debug } from '@tauri-apps/plugin-log';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type UseFormReturn } from 'react-hook-form';

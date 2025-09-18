@@ -1,4 +1,4 @@
-import { getNgrokStatus as getNgrokStatusApi } from '@hanzo_network/hanzo-message-ts/api/ngrok';
+import { getNgrokStatus as getNgrokStatusApi } from '@hanzo-app/message/api/ngrok';
 import { type GetNgrokStatusInput } from './types';
 
 export const getNgrokStatus = async ({
@@ -7,3 +7,4 @@ export const getNgrokStatus = async ({
 }: GetNgrokStatusInput) => {
   return await getNgrokStatusApi(nodeAddress, token);
 };
+export * from './useGetNgrokStatus';

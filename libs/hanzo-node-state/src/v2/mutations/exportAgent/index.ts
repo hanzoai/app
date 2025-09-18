@@ -1,4 +1,4 @@
-import { exportAgent as exportAgentApi } from '@hanzo_network/hanzo-message-ts/api/agents/index';
+import { exportAgent as exportAgentApi } from '@hanzo-app/message/api/agents/index';
 
 import { type ExportAgentInput } from './types';
 
@@ -9,3 +9,4 @@ export const exportAgent = async ({
 }: ExportAgentInput) => {
   return await exportAgentApi(nodeAddress, token, agentId);
 };
+export * from './useExportAgent';

@@ -7,8 +7,8 @@ import {
   type McpServerTool as McpServerToolType,
   type HanzoTool,
 } from '@hanzo/message/api/tools/types';
-import { useGetPlaygroundTools } from '@hanzo/node/v2/queries/getPlaygroundTools/useGetPlaygroundTools';
-import { useGetTool } from '@hanzo/node/v2/queries/getTool/useGetTool';
+import { useGetPlaygroundTools } from '@hanzo/node/v2/queries/getPlaygroundTools';
+import { useGetTool } from '@hanzo/node/v2/queries/getTool';
 import { Skeleton } from '@hanzo/ui';
 import { MoreVertical } from 'lucide-react';
 import { useParams } from 'react-router';

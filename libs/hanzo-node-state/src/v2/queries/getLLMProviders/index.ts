@@ -1,4 +1,4 @@
-import { getLLMProviders as getLLMProvidersAPI } from '@hanzo_network/hanzo-message-ts/api/jobs/index';
+import { getLLMProviders as getLLMProvidersAPI } from '@hanzo-app/message/api/jobs/index';
 
 import { type GetLLMProvidersInput } from './types';
 
@@ -16,3 +16,6 @@ export const getLLMProviders = async ({
 
   return filteredProviders;
 };
+
+export * from './useGetLLMProviders';
+export * from './types';

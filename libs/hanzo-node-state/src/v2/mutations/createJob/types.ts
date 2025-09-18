@@ -1,8 +1,8 @@
-import { type Token } from '@hanzo_network/hanzo-message-ts/api/general/types';
+import { type Token } from '@hanzo-app/message/api/general/types';
 import {
   type JobConfig,
   type HanzoPath,
-} from '@hanzo_network/hanzo-message-ts/api/jobs/types';
+} from '@hanzo-app/message/api/jobs/types';
 
 export type CreateJobInput = Token & {
   nodeAddress: string;

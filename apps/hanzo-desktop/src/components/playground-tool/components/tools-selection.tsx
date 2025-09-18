@@ -1,4 +1,4 @@
-import { useGetTools } from '@hanzo/node/v2/queries/getToolsList/useGetToolsList';
+import { useGetTools } from '@hanzo/node/v2/queries/getToolsList';
 import {
   Badge,
   FormControl,

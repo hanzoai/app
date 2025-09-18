@@ -1,4 +1,4 @@
-import { updatePrompt as updatePromptApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { updatePrompt as updatePromptApi } from '@hanzo-app/message/api/tools/index';
 
 import { type UpdatePromptInput } from './types';
 
@@ -23,3 +23,4 @@ export const updatePrompt = async ({
     rowid: id,
   });
 };
+export * from './useUpdatePrompt';

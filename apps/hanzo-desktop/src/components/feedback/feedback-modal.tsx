@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { DialogClose } from '@radix-ui/react-dialog';
 import { useTranslation } from '@hanzo/i18n';
-import { useSubmitFeedback } from '@hanzo/node/v2/mutations/submitFeedback/useSubmitFeedback';
+import { useSubmitFeedback } from '@hanzo/node/v2/mutations/submitFeedback';
 import {
   Button,
   type ButtonProps,

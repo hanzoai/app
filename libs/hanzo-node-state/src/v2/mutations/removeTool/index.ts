@@ -1,7 +1,7 @@
 import {
   removePlaygroundTool as removePlaygroundToolApi,
   removeTool as removeToolApi,
-} from '@hanzo_network/hanzo-message-ts/api/tools/index';
+} from '@hanzo-app/message/api/tools/index';
 
 import { type RemoveToolInput } from './types';
 
@@ -25,3 +25,4 @@ export const removePlaygroundTool = async ({
     tool_key: toolKey,
   });
 };
+export * from './useRemoveTool';

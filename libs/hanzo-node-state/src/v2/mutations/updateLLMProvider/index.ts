@@ -1,4 +1,4 @@
-import { updateLLMProvider as updateLLMProviderApi } from '@hanzo_network/hanzo-message-ts/api/jobs/index';
+import { updateLLMProvider as updateLLMProviderApi } from '@hanzo-app/message/api/jobs/index';
 
 import { type UpdateLLMProviderInput } from './types';
 
@@ -10,3 +10,4 @@ export const updateLLMProvider = async ({
   const data = await updateLLMProviderApi(nodeAddress, token, agent);
   return data;
 };
+export * from './useUpdateLLMProvider';

@@ -10,8 +10,8 @@ import {
   Models,
   modelsConfig,
 } from '@hanzo/node/lib/utils/models';
-import { useAddLLMProvider } from '@hanzo/node/v2/mutations/addLLMProvider/useAddLLMProvider';
-import { useScanOllamaModels } from '@hanzo/node/v2/queries/scanOllamaModels/useScanOllamaModels';
+import { useAddLLMProvider } from '@hanzo/node/v2/mutations/addLLMProvider';
+import { useScanOllamaModels } from '@hanzo/node/v2/queries/scanOllamaModels';
 import {
   Button,
   buttonVariants,

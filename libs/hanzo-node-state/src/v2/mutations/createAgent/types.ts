@@ -1,8 +1,8 @@
 import {
   type Agent,
   type CreateAgentResponse,
-} from '@hanzo_network/hanzo-message-ts/api/agents/types';
-import { type Token } from '@hanzo_network/hanzo-message-ts/api/general/types';
+} from '@hanzo-app/message/api/agents/types';
+import { type Token } from '@hanzo-app/message/api/general/types';
 
 export type CreateAgentOutput = CreateAgentResponse;
 

@@ -1,4 +1,4 @@
-import { removeAgent as removeAgentApi } from '@hanzo_network/hanzo-message-ts/api/agents/index';
+import { removeAgent as removeAgentApi } from '@hanzo-app/message/api/agents/index';
 
 import { type RemoveAgentInput } from './types';
 
@@ -12,3 +12,4 @@ export const removeAgent = async ({
   });
   return data;
 };
+export * from './useRemoveAgent';

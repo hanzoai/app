@@ -1,4 +1,4 @@
-import { setPreferences } from '@hanzo/message/api/general/index';
+import { setPreferences } from '@hanzo/message/api/general';
 import {
   QueryClient,
   type QueryObserverOptions,

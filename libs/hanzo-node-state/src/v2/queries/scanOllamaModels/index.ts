@@ -1,4 +1,4 @@
-import { scanOllamaModels as scanOllamaModelsApi } from '@hanzo_network/hanzo-message-ts/api/ollama';
+import { scanOllamaModels as scanOllamaModelsApi } from '@hanzo-app/message/api/ollama';
 
 import { type ScanOllamaModelsInput } from './types';
 
@@ -13,3 +13,4 @@ export const scanOllamaModels = async ({
   );
   return uniqueModels;
 };
+export * from './useScanOllamaModels';

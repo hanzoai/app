@@ -4,7 +4,7 @@ import {
   type HanzoTool,
   type HanzoToolType,
 } from '@hanzo/message/api/tools/types';
-import { useUpdateTool } from '@hanzo/node/v2/mutations/updateTool/useUpdateTool';
+import { useUpdateTool } from '@hanzo/node/v2/mutations/updateTool';
 import {
   Button,
   Form,

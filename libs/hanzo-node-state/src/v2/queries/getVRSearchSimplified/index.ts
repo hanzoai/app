@@ -1,4 +1,4 @@
-import { searchVectorFs } from '@hanzo_network/hanzo-message-ts/api/vector-fs/index';
+import { searchVectorFs } from '@hanzo-app/message/api/vector-fs/index';
 
 import {
   type GetVRSearchSimplifiedInput,
@@ -18,3 +18,4 @@ export const getVRSearchSimplified = async ({
 
   return response.data;
 };
+export * from './useGetSearchVRItems';

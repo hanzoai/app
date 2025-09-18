@@ -1,5 +1,5 @@
-import { type Token } from '@hanzo_network/hanzo-message-ts/api/general/types';
-import { type GetRecurringTaskResponse } from '@hanzo_network/hanzo-message-ts/api/recurring-tasks/types';
+import { type Token } from '@hanzo-app/message/api/general/types';
+import { type GetRecurringTaskResponse } from '@hanzo-app/message/api/recurring-tasks/types';
 
 export type GetRecurringTasksNextExecutionTimeInput = Token & {
   nodeAddress: string;

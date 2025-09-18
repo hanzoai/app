@@ -1,10 +1,10 @@
 import { useTranslation } from '@hanzo/i18n';
 import { type GetToolsCategory } from '@hanzo/message/api/tools/types';
-import { useDisableAllTools } from '@hanzo/node/v2/mutations/disableAllTools/useDisableAllTools';
-import { useEnableAllTools } from '@hanzo/node/v2/mutations/enableAllTools/useEnableAllTools';
+import { useDisableAllTools } from '@hanzo/node/v2/mutations/disableAllTools';
+import { useEnableAllTools } from '@hanzo/node/v2/mutations/enableAllTools';
 
-import { useGetTools } from '@hanzo/node/v2/queries/getToolsList/useGetToolsList';
-import { useGetSearchTools } from '@hanzo/node/v2/queries/getToolsSearch/useGetToolsSearch';
+import { useGetTools } from '@hanzo/node/v2/queries/getToolsList';
+import { useGetSearchTools } from '@hanzo/node/v2/queries/getToolsSearch';
 import {
   Button,
   buttonVariants,

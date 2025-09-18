@@ -7,16 +7,16 @@ import {
   type HanzoTool,
   type HanzoToolType,
 } from '@hanzo/message/api/tools/types';
-import { useDuplicateTool } from '@hanzo/node/v2/mutations/duplicateTool/useDuplicateTool';
-import { useExecuteToolCode } from '@hanzo/node/v2/mutations/executeToolCode/useExecuteToolCode';
-import { useExportTool } from '@hanzo/node/v2/mutations/exportTool/useExportTool';
-import { usePublishTool } from '@hanzo/node/v2/mutations/publishTool/usePublishTool';
-import { useSetCommonToolsetConfig } from '@hanzo/node/v2/mutations/setCommonToolsetConfig/useSetCommonToolsetConfig';
-import { useToggleEnableTool } from '@hanzo/node/v2/mutations/toggleEnableTool/useToggleEnableTool';
-import { useUpdateTool } from '@hanzo/node/v2/mutations/updateTool/useUpdateTool';
-import { useGetToolPlaygroundMetadata } from '@hanzo/node/v2/queries/getToolPlaygroundMetadata/useGetToolPlaygroundMetadata';
-import { useGetToolsFromToolset } from '@hanzo/node/v2/queries/getToolsFromToolset/useGetToolsFromToolset';
-import { useGetToolStoreDetails } from '@hanzo/node/v2/queries/getToolStoreDetails/useGetToolStoreDetails';
+import { useDuplicateTool } from '@hanzo/node/v2/mutations/duplicateTool';
+import { useExecuteToolCode } from '@hanzo/node/v2/mutations/executeToolCode';
+import { useExportTool } from '@hanzo/node/v2/mutations/exportTool';
+import { usePublishTool } from '@hanzo/node/v2/mutations/publishTool';
+import { useSetCommonToolsetConfig } from '@hanzo/node/v2/mutations/setCommonToolsetConfig';
+import { useToggleEnableTool } from '@hanzo/node/v2/mutations/toggleEnableTool';
+import { useUpdateTool } from '@hanzo/node/v2/mutations/updateTool';
+import { useGetToolPlaygroundMetadata } from '@hanzo/node/v2/queries/getToolPlaygroundMetadata';
+import { useGetToolsFromToolset } from '@hanzo/node/v2/queries/getToolsFromToolset';
+import { useGetToolStoreDetails } from '@hanzo/node/v2/queries/getToolStoreDetails';
 import {
   Alert,
   AlertDescription,

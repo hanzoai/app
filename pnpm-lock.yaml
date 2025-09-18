@@ -4,6 +4,10 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  hanzonet-wallets: link:../../libs/hanzonet-wallets
+  hanzonet-wallet-hooks: link:../../libs/hanzonet-wallet-hooks
+
 importers:
 
   .:
@@ -200,6 +204,12 @@ importers:
       fs-extra:
         specifier: ^11.3.0
         version: 11.3.2
+      hanzonet-wallet-hooks:
+        specifier: link:../../libs/hanzonet-wallet-hooks
+        version: link:../../libs/hanzonet-wallet-hooks
+      hanzonet-wallets:
+        specifier: link:../../libs/hanzonet-wallets
+        version: link:../../libs/hanzonet-wallets
       i18next-browser-languagedetector:
         specifier: ^8.0.0
         version: 8.2.0

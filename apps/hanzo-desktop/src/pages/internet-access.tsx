@@ -1,8 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from '@hanzo/i18n';
-import { useSetNgrokAuthToken } from '@hanzo/node/v2/mutations/setNgrokAuthToken/useSetNgrokAuthToken';
-import { useSetNgrokEnabled } from '@hanzo/node/v2/mutations/setNgrokEnabled/useSetNgrokEnabled';
-import { useGetNgrokStatus } from '@hanzo/node/v2/queries/getNgrokStatus/useGetNgrokStatus';
+import { useSetNgrokAuthToken } from '@hanzo/node/v2/mutations/setNgrokAuthToken';
+import { useSetNgrokEnabled } from '@hanzo/node/v2/mutations/setNgrokEnabled';
+import { useGetNgrokStatus } from '@hanzo/node/v2/queries/getNgrokStatus';
 
 import {
   Button,

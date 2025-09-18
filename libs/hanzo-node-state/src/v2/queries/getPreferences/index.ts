@@ -1,4 +1,4 @@
-import { getPreferences as getPreferencesApi } from '@hanzo_network/hanzo-message-ts/api/general/index';
+import { getPreferences as getPreferencesApi } from '@hanzo-app/message/api/general/index';
 
 import { type GetPreferencesInput } from './types';
 
@@ -9,3 +9,4 @@ export const getPreferences = async ({
   const preferences = await getPreferencesApi(nodeAddress, token);
   return preferences;
 };
+export * from './useGetPreferences';

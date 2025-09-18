@@ -1,4 +1,4 @@
-import { setRecurringTask as setRecurringTaskApi } from '@hanzo_network/hanzo-message-ts/api/recurring-tasks/index';
+import { setRecurringTask as setRecurringTaskApi } from '@hanzo-app/message/api/recurring-tasks/index';
 
 import { type UpdateRecurringTaskInput } from './types';
 
@@ -46,3 +46,4 @@ export const updateRecurringTask = async ({
   });
   return response;
 };
+export * from './useUpdateRecurringTask';

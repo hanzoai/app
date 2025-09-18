@@ -1,7 +1,7 @@
 import { useTranslation } from '@hanzo/i18n';
 import { extractJobIdFromInbox } from '@hanzo/message/utils/inbox_name_handler';
-import { useUpdateChatConfig } from '@hanzo/node/v2/mutations/updateChatConfig/useUpdateChatConfig';
-import { useGetChatConfig } from '@hanzo/node/v2/queries/getChatConfig/useGetChatConfig';
+import { useUpdateChatConfig } from '@hanzo/node/v2/mutations/updateChatConfig';
+import { useGetChatConfig } from '@hanzo/node/v2/queries/getChatConfig';
 import {
   Tooltip,
   TooltipContent,

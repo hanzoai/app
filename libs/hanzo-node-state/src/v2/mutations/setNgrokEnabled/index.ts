@@ -1,4 +1,4 @@
-import { setNgrokEnabled as setNgrokEnabledApi } from '@hanzo_network/hanzo-message-ts/api/ngrok';
+import { setNgrokEnabled as setNgrokEnabledApi } from '@hanzo-app/message/api/ngrok';
 import { type SetNgrokEnabledInput } from './types';
 
 export const setNgrokEnabled = async ({
@@ -8,3 +8,4 @@ export const setNgrokEnabled = async ({
 }: SetNgrokEnabledInput) => {
   return await setNgrokEnabledApi(nodeAddress, token, enabled);
 };
+export * from './useSetNgrokEnabled';

@@ -1,4 +1,4 @@
-import { importAgent as importAgentApi } from '@hanzo_network/hanzo-message-ts/api/agents/index';
+import { importAgent as importAgentApi } from '@hanzo-app/message/api/agents/index';
 
 import { type ImportAgentInput } from './types';
 
@@ -9,3 +9,4 @@ export const importAgent = async ({
 }: ImportAgentInput) => {
   return await importAgentApi(nodeAddress, token, file);
 };
+export * from './useImportAgent';

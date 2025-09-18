@@ -1,7 +1,7 @@
 import './globals.css';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useSyncOllamaModels } from '@hanzo/node/v2/mutations/syncOllamaModels/useSyncOllamaModels';
+import { useSyncOllamaModels } from '@hanzo/node/v2/mutations/syncOllamaModels';
 import {
   AlertDialog,
   AlertDialogAction,

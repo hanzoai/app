@@ -1,4 +1,4 @@
-import { removeLLMProvider as removeLLMProviderApi } from '@hanzo_network/hanzo-message-ts/api/jobs/index';
+import { removeLLMProvider as removeLLMProviderApi } from '@hanzo-app/message/api/jobs/index';
 
 import { type RemoveLLMProviderInput } from './types';
 
@@ -12,3 +12,4 @@ export const removeLLMProvider = async ({
   });
   return data;
 };
+export * from './useRemoveLLMProvider';

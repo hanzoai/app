@@ -1,6 +1,6 @@
 import { HomeIcon } from '@radix-ui/react-icons';
 import { useTranslation } from '@hanzo/i18n';
-import { useGetListDirectoryContents } from '@hanzo/node/v2/queries/getDirectoryContents/useGetListDirectoryContents';
+import { useGetListDirectoryContents } from '@hanzo/node/v2/queries/getDirectoryContents';
 import {
   Breadcrumb,
   BreadcrumbItem,

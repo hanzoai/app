@@ -11,15 +11,15 @@ import {
   chatMessageFormSchema,
 } from '@hanzo/node/forms/chat/chat-message';
 import { DEFAULT_CHAT_CONFIG } from '@hanzo/node/v2/constants';
-import { useSendMessageToJob } from '@hanzo/node/v2/mutations/sendMessageToJob/useSendMessageToJob';
-import { useStopGeneratingLLM } from '@hanzo/node/v2/mutations/stopGeneratingLLM/useStopGeneratingLLM';
-import { useGetAgents } from '@hanzo/node/v2/queries/getAgents/useGetAgents';
-import { useGetChatConfig } from '@hanzo/node/v2/queries/getChatConfig/useGetChatConfig';
-import { useGetJobFolderName } from '@hanzo/node/v2/queries/getJobFolderName/useGetJobFolderName';
-import { useGetNodeStorageLocation } from '@hanzo/node/v2/queries/getNodeStorageLocation/useGetNodeStorageLocation';
-import { useGetProviderFromJob } from '@hanzo/node/v2/queries/getProviderFromJob/useGetProviderFromJob';
-import { useGetTools } from '@hanzo/node/v2/queries/getToolsList/useGetToolsList';
-import { useGetSearchTools } from '@hanzo/node/v2/queries/getToolsSearch/useGetToolsSearch';
+import { useSendMessageToJob } from '@hanzo/node/v2/mutations/sendMessageToJob';
+import { useStopGeneratingLLM } from '@hanzo/node/v2/mutations/stopGeneratingLLM';
+import { useGetAgents } from '@hanzo/node/v2/queries/getAgents';
+import { useGetChatConfig } from '@hanzo/node/v2/queries/getChatConfig';
+import { useGetJobFolderName } from '@hanzo/node/v2/queries/getJobFolderName';
+import { useGetNodeStorageLocation } from '@hanzo/node/v2/queries/getNodeStorageLocation';
+import { useGetProviderFromJob } from '@hanzo/node/v2/queries/getProviderFromJob';
+import { useGetTools } from '@hanzo/node/v2/queries/getToolsList';
+import { useGetSearchTools } from '@hanzo/node/v2/queries/getToolsSearch';
 import {
   Button,
   buttonVariants,

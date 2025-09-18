@@ -1,8 +1,8 @@
 import { HomeIcon } from '@radix-ui/react-icons';
 import { useTranslation } from '@hanzo/i18n';
 import { type DirectoryContent } from '@hanzo/message/api/vector-fs/types';
-import { useGetListDirectoryContents } from '@hanzo/node/v2/queries/getDirectoryContents/useGetListDirectoryContents';
-import { useGetSearchDirectoryContents } from '@hanzo/node/v2/queries/getSearchDirectoryContents/useGetSearchDirectoryContents';
+import { useGetListDirectoryContents } from '@hanzo/node/v2/queries/getDirectoryContents';
+import { useGetSearchDirectoryContents } from '@hanzo/node/v2/queries/getSearchDirectoryContents';
 import {
   Breadcrumb,
   BreadcrumbItem,

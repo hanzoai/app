@@ -1,4 +1,4 @@
-import { useGetRecurringTask } from '@hanzo/node/v2/queries/getRecurringTask/useGetRecurringTask';
+import { useGetRecurringTask } from '@hanzo/node/v2/queries/getRecurringTask';
 import { useParams } from 'react-router';
 
 import CronTask from '../components/cron-task/component/cron-task';

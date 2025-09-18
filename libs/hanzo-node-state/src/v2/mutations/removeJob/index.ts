@@ -1,4 +1,4 @@
-import { removeJob as removeJobApi } from '@hanzo_network/hanzo-message-ts/api/jobs/index';
+import { removeJob as removeJobApi } from '@hanzo-app/message/api/jobs/index';
 
 import { type RemoveJobInput } from './types';
 
@@ -11,3 +11,4 @@ export const removeJob = async ({
     job_id: jobId,
   });
 };
+export * from './useRemoveJob';

@@ -1,0 +1,115 @@
+{
+  "name": "@hanzo-app/message",
+  "version": "0.4.5",
+  "description": "Hanzo Message TS wrapper for wasm library",
+  "type": "module",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "typings": "src/index.d.ts",
+  "keywords": [
+    "hanzo",
+    "hanzo-message",
+    "hanzo-message wrapper"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@noble/ed25519": "^2.0.0",
+    "axios": "^1.6.8",
+    "curve25519-js": "^0.0.4",
+    "libsodium-wrappers-sumo": "^0.7.13"
+  },
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    },
+    "./*": {
+      "import": "./src/*.ts",
+      "types": "./src/*.ts"
+    },
+    "./api/*": {
+      "import": "./src/api/*.ts",
+      "types": "./src/api/*.ts"
+    },
+    "./api/general/*": {
+      "import": "./src/api/general/*.ts",
+      "types": "./src/api/general/*.ts"
+    },
+    "./api/jobs/*": {
+      "import": "./src/api/jobs/*.ts",
+      "types": "./src/api/jobs/*.ts"
+    },
+    "./api/vector-fs/*": {
+      "import": "./src/api/vector-fs/*.ts",
+      "types": "./src/api/vector-fs/*.ts"
+    },
+    "./api/quests/*": {
+      "import": "./src/api/quests/*.ts",
+      "types": "./src/api/quests/*.ts"
+    },
+    "./api/agents/*": {
+      "import": "./src/api/agents/*.ts",
+      "types": "./src/api/agents/*.ts"
+    },
+    "./api/external-services/*": {
+      "import": "./src/api/external-services/*.ts",
+      "types": "./src/api/external-services/*.ts"
+    },
+    "./api/mcp-servers/*": {
+      "import": "./src/api/mcp-servers/*.ts",
+      "types": "./src/api/mcp-servers/*.ts"
+    },
+    "./api/recurring-tasks/*": {
+      "import": "./src/api/recurring-tasks/*.ts",
+      "types": "./src/api/recurring-tasks/*.ts"
+    },
+    "./api/tools/*": {
+      "import": "./src/api/tools/*.ts",
+      "types": "./src/api/tools/*.ts"
+    },
+    "./api/ngrok": {
+      "import": "./src/api/ngrok.ts",
+      "types": "./src/api/ngrok.ts"
+    },
+    "./api/ollama": {
+      "import": "./src/api/ollama.ts",
+      "types": "./src/api/ollama.ts"
+    },
+    "./api/wallets": {
+      "import": "./src/api/wallets.ts",
+      "types": "./src/api/wallets.ts"
+    },
+    "./utils/*": {
+      "import": "./src/utils/*.ts",
+      "types": "./src/utils/*.ts"
+    },
+    "./cryptography/*": {
+      "import": "./src/cryptography/*.ts",
+      "types": "./src/cryptography/*.ts"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      ".": [
+        "index.d.ts"
+      ],
+      "api": [
+        "api.d.ts"
+      ],
+      "models": [
+        "models.d.ts"
+      ],
+      "utils": [
+        "utils.d.ts"
+      ],
+      "wasm": [
+        "wasm.d.ts"
+      ],
+      "cryptography": [
+        "cryptography.d.ts"
+      ]
+    }
+  }
+}

@@ -57,15 +57,29 @@ impl Node {
     /// Spawn hanzod process
     async fn spawn(&self) -> Result<(), String> {
         use tokio::process::Command;
+        use std::path::PathBuf;
 
-        // Find hanzod binary
-        let hanzod_path = if std::path::Path::new("../../../node/target/debug/hanzod").exists() {
-            "../../../node/target/debug/hanzod"
-        } else if std::path::Path::new("/Users/z/work/hanzo/node/target/debug/hanzod").exists() {
-            "/Users/z/work/hanzo/node/target/debug/hanzod"
-        } else {
-            return Err("hanzod binary not found".to_string());
-        };
+        // Find hanzod binary - first check bundled, then development paths
+        let possible_paths = vec![
+            // Bundled binary (in app)
+            "external-binaries/hanzo-node/hanzod",
+            "src-tauri/external-binaries/hanzo-node/hanzod",
+            "../src-tauri/external-binaries/hanzo-node/hanzod",
+            // Development paths
+            "../../../node/target/debug/hanzod",
+            "/Users/z/work/hanzo/node/target/debug/hanzod",
+        ];
+
+        let mut hanzod_path = None;
+        for path in possible_paths {
+            if std::path::Path::new(path).exists() {
+                hanzod_path = Some(path);
+                info!("Found hanzod at: {}", path);
+                break;
+            }
+        }
+
+        let hanzod_path = hanzod_path.ok_or("hanzod binary not found")?;
 
         let mut cmd = Command::new(hanzod_path);
         cmd.env("NODE_API_PORT", PORT.to_string())

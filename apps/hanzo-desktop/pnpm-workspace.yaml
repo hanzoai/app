@@ -1,0 +1,9 @@
+overrides:
+  '@hanzo-app/artifacts': link:../../libs/hanzo-artifacts
+  '@hanzo-app/i18n': link:../../libs/hanzo-i18n
+  '@hanzo-app/message': link:../../libs/hanzo-message-ts
+  '@hanzo-app/node-state': link:../../libs/hanzo-node-state
+  '@hanzo/ui': npm:@hanzo/ui@latest
+  '@hanzo/brand': npm:@hanzo/brand@latest
+  '@hanzo/wallet': link:../../libs/wallets
+  '@hanzo/wallet-hooks': link:../../libs/wallet-hooks

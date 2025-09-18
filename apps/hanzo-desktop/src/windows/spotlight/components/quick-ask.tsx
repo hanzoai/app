@@ -10,12 +10,12 @@ import {
   createJobFormSchema,
 } from '@hanzo/node/forms/chat/create-job';
 import { DEFAULT_CHAT_CONFIG } from '@hanzo/node/v2/constants';
-import { useCreateJob } from '@hanzo/node/v2/mutations/createJob/useCreateJob';
-import { useRetryMessage } from '@hanzo/node/v2/mutations/retryMessage/useRetryMessage';
-import { useSendMessageToJob } from '@hanzo/node/v2/mutations/sendMessageToJob/useSendMessageToJob';
-import { useGetAgents } from '@hanzo/node/v2/queries/getAgents/useGetAgents';
-import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
-import { useGetTools } from '@hanzo/node/v2/queries/getToolsList/useGetToolsList';
+import { useCreateJob } from '@hanzo/node/v2/mutations/createJob';
+import { useRetryMessage } from '@hanzo/node/v2/mutations/retryMessage';
+import { useSendMessageToJob } from '@hanzo/node/v2/mutations/sendMessageToJob';
+import { useGetAgents } from '@hanzo/node/v2/queries/getAgents';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders';
+import { useGetTools } from '@hanzo/node/v2/queries/getToolsList';
 import {
   Button,
   ChatInputArea,

@@ -1,5 +1,5 @@
 import { type ToolMetadata } from '@hanzo/message/api/tools/types';
-import { useCopyToolAssets } from '@hanzo/node/v2/mutations/copyToolAssets/useCopyToolAssets';
+import { useCopyToolAssets } from '@hanzo/node/v2/mutations/copyToolAssets';
 import {
   Form,
   Tabs,

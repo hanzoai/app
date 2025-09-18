@@ -1,4 +1,4 @@
-import { updateLLMProviderInJob } from '@hanzo_network/hanzo-message-ts/api/jobs/index';
+import { updateLLMProviderInJob } from '@hanzo-app/message/api/jobs/index';
 
 import { type UpdateAgentInJobInput } from './types';
 
@@ -14,3 +14,4 @@ export const updateAgentInJob = async ({
   });
   return response;
 };
+export * from './useUpdateAgentInJob';

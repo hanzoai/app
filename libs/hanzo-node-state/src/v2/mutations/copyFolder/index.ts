@@ -1,4 +1,4 @@
-import { copyFolder as copyFolderApi } from '@hanzo_network/hanzo-message-ts/api/vector-fs/index';
+import { copyFolder as copyFolderApi } from '@hanzo-app/message/api/vector-fs/index';
 
 import { type CopyFolderInput } from './types';
 
@@ -13,3 +13,4 @@ export const copyFolder = async ({
     origin_path: originPath,
   });
 };
+export * from './useCopyFolder';

@@ -1,4 +1,4 @@
-import { createAgent as createAgentApi } from '@hanzo_network/hanzo-message-ts/api/agents/index';
+import { createAgent as createAgentApi } from '@hanzo-app/message/api/agents/index';
 
 import { createRecurringTask } from '../createRecurringTask';
 import { type CreateAgentInput } from './types';
@@ -37,3 +37,4 @@ export const createAgent = async ({
   }
   return response;
 };
+export * from './useCreateAgent';

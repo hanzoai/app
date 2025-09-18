@@ -1,4 +1,4 @@
-import { updateTool as updateToolApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { updateTool as updateToolApi } from '@hanzo-app/message/api/tools/index';
 
 import { type UpdateToolInput } from './types';
 
@@ -16,3 +16,4 @@ export const updateTool = async ({
   });
   return response;
 };
+export * from './useUpdateTool';

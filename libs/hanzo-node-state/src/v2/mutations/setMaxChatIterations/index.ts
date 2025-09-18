@@ -1,4 +1,4 @@
-import { setPreferences } from '@hanzo_network/hanzo-message-ts/api/general/index';
+import { setPreferences } from '@hanzo-app/message/api/general/index';
 
 import { type SetMaxChatIterationsInput } from './types';
 
@@ -12,3 +12,4 @@ export const setMaxChatIterations = async ({
   });
   return data;
 };
+export * from './useSetMaxChatIterations';

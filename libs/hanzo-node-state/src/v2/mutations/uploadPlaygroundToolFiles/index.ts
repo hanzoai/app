@@ -1,4 +1,4 @@
-import { uploadPlaygroundToolFiles as uploadPlaygroundToolFilesApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { uploadPlaygroundToolFiles as uploadPlaygroundToolFilesApi } from '@hanzo-app/message/api/tools/index';
 
 import { type UploadPlaygroundToolFilesInput } from './types';
 
@@ -19,3 +19,4 @@ export const uploadPlaygroundToolFiles = async ({
 
   return response;
 };
+export * from './useUploadPlaygroundToolFiles';

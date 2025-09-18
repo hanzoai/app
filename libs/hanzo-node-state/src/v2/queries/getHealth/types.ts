@@ -1,4 +1,4 @@
-import { type CheckHealthResponse } from '@hanzo_network/hanzo-message-ts/api/general/types';
+import { type CheckHealthResponse } from '@hanzo-app/message/api/general/types';
 import { type QueryObserverOptions } from '@tanstack/react-query';
 
 import { type FunctionKeyV2 } from '../../constants';

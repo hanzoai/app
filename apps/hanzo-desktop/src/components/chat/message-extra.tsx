@@ -4,8 +4,8 @@ import {
   type WidgetToolData,
   type WidgetToolType,
 } from '@hanzo/message/api/general/types';
-import { usePayInvoice } from '@hanzo/node/v2/mutations/payInvoice/usePayInvoice';
-import { useRejectInvoice } from '@hanzo/node/v2/mutations/rejectInvoice/useRejectInvoice';
+import { usePayInvoice } from '@hanzo/node/v2/mutations/payInvoice';
+import { useRejectInvoice } from '@hanzo/node/v2/mutations/rejectInvoice';
 import { useGetWalletList } from '@hanzonet/wallet-hooks';
 import { Button, Dialog, DialogContent } from '@hanzo/ui';
 import { CryptoWalletIcon } from '@hanzo/ui/assets';

@@ -2,10 +2,10 @@ import { DialogClose } from '@radix-ui/react-dialog';
 import { DotsVerticalIcon } from '@radix-ui/react-icons';
 import { useTranslation } from '@hanzo/i18n';
 import { buildInboxIdFromJobId } from '@hanzo/message/utils/inbox_name_handler';
-import { useRemoveRecurringTask } from '@hanzo/node/v2/mutations/removeRecurringTask/useRemoveRecurringTask';
-import { useRunTaskNow } from '@hanzo/node/v2/mutations/runTaskNow/useRunTaskNow';
-import { useGetRecurringTask } from '@hanzo/node/v2/queries/getRecurringTask/useGetRecurringTask';
-import { useGetRecurringTaskLogs } from '@hanzo/node/v2/queries/getRecurringTaskLogs/useGetRecurringTaskLogs';
+import { useRemoveRecurringTask } from '@hanzo/node/v2/mutations/removeRecurringTask';
+import { useRunTaskNow } from '@hanzo/node/v2/mutations/runTaskNow';
+import { useGetRecurringTask } from '@hanzo/node/v2/queries/getRecurringTask';
+import { useGetRecurringTaskLogs } from '@hanzo/node/v2/queries/getRecurringTaskLogs';
 import {
   Badge,
   Button,

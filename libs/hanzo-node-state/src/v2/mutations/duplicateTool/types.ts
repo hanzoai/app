@@ -1,5 +1,5 @@
-import { type Token } from '@hanzo_network/hanzo-message-ts/api/general/types';
-import { type DuplicateToolResponse } from '@hanzo_network/hanzo-message-ts/api/tools/types';
+import { type Token } from '@hanzo-app/message/api/general/types';
+import { type DuplicateToolResponse } from '@hanzo-app/message/api/tools/types';
 
 export type DuplicateToolInput = Token & {
   nodeAddress: string;

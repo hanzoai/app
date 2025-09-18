@@ -3,7 +3,7 @@ import {
   sendMessageToJob,
   updateChatConfig,
   uploadFilesToJob,
-} from '@hanzo_network/hanzo-message-ts/api/jobs/index';
+} from '@hanzo-app/message/api/jobs/index';
 
 import { type CreateJobInput } from './types';
 
@@ -63,3 +63,4 @@ export const createJob = async ({
 
   return { jobId };
 };
+export * from './useCreateJob';

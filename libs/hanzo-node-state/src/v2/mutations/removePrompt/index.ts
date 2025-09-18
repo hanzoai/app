@@ -1,4 +1,4 @@
-import { removePrompt as removePromptApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { removePrompt as removePromptApi } from '@hanzo-app/message/api/tools/index';
 
 import { type RemovePromptInput } from './types';
 
@@ -11,3 +11,4 @@ export const removePrompt = async ({
     prompt_name: promptName,
   });
 };
+export * from './useRemovePrompt';

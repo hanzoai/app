@@ -1,4 +1,4 @@
-import { removeFolder as removeFolderApi } from '@hanzo_network/hanzo-message-ts/api/vector-fs/index';
+import { removeFolder as removeFolderApi } from '@hanzo-app/message/api/vector-fs/index';
 
 import { type RemoveFolderInput } from './types';
 
@@ -11,3 +11,4 @@ export const removeFolder = async ({
     path: folderPath,
   });
 };
+export * from './useRemoveFolder';

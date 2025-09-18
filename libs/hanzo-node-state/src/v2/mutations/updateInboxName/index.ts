@@ -1,4 +1,4 @@
-import { updateInboxName as updateInboxNameApi } from '@hanzo_network/hanzo-message-ts/api/jobs/index';
+import { updateInboxName as updateInboxNameApi } from '@hanzo-app/message/api/jobs/index';
 
 import { type UpdateInboxNameInput } from './types';
 
@@ -15,3 +15,4 @@ export const updateInboxName = async ({
 
   return response;
 };
+export * from './useUpdateInboxName';

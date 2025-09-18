@@ -1,5 +1,5 @@
-import { type Token } from '@hanzo_network/hanzo-message-ts/api/general/types';
-import { type GetQuestsStatusResponse } from '@hanzo_network/hanzo-message-ts/api/quests/types';
+import { type Token } from '@hanzo-app/message/api/general/types';
+import { type GetQuestsStatusResponse } from '@hanzo-app/message/api/quests/types';
 
 export type GetQuestsStatusInput = Token & {
   nodeAddress: string;

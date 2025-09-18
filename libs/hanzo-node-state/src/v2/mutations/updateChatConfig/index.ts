@@ -1,4 +1,4 @@
-import { updateChatConfig as updateChatConfigApi } from '@hanzo_network/hanzo-message-ts/api/jobs/index';
+import { updateChatConfig as updateChatConfigApi } from '@hanzo-app/message/api/jobs/index';
 
 import { type UpdateChatConfigInput } from './types';
 
@@ -14,3 +14,4 @@ export const updateChatConfig = async ({
   });
   return response;
 };
+export * from './useUpdateChatConfig';

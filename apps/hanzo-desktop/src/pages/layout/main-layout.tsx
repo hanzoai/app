@@ -1,10 +1,10 @@
 import { ExitIcon, GearIcon } from '@radix-ui/react-icons';
 import { PopoverClose } from '@radix-ui/react-popover';
 import { useTranslation } from '@hanzo/i18n';
-import { useImportAgentFromUrl } from '@hanzo/node/v2/mutations/importAgentFromUrl/useImportAgentFromUrl';
-import { useImportTool } from '@hanzo/node/v2/mutations/importTool/useImportTool';
-import { useGetHealth } from '@hanzo/node/v2/queries/getHealth/useGetHealth';
-import { useGetInboxesWithPagination } from '@hanzo/node/v2/queries/getInboxes/useGetInboxesWithPagination';
+import { useImportAgentFromUrl } from '@hanzo/node/v2/mutations/importAgentFromUrl';
+import { useImportTool } from '@hanzo/node/v2/mutations/importTool';
+import { useGetHealth } from '@hanzo/node/v2/queries/getHealth';
+import { useGetInboxesWithPagination } from '@hanzo/node/v2/queries/getInboxes';
 import {
   AlertDialog,
   AlertDialogAction,

@@ -1,7 +1,7 @@
-import { useGetAgents } from '@hanzo/node/v2/queries/getAgents/useGetAgents';
-import { useGetHealth } from '@hanzo/node/v2/queries/getHealth/useGetHealth';
-import { useGetInboxesWithPagination } from '@hanzo/node/v2/queries/getInboxes/useGetInboxesWithPagination';
-import { useGetTools } from '@hanzo/node/v2/queries/getToolsList/useGetToolsList';
+import { useGetAgents } from '@hanzo/node/v2/queries/getAgents';
+import { useGetHealth } from '@hanzo/node/v2/queries/getHealth';
+import { useGetInboxesWithPagination } from '@hanzo/node/v2/queries/getInboxes';
+import { useGetTools } from '@hanzo/node/v2/queries/getToolsList';
 import { useMap } from '@hanzo/ui/hooks';
 import { useEffect } from 'react';
 

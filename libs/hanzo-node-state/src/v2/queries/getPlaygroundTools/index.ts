@@ -1,4 +1,4 @@
-import { getPlaygroundTools as getPlaygroundToolsApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { getPlaygroundTools as getPlaygroundToolsApi } from '@hanzo-app/message/api/tools/index';
 
 import { type GetPlaygroundToolsInput } from './types';
 
@@ -9,3 +9,4 @@ export const getPlaygroundTools = async ({
   const response = await getPlaygroundToolsApi(nodeAddress, token);
   return response;
 };
+export * from './useGetPlaygroundTools';

@@ -6,6 +6,9 @@
   "permissions": [
     "core:default",
     "dialog:allow-save",
+    "dialog:allow-message",
+    "dialog:allow-ask",
+    "dialog:allow-confirm",
     "fs:allow-download-write",
     "shell:allow-open",
     "core:window:allow-start-dragging",

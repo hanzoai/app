@@ -1,9 +1,9 @@
 import { DialogClose } from '@radix-ui/react-dialog';
 import { useTranslation } from '@hanzo/i18n';
 import { type CodeLanguage } from '@hanzo/message/api/tools/types';
-import { useOpenToolInCodeEditor } from '@hanzo/node/v2/mutations/openToolnCodeEditor/useOpenToolInCodeEditor';
-import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
-import { useGetToolProtocols } from '@hanzo/node/v2/queries/getToolProtocols/useGetToolProtocols';
+import { useOpenToolInCodeEditor } from '@hanzo/node/v2/mutations/openToolnCodeEditor';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders';
+import { useGetToolProtocols } from '@hanzo/node/v2/queries/getToolProtocols';
 import {
   Button,
   buttonVariants,

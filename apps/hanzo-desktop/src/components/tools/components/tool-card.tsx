@@ -1,7 +1,7 @@
 import { useTranslation } from '@hanzo/i18n';
 import { type HanzoToolHeader } from '@hanzo/message/api/tools/types';
 import { FunctionKeyV2 } from '@hanzo/node/v2/constants';
-import { useToggleEnableTool } from '@hanzo/node/v2/mutations/toggleEnableTool/useToggleEnableTool';
+import { useToggleEnableTool } from '@hanzo/node/v2/mutations/toggleEnableTool';
 import {
   Badge,
   buttonVariants,

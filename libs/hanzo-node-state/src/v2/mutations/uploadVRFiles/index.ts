@@ -1,4 +1,4 @@
-import { uploadFilesToVR } from '@hanzo_network/hanzo-message-ts/api/vector-fs/index';
+import { uploadFilesToVR } from '@hanzo-app/message/api/vector-fs/index';
 
 import { type UploadVRFilesInput } from './types';
 
@@ -17,3 +17,4 @@ export const uploadVRFiles = async ({
 
   return response;
 };
+export * from './useUploadVRFiles';

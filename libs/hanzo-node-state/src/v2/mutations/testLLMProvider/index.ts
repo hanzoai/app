@@ -1,4 +1,4 @@
-import { testLLMProvider as testLLMProviderApi } from '@hanzo_network/hanzo-message-ts/api/jobs/index';
+import { testLLMProvider as testLLMProviderApi } from '@hanzo-app/message/api/jobs/index';
 
 import { type TestLLMProviderInput } from './types';
 
@@ -10,3 +10,4 @@ export const testLLMProvider = async ({
   const response = await testLLMProviderApi(nodeAddress, token, agent);
   return response;
 };
+export * from './useTestLLMProvider';

@@ -1,4 +1,4 @@
-import { getSearchDirectoryContents as getSearchDirectoryContentsApi } from '@hanzo_network/hanzo-message-ts/api/vector-fs/index';
+import { getSearchDirectoryContents as getSearchDirectoryContentsApi } from '@hanzo-app/message/api/vector-fs/index';
 
 import { type GetSearchDirectoryContentsInput } from './types';
 
@@ -12,3 +12,4 @@ export const getSearchDirectoryContents = async ({
   });
   return response;
 };
+export * from './useGetSearchDirectoryContents';

@@ -1,4 +1,4 @@
-import { getAgent as getAgentApi } from '@hanzo_network/hanzo-message-ts/api/agents/index';
+import { getAgent as getAgentApi } from '@hanzo-app/message/api/agents/index';
 
 import { type GetAgentInput } from './types';
 
@@ -12,3 +12,4 @@ export const getAgent = async ({
   });
   return result;
 };
+export * from './useGetAgent';

@@ -1,7 +1,7 @@
 import { useTranslation } from '@hanzo/i18n';
 import { QuestNames } from '@hanzo/message/api/quests/types';
-import { useUpdateQuestsStatus } from '@hanzo/node/v2/mutations/updateQuestsStatus/useUpdateQuestsStatus';
-import { useGetQuestsStatus } from '@hanzo/node/v2/queries/getQuestsStatus/useGetQuestsStatus';
+import { useUpdateQuestsStatus } from '@hanzo/node/v2/mutations/updateQuestsStatus';
+import { useGetQuestsStatus } from '@hanzo/node/v2/queries/getQuestsStatus';
 import {
   Alert,
   AlertDescription,

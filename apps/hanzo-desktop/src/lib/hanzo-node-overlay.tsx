@@ -1,5 +1,5 @@
 import { ReloadIcon } from '@radix-ui/react-icons';
-import { useGetHealth } from '@hanzo/node/v2/queries/getHealth/useGetHealth';
+import { useGetHealth } from '@hanzo/node/v2/queries/getHealth';
 import { Button } from '@hanzo/ui';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { DownloadIcon, Loader2 } from 'lucide-react';

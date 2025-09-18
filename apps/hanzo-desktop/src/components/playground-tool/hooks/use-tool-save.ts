@@ -3,8 +3,8 @@ import {
   type ToolMetadata,
 } from '@hanzo/message/api/tools/types';
 import { extractJobIdFromInbox } from '@hanzo/message/utils/inbox_name_handler';
-import { useSaveToolCode } from '@hanzo/node/v2/mutations/saveToolCode/useSaveToolCode';
-import { useGetAllToolAssets } from '@hanzo/node/v2/queries/getAllToolAssets/useGetAllToolAssets';
+import { useSaveToolCode } from '@hanzo/node/v2/mutations/saveToolCode';
+import { useGetAllToolAssets } from '@hanzo/node/v2/queries/getAllToolAssets';
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';

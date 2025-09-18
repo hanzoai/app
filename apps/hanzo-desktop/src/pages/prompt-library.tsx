@@ -1,12 +1,12 @@
 import { useTranslation } from '@hanzo/i18n';
 import { type Prompt } from '@hanzo/message/api/tools/types';
 import { buildInboxIdFromJobId } from '@hanzo/message/utils/inbox_name_handler';
-import { useCreateJob } from '@hanzo/node/v2/mutations/createJob/useCreateJob';
-import { useRemovePrompt } from '@hanzo/node/v2/mutations/removePrompt/useRemovePrompt';
-import { useUpdatePrompt } from '@hanzo/node/v2/mutations/updatePrompt/useUpdatePrompt';
+import { useCreateJob } from '@hanzo/node/v2/mutations/createJob';
+import { useRemovePrompt } from '@hanzo/node/v2/mutations/removePrompt';
+import { useUpdatePrompt } from '@hanzo/node/v2/mutations/updatePrompt';
 
-import { useGetPromptList } from '@hanzo/node/v2/queries/getPromptList/useGetPromptList';
-import { useGetPromptSearch } from '@hanzo/node/v2/queries/getPromptSearch/useGetPromptSearch';
+import { useGetPromptList } from '@hanzo/node/v2/queries/getPromptList';
+import { useGetPromptSearch } from '@hanzo/node/v2/queries/getPromptSearch';
 import {
   Button,
   CopyToClipboardIcon,

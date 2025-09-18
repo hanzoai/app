@@ -1,4 +1,4 @@
-import { createTool as createToolApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { createTool as createToolApi } from '@hanzo-app/message/api/tools/index';
 
 import { type CreateToolInput } from './types';
 
@@ -15,3 +15,4 @@ export const createTool = async ({
   });
   return response;
 };
+export * from './useCreateTool';

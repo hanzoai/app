@@ -1,8 +1,8 @@
 import { DialogClose } from '@radix-ui/react-dialog';
 import { useTranslation } from '@hanzo/i18n';
 import { type McpServer } from '@hanzo/message/api/mcp-servers/types';
-import { useDeleteMcpServer } from '@hanzo/node/v2/mutations/deleteMcpServer/useDeleteMcpServer';
-import { useGetMCPServerTools } from '@hanzo/node/v2/queries/getMCPServerTools/useGetMCPServerTool';
+import { useDeleteMcpServer } from '@hanzo/node/v2/mutations/deleteMcpServer';
+import { useGetMCPServerTools } from '@hanzo/node/v2/queries/getMCPServerTools';
 import {
   Badge,
   Button,

@@ -1,5 +1,5 @@
-import { toolMetadataImplementation as createToolMetadataApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
-import { CodeLanguage } from '@hanzo_network/hanzo-message-ts/api/tools/types';
+import { toolMetadataImplementation as createToolMetadataApi } from '@hanzo-app/message/api/tools/index';
+import { CodeLanguage } from '@hanzo-app/message/api/tools/types';
 
 import {
   type CreateToolMetadataInput,
@@ -21,3 +21,4 @@ export const createToolMetadata = async ({
   });
   return response;
 };
+export * from './useCreateToolMetadata';

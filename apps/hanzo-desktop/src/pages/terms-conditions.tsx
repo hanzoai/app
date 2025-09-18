@@ -4,8 +4,8 @@ import {
   type QuickConnectFormSchema,
   quickConnectFormSchema,
 } from '@hanzo/node/forms/auth/quick-connection';
-import { useInitialRegistration } from '@hanzo/node/v2/mutations/initialRegistration/useInitialRegistration';
-import { useGetEncryptionKeys } from '@hanzo/node/v2/queries/getEncryptionKeys/useGetEncryptionKeys';
+import { useInitialRegistration } from '@hanzo/node/v2/mutations/initialRegistration';
+import { useGetEncryptionKeys } from '@hanzo/node/v2/queries/getEncryptionKeys';
 import { Button, buttonVariants, Checkbox } from '@hanzo/ui';
 import { submitRegistrationNoCodeError } from '@hanzo/ui/helpers';
 import { cn } from '@hanzo/ui/utils';
@@ -256,7 +256,8 @@ const TermsAndConditionsPage = () => {
                   const formData = setupDataForm.getValues();
                   await submitRegistrationNoCode({
                     nodeAddress: formData.node_address,
-                    encryptionKeys: encryptionKeys!,
+                    profileEncryptionPk: encryptionKeys.profile_encryption_pk,
+                    profileIdentityPk: encryptionKeys.profile_identity_pk,
                   });
                 }
               }, 2000);

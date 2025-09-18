@@ -1,10 +1,10 @@
 import { DotsVerticalIcon } from '@radix-ui/react-icons';
 import { useTranslation } from '@hanzo/i18n';
 import { extractJobIdFromInbox } from '@hanzo/message/utils';
-import { useExportMessagesFromInbox } from '@hanzo/node/v2/mutations/exportMessagesFromInbox/useExportMessagesFromInbox';
-import { useGetAgents } from '@hanzo/node/v2/queries/getAgents/useGetAgents';
-import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
-import { useGetProviderFromJob } from '@hanzo/node/v2/queries/getProviderFromJob/useGetProviderFromJob';
+import { useExportMessagesFromInbox } from '@hanzo/node/v2/mutations/exportMessagesFromInbox';
+import { useGetAgents } from '@hanzo/node/v2/queries/getAgents';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders';
+import { useGetProviderFromJob } from '@hanzo/node/v2/queries/getProviderFromJob';
 import {
   Accordion,
   AccordionContent,

@@ -1,0 +1,16 @@
+{
+  "name": "@hanzo/wallet-hooks",
+  "version": "0.0.1",
+  "main": "src/index.ts",
+  "module": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "echo 'No build required'"
+  },
+  "dependencies": {
+    "@hanzo/wallet": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  }
+}

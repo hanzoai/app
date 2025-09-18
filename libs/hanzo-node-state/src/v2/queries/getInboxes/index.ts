@@ -2,7 +2,7 @@ import {
   getAllAgentInboxes as getAllAgentInboxesApi,
   getAllInboxes as getAllInboxesApi,
   getAllInboxesWithPagination as getAllInboxesWithPaginationApi,
-} from '@hanzo_network/hanzo-message-ts/api/jobs/index';
+} from '@hanzo-app/message/api/jobs/index';
 
 import { type GetAgentInboxesInput, type GetInboxesInput } from './types';
 
@@ -38,3 +38,6 @@ export const getAgentInboxes = async ({
   });
   return inboxes;
 };
+export * from './useGetAgentInboxes';
+export * from './useGetInboxes';
+export * from './useGetInboxesWithPagination';

@@ -1,4 +1,4 @@
-import { updateJobScope as updateJobScopeApi } from '@hanzo_network/hanzo-message-ts/api/jobs/index';
+import { updateJobScope as updateJobScopeApi } from '@hanzo-app/message/api/jobs/index';
 
 import { type UpdateChatConfigInput } from './types';
 
@@ -14,3 +14,4 @@ export const updateJobScope = async ({
   });
   return response;
 };
+export * from './useUpdateJobScope';

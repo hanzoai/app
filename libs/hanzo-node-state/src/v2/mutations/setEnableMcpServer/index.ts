@@ -1,4 +1,4 @@
-import { setEnableMcpServer as setEnableMcpServerApi } from '@hanzo_network/hanzo-message-ts/api/mcp-servers/index';
+import { setEnableMcpServer as setEnableMcpServerApi } from '@hanzo-app/message/api/mcp-servers/index';
 
 import { SetEnableMcpServerInput } from './types';
 
@@ -16,3 +16,4 @@ export const setEnableMcpServer = async ({
   );
   return response;
 };
+export * from './useSetEnableMcpServer';

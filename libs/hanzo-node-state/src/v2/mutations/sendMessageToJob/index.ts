@@ -1,7 +1,7 @@
 import {
   sendMessageToJob as sendMessageToJobApi,
   uploadFilesToJob,
-} from '@hanzo_network/hanzo-message-ts/api/jobs/index';
+} from '@hanzo-app/message/api/jobs/index';
 
 import { type SendMessageToJobInput } from './types';
 
@@ -37,3 +37,4 @@ export const sendMessageToJob = async ({
     },
   });
 };
+export * from './useSendMessageToJob';

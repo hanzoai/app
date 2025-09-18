@@ -1,9 +1,9 @@
 import { useTranslation } from '@hanzo/i18n';
 import { extractJobIdFromInbox } from '@hanzo/message/utils';
-import { useUpdateJobScope } from '@hanzo/node/v2/mutations/updateJobScope/useUpdateJobScope';
-import { useGetListDirectoryContents } from '@hanzo/node/v2/queries/getDirectoryContents/useGetListDirectoryContents';
-import { useGetJobFolderName } from '@hanzo/node/v2/queries/getJobFolderName/useGetJobFolderName';
-import { useGetJobScope } from '@hanzo/node/v2/queries/getJobScope/useGetJobScope';
+import { useUpdateJobScope } from '@hanzo/node/v2/mutations/updateJobScope';
+import { useGetListDirectoryContents } from '@hanzo/node/v2/queries/getDirectoryContents';
+import { useGetJobFolderName } from '@hanzo/node/v2/queries/getJobFolderName';
+import { useGetJobScope } from '@hanzo/node/v2/queries/getJobScope';
 import {
   Badge,
   Tooltip,

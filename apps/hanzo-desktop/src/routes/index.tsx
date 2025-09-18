@@ -1,5 +1,5 @@
 import { FunctionKeyV2 } from '@hanzo/node/v2/constants';
-import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders';
 import { TooltipProvider } from '@hanzo/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { listen } from '@tauri-apps/api/event';

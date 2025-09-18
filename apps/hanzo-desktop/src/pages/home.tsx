@@ -6,11 +6,11 @@ import {
   chatMessageFormSchema,
 } from '@hanzo/node/forms/chat/chat-message';
 import { DEFAULT_CHAT_CONFIG } from '@hanzo/node/v2/constants';
-import { useCreateJob } from '@hanzo/node/v2/mutations/createJob/useCreateJob';
-import { useGetAgents } from '@hanzo/node/v2/queries/getAgents/useGetAgents';
-import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
-import { useGetTools } from '@hanzo/node/v2/queries/getToolsList/useGetToolsList';
-import { useGetSearchTools } from '@hanzo/node/v2/queries/getToolsSearch/useGetToolsSearch';
+import { useCreateJob } from '@hanzo/node/v2/mutations/createJob';
+import { useGetAgents } from '@hanzo/node/v2/queries/getAgents';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders';
+import { useGetTools } from '@hanzo/node/v2/queries/getToolsList';
+import { useGetSearchTools } from '@hanzo/node/v2/queries/getToolsSearch';
 import {
   Badge,
   Button,

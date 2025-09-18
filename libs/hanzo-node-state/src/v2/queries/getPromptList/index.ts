@@ -1,4 +1,4 @@
-import { getAllPrompts as getPromptListAPI } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { getAllPrompts as getPromptListAPI } from '@hanzo-app/message/api/tools/index';
 
 import { type GetPromptListInput } from './types';
 
@@ -9,3 +9,4 @@ export const getPromptList = async ({
   const response = await getPromptListAPI(nodeAddress, token);
   return response;
 };
+export * from './useGetPromptList';

@@ -1,5 +1,5 @@
 {
-  "name": "@hanzo/brand",
+  "name": "@hanzo-app/brand",
   "version": "1.0.0",
   "description": "hanzo brand assets and icon generation tools",
   "main": "dist/index.js",

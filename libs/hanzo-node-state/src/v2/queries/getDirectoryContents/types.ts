@@ -1,5 +1,5 @@
-import { type Token } from '@hanzo_network/hanzo-message-ts/api/general/types';
-import { type DirectoryContent } from '@hanzo_network/hanzo-message-ts/api/vector-fs/types';
+import { type Token } from '@hanzo-app/message/api/general/types';
+import { type DirectoryContent } from '@hanzo-app/message/api/vector-fs/types';
 import { type QueryObserverOptions } from '@tanstack/react-query';
 
 import { type FunctionKeyV2 } from '../../constants';

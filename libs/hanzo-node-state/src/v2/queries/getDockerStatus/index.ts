@@ -1,4 +1,4 @@
-import { getDockerStatus as getDockerStatusApi } from '@hanzo_network/hanzo-message-ts/api/general/index';
+import { getDockerStatus as getDockerStatusApi } from '@hanzo-app/message/api/general/index';
 
 import { type GetDockerStatusInput } from './types';
 
@@ -8,3 +8,4 @@ export const getDockerStatus = async ({
   const response = await getDockerStatusApi(nodeAddress);
   return response;
 };
+export * from './useGetDockerStatus';

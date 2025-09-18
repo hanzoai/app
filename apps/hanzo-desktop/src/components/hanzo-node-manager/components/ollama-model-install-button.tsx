@@ -1,7 +1,7 @@
 import { useTranslation } from '@hanzo/i18n';
 import { removeLLMProvider } from '@hanzo/node/v2/mutations/removeLLMProvider/index';
-import { useSyncOllamaModels } from '@hanzo/node/v2/mutations/syncOllamaModels/useSyncOllamaModels';
-import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
+import { useSyncOllamaModels } from '@hanzo/node/v2/mutations/syncOllamaModels';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders';
 import { Button, Progress } from '@hanzo/ui';
 import { useMap } from '@hanzo/ui/hooks';
 import { cn } from '@hanzo/ui/utils';

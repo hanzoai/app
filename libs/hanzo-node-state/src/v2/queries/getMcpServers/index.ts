@@ -1,4 +1,4 @@
-import { getMcpServers as getMcpServersApi } from '@hanzo_network/hanzo-message-ts/api/mcp-servers/index';
+import { getMcpServers as getMcpServersApi } from '@hanzo-app/message/api/mcp-servers/index';
 
 import type { GetMcpServersInput } from './types';
 
@@ -9,3 +9,4 @@ export const getMcpServers = async ({
   const result = await getMcpServersApi(nodeAddress, token);
   return result;
 };
+export * from './useGetMcpServers';

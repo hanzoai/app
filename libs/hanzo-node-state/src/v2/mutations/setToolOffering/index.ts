@@ -1,4 +1,4 @@
-import { setToolOffering as setToolOfferingApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { setToolOffering as setToolOfferingApi } from '@hanzo-app/message/api/tools/index';
 
 import { type SetToolOfferingInput } from './types';
 
@@ -12,3 +12,4 @@ export const setToolOffering = async ({
   });
   return response;
 };
+export * from './useSetToolOffering';

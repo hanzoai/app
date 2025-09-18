@@ -1,4 +1,4 @@
-import { importMcpServerFromGithubUrl } from '@hanzo_network/hanzo-message-ts/api/mcp-servers/index';
+import { importMcpServerFromGithubUrl } from '@hanzo-app/message/api/mcp-servers/index';
 
 import type { ImportMCPServerFromGithubURLOutput } from './types';
 
@@ -9,3 +9,4 @@ export const importMCPServerFromGithubURL = async (
 ): Promise<ImportMCPServerFromGithubURLOutput> => {
   return importMcpServerFromGithubUrl(nodeAddress, token, { url: githubUrl });
 };
+export * from './useImportMCPServerFromGithubURL';

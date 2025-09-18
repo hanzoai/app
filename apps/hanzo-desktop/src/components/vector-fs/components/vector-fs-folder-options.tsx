@@ -1,7 +1,7 @@
 import { useTranslation } from '@hanzo/i18n';
-import { useCopyFolder } from '@hanzo/node/v2/mutations/copyFolder/useCopyFolder';
-import { useMoveFolder } from '@hanzo/node/v2/mutations/moveFolder/useMoveFolder';
-import { useRemoveFolder } from '@hanzo/node/v2/mutations/removeFolder/useRemoveFolder';
+import { useCopyFolder } from '@hanzo/node/v2/mutations/copyFolder';
+import { useMoveFolder } from '@hanzo/node/v2/mutations/moveFolder';
+import { useRemoveFolder } from '@hanzo/node/v2/mutations/removeFolder';
 import {
   Button,
   DialogFooter,

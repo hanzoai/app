@@ -2,9 +2,9 @@
 
 // import { zodResolver } from '@hookform/resolvers/zod';
 // import { QRSetupData } from '@hanzo/message/api/general/types';
-// import { useSubmitRegistration } from '@hanzo/node/v2/mutations/submitRegistation/useSubmitRegistration';
+// import { useSubmitRegistration } from '@hanzo/node/v2/mutations/submitRegistation';
 // import { generateMyEncryptionKeys } from '@hanzo/node/v2/queries/getEncryptionKeys/index';
-// import { useGetEncryptionKeys } from '@hanzo/node/v2/queries/getEncryptionKeys/useGetEncryptionKeys';
+// import { useGetEncryptionKeys } from '@hanzo/node/v2/queries/getEncryptionKeys';
 // import {
 //   Button,
 //   ErrorMessage,

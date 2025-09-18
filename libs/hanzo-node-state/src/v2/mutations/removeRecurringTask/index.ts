@@ -1,4 +1,4 @@
-import { removeRecurringTask as removeRecurringTaskApi } from '@hanzo_network/hanzo-message-ts/api/recurring-tasks/index';
+import { removeRecurringTask as removeRecurringTaskApi } from '@hanzo-app/message/api/recurring-tasks/index';
 
 import { type RemoveRecurringTaskInput } from './types';
 
@@ -12,3 +12,4 @@ export const removeRecurringTask = async ({
   });
   return response;
 };
+export * from './useRemoveRecurringTask';

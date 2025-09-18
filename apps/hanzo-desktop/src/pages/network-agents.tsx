@@ -1,10 +1,10 @@
 import { useTranslation } from '@hanzo/i18n';
-import { useAddNetworkTool } from '@hanzo/node/v2/mutations/addNetworkTool/useAddNetworkTool';
-import { useGetAgents } from '@hanzo/node/v2/queries/getAgents/useGetAgents';
-import { useGetInstalledNetworkTools } from '@hanzo/node/v2/queries/getInstalledNetworkTools/useGetInstalledNetworkTools';
+import { useAddNetworkTool } from '@hanzo/node/v2/mutations/addNetworkTool';
+import { useGetAgents } from '@hanzo/node/v2/queries/getAgents';
+import { useGetInstalledNetworkTools } from '@hanzo/node/v2/queries/getInstalledNetworkTools';
 import { type FormattedNetworkAgent } from '@hanzo/node/v2/queries/getNetworkAgents/types';
-import { useGetNetworkAgents } from '@hanzo/node/v2/queries/getNetworkAgents/useGetNetworkAgents';
-import { useGetToolsWithOfferings } from '@hanzo/node/v2/queries/getToolsWithOfferings/useGetToolsWithOfferings';
+import { useGetNetworkAgents } from '@hanzo/node/v2/queries/getNetworkAgents';
+import { useGetToolsWithOfferings } from '@hanzo/node/v2/queries/getToolsWithOfferings';
 import { useGetWalletBalance, useGetWalletList } from '@hanzonet/wallet-hooks';
 import {
   Card,

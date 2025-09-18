@@ -3,7 +3,7 @@ import {
   type ToolOffering,
   type ToolUsageType,
 } from '@hanzo/message/api/tools/types';
-import { useSetToolOffering } from '@hanzo/node/v2/mutations/setToolOffering/useSetToolOffering';
+import { useSetToolOffering } from '@hanzo/node/v2/mutations/setToolOffering';
 import { type FormattedNetworkAgent } from '@hanzo/node/v2/queries/getNetworkAgents/types';
 import { useGetWalletList } from '@hanzonet/wallet-hooks';
 import {

@@ -1,4 +1,4 @@
-import { getProviderFromJob as getProviderFromJobApi } from '@hanzo_network/hanzo-message-ts/api/jobs/index';
+import { getProviderFromJob as getProviderFromJobApi } from '@hanzo-app/message/api/jobs/index';
 
 import { type GetProviderFromJobInput } from './types';
 
@@ -12,3 +12,4 @@ export const getProviderFromJob = async ({
   });
   return result;
 };
+export * from './useGetProviderFromJob';

@@ -21,22 +21,22 @@ import {
   DEFAULT_CHAT_CONFIG,
   FunctionKeyV2,
 } from '@hanzo/node/v2/constants';
-import { useCreateAgent } from '@hanzo/node/v2/mutations/createAgent/useCreateAgent';
-import { useCreateJob } from '@hanzo/node/v2/mutations/createJob/useCreateJob';
-import { useCreateRecurringTask } from '@hanzo/node/v2/mutations/createRecurringTask/useCreateRecurringTask';
-import { useRemoveRecurringTask } from '@hanzo/node/v2/mutations/removeRecurringTask/useRemoveRecurringTask';
-import { useRetryMessage } from '@hanzo/node/v2/mutations/retryMessage/useRetryMessage';
-import { useSendMessageToJob } from '@hanzo/node/v2/mutations/sendMessageToJob/useSendMessageToJob';
-import { useUpdateAgent } from '@hanzo/node/v2/mutations/updateAgent/useUpdateAgent';
-import { useUploadVRFiles } from '@hanzo/node/v2/mutations/uploadVRFiles/useUploadVRFiles';
-import { useGetAgent } from '@hanzo/node/v2/queries/getAgent/useGetAgent';
-import { useGetListDirectoryContents } from '@hanzo/node/v2/queries/getDirectoryContents/useGetListDirectoryContents';
-import { useGetAgentInboxes } from '@hanzo/node/v2/queries/getInboxes/useGetAgentInboxes';
-import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
-import { useGetSearchDirectoryContents } from '@hanzo/node/v2/queries/getSearchDirectoryContents/useGetSearchDirectoryContents';
-import { useGetTool } from '@hanzo/node/v2/queries/getTool/useGetTool';
-import { useGetTools } from '@hanzo/node/v2/queries/getToolsList/useGetToolsList';
-import { useGetSearchTools } from '@hanzo/node/v2/queries/getToolsSearch/useGetToolsSearch';
+import { useCreateAgent } from '@hanzo/node/v2/mutations/createAgent';
+import { useCreateJob } from '@hanzo/node/v2/mutations/createJob';
+import { useCreateRecurringTask } from '@hanzo/node/v2/mutations/createRecurringTask';
+import { useRemoveRecurringTask } from '@hanzo/node/v2/mutations/removeRecurringTask';
+import { useRetryMessage } from '@hanzo/node/v2/mutations/retryMessage';
+import { useSendMessageToJob } from '@hanzo/node/v2/mutations/sendMessageToJob';
+import { useUpdateAgent } from '@hanzo/node/v2/mutations/updateAgent';
+import { useUploadVRFiles } from '@hanzo/node/v2/mutations/uploadVRFiles';
+import { useGetAgent } from '@hanzo/node/v2/queries/getAgent';
+import { useGetListDirectoryContents } from '@hanzo/node/v2/queries/getDirectoryContents';
+import { useGetAgentInboxes } from '@hanzo/node/v2/queries/getInboxes';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders';
+import { useGetSearchDirectoryContents } from '@hanzo/node/v2/queries/getSearchDirectoryContents';
+import { useGetTool } from '@hanzo/node/v2/queries/getTool';
+import { useGetTools } from '@hanzo/node/v2/queries/getToolsList';
+import { useGetSearchTools } from '@hanzo/node/v2/queries/getToolsSearch';
 import {
   Badge,
   Button,

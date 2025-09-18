@@ -1,6 +1,6 @@
 import { useTranslation } from '@hanzo/i18n';
-import { useSetToolMcpEnabled } from '@hanzo/node/v2/mutations/setToolMcpEnabled/useSetToolMcpEnabled';
-import { useGetTools } from '@hanzo/node/v2/queries/getToolsList/useGetToolsList';
+import { useSetToolMcpEnabled } from '@hanzo/node/v2/mutations/setToolMcpEnabled';
+import { useGetTools } from '@hanzo/node/v2/queries/getToolsList';
 import {
   AlertDialog,
   AlertDialogAction,

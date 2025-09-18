@@ -1,4 +1,4 @@
-import { type McpServer } from '@hanzo_network/hanzo-message-ts/api/mcp-servers/types';
+import { type McpServer } from '@hanzo-app/message/api/mcp-servers/types';
 import {
   useMutation,
   type UseMutationOptions,

@@ -1,8 +1,8 @@
 import { useTranslation } from '@hanzo/i18n';
 import { McpServerType } from '@hanzo/message/api/mcp-servers/types';
 import { type ImportMCPServerFromGithubURLOutput } from '@hanzo/node/v2/mutations/importMCPServerFromGithubURL/types';
-import { useSetEnableMcpServer } from '@hanzo/node/v2/mutations/setEnableMcpServer/useSetEnableMcpServer';
-import { useGetMcpServers } from '@hanzo/node/v2/queries/getMcpServers/useGetMcpServers';
+import { useSetEnableMcpServer } from '@hanzo/node/v2/mutations/setEnableMcpServer';
+import { useGetMcpServers } from '@hanzo/node/v2/queries/getMcpServers';
 import {
   Button,
   DropdownMenu,

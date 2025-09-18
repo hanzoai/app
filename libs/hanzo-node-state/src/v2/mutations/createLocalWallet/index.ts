@@ -1,4 +1,4 @@
-import { createLocalWallet as createLocalWalletApi } from '@hanzo_network/hanzo-message-ts/api/wallets';
+import { createLocalWallet as createLocalWalletApi } from '@hanzo-app/message/api/wallets';
 
 import { type CreateLocalWalletInput } from './types';
 
@@ -14,3 +14,4 @@ export const createLocalWallet = async ({
   });
   return data;
 };
+export * from './useCreateLocalWallet';

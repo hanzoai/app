@@ -1,8 +1,8 @@
 import { type FormProps } from '@rjsf/core';
 import { type FieldProps } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import { useUploadPlaygroundToolFiles } from '@hanzo/node/v2/mutations/uploadPlaygroundToolFiles/useUploadPlaygroundToolFiles';
-import { useGetHanzoFileProtocol } from '@hanzo/node/v2/queries/getHanzoFileProtocol/useGetHanzoFileProtocol';
+import { useUploadPlaygroundToolFiles } from '@hanzo/node/v2/mutations/uploadPlaygroundToolFiles';
+import { useGetHanzoFileProtocol } from '@hanzo/node/v2/queries/getHanzoFileProtocol';
 import {
   Button,
   CommandShortcut,

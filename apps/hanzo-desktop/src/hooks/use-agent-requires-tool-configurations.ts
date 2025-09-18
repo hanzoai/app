@@ -1,5 +1,5 @@
 import { type Agent } from '@hanzo/message/api/agents/types';
-import { useGetTools } from '@hanzo/node/v2/queries/getToolsList/useGetToolsList';
+import { useGetTools } from '@hanzo/node/v2/queries/getToolsList';
 import { useMemo } from 'react';
 
 import { useAuth } from '../store/auth';

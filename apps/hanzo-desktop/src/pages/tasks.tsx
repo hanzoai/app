@@ -2,11 +2,11 @@ import { DialogClose } from '@radix-ui/react-dialog';
 import { DotsVerticalIcon } from '@radix-ui/react-icons';
 import { useTranslation } from '@hanzo/i18n';
 import { type JobConfig } from '@hanzo/message/api/jobs/types';
-import { useRemoveRecurringTask } from '@hanzo/node/v2/mutations/removeRecurringTask/useRemoveRecurringTask';
-import { useRunTaskNow } from '@hanzo/node/v2/mutations/runTaskNow/useRunTaskNow';
-import { useUpdateRecurringTask } from '@hanzo/node/v2/mutations/updateRecurringTask/useUpdateRecurringTask';
-import { useGetRecurringTaskNextExecutionTime } from '@hanzo/node/v2/queries/getRecurringTaskNextExecutionTime/useGetRecurringTaskNextExecutionTime';
-import { useGetRecurringTasks } from '@hanzo/node/v2/queries/getRecurringTasks/useGetRecurringTasks';
+import { useRemoveRecurringTask } from '@hanzo/node/v2/mutations/removeRecurringTask';
+import { useRunTaskNow } from '@hanzo/node/v2/mutations/runTaskNow';
+import { useUpdateRecurringTask } from '@hanzo/node/v2/mutations/updateRecurringTask';
+import { useGetRecurringTaskNextExecutionTime } from '@hanzo/node/v2/queries/getRecurringTaskNextExecutionTime';
+import { useGetRecurringTasks } from '@hanzo/node/v2/queries/getRecurringTasks';
 import {
   Button,
   buttonVariants,

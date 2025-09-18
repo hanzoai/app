@@ -1,7 +1,7 @@
 import {
   addOllamaModels,
   scanOllamaModels,
-} from '@hanzo_network/hanzo-message-ts/api/ollama';
+} from '@hanzo-app/message/api/ollama';
 
 import { type SyncOllamaModelsInput } from './types';
 
@@ -24,3 +24,4 @@ export const syncOllamaModels = async ({
   };
   return addOllamaModels(nodeAddress, token, payload);
 };
+export * from './useSyncOllamaModels';

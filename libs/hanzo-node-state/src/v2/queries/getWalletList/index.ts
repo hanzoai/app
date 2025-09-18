@@ -1,4 +1,4 @@
-import { getWalletList as getWalletListApi } from '@hanzo_network/hanzo-message-ts/api/wallets';
+import { getWalletList as getWalletListApi } from '@hanzo-app/message/api/wallets';
 
 import { type GetWalletListInput } from './types';
 
@@ -9,3 +9,4 @@ export const getWalletList = async ({
   const response = await getWalletListApi(nodeAddress, token);
   return response;
 };
+export * from './useGetWalletList';

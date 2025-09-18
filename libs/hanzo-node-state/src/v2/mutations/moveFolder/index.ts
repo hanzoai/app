@@ -1,4 +1,4 @@
-import { moveFolder as moveFolderApi } from '@hanzo_network/hanzo-message-ts/api/vector-fs/index';
+import { moveFolder as moveFolderApi } from '@hanzo-app/message/api/vector-fs/index';
 
 import { type MoveVRFolderInput } from './types';
 
@@ -13,3 +13,4 @@ export const moveFolder = async ({
     destination_path: destinationPath,
   });
 };
+export * from './useMoveFolder';

@@ -1,8 +1,8 @@
-import { executeToolCode as executeToolCodeApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { executeToolCode as executeToolCodeApi } from '@hanzo-app/message/api/tools/index';
 import {
   CodeLanguage,
   DynamicToolType,
-} from '@hanzo_network/hanzo-message-ts/api/tools/types';
+} from '@hanzo-app/message/api/tools/types';
 
 import { type ExecuteToolCodeInput } from './types';
 
@@ -42,3 +42,4 @@ export const executeToolCode = async ({
     xHanzoToolId,
   );
 };
+export * from './useExecuteToolCode';

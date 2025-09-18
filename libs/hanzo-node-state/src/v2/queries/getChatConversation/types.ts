@@ -2,8 +2,8 @@ import {
   type Token,
   type ToolArgs,
   type ToolStatusType,
-} from '@hanzo_network/hanzo-message-ts/api/general/types';
-import { type ProviderDetails } from '@hanzo_network/hanzo-message-ts/api/jobs/types';
+} from '@hanzo-app/message/api/general/types';
+import { type ProviderDetails } from '@hanzo-app/message/api/jobs/types';
 import { type InfiniteData } from '@tanstack/react-query';
 import { type ReactNode } from 'react';
 

@@ -1,8 +1,8 @@
 import { DialogClose } from '@radix-ui/react-dialog';
 import { useTranslation } from '@hanzo/i18n';
 import { FunctionKeyV2 } from '@hanzo/node/v2/constants';
-import { useRemoveAgent } from '@hanzo/node/v2/mutations/removeAgent/useRemoveAgent';
-import { useGetAgents } from '@hanzo/node/v2/queries/getAgents/useGetAgents';
+import { useRemoveAgent } from '@hanzo/node/v2/mutations/removeAgent';
+import { useGetAgents } from '@hanzo/node/v2/queries/getAgents';
 import {
   Button,
   buttonVariants,

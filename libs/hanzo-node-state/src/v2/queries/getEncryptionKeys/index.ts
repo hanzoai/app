@@ -1,7 +1,7 @@
 import {
   generateEncryptionKeys,
   generateSignatureKeys,
-} from '@hanzo_network/hanzo-message-ts/utils';
+} from '@hanzo-app/message/utils';
 
 import { type Encryptionkeys } from './types';
 
@@ -18,3 +18,4 @@ export const generateMyEncryptionKeys = async (): Promise<Encryptionkeys> => {
     profile_identity_sk: profileSignatureKeys.my_identity_sk_string,
   };
 };
+export * from './useGetEncryptionKeys';

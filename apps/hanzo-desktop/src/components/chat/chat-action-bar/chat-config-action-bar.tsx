@@ -2,10 +2,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { PopoverClose } from '@radix-ui/react-popover';
 import { useTranslation } from '@hanzo/i18n';
 import { extractJobIdFromInbox } from '@hanzo/message/utils/inbox_name_handler';
-import { useUpdateChatConfig } from '@hanzo/node/v2/mutations/updateChatConfig/useUpdateChatConfig';
-import { useGetChatConfig } from '@hanzo/node/v2/queries/getChatConfig/useGetChatConfig';
-import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders/useGetLLMProviders';
-import { useGetProviderFromJob } from '@hanzo/node/v2/queries/getProviderFromJob/useGetProviderFromJob';
+import { useUpdateChatConfig } from '@hanzo/node/v2/mutations/updateChatConfig';
+import { useGetChatConfig } from '@hanzo/node/v2/queries/getChatConfig';
+import { useGetLLMProviders } from '@hanzo/node/v2/queries/getLLMProviders';
+import { useGetProviderFromJob } from '@hanzo/node/v2/queries/getProviderFromJob';
 import {
   Button,
   Form,

@@ -1,4 +1,4 @@
-import { exportMessagesFromInbox as exportMessagesFromInboxApi } from '@hanzo_network/hanzo-message-ts/api/jobs/index';
+import { exportMessagesFromInbox as exportMessagesFromInboxApi } from '@hanzo-app/message/api/jobs/index';
 
 import { type ExportMessagesFromInboxInput } from './types';
 
@@ -13,3 +13,4 @@ export const exportMessagesFromInbox = async ({
     format,
   });
 };
+export * from './useExportMessagesFromInbox';

@@ -1,4 +1,4 @@
-import { updateQuestsStatus as updateQuestsStatusApi } from '@hanzo_network/hanzo-message-ts/api/quests/index';
+import { updateQuestsStatus as updateQuestsStatusApi } from '@hanzo-app/message/api/quests/index';
 
 import { type UpdateQuestsStatusInput } from './types';
 
@@ -9,3 +9,4 @@ export const updateQuestsStatus = async ({
   const response = await updateQuestsStatusApi(nodeAddress, token);
   return response;
 };
+export * from './useUpdateQuestsStatus';

@@ -1,4 +1,4 @@
-import { setToolMcpEnabled as setToolMcpEnabledApi } from '@hanzo_network/hanzo-message-ts/api/tools/index';
+import { setToolMcpEnabled as setToolMcpEnabledApi } from '@hanzo-app/message/api/tools/index';
 
 import { type SetToolMcpEnabledInput } from './types';
 
@@ -16,3 +16,4 @@ export const setToolMcpEnabled = async ({
   );
   return response;
 };
+export * from './useSetToolMcpEnabled';

@@ -1,5 +1,5 @@
 import { useTranslation } from '@hanzo/i18n';
-import { useGetDockerStatus } from '@hanzo/node/v2/queries/getDockerStatus/useGetDockerStatus';
+import { useGetDockerStatus } from '@hanzo/node/v2/queries/getDockerStatus';
 import {
   Alert,
   AlertDescription,

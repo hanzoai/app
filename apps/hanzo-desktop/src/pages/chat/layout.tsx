@@ -9,12 +9,12 @@ import {
   type UpdateInboxNameFormSchema,
   updateInboxNameFormSchema,
 } from '@hanzo/node/forms/chat/inbox';
-import { useRemoveJob } from '@hanzo/node/v2/mutations/removeJob/useRemoveJob';
-import { useUpdateInboxName } from '@hanzo/node/v2/mutations/updateInboxName/useUpdateInboxName';
-import { useGetAgent } from '@hanzo/node/v2/queries/getAgent/useGetAgent';
-import { useGetAgents } from '@hanzo/node/v2/queries/getAgents/useGetAgents';
-import { useGetAgentInboxes } from '@hanzo/node/v2/queries/getInboxes/useGetAgentInboxes';
-import { useGetInboxesWithPagination } from '@hanzo/node/v2/queries/getInboxes/useGetInboxesWithPagination';
+import { useRemoveJob } from '@hanzo/node/v2/mutations/removeJob';
+import { useUpdateInboxName } from '@hanzo/node/v2/mutations/updateInboxName';
+import { useGetAgent } from '@hanzo/node/v2/queries/getAgent';
+import { useGetAgents } from '@hanzo/node/v2/queries/getAgents';
+import { useGetAgentInboxes } from '@hanzo/node/v2/queries/getInboxes';
+import { useGetInboxesWithPagination } from '@hanzo/node/v2/queries/getInboxes';
 import {
   Button,
   buttonVariants,

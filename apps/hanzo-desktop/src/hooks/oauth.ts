@@ -1,4 +1,4 @@
-import { useSetOAuthToken } from '@hanzo/node/v2/mutations/setOAuthToken/index';
+import { useSetOAuthToken } from '@hanzo/node/v2/mutations';
 import { emit, listen } from '@tauri-apps/api/event';
 import { useEffect } from 'react';
 
