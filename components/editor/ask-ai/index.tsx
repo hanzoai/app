@@ -319,14 +319,11 @@ export function AskAI({
                   ) : (
                     <span className="inline-flex">
                       {[
-                        "D",
-                        "e",
-                        "e",
-                        "p",
-                        "S",
-                        "i",
-                        "t",
-                        "e",
+                        "H",
+                        "a",
+                        "n",
+                        "z",
+                        "o",
                         " ",
                         "i",
                         "s",
