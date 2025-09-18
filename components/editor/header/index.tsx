@@ -32,11 +32,23 @@ export function Header({
   return (
     <header className="border-b bg-slate-200 border-slate-300 dark:bg-neutral-950 dark:border-neutral-800 px-3 lg:px-6 py-2 flex items-center max-lg:gap-3 justify-between lg:grid lg:grid-cols-3 z-20">
       <div className="flex items-center justify-start gap-3">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-700 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-lg">H</span>
+          </div>
+          <span className="hidden md:inline font-semibold">Hanzo Dev</span>
+        </Link>
+        <div className="h-6 w-px bg-neutral-700 hidden md:block" />
         <Link href="/dashboard">
           <Button variant="ghost" size="sm" className="gap-2">
-            <ArrowLeft className="size-4" />
+            <Home className="size-4" />
             <span className="hidden md:inline">Dashboard</span>
-            <span className="md:hidden">Back</span>
+          </Button>
+        </Link>
+        <Link href="/chat">
+          <Button variant="ghost" size="sm" className="gap-2">
+            <MessageCircleCode className="size-4" />
+            <span className="hidden md:inline">Chat</span>
           </Button>
         </Link>
       </div>

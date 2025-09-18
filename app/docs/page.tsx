@@ -264,7 +264,7 @@ export default function DocsPage() {
                 Dashboard
               </Button>
               <Button
-                onClick={() => router.push('/projects/new')}
+                onClick={() => router.push('/dev')}
                 className="bg-white text-black hover:bg-white/90 text-sm font-semibold px-5 py-2.5 rounded-xl"
               >
                 Get started

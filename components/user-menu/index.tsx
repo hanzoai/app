@@ -45,7 +45,7 @@ export const UserMenu = ({ className }: { className?: string }) => {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <Link href="/projects/new">
+          <Link href="/dev">
             <DropdownMenuItem>
               <CirclePlus className="size-4 text-neutral-100" />
               New Project

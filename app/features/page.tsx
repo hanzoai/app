@@ -216,7 +216,7 @@ export default function FeaturesPage() {
                 Dashboard
               </Button>
               <Button
-                onClick={() => router.push('/projects/new')}
+                onClick={() => router.push('/dev')}
                 className="bg-white text-black hover:bg-white/90 text-sm font-semibold px-5 py-2.5 rounded-xl"
               >
                 Get started
@@ -317,7 +317,7 @@ export default function FeaturesPage() {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Button
-                onClick={() => user ? router.push('/projects/new') : openLoginWindow()}
+                onClick={() => user ? router.push('/dev') : openLoginWindow()}
                 className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-400 hover:to-purple-400 text-white px-8 py-3 rounded-xl font-semibold text-lg"
               >
                 <Zap className="w-5 h-5 mr-2" />
@@ -495,7 +495,7 @@ export default function FeaturesPage() {
                           ? 'bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-400 hover:to-purple-400 text-white'
                           : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
                       }`}
-                      onClick={() => plan.name === 'Enterprise' ? router.push('/enterprise') : (user ? router.push('/projects/new') : openLoginWindow())}
+                      onClick={() => plan.name === 'Enterprise' ? router.push('/enterprise') : (user ? router.push('/dev') : openLoginWindow())}
                     >
                       {plan.cta}
                     </Button>
@@ -539,7 +539,7 @@ export default function FeaturesPage() {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Button
-                onClick={() => user ? router.push('/projects/new') : openLoginWindow()}
+                onClick={() => user ? router.push('/dev') : openLoginWindow()}
                 className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-400 hover:to-purple-400 text-white px-8 py-3 rounded-xl font-semibold text-lg"
               >
                 <Zap className="w-5 h-5 mr-2" />

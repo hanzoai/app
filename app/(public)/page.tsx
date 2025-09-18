@@ -1,7 +1,7 @@
 import { AskAi } from "@/components/space/ask-ai";
 import { redirect } from "next/navigation";
 export default function Home() {
-  redirect("/projects/new");
+  redirect("/dev");
   return (
     <>
       <header className="container mx-auto pt-20 px-6 relative flex flex-col items-center justify-center text-center">

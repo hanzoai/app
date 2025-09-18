@@ -13,7 +13,7 @@ import { UserMenu } from "@/components/user-menu";
 const navigationLinks = [
   {
     name: "Create Website",
-    href: "/projects/new",
+    href: "/dev",
   },
   {
     name: "Gallery",

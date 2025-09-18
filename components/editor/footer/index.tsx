@@ -82,7 +82,7 @@ export function Footer({
         )}
         {user && !isNew && <p className="text-neutral-700">|</p>}
         {!isNew && (
-          <Link href="/projects/new">
+          <Link href="/dev">
             <Button size="sm" variant="secondary">
               <MdAdd className="text-sm" />
               New <span className="max-lg:hidden">Project</span>

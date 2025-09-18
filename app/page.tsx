@@ -74,13 +74,13 @@ export default function LandingPage() {
 
     if (!user) {
       // Store that we should redirect to new project after login
-      localStorage.setItem("redirectAfterLogin", "/projects/new");
+      localStorage.setItem("redirectAfterLogin", "/dev");
       openLoginWindow();
       return;
     }
 
     setIsCreating(true);
-    router.push("/projects/new");
+    router.push("/dev");
   };
 
   const showcaseProjects = [
@@ -224,7 +224,7 @@ export default function LandingPage() {
                 Dashboard
               </Button>
               <Button
-                onClick={() => router.push('/projects/new')}
+                onClick={() => router.push('/dev')}
                 className="bg-white text-black hover:bg-white/90 text-sm font-semibold px-5 py-2.5 rounded-xl"
               >
                 New Project

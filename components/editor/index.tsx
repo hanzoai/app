@@ -3,7 +3,7 @@ import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { editor } from "monaco-editor";
 import Editor from "@monaco-editor/react";
-import { CopyIcon } from "lucide-react";
+import { CopyIcon, Share2 } from "lucide-react";
 import {
   useCopyToClipboard,
   useEvent,
@@ -27,6 +27,10 @@ import { SaveButton } from "./save-button";
 import { LoadProject } from "../my-projects/load-project";
 import { isTheSameHtml } from "@/lib/compare-html-diff";
 import { ListPages } from "./pages";
+import { PageNavigator } from "./page-navigator";
+import { ShareModal } from "./share-modal";
+import { VisualEditor } from "./visual-editor";
+import { Button } from "@/components/ui/button";
 
 export const AppEditor = ({
   project,
@@ -70,6 +74,8 @@ export const AppEditor = ({
     null
   );
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [currentPreviewPath, setCurrentPreviewPath] = useState("/");
 
   const resetLayout = () => {
     if (!editor.current || !preview.current) return;
@@ -205,6 +211,36 @@ export const AppEditor = ({
   return (
     <section className="h-[100dvh] bg-neutral-950 flex flex-col">
       <Header tab={currentTab} onNewTab={setCurrentTab}>
+        {currentTab === "preview" && (
+          <PageNavigator
+            currentPath={currentPreviewPath}
+            onNavigate={(path) => {
+              setCurrentPreviewPath(path);
+              // Update iframe src
+              if (iframeRef.current) {
+                const doc = iframeRef.current.contentDocument;
+                if (doc) {
+                  // Navigate within the iframe
+                  doc.location.href = path;
+                }
+              }
+            }}
+            onReload={() => {
+              if (iframeRef.current) {
+                iframeRef.current.contentWindow?.location.reload();
+              }
+            }}
+          />
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsShareModalOpen(true)}
+          className="gap-2"
+        >
+          <Share2 className="w-4 h-4" />
+          <span className="hidden md:inline">Share</span>
+        </Button>
         <LoadProject
           onSuccess={(project: Project) => {
             router.push(`/projects/${project.space_id}`);
@@ -370,23 +406,44 @@ export const AppEditor = ({
             />
           </>
         )}
-        <Preview
-          html={currentPageData?.html}
-          isResizing={isResizing}
-          isAiWorking={isAiWorking}
-          ref={preview}
-          device={device}
-          pages={pages}
-          setCurrentPage={setCurrentPage}
-          currentTab={currentTab}
-          isEditableModeEnabled={isEditableModeEnabled}
-          iframeRef={iframeRef}
-          onClickElement={(element) => {
-            setIsEditableModeEnabled(false);
-            setSelectedElement(element);
-            setCurrentTab("chat");
-          }}
-        />
+        <div className="relative flex-1">
+          <Preview
+            html={currentPageData?.html}
+            isResizing={isResizing}
+            isAiWorking={isAiWorking}
+            ref={preview}
+            device={device}
+            pages={pages}
+            setCurrentPage={setCurrentPage}
+            currentTab={currentTab}
+            isEditableModeEnabled={isEditableModeEnabled}
+            iframeRef={iframeRef}
+            onClickElement={(element) => {
+              setIsEditableModeEnabled(false);
+              setSelectedElement(element);
+              setCurrentTab("chat");
+            }}
+          />
+          {currentTab === "preview" && (
+            <VisualEditor
+              iframeRef={iframeRef}
+              editorRef={editorRef}
+              isEnabled={isEditableModeEnabled}
+              onToggle={setIsEditableModeEnabled}
+              onElementSelect={(info) => {
+                console.log("Element selected:", info);
+              }}
+              onCodeUpdate={(newHtml, location) => {
+                // Update the current page with new HTML
+                setPages((prev) =>
+                  prev.map((page) =>
+                    page.path === currentPage ? { ...page, html: newHtml } : page
+                  )
+                );
+              }}
+            />
+          )}
+        </div>
       </main>
       <Footer
         pages={pages}
@@ -396,6 +453,12 @@ export const AppEditor = ({
         device={device}
         isNew={isNew}
         setDevice={setDevice}
+      />
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        projectId={project?._id}
+        projectName={project?.name || "Untitled Project"}
       />
     </section>
   );

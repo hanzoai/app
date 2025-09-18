@@ -191,7 +191,7 @@ export default function BillingPage() {
             </div>
           </div>
           <Button
-            onClick={() => router.push('/projects/new')}
+            onClick={() => router.push('/dev')}
             className="bg-white text-black hover:bg-white/90"
           >
             New Project
