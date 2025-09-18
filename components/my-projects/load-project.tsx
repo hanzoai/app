@@ -10,8 +10,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@hanzo/ui";
+import { Input } from "@hanzo/ui";
 import Loading from "@/components/loading";
-import { Input } from "../ui/input";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useUser } from "@/hooks/useUser";
