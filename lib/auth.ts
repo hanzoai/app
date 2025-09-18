@@ -10,11 +10,19 @@ export const isAuthenticated = async (): // req: NextRequest
 Promise<UserResponse | NextResponse<unknown> | undefined> => {
   const authHeaders = await headers();
   const cookieStore = await cookies();
-  const token = cookieStore.get(MY_TOKEN_KEY())?.value
-    ? `Bearer ${cookieStore.get(MY_TOKEN_KEY())?.value}`
-    : authHeaders.get("Authorization");
+
+  // Get token from cookie or headers
+  const cookieToken = cookieStore.get(MY_TOKEN_KEY())?.value;
+  const headerToken = authHeaders.get("Authorization");
+
+  let token = headerToken;
+  if (cookieToken) {
+    // Cookie already contains the raw token, add Bearer prefix
+    token = `Bearer ${cookieToken}`;
+  }
 
   if (!token) {
+    console.log("Auth failed: No token found in cookies or headers");
     return NextResponse.json(
       {
         ok: false,
@@ -29,14 +37,18 @@ Promise<UserResponse | NextResponse<unknown> | undefined> => {
     );
   }
 
-  const user = await fetch("https://huggingface.co/api/whoami-v2", {
-    headers: {
-      Authorization: token,
-    },
-    method: "GET",
-  })
-    .then((res) => res.json())
-    .catch(() => {
+  console.log("Verifying token with Hugging Face API...");
+
+  try {
+    const response = await fetch("https://huggingface.co/api/whoami-v2", {
+      headers: {
+        Authorization: token,
+      },
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      console.log("HF API response not OK:", response.status);
       return NextResponse.json(
         {
           ok: false,
@@ -49,12 +61,38 @@ Promise<UserResponse | NextResponse<unknown> | undefined> => {
           },
         }
       );
-    });
-  if (!user || !user.id) {
+    }
+
+    const user = await response.json();
+
+    if (!user || !user.id) {
+      console.log("Invalid user data received:", user);
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "Invalid token",
+        },
+        {
+          status: 401,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
+    console.log("Auth successful for user:", user.name || user.id);
+
+    return {
+      ...user,
+      token: token.replace("Bearer ", ""),
+    };
+  } catch (error) {
+    console.error("Auth error:", error);
     return NextResponse.json(
       {
         ok: false,
-        message: "Invalid token",
+        message: "Authentication failed",
       },
       {
         status: 401,
@@ -64,9 +102,4 @@ Promise<UserResponse | NextResponse<unknown> | undefined> => {
       }
     );
   }
-
-  return {
-    ...user,
-    token: token.replace("Bearer ", ""),
-  };
 };

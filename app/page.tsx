@@ -200,9 +200,6 @@ export default function LandingPage() {
             <Link href="/learn" className="text-white/70 hover:text-white text-sm font-medium transition-colors">
               Learn
             </Link>
-            <Link href="/launched" className="text-white/70 hover:text-white text-sm font-medium transition-colors">
-              Launched
-            </Link>
           </div>
         </div>
 
@@ -287,9 +284,6 @@ export default function LandingPage() {
                   </Link>
                   <Link href="/learn" className="block text-2xl font-medium text-white/90 hover:text-white transition-colors">
                     Learn
-                  </Link>
-                  <Link href="/launched" className="block text-2xl font-medium text-white/90 hover:text-white transition-colors">
-                    Launched
                   </Link>
                 </div>
               </div>
