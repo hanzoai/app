@@ -245,8 +245,26 @@ const TermsAndConditionsPage = () => {
             console.log(
               '🚀 GET STARTED BUTTON CLICKED - ATTEMPTING TO SPAWN/CONNECT TO HANZOD',
             );
-            // The spawn function will auto-detect if hanzod is already running
-            await hanzoNodeSpawn();
+            try {
+              // The spawn function will auto-detect if hanzod is already running
+              await hanzoNodeSpawn();
+
+              // Wait a bit for the node to start
+              setTimeout(async () => {
+                if (encryptionKeys) {
+                  // Try to connect
+                  const formData = setupDataForm.getValues();
+                  await submitRegistrationNoCode({
+                    nodeAddress: formData.node_address,
+                    encryptionKeys: encryptionKeys!,
+                  });
+                }
+              }, 2000);
+            } catch (error) {
+              console.error('Failed to start node:', error);
+              // Try direct navigation as fallback
+              navigate('/quick-connection');
+            }
           }}
         >
           {t('common.getStarted')}
