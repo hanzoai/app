@@ -210,8 +210,14 @@ export default function LandingPage() {
         <div className="hidden md:flex items-center gap-4">
           {user ? (
             <>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-xs text-white font-bold">
+                  {user.name?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <span className="text-sm text-white/90">{user.name || user.id}</span>
+              </div>
               <Button
-                onClick={() => router.push('/projects')}
+                onClick={() => router.push('/dashboard')}
                 variant="ghost"
                 className="text-white/70 hover:text-white text-sm font-medium"
               >
@@ -221,7 +227,7 @@ export default function LandingPage() {
                 onClick={() => router.push('/projects/new')}
                 className="bg-white text-black hover:bg-white/90 text-sm font-semibold px-5 py-2.5 rounded-xl"
               >
-                Get started
+                New Project
               </Button>
             </>
           ) : (
@@ -294,10 +300,19 @@ export default function LandingPage() {
               <div className="p-4 border-t border-white/10 space-y-3">
                 {user ? (
                   <>
+                    <div className="flex items-center gap-3 px-3 py-2 mb-3 rounded-lg bg-white/10">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-bold">
+                        {user.name?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                      <div>
+                        <p className="text-white font-medium">{user.name || 'User'}</p>
+                        <p className="text-white/60 text-sm">{user.id}</p>
+                      </div>
+                    </div>
                     <Button
                       onClick={() => {
                         setMobileMenuOpen(false);
-                        router.push('/projects');
+                        router.push('/dashboard');
                       }}
                       className="w-full bg-white/10 text-white hover:bg-white/20"
                     >
@@ -310,7 +325,7 @@ export default function LandingPage() {
                       }}
                       className="w-full bg-white text-black hover:bg-white/90"
                     >
-                      Get started
+                      New Project
                     </Button>
                   </>
                 ) : (

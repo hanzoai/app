@@ -3,12 +3,14 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCookie } from "react-use";
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 
 import { User } from "@/types";
 import MY_TOKEN_KEY from "@/lib/get-cookie-name";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { getAuthCookieOptions, getIframeCookieOptions, getRemoveCookieOptions } from "@/lib/cookie-options";
+import { storeAuth, getStoredAuth, clearAuth, getStoredUser } from "@/lib/client-auth";
 
 
 export const useUser = (initialData?: {
@@ -20,21 +22,40 @@ export const useUser = (initialData?: {
   const router = useRouter();
   const [, setCookie] = useCookie(cookie_name);
   const [currentRoute, setCurrentRoute] = useCookie("hanzo-currentRoute");
+  const [localUser, setLocalUser] = useState<User | null>(null);
 
-  const { data: { user, errCode } = { user: null, errCode: null }, isLoading } =
+  // Load user from localStorage on mount
+  useEffect(() => {
+    const storedUser = getStoredUser();
+    if (storedUser) {
+      setLocalUser(storedUser);
+      client.setQueryData(["user.me"], {
+        user: storedUser,
+        errCode: null,
+      });
+    }
+  }, [client]);
+
+  const { data: { user, errCode } = { user: localUser, errCode: null }, isLoading } =
     useQuery({
       queryKey: ["user.me"],
       queryFn: async () => {
-        return { user: initialData?.user, errCode: initialData?.errCode };
+        const storedUser = getStoredUser();
+        if (storedUser) {
+          return { user: storedUser, errCode: null };
+        }
+        return { user: initialData?.user || null, errCode: initialData?.errCode || null };
       },
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
       refetchOnMount: false,
       retry: false,
-      initialData: initialData
+      initialData: localUser
+        ? { user: localUser, errCode: null }
+        : initialData
         ? { user: initialData?.user, errCode: initialData?.errCode }
         : undefined,
-      enabled: false,
+      enabled: true,
     });
 
   const { data: loadingAuth } = useQuery({
@@ -61,7 +82,11 @@ export const useUser = (initialData?: {
       const res = await api.post("/auth", { code });
 
       if (res.data && res.data.access_token) {
+        // Store in both localStorage and cookie for backward compatibility
+        storeAuth(res.data.access_token, res.data.user, res.data.expires_in);
         setCookie(res.data.access_token, getAuthCookieOptions(res.data.expires_in));
+
+        setLocalUser(res.data.user);
         client.setQueryData(["user.me"], {
           user: res.data.user,
           errCode: null,
@@ -103,14 +128,22 @@ export const useUser = (initialData?: {
   };
 
   const logout = async () => {
+    // Clear both localStorage and cookies
+    clearAuth();
     setCookie("", getRemoveCookieOptions());
-    router.push("/");
-    toast.success("Logout successful");
+    setLocalUser(null);
+
     client.setQueryData(["user.me"], {
       user: null,
       errCode: null,
     });
-    window.location.reload();
+
+    toast.success("Logout successful");
+    router.push("/");
+
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
   };
 
   return {
