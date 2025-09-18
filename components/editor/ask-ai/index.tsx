@@ -1,6 +1,6 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import classNames from "classnames";
 import { toast } from "sonner";
 import { useLocalStorage, useUpdateEffect } from "react-use";
@@ -207,6 +207,32 @@ export function AskAI({
         toast.error("An unexpected error occurred");
     }
   };
+
+  // Handle initial prompt for new projects
+  useEffect(() => {
+    if (isNew && typeof window !== 'undefined') {
+      // Check for initial prompt stored by AppEditor
+      const initialPrompt = (window as any).__initialPrompt;
+      if (initialPrompt) {
+        // Clean up the global variable
+        delete (window as any).__initialPrompt;
+
+        // Set the prompt
+        setPrompt(initialPrompt);
+
+        // Trigger generation after a short delay to ensure everything is mounted
+        const timer = setTimeout(() => {
+          // Call the AI directly here instead of relying on another effect
+          if (!isAiWorking) {
+            callAi();
+          }
+        }, 500);
+
+        return () => clearTimeout(timer);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNew]);
 
   useUpdateEffect(() => {
     if (refThink.current) {

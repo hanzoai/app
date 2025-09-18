@@ -1,7 +1,6 @@
 "use server";
 
 import { isAuthenticated } from "@/lib/auth";
-import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Project from "@/models/Project";
 import { Project as ProjectType } from "@/types";
@@ -12,7 +11,8 @@ export async function getProjects(): Promise<{
 }> {
   const user = await isAuthenticated();
 
-  if (user instanceof NextResponse || !user) {
+  if (!user) {
+    console.log("getProjects: No user found, returning empty projects");
     return {
       ok: false,
       projects: [],
@@ -44,7 +44,7 @@ export async function getProject(
 ): Promise<ProjectType | null> {
   const user = await isAuthenticated();
 
-  if (user instanceof NextResponse || !user) {
+  if (!user) {
     return null;
   }
 

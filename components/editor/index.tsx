@@ -141,6 +141,16 @@ export const AppEditor = ({
       toast.warning("Previous HTML content restored from local storage.");
     }
 
+    // Load initial prompt from localStorage for new projects
+    if (isNew) {
+      const initialPrompt = localStorage.getItem("initialPrompt");
+      if (initialPrompt) {
+        localStorage.removeItem("initialPrompt");
+        // Store the prompt for AskAI to use
+        (window as any).__initialPrompt = initialPrompt;
+      }
+    }
+
     resetLayout();
     if (!resizer.current) return;
     resizer.current.addEventListener("mousedown", handleMouseDown);
@@ -292,6 +302,7 @@ export const AppEditor = ({
                 onValidate={handleEditorValidation}
               />
               <AskAI
+                isNew={isNew}
                 project={project}
                 images={images}
                 currentPage={currentPageData}
@@ -345,7 +356,6 @@ export const AppEditor = ({
                     editorRef.current?.getModel()?.getLineCount() ?? 0
                   );
                 }}
-                isNew={isNew}
                 isEditableModeEnabled={isEditableModeEnabled}
                 setIsEditableModeEnabled={setIsEditableModeEnabled}
                 selectedElement={selectedElement}
