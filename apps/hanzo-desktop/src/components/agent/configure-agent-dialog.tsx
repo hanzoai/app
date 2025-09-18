@@ -5,7 +5,7 @@ import {
 } from '@hanzo_network/hanzo-message-ts/api/tools/types';
 import { useSetToolOffering } from '@hanzo_network/hanzo-node-state/v2/mutations/setToolOffering/useSetToolOffering';
 import { type FormattedNetworkAgent } from '@hanzo_network/hanzo-node-state/v2/queries/getNetworkAgents/types';
-import { useGetWalletList } from '@hanzonet/hanzo-node-state/v2/queries/getWalletList/useGetWalletList';
+import { useGetWalletList } from '@hanzonet/wallet-hooks';
 import {
   Dialog,
   DialogTrigger,

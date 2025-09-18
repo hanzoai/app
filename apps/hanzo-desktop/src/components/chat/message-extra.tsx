@@ -6,7 +6,7 @@ import {
 } from '@hanzo_network/hanzo-message-ts/api/general/types';
 import { usePayInvoice } from '@hanzo_network/hanzo-node-state/v2/mutations/payInvoice/usePayInvoice';
 import { useRejectInvoice } from '@hanzo_network/hanzo-node-state/v2/mutations/rejectInvoice/useRejectInvoice';
-import { useGetWalletList } from '@hanzonet/hanzo-node-state/v2/queries/getWalletList/useGetWalletList';
+import { useGetWalletList } from '@hanzonet/wallet-hooks';
 import { Button, Dialog, DialogContent } from '@hanzo_network/hanzo-ui';
 import { CryptoWalletIcon } from '@hanzo_network/hanzo-ui/assets';
 import { AnimatePresence, motion } from 'framer-motion';

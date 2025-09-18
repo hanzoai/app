@@ -7,7 +7,7 @@ import {
 import { useSetToolOffering } from '@hanzo_network/hanzo-node-state/v2/mutations/setToolOffering/useSetToolOffering';
 import { useGetAgents } from '@hanzo_network/hanzo-node-state/v2/queries/getAgents/useGetAgents';
 import { useGetToolsWithOfferings } from '@hanzo_network/hanzo-node-state/v2/queries/getToolsWithOfferings/useGetToolsWithOfferings';
-import { useGetWalletList } from '@hanzonet/hanzo-node-state/v2/queries/getWalletList/useGetWalletList';
+import { useGetWalletList } from '@hanzonet/wallet-hooks';
 import {
   Dialog,
   DialogTrigger,

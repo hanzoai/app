@@ -4,12 +4,14 @@ import { useTranslation } from '@hanzo_network/hanzo-i18n';
 import {
   NetworkIdentifier,
   WalletRole,
-} from '@hanzonet/hanzo-message-ts/api/wallets';
-import { useCreateLocalWallet } from '@hanzonet/hanzo-node-state/v2/mutations/createLocalWallet/useCreateLocalWallet';
-import { useRestoreCoinbaseMpcWallet } from '@hanzonet/hanzo-node-state/v2/mutations/restoreCoinbaseMpcWallet/useRestoreCoinbaseMpcWallet';
-import { useRestoreLocalWallet } from '@hanzonet/hanzo-node-state/v2/mutations/restoreLocalWallet/useRestoreLocalWallet';
-import { useGetWalletBalance } from '@hanzonet/hanzo-node-state/v2/queries/getWalletBalance/useGetWalletBalance';
-import { useGetWalletList } from '@hanzonet/hanzo-node-state/v2/queries/getWalletList/useGetWalletList';
+} from '@hanzonet/wallets';
+import {
+  useCreateLocalWallet,
+  useRestoreCoinbaseMpcWallet,
+  useRestoreLocalWallet,
+  useGetWalletBalance,
+  useGetWalletList
+} from '@hanzonet/wallet-hooks';
 import {
   Alert,
   AlertDescription,

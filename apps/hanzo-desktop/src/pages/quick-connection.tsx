@@ -7,7 +7,7 @@ import {
 import { useInitialRegistration } from '@hanzo_network/hanzo-node-state/v2/mutations/initialRegistration/useInitialRegistration';
 import { useGetEncryptionKeys } from '@hanzo_network/hanzo-node-state/v2/queries/getEncryptionKeys/useGetEncryptionKeys';
 import { useGetHealth } from '@hanzo_network/hanzo-node-state/v2/queries/getHealth/useGetHealth';
-import { useGetWalletList } from '@hanzonet/hanzo-node-state/v2/queries/getWalletList/useGetWalletList';
+import { useGetWalletList } from '@hanzonet/wallet-hooks';
 import {
   Button,
   type ButtonProps,
