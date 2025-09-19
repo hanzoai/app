@@ -58,9 +58,6 @@ docs
 Jenkinsfile
 
 # Docker
-Dockerfile*
-docker-compose*
-compose*
 .dockerignore
 
 # Misc
