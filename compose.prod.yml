@@ -4,7 +4,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile.production
+      dockerfile: Dockerfile
     restart: unless-stopped
     # No ports exposed - Traefik handles routing via network
     environment:
