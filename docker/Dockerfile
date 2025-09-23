@@ -11,6 +11,9 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json pnpm-lock.yaml* ./
+COPY patches/ patches/
+COPY lib/@hanzo_network/ lib/@hanzo_network/
+COPY scripts/ scripts/
 
 # Install all dependencies (including dev for build)
 RUN pnpm install --frozen-lockfile
