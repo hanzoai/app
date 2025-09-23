@@ -513,8 +513,8 @@ export function AskAI({
                 : "Ask Hanzo anything..."
             }
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => {
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setPrompt(e.target.value)}
+            onKeyDown={(e: React.KeyboardEvent) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 callAi();
@@ -627,7 +627,7 @@ export function AskAI({
               <Checkbox
                 id="diff-patch-checkbox"
                 checked={isFollowUp}
-                onCheckedChange={(e) => {
+                onCheckedChange={(e: boolean | "indeterminate") => {
                   if (e === true && !isSameHtml && selectedModel?.isThinker) {
                     setModel(MODELS[0].value);
                   }

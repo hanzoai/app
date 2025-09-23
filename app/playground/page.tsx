@@ -208,7 +208,7 @@ export default function PlaygroundPage() {
     <div className="space-y-4">
       <div className="space-y-2">
         <Label>Model</Label>
-        <Select value={config.model} onValueChange={(value) => setConfig({ ...config, model: value })}>
+        <Select value={config.model} onValueChange={(value: string) => setConfig({ ...config, model: value })}>
           <SelectTrigger className="bg-neutral-900 border-neutral-700">
             <SelectValue />
           </SelectTrigger>
@@ -232,7 +232,7 @@ export default function PlaygroundPage() {
         </div>
         <Slider
           value={[config.temperature]}
-          onValueChange={([value]) => setConfig({ ...config, temperature: value })}
+          onValueChange={([value]: number[]) => setConfig({ ...config, temperature: value })}
           min={0}
           max={1}
           step={0.1}
@@ -247,7 +247,7 @@ export default function PlaygroundPage() {
         </div>
         <Slider
           value={[config.maxTokens]}
-          onValueChange={([value]) => setConfig({ ...config, maxTokens: value })}
+          onValueChange={([value]: number[]) => setConfig({ ...config, maxTokens: value })}
           min={256}
           max={8192}
           step={256}
@@ -262,7 +262,7 @@ export default function PlaygroundPage() {
         </div>
         <Slider
           value={[config.topP]}
-          onValueChange={([value]) => setConfig({ ...config, topP: value })}
+          onValueChange={([value]: number[]) => setConfig({ ...config, topP: value })}
           min={0}
           max={1}
           step={0.05}
@@ -274,7 +274,7 @@ export default function PlaygroundPage() {
         <Label>System Prompt</Label>
         <Textarea
           value={config.systemPrompt}
-          onChange={(e) => setConfig({ ...config, systemPrompt: e.target.value })}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setConfig({ ...config, systemPrompt: e.target.value })}
           className="bg-neutral-900 border-neutral-700 text-white min-h-[80px]"
           placeholder="Enter system prompt..."
         />
@@ -379,7 +379,7 @@ export default function PlaygroundPage() {
                   <Label>Your Prompt</Label>
                   <Textarea
                     value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setPrompt(e.target.value)}
                     placeholder="Enter your prompt here..."
                     className="bg-neutral-800 border-neutral-700 text-white min-h-[150px]"
                   />

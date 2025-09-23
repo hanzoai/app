@@ -119,8 +119,8 @@ export function ShareModal({ isOpen, onClose, projectId, projectName = "Untitled
                   type="email"
                   placeholder="Enter email address"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleInvite()}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                  onKeyDown={(e: React.KeyboardEvent) => e.key === "Enter" && handleInvite()}
                   className="bg-neutral-800 border-neutral-700 text-white pl-10"
                 />
                 <UserPlus className="absolute left-3 top-3 w-4 h-4 text-neutral-500" />
@@ -165,7 +165,7 @@ export function ShareModal({ isOpen, onClose, projectId, projectName = "Untitled
                     <div className="flex items-center gap-2">
                       <Select
                         value={collaborator.role}
-                        onValueChange={(value) => updateCollaboratorRole(collaborator.id, value as "editor" | "viewer")}
+                        onValueChange={(value: string) => updateCollaboratorRole(collaborator.id, value as "editor" | "viewer")}
                       >
                         <SelectTrigger className="w-24 h-8 text-xs bg-neutral-800 border-neutral-700">
                           <SelectValue />

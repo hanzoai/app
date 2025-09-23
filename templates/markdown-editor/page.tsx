@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@hanzo/ui/primitives/card";
-import { Button } from "@hanzo/ui/primitives/button";
-import { Textarea } from "@hanzo/ui/primitives/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@hanzo/ui/primitives/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@hanzo/ui/primitives/select";
-import { Separator } from "@hanzo/ui/primitives/separator";
-import { ScrollArea } from "@hanzo/ui/primitives/scroll-area";
+import { Card, CardContent, CardHeader, CardTitle } from "@hanzo/ui";
+import { Button } from "@hanzo/ui";
+import { Textarea } from "@hanzo/ui";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@hanzo/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@hanzo/ui";
+import { Separator } from "@hanzo/ui";
+import { ScrollArea } from "@hanzo/ui";
 import {
   Bold,
   Italic,
@@ -42,8 +42,8 @@ Built with **@hanzo/ui components** for a seamless writing experience.
 ## Code Example
 
 \`\`\`typescript
-import { Card } from "@hanzo/ui/primitives/card";
-import { Button } from "@hanzo/ui/primitives/button";
+import { Card } from "@hanzo/ui";
+import { Button } from "@hanzo/ui";
 
 export function MyComponent() {
   return (
@@ -274,7 +274,7 @@ Start writing your content above!
               <Textarea
                 id="markdown-input"
                 value={markdown}
-                onChange={(e) => setMarkdown(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setMarkdown(e.target.value)}
                 className="min-h-full p-6 resize-none border-0 focus-visible:ring-0 font-mono text-sm"
                 placeholder="Start writing in markdown..."
               />

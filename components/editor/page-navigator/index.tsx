@@ -123,7 +123,7 @@ export function PageNavigator({ currentPath = "/", onNavigate, onReload }: PageN
           ref={inputRef}
           type="text"
           value={inputPath}
-          onChange={(e) => setInputPath(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputPath(e.target.value)}
           onKeyDown={handleInputSubmit}
           className="bg-transparent text-sm text-white outline-none flex-1 px-2"
           placeholder="/"

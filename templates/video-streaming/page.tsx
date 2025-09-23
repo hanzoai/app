@@ -1,15 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@hanzo/ui/primitives/card";
-import { Button } from "@hanzo/ui/primitives/button";
-import { Badge } from "@hanzo/ui/primitives/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@hanzo/ui/primitives/avatar";
-import { AspectRatio } from "@hanzo/ui/primitives/aspect-ratio";
-import { ScrollArea } from "@hanzo/ui/primitives/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@hanzo/ui/primitives/tabs";
-import { Textarea } from "@hanzo/ui/primitives/textarea";
-import { Progress } from "@hanzo/ui/primitives/progress";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@hanzo/ui";
+import { Button } from "@hanzo/ui";
+import { Badge } from "@hanzo/ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@hanzo/ui";
+import { AspectRatio } from "@hanzo/ui";
+import { ScrollArea } from "@hanzo/ui";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@hanzo/ui";
+import { Textarea } from "@hanzo/ui";
+import { Progress } from "@hanzo/ui";
 import {
   Play,
   Pause,
@@ -301,7 +301,7 @@ export default function VideoStreaming() {
                     <Textarea
                       placeholder="Add a comment..."
                       value={comment}
-                      onChange={(e) => setComment(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setComment(e.target.value)}
                       className="min-h-[80px]"
                     />
                     <div className="flex justify-end gap-2 mt-2">

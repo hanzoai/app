@@ -56,7 +56,7 @@ export function AISupervisor({
   onAutoFix,
 }: {
   pages: any[];
-  iframeRef: React.RefObject<HTMLIFrameElement>;
+  iframeRef: React.RefObject<HTMLIFrameElement | null>;
   isAiWorking: boolean;
   onAutoFix: (fixes: string[]) => void;
 }) {
@@ -67,7 +67,7 @@ export function AISupervisor({
   const [isAutoFixing, setIsAutoFixing] = useState(false);
   const [visualInspectionEnabled, setVisualInspectionEnabled] = useState(true);
   const [sandboxStatus, setSandboxStatus] = useState<"idle" | "running" | "error">("idle");
-  const supervisorInterval = useRef<NodeJS.Timeout>();
+  const supervisorInterval = useRef<NodeJS.Timeout | undefined>(undefined);
   const websocketRef = useRef<WebSocket | null>(null);
 
   // Initialize MCP tools
@@ -284,7 +284,7 @@ export function AISupervisor({
         })();
       `;
 
-      const result = await iframeRef.current.contentWindow.eval(testScript);
+      const result = await (iframeRef.current.contentWindow as any).eval(testScript);
 
       const timestamp = new Date();
       result.errors?.forEach((error: any) => {

@@ -131,7 +131,7 @@ export function LocalAISettings() {
             <Input
               id="host"
               value={nodeConfig.host}
-              onChange={(e) => setNodeConfig({ ...nodeConfig, host: e.target.value })}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNodeConfig({ ...nodeConfig, host: e.target.value })}
               placeholder="localhost"
             />
           </div>
@@ -140,7 +140,7 @@ export function LocalAISettings() {
             <Input
               id="port"
               value={nodeConfig.port}
-              onChange={(e) => setNodeConfig({ ...nodeConfig, port: e.target.value })}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNodeConfig({ ...nodeConfig, port: e.target.value })}
               placeholder="3690"
             />
           </div>

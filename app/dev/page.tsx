@@ -119,11 +119,17 @@ export default function DevPage() {
     );
   }
 
+  // Store the prompt in localStorage for AppEditor to pick up
+  useEffect(() => {
+    if (finalPrompt) {
+      localStorage.setItem("initialPrompt", finalPrompt);
+    }
+  }, [finalPrompt]);
+
   // Pass the prompt to AppEditor
   return (
     <AppEditor
       isNew
-      initialPrompt={finalPrompt}
     />
   );
 }

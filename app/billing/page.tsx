@@ -514,7 +514,7 @@ export default function BillingPage() {
                 type="number"
                 placeholder="Enter amount (min $5)"
                 value={customCreditAmount}
-                onChange={(e) => {
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   setCustomCreditAmount(e.target.value);
                   setSelectedCreditAmount(null);
                 }}

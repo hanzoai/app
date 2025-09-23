@@ -49,7 +49,7 @@ interface SelectedElementInfo {
 }
 
 interface VisualEditorProps {
-  iframeRef: React.RefObject<HTMLIFrameElement>;
+  iframeRef: React.RefObject<HTMLIFrameElement | null>;
   editorRef: React.RefObject<editor.IStandaloneCodeEditor | null>;
   isEnabled: boolean;
   onToggle: (enabled: boolean) => void;
@@ -514,7 +514,7 @@ export function VisualEditor({
                   <div className="flex gap-2 mt-1">
                     <Input
                       value={elementText}
-                      onChange={(e) => setElementText(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setElementText(e.target.value)}
                       className="flex-1 bg-neutral-800 border-neutral-700 text-white text-sm"
                     />
                     <Button size="sm" onClick={applyTextChange}>
@@ -545,7 +545,7 @@ export function VisualEditor({
                     />
                     <Input
                       value={elementStyles.color}
-                      onChange={(e) => applyStyleChange("color", e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => applyStyleChange("color", e.target.value)}
                       className="flex-1 bg-neutral-800 border-neutral-700 text-white text-sm"
                     />
                   </div>
@@ -564,7 +564,7 @@ export function VisualEditor({
                     />
                     <Input
                       value={elementStyles.backgroundColor}
-                      onChange={(e) => applyStyleChange("backgroundColor", e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => applyStyleChange("backgroundColor", e.target.value)}
                       className="flex-1 bg-neutral-800 border-neutral-700 text-white text-sm"
                     />
                   </div>
@@ -574,7 +574,7 @@ export function VisualEditor({
                   <Label className="text-xs text-gray-400">Font Size</Label>
                   <Input
                     value={elementStyles.fontSize}
-                    onChange={(e) => applyStyleChange("fontSize", e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => applyStyleChange("fontSize", e.target.value)}
                     className="bg-neutral-800 border-neutral-700 text-white text-sm mt-1"
                   />
                 </div>
@@ -583,7 +583,7 @@ export function VisualEditor({
                   <Label className="text-xs text-gray-400">Font Weight</Label>
                   <select
                     value={elementStyles.fontWeight}
-                    onChange={(e) => applyStyleChange("fontWeight", e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => applyStyleChange("fontWeight", e.target.value)}
                     className="w-full bg-neutral-800 border border-neutral-700 text-white text-sm rounded px-3 py-1 mt-1"
                   >
                     <option value="normal">Normal</option>
@@ -607,7 +607,7 @@ export function VisualEditor({
                     <Label className="text-xs text-gray-400">Width</Label>
                     <Input
                       value={elementStyles.width}
-                      onChange={(e) => applyStyleChange("width", e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => applyStyleChange("width", e.target.value)}
                       placeholder="auto"
                       className="bg-neutral-800 border-neutral-700 text-white text-sm mt-1"
                     />
@@ -616,7 +616,7 @@ export function VisualEditor({
                     <Label className="text-xs text-gray-400">Height</Label>
                     <Input
                       value={elementStyles.height}
-                      onChange={(e) => applyStyleChange("height", e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => applyStyleChange("height", e.target.value)}
                       placeholder="auto"
                       className="bg-neutral-800 border-neutral-700 text-white text-sm mt-1"
                     />
@@ -627,7 +627,7 @@ export function VisualEditor({
                   <Label className="text-xs text-gray-400">Padding</Label>
                   <Input
                     value={elementStyles.padding}
-                    onChange={(e) => applyStyleChange("padding", e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => applyStyleChange("padding", e.target.value)}
                     placeholder="0px"
                     className="bg-neutral-800 border-neutral-700 text-white text-sm mt-1"
                   />
@@ -637,7 +637,7 @@ export function VisualEditor({
                   <Label className="text-xs text-gray-400">Margin</Label>
                   <Input
                     value={elementStyles.margin}
-                    onChange={(e) => applyStyleChange("margin", e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => applyStyleChange("margin", e.target.value)}
                     placeholder="0px"
                     className="bg-neutral-800 border-neutral-700 text-white text-sm mt-1"
                   />
@@ -647,7 +647,7 @@ export function VisualEditor({
                   <Label className="text-xs text-gray-400">Display</Label>
                   <select
                     value={elementStyles.display}
-                    onChange={(e) => applyStyleChange("display", e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => applyStyleChange("display", e.target.value)}
                     className="w-full bg-neutral-800 border border-neutral-700 text-white text-sm rounded px-3 py-1 mt-1"
                   >
                     <option value="block">Block</option>
@@ -663,7 +663,7 @@ export function VisualEditor({
                   <Label className="text-xs text-gray-400">Position</Label>
                   <select
                     value={elementStyles.position}
-                    onChange={(e) => applyStyleChange("position", e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => applyStyleChange("position", e.target.value)}
                     className="w-full bg-neutral-800 border border-neutral-700 text-white text-sm rounded px-3 py-1 mt-1"
                   >
                     <option value="static">Static</option>

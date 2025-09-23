@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardFooter } from "@hanzo/ui/primitives/card";
-import { Button } from "@hanzo/ui/primitives/button";
-import { Badge } from "@hanzo/ui/primitives/badge";
-import { Input } from "@hanzo/ui/primitives/input";
-import { AspectRatio } from "@hanzo/ui/primitives/aspect-ratio";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@hanzo/ui/primitives/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@hanzo/ui/primitives/tabs";
+import { Card, CardContent, CardFooter } from "@hanzo/ui";
+import { Button } from "@hanzo/ui";
+import { Badge } from "@hanzo/ui";
+import { Input } from "@hanzo/ui";
+import { AspectRatio } from "@hanzo/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@hanzo/ui";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@hanzo/ui";
 import { ShoppingCart, Search, Star, Filter, Heart, Share2 } from "lucide-react";
 
 const products = [

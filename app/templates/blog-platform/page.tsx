@@ -125,7 +125,7 @@ export default function BlogPlatform() {
                 <Input
                   placeholder="Search articles..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                   className="pl-9 w-[250px]"
                 />
               </div>

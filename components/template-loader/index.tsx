@@ -69,7 +69,7 @@ export function TemplateLoader({ templateRepo, action, onProceed }: TemplateLoad
         <CardContent className="space-y-6">
           <div className="bg-muted rounded-lg p-4">
             <h3 className="font-semibold mb-2">What would you like to do?</h3>
-            <Tabs value={selectedMode} onValueChange={(v) => setSelectedMode(v as any)}>
+            <Tabs value={selectedMode} onValueChange={(v: string) => setSelectedMode(v as "edit" | "fork" | "deploy")}>
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="edit">
                   <Code className="w-4 h-4 mr-2" />

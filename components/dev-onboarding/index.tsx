@@ -19,7 +19,8 @@ import {
   Database,
   Shield,
   Globe,
-  Terminal
+  Terminal,
+  Clock
 } from "lucide-react";
 import { Button } from "@hanzo/ui";
 import { Input } from "@hanzo/ui";
@@ -42,6 +43,61 @@ interface PlanStep {
   status: "pending" | "current" | "completed";
   icon: React.ReactNode;
 }
+
+const getCategoryIcon = (category: string) => {
+  const icons: { [key: string]: React.ReactNode } = {
+    "web": <Globe className="w-4 h-4" />,
+    "ai": <Brain className="w-4 h-4" />,
+    "design": <Palette className="w-4 h-4" />,
+    "database": <Database className="w-4 h-4" />,
+    "security": <Shield className="w-4 h-4" />,
+    "code": <Code2 className="w-4 h-4" />
+  };
+  return icons[category] || <Code2 className="w-4 h-4" />;
+};
+
+const templates = [
+  {
+    id: "nextjs-blog",
+    title: "Next.js Blog",
+    description: "Modern blog with MDX support",
+    category: "web",
+    popular: true,
+    estimatedTime: "5 mins",
+    difficulty: "Beginner",
+    tags: ["Next.js", "MDX", "Tailwind"]
+  },
+  {
+    id: "ai-chatbot",
+    title: "AI Chatbot",
+    description: "OpenAI-powered chat interface",
+    category: "ai",
+    popular: true,
+    estimatedTime: "10 mins",
+    difficulty: "Intermediate",
+    tags: ["OpenAI", "React", "WebSocket"]
+  },
+  {
+    id: "dashboard-ui",
+    title: "Dashboard UI",
+    description: "Analytics dashboard with charts",
+    category: "design",
+    popular: true,
+    estimatedTime: "8 mins",
+    difficulty: "Beginner",
+    tags: ["Charts", "Tailwind", "React"]
+  },
+  {
+    id: "ecommerce",
+    title: "E-commerce Store",
+    description: "Full-stack online store",
+    category: "web",
+    popular: true,
+    estimatedTime: "15 mins",
+    difficulty: "Advanced",
+    tags: ["Stripe", "Next.js", "Database"]
+  }
+];
 
 const projectTemplates = [
   {
@@ -308,7 +364,7 @@ export function DevOnboarding({ initialPrompt = "", onComplete }: DevOnboardingP
     setInputMessage("");
   };
 
-  const handleTemplateSelect = (template: typeof projectTemplates[0]) => {
+  const handleTemplateSelect = (template: typeof templates[0] | typeof projectTemplates[0]) => {
     startPlanning(template.title);
   };
 
@@ -347,7 +403,7 @@ export function DevOnboarding({ initialPrompt = "", onComplete }: DevOnboardingP
                 placeholder="Describe what you want to build..."
                 className="bg-neutral-800 border-neutral-700 text-white mb-4 min-h-[100px]"
                 value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setPrompt(e.target.value)}
               />
               <Button
                 className="w-full gap-2"
@@ -420,7 +476,7 @@ export function DevOnboarding({ initialPrompt = "", onComplete }: DevOnboardingP
                     <div className="flex-1">
                       <div className="flex items-start justify-between">
                         <div>
-                          <p className="text-white font-medium text-sm">{template.name}</p>
+                          <p className="text-white font-medium text-sm">{template.title}</p>
                           <p className="text-gray-500 text-xs mt-1 line-clamp-2">{template.description.slice(0, 80)}...</p>
                         </div>
                         {template.popular && (
@@ -461,7 +517,7 @@ export function DevOnboarding({ initialPrompt = "", onComplete }: DevOnboardingP
                         {getCategoryIcon(template.category)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-white text-xs font-medium truncate">{template.name}</p>
+                        <p className="text-white text-xs font-medium truncate">{template.title}</p>
                         <p className="text-gray-500 text-xs">{template.category}</p>
                       </div>
                     </div>
@@ -623,8 +679,8 @@ export function DevOnboarding({ initialPrompt = "", onComplete }: DevOnboardingP
                 placeholder="Add requirements or ask questions..."
                 className="flex-1 bg-neutral-900 border-neutral-700 text-white"
                 value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyDown={(e) => {
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputMessage(e.target.value)}
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     sendMessage();

@@ -8,13 +8,13 @@ import {
   CardFooter,
   CardHeader,
   CardTitle
-} from "@hanzo/ui/primitives/card";
-import { Button } from "@hanzo/ui/primitives/button";
-import { Input } from "@hanzo/ui/primitives/input";
-import { ScrollArea } from "@hanzo/ui/primitives/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "@hanzo/ui/primitives/avatar";
-import { Badge } from "@hanzo/ui/primitives/badge";
-import { Textarea } from "@hanzo/ui/primitives/textarea";
+} from "@hanzo/ui";
+import { Button } from "@hanzo/ui";
+import { Input } from "@hanzo/ui";
+import { ScrollArea } from "@hanzo/ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@hanzo/ui";
+import { Badge } from "@hanzo/ui";
+import { Textarea } from "@hanzo/ui";
 import {
   Send,
   Bot,
@@ -205,8 +205,8 @@ The UI is built entirely with @hanzo/ui primitives like Card, Button, ScrollArea
               <Textarea
                 placeholder="Type your message..."
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
+                onKeyDown={(e: React.KeyboardEvent) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     handleSend();

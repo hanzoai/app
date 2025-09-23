@@ -34,7 +34,7 @@ export function ListPagesItem({
         <Button
           size="iconXsss"
           variant="ghost"
-          onClick={(e) => {
+          onClick={(e: React.MouseEvent) => {
             e.stopPropagation();
             // open the window modal to edit the name page
             let newName = window.prompt(
@@ -63,7 +63,7 @@ export function ListPagesItem({
           size="iconXsss"
           variant="ghost"
           className="group-hover:opacity-100 opacity-0"
-          onClick={(e) => {
+          onClick={(e: React.MouseEvent) => {
             e.stopPropagation();
             if (
               window.confirm(

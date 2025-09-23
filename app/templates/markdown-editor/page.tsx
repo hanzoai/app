@@ -274,7 +274,7 @@ Start writing your content above!
               <Textarea
                 id="markdown-input"
                 value={markdown}
-                onChange={(e) => setMarkdown(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setMarkdown(e.target.value)}
                 className="min-h-full p-6 resize-none border-0 focus-visible:ring-0 font-mono text-sm"
                 placeholder="Start writing in markdown..."
               />

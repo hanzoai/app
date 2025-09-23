@@ -164,7 +164,7 @@ export const Uploader = ({
                     className="hidden"
                     multiple
                     accept="image/*"
-                    onChange={(e) => uploadFiles(e.target.files)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => uploadFiles(e.target.files)}
                   />
                 </div>
               </main>

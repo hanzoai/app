@@ -87,7 +87,7 @@ class AISupervisorServer {
     // Launch headless browser for visual inspection
     try {
       const browser = await puppeteer.launch({
-        headless: "new",
+        headless: true,
         args: ["--no-sandbox", "--disable-setuid-sandbox"],
       });
 

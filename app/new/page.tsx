@@ -229,7 +229,7 @@ export default function NewProjectPage() {
                     type="url"
                     placeholder="https://github.com/username/repository"
                     value={repoUrl}
-                    onChange={(e) => setRepoUrl(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRepoUrl(e.target.value)}
                     className="bg-gray-950 border-gray-800 text-white placeholder:text-gray-500"
                   />
                 </div>
@@ -295,7 +295,7 @@ export default function NewProjectPage() {
               <select
                 className="bg-gray-900 border border-gray-800 text-white text-sm rounded-lg px-3 py-1.5 focus:border-gray-700 outline-none"
                 value={selectedFramework}
-                onChange={(e) => setSelectedFramework(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedFramework(e.target.value)}
               >
                 <option value="all">All Frameworks</option>
                 {frameworks.map((fw) => (

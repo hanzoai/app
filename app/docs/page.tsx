@@ -370,7 +370,7 @@ export default function DocsPage() {
                 <Input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                   placeholder="Search documentation..."
                   className="pl-12 pr-4 py-3 bg-[#141414] border-white/20 rounded-xl text-white placeholder:text-white/40 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
                 />

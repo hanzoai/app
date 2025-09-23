@@ -1,5 +1,10 @@
-// Re-export cn from @hanzo/ui for consistency
-export { cn } from "@hanzo/ui/utils";
+// Define cn function locally to avoid @hanzo/ui issues
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 export const COLORS = [
   "red",

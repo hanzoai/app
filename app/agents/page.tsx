@@ -473,7 +473,7 @@ export default function AgentsPage() {
               placeholder="Search tasks or agents..."
               className="pl-10 bg-neutral-900 border-neutral-800"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
             />
           </div>
 

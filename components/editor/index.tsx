@@ -515,7 +515,7 @@ export const AppEditor = ({
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         projectId={project?._id}
-        projectName={project?.name || "Untitled Project"}
+        projectName={project?.title || "Untitled Project"}
       />
     </section>
   );

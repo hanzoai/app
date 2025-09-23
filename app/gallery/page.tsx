@@ -199,7 +199,7 @@ export default function TemplateGallery() {
             <Input
               placeholder="Search templates..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
               className="w-64"
             />
             <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>

@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardFooter, CardHeader } from "@hanzo/ui/primitives/card";
-import { Button } from "@hanzo/ui/primitives/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@hanzo/ui/primitives/avatar";
-import { Textarea } from "@hanzo/ui/primitives/textarea";
-import { Badge } from "@hanzo/ui/primitives/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@hanzo/ui/primitives/tabs";
-import { ScrollArea } from "@hanzo/ui/primitives/scroll-area";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@hanzo/ui";
+import { Button } from "@hanzo/ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@hanzo/ui";
+import { Textarea } from "@hanzo/ui";
+import { Badge } from "@hanzo/ui";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@hanzo/ui";
+import { ScrollArea } from "@hanzo/ui";
 import {
   Heart,
   MessageCircle,
@@ -132,7 +132,7 @@ export default function SocialFeed() {
                   <Textarea
                     placeholder="What's happening?"
                     value={newPost}
-                    onChange={(e) => setNewPost(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewPost(e.target.value)}
                     className="border-0 p-0 resize-none focus-visible:ring-0"
                   />
                   <div className="flex items-center justify-between mt-4">

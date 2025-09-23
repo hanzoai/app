@@ -1,15 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@hanzo/ui/primitives/card";
-import { Button } from "@hanzo/ui/primitives/button";
-import { Badge } from "@hanzo/ui/primitives/badge";
-import { ScrollArea } from "@hanzo/ui/primitives/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "@hanzo/ui/primitives/avatar";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@hanzo/ui/primitives/dialog";
-import { Input } from "@hanzo/ui/primitives/input";
-import { Textarea } from "@hanzo/ui/primitives/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@hanzo/ui/primitives/select";
+
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  priority: string;
+  assignee: string;
+  dueDate: string;
+  comments: number;
+  attachments: number;
+  labels: string[];
+}
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@hanzo/ui";
+import { Button } from "@hanzo/ui";
+import { Badge } from "@hanzo/ui";
+import { ScrollArea } from "@hanzo/ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@hanzo/ui";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@hanzo/ui";
+import { Input } from "@hanzo/ui";
+import { Textarea } from "@hanzo/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@hanzo/ui";
 import {
   Plus,
   MoreHorizontal,
@@ -152,7 +164,7 @@ const labelColors = {
 };
 
 export default function KanbanBoard() {
-  const [selectedTask, setSelectedTask] = useState(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskColumn, setNewTaskColumn] = useState("todo");
 
@@ -190,7 +202,7 @@ export default function KanbanBoard() {
                     <Input
                       placeholder="Task title"
                       value={newTaskTitle}
-                      onChange={(e) => setNewTaskTitle(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewTaskTitle(e.target.value)}
                     />
                   </div>
                   <div>
@@ -270,7 +282,7 @@ export default function KanbanBoard() {
                           <Badge
                             key={label}
                             variant="secondary"
-                            className={`text-xs px-2 py-0 ${labelColors[label] || ""}`}
+                            className={`text-xs px-2 py-0 ${labelColors[label as keyof typeof labelColors] || ""}`}
                           >
                             {label}
                           </Badge>
@@ -279,7 +291,7 @@ export default function KanbanBoard() {
 
                       {/* Priority indicator */}
                       <div className="flex items-center gap-2 mb-3">
-                        <div className={`w-2 h-2 rounded-full ${priorityColors[task.priority]}`} />
+                        <div className={`w-2 h-2 rounded-full ${priorityColors[task.priority as keyof typeof priorityColors]}`} />
                         <span className="text-xs text-muted-foreground">
                           {task.priority} priority
                         </span>
@@ -340,7 +352,7 @@ export default function KanbanBoard() {
                   <Calendar className="w-4 h-4 text-muted-foreground" />
                   <span className="text-sm">Due {selectedTask.dueDate}</span>
                 </div>
-                <Badge className={priorityColors[selectedTask.priority]}>
+                <Badge className={priorityColors[selectedTask.priority as keyof typeof priorityColors]}>
                   {selectedTask.priority}
                 </Badge>
               </div>

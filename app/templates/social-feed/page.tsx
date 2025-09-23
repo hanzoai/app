@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardFooter, CardHeader } from "@hanzo/ui";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@hanzo/ui";
 import { Button } from "@hanzo/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@hanzo/ui";
 import { Textarea } from "@hanzo/ui";
@@ -132,7 +132,7 @@ export default function SocialFeed() {
                   <Textarea
                     placeholder="What's happening?"
                     value={newPost}
-                    onChange={(e) => setNewPost(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewPost(e.target.value)}
                     className="border-0 p-0 resize-none focus-visible:ring-0"
                   />
                   <div className="flex items-center justify-between mt-4">

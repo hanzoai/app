@@ -28,6 +28,7 @@ import {
   TrendingUp,
   TrendingDown,
   MoreVertical,
+  Eye,
   Play,
   Pause,
   Power,
@@ -508,7 +509,7 @@ export default function NodesPage() {
             placeholder="Search nodes..."
             className="w-64 bg-neutral-900 border-neutral-800"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
           />
         </div>
 
