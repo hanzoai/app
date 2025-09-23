@@ -1,21 +1,24 @@
-# Development Dockerfile - Works immediately, no build required
+# Development Dockerfile - Fast startup with hot reload
 FROM node:20-alpine
 
 # Enable pnpm via corepack
 RUN corepack enable && corepack prepare pnpm@9.14.4 --activate
 
+# Install system dependencies
 RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
 
-# Copy and install dependencies
+# Copy package files
 COPY package.json pnpm-lock.yaml* ./
+
+# Install dependencies
 RUN pnpm install --frozen-lockfile
 
-# Copy all application files
+# Copy application source
 COPY . .
 
-# Set environment
+# Development environment
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=development
 ENV PORT=3000
@@ -23,5 +26,5 @@ ENV HOSTNAME="0.0.0.0"
 
 EXPOSE 3000
 
-# Run in development mode - no build required, includes source maps
-CMD ["pnpm", "run", "dev"]
+# Run in development mode with hot reload
+CMD ["pnpm", "dev"]

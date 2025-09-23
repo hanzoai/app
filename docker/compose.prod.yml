@@ -1,1 +1,89 @@
-../compose.prod.yml
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: hanzo-build:production
+    container_name: hanzo-build-prod
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Node configuration
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      
+      # URLs
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-https://hanzo.app}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-https://hanzo.app}
+      
+      # Database
+      - MONGODB_URI=mongodb://hanzo:${MONGO_PASSWORD}@mongodb:27017/hanzo_build?authSource=admin&retryWrites=true&w=majority
+      
+      # Authentication
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - HF_CLIENT_ID=${HF_CLIENT_ID}
+      - HF_CLIENT_SECRET=${HF_CLIENT_SECRET}
+      - HF_TOKEN=${HF_TOKEN}
+      
+      # API Keys (optional)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - hanzo-prod
+    healthcheck:
+      test: ["CMD-SHELL", "node -e 'require(\"http\").get(\"http://localhost:3000/api/health\", (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on(\"error\", () => { process.exit(1); });' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  mongodb:
+    image: mongo:7.0
+    container_name: hanzo-mongodb-prod
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=hanzo
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+      - MONGO_INITDB_DATABASE=hanzo_build
+    volumes:
+      - mongodb_prod_data:/data/db
+      - ./backup:/backup
+    networks:
+      - hanzo-prod
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
+volumes:
+  mongodb_prod_data:
+    driver: local
+
+networks:
+  hanzo-prod:
+    driver: bridge
