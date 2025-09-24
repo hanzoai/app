@@ -97,7 +97,7 @@ export default async function RootLayout({
         src="https://plausible.io/js/script.js"
       ></Script>
       <body
-        className={`${inter.variable} ${ptSans.variable} antialiased bg-black dark h-[100dvh] overflow-hidden`}
+        className={`${inter.variable} ${ptSans.variable} antialiased bg-black dark min-h-screen`}
       >
         <IframeDetector />
         <Toaster richColors position="bottom-center" />
