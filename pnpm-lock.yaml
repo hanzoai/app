@@ -12,8 +12,8 @@ importers:
         specifier: ^2.20.0
         version: 2.20.0(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       '@hanzo/ui':
-        specifier: 4.8.3
-        version: 4.8.3(@hookform/resolvers@3.10.0(react-hook-form@7.51.4(react@19.1.1)))(@types/react-dom@19.1.9(@types/react@19.1.13))(@types/react@19.1.13)(embla-carousel@8.5.1)(lucide-react@0.544.0(react@19.1.1))(mobx@6.13.7)(next-themes@0.4.6(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(next@15.5.3(@babel/core@7.28.4)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(react-dom@19.1.1(react@19.1.1))(react-hook-form@7.51.4(react@19.1.1))(react@19.1.1)(tailwindcss@4.1.13)(validator@13.15.15)
+        specifier: 4.8.5
+        version: 4.8.5(@hookform/resolvers@3.10.0(react-hook-form@7.51.4(react@19.1.1)))(@types/react-dom@19.1.9(@types/react@19.1.13))(@types/react@19.1.13)(embla-carousel@8.5.1)(lucide-react@0.544.0(react@19.1.1))(mobx@6.13.7)(next-themes@0.4.6(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(next@15.5.3(@babel/core@7.28.4)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(react-dom@19.1.1(react@19.1.1))(react-hook-form@7.51.4(react@19.1.1))(react@19.1.1)(tailwindcss@4.1.13)(validator@13.15.15)
       '@huggingface/hub':
         specifier: ^2.6.4
         version: 2.6.4
@@ -663,8 +663,8 @@ packages:
       react: ^18.3.1
       react-dom: ^18.3.1
 
-  '@hanzo/ui@4.8.3':
-    resolution: {integrity: sha512-C7chIbDzst2M8PPQFTNczmMCa1BGC0Gn7sMA4fYGXCFT8xYU9grXFPHetCf4JcUu2DHYCtbv7YlHJyGyEM5m4g==}
+  '@hanzo/ui@4.8.5':
+    resolution: {integrity: sha512-t8nufSu9z2TJeKMCR4eBlac4arC9jkjCq41SsSJtQ3NttUcdHrSjq6W2nBrmBqlHbn4Mth3imTbS5DIcz7FGLA==}
     hasBin: true
     peerDependencies:
       '@hookform/resolvers': ^3.3.2
@@ -7233,7 +7233,7 @@ snapshots:
       - '@types/react'
       - '@types/react-dom'
 
-  '@hanzo/ui@4.8.3(@hookform/resolvers@3.10.0(react-hook-form@7.51.4(react@19.1.1)))(@types/react-dom@19.1.9(@types/react@19.1.13))(@types/react@19.1.13)(embla-carousel@8.5.1)(lucide-react@0.544.0(react@19.1.1))(mobx@6.13.7)(next-themes@0.4.6(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(next@15.5.3(@babel/core@7.28.4)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(react-dom@19.1.1(react@19.1.1))(react-hook-form@7.51.4(react@19.1.1))(react@19.1.1)(tailwindcss@4.1.13)(validator@13.15.15)':
+  '@hanzo/ui@4.8.5(@hookform/resolvers@3.10.0(react-hook-form@7.51.4(react@19.1.1)))(@types/react-dom@19.1.9(@types/react@19.1.13))(@types/react@19.1.13)(embla-carousel@8.5.1)(lucide-react@0.544.0(react@19.1.1))(mobx@6.13.7)(next-themes@0.4.6(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(next@15.5.3(@babel/core@7.28.4)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(react-dom@19.1.1(react@19.1.1))(react-hook-form@7.51.4(react@19.1.1))(react@19.1.1)(tailwindcss@4.1.13)(validator@13.15.15)':
     dependencies:
       '@hanzo/react-drawer': 0.1.8(@types/react-dom@19.1.9(@types/react@19.1.13))(@types/react@19.1.13)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       '@hookform/resolvers': 3.10.0(react-hook-form@7.51.4(react@19.1.1))
