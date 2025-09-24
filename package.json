@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@codesandbox/sandpack-react": "^2.20.0",
-    "@hanzo/ui": "4.8.2",
+    "@hanzo/ui": "4.8.3",
     "filesize": "^10.1.6",
     "@huggingface/hub": "^2.6.4",
     "@huggingface/inference": "^4.8.0",
