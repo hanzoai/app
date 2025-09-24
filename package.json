@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@codesandbox/sandpack-react": "^2.20.0",
-    "@hanzo/ui": "4.6.0",
+    "@hanzo/ui": "4.7.0",
     "@huggingface/hub": "^2.6.4",
     "@huggingface/inference": "^4.8.0",
     "@monaco-editor/react": "^4.7.0",

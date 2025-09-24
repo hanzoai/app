@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Transpile @hanzo/ui package to handle TypeScript/TSX
+  transpilePackages: ['@hanzo/ui'],
   // Disable dev indicators completely
   devIndicators: false,
   eslint: {
