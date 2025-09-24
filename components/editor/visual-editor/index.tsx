@@ -119,7 +119,7 @@ export function VisualEditor({
   const getCSSSelector = (element: HTMLElement): string => {
     if (element.id) return `#${element.id}`;
 
-    let path = [];
+    let path: string[] = [];
     while (element && element.nodeType === Node.ELEMENT_NODE) {
       let selector = element.nodeName.toLowerCase();
       if (element.id) {

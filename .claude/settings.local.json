@@ -13,7 +13,9 @@
       "mcp__hanzo__batch",
       "mcp__hanzo__shell",
       "mcp__hanzo__read",
-      "mcp__hanzo__search"
+      "mcp__hanzo__search",
+      "Bash(pnpm run build:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

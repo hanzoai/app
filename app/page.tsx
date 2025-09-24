@@ -5,6 +5,7 @@ import { Button } from "@hanzo/ui";
 import { Badge } from "@hanzo/ui";
 import Link from "next/link";
 import { HanzoLogo } from "@/components/HanzoLogo";
+import Header from "@/components/layout/header";
 import { UserMenu } from "@/components/user-menu";
 import {
   ArrowRight,
@@ -39,7 +40,6 @@ export default function LandingPage() {
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("Popular");
   const [inputFocused, setInputFocused] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Fetch user's projects if logged in
   useEffect(() => {
@@ -48,7 +48,8 @@ export default function LandingPage() {
       fetch("/api/me/projects")
         .then(res => {
           if (!res.ok) {
-            throw new Error(`HTTP error! status: ${res.status}`);
+            console.warn(`Failed to load projects: status ${res.status}`);
+            return { projects: [] };
           }
           return res.json();
         })
@@ -56,24 +57,13 @@ export default function LandingPage() {
           setProjects(data.projects || []);
         })
         .catch(err => {
-          console.error("Failed to load projects:", err);
+          console.warn("Failed to load projects:", err);
           setProjects([]);
         })
         .finally(() => setLoadingProjects(false));
     }
   }, [user]);
 
-  // Prevent body scroll when mobile menu is open
-  useEffect(() => {
-    if (mobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [mobileMenuOpen]);
 
   const handleCreateProject = async () => {
     if (!prompt.trim()) return;
@@ -192,167 +182,8 @@ export default function LandingPage() {
         <div className="absolute bottom-0 left-0 right-0 h-[600px] bg-gradient-to-t from-blue-500/10 via-purple-500/5 to-transparent blur-3xl" />
       </div>
 
-      {/* Navigation - responsive */}
-      <nav className="relative z-20 flex items-center justify-between px-4 md:px-8 py-4 md:py-5">
-        <div className="flex items-center gap-6 md:gap-10">
-          <Link href="/" className="flex items-center">
-            <HanzoLogo className="w-8 md:w-9 h-8 md:h-9 text-white" />
-          </Link>
-
-          <div className="hidden md:flex items-center gap-8">
-            <Link href="/community" className="text-white/70 hover:text-white text-sm font-medium transition-colors">
-              Community
-            </Link>
-            <Link href="/pricing" className="text-white/70 hover:text-white text-sm font-medium transition-colors">
-              Pricing
-            </Link>
-            <Link href="/enterprise" className="text-white/70 hover:text-white text-sm font-medium transition-colors">
-              Enterprise
-            </Link>
-            <Link href="/learn" className="text-white/70 hover:text-white text-sm font-medium transition-colors">
-              Learn
-            </Link>
-          </div>
-        </div>
-
-        {/* Desktop Nav Actions */}
-        <div className="hidden md:flex items-center gap-4">
-          {user ? (
-            <>
-              <UserMenu />
-              <Button
-                onClick={() => router.push('/dashboard')}
-                variant="ghost"
-                className="text-white/70 hover:text-white text-sm font-medium"
-              >
-                Dashboard
-              </Button>
-              <Button
-                onClick={() => router.push('/new')}
-                className="bg-white text-black hover:bg-white/90 text-sm font-semibold px-5 py-2.5 rounded-xl"
-              >
-                New Project
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                onClick={openLoginWindow}
-                variant="ghost"
-                className="text-white/70 hover:text-white text-sm font-medium"
-              >
-                Log in
-              </Button>
-              <Button
-                onClick={openLoginWindow}
-                className="bg-white text-black hover:bg-white/90 text-sm font-semibold px-5 py-2.5 rounded-xl"
-              >
-                Get started
-              </Button>
-            </>
-          )}
-        </div>
-
-        {/* Mobile Menu Button */}
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="md:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
-        >
-          {mobileMenuOpen ? (
-            <X className="w-6 h-6" />
-          ) : (
-            <Menu className="w-6 h-6" />
-          )}
-        </button>
-
-        {/* Mobile Menu Overlay */}
-        {mobileMenuOpen && (
-          <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-50 md:hidden">
-            <div className="flex flex-col h-full">
-              {/* Mobile Menu Header */}
-              <div className="flex items-center justify-between p-4 border-b border-white/10">
-                <Link href="/" className="flex items-center">
-                  <HanzoLogo className="w-8 h-8 text-white" />
-                </Link>
-                <button
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              {/* Mobile Menu Links */}
-              <div className="flex-1 overflow-y-auto py-8 px-4">
-                <div className="space-y-6">
-                  <Link href="/community" className="block text-2xl font-medium text-white/90 hover:text-white transition-colors">
-                    Community
-                  </Link>
-                  <Link href="/pricing" className="block text-2xl font-medium text-white/90 hover:text-white transition-colors">
-                    Pricing
-                  </Link>
-                  <Link href="/enterprise" className="block text-2xl font-medium text-white/90 hover:text-white transition-colors">
-                    Enterprise
-                  </Link>
-                  <Link href="/learn" className="block text-2xl font-medium text-white/90 hover:text-white transition-colors">
-                    Learn
-                  </Link>
-                </div>
-              </div>
-
-              {/* Mobile Menu Actions */}
-              <div className="p-4 border-t border-white/10 space-y-3">
-                {user ? (
-                  <>
-                    <div className="flex items-center justify-between mb-3">
-                      <UserMenu className="w-full" />
-                    </div>
-                    <Button
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        router.push('/dashboard');
-                      }}
-                      className="w-full bg-white/10 text-white hover:bg-white/20"
-                    >
-                      Dashboard
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        router.push('/new');
-                      }}
-                      className="w-full bg-white text-black hover:bg-white/90"
-                    >
-                      New Project
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        openLoginWindow();
-                      }}
-                      className="w-full bg-white/10 text-white hover:bg-white/20"
-                    >
-                      Log in
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        openLoginWindow();
-                      }}
-                      className="w-full bg-white text-black hover:bg-white/90"
-                    >
-                      Get started
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </nav>
+      {/* Navigation Header */}
+      <Header />
 
       <main className="relative z-10">
         {/* Hero Section - Big, engaging input */}

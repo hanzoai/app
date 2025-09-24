@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@/hooks/useUser';
-import { HanzoLogo } from '@/components/HanzoLogo';
+import Header from '@/components/layout/header';
 
 // UI Components
 import { Button } from "@hanzo/ui";
@@ -176,28 +176,7 @@ export default function BillingPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
-      {/* Navigation */}
-      <nav className="border-b border-white/10 sticky top-0 bg-[#0a0a0a]/80 backdrop-blur-xl z-50">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-2.5">
-              <HanzoLogo className="w-8 h-8 text-white" />
-              <span className="text-xl font-bold">Hanzo</span>
-            </Link>
-            <div className="hidden md:flex items-center gap-6">
-              <Link href="/projects" className="text-white/70 hover:text-white">Projects</Link>
-              <Link href="/billing" className="text-white font-medium">Billing</Link>
-              <Link href="/pricing" className="text-white/70 hover:text-white">Pricing</Link>
-            </div>
-          </div>
-          <Button
-            onClick={() => router.push('/dev')}
-            className="bg-white text-black hover:bg-white/90"
-          >
-            New Project
-          </Button>
-        </div>
-      </nav>
+      <Header />
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
         {/* Header */}

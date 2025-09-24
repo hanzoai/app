@@ -26,7 +26,7 @@ import {
   Sparkles,
   Settings
 } from "lucide-react";
-import { cn } from "@hanzo/ui/util";
+import { cn } from "@/lib/utils";
 
 interface Message {
   id: string;

@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Key, Bell, Palette, Shield, CreditCard } from "lucide-react";
+import { Save, Key, Bell, Palette, Shield, CreditCard } from "lucide-react";
 import { Button } from "@hanzo/ui";
 import { useUser } from "@/hooks/useUser";
 import { toast } from "sonner";
+import Header from "@/components/layout/header";
 
 export default function SettingsPage() {
   const { user } = useUser();
@@ -31,27 +32,7 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-black">
-      {/* Header */}
-      <header className="border-b border-neutral-800 px-6 py-4">
-        <div className="container mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.back()}
-              className="gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back
-            </Button>
-            <h1 className="text-2xl font-bold text-white">Settings</h1>
-          </div>
-          <Button onClick={handleSave} className="gap-2">
-            <Save className="w-4 h-4" />
-            Save Changes
-          </Button>
-        </div>
-      </header>
+      <Header />
 
       <div className="container mx-auto px-6 py-8">
         <div className="grid grid-cols-12 gap-8">

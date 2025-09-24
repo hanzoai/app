@@ -1,11 +1,17 @@
 import mongoose from "mongoose";
 
 const MONGODB_URI = process.env.MONGODB_URI;
-// @ts-expect-error iknown issue with mongoose types
+
+declare global {
+  var mongoose: {
+    conn: any;
+    promise: Promise<any> | null;
+  };
+}
+
 let cached = global.mongoose;
 
 if (!cached) {
-  // @ts-expect-error iknown issue with mongoose types
   cached = global.mongoose = { conn: null, promise: null };
 }
 
