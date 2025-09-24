@@ -20,6 +20,7 @@ export default function DashboardPage() {
     }
   }, [user, loading, router]);
 
+  // Render loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -31,8 +32,16 @@ export default function DashboardPage() {
     );
   }
 
+  // Render nothing while redirecting
   if (!user) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <HanzoLogo className="w-12 h-12 mx-auto mb-4 animate-pulse" />
+          <p className="text-gray-500">Redirecting to login...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
