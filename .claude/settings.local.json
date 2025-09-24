@@ -8,7 +8,12 @@
       "Read(//Users/z/work/hanzo/cloud/web/src/features/billing/server/**)",
       "Read(//Users/z/work/hanzo/cloud/web/src/app/api/billing/stripe-webhook/**)",
       "Bash(mkdir:*)",
-      "Bash(touch:*)"
+      "Bash(touch:*)",
+      "mcp__hanzo__find",
+      "mcp__hanzo__batch",
+      "mcp__hanzo__shell",
+      "mcp__hanzo__read",
+      "mcp__hanzo__search"
     ],
     "deny": [],
     "ask": []
