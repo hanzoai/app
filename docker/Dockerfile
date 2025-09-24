@@ -11,19 +11,12 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json pnpm-lock.yaml* ./
-# Copy scripts directory if it exists (needed for postinstall)
-COPY scripts/ scripts/
 
 # Install all dependencies (including dev for build)
 RUN pnpm install --frozen-lockfile
 
 # Copy application source
 COPY . .
-
-# Patch @hanzo/ui to fix build issues
-RUN if [ -f "scripts/patch-hanzo-ui.js" ]; then \
-      node scripts/patch-hanzo-ui.js || echo "Patch script not found or failed, continuing..."; \
-    fi
 
 # Build Next.js application
 ENV NEXT_TELEMETRY_DISABLED=1
