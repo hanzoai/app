@@ -7,8 +7,8 @@ import { Badge } from "@hanzo/ui";
 import { Check, Sparkles, Zap, CreditCard, ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { EVENTS } from "@hanzo/analytics";
-import { useAnalytics } from "@hanzo/analytics/react";
+import { EVENTS } from "@hanzo/capture";
+import { useAnalytics } from "@hanzo/capture/react";
 
 export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");

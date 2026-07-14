@@ -11,8 +11,8 @@ import { currentOrg } from "@/lib/org-scope";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { EVENTS } from "@hanzo/analytics";
-import { useAnalytics } from "@hanzo/analytics/react";
+import { EVENTS } from "@hanzo/capture";
+import { useAnalytics } from "@hanzo/capture/react";
 
 export const DeployButtonContent = ({
   pages,

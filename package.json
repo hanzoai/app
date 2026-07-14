@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@base-org/account": "^2.5.6",
-    "@hanzo/analytics": "^0.1.0",
+    "@hanzo/capture": "^0.1.0",
     "@hanzo/base": "^0.2.1",
     "@hanzo/iam": "^0.13.1",
     "@hanzo/ui": "npm:@hanzo/ui-shadcn@^5.7.4",

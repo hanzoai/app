@@ -3,7 +3,7 @@
 import { ReactNode, useEffect, useMemo, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useIam } from '@hanzo/iam/react';
-import { AnalyticsProvider, useAnalytics, usePageview } from '@hanzo/analytics/react';
+import { AnalyticsProvider, useAnalytics, usePageview } from '@hanzo/capture/react';
 
 /** Cloud analytics ingest — api.hanzo.ai fronts /v1/analytics (+ /v1/tracker). */
 const HOST = 'https://api.hanzo.ai';
@@ -24,7 +24,7 @@ function Identity() {
 }
 
 /**
- * Product-analytics root. Wraps the app in the shared @hanzo/analytics client
+ * Product-analytics root. Wraps the app in the shared @hanzo/capture client
  * bound to the bearer the @hanzo/iam SDK already holds, and emits pageviews plus
  * a stable-id identify() once auth resolves. The token is read through a live ref
  * so a single stable config survives token refresh without re-initializing.
