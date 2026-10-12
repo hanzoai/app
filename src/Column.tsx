@@ -7,6 +7,9 @@
 // Dev's places are @hanzo/build's `nav`, the one list every rail draws, each a
 // row of its own under a quiet group label: nothing waits behind a More.
 //
+// Terminals sits under New in both modes. The machines and their sessions live
+// on platform.hanzo.ai, so the row is a link there, in a tab of its own.
+//
 // It is a pane on the frame's ground (app/_web.tsx), sized by the edge in the
 // gutter to its right: dragged, keyed or double-clicked back (@hanzo/build's
 // `Grip`), kept per browser. Pulled in past its floor it collapses to a rail of
@@ -14,11 +17,11 @@
 // choice outlives the move.
 
 import { Text, XStack, YStack } from '@hanzo/gui'
-import { PanelLeft, Plus, Search } from 'lucide-react'
+import { PanelLeft, Plus, Search, SquareTerminal } from 'lucide-react'
 import { Grip, nav, NEW, type Host } from '@hanzo/build'
 import { Sidebar, SidebarIconButton, SidebarItem } from '@hanzo/ui/chat'
 import { HanzoMark } from '@hanzogui/shell'
-import { useId, useState } from 'react'
+import { Fragment, useId, useState } from 'react'
 import { ModeMark } from './ModeMark'
 import { useKept } from './kept'
 import { Made, Me } from './Me'
@@ -29,7 +32,7 @@ import { empty } from './open'
 import { useSpan } from './span'
 import { pane } from './ground'
 import { pick } from './lib/session'
-import { app, talk } from './lib/host'
+import { app, talk, TERMINALS } from './lib/host'
 import { brand } from './where'
 
 /** The grip stands in the gutter between the column and the pane. gui carries a `calc()` to the page unchanged; its
@@ -59,6 +62,25 @@ const keys = (press: () => void) => ({
 
 /** A row of the column: a pill, lit where the reader is. Compact, so every place fits a laptop's height with Recents under them. */
 const ROW = { rounded: '$4', minH: 30, py: 0 } as const
+
+/** Terminals, a row drawn as a link out: another origin, its own tab, no handle back to this page. */
+const OUT = { 'data-slot': 'app-terminals', role: 'link', render: <a href={TERMINALS} target="_blank" rel="noopener noreferrer" /> } as const
+
+/** Terminals in the rail, as its mark. */
+const Mark = () => (
+  <SidebarIconButton label="Terminals" width={36} height={32} rounded={999} {...OUT}>
+    <SquareTerminal size={16} />
+  </SidebarIconButton>
+)
+
+/** Terminals in the column, as a row. */
+const Row = () => (
+  <YStack role="listitem">
+    <SidebarItem {...ROW} icon={<SquareTerminal size={16} aria-hidden />} {...OUT}>
+      Terminals
+    </SidebarItem>
+  </YStack>
+)
 
 export function Column({
   host,
@@ -122,17 +144,23 @@ export function Column({
           </SidebarIconButton>
           <ModeMark mode={mode} onChat={onChat} onDev={onDev} stacked />
           {mode === 'chat' ? (
-            <SidebarIconButton label="New chat" onPress={create} width={36} height={36} rounded={999}>
-              <Plus size={16} />
-            </SidebarIconButton>
+            <>
+              <SidebarIconButton label="New chat" onPress={create} width={36} height={36} rounded={999}>
+                <Plus size={16} />
+              </SidebarIconButton>
+              <Mark />
+            </>
           ) : (
             // Every place, as its mark: collapsed is narrower, never shorter of a destination.
             groups.map((g) => (
               <YStack key={g.id} role="group" aria-label={g.label} items="center" gap={2} pt="$1">
                 {g.links.map((link) => (
-                  <SidebarIconButton key={link.id} label={link.label} onPress={() => link.onPress?.()} width={36} height={32} rounded={999} aria-current={link.active ? 'page' : undefined}>
-                    {link.icon}
-                  </SidebarIconButton>
+                  <Fragment key={link.id}>
+                    <SidebarIconButton label={link.label} onPress={() => link.onPress?.()} width={36} height={32} rounded={999} aria-current={link.active ? 'page' : undefined}>
+                      {link.icon}
+                    </SidebarIconButton>
+                    {link.id === NEW ? <Mark /> : null}
+                  </Fragment>
                 ))}
               </YStack>
             ))
@@ -201,6 +229,7 @@ export function Column({
                 New chat
               </SidebarItem>
             </YStack>
+            <Row />
           </YStack>
         ) : (
           <YStack data-slot="app-places" mt="$1.5" shrink={0}>
@@ -212,18 +241,21 @@ export function Column({
                 </Text>
                 <YStack role="list" aria-labelledby={`${uid}-${g.id}`} gap={1}>
                   {g.links.map((link) => (
-                    <YStack role="listitem" key={link.id}>
-                      <SidebarItem
-                        {...ROW}
-                        {...(link.id === NEW ? { 'data-slot': 'app-new' } : {})}
-                        active={link.active}
-                        icon={link.icon}
-                        onPress={link.onPress}
-                        {...keys(() => link.onPress?.())}
-                      >
-                        {link.label}
-                      </SidebarItem>
-                    </YStack>
+                    <Fragment key={link.id}>
+                      <YStack role="listitem">
+                        <SidebarItem
+                          {...ROW}
+                          {...(link.id === NEW ? { 'data-slot': 'app-new' } : {})}
+                          active={link.active}
+                          icon={link.icon}
+                          onPress={link.onPress}
+                          {...keys(() => link.onPress?.())}
+                        >
+                          {link.label}
+                        </SidebarItem>
+                      </YStack>
+                      {link.id === NEW ? <Row /> : null}
+                    </Fragment>
                   ))}
                 </YStack>
               </YStack>
