@@ -45,8 +45,8 @@ import { BAD } from './lib/mix'
 const DOCS = 'https://docs.hanzo.ai/docs/dev'
 /** Where an organization's own settings live. */
 const ORG_SETTINGS = '/settings/organization'
-/** The organization's API keys: many per person, each created and revoked on its own. */
-const KEYS = `${ORG_SETTINGS}/keys`
+/** The organization's API keys: one home, the platform's keys page, never a second copy in an app. */
+const KEYS = 'https://platform.hanzo.ai/api-keys'
 /** An organization this tab created, until the token carries it. */
 const MADE = 'hanzo:org:made'
 

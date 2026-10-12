@@ -13,7 +13,6 @@
   "/settings",
   "/settings/organization",
   "/settings/organization/billing",
-  "/settings/organization/keys",
   "/settings/organization/members",
   "/settings/organization/usage",
   "/work"

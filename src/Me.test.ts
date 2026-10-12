@@ -60,14 +60,14 @@ describe('the account menu', () => {
     expect(labels).not.toContain('Add funds')
   })
 
-  test("API keys closes the menu and opens the organization's keys page, one the app serves", () => {
+  test("API keys closes the menu and opens the platform's keys page, the one place keys live", () => {
     const assign = vi.fn()
     vi.stubGlobal('window', { location: { assign } })
     const open = menu()
     open.rows.find((r) => r.label === 'API keys')?.press()
     expect(shut).toHaveBeenCalledWith(false)
-    expect(assign).toHaveBeenCalledWith('/settings/organization/keys')
+    expect(assign).toHaveBeenCalledWith('https://platform.hanzo.ai/api-keys')
     expect(open.go).not.toHaveBeenCalled()
-    expect(APP).toContain('/settings/organization/keys')
+    expect(APP).not.toContain('/settings/organization/keys')
   })
 })
