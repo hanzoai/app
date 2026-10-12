@@ -132,7 +132,7 @@ const GROUPS: Group[] = [
       { id: 'base', label: 'Base', href: site('/base') },
       { id: 'functions', label: 'Functions', href: site('/functions') },
       { id: 'realtime', label: 'Realtime', href: site('/realtime') },
-      { id: 'keys', label: 'API keys' },
+      { id: 'keys', label: 'API keys', href: 'https://platform.hanzo.ai/api-keys' },
     ],
   },
 ]
@@ -236,7 +236,6 @@ function Pane({ id, note }: { id: string; note?: string }) {
   if (id === 'account') return <Account />
   if (id === 'billing') return <Billing />
   if (id === 'usage') return <Usage />
-  if (id === 'keys') return <Keys />
   if (id === 'model') return <Model />
   if (id === 'models') return <Served />
   if (id === 'agent') return <AgentSettings />
@@ -470,26 +469,6 @@ function Usage() {
     <YStack gap="$6">
       {plan}
       <UsagePanel baseUrl={api()} token={accessToken} upgrade={payPage()} title="Spend" />
-    </YStack>
-  )
-}
-
-/** Keys are minted and revoked through the console, which holds the one issuer. */
-function Keys() {
-  return (
-    <YStack gap="$2">
-      <Text fontSize="$3" color="$soft">
-        A key is shown once, at the moment it is minted. That happens where the
-        issuer lives.
-      </Text>
-      <XStack>
-        <Box render={<a href="https://platform.hanzo.ai/api-keys" target="_blank" rel="noreferrer" />} {...tap}>
-          <XStack items="center" gap="$2" py="$2">
-            <Text fontSize="$3" color="$ink">Manage API keys</Text>
-            <ExternalLink size={13} aria-hidden />
-          </XStack>
-        </Box>
-      </XStack>
     </YStack>
   )
 }
