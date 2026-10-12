@@ -7,8 +7,8 @@
 // Dev's places are @hanzo/build's `nav`, the one list every rail draws, each a
 // row of its own under a quiet group label: nothing waits behind a More.
 //
-// Terminals sits under New in both modes. The machines and their sessions live
-// on platform.hanzo.ai, so the row is a link there, in a tab of its own.
+// Tabs sits under New in both modes. Hanzo Tabs lives at tabs.hanzo.ai, so the
+// row is a link there, in a tab of its own.
 //
 // It is a pane on the frame's ground (app/_web.tsx), sized by the edge in the
 // gutter to its right: dragged, keyed or double-clicked back (@hanzo/build's
@@ -32,7 +32,7 @@ import { empty } from './open'
 import { useSpan } from './span'
 import { pane } from './ground'
 import { pick } from './lib/session'
-import { app, talk, TERMINALS } from './lib/host'
+import { app, TABS, talk } from './lib/host'
 import { brand } from './where'
 
 /** The grip stands in the gutter between the column and the pane. gui carries a `calc()` to the page unchanged; its
@@ -63,21 +63,21 @@ const keys = (press: () => void) => ({
 /** A row of the column: a pill, lit where the reader is. Compact, so every place fits a laptop's height with Recents under them. */
 const ROW = { rounded: '$4', minH: 30, py: 0 } as const
 
-/** Terminals, a row drawn as a link out: another origin, its own tab, no handle back to this page. */
-const OUT = { 'data-slot': 'app-terminals', role: 'link', render: <a href={TERMINALS} target="_blank" rel="noopener noreferrer" /> } as const
+/** Tabs, a row drawn as a link out: another origin, its own tab, no handle back to this page. */
+const OUT = { 'data-slot': 'app-tabs', role: 'link', render: <a href={TABS} target="_blank" rel="noopener noreferrer" /> } as const
 
-/** Terminals in the rail, as its mark. */
+/** Tabs in the rail, as its mark. */
 const Mark = () => (
-  <SidebarIconButton label="Terminals" width={36} height={32} rounded={999} {...OUT}>
+  <SidebarIconButton label="Tabs" width={36} height={32} rounded={999} {...OUT}>
     <SquareTerminal size={16} />
   </SidebarIconButton>
 )
 
-/** Terminals in the column, as a row. */
+/** Tabs in the column, as a row. */
 const Row = () => (
   <YStack role="listitem">
     <SidebarItem {...ROW} icon={<SquareTerminal size={16} aria-hidden />} {...OUT}>
-      Terminals
+      Tabs
     </SidebarItem>
   </YStack>
 )

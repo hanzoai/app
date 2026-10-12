@@ -38,8 +38,8 @@ export const ENTRY = `${WORKSPACE}/?signin`
  */
 export const START = `${WORKSPACE}/start`
 
-/** Terminals: the machines and their sessions, kept by the platform, opened from the column in a tab of their own. */
-export const TERMINALS = 'https://platform.hanzo.ai/terminals'
+/** Hanzo Tabs, its own origin, opened from the column in a tab of its own. */
+export const TABS = 'https://tabs.hanzo.ai'
 
 /**
  * THE APP'S ADDRESSES ARE PATHS, in two modes at two roots. Chat is /chat, a

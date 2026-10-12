@@ -41,7 +41,7 @@ vi.mock('./span', () => ({ useSpan: () => ({ ref: null, style: {}, span: 272, mo
 vi.mock('./lib/session', () => ({ pick: () => {} }))
 
 import { Column } from './Column'
-import { TERMINALS } from './lib/host'
+import { TABS } from './lib/host'
 import type { Mode } from './recent'
 
 const draw = (mode: Mode, collapsed: boolean) => {
@@ -50,11 +50,11 @@ const draw = (mode: Mode, collapsed: boolean) => {
   return renderToStaticMarkup(createElement(Column, { host, mode, thread: null, onChat: () => {}, onDev: () => {}, go: () => {} }))
 }
 
-const LINK = `<a href="${TERMINALS}" target="_blank" rel="noopener noreferrer" data-slot="app-terminals"`
+const LINK = `<a href="${TABS}" target="_blank" rel="noopener noreferrer" data-slot="app-tabs"`
 
-describe('Terminals', () => {
-  test('the address is the platform’s', () => {
-    expect(TERMINALS).toBe('https://platform.hanzo.ai/terminals')
+describe('Tabs', () => {
+  test('the address is Hanzo Tabs’', () => {
+    expect(TABS).toBe('https://tabs.hanzo.ai')
   })
 
   for (const mode of ['chat', 'dev'] as const)
@@ -64,8 +64,8 @@ describe('Terminals', () => {
         expect(html.split(LINK)).toHaveLength(2)
         const link = html.slice(html.indexOf(LINK))
         expect(link).toMatch(/^<a [^>]*role="link"/)
-        if (collapsed) expect(link).toMatch(/^<a [^>]*aria-label="Terminals"/)
-        else expect(link).toMatch(/^<a [^>]*>[^]*?Terminals<\/a>/)
+        if (collapsed) expect(link).toMatch(/^<a [^>]*aria-label="Tabs"/)
+        else expect(link).toMatch(/^<a [^>]*>[^]*?Tabs<\/a>/)
         const before = html.slice(0, html.indexOf(LINK))
         const next = mode === 'chat' ? 'New chat' : 'New run'
         expect(before).toContain(next)
