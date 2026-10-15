@@ -296,9 +296,19 @@ catalog files under Enso or Zen (`house`).
   An answer that finishes writing a page while the panel is open opens it there.
 - `pane.ts` holds only what goes with the next message (files, refusals).
 
+## The app is `App`
+
+`@hanzo/rooms/App` is the web app as the whole window: the column, Chat and
+Dev, moved by the path (`place`) and written back with `go`. A host mounts
+IamProvider and `<Rooms>` with its router and `path`, and draws `App` for a
+signed-in reader; the signed-out page is the host's. hanzo.ai's `/` and the
+desktop app's main window draw this one component, so a change here reaches
+both. The desktop's router is `history` itself: `go` writes it and the host
+re-renders on `popstate` and on its own push and replace.
+
 ## What each app still owns
 
-hanzo.ai: its marketing site, the app at `/` (`_web.tsx`), the plan snapshot,
+hanzo.ai: its marketing site, the gate in front of `App` (`_web.tsx`), the plan snapshot,
 `lib/models` (the catalogue; naming comes from `@hanzo/rooms/lib/models`).
 hanzo.team: its landing, sign-up, sign-in gate, the `/agents` page, and its own
 `lib/host` (BRAND, BOOKING), `lib/auth/client` (its sign-in flow) and
