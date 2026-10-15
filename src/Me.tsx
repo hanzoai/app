@@ -37,13 +37,13 @@ import type { Tier } from './lib/tier'
 import { list } from './lib/list'
 import { org as current, orgs, pick, renew, scope, superAdmin } from './lib/session'
 import { ENTRY } from './lib/host'
-import { where } from './where'
+import { site, where } from './where'
 import { SupportPicker } from './Support'
 import { BAD } from './lib/mix'
 
 /** The documentation Get help opens. */
 const DOCS = 'https://docs.hanzo.ai/docs/dev'
-/** Where an organization's own settings live. */
+/** Where an organization's own settings live: a page of the site (`site()`), not of the app. */
 const ORG_SETTINGS = '/settings/organization'
 /** The organization's API keys: one home, the platform's keys page, never a second copy in an app. */
 const KEYS = 'https://platform.hanzo.ai/api-keys'
@@ -349,7 +349,7 @@ export function Me({
               ))}
             </YStack>
             <Item icon={<Plus size={15} aria-hidden />} label="Create organization" onPress={() => (menu.onOpenChange(false), setCreating(true))} />
-            <Item icon={<Settings size={15} aria-hidden />} label="Organization settings" onPress={() => (menu.onOpenChange(false), window.location.assign(ORG_SETTINGS))} />
+            <Item icon={<Settings size={15} aria-hidden />} label="Organization settings" onPress={() => (menu.onOpenChange(false), window.location.assign(site(ORG_SETTINGS)))} />
             {/* On hanzo.team the reader is already in the team, and a team is founded through its setup. */}
             {where().team ? null : here && !here.personal ? (
               <Item
