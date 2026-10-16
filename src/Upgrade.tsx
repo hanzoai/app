@@ -9,7 +9,7 @@
 // is handed none. A refusal's ask is read by `planRequired` in `failure.ts`.
 
 import { useEffect, useState } from 'react'
-import { Blocks, Brain, Gauge, ListChecks, Sparkles, X, type LucideIcon } from 'lucide-react'
+import { Gauge, Sparkles, Users, Workflow, X, type LucideIcon } from 'lucide-react'
 import { Anchor, Box, Dialog, DialogContent, DialogTitle, Text, ToggleGroup, ToggleGroupItem, XStack, YStack } from '@hanzo/ui'
 import { track } from './lib/tags'
 import { org } from './lib/session'
@@ -32,12 +32,13 @@ export function useFree(signedIn: boolean): boolean {
   return signedIn && tier?.tier?.name === FREE
 }
 
+// What the first paid personal plan adds to Free, in the words of the plan
+// catalog (@hanzo/plans subscription.json, the `dev` plan's features).
 const ROWS: readonly (readonly [LucideIcon, string])[] = [
-  [Gauge, 'Higher usage limits'],
-  [Sparkles, 'Access to all Hanzo models'],
-  [Brain, 'Memory that carries across conversations'],
-  [Blocks, 'Build and prototype with Hanzo Studio'],
-  [ListChecks, 'Power through tasks with Hanzo Team'],
+  [Gauge, 'Usage included on every model'],
+  [Sparkles, 'Every model, including Enso Ultra and Kai'],
+  [Users, 'Hanzo Team: chat, meetings, calendar and contacts'],
+  [Workflow, 'Automations, with daily runs included'],
 ]
 
 /** The page checkout returns to: this one, query and all. */
@@ -178,10 +179,6 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
             </Box>
           </XStack>
         </YStack>
-
-        <Text fontSize="$1" color="$soft" text="center">
-          Prices and plans are subject to change at Hanzo&apos;s discretion.
-        </Text>
       </DialogContent>
     </Dialog>
   )
