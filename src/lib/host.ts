@@ -214,3 +214,18 @@ export const WEB = `${SIGNIN}${CHAT}`
  */
 export const guest = (hostname: string): boolean =>
   hostname === 'hanzo.app' || hostname.endsWith('.hanzo.app') || hostname === 'hanzo.chat'
+
+/** The devnet's hosts are one label under hanzo.ai ending in `-dev`: app-dev, api-dev, id-dev. */
+const DEVNET = '-dev.hanzo.ai'
+
+/**
+ * Whether a host is the devnet's: its production twin with `-dev` on the one
+ * label under hanzo.ai (app-dev.hanzo.ai, api-dev.hanzo.ai, id-dev.hanzo.ai).
+ * A deeper name (a.b-dev.hanzo.ai) is not one, and neither is a name that only
+ * contains the suffix (app-dev.hanzo.ai.example.com).
+ */
+export function devnet(hostname: string): boolean {
+  if (!hostname.endsWith(DEVNET)) return false
+  const label = hostname.slice(0, -'.hanzo.ai'.length)
+  return label.length > '-dev'.length && !label.includes('.')
+}

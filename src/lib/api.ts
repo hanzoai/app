@@ -20,11 +20,25 @@
  * where it was. Called at request time it answers for the page that is open.
  */
 
-import { guest, team } from './host'
+import { devnet, guest, team } from './host'
 import { where } from '../where'
+
+/**
+ * The devnet's gateway and identity. A page on a devnet host (`devnet()` in
+ * host.ts) talks to these and to nothing of production's: the export is the
+ * same bytes on hanzo.ai and on app-dev.hanzo.ai, so the host it is open on is
+ * the only thing that tells the two apart, and it outranks any address the
+ * build stated with `configure()`.
+ */
+export const API_DEV = 'https://api-dev.hanzo.ai'
+export const IAM_DEV = 'https://id-dev.hanzo.ai'
+
+/** Whether the page in front of us is on a devnet host. */
+const onDevnet = (): boolean => typeof window !== 'undefined' && devnet(window.location.hostname)
 
 /** The gateway's origin, with no trailing slash: callers write `${api()}/v1/…`. */
 export function api(): string {
+  if (onDevnet()) return API_DEV
   const set = where().api
   if (set) return set.replace(/\/+$/, '')
   if (typeof window !== 'undefined') {
@@ -54,6 +68,7 @@ export function api(): string {
  * the day it is changed.
  */
 export function iam(): string {
+  if (onDevnet()) return IAM_DEV
   return (where().iam || 'https://hanzo.id').replace(/\/+$/, '')
 }
 
