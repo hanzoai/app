@@ -460,7 +460,7 @@ export function Meet() {
                   <iframe
                     src={`https://meet.hanzo.ai/${activeMeetingRoom}#config.prejoinPageEnabled=false&config.startWithAudioMuted=${!micOn}&config.startWithVideoMuted=${!cameraOn}`}
                     allow="camera; microphone; display-capture; autoplay; clipboard-write; speaker-selection; screen-wake-lock"
-                    title={`Hanzo Meet Room: ${activeMeetingRoom}`}
+                    title={`Hanzo Meet: ${activeMeetingRoom}`}
                   />
                 }
                 width="100%"

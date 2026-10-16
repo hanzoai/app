@@ -123,7 +123,7 @@ export function brief(cast: { name: string; says: string | null }[]): string | n
   }
   const names = cast.map((one) => one.name)
   return [
-    `There are ${cast.length} of you in this room with the user: ${join(names)}. When the user names some of you, those of you answer, each in turn; when the user names nobody, each of you answers. Each of you answers as yourself, in your own voice. Begin each contribution on its own line with your name and a colon, as in "${names[0]}: ...". Never write the user's lines. Who each of you is follows, one section per name.`,
+    `There are ${cast.length} of you in this conversation with the user: ${join(names)}. When the user names some of you, those of you answer, each in turn; when the user names nobody, each of you answers. Each of you answers as yourself, in your own voice. Begin each contribution on its own line with your name and a colon, as in "${names[0]}: ...". Never write the user's lines. Who each of you is follows, one section per name.`,
     ...cast.map((one) => `## ${one.name}\n\n${one.says ?? `${one.name} answers as ${one.name}.`}`),
   ].join('\n\n')
 }

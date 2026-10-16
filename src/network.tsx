@@ -233,10 +233,11 @@ export const speaker = (channel: string, sender?: string): string =>
   sender ? `@${sender}` : `Someone on ${of(channel).name}`
 
 /** A room is named by its own address, not by whoever spoke in it last: the
- *  handle for a DM, the network's room id otherwise. */
+ *  handle for a DM, the network's room id otherwise, and the channel it is on
+ *  where no id arrived. */
 export function roomName(room: { channel: string; roomId?: string; roomKind: string; last: { sender?: string } }): string {
   if (room.roomKind === 'dm') return speaker(room.channel, room.last.sender)
-  return room.roomId ? `#${room.roomId}` : `A room on ${of(room.channel).name}`
+  return room.roomId ? `#${room.roomId}` : `A channel on ${of(room.channel).name}`
 }
 
 /**

@@ -906,7 +906,7 @@ function Team({
   if (rooms === null) return <Note>Reading your channels.</Note>;
   if (rooms.length === 0)
     return <Note>No channels yet.</Note>;
-  if (shown.length === 0) return <Note>No room matches “{filter}”.</Note>;
+  if (shown.length === 0) return <Note>No channel matches “{filter}”.</Note>;
 
   return (
     <>
