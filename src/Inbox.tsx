@@ -269,7 +269,7 @@ function Reading({
       setDraft('')
       reload()
     } catch (e) {
-      setFailed(plainly(e, 'this room'))
+      setFailed(plainly(e, 'this conversation'))
     } finally {
       setSending(false)
     }

@@ -247,12 +247,12 @@ function Open({
   if (found) return <Talk key={teamKey(found)} room={found} />
   const reading = isLoading || (isAuthenticated && rooms.rooms === null && !rooms.wrong)
   const line = reading
-    ? 'Reading the room.'
+    ? 'Reading the channel.'
     : !isAuthenticated
-      ? 'Sign in to read this room.'
+      ? 'Sign in to read this channel.'
       : rooms.wrong
-        ? say(rooms.wrong, 'this room')
-        : 'That room is not here.'
+        ? say(rooms.wrong, 'this channel')
+        : 'That channel is not here.'
   return (
     <YStack flex={1} items="center" justify="center" p="$6" gap="$3">
       <Text fontSize="$3" color={SOFT}>
@@ -302,18 +302,18 @@ function Rooms({ rooms, wrong, open }: ReturnType<typeof useTeamRooms>) {
       setNaming(false)
       openRoom(teamKey(made))
     } catch (e) {
-      setRefused(plainly(e, 'this room'))
+      setRefused(plainly(e, 'this channel'))
     } finally {
       setOpening(false)
     }
   }
 
   return (
-    <Card kind="rooms" icon={<Hash size={14} aria-hidden />} title="Rooms">
+    <Card kind="rooms" icon={<Hash size={14} aria-hidden />} title="Channels">
       {rooms === null ? (
-        <Waiting wrong={wrong} subject="your rooms" />
+        <Waiting wrong={wrong} subject="your channels" />
       ) : rooms.length === 0 ? (
-        <Quiet>No rooms yet. Open one and the conversation has somewhere to live.</Quiet>
+        <Quiet>No channels yet.</Quiet>
       ) : (
         <YStack gap="$1">
           {rooms.slice(0, 6).map((one) => (
@@ -340,7 +340,7 @@ function Rooms({ rooms, wrong, open }: ReturnType<typeof useTeamRooms>) {
                     if (e.key === 'Escape') setNaming(false)
                   }}
                   placeholder="Name"
-                  aria-label="Room name"
+                  aria-label="Channel name"
                   autoFocus
                 />
               }

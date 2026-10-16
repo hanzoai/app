@@ -50,7 +50,7 @@ function when(ms: number): string {
  * it is added here and only where there is a name to put it on.
  */
 const titleOf = (room: TeamRoom): string =>
-  room.name ? `#${room.name}` : room.direct ? 'Direct message' : 'Room'
+  room.name ? `#${room.name}` : room.direct ? 'Direct message' : 'Channel'
 
 /** Adds `@name ` to a draft, after a space where the draft needs one. */
 const mention = (draft: string, name: string): string =>
@@ -80,7 +80,7 @@ export function Talk({ room }: { room: TeamRoom }) {
       await send(text)
     } catch (e) {
       setDraft(text)
-      setRefused(say(e, 'this room', 'save'))
+      setRefused(say(e, 'this channel', 'save'))
     } finally {
       setPending((held) => held.filter((one) => one.key !== key))
     }
@@ -117,7 +117,7 @@ export function Talk({ room }: { room: TeamRoom }) {
             report an outage as an empty conversation. */}
         {failed ? (
           <Text fontSize="$3" color="$soft">
-            {say(failed, 'this room')}
+            {say(failed, 'this channel')}
           </Text>
         ) : messages === null ? (
           <Text fontSize="$3" color="$soft">

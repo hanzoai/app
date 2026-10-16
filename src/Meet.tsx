@@ -416,7 +416,7 @@ export function Meet() {
             ) : null}
             <Button size="sm" onClick={() => handleCopyLink(activeMeetingRoom)}>
               {copied ? <Check size={13} /> : <Copy size={13} />}
-              {copied ? 'Link Copied' : 'Copy Room Link'}
+              {copied ? 'Link Copied' : 'Copy meeting link'}
             </Button>
             <Button
               size="sm"

@@ -156,7 +156,7 @@ export function useTeamRooms(): {
 
   const open = useCallback(
     async (room: { name: string; space?: string; members: string[] }) => {
-      if (!client) throw Object.assign(new Error('Sign in to open a room'), { status: 401 })
+      if (!client) throw Object.assign(new Error('Sign in to open a channel'), { status: 401 })
       const made = await client.http.json<TeamRoom>({
         method: 'POST',
         path: '/v1/team/rooms',
@@ -276,7 +276,7 @@ export function useRoomMessages(room: string | null, space: string | undefined) 
   const send = useCallback(
     async (text: string): Promise<RoomMessage> => {
       if (!client || !room || !space) {
-        throw Object.assign(new Error('This room has no address to send to'), { status: 503 })
+        throw Object.assign(new Error('This channel has no address to send to'), { status: 503 })
       }
       const row = await client.http.json<RoomMessage>({
         method: 'POST',
