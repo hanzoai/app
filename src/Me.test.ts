@@ -35,7 +35,7 @@ vi.mock('./lib/session', () => ({ org: () => 'acme', orgs: () => ['acme'], pick:
 vi.mock('./lib/org', () => ({ createOrg: async () => '', say: String }))
 vi.mock('./Support', () => ({ SupportPicker: () => null }))
 
-import { Me } from './Me'
+import { Me, upgrade } from './Me'
 import APP from './lib/rooms.json' with { type: 'json' }
 
 /** The account menu, open, as its rows. */
@@ -53,11 +53,17 @@ afterEach(() => {
 })
 
 describe('the account menu', () => {
-  test('lists Billing and API keys between Usage and View all plans, and no balance', () => {
+  test('opens on the account: usage, the organization, API keys, Settings, Help and Log out, and no balance', () => {
     const labels = menu().rows.map((r) => r.label)
-    const at = labels.indexOf('Usage')
-    expect(labels.slice(at, at + 4)).toEqual(['Usage', 'Billing', 'API keys', 'View all plans'])
+    expect(labels).toEqual(['Usage remaining', 'acme', 'API keys', 'Settings', 'Help', 'Log out'])
     expect(labels).not.toContain('Add funds')
+    expect(labels).not.toContain('Show Pet')
+  })
+
+  test('the plans row is named by the plan the organization is on', () => {
+    expect(upgrade('Enterprise')).toBe('Enterprise plan')
+    expect(upgrade('Agency')).toBe('Agency plan')
+    for (const family of ['Free', 'Pro', 'Max', 'Team', 'DNS', 'Embedded Pod', 'Forward Deployed', 'White', null, undefined]) expect(upgrade(family), String(family)).toBe('Upgrade plan')
   })
 
   test("API keys closes the menu and opens the platform's keys page, the one place keys live", () => {

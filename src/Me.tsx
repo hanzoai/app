@@ -26,7 +26,7 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Popover, SizableText, usePopperContextSlow, View, XStack, YStack } from '@hanzo/gui'
-import { Building2, ChevronsUpDown, CreditCard, ExternalLink, Gauge, KeyRound, LifeBuoy, LogOut, Plus, Settings, Sparkles, Users, X } from 'lucide-react'
+import { Building2, ChevronLeft, ChevronRight, ChevronsUpDown, CreditCard, ExternalLink, Gauge, KeyRound, LifeBuoy, LogOut, Mail, Plus, Settings, Sparkles, Users, X } from 'lucide-react'
 import { label, Meter, path, said as spoken, useStanding, useWho, type Host } from '@hanzo/build'
 import { useOrganizations } from '@hanzo/iam/react'
 import { Button, Dialog, DialogContent, DialogTitle, Input } from '@hanzo/ui'
@@ -163,9 +163,9 @@ function Item({
       items="center"
       gap="$2.5"
       px="$2"
-      minH={36}
-      py="$1.5"
-      rounded="$4"
+      minH={30}
+      py={4}
+      rounded="$3"
       bg={checked ? '$edge' : 'transparent'}
       hoverStyle={{ bg: '$hover' }}
       focusVisibleStyle={{ bg: '$hover', outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
@@ -251,18 +251,43 @@ function Refit({ children }: { children: ReactNode }) {
   )
 }
 
+/**
+ * The plans row, named by the plan the organization is on: Enterprise and
+ * Agency are plans a person stays on, so the row names theirs; every other
+ * plan, Free included, is one to move up from.
+ */
+export const upgrade = (family: string | null | undefined): string =>
+  family === 'Enterprise' ? 'Enterprise plan' : family === 'Agency' ? 'Agency plan' : 'Upgrade plan'
+
+/** The keys a row prints, in this platform's spelling. */
+const mac = (): boolean => typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
+
+/** A row's keys at its end, quiet. */
+const Keys = ({ children }: { children: string }) => (
+  <SizableText size="$1" color="$soft" shrink={0}>
+    {children}
+  </SizableText>
+)
+
+/** A row that opens a page of the menu. */
+const More = () => <ChevronRight size={14} aria-hidden opacity={0.6} />
+
+/** The pages of the menu: the account's rows, then each one that opens a list of its own. */
+type Page = 'main' | 'orgs' | 'usage' | 'help'
+
 export function Me({
   host,
   narrow = false,
   onOrg,
 }: {
   host: Host
-  /** The collapsed rail's: the face alone, the menu opening beside it. */
+  /** The rail's: the face alone, the menu opening beside it. */
   narrow?: boolean
   /** Work in another organization: picked, then the app opened in it. */
   onOrg: (org: string) => void
 }) {
   const menu = useWho()
+  const [page, setPage] = useState<Page>('main')
   const [creating, setCreating] = useState(false)
   const [supporting, setSupporting] = useState(false)
   const row = useRef<HTMLElement | null>(null)
@@ -276,16 +301,25 @@ export function Me({
   const other = usePlan(personal && personal.name !== current ? personal.name : null, menu.open)
   const planFor = (o: Org) => (o.name === current ? spoken(read.value?.label ?? null) : o.personal ? other : '')
   const who = host.person?.name || host.person?.email || ''
-  const standing = [said(here?.role ?? ''), here?.display ?? current].filter(Boolean).join(' · ')
+  const plan = spoken(read.value?.label ?? null)
+  const apple = mac()
 
-  // The organization in use takes focus once the menu is drawn — after the
-  // popover has placed its own focus — so the keys reach the rows at once.
+  // Each page opens on its first row, once it is drawn — after the popover has
+  // placed its own focus — so the keys reach the rows at once.
   const land = (node: HTMLDivElement | null) => {
     content.current = node
     if (!node) return
     requestAnimationFrame(() =>
       requestAnimationFrame(() => (node.querySelector<HTMLElement>('[data-item][aria-checked="true"]') ?? node.querySelector<HTMLElement>('[data-item]'))?.focus()),
     )
+  }
+  const turn = (to: Page) => {
+    setPage(to)
+    requestAnimationFrame(() => land(content.current))
+  }
+  const toggle = () => {
+    setPage('main')
+    menu.toggle()
   }
   const close = () => {
     menu.onOpenChange(false)
@@ -295,12 +329,23 @@ export function Me({
     menu.onOpenChange(false)
     host.go(p)
   }
+  const back = (title: string) => <Item icon={<ChevronLeft size={15} aria-hidden />} label={title} onPress={() => turn('main')} />
 
   if (!host.person) return null
   return (
     <>
-      <Popover open={menu.open} onOpenChange={menu.onOpenChange} placement={narrow ? 'right-end' : 'top-start'} allowFlip stayInFrame offset={8}>
-        <Popover.Anchor width="100%">
+      <Popover
+        open={menu.open}
+        onOpenChange={(open) => {
+          if (open) setPage('main')
+          menu.onOpenChange(open)
+        }}
+        placement={narrow ? 'right-end' : 'top-start'}
+        allowFlip
+        stayInFrame
+        offset={8}
+      >
+        <Popover.Anchor width={narrow ? undefined : '100%'}>
           <XStack
             ref={(el: unknown) => {
               row.current = el instanceof HTMLElement ? el : null
@@ -309,11 +354,12 @@ export function Me({
             data-slot="me"
             // The name the gates and a screen reader know it by: who, and in which organization.
             aria-label={`Account: ${[who, current].filter(Boolean).join(' · ')}`}
+            {...({ title: who } as object)}
             aria-haspopup="menu"
             aria-expanded={menu.open}
-            onPress={menu.toggle}
-            width={narrow ? 40 : '100%'}
-            minH={narrow ? 40 : 48}
+            onPress={toggle}
+            width={narrow ? 36 : '100%'}
+            minH={narrow ? 36 : 48}
             px={narrow ? 0 : '$2'}
             gap="$2.5"
             rounded={narrow ? 999 : '$5'}
@@ -323,16 +369,16 @@ export function Me({
             focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
             cursor="pointer"
           >
-            <Face host={host} size={narrow ? 30 : 32} />
+            <Face host={host} size={narrow ? 26 : 32} />
             {narrow ? null : (
               <>
                 <YStack flex={1} minW={0}>
                   <SizableText size="$3" fontWeight="600" color="$ink" numberOfLines={1} text="left">
                     {who}
                   </SizableText>
-                  {standing ? (
+                  {plan ? (
                     <SizableText size="$1" color="$soft" numberOfLines={1} text="left">
-                      {standing}
+                      {plan}
                     </SizableText>
                   ) : null}
                 </YStack>
@@ -341,66 +387,91 @@ export function Me({
             )}
           </XStack>
         </Popover.Anchor>
-        <Popover.Content {...glass(2)} items="stretch" borderWidth={1} rounded="$6" p="$1.5" width={288} maxW="calc(100vw - 16px)" maxH="calc(100dvh - 32px)" overflowY="auto" overflowX="hidden">
+        <Popover.Content {...glass(2)} items="stretch" borderWidth={1} rounded="$5" p="$1" width={240} maxW="calc(100vw - 16px)" maxH="calc(100dvh - 32px)" overflowY="auto" overflowX="hidden">
           <Refit>
           <View render={<div ref={land} role="menu" aria-label="Account" onKeyDown={(e) => rove(e, close)} />} self="stretch" minW={0}>
-          <YStack gap={2}>
-            <SizableText size="$2" color="$soft" px="$2" py="$1.5" numberOfLines={1}>
-              {host.person.email || who}
-            </SizableText>
-            <Rule />
-            <Meter
-              read={read}
-              onPlans={() => go(path({ kind: 'screen', screen: 'plans' }))}
-              onBilling={() => go(path({ kind: 'settings', section: 'billing' }))}
-            />
-            <Rule />
-            <Label>Organizations</Label>
-            <YStack role="group" aria-label="Organizations" gap={2}>
-              {all.map((o) => (
-                <Item
-                  key={o.name}
-                  icon={<Mark org={o} />}
-                  label={o.display}
-                  sub={[o.personal ? 'Personal' : said(o.role), planFor(o)].filter(Boolean).join(' · ')}
-                  checked={o.name === current}
-                  onPress={() => {
-                    menu.onOpenChange(false)
-                    if (o.name !== current) onOrg(o.name)
-                  }}
-                />
-              ))}
+          {page === 'main' ? (
+            <YStack gap={1}>
+              {/* Who, and on what plan: the reference's header, not a row. */}
+              <XStack items="center" gap="$2.5" px="$2" pt="$1.5" pb="$2">
+                <Face host={host} size={28} />
+                <YStack flex={1} minW={0}>
+                  <SizableText size="$2" fontWeight="600" color="$ink" numberOfLines={1}>
+                    {who}
+                  </SizableText>
+                  <SizableText size="$1" color="$soft" numberOfLines={1}>
+                    {plan || host.person.email || ''}
+                  </SizableText>
+                </YStack>
+              </XStack>
+              <Rule />
+              <Item icon={<Gauge size={15} aria-hidden />} label="Usage remaining" trail={<More />} onPress={() => turn('usage')} />
+              <Item icon={<Building2 size={15} aria-hidden />} label={here?.display ?? current ?? 'Organization'} sub="Organization" trail={<More />} onPress={() => turn('orgs')} />
+              <Item icon={<KeyRound size={15} aria-hidden />} label="API keys" trail={<ExternalLink size={13} aria-hidden opacity={0.6} />} onPress={() => (menu.onOpenChange(false), window.location.assign(KEYS))} />
+              <Item icon={<Settings size={15} aria-hidden />} label="Settings" trail={<Keys>{apple ? '⌘,' : 'Ctrl+,'}</Keys>} onPress={() => go(path({ kind: 'settings', section: 'general' }))} />
+              <Rule />
+              <Item icon={<LifeBuoy size={15} aria-hidden />} label="Help" trail={<More />} onPress={() => turn('help')} />
+              {host.signOut ? <Item icon={<LogOut size={15} aria-hidden />} label="Log out" onPress={() => (menu.onOpenChange(false), host.signOut?.())} /> : null}
             </YStack>
-            <Item icon={<Plus size={15} aria-hidden />} label="Create organization" onPress={() => (menu.onOpenChange(false), setCreating(true))} />
-            <Item icon={<Settings size={15} aria-hidden />} label="Organization settings" onPress={() => (menu.onOpenChange(false), window.location.assign(site(ORG_SETTINGS)))} />
-            {/* On hanzo.team the reader is already in the team, and a team is founded through its setup. */}
-            {where().team ? null : here && !here.personal ? (
-              <Item
-                icon={<Users size={15} aria-hidden />}
-                label="Open in Hanzo Team"
-                trail={<ExternalLink size={13} aria-hidden opacity={0.6} />}
-                onPress={() => (menu.onOpenChange(false), window.location.assign(`${ENTRY}&org=${encodeURIComponent(here.name)}`))}
+          ) : page === 'usage' ? (
+            <YStack gap={1}>
+              {back('Usage remaining')}
+              <Rule />
+              <Meter
+                read={read}
+                onPlans={() => go(path({ kind: 'screen', screen: 'plans' }))}
+                onBilling={() => go(path({ kind: 'settings', section: 'billing' }))}
               />
-            ) : (
-              <Item icon={<Users size={15} aria-hidden />} label="Create a team" onPress={() => (menu.onOpenChange(false), setCreating(true))} />
-            )}
-            {superAdmin() ? (
-              <Item icon={<Building2 size={15} aria-hidden />} label="All organizations" onPress={() => (menu.onOpenChange(false), setSupporting(true))} />
-            ) : null}
-            <Rule />
-            <Item icon={<Settings size={15} aria-hidden />} label="Settings" onPress={() => go(path({ kind: 'settings', section: 'general' }))} />
-            <Item icon={<Gauge size={15} aria-hidden />} label="Usage" onPress={() => go(path({ kind: 'settings', section: 'usage' }))} />
-            <Item icon={<CreditCard size={15} aria-hidden />} label="Billing" onPress={() => go(path({ kind: 'settings', section: 'billing' }))} />
-            <Item icon={<KeyRound size={15} aria-hidden />} label="API keys" onPress={() => (menu.onOpenChange(false), window.location.assign(KEYS))} />
-            <Item icon={<Sparkles size={15} aria-hidden />} label="View all plans" onPress={() => go(path({ kind: 'screen', screen: 'plans' }))} />
-            <Item icon={<LifeBuoy size={15} aria-hidden />} label="Get help" onPress={() => (menu.onOpenChange(false), window.open(DOCS, '_blank', 'noopener,noreferrer'))} />
-            {host.signOut ? (
-              <>
-                <Rule />
-                <Item icon={<LogOut size={15} aria-hidden />} label="Log out" onPress={() => (menu.onOpenChange(false), host.signOut?.())} />
-              </>
-            ) : null}
-          </YStack>
+              <Rule />
+              <Item icon={<Gauge size={15} aria-hidden />} label="Usage" onPress={() => go(path({ kind: 'settings', section: 'usage' }))} />
+              <Item icon={<CreditCard size={15} aria-hidden />} label="Billing" onPress={() => go(path({ kind: 'settings', section: 'billing' }))} />
+              <Item icon={<Sparkles size={15} aria-hidden />} label={upgrade(read.value?.label?.name)} onPress={() => go(path({ kind: 'screen', screen: 'plans' }))} />
+            </YStack>
+          ) : page === 'orgs' ? (
+            <YStack gap={1}>
+              {back('Organization')}
+              <Rule />
+              <Label>Organizations</Label>
+              <YStack role="group" aria-label="Organizations" gap={2}>
+                {all.map((o) => (
+                  <Item
+                    key={o.name}
+                    icon={<Mark org={o} />}
+                    label={o.display}
+                    sub={[o.personal ? 'Personal' : said(o.role), planFor(o)].filter(Boolean).join(' · ')}
+                    checked={o.name === current}
+                    onPress={() => {
+                      menu.onOpenChange(false)
+                      if (o.name !== current) onOrg(o.name)
+                    }}
+                  />
+                ))}
+              </YStack>
+              <Item icon={<Plus size={15} aria-hidden />} label="Create organization" onPress={() => (menu.onOpenChange(false), setCreating(true))} />
+              <Item icon={<Settings size={15} aria-hidden />} label="Organization settings" onPress={() => (menu.onOpenChange(false), window.location.assign(site(ORG_SETTINGS)))} />
+              {/* On hanzo.team the reader is already in the team, and a team is founded through its setup. */}
+              {where().team ? null : here && !here.personal ? (
+                <Item
+                  icon={<Users size={15} aria-hidden />}
+                  label="Open in Hanzo Team"
+                  trail={<ExternalLink size={13} aria-hidden opacity={0.6} />}
+                  onPress={() => (menu.onOpenChange(false), window.location.assign(`${ENTRY}&org=${encodeURIComponent(here.name)}`))}
+                />
+              ) : (
+                <Item icon={<Users size={15} aria-hidden />} label="Create a team" onPress={() => (menu.onOpenChange(false), setCreating(true))} />
+              )}
+              {superAdmin() ? (
+                <Item icon={<Building2 size={15} aria-hidden />} label="All organizations" onPress={() => (menu.onOpenChange(false), setSupporting(true))} />
+              ) : null}
+            </YStack>
+          ) : (
+            <YStack gap={1}>
+              {back('Help')}
+              <Rule />
+              <Item icon={<LifeBuoy size={15} aria-hidden />} label="Get help" trail={<ExternalLink size={13} aria-hidden opacity={0.6} />} onPress={() => (menu.onOpenChange(false), window.open(DOCS, '_blank', 'noopener,noreferrer'))} />
+              <Item icon={<Mail size={15} aria-hidden />} label="Contact us" onPress={() => (menu.onOpenChange(false), window.location.assign(site('/contact')))} />
+            </YStack>
+          )}
           </View>
           </Refit>
         </Popover.Content>
