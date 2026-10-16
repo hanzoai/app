@@ -74,10 +74,14 @@ repository or a site from any surface.
 
 ## Rules the rooms keep
 
-- No place hides behind a More. Column draws Dev's places from @hanzo/build's
-  `nav` (≥ 0.2.53), the one list every rail draws, each a row under a quiet
-  group label (Work, Make, Run, Setup); Shell draws its Setup rows the same way,
-  under the rooms. Collapsed, Column keeps every place as a mark.
+- The app's products are marks on its rail (Rail.tsx), Chat first and Dev
+  second, then More, a menu of the products on hosts of their own (Tabs, Team),
+  and the account at the foot. There is no Chat / Dev switch anywhere: the rail
+  moves the app, and Shell's sidebar wears the product's name alone. Dev's
+  places are rows in the sidebar (Column), from @hanzo/build's `nav`
+  (≥ 0.2.53), the one list every rail draws, each under a quiet group label
+  (Work, Make, Run, Setup); Shell draws its Setup rows the same way. Shut, the
+  sidebar takes Dev's places with it and the rail stays.
 - Skills, connectors, plugins and agents have one home, Dev's Customize: Shell's
   Customize row and Settings' Plugins and Skills rows lead there (`app()`), and
   Directory lists only Works with and Channels. A list is the registry's answer
@@ -105,7 +109,9 @@ dialogs (`Share.tsx` `ShareDialog`, the header's panel in a dialog). A row
 (`ThreadRow`) is its markup and a trigger. Entries: Rename (Ctrl+Alt+R), Pin
 or Unpin (Ctrl+Alt+P), Share…, Copy link, Open in new tab, Archive or
 Unarchive, Delete. The address of a conversation is `site(talk(id))`; a
-⌘/Ctrl-click or a middle-click on a row opens it in a new tab.
+⌘/Ctrl-click or a middle-click on a row opens it in a new tab. Chat's header
+offers the same menu from its ⋯ (`ThreadMore`, inside a `ConversationMenu` of
+the one conversation the pane holds).
 
 - The keys act on the row whose menu is open, else on the conversation the
   pane holds — never while the reader types, inside a dialog or one of the
@@ -164,8 +170,8 @@ folds a record for analytics, and `remember`/`resume` keep the mode `/`
 reopens. Retired addresses — `/?at=`, `/?chat=`,
 `/dev?run=|project=|view=|at=`, and the builder's own grammar under /dev that
 0.1.35–0.1.38 wrote (`/dev/sess_<id>`, `/dev/-/<place>`, `/dev/<org>/<repo>`,
-`/dev/<slug>`) — are answered by the edge with a 301 to their paths (hanzo.ai
-`lib/edge.ts`); nothing here reads them. The rooms' own links to hanzo.team's
+`/dev/<slug>`) — are moved to their paths by the host before `App` draws
+(hanzo.ai `app/_door.tsx` `moved`); nothing here reads them. The rooms' own links to hanzo.team's
 /chat (`/chat?q=`, `/chat?thread=`) are that app's addresses and stay as they
 are.
 
@@ -298,13 +304,65 @@ catalog files under Enso or Zen (`house`).
 
 ## The app is `App`
 
-`@hanzo/rooms/App` is the web app as the whole window: the column, Chat and
-Dev, moved by the path (`place`) and written back with `go`. A host mounts
-IamProvider and `<Rooms>` with its router and `path`, and draws `App` for a
-signed-in reader; the signed-out page is the host's. hanzo.ai's `/` and the
-desktop app's main window draw this one component, so a change here reaches
-both. The desktop's router is `history` itself: `go` writes it and the host
-re-renders on `popstate` and on its own push and replace.
+`@hanzo/rooms/App` is the web app as the whole window: the rail, the sidebar,
+Chat and Dev, moved by the path (`place`) and written back with `go`. A host
+mounts IamProvider and `<Rooms>` with its router and `path`, and draws `App`
+for a signed-in reader; the signed-out page is the host's. hanzo.ai's `/` and
+the desktop app's main window draw this one component, so a change here
+reaches both. The desktop's router is `history` itself: `go` writes it and the
+host re-renders on `popstate` and on its own push and replace.
+
+The window, ChatGPT desktop's shape (the parity record is the owner's
+reference captures; outer window, inner panel):
+
+    [◧]   Hanzo AI     🔔 ⌕ │╭ Launch checklist      ⇪ Share  ⋯  ☷  ⊞ ╮
+    [💬]  ✎ New chat         ││                                         │
+    [</>] Pinned             ││        the conversation, 16px body       │
+    [📚]  Recents            ││                                         │
+    [⏱]                      ││   … can make mistakes.                  │
+    [🧩]                      ││   ( + Ask Hanzo AI     Enso ⌄  🎤  ⬆ )   │
+    [⋯]                       │╰─────────────────────────────────────────╯
+    [me]
+
+- OUTER: the rail (Rail.tsx) and the sidebar (Column.tsx) stand on the floor,
+  no fill, no edge. INNER: the content is one rounded panel (`pane()`), inset
+  from the window's edges and from the sidebar by `--pane-gap`; Chat's tabs
+  are a second panel beside it (Paned), Dev's run floats its own two.
+- The rail, one order: Chat, Dev, Library (Dev's Artifacts), Scheduled tasks
+  (Automations), Customize, then More (Projects, Templates, Issues, Machines,
+  Environments | Tabs, Team), the account's face at the foot. Each mark is an
+  app: 36px on a 44px pitch, its name its tooltip, lit where the reader is.
+  Library, Scheduled tasks and Customize are Dev places raised to the rail.
+- The sidebar's toggle is at the window's top-left: the rail's first mark in a
+  browser tab. A host that is a window passes `bar` (`<App bar={{ inset, drag
+  }} />`) and App draws the window's 40px bar: the toggle, then Back and
+  Forward through the host's router, `inset` px clear for the window's own
+  controls, `drag` the attributes its shell reads as the drag region. Shut is
+  kept per browser under `hanzo.build.rail`; the sidebar's edge pulled in past
+  its floor shuts it too.
+- The sidebar: the mode's name (18/600, no chevron), the bell (the org's run
+  activity and Notification settings) and the search (the filter over Recents;
+  ⌘K / Ctrl+K from anywhere), New chat or Dev's places, then Pinned and
+  Recents as plain 14px titles on a 31px pitch — no dates, no icons; a run's
+  state is a dot at its end. The Recents view menu stands at the heading's end.
+- The account menu (Me.tsx), from the face: who and the plan, Usage remaining ›
+  (the meter, Usage, Billing, and the plans row named by the plan: Enterprise
+  plan, Agency plan, else Upgrade plan), the organization › (switch, create,
+  settings, Team, All organizations for a SuperAdmin), API keys (the
+  platform's page), Settings (⌘, / Ctrl+,), Help ›, Log out.
+- Chat's header: the conversation's title at the left, then Share (icon and
+  word), the row's own ⋯ menu (`ThreadMore`), the Summary (RightPane.tsx:
+  Outputs led by Create file or site, Sources with its +, each row opening in a
+  tab) and the tabs' control (@hanzo/build `PanelToggle`), never a second
+  sidebar toggle. New chat anywhere is `empty()`; App moves an emptied
+  conversation's address to /chat.
+- The transcript reads at the reference's type (Prose.tsx): a 16px body on a
+  24px line, headings 28/24/20.
+- A phone has neither rail nor sidebar: its bar opens the sidebar as a drawer,
+  the rail laid along the drawer's foot (`flat`).
+- What a person reads calls these apps, and a team's conversation spaces
+  channels; "room" is a name in the code only (the package, `Room`, `rooms.ts`,
+  `useRooms`, the `rooms` card kind), kept for the @hanzo/apps rename.
 
 ## What each app still owns
 
