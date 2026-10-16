@@ -278,11 +278,14 @@ type Page = 'main' | 'orgs' | 'usage' | 'help'
 export function Me({
   host,
   narrow = false,
+  above = false,
   onOrg,
 }: {
   host: Host
   /** The rail's: the face alone, the menu opening beside it. */
   narrow?: boolean
+  /** The menu opens above the face, not beside it: the rail laid along a phone drawer's foot. */
+  above?: boolean
   /** Work in another organization: picked, then the app opened in it. */
   onOrg: (org: string) => void
 }) {
@@ -340,7 +343,7 @@ export function Me({
           if (open) setPage('main')
           menu.onOpenChange(open)
         }}
-        placement={narrow ? 'right-end' : 'top-start'}
+        placement={narrow && !above ? 'right-end' : above ? 'top-end' : 'top-start'}
         allowFlip
         stayInFrame
         offset={8}

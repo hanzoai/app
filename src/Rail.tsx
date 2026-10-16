@@ -214,7 +214,7 @@ export function Rail({
         items={rest}
       />
       <YStack flex={1} />
-      <Me host={host} narrow onOrg={onOrg} />
+      <Me host={host} narrow above={flat} onOrg={onOrg} />
     </Stack>
   )
 }

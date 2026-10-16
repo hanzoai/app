@@ -8,7 +8,7 @@
 // menu (thread.tsx `ConversationMenu`): pinned ones list first, under Pinned,
 // and Chat's Status shows the archived ones apart.
 
-import { useEffect, useId, useMemo, useRef } from 'react'
+import { useEffect, useId, useMemo, useRef, type ReactNode } from 'react'
 import { ScrollView, SizableText, XStack, YStack } from '@hanzo/gui'
 import { ListFilter } from 'lucide-react'
 import type { Thread } from '@hanzo/ai'
@@ -194,7 +194,7 @@ function List({
         }}
         onPress={() => onOpen(r)}
       >
-        <SizableText size="$3" color={open(r) ? '$ink' : '$quiet'} numberOfLines={1}>
+        <SizableText size="$3" color={open(r) ? '$ink' : '$quiet'} numberOfLines={1} display="block">
           {r.title}
         </SizableText>
       </SidebarItem>
@@ -277,54 +277,58 @@ function List({
   ) : (
     <Note>{mode === 'chat' ? 'No chats yet.' : 'No runs yet.'}</Note>
   )
-  const body = (
-    <YStack role="list" aria-labelledby={label} gap={1}>
-      {pinned ? (
-        <YStack role="listitem" gap={1}>
-          {heading(PINNED)}
-          <YStack role="list" aria-label={PINNED} gap={1}>
-            {pinned.rows.map(row)}
+  // Each list of conversations holds its own menu (thread.tsx): the view menu
+  // in the Recents heading between them is a menu of its own, never inside one.
+  const menus = (rows: ReactNode) =>
+    threads ? (
+      // Held while the list empties, so a dialog its last row opened closes in place.
+      <ConversationMenu threads={threads} active={held} onGone={onNew}>
+        <YStack>{rows}</YStack>
+      </ConversationMenu>
+    ) : (
+      rows
+    )
+  const rest = loose.length
+    ? loose.map((g) =>
+        g.title ? (
+          <YStack key={g.title} gap={1} pt="$1">
+            <SizableText size="$1" color="$soft" px="$2" pb="$1">
+              {g.title}
+            </SizableText>
+            <YStack role="list" aria-label={g.title} gap={1}>
+              {g.rows.map(row)}
+            </YStack>
           </YStack>
-        </YStack>
-      ) : null}
-      <YStack role="listitem" gap={1}>
-        {heading('Recents', label, true)}
-        {loose.length
-          ? loose.map((g) =>
-              g.title ? (
-                <YStack key={g.title} gap={1} pt="$1">
-                  <SizableText size="$1" color="$soft" px="$2" pb="$1">
-                    {g.title}
-                  </SizableText>
-                  <YStack role="list" aria-label={g.title} gap={1}>
-                    {g.rows.map(row)}
-                  </YStack>
-                </YStack>
-              ) : (
-                <YStack key="all" role="list" aria-label="All" gap={1}>
-                  {g.rows.map(row)}
-                </YStack>
-              ),
-            )
-          : pinned
-            ? null
-            : note}
-      </YStack>
-    </YStack>
-  )
+        ) : (
+          <YStack key="all" role="list" aria-label="All" gap={1}>
+            {g.rows.map(row)}
+          </YStack>
+        ),
+      )
+    : pinned
+      ? null
+      : note
 
   return (
     <YStack data-slot="recents" flex={1} minH={0}>
       <ScrollView flex={1} showsVerticalScrollIndicator={false}>
         {error ? <Note>{error.message}</Note> : null}
-        {threads ? (
-          // Held while the list empties, so a dialog its last row opened closes in place.
-          <ConversationMenu threads={threads} active={held} onGone={onNew}>
-            <YStack>{body}</YStack>
-          </ConversationMenu>
-        ) : (
-          body
-        )}
+        <YStack role="list" aria-labelledby={label} gap={1}>
+          {pinned ? (
+            <YStack role="listitem" gap={1}>
+              {heading(PINNED)}
+              {menus(
+                <YStack role="list" aria-label={PINNED} gap={1}>
+                  {pinned.rows.map(row)}
+                </YStack>,
+              )}
+            </YStack>
+          ) : null}
+          <YStack role="listitem" gap={1}>
+            {heading('Recents', label, true)}
+            {loose.length ? menus(rest) : rest}
+          </YStack>
+        </YStack>
       </ScrollView>
     </YStack>
   )

@@ -17,7 +17,7 @@
 // @hanzo/build (`useDeck`, scope `chat:<channel>`); the frame owns the column
 // it stands in (`Beside` in `Shell.tsx`).
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { FileCode, Globe, Image as ImageMark, ListTodo, Paperclip, Plus, Search } from 'lucide-react'
 import {
   Box,
@@ -40,7 +40,9 @@ import { artifacts, name as titleOf, PAGE, type Deck, type Kind, type Tabs } fro
 import { Card, Quiet, Row } from './card'
 import { said as told } from './lib/attach'
 import { download, fileOf, type Api } from './lib/files'
-import { org } from './lib/session'
+import { org, scope } from './lib/session'
+import { api } from './lib/api'
+import { list } from './lib/list'
 import { localOf, take, type Held } from './pane'
 import { useProviders, useSkills } from './tools'
 import { activate, startDevice } from './connect'
@@ -472,4 +474,25 @@ export function Summary({ at, said, held, deck, onOpen, onCreate }: { at: string
       </PopoverContent>
     </Popover>
   )
+}
+
+/**
+ * The organization's sites, as an empty tab suggests them: `GET /v1/projects`,
+ * every row with a live address. Read once a conversation; nothing on a refusal.
+ */
+export function useSites(): { title: string; url: string }[] {
+  const [rows, setRows] = useState<{ title: string; url: string }[]>([])
+  useEffect(() => {
+    const stop = new AbortController()
+    fetch(`${api()}/v1/projects`, { headers: scope(), signal: stop.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body: unknown) => {
+        if (stop.signal.aborted) return
+        const all = list<{ name?: string; slug?: string; liveUrl?: string }>(Array.isArray(body) ? body : (body as { data?: unknown } | null)?.data)
+        setRows(all.filter((p) => typeof p.liveUrl === 'string' && /^https:\/\//.test(p.liveUrl)).map((p) => ({ title: p.name || p.slug || 'Site', url: p.liveUrl as string })))
+      })
+      .catch(() => {})
+    return () => stop.abort()
+  }, [])
+  return rows
 }

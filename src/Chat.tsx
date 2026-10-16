@@ -56,6 +56,7 @@ import { useMedia } from "@hanzo/gui";
 import { useIam, useIamToken } from "@hanzo/iam/react";
 import { bearer, hasSession, org } from "./lib/session";
 import { api } from "./lib/api";
+import { dev } from "./lib/host";
 import { chats, house, paidPlan, paused, setCreditsAfterAllowance, useLimits } from "./lib/limits";
 import { LimitedBanner } from "@hanzo/ui/product/LimitedBanner";
 import type { LimitAction } from "@hanzo/ui/product/limits";
@@ -68,7 +69,7 @@ import { FileText, Image as ImageMark, Paperclip, X } from "lucide-react";
 import { FREE } from "./lib/ai";
 import { openThread, showSettings, useOpen } from "./open";
 import { Beside, Framed } from "./Shell";
-import { SEED, Summary, look, type Mark } from "./RightPane";
+import { SEED, Summary, look, useSites, type Mark } from "./RightPane";
 import { Share } from "./Share";
 import { ConversationMenu, ThreadMore, useThreadList } from "./thread";
 import {
@@ -87,6 +88,8 @@ import {
   useMind,
   usePanel,
   type Artifact,
+  frames,
+  name as tabName,
   type Kind,
   type Listen,
 } from "@hanzo/build";
@@ -295,7 +298,10 @@ export function Ask({
  * character (`Message ${persona.name}`). `label` stays "Ask anything", so the
  * accessible name does not move when the placeholder does.
  */
-const message = (): string => `Message ${brand()}`;
+const message = (): string => `Ask ${brand()}`;
+
+/** The line every answer is sent under, above the composer, as the reference sets it. */
+const caution = (): string => `${brand()} can make mistakes. Check important info.`;
 
 /** The panel offers no kinds of its own in Chat: its tabs are pages. */
 const NONE: readonly Kind[] = [];
@@ -745,6 +751,8 @@ function Thread({
   const wide = useMedia().lg;
   const [panel, setPanel] = usePanel("chat", false, wide);
   const deck = useDeck(`chat:${at}`, SEED);
+  // The org's sites, which an empty tab suggests.
+  const sites = useSites();
   useKey(() => setPanel(!panel));
   // On a laptop the frame's column is the panel's; a close from the frame (its
   // edge pulled shut, the shell's own control) comes back into `panel`.
@@ -1514,6 +1522,20 @@ function Thread({
       />
     );
 
+  /** The tabs' browser, as this conversation offers it: the org's sites to start from, and a page asked about, captured or opened in Dev. */
+  const browsing = {
+    suggested: sites,
+    onAsk: (page: { url: string; title: string; selection?: string }) => {
+      const quote = page.selection ? `\n> ${page.selection.trim().split("\n").join("\n> ")}` : "";
+      setDraft((was) => `${was ? `${was}\n\n` : ""}About ${page.title} (${page.url}):${quote}\n`);
+    },
+    onCapture: (file: File) => void hold(at, [file], via),
+    onDev: (page: { url: string }) => {
+      const slug = new URL(page.url).hostname.match(/^([a-z0-9-]+)\.hanzo\.app$/)?.[1] ?? null;
+      window.location.assign(dev(slug));
+    },
+  };
+
   return (
     <YStack
       flex={1}
@@ -1521,6 +1543,18 @@ function Thread({
       width="100%"
       position="relative"
       data-slot="chat-room"
+      // A LINK IN AN ANSWER OPENS IN A TAB beside the conversation when the tab
+      // can show it — a site or preview we host — and in a browser tab of its
+      // own otherwise, as a modified click always does.
+      onClickCapture={(press: unknown) => {
+        const e = press as React.MouseEvent<HTMLElement>;
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        const a = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+        if (!a || !/^https?:/.test(a.href) || !frames(a.href)) return;
+        e.preventDefault();
+        deck.open({ kind: PAGE, title: tabName(a.href), url: a.href });
+        setPanel(true);
+      }}
       // Entered and left once for every child crossed, so the veil follows a
       // count rather than the last event.
       onDragEnter={(e: React.DragEvent) => {
@@ -1677,10 +1711,10 @@ function Thread({
           On a phone the panel is a sheet over the room instead. */}
       {wide && aside !== null ? (
         <Beside>
-          <Panel side={deck} kinds={NONE} onHide={() => setPanel(false)} label="Tabs" />
+          <Panel side={deck} kinds={NONE} onHide={() => setPanel(false)} label="Tabs" {...browsing} />
         </Beside>
       ) : null}
-      {!wide && panel ? <Panel side={deck} kinds={NONE} sheet onHide={() => setPanel(false)} label="Tabs" /> : null}
+      {!wide && panel ? <Panel side={deck} kinds={NONE} sheet onHide={() => setPanel(false)} label="Tabs" {...browsing} /> : null}
 
       {isFree(model) ? (
         <Text
@@ -1931,6 +1965,7 @@ function Thread({
           // `label` keeps the accessible name constant while it does.
           placeholder: room.length ? `Message ${join(room)}` : placeholder,
           label: ASK,
+          note: caution(),
           // In the app's frame the composer floats on the pane as a pane of its own.
           framed,
           // A file or an image pasted into the field is held like a picked one;
