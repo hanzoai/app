@@ -127,10 +127,39 @@ export function enter(to: string = door()): void {
   const here = `${pathname}${search}${hash}`;
   if (handoff(here)) return;
   rememberDestination();
-  // Written in the address too, so the place (a room, a prompt in `?q=`)
-  // survives what sessionStorage does not: a new tab, a pasted link.
+  window.location.assign(entry(to, here));
+}
+
+/**
+ * The campaign a visit arrived with: the UTM parameters and the ad platforms'
+ * click ids. They ride to the sign-in page as its own parameters, so the page a
+ * campaign's visitor signs up on is a landing with that campaign, not one with
+ * it folded inside `next=`.
+ */
+export const CAMPAIGN = [
+  "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+  "gclid", "gbraid", "wbraid", "fbclid", "li_fat_id", "twclid", "ttclid",
+] as const;
+
+/**
+ * The sign-in address for a reader on `here`: `to`, with `here` as its `next=`
+ * when that is a page worth coming back to, and the campaign `here` carries as
+ * `to`'s own parameters. The page itself is written in the address too, so the
+ * place (a room, a prompt in `?q=`) survives what sessionStorage does not: a new
+ * tab, a pasted link.
+ */
+export function entry(to: string, here: string): string {
+  const [path, query = ""] = to.split("?");
+  const out = new URLSearchParams(query);
   const back = safe(here, "");
-  window.location.assign(back && back !== "/" ? `${to}?next=${encodeURIComponent(back)}` : to);
+  if (back && back !== "/") out.set("next", back);
+  const from = new URLSearchParams(here.split("#")[0].split("?")[1] ?? "");
+  for (const k of CAMPAIGN) {
+    const v = from.get(k)?.trim();
+    if (v && !out.has(k)) out.set(k, v);
+  }
+  const q = out.toString();
+  return q ? `${path}?${q}` : path;
 }
 
 /**
