@@ -64,13 +64,13 @@ import { useHydrated } from "./lib/hydrated";
 import { base, served } from "./lib/ai";
 import { onServed, type Served as Heard } from "./lib/served";
 import { refused as worded, speech, useDictation, useTalk, useVoice } from "@hanzo/voice";
-import { FileText, Image as ImageMark, Paperclip, Pin, X } from "lucide-react";
+import { FileText, Image as ImageMark, Paperclip, X } from "lucide-react";
 import { FREE } from "./lib/ai";
 import { openThread, showSettings, useOpen } from "./open";
 import { Beside, Framed } from "./Shell";
-import { SEED, look, useKinds, type Mark } from "./RightPane";
+import { SEED, Summary, look, type Mark } from "./RightPane";
 import { Share } from "./Share";
-import { useThreadActions, useThreadList } from "./thread";
+import { ConversationMenu, ThreadMore, useThreadList } from "./thread";
 import {
   artifacts,
   lead,
@@ -87,6 +87,7 @@ import {
   useMind,
   usePanel,
   type Artifact,
+  type Kind,
   type Listen,
 } from "@hanzo/build";
 import { checkoutUrl } from './lib/pay';
@@ -295,6 +296,9 @@ export function Ask({
  * accessible name does not move when the placeholder does.
  */
 const message = (): string => `Message ${brand()}`;
+
+/** The panel offers no kinds of its own in Chat: its tabs are pages. */
+const NONE: readonly Kind[] = [];
 
 /** The id the room's system turn is held under in the thread. */
 const ROOM = "room";
@@ -725,13 +729,12 @@ function Thread({
   const framed = useContext(Framed);
   const opened = useOpen();
   const { thread: open, open: reopen, agents: room, openAgent, seat, emptied, aside, showAside, showSettings } = opened;
-  // PINNED HERE, READ IN THE COLUMN, and kept by the server (thread.tsx): the
-  // pin this header sets is the one the row's menu sets, on every device the
-  // reader signs in on. A conversation not in the list yet (just begun, or
-  // archived) reads unpinned.
+  // THE HEADER'S ⋯ IS THE ROW'S MENU (thread.tsx): rename, pin, share, its
+  // link, a new tab, archive and delete, kept by the server. A conversation not
+  // in the list yet (just begun, or archived) has no menu until it is.
   const listing = useThreadList(false, open);
-  const acts = useThreadActions();
   const mine = open ? listing.threads.find((t) => t.id === open) : undefined;
+  const alone = useMemo(() => new Map(mine ? [[mine.id, mine]] : []), [mine]);
   // The conversation's key in `pane.ts`, the one the column beside it reads.
   const at = channel(opened);
   // The first of them: what a surface that addresses one person reads.
@@ -1305,8 +1308,14 @@ function Thread({
   // record's own picture. Its own answer comes first, which is the order
   // `Face` already states for every other surface.
   const portrait = mate?.avatar ?? persona?.avatar ?? roleOf(withWhom)?.portrait;
-  // Chat's kinds of tab in the side panel: Artifacts and Sources, read from the turns.
-  const kinds = useKinds({ at, said, held: files, deck });
+  // THE PANEL IS TABS OF PAGES, a browser beside the conversation; what the
+  // conversation produced and took in is its Summary (RightPane.tsx), each row
+  // opening here. A deck kept from when Artifacts and Sources were tabs lets them go.
+  useEffect(() => {
+    for (const t of deck.tabs) if (t.kind !== PAGE) deck.shut(t.id);
+    // A sweep of what was kept, once the deck is read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [at]);
 
   /** Whether the field has focus, so the FRAME can wear the ring the field is
    *  no longer allowed to draw. `:focus-within` would say this in CSS; the
@@ -1563,32 +1572,25 @@ function Thread({
           </XStack>
         </YStack>
       ) : null}
-      {/* The conversation's own row: its star, who is in it, and its address. */}
+      {/* The conversation's own row: its title and who is in it, and at its
+          right end the conversation's controls — Share, its menu, the
+          Summary, and the tabs beside it. */}
       <XStack
-        height={48}
+        data-slot="conversation-head"
+        height={52}
         items="center"
         justify="space-between"
-        px="$3"
-        borderBottomWidth={1}
-        borderColor="$borderColor"
+        gap="$3"
+        pl="$4"
+        pr="$2"
+        shrink={0}
       >
-        <XStack items="center" gap="$2" minW={0}>
-          {/* The label says what the press will do and aria-pressed says where
-              it stands: a state carried by colour alone is one a screen reader
-              cannot read. Nothing to pin until the conversation is listed. */}
-          <Box
-            render="button"
-            onClick={() => mine && void acts.pin(mine)}
-            aria-disabled={!mine}
-            aria-label={mine?.pinned ? "Unpin this conversation" : "Pin this conversation"}
-            aria-pressed={!!mine?.pinned}
-            p="$1.5"
-            rounded="$2"
-            opacity={mine ? 1 : 0.5}
-            hoverStyle={{ bg: '$hover' }}
-          >
-            <Pin size={15} aria-hidden color={mine?.pinned ? "var(--foreground)" : "var(--muted-foreground)"} fill={mine?.pinned ? "currentColor" : "none"} />
-          </Box>
+        <XStack items="center" gap="$2" minW={0} flex={1}>
+          {mine ? (
+            <Text fontSize={15} lineHeight={20} color="$ink" numberOfLines={1} shrink={1} minW={0}>
+              {mine.title || "Untitled"}
+            </Text>
+          ) : null}
           {/* WHO IS AT THE OTHER END, or nothing at all.
               `withWhom || "Jobs"` put a name and a photograph on a room the
               reader had chosen nobody for — the same defect the empty state
@@ -1654,13 +1656,19 @@ function Thread({
           ) : null}
         </XStack>
 
-        <XStack items="center" gap="$2">
+        <XStack data-slot="conversation-controls" items="center" gap={2} shrink={0}>
           {open ? <Share thread={open} /> : null}
-          {/* THE PANEL'S OWN CONTROL, at every size and in the header rather
-              than in the column it opens: a control that hides a pane cannot
-              live in the pane it hides. A word beside the mark, because a
-              glyph alone was a control nobody found. Dev's run header has the
-              same one in the same place. */}
+          {mine ? (
+            <ConversationMenu threads={alone} active={open}>
+              <XStack>
+                <ThreadMore t={mine} />
+              </XStack>
+            </ConversationMenu>
+          ) : null}
+          <Summary at={at} said={said} held={files} deck={deck} onOpen={() => setPanel(true)} onCreate={() => window.location.assign(site("/dev"))} />
+          {/* THE TABS' OWN CONTROL, at the header's end while they are shut;
+              open, the strip beside the conversation holds it. Its mark is
+              never the sidebar's: that toggle is the window's, at its top-left. */}
           <PanelToggle open={panel} onToggle={() => setPanel(!panel)} />
         </XStack>
       </XStack>
@@ -1669,10 +1677,10 @@ function Thread({
           On a phone the panel is a sheet over the room instead. */}
       {wide && aside !== null ? (
         <Beside>
-          <Panel side={deck} kinds={kinds} onHide={() => setPanel(false)} label="Conversation details" />
+          <Panel side={deck} kinds={NONE} onHide={() => setPanel(false)} label="Tabs" />
         </Beside>
       ) : null}
-      {!wide && panel ? <Panel side={deck} kinds={kinds} sheet onHide={() => setPanel(false)} label="Conversation details" /> : null}
+      {!wide && panel ? <Panel side={deck} kinds={NONE} sheet onHide={() => setPanel(false)} label="Tabs" /> : null}
 
       {isFree(model) ? (
         <Text

@@ -599,6 +599,42 @@ export function ThreadRow({
   )
 }
 
+/**
+ * The ⋯ of the conversation a pane holds, in its header: the trigger of the
+ * menu its row opens, drawn inside a `ConversationMenu` of that one
+ * conversation, so the header and the row offer one menu.
+ */
+export function ThreadMore({ t }: { t: Thread }) {
+  const menus = useContext(Rows)
+  if (!menus) throw new Error('ThreadMore is drawn inside a ConversationMenu, which holds its menu.')
+  // gui types these handlers by React Native's event; on the web they carry the DOM's.
+  const aim = (e: unknown) => menus.aim(t, (e as MouseEvent<HTMLElement>).currentTarget)
+  return (
+    <DropdownMenuTrigger asChild>
+      <XStack
+        render="button"
+        aria-label="Conversation options"
+        {...({ title: 'More' } as object)}
+        data-slot="conversation-options"
+        width={32}
+        height={32}
+        rounded="$3"
+        items="center"
+        justify="center"
+        cursor="pointer"
+        bg={menus.open === t.id ? '$hover' : 'transparent'}
+        hoverStyle={{ bg: '$hover' }}
+        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+        // Before gui's own press handler, which opens the menu and stops there.
+        onPointerDownCapture={aim}
+        onKeyDownCapture={aim}
+      >
+        <MoreHorizontal size={16} aria-hidden />
+      </XStack>
+    </DropdownMenuTrigger>
+  )
+}
+
 /** A conversation's title, written again: one line, never empty. */
 function Rename({
   t,

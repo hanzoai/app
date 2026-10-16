@@ -18,7 +18,7 @@
 // it stands in (`Beside` in `Shell.tsx`).
 
 import { useMemo, useState, type ReactNode } from 'react'
-import { FileCode, Image as ImageMark, Paperclip, Plus, Search } from 'lucide-react'
+import { FileCode, Globe, Image as ImageMark, ListTodo, Paperclip, Plus, Search } from 'lucide-react'
 import {
   Box,
   DropdownMenu,
@@ -28,7 +28,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Text,
+  XStack,
   YStack,
 } from '@hanzo/ui'
 import { useAi, type ChatMessage } from '@hanzo/ai/react'
@@ -42,13 +46,7 @@ import { useProviders, useSkills } from './tools'
 import { activate, startDevice } from './connect'
 
 /** A conversation's panel before anyone has arranged it. */
-export const SEED: Tabs = {
-  tabs: [
-    { id: 'artifacts', kind: 'artifacts', title: 'Artifacts' },
-    { id: 'sources', kind: 'sources', title: 'Sources' },
-  ],
-  at: 'artifacts',
-}
+export const SEED: Tabs = { tabs: [], at: null }
 
 /**
  * One thing the conversation carries.
@@ -347,5 +345,131 @@ function Services() {
         </DropdownMenuItem>
       ))}
     </>
+  )
+}
+
+/** A row of the summary: its mark and its name, one press from a tab. */
+function Line({ icon, children, onPress, quiet = false }: { icon?: ReactNode; children: ReactNode; onPress?: () => void; quiet?: boolean }) {
+  return (
+    <XStack
+      render={onPress ? 'button' : undefined}
+      role={onPress ? 'button' : undefined}
+      onPress={onPress}
+      items="center"
+      gap="$2.5"
+      px="$2"
+      minH={30}
+      width="100%"
+      rounded="$3"
+      cursor={onPress ? 'pointer' : undefined}
+      hoverStyle={onPress ? { bg: '$hover' } : undefined}
+      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+    >
+      {icon ? (
+        <XStack width={16} justify="center" shrink={0} opacity={0.75}>
+          {icon}
+        </XStack>
+      ) : null}
+      <Text flex={1} minW={0} fontSize="$2" color={quiet ? '$soft' : '$ink'} numberOfLines={1}>
+        {children}
+      </Text>
+    </XStack>
+  )
+}
+
+/** A heading of the summary, with what it adds at its end. */
+const Head = ({ children, action }: { children: string; action?: ReactNode }) => (
+  <XStack items="center" justify="space-between" px="$2" pt="$1.5" pb="$1" minH={28}>
+    <Text fontSize="$2" color="$soft">
+      {children}
+    </Text>
+    {action}
+  </XStack>
+)
+
+/**
+ * The conversation's summary, from the outline mark in its header: what it
+ * produced (Outputs, led by Create file or site, which starts a Dev run) and
+ * what went into it (Sources, with the `+` that brings more). Each row opens in
+ * a tab beside the conversation. A section with nothing in it keeps its heading
+ * and one quiet line.
+ */
+export function Summary({ at, said, held, deck, onOpen, onCreate }: { at: string; said: ChatMessage[]; held: Held[]; deck: Deck; onOpen: () => void; onCreate: () => void }) {
+  const ai = useAi()
+  const [open, setOpen] = useState(false)
+  const made = useMemo(() => outputs(said), [said])
+  const took = useMemo(() => sources(said, held), [said, held])
+  const done = useMemo(() => lookups(said), [said])
+  const show = (m: Mark) => {
+    setOpen(false)
+    void look(deck, m, ai)
+    onOpen()
+  }
+  return (
+    <Popover open={open} onOpenChange={setOpen} allowFlip>
+      <PopoverTrigger>
+        <XStack
+          render="button"
+          data-slot="summary-toggle"
+          aria-label="Summary"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          {...({ title: 'Summary' } as object)}
+          width={32}
+          height={32}
+          rounded="$3"
+          items="center"
+          justify="center"
+          cursor="pointer"
+          bg={open ? '$hover' : 'transparent'}
+          hoverStyle={{ bg: '$hover' }}
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+        >
+          <ListTodo size={16} aria-hidden />
+        </XStack>
+      </PopoverTrigger>
+      <PopoverContent solid align="end" p={6} width={300}>
+        <YStack data-slot="summary" role="dialog" aria-label="Summary" gap={1} self="stretch" width="100%" maxH="min(70dvh, 520px)" overflowY="auto" overflowX="hidden">
+          <Head>Outputs</Head>
+          <Line
+            quiet
+            onPress={() => {
+              setOpen(false)
+              onCreate()
+            }}
+          >
+            Create file or site
+          </Line>
+          {made.map((m) => {
+            const Glyph = GLYPH[m.kind]
+            return (
+              <Line key={m.id} icon={<Glyph size={15} aria-hidden />} onPress={() => show(m)}>
+                {m.name}
+              </Line>
+            )
+          })}
+          <XStack height={1} bg="$borderColor" my="$1.5" mx="$1" />
+          <Head action={<Add at={at} />}>Sources</Head>
+          {done.map((call) => (
+            <Line
+              key={call.id}
+              icon={<Globe size={15} aria-hidden />}
+              onPress={() => show({ id: call.id, name: call.name, kind: 'file', body: [call.asked, call.got ?? ''].filter(Boolean).join('\n\n'), mime: 'text/plain' })}
+            >
+              {call.name === 'web_search' || call.name === 'search' ? 'Web search' : call.name}
+            </Line>
+          ))}
+          {took.map((m) => {
+            const Glyph = GLYPH[m.kind]
+            return (
+              <Line key={m.id} icon={<Glyph size={15} aria-hidden />} onPress={() => show(m)}>
+                {m.name}
+              </Line>
+            )
+          })}
+          {!done.length && !took.length ? <Line quiet>Nothing yet</Line> : null}
+        </YStack>
+      </PopoverContent>
+    </Popover>
   )
 }

@@ -11,7 +11,7 @@
 // do not reply: a conversation belongs to the member who started it.
 
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import { Check, Link2, Share2 } from 'lucide-react'
+import { Check, Link2, Upload } from 'lucide-react'
 import { Box, Button, Dialog, DialogContent, DialogTitle, Text, XStack, YStack } from '@hanzo/ui'
 import { hold, heldToken, link, Refused, shares, type ShareRow, type Viewer } from './lib/share'
 import { BAD } from './lib/mix'
@@ -43,18 +43,24 @@ export function Share({ thread }: { thread: string }) {
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label="Share this conversation"
+        data-slot="share"
+        display="flex"
+        flexDirection="row"
+        gap="$1.5"
+        height={32}
+        px="$2.5"
+        items="center"
+        justify="center"
         borderWidth={0}
-        bg="transparent"
-        p="$1"
-        rounded="$2"
+        bg={open ? '$hover' : 'transparent'}
+        rounded="$3"
+        cursor="pointer"
         hoverStyle={{ bg: '$hover' }}
       >
-        <XStack items="center" gap="$1">
-          <Share2 size={13} aria-hidden />
-          <Text fontSize="$2" color="$ink">
-            Share
-          </Text>
-        </XStack>
+        <Upload size={16} aria-hidden />
+        <Text fontSize="$3" color="$ink">
+          Share
+        </Text>
       </Box>
       {open ? <Panel thread={thread} onClose={close} /> : null}
     </Box>
