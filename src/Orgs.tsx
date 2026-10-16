@@ -190,11 +190,12 @@ export function Orgs({
   // instead, which is what a stranger there is shown and what a crawler reads.
   if (!hydrated) return front && Landing ? <Landing /> : <Veil />
   // Past hydration the room keeps its place in the tree in every branch that
-  // draws it — the veil goes AFTER it — so a token refresh mid-session never
+  // draws it — `Held`, the veil AFTER it — so a token refresh mid-session never
   // remounts what the reader had open. The veil is unconditional now: it was
   // hung only when a token was already in hand, which left a visitor arriving
-  // without one looking at the room while the SDK decided.
-  if (isLoading) return front && Landing && !hasSession() && !arriving ? <Landing /> : <>{children}<Veil /></>
+  // without one looking at the room while the SDK decided. Under it the room is
+  // inert: it takes no key or press until the gate has decided.
+  if (isLoading) return front && Landing && !hasSession() && !arriving ? <Landing /> : <><Held veiled>{children}</Held><Veil /></>
   if (arriving && !isAuthenticated) return <SignIn to={LOGIN} />
   if (!isAuthenticated) return front && Landing ? <Landing /> : signup && Signup ? <Signup /> : <SignIn />
   if (founding) return <Start founded={founding} onFounded={setFounding} first={members.length === 0} />
@@ -210,9 +211,9 @@ export function Orgs({
   // all read as permission. The default is now the ask, and the room is the
   // exception rather than the fallback. The one exception to the plan is a
   // personal organization on Free, off hanzo.team, and its kind is read first.
-  if (!tier && !wrong) return <>{children}<Veil /></>
-  if (free && personal === null) return <>{children}<Veil /></>
-  if (open) return forward ? <Forward to={forward} /> : <>{children}</>
+  if (!tier && !wrong) return <><Held veiled>{children}</Held><Veil /></>
+  if (free && personal === null) return <><Held veiled>{children}</Held><Veil /></>
+  if (open) return forward ? <Forward to={forward} /> : <><Held veiled={false}>{children}</Held></>
   const swap = () => setPicked(false)
   if (door) {
     // A billing OUTAGE is ours; the plan is still the condition.
@@ -329,6 +330,21 @@ function Heading({ title, lede, lead }: { title: ReactNode; lede: ReactNode; lea
 /** The room, held back until the organization is known. */
 function Veil() {
   return <View aria-hidden position="fixed" inset={0} z={SHEET} bg="var(--background)" />
+}
+
+/**
+ * The room, in the one place every branch that draws it puts it. Under the veil
+ * it is inert and hidden from assistive technology, so what the veil covers
+ * takes no focus, key or press: Dev's composer focuses itself as it mounts, and
+ * a team on Free could otherwise type and send before its ask was drawn. It
+ * lays out as its children do.
+ */
+function Held({ veiled, children }: { veiled: boolean; children: ReactNode }) {
+  return (
+    <View render={<div data-slot="held" inert={veiled} aria-hidden={veiled || undefined} />} display="contents">
+      {children}
+    </View>
+  )
 }
 
 /** An open organization, sent on. */
