@@ -748,7 +748,8 @@ function Thread({
   // THE SIDE PANEL (@hanzo/build `Panel`), the one Dev's runs open too: open or
   // shut as Chat was left on a laptop, a sheet asked for on a phone, its tabs
   // kept per conversation. The header's Panel button and ⌘. move it.
-  const wide = useMedia().lg;
+  const media = useMedia();
+  const wide = media.lg;
   const [panel, setPanel] = usePanel("chat", false, wide);
   const deck = useDeck(`chat:${at}`, SEED);
   // The org's sites, which an empty tab suggests.
@@ -1966,6 +1967,8 @@ function Thread({
           placeholder: room.length ? `Message ${join(room)}` : placeholder,
           label: ASK,
           note: caution(),
+          // A phone's pill is the tall one: the field across the top, the controls under it.
+          narrow: !media.sm,
           // In the app's frame the composer floats on the pane as a pane of its own.
           framed,
           // A file or an image pasted into the field is held like a picked one;
