@@ -23,6 +23,11 @@
 // router and the path, and draws this only for a signed-in reader; what a
 // stranger sees is the host's.
 //
+// THE ORGANIZATION COMES FIRST (Orgs.tsx), and the app mounts it itself, so no
+// host draws the app without it: a reader with none makes one, a reader with
+// several picks one, and one whose plan is not live is asked for it before the
+// app is drawn.
+//
 // THE SIDEBAR'S TOGGLE IS AT THE WINDOW'S TOP-LEFT. In a browser tab it leads
 // the rail. A host that is a window of its own (`bar`) has no browser around
 // it, so the app draws the window's bar: the toggle, then Back and Forward
@@ -54,6 +59,7 @@ import { useAi } from './lib/ai'
 import { Chat } from './Chat'
 import { Column } from './Column'
 import { isPlans, leave, useDevHost } from './dev'
+import { Orgs } from './Orgs'
 import { useRooms } from './host'
 import { useKept } from './kept'
 import { Mark, Rail, Toggle } from './Rail'
@@ -108,6 +114,15 @@ const typing = (e: KeyboardEvent): boolean => {
 const SETTINGS = written({ kind: 'settings', section: 'general' })
 
 export function App({ bar }: { bar?: Bar } = {}) {
+  return (
+    <Orgs>
+      <Window bar={bar} />
+    </Orgs>
+  )
+}
+
+/** The window itself, drawn once the organization is settled. */
+function Window({ bar }: { bar?: Bar }) {
   const [drawer, setDrawer] = useState(false)
   const shut = useCallback(() => setDrawer(false), [])
   // The sidebar shut, kept per browser under the key the builder's rail kept it under.
