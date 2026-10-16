@@ -123,10 +123,13 @@ export async function createInvitation(org: string, email?: string, quota = 1): 
  *
  * The organization is named as `?owner=`, the one input IAM's list reads. A
  * read that names none is authorized against no organization and refused.
+ *
+ * A listed invitation carries no code: IAM shows a code once, in the answer to
+ * `createInvitation`. A row is an invitation by its name.
  */
 export async function listInvitations(org: string): Promise<Invitation[]> {
   const body = (await call(`/v1/iam/invitations?owner=${encodeURIComponent(org)}`)) as { invitations?: Invitation[] };
-  return (body.invitations ?? []).filter((r) => r && r.code);
+  return (body.invitations ?? []).filter((r) => r && r.name);
 }
 
 /**
