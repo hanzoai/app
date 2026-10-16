@@ -23,7 +23,7 @@
  * A second Refusal class would be a second vocabulary for the same event.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api'
 import { bearer, org, orgs, scope } from './session'
 import { list } from './list'
@@ -216,38 +216,87 @@ export async function paying(signal?: AbortSignal): Promise<boolean> {
   return reads.some((r) => r.status === 'fulfilled' && paid(r.value))
 }
 
+/** The last tier an organization was read at. */
+export type Read = { org: string | null; tier: Tier }
+
+/** What a read left held, and for which organization. */
+export type Held = { org: string | null; tier: Tier | null; wrong: unknown }
+
+/**
+ * Whether a failed read may answer otherwise on the next try: no answer at all
+ * (the network, a timeout), too many asks (429) or billing's own failure (a
+ * 5xx). A 401, 403 or 404 is billing's answer, and stands.
+ */
+export function transient(e: unknown): boolean {
+  const status = (e as { status?: unknown } | null)?.status
+  return typeof status !== 'number' || status === 408 || status === 429 || status >= 500
+}
+
+/**
+ * What a read of the tier leaves held, and the tier the next read falls back
+ * on. A read that answers is the tier. One that fails for a moment
+ * (`transient`) keeps the tier this organization was last read at, so a reader
+ * is not swapped out of a room they pay for by a re-read that did not answer
+ * (the gate reads again on focus and on return). Billing's refusal, or a
+ * failure with nothing read for it yet, holds nothing and says why, which keeps
+ * every gate shut; a refusal also forgets the tier read before it, so no later
+ * failure brings it back.
+ */
+export function hold(
+  last: Read | null,
+  org: string | null,
+  read: { tier: Tier } | { wrong: unknown },
+): { tier: Tier | null; wrong: unknown; last: Read | null } {
+  if ('tier' in read) return { tier: read.tier, wrong: null, last: { org, tier: read.tier } }
+  const mine = last && last.org === org ? last : null
+  if (transient(read.wrong) && mine) return { tier: mine.tier, wrong: null, last: mine }
+  return { tier: null, wrong: read.wrong, last: transient(read.wrong) ? last : null }
+}
+
+/**
+ * The tier and the refusal held for `org`, and nothing for any other: what was
+ * read for the organization a reader just left is never the one they are in,
+ * so a switch from a paid organization to a team on Free shows no room while
+ * the new one is read.
+ */
+export function standing(held: Held | null, org: string | null): { tier: Tier | null; wrong: unknown } {
+  return held && held.org === org ? { tier: held.tier, wrong: held.wrong } : { tier: null, wrong: null }
+}
+
 /**
  * The tier, held. `null` while unknown — which is BOTH "still asking" and
  * "asked and was refused", so `wrong` is kept beside it rather than swallowed:
- * a row cannot choose between saying nothing and saying why without it.
+ * a row cannot choose between saying nothing and saying why without it. A
+ * re-read that fails keeps the last tier read (`hold`).
  */
 export function useTier(enabled = true, org: string | null = null): {
   tier: Tier | null
   wrong: unknown
   reload: () => void
 } {
-  const [tier, setTier] = useState<Tier | null>(null)
-  const [wrong, setWrong] = useState<unknown>(null)
+  const [held, setHeld] = useState<Held | null>(null)
   const [nonce, setNonce] = useState(0)
+  const last = useRef<Read | null>(null)
 
   useEffect(() => {
     if (!enabled) return
     const stop = new AbortController()
-    setWrong(null)
-    readTier(stop.signal)
-      .then((got) => {
-        if (!stop.signal.aborted) setTier(got)
-      })
-      .catch((e: unknown) => {
-        if (!stop.signal.aborted) {
-          setTier(null)
-          setWrong(e)
-        }
-      })
+    // Asking again: the refusal the last read gave is no longer the answer.
+    setHeld((h) => (h && h.org === org ? { ...h, wrong: null } : h))
+    const settle = (read: { tier: Tier } | { wrong: unknown }) => {
+      if (stop.signal.aborted) return
+      const next = hold(last.current, org, read)
+      last.current = next.last
+      setHeld({ org, tier: next.tier, wrong: next.wrong })
+    }
+    readTier(stop.signal).then(
+      (got) => settle({ tier: got }),
+      (e: unknown) => settle({ wrong: e }),
+    )
     return () => stop.abort()
   }, [enabled, nonce, org])
 
-  return { tier, wrong, reload: useCallback(() => setNonce((n) => n + 1), []) }
+  return { ...standing(held, org), reload: useCallback(() => setNonce((n) => n + 1), []) }
 }
 
 /**

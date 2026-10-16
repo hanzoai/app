@@ -335,9 +335,8 @@ function Veil() {
 /**
  * The room, in the one place every branch that draws it puts it. Under the veil
  * it is inert and hidden from assistive technology, so what the veil covers
- * takes no focus, key or press: Dev's composer focuses itself as it mounts, and
- * a team on Free could otherwise type and send before its ask was drawn. It
- * lays out as its children do.
+ * takes no focus, key or press: a team on Free cannot type and send before its
+ * ask is drawn. It lays out as its children do.
  */
 function Held({ veiled, children }: { veiled: boolean; children: ReactNode }) {
   return (
