@@ -19,9 +19,16 @@ const EDGE = 'var(--border)'
 const GROUND = 'var(--secondary)'
 type Tone = typeof INK | typeof QUIET
 
-/** A heading's rung, by depth: one step down the type ramp per level. */
-const RUNG = ['$6', '$4', '$3', '$2', '$2', '$2'] as const
-type Rung = (typeof RUNG)[number]
+/**
+ * The reading type, px: a 16px body on a 24px line, and a heading's size and
+ * line by depth, as the reference conversation sets them — the body a reader
+ * reads at arm's length, not a sidebar's 14.
+ */
+const BODY = 16
+const LINE = 24
+const RUNG = [28, 24, 20, 17, 16, 16] as const
+const LEAD = [36, 32, 28, 24, 24, 24] as const
+type Rung = number
 
 /** The character references a model writes, as the characters they name. An
  *  HTML renderer let the browser decode `&amp;`; a string React sets is shown
@@ -37,7 +44,7 @@ const decode = (s: string): string =>
   })
 
 /** One run of inline tokens, in `tone`, at the block's `rung`. */
-function inline(tokens: Token[] | undefined, tone: Tone, rung: Rung = '$2'): ReactNode[] {
+function inline(tokens: Token[] | undefined, tone: Tone, rung: Rung = BODY): ReactNode[] {
   return (tokens ?? []).map((t, i) => {
     switch (t.type) {
       case 'strong':
@@ -60,7 +67,7 @@ function inline(tokens: Token[] | undefined, tone: Tone, rung: Rung = '$2'): Rea
         )
       case 'codespan':
         return (
-          <Text key={i} render="code" color={tone} fontFamily="$mono" fontSize="$1" px="$1" rounded={4} bg={GROUND}>
+          <Text key={i} render="code" color={tone} fontFamily="$mono" fontSize={Math.round(rung * 0.875)} px="$1" rounded={4} bg={GROUND}>
             {decode(t.text)}
           </Text>
         )
@@ -78,7 +85,7 @@ function inline(tokens: Token[] | undefined, tone: Tone, rung: Rung = '$2'): Rea
             href={to.href}
             {...(to.away ? { target: '_blank', rel: 'noopener noreferrer nofollow' } : {})}
             {...(t.title ? { title: t.title } : {})}
-            size={rung}
+            fontSize={rung}
             color={INK}
             textDecorationLine="underline"
           >
@@ -104,7 +111,7 @@ function inline(tokens: Token[] | undefined, tone: Tone, rung: Rung = '$2'): Rea
 /** Running text: a paragraph, or a list item's own words. */
 function Line({ tokens, tone }: { tokens: Token[] | undefined; tone: Tone }) {
   return (
-    <Text render="p" color={tone} fontSize="$2" lineHeight="$3">
+    <Text render="p" color={tone} fontSize={BODY} lineHeight={LINE}>
       {inline(tokens, tone)}
     </Text>
   )
@@ -116,7 +123,7 @@ function List({ list, tone }: { list: Tokens.List; tone: Tone }) {
     <YStack render={list.ordered ? 'ol' : 'ul'} m={0} p={0} gap="$1">
       {list.items.map((item, i) => (
         <XStack key={i} render="li" gap="$1">
-          <Text aria-hidden color={tone} fontSize="$2" lineHeight="$3" minW={14} text="right">
+          <Text aria-hidden color={tone} fontSize={BODY} lineHeight={LINE} minW={16} text="right">
             {item.task ? (item.checked ? '☑' : '☐') : list.ordered ? `${start + i}.` : '•'}
           </Text>
           <YStack flex={1} minW={0} gap="$1">
@@ -143,8 +150,8 @@ function Table({ table, tone }: { table: Tokens.Table; tone: Tone }) {
               key={c}
               role={r ? 'cell' : 'columnheader'}
               color={tone}
-              fontSize="$2"
-              lineHeight="$3"
+              fontSize={14}
+              lineHeight={20}
               fontWeight={r ? '400' : '600'}
               text={align(c)}
               px="$2"
@@ -157,7 +164,7 @@ function Table({ table, tone }: { table: Tokens.Table; tone: Tone }) {
               borderTopWidth={r ? 0 : 1}
               borderLeftWidth={c ? 0 : 1}
             >
-              {inline(cell.tokens, tone)}
+              {inline(cell.tokens, tone, 14)}
             </Text>
           ))}
         </View>
@@ -176,7 +183,7 @@ function blocks(tokens: Token[] | undefined, tone: Tone): ReactNode[] {
         return <Line key={i} tokens={'tokens' in t && t.tokens ? t.tokens : [t]} tone={tone} />
       case 'heading':
         return (
-          <Text key={i} render={`h${t.depth}` as 'h1'} m={0} color={tone} fontSize={RUNG[t.depth - 1]} lineHeight={RUNG[t.depth - 1]} fontWeight="600">
+          <Text key={i} render={`h${t.depth}` as 'h1'} m={0} mt={t.depth < 3 ? 8 : 4} color={tone} fontSize={RUNG[t.depth - 1]} lineHeight={LEAD[t.depth - 1]} fontWeight="600">
             {inline(t.tokens, tone, RUNG[t.depth - 1])}
           </Text>
         )
