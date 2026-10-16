@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
   personal: null as boolean | null,
   // The host's front door: `team` on hanzo.team, nothing on hanzo.ai.
   where: {} as { team?: boolean },
+  host: 'hanzo.ai',
 }))
 
 // The drawing libraries are not under test and do not load outside a bundler.
@@ -26,7 +27,7 @@ vi.mock('@hanzo/iam/react', () => ({ useIam: () => state.iam }))
 vi.mock('./waiting', () => ({ Waiting: () => null }))
 vi.mock('./lib/destination', () => ({ LOGIN: '/login', enter: () => {} }))
 vi.mock('./lib/ai', () => ({ useAi: () => ({ client: null }) }))
-vi.mock('./lib/hostname', () => ({ useHost: () => 'hanzo.ai' }))
+vi.mock('./lib/hostname', () => ({ useHost: () => state.host }))
 vi.mock('./lib/hydrated', () => ({ useHydrated: () => true }))
 vi.mock('./lib/api', () => ({ api: () => 'https://api.hanzo.ai' }))
 vi.mock('./lib/tier', () => ({
@@ -68,6 +69,7 @@ describe('the organization gate', () => {
     state.tier = null
     state.personal = null
     state.where = {}
+    state.host = 'hanzo.ai'
   })
 
   test('while the session settles, the room under the veil is inert and hidden', () => {
@@ -91,6 +93,21 @@ describe('the organization gate', () => {
     expect(held(html)).toBe('<div data-slot="held">')
     expect(html).toContain('<textarea')
     expect(html).not.toContain('nothing in it works')
+  })
+
+  test('on the workspace\'s host a team on Free is asked for the plan, and not drawn the room', () => {
+    state.host = 'hanzo.team'
+    state.tier = { tier: { name: 'free' } }
+    state.personal = false
+    const html = drawn()
+    expect(html).not.toContain('<textarea')
+    expect(held(html)).toBe('')
+  })
+
+  test('on the workspace\'s host a live plan opens the room', () => {
+    state.host = 'hanzo.team'
+    state.tier = { tier: { name: 'dev' } }
+    expect(held(drawn())).toBe('<div data-slot="held">')
   })
 
   describe('behind the front door', () => {

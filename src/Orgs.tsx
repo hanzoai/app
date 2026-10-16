@@ -8,13 +8,14 @@
 // request under it then carries that organization (lib/auth/session.ts
 // `scope`, hooks/useAi.ts).
 //
-// NO PLAN STANDS IN FRONT OF CHAT OR DEV. Off the front door every
+// NO PLAN STANDS IN FRONT OF CHAT OR DEV. Off the workspace every
 // organization opens, whatever its plan: what it may spend is the API's to
 // meter, per plan, on every call. The per-seat Team plan is the workspace's to
-// ask for, behind its front door, and nowhere else. It used to be asked of
-// every organization that was not personal and not on a live plan, on every
-// host, which put each member of a team on Free, and every account filed in the
-// shared sign-up organization, in front of a wall at hanzo.ai/chat. Plans are
+// ask for, on its host (hanzo.team) and behind its front door, and nowhere
+// else. It used to be asked of every organization that was not personal and
+// not on a live plan, on every host, which put each member of a team on Free,
+// and every account filed in the shared sign-up organization, in front of a
+// wall at hanzo.ai/chat. Plans are
 // the catalog's, read live and seeded from @hanzo/plans for first paint.
 // Checkout is hanzo.ai/pay in this tab; it returns here, and the tier is read
 // again on return.
@@ -99,8 +100,11 @@ export function Orgs({
   // The team being set up in this page. Once its name is taken the setup owns
   // the screen until checkout, whatever `Orgs` reads of the new organization.
   const [founding, setFounding] = useState<string | null>(null)
-  // The plan is read behind the front door only: nowhere else does it decide anything.
-  const { tier, wrong, reload } = useTier(Boolean(door && isAuthenticated && current), current)
+  // The workspace asks for the plan, on its host and behind its front door, and
+  // only there is it read: nowhere else does it decide anything.
+  const onTeam = workspace(useHost())
+  const asks = door || onTeam
+  const { tier, wrong, reload } = useTier(Boolean(asks && isAuthenticated && current), current)
   // A plan is live when billing READ one for this organization and it is not the free rung.
   const live = Boolean(tier?.tier && tier.tier.name !== FREE_TIER)
   // Behind the front door every organization without a live plan is read for
@@ -111,7 +115,7 @@ export function Orgs({
   // plan: support is there to see what the organization has, and what it spends
   // is billed to the operator's own books, never the organization's.
   const supporting = Boolean(current) && assumed() === current
-  const open = !door || live || supporting
+  const open = !asks || live || supporting
   const { client } = useAi()
 
   useEffect(() => {
@@ -204,7 +208,7 @@ export function Orgs({
   }
   if (!current || (members.length > 1 && !picked)) return <Pick members={members} onPick={choose} />
   if (open) return forward ? <Forward to={forward} /> : <><Held veiled={false}>{children}</Held></>
-  // BEHIND THE FRONT DOOR NOTHING OPENS WITHOUT A LIVE PLAN. Every branch here
+  // IN THE WORKSPACE NOTHING OPENS WITHOUT A LIVE PLAN. Every branch here
   // used to hand the room over when the answer was anything but a plain
   // "free": an error of any kind, a read still in flight, a document with no
   // plan in it. Each was a way in without paying — a refusal, a slow network,
@@ -213,13 +217,18 @@ export function Orgs({
   if (!tier && !wrong) return <><Held veiled>{children}</Held><Veil /></>
   if (free && personal === null) return <><Held veiled>{children}</Held><Veil /></>
   const swap = () => setPicked(false)
-  // A billing OUTAGE is ours; the plan is still the condition.
-  if (!tier) return <Plan org={current} members={members} onSwitch={swap} outage={outage(wrong)} onRetry={reload} />
-  if (personal) {
-    if (front && Landing) return <Landing member />
-    return <Start onFounded={setFounding} first={false} members={members} onSwitch={swap} />
+  if (door) {
+    // A billing OUTAGE is ours; the plan is still the condition.
+    if (!tier) return <Plan org={current} members={members} onSwitch={swap} outage={outage(wrong)} onRetry={reload} />
+    if (personal) {
+      if (front && Landing) return <Landing member />
+      return <Start onFounded={setFounding} first={false} members={members} onSwitch={swap} />
+    }
+    return <Plan org={current} members={members} onSwitch={swap} />
   }
-  return <Plan org={current} members={members} onSwitch={swap} />
+  // The workspace's host off its front door: no live plan, or none read, does
+  // not open the room.
+  return <Subscribe org={current} members={members} onSwitch={swap} />
 }
 
 /**
@@ -755,6 +764,45 @@ function Pick({ members, onPick }: { members: string[]; onPick: (o: string) => v
             </View>
           ))}
         </View>
+      </Column>
+    </Page>
+  )
+}
+
+/** On the workspace's host, an organization whose plan is not live: it is offered the per-seat Team plan. */
+function Subscribe({
+  org,
+  members,
+  onSwitch,
+}: {
+  org: string
+  members: string[]
+  onSwitch: () => void
+}) {
+  const { plan, price } = usePlan('team')
+  const seat = plan?.pricePerUser ? ' / seat' : ''
+  return (
+    <Page label="Subscribe">
+      <Column>
+        <Brand />
+        <Heading
+          title={org}
+          lead={22.5}
+          lede={plan ? `This organization runs on the ${plan.name} plan at ${price}${seat} / month, and nothing in it works until that plan is live.` : 'Its plan is not live yet.'}
+        />
+        <Rule />
+        <XStack gap={10} flexWrap="wrap">
+          {plan ? (
+            <Button asChild variant="primary" size="lg">
+              <a href={checkout(plan)}>{`Subscribe — ${price}${seat} / month`}</a>
+            </Button>
+          ) : null}
+          {members.length > 1 ? (
+            <Button size="lg" onClick={onSwitch}>
+              Switch organization
+            </Button>
+          ) : null}
+        </XStack>
       </Column>
     </Page>
   )

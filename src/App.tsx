@@ -26,7 +26,7 @@
 // THE ORGANIZATION COMES FIRST (Orgs.tsx), and the app mounts it itself, so no
 // host draws the app without it: a reader with none makes one and a reader
 // with several picks one. No plan is asked for here: that is the workspace's,
-// behind its own front door.
+// on its own host (hanzo.team) and behind its front door.
 //
 // THE SIDEBAR'S TOGGLE IS AT THE WINDOW'S TOP-LEFT. In a browser tab it leads
 // the rail. A host that is a window of its own (`bar`) has no browser around
