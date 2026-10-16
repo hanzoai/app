@@ -53,28 +53,21 @@ export const FREE = 'enso-free'
 export const ENSO = 'enso-auto'
 
 /**
- * The model that will actually ANSWER, given what the gateway serves.
+ * The model that will actually ANSWER, given what the gateway serves: the one
+ * asked for when the gateway serves it, else the free pool for a free turn,
+ * else a house router (Enso or Zen), else the first model served. An id is read
+ * by its own name; one the gateway does not serve is never relabelled.
  */
 export function served(models: { id: string }[], prefer: string): string {
-  const cleanPrefer = prefer === 'openrouter/auto' || prefer?.includes('openrouter') ? 'enso-auto' : prefer
-  if (models.length === 0) return cleanPrefer || 'enso-auto'
-  if (cleanPrefer && models.some((m) => m.id === cleanPrefer)) return cleanPrefer
-  if (cleanPrefer === 'enso-free' || cleanPrefer === 'free' || cleanPrefer.includes('free')) {
-    const free = models.find((m) => m.id === 'enso-free' || m.id === 'zen-free' || (m.id.includes('free') && !m.id.includes('openrouter')))
-    if (free) return free.id
-    return 'enso-free'
+  if (models.length === 0) return prefer || ENSO
+  if (prefer && models.some((m) => m.id === prefer)) return prefer
+  if (prefer === FREE || prefer === 'free' || prefer?.includes('free')) {
+    return models.find((m) => m.id === FREE || m.id === 'zen-free')?.id ?? FREE
   }
-  // House routers: Enso or Zen
-  const houseAuto = models.find((m) => m.id === 'enso-auto' || m.id === 'zen-auto' || m.id === 'enso' || m.id === 'zen')
-  if (houseAuto) return houseAuto.id
-
-  const houseModel = models.find((m) => (m.id.startsWith('enso') || m.id.startsWith('zen')) && !m.id.includes('openrouter'))
-  if (houseModel) return houseModel.id
-
-  const clean = models.find((m) => !m.id.includes('openrouter'))
-  if (clean) return clean.id
-
-  return 'enso-auto'
+  const house =
+    models.find((m) => m.id === ENSO || m.id === 'zen-auto' || m.id === 'enso' || m.id === 'zen') ??
+    models.find((m) => m.id.startsWith('enso') || m.id.startsWith('zen'))
+  return house?.id ?? models[0].id
 }
 
 /**
