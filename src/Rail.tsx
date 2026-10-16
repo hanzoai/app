@@ -16,7 +16,9 @@
 // The sidebar's toggle leads it (`toggle`) where the host has no bar of its own:
 // a browser tab. A host that is a window draws the toggle in its bar beside Back
 // and Forward (App.tsx `bar`), and its rail starts with Chat. On a phone the
-// rail lies along the foot of the drawer (`flat`), the account at its end.
+// rail lies along the foot of the drawer (`flat`), the account at its end; the
+// drawer is too narrow for every mark, so Library, Scheduled tasks and
+// Customize lead More there.
 
 import { Boxes, Clock, Code2, Ellipsis, FolderGit2, LayoutTemplate, Library, ListTodo, MessageSquare, PanelLeft, Puzzle, Server, SquareTerminal, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -146,8 +148,16 @@ export function Rail({
 }) {
   const here = mode === 'dev' ? raised(at) : null
   const to = (p: string) => () => go(app(p))
-  // Everything else the app reaches, behind More: Dev's other places, then the products on hosts of their own.
+  // Everything else the app reaches, behind More: on a phone the raised places first, then Dev's other places, then the products on hosts of their own.
   const rest: NonNullable<DropdownMenuProps['items']> = [
+    ...(flat
+      ? [
+          { key: 'library', label: 'Library', icon: <Library size={16} aria-hidden />, onSelect: to(RAISED.library) },
+          { key: 'scheduled', label: 'Scheduled tasks', icon: <Clock size={16} aria-hidden />, onSelect: to(RAISED.scheduled) },
+          { key: 'customize', label: 'Customize', icon: <Puzzle size={16} aria-hidden />, onSelect: to(RAISED.customize) },
+          { type: 'separator' as const, key: 'raised' },
+        ]
+      : []),
     { key: 'projects', label: 'Projects', icon: <FolderGit2 size={16} aria-hidden />, onSelect: to('-/projects') },
     { key: 'templates', label: 'Templates', icon: <LayoutTemplate size={16} aria-hidden />, onSelect: to('-/templates') },
     { key: 'issues', label: 'Issues', icon: <ListTodo size={16} aria-hidden />, onSelect: to('-/issues') },
@@ -178,15 +188,19 @@ export function Rail({
       <Mark label="Dev" on={mode === 'dev' && !here} onPress={onDev} data-slot="rail-dev">
         <Code2 size={18} aria-hidden />
       </Mark>
-      <Mark label="Library" on={here === 'library'} onPress={to(RAISED.library)} data-slot="rail-library">
-        <Library size={18} aria-hidden />
-      </Mark>
-      <Mark label="Scheduled tasks" on={here === 'scheduled'} onPress={to(RAISED.scheduled)} data-slot="rail-scheduled">
-        <Clock size={18} aria-hidden />
-      </Mark>
-      <Mark label="Customize" on={here === 'customize'} onPress={to(RAISED.customize)} data-slot="rail-customize">
-        <Puzzle size={18} aria-hidden />
-      </Mark>
+      {flat ? null : (
+        <>
+          <Mark label="Library" on={here === 'library'} onPress={to(RAISED.library)} data-slot="rail-library">
+            <Library size={18} aria-hidden />
+          </Mark>
+          <Mark label="Scheduled tasks" on={here === 'scheduled'} onPress={to(RAISED.scheduled)} data-slot="rail-scheduled">
+            <Clock size={18} aria-hidden />
+          </Mark>
+          <Mark label="Customize" on={here === 'customize'} onPress={to(RAISED.customize)} data-slot="rail-customize">
+            <Puzzle size={18} aria-hidden />
+          </Mark>
+        </>
+      )}
       <DropdownMenu
         placement={flat ? 'top-start' : 'right-start'}
         minWidth={220}
