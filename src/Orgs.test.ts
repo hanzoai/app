@@ -7,6 +7,8 @@ const state = vi.hoisted(() => ({
   iam: { isAuthenticated: true, isLoading: false, accessToken: 't' },
   tier: null as { tier: { name: string } } | null,
   personal: null as boolean | null,
+  // The host's front door: `team` on hanzo.team, nothing on hanzo.ai.
+  where: {} as { team?: boolean },
 }))
 
 // The drawing libraries are not under test and do not load outside a bundler.
@@ -50,7 +52,7 @@ vi.mock('./lib/intent', () => ({ countSignup: () => {} }))
 vi.mock('./lib/tags', () => ({ track: () => {} }))
 vi.mock('./lib/mix', () => ({ BAD: 'red', mix: () => '' }))
 vi.mock('./host', () => ({ useRooms: () => ({ router: { replace: () => {} } }) }))
-vi.mock('./where', () => ({ brand: () => 'Hanzo AI', site: (p: string) => p, where: () => ({}) }))
+vi.mock('./where', () => ({ brand: () => 'Hanzo AI', site: (p: string) => p, where: () => state.where }))
 
 const { Orgs } = await import('./Orgs')
 
@@ -65,6 +67,7 @@ describe('the organization gate', () => {
     state.iam = { isAuthenticated: true, isLoading: false, accessToken: 't' }
     state.tier = null
     state.personal = null
+    state.where = {}
   })
 
   test('while the session settles, the room under the veil is inert and hidden', () => {
@@ -75,35 +78,50 @@ describe('the organization gate', () => {
     expect(held(html)).toContain('aria-hidden="true"')
   })
 
-  test('while the tier is read, the room under the veil is inert and hidden', () => {
-    const html = drawn()
-    expect(held(html)).toContain('inert=""')
-    expect(held(html)).toContain('aria-hidden="true"')
-  })
-
-  test('while a Free organization is read for its kind, the room is inert', () => {
-    state.tier = { tier: { name: 'free' } }
-    expect(held(drawn())).toContain('inert=""')
-  })
-
-  test('a live plan opens the room, in the same place, and nothing holds it', () => {
-    state.tier = { tier: { name: 'dev' } }
+  test('off the front door the room opens before any plan is read, and nothing holds it', () => {
     const html = drawn()
     expect(held(html)).toBe('<div data-slot="held">')
     expect(html).toContain('<textarea')
   })
 
-  test('a personal organization on Free opens the room', () => {
-    state.tier = { tier: { name: 'free' } }
-    state.personal = true
-    expect(held(drawn())).toBe('<div data-slot="held">')
-  })
-
-  test('a team on Free is not drawn the room at all', () => {
+  test('off the front door a team on Free opens the room: no plan stands in front of Chat', () => {
     state.tier = { tier: { name: 'free' } }
     state.personal = false
     const html = drawn()
-    expect(html).not.toContain('<textarea')
-    expect(held(html)).toBe('')
+    expect(held(html)).toBe('<div data-slot="held">')
+    expect(html).toContain('<textarea')
+    expect(html).not.toContain('nothing in it works')
+  })
+
+  describe('behind the front door', () => {
+    beforeEach(() => {
+      state.where = { team: true }
+    })
+
+    test('while the tier is read, the room under the veil is inert and hidden', () => {
+      const html = drawn()
+      expect(held(html)).toContain('inert=""')
+      expect(held(html)).toContain('aria-hidden="true"')
+    })
+
+    test('while a Free organization is read for its kind, the room is inert', () => {
+      state.tier = { tier: { name: 'free' } }
+      expect(held(drawn())).toContain('inert=""')
+    })
+
+    test('a live plan opens the room, in the same place, and nothing holds it', () => {
+      state.tier = { tier: { name: 'dev' } }
+      const html = drawn()
+      expect(held(html)).toBe('<div data-slot="held">')
+      expect(html).toContain('<textarea')
+    })
+
+    test('a team on Free is not drawn the room at all', () => {
+      state.tier = { tier: { name: 'free' } }
+      state.personal = false
+      const html = drawn()
+      expect(html).not.toContain('<textarea')
+      expect(held(html)).toBe('')
+    })
   })
 })

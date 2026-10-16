@@ -4,26 +4,28 @@
 //
 // An organization owns every agent, credit and member. A signed-in reader who
 // has none is shown one thing: make one. A reader with several picks the one
-// they are working in when they arrive. And an organization whose plan is not
-// live is asked for it before any room is drawn. Only past all three does the
-// workspace render, and every request under it then carries that organization
-// (lib/auth/session.ts `scope`, hooks/useAi.ts).
+// they are working in when they arrive. Past both the app renders, and every
+// request under it then carries that organization (lib/auth/session.ts
+// `scope`, hooks/useAi.ts).
 //
-// FREE IS FOR ONE PERSON. A personal organization on the Free tier opens /chat
-// and /dev on every host but hanzo.team; the workspace's own host asks every
-// organization for a paid plan. A personal organization starts on Free and may
-// upgrade at creation; a team organization is sold the per-seat Team plan, and
-// that is the plan the subscribe ask offers. Plans are the catalog's, read live
-// and seeded from @hanzo/plans for first paint. Checkout is hanzo.ai/pay in
-// this tab; it returns here, and the tier is read again on return.
+// NO PLAN STANDS IN FRONT OF CHAT OR DEV. Off the front door every
+// organization opens, whatever its plan: what it may spend is the API's to
+// meter, per plan, on every call. The per-seat Team plan is the workspace's to
+// ask for, behind its front door, and nowhere else. It used to be asked of
+// every organization that was not personal and not on a live plan, on every
+// host, which put each member of a team on Free, and every account filed in the
+// shared sign-up organization, in front of a wall at hanzo.ai/chat. Plans are
+// the catalog's, read live and seeded from @hanzo/plans for first paint.
+// Checkout is hanzo.ai/pay in this tab; it returns here, and the tier is read
+// again on return.
 //
 // THE FRONT DOOR. A workspace rooted at `/` (hanzo.team) draws its host's
 // Landing for a stranger at Home (`front`) and its host's Signup at /start
 // (`signup`). Behind either, a reader with no team names one, invites people
-// and takes the per-seat plan (`Start`, `Plan`) instead of the create dialog
-// and the subscribe ask; a personal organization on Free is offered a team,
-// and an open one is sent on (`forward`). Without those props nothing here
-// changes.
+// and takes the per-seat plan (`Start`, `Plan`) instead of the create dialog;
+// a team without a live plan is offered that plan, a personal organization on
+// Free is offered a team, and an open one is sent on (`forward`). Behind the
+// door, and only there, nothing opens without a live plan.
 
 import { dev } from './lib/host'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
@@ -44,7 +46,6 @@ import { checkoutUrl, money } from './lib/pay'
 import { cartUrl, charge, priced, usePlan, usePlans, type Interval, type SubscriptionPlan } from './lib/plans'
 import { createInvitation, inviteLink } from './lib/invite'
 import { countSignup } from './lib/intent'
-import { track } from './lib/tags'
 import { BAD, mix } from './lib/mix'
 import { useRooms } from './host'
 import { brand, site, where } from './where'
@@ -98,21 +99,19 @@ export function Orgs({
   // The team being set up in this page. Once its name is taken the setup owns
   // the screen until checkout, whatever `Orgs` reads of the new organization.
   const [founding, setFounding] = useState<string | null>(null)
-  const { tier, wrong, reload } = useTier(Boolean(isAuthenticated && current), current)
+  // The plan is read behind the front door only: nowhere else does it decide anything.
+  const { tier, wrong, reload } = useTier(Boolean(door && isAuthenticated && current), current)
   // A plan is live when billing READ one for this organization and it is not the free rung.
   const live = Boolean(tier?.tier && tier.tier.name !== FREE_TIER)
-  // A Free organization off the workspace's host is asked what kind it is, and a
-  // personal one opens: Free is the plan a person uses the app on alone. Behind
-  // the front door every organization without a live plan is read for its kind:
-  // a team is offered the plan, a personal one is offered a team.
-  const onTeam = workspace(useHost())
-  const free = door ? Boolean(tier) && !live : !live && !onTeam && tier?.tier?.name === FREE_TIER
+  // Behind the front door every organization without a live plan is read for
+  // its kind: a team is offered the plan, a personal one is offered a team.
+  const free = door && Boolean(tier) && !live
   const personal = usePersonal(current, free)
   // A SuperAdmin IAM stepped into this organization sees its rooms whatever its
   // plan: support is there to see what the organization has, and what it spends
   // is billed to the operator's own books, never the organization's.
   const supporting = Boolean(current) && assumed() === current
-  const open = live || (!door && free && personal === true) || supporting
+  const open = !door || live || supporting
   const { client } = useAi()
 
   useEffect(() => {
@@ -204,29 +203,23 @@ export function Orgs({
     return door ? <Start onFounded={setFounding} first /> : <Create />
   }
   if (!current || (members.length > 1 && !picked)) return <Pick members={members} onPick={choose} />
-  // NOTHING OPENS WITHOUT A LIVE PLAN. Every branch here used to hand the room
-  // over when the answer was anything but a plain "free": an error of any kind,
-  // a read still in flight, a document with no plan in it. Each was a way in
-  // without paying — a refusal, a slow network, or devtools blocking one request
-  // all read as permission. The default is now the ask, and the room is the
-  // exception rather than the fallback. The one exception to the plan is a
-  // personal organization on Free, off hanzo.team, and its kind is read first.
+  if (open) return forward ? <Forward to={forward} /> : <><Held veiled={false}>{children}</Held></>
+  // BEHIND THE FRONT DOOR NOTHING OPENS WITHOUT A LIVE PLAN. Every branch here
+  // used to hand the room over when the answer was anything but a plain
+  // "free": an error of any kind, a read still in flight, a document with no
+  // plan in it. Each was a way in without paying — a refusal, a slow network,
+  // or devtools blocking one request all read as permission. The default is the
+  // ask, and the room is the exception rather than the fallback.
   if (!tier && !wrong) return <><Held veiled>{children}</Held><Veil /></>
   if (free && personal === null) return <><Held veiled>{children}</Held><Veil /></>
-  if (open) return forward ? <Forward to={forward} /> : <><Held veiled={false}>{children}</Held></>
   const swap = () => setPicked(false)
-  if (door) {
-    // A billing OUTAGE is ours; the plan is still the condition.
-    if (!tier) return <Plan org={current} members={members} onSwitch={swap} outage={outage(wrong)} onRetry={reload} />
-    if (personal) {
-      if (front && Landing) return <Landing member />
-      return <Start onFounded={setFounding} first={false} members={members} onSwitch={swap} />
-    }
-    return <Plan org={current} members={members} onSwitch={swap} />
+  // A billing OUTAGE is ours; the plan is still the condition.
+  if (!tier) return <Plan org={current} members={members} onSwitch={swap} outage={outage(wrong)} onRetry={reload} />
+  if (personal) {
+    if (front && Landing) return <Landing member />
+    return <Start onFounded={setFounding} first={false} members={members} onSwitch={swap} />
   }
-  // A billing OUTAGE is not a bill: it is ours, and saying "subscribe" to
-  // someone who already has would be a lie. It still does not open the room.
-  return <Subscribe org={current} members={members} onSwitch={swap} outage={outage(wrong)} onRetry={reload} />
+  return <Plan org={current} members={members} onSwitch={swap} />
 }
 
 /**
@@ -762,51 +755,6 @@ function Pick({ members, onPick }: { members: string[]; onPick: (o: string) => v
             </View>
           ))}
         </View>
-      </Column>
-    </Page>
-  )
-}
-
-/** The organization exists and its plan is not live: it is offered the per-seat Team plan. */
-function Subscribe({
-  org,
-  members,
-  onSwitch,
-  outage,
-  onRetry,
-}: {
-  org: string
-  members: string[]
-  onSwitch: () => void
-  // True when billing could not be READ. The room still does not open — a plan
-  // is the condition — but the reader is told it is ours to fix, not theirs.
-  outage?: boolean
-  onRetry?: () => void
-}) {
-  const { plan, price } = usePlan('team')
-  const seat = plan?.pricePerUser ? ' / seat' : ''
-  return (
-    <Page label="Subscribe">
-      <Column>
-        <Brand />
-        <Heading
-          title={org}
-          lead={22.5}
-          lede={plan ? `This organization runs on the ${plan.name} plan at ${price}${seat} / month, and nothing in it works until that plan is live.` : 'Its plan is not live yet.'}
-        />
-        <Rule />
-        <XStack gap={10} flexWrap="wrap">
-          {plan ? (
-            <Button asChild variant="primary" size="lg">
-              <a href={checkout(plan)}>{`Subscribe — ${price}${seat} / month`}</a>
-            </Button>
-          ) : null}
-          {members.length > 1 ? (
-            <Button size="lg" onClick={onSwitch}>
-              Switch organization
-            </Button>
-          ) : null}
-        </XStack>
       </Column>
     </Page>
   )

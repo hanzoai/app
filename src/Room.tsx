@@ -56,8 +56,9 @@ export function Room({
   }, [to])
   if (to) return null
   // A session comes first, then the organization: nothing of the workspace is
-  // drawn until the reader has signed in at hanzo.id, belongs to an
-  // organization that is paid for, and has picked the one they are working in.
+  // drawn until the reader has signed in at hanzo.id and picked the
+  // organization they are working in, and on the workspace's own host until
+  // that organization's plan is live (`Orgs`).
   // Going to a room from the apex is going to hanzo.team, in this tab.
   return (
     <Orgs front={front}>
