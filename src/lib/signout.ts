@@ -14,19 +14,10 @@ import { IAM } from '@hanzo/iam'
 import { useIam } from '@hanzo/iam/react'
 import { useSignOut as useUiSignOut } from '@hanzo/ui/auth'
 import { track } from './tags'
-import { APEX } from './host'
+import { answers } from './host'
 
-/**
- * The hosts that answer IAM's sign-in and sign-out calls on their own origin:
- * every host this export is served on and signs in at (universe static-sites
- * `iam-on-hanzo-ai` and cloud.yaml `iam-signin`), each network's own
- * (test.hanzo.ai for testnet, dev.hanzo.ai for devnet), and the dev server's
- * /v1 proxy.
- */
-const HOSTS = new Set([...APEX, 'cloud.hanzo.ai', 'hanzo.bot', 'bot.hanzo.ai', 'test.hanzo.ai', 'dev.hanzo.ai', 'localhost', '127.0.0.1'])
-
-/** Whether the page in front of us is on such an origin. */
-export const here = (): boolean => typeof window !== 'undefined' && HOSTS.has(window.location.hostname)
+/** Whether the page in front of us is on an origin that answers IAM itself (`answers` in host.ts). */
+export const here = (): boolean => typeof window !== 'undefined' && answers(window.location.hostname)
 
 /** The IAM client for this page; the token exchange at the callback shares its PKCE store. */
 export function useClient(): IAM {

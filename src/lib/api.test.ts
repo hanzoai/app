@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { API_DEV, IAM_DEV, api, iam } from './api'
-import { devnet } from './host'
+import { answers, devnet } from './host'
 import { configure, where } from '../where'
 
 /** The world a page is open in, until `afterEach` takes it away. */
@@ -15,9 +15,9 @@ afterEach(() => {
   configure(stated)
 })
 
-describe('a devnet host is dev.hanzo.ai or one label under hanzo.ai ending in -dev', () => {
-  test('app-dev, api-dev, id-dev and the sandbox checkout dev.hanzo.ai are the devnet', () => {
-    for (const host of ['app-dev.hanzo.ai', 'api-dev.hanzo.ai', 'id-dev.hanzo.ai', 'dev.hanzo.ai']) expect(devnet(host), host).toBe(true)
+describe('a devnet host is one label under hanzo.ai ending in -dev', () => {
+  test('app-dev, api-dev and id-dev are the devnet', () => {
+    for (const host of ['app-dev.hanzo.ai', 'api-dev.hanzo.ai', 'id-dev.hanzo.ai']) expect(devnet(host), host).toBe(true)
   })
 
   test('production hosts, deeper names and lookalikes are not', () => {
@@ -25,6 +25,7 @@ describe('a devnet host is dev.hanzo.ai or one label under hanzo.ai ending in -d
       'hanzo.ai',
       'www.hanzo.ai',
       'api.hanzo.ai',
+      'dev.hanzo.ai',
       'a.dev.hanzo.ai',
       'dev.hanzo.ai.evil.com',
       'a.b-dev.hanzo.ai',
@@ -39,8 +40,8 @@ describe('a devnet host is dev.hanzo.ai or one label under hanzo.ai ending in -d
 })
 
 describe('a page on a devnet host talks to the devnet only', () => {
-  test('app-dev, api-dev, id-dev and dev.hanzo.ai reach api-dev and id-dev', () => {
-    for (const host of ['app-dev.hanzo.ai', 'api-dev.hanzo.ai', 'id-dev.hanzo.ai', 'dev.hanzo.ai']) {
+  test('app-dev, api-dev and id-dev reach api-dev and id-dev', () => {
+    for (const host of ['app-dev.hanzo.ai', 'api-dev.hanzo.ai', 'id-dev.hanzo.ai']) {
       at(host)
       expect(api(), host).toBe(API_DEV)
       expect(iam(), host).toBe(IAM_DEV)
@@ -58,9 +59,9 @@ describe('a page on a devnet host talks to the devnet only', () => {
 })
 
 describe('every other host answers as it did', () => {
-  test('the apex, www and a deeper -dev name reach production', () => {
+  test('the apex, www, dev.hanzo.ai and a deeper -dev name reach production', () => {
     configure({ api: undefined, iam: undefined })
-    for (const host of ['hanzo.ai', 'www.hanzo.ai', 'a.b-dev.hanzo.ai']) {
+    for (const host of ['hanzo.ai', 'www.hanzo.ai', 'dev.hanzo.ai', 'a.b-dev.hanzo.ai']) {
       at(host)
       expect(api(), host).toBe('https://api.hanzo.ai')
       expect(iam(), host).toBe('https://hanzo.id')
@@ -78,5 +79,17 @@ describe('every other host answers as it did', () => {
     configure({ api: undefined, iam: undefined })
     expect(api()).toBe('https://api.hanzo.ai')
     expect(iam()).toBe('https://hanzo.id')
+  })
+})
+
+describe('the hosts that answer IAM on their own origin', () => {
+  test('the export’s own hosts, testnet and every devnet host', () => {
+    for (const host of ['hanzo.ai', 'www.hanzo.ai', 'cloud.hanzo.ai', 'hanzo.bot', 'test.hanzo.ai', 'app-dev.hanzo.ai', 'id-dev.hanzo.ai'])
+      expect(answers(host), host).toBe(true)
+  })
+
+  test('dev.hanzo.ai, a lookalike and a customer site do not', () => {
+    for (const host of ['dev.hanzo.ai', 'app-dev.hanzo.ai.evil.com', 'a.b-dev.hanzo.ai', 'hanzo.app', 'acme.hanzo.app'])
+      expect(answers(host), host).toBe(false)
   })
 })

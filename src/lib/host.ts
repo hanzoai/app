@@ -220,14 +220,29 @@ const DEVNET = '-dev.hanzo.ai'
 
 /**
  * Whether a host is the devnet's: its production twin with `-dev` on the one
- * label under hanzo.ai (app-dev.hanzo.ai, api-dev.hanzo.ai, id-dev.hanzo.ai),
- * and dev.hanzo.ai, the devnet's sandbox checkout. A deeper name
- * (a.b-dev.hanzo.ai) is not one, and neither is a name that only contains the
- * suffix (app-dev.hanzo.ai.example.com).
+ * label under hanzo.ai (app-dev.hanzo.ai, api-dev.hanzo.ai, id-dev.hanzo.ai). A
+ * deeper name (a.b-dev.hanzo.ai) is not one, and neither is a name that only
+ * contains the suffix (app-dev.hanzo.ai.example.com). dev.hanzo.ai is not one
+ * either: it is hanzo.ai/dev's old address and redirects there.
  */
 export function devnet(hostname: string): boolean {
-  if (hostname === 'dev.hanzo.ai') return true
   if (!hostname.endsWith(DEVNET)) return false
   const label = hostname.slice(0, -'.hanzo.ai'.length)
   return label.length > '-dev'.length && !label.includes('.')
 }
+
+/**
+ * The hosts that answer IAM's sign-in and sign-out calls on their own origin:
+ * every host this export is served on and signs in at (universe static-sites
+ * `iam-on-hanzo-ai` and cloud.yaml `iam-signin`), testnet's test.hanzo.ai, and
+ * the dev server's /v1 proxy.
+ */
+const ANSWERS = new Set([...APEX, 'cloud.hanzo.ai', 'hanzo.bot', 'bot.hanzo.ai', 'test.hanzo.ai', 'localhost', '127.0.0.1'])
+
+/**
+ * Whether a host answers IAM's sign-in and sign-out calls on its own origin, so
+ * a page there signs in without leaving it. Every devnet host does: app-dev's
+ * /v1 is the devnet cloud, whose IAM is the devnet's own (universe hanzo-devnet
+ * cloud.yaml).
+ */
+export const answers = (hostname: string): boolean => ANSWERS.has(hostname) || devnet(hostname)
