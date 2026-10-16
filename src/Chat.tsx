@@ -56,7 +56,8 @@ import { useMedia } from "@hanzo/gui";
 import { useIam, useIamToken } from "@hanzo/iam/react";
 import { bearer, hasSession, org } from "./lib/session";
 import { api } from "./lib/api";
-import { dev } from "./lib/host";
+import { app, dev, go } from "./lib/host";
+import { useRooms } from "./host";
 import { chats, house, paidPlan, paused, setCreditsAfterAllowance, useLimits } from "./lib/limits";
 import { LimitedBanner } from "@hanzo/ui/product/LimitedBanner";
 import type { LimitAction } from "@hanzo/ui/product/limits";
@@ -1523,6 +1524,12 @@ function Thread({
       />
     );
 
+  // Dev, from the Summary's Create file or site: a move inside the app where the
+  // host's app reads the path (hanzo.ai), else Dev on hanzo.ai, as the shell's
+  // Dev place goes from a host without it (hanzo.team).
+  const pathed = useRooms().path !== null;
+  const create = () => (pathed ? go(app("")) : window.location.assign(dev()));
+
   /** The tabs' browser, as this conversation offers it: the org's sites to start from, and a page asked about, captured or opened in Dev. */
   const browsing = {
     suggested: sites,
@@ -1700,7 +1707,7 @@ function Thread({
               </XStack>
             </ConversationMenu>
           ) : null}
-          <Summary at={at} said={said} held={files} deck={deck} onOpen={() => setPanel(true)} onCreate={() => window.location.assign(site("/dev"))} />
+          <Summary at={at} said={said} held={files} deck={deck} onOpen={() => setPanel(true)} onCreate={create} />
           {/* THE TABS' OWN CONTROL, at the header's end while they are shut;
               open, the strip beside the conversation holds it. Its mark is
               never the sidebar's: that toggle is the window's, at its top-left. */}
