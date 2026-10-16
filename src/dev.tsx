@@ -20,6 +20,14 @@
 // rooms' shell draws its own Settings pane, and the app has none, so Chat's
 // "See usage" opens the builder's Usage — the page the account menu's Usage
 // opens — rather than nothing.
+//
+// THE PLANS ARE THE PAY SITE'S. Every way the app reaches the plans — the
+// account menu's View all plans and its plan's Upgrade, Billing's Adjust plan,
+// an automation's See plans — names the builder's plans address, and `go`
+// leaves for the pay site's plans there (`leave`), for the organization in use,
+// coming back once paid. A typed or reloaded plans address leaves the same way
+// (App.tsx). A page load, at once, not a move inside the app: the pay site is
+// where a plan is bought.
 
 import { useEffect, useMemo } from 'react'
 import { useLook, useRooms } from './host'
@@ -31,6 +39,7 @@ import { enter } from './lib/destination'
 import { api } from './lib/api'
 import { app, go, place } from './lib/host'
 import { link } from './lib/tags'
+import { payUrl } from './lib/pay'
 import { showSettings, useOpen } from './open'
 
 /** Where the builder links out: every one of them an address of this site. */
@@ -39,6 +48,25 @@ const LINKS: Host['links'] = {
   customize: app('-/customize'),
   settings: app('-/settings'),
   home: '/',
+}
+
+/** The builder's address for the plans. */
+const PLANS = path({ kind: 'screen', screen: 'plans' })
+
+/** Whether a builder address names the plans. */
+export const isPlans = (to: string): boolean => path(route(to)) === PLANS
+
+/**
+ * Leaves for the plans on the pay site (`/pay/cart`), for the organization in
+ * use. `from` is the page to come back to once paid: this one, or Dev when the
+ * address itself named the plans, which is replaced rather than returned to so
+ * Back and the pay site's return both land in the app.
+ */
+export function leave(from: 'here' | 'app'): void {
+  const back = from === 'here' ? window.location.href : `${window.location.origin}${app('')}`
+  const to = payUrl('/cart', { org: org(), returnUrl: back })
+  if (from === 'here') window.location.assign(to)
+  else window.location.replace(to)
 }
 
 /** The person's theme, when they have chosen one the builder can name. */
@@ -97,7 +125,7 @@ export function useDevHost(): Host {
       person: { name, email, avatar },
       admin: administers(bearer(), scoped),
       path: here,
-      go: (to, how) => go(app(to), how?.replace),
+      go: (to, how) => (isPlans(to) ? leave('here') : go(app(to), how?.replace)),
       links: LINKS,
       // An address of the app moves the app, another of this site moves in the
       // router, and another origin is left in this tab. platform.hanzo.ai is

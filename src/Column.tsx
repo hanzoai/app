@@ -42,6 +42,17 @@ const GUTTER_END = 'calc(-1 * var(--pane-gap))' as `var(--${string})`
  *  @hanzo/ui's to widen. */
 const FILL = { width: '100%' } as object
 
+/**
+ * The phone's drawer floats over the page under the browser's own glass bar, so
+ * it is cut like that bar: the composer's corner, the strong hairline, the lit
+ * top edge and the floating drop. Its fill and blur stay the pane's.
+ */
+const FLOAT = {
+  borderRadius: 'var(--radius-composer)',
+  borderColor: 'var(--border-strong)',
+  boxShadow: 'var(--edge-highlight), var(--shadow-floating)',
+} as const
+
 /** The column's width, px: its default, and the two a drag holds it between. */
 const WIDTH = 272
 const FLOOR = 220
@@ -189,6 +200,7 @@ export function Column({
         role="navigation"
         aria-label={brand()}
         {...pane()}
+        {...(drawer ? FLOAT : null)}
         {...FILL}
         px="$2.5"
         pt="$3"

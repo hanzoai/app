@@ -19,22 +19,28 @@
 // where nothing fills it: drawn there it was an empty pane to the right of the
 // builder. So Dev's pane is cut on its own and the summary is Chat's alone.
 //
+// EVERY MOVE PUTS THE DRAWER AWAY, the one to where the reader already is
+// included. Pressed on the page it names, a row moves nothing, and a drawer
+// that closed only on a new address stayed open over the page it had asked for.
+//
+// THE PLANS' OWN ADDRESS LEAVES for the pay site in its place (dev.tsx `leave`),
+// so the builder's own plans are never drawn.
+//
 // THE WINDOW IS A FRAME (`data-slot="frame"`): the column, the pane and the
 // column beside it are three panes floating on a lit floor (ground.ts), one
 // gutter round them and between them, `--pane-gap`, each sized by the edge
 // beside it.
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Menu } from 'lucide-react'
 import { AiProvider } from '@hanzo/ai/react'
 import { Text, XStack, YStack } from '@hanzo/gui'
 import { Builder, HostProvider, route } from '@hanzo/build'
 import { SidebarIconButton } from '@hanzo/ui/chat'
-import { scrim } from '@hanzo/ui/glass'
 import { useAi } from './lib/ai'
 import { Chat } from './Chat'
 import { Column } from './Column'
-import { useDevHost } from './dev'
+import { isPlans, leave, useDevHost } from './dev'
 import { useRooms } from './host'
 import { wordmark } from './ModeMark'
 import { empty, openThread, useOpen } from './open'
@@ -45,11 +51,40 @@ import { app, go, place, talk, type Place } from './lib/host'
 /** `/` is Chat on a new conversation. */
 const HOME: Place = { mode: 'chat', thread: null }
 
+/**
+ * The dim under the phone's drawer: design's scrim at two fifths, so the page
+ * still reads through the drawer's glass the way it reads through the browser's
+ * own bar, rather than a black wall the glass has nothing to show of. gui
+ * carries a `color-mix()` to the page unchanged; its types only name custom
+ * properties.
+ */
+const DIM = 'color-mix(in srgb, var(--surface-scrim) 40%, transparent)' as `var(--${string})`
+
+/** The phone's drawer stands the gutter off each edge, or the device's inset where that is wider. */
+const INSET = {
+  top: 'max(var(--pane-gap), var(--safe-top))',
+  bottom: 'max(var(--pane-gap), var(--safe-bottom))',
+  left: 'max(var(--pane-gap), var(--safe-left))',
+} as const
+
 /** Where each mode was last, so the switch goes back to it. */
 const last = { chat: '', dev: '' }
 
 export function App() {
-  const host = useDevHost()
+  const [drawer, setDrawer] = useState(false)
+  const shut = useCallback(() => setDrawer(false), [])
+  const dev = useDevHost()
+  // The builder's moves put the drawer away first.
+  const host = useMemo<typeof dev>(
+    () => ({
+      ...dev,
+      go: (to, how) => {
+        shut()
+        dev.go(to, how)
+      },
+    }),
+    [dev, shut],
+  )
   const { client } = useAi()
   const here = useRooms().path ?? '/'
   const at = place(here) ?? HOME
@@ -58,7 +93,10 @@ export function App() {
   const run = at.mode === 'dev' && route(at.at).kind === 'run'
   const asked = at.mode === 'chat' ? at.thread : null
   const { thread } = useOpen()
-  const [drawer, setDrawer] = useState(false)
+  const plans = at.mode === 'dev' && isPlans(at.at)
+  useEffect(() => {
+    if (plans) leave('app')
+  }, [plans])
 
   // An address names Chat's conversation, and one just begun writes its id back.
   useEffect(() => {
@@ -79,8 +117,16 @@ export function App() {
     setDrawer(false)
   }, [mode, here])
 
-  const toChat = () => go(last.chat || talk())
-  const toDev = () => go(last.dev || app(''))
+  /** A move of the app's own: the drawer away, then the address. */
+  const move = useCallback(
+    (address: string) => {
+      shut()
+      go(address)
+    },
+    [shut],
+  )
+  const toChat = () => move(last.chat || talk())
+  const toDev = () => move(last.dev || app(''))
 
   return (
     <AiProvider client={client ?? undefined}>
@@ -96,15 +142,11 @@ export function App() {
           gap="var(--pane-gap)"
           height="100dvh"
           overflow="hidden"
-          $max-md={{
-            p: 0,
-            gap: 0,
-            bg: 'var(--black)',
-            backgroundImage:
-              'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 255, 255, 0.04), transparent 70%), linear-gradient(180deg, #000000 0%, #030303 50%, #080808 100%)',
-          }}
+          // A phone's frame is full-bleed on the floor, which follows the theme,
+          // so the top of the page the browser's bar tints from does too.
+          $max-md={{ p: 0, gap: 0 }}
         >
-          <Column host={host} mode={mode} thread={thread} onChat={toChat} onDev={toDev} go={go} />
+          <Column host={host} mode={mode} thread={thread} onChat={toChat} onDev={toDev} go={move} />
           <YStack data-slot="stage" flex={1} minW={0} minH={0} gap="var(--pane-gap)" $max-md={{ gap: 0 }}>
             {/* A phone has no column: the bar opens it as a drawer, whose top row holds the switch. */}
             <XStack data-slot="app-bar" height={44} px="$1" gap="$1" items="center" shrink={0} $md={{ display: 'none' }}>
@@ -122,7 +164,7 @@ export function App() {
                 </Paned>
               ) : (
                 <YStack render="main" data-slot="pane" {...(run ? null : { ...pane(), overflow: 'hidden' })} flex={1} minW={0} minH={0}>
-                  <Builder host={host} rail={false} />
+                  {plans ? null : <Builder host={host} rail={false} />}
                 </YStack>
               )}
             </XStack>
@@ -133,7 +175,7 @@ export function App() {
                 render="button"
                 aria-label="Close sidebar"
                 onPress={() => setDrawer(false)}
-                {...scrim}
+                bg={DIM}
                 position="absolute"
                 t={0}
                 r={0}
@@ -143,18 +185,19 @@ export function App() {
                 $md={{ display: 'none' }}
               />
               {/* A phone's column is a drawer: the same pane, floating in from
-                  the left with the gutter round it. */}
+                  the left with the gutter round it, clear of the notch and the
+                  home indicator. */}
               <YStack
                 data-slot="drawer"
                 position="absolute"
-                t="var(--pane-gap)"
-                b="var(--pane-gap)"
-                l="var(--pane-gap)"
+                t={INSET.top}
+                b={INSET.bottom}
+                l={INSET.left}
                 width="min(320px, calc(100% - 2 * var(--pane-gap) - 48px))"
                 z="var(--z-modal)"
                 $md={{ display: 'none' }}
               >
-                <Column host={host} mode={mode} thread={thread} onChat={toChat} onDev={toDev} go={go} drawer />
+                <Column host={host} mode={mode} thread={thread} onChat={toChat} onDev={toDev} go={move} drawer />
               </YStack>
             </>
           ) : null}
