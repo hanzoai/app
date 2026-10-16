@@ -15,17 +15,18 @@ afterEach(() => {
   configure(stated)
 })
 
-describe('a devnet host is one label under hanzo.ai ending in -dev', () => {
-  test('app-dev, api-dev and id-dev are the devnet', () => {
-    for (const host of ['app-dev.hanzo.ai', 'api-dev.hanzo.ai', 'id-dev.hanzo.ai']) expect(devnet(host), host).toBe(true)
+describe('a devnet host is dev.hanzo.ai or one label under hanzo.ai ending in -dev', () => {
+  test('app-dev, api-dev, id-dev and the sandbox checkout dev.hanzo.ai are the devnet', () => {
+    for (const host of ['app-dev.hanzo.ai', 'api-dev.hanzo.ai', 'id-dev.hanzo.ai', 'dev.hanzo.ai']) expect(devnet(host), host).toBe(true)
   })
 
   test('production hosts, deeper names and lookalikes are not', () => {
     for (const host of [
       'hanzo.ai',
       'www.hanzo.ai',
-      'dev.hanzo.ai',
       'api.hanzo.ai',
+      'a.dev.hanzo.ai',
+      'dev.hanzo.ai.evil.com',
       'a.b-dev.hanzo.ai',
       '-dev.hanzo.ai',
       'app-dev.hanzo.ai.evil.com',
@@ -38,8 +39,8 @@ describe('a devnet host is one label under hanzo.ai ending in -dev', () => {
 })
 
 describe('a page on a devnet host talks to the devnet only', () => {
-  test('app-dev, api-dev and id-dev reach api-dev and id-dev', () => {
-    for (const host of ['app-dev.hanzo.ai', 'api-dev.hanzo.ai', 'id-dev.hanzo.ai']) {
+  test('app-dev, api-dev, id-dev and dev.hanzo.ai reach api-dev and id-dev', () => {
+    for (const host of ['app-dev.hanzo.ai', 'api-dev.hanzo.ai', 'id-dev.hanzo.ai', 'dev.hanzo.ai']) {
       at(host)
       expect(api(), host).toBe(API_DEV)
       expect(iam(), host).toBe(IAM_DEV)
