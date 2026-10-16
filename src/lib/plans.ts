@@ -34,7 +34,7 @@ import { useEffect, useMemo, useState } from "react";
 import { where } from "../where";
 import { api } from "./api";
 import { org } from "./session";
-import { BILLING_URL, checkoutUrl, dollars, money, payUrl } from "./pay";
+import { billing, checkoutUrl, dollars, money, payUrl } from "./pay";
 
 /** A row exactly as GET /v1/billing/plans returns it. */
 export interface BillingPlan {
@@ -98,7 +98,7 @@ export type Interval = "month" | "year";
  */
 export function term(href: string, interval: Interval): string {
   if (interval === "month") return href;
-  const url = new URL(href, BILLING_URL);
+  const url = new URL(href, billing());
   url.searchParams.set("interval", "year");
   return url.toString();
 }

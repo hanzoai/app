@@ -26,7 +26,7 @@
 import { createContext, useContext, type AnchorHTMLAttributes, type ComponentType, type ReactNode } from 'react'
 import { useIam, useOrganizations } from '@hanzo/iam/react'
 import { useAppearance } from '@hanzo/appearance'
-import { where } from './where'
+import { iam } from './lib/api'
 
 /** A link the host's router owns: next/link under Next, an anchor elsewhere. */
 export type Link = ComponentType<AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; prefetch?: boolean }>
@@ -90,7 +90,7 @@ export function useLook() {
   // passing through a room on the way to sign in sends nothing to the issuer.
   return useAppearance({
     org: org.id,
-    account: accessToken ? { base: (where().iam ?? 'https://hanzo.id').replace(/\/+$/, ''), token: accessToken } : undefined,
+    account: accessToken ? { base: iam(), token: accessToken } : undefined,
   })
 }
 

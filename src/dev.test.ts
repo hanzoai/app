@@ -52,7 +52,7 @@ function at(href: string) {
   const assign = vi.fn()
   const replace = vi.fn()
   const u = new URL(href)
-  vi.stubGlobal('window', { location: { href, origin: u.origin, pathname: u.pathname, search: u.search, assign, replace } })
+  vi.stubGlobal('window', { location: { href, hostname: u.hostname, origin: u.origin, pathname: u.pathname, search: u.search, assign, replace } })
   return { assign, replace }
 }
 

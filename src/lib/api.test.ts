@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { API_DEV, IAM_DEV, api, iam } from './api'
 import { answers, devnet } from './host'
+import { billing, payUrl } from './pay'
+import { term } from './plans'
 import { configure, where } from '../where'
 
 /** The world a page is open in, until `afterEach` takes it away. */
@@ -16,8 +18,8 @@ afterEach(() => {
 })
 
 describe('a devnet host is one label under hanzo.ai ending in -dev', () => {
-  test('app-dev, api-dev and id-dev are the devnet', () => {
-    for (const host of ['app-dev.hanzo.ai', 'api-dev.hanzo.ai', 'id-dev.hanzo.ai']) expect(devnet(host), host).toBe(true)
+  test('app-dev, api-dev and id-dev are the devnet, written fully qualified or not', () => {
+    for (const host of ['app-dev.hanzo.ai', 'api-dev.hanzo.ai', 'id-dev.hanzo.ai', 'app-dev.hanzo.ai.']) expect(devnet(host), host).toBe(true)
   })
 
   test('production hosts, deeper names and lookalikes are not', () => {
@@ -31,7 +33,6 @@ describe('a devnet host is one label under hanzo.ai ending in -dev', () => {
       'a.b-dev.hanzo.ai',
       '-dev.hanzo.ai',
       'app-dev.hanzo.ai.evil.com',
-      'app-dev.hanzo.ai.',
       'app-devhanzo.ai',
       'app-dev.hanzo.app',
     ])
@@ -91,5 +92,24 @@ describe('the hosts that answer IAM on their own origin', () => {
   test('dev.hanzo.ai, a lookalike and a customer site do not', () => {
     for (const host of ['dev.hanzo.ai', 'app-dev.hanzo.ai.evil.com', 'a.b-dev.hanzo.ai', 'hanzo.app', 'acme.hanzo.app'])
       expect(answers(host), host).toBe(false)
+  })
+})
+
+describe('the checkout a page sends a buyer to', () => {
+  test('hanzo.ai’s on every production host, the devnet’s on a devnet host', () => {
+    for (const host of ['hanzo.ai', 'www.hanzo.ai', 'cloud.hanzo.ai', 'hanzo.bot', 'dev.hanzo.ai']) {
+      at(host)
+      expect(billing(), host).toBe('https://hanzo.ai/pay')
+      expect(payUrl('/cart', { plan: 'pro' }), host).toBe('https://hanzo.ai/pay/cart?plan=pro')
+    }
+    at('app-dev.hanzo.ai')
+    expect(billing()).toBe('https://app-dev.hanzo.ai/pay')
+    expect(payUrl('/', {})).toBe('https://app-dev.hanzo.ai/pay')
+    expect(payUrl('/cart', { plan: 'pro' })).toBe('https://app-dev.hanzo.ai/pay/cart?plan=pro')
+    expect(term(payUrl('/cart', { plan: 'pro' }), 'year')).toBe('https://app-dev.hanzo.ai/pay/cart?plan=pro&interval=year')
+  })
+
+  test('the prerender has no window and answers production', () => {
+    expect(billing()).toBe('https://hanzo.ai/pay')
   })
 })

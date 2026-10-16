@@ -226,8 +226,10 @@ const DEVNET = '-dev.hanzo.ai'
  * either: it is hanzo.ai/dev's old address and redirects there.
  */
 export function devnet(hostname: string): boolean {
-  if (!hostname.endsWith(DEVNET)) return false
-  const label = hostname.slice(0, -'.hanzo.ai'.length)
+  // A fully qualified name (app-dev.hanzo.ai.) is the same host.
+  const host = hostname.endsWith('.') ? hostname.slice(0, -1) : hostname
+  if (!host.endsWith(DEVNET)) return false
+  const label = host.slice(0, -'.hanzo.ai'.length)
   return label.length > '-dev'.length && !label.includes('.')
 }
 

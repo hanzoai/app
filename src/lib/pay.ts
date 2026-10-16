@@ -5,6 +5,7 @@
  * that only links the pay page or prints a price carries none of it.
  */
 
+import { devnet } from "./host";
 import { org } from "./session";
 
 /**
@@ -20,6 +21,18 @@ import { org } from "./session";
  * hanzo.bot, and the checkout lives on hanzo.ai.
  */
 export const BILLING_URL = "https://hanzo.ai/pay";
+
+/**
+ * The devnet's checkout: the same /pay mount on the devnet's site host, which
+ * charges Square's sandbox through the devnet's cloud. A page on a devnet host
+ * sends a buyer here and never to production's checkout.
+ */
+export const BILLING_DEV = "https://app-dev.hanzo.ai/pay";
+
+/** The checkout for the page in front of us: the devnet's on a devnet host, hanzo.ai's everywhere else. */
+export function billing(): string {
+  return typeof window !== "undefined" && devnet(window.location.hostname) ? BILLING_DEV : BILLING_URL;
+}
 
 /**
  * The checkout address, opened on a plan when one is named, and returning to
@@ -53,8 +66,9 @@ export function payUrl(path: string, query: Record<string, string | null | undef
   const q = new URLSearchParams();
   for (const [k, v] of Object.entries(query)) if (v) q.set(k, v);
   const s = q.toString();
-  if (path === "/" && !s) return BILLING_URL;
-  return `${BILLING_URL}${path}${s ? `?${s}` : ""}`;
+  const at = billing();
+  if (path === "/" && !s) return at;
+  return `${at}${path}${s ? `?${s}` : ""}`;
 }
 
 export const dollars = (n: number) => `$${n.toFixed(2)}`;
