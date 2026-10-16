@@ -2,61 +2,89 @@
 
 // The web app as the whole window, in two modes: Chat, a conversation with the
 // product's AI, and Dev, @hanzo/build's `<Builder>` without a rail of its own.
-// One column serves both (Column.tsx): the wordmark and the switch, New, Dev's
-// places, the reader's Recents in both modes, and the account. The address says
-// the mode, as a path (lib/host `talk`, `app`, `place`): `/` and `/chat` are
-// Chat on a new conversation, `/chat/<id>` one of the reader's, and a path under
-// `/dev` is Dev: `/dev/run/<id>` a run, `/dev/projects/<org>/<repo>` a project.
-// Moving between the modes is a history entry (`go`), never a load, so a host
-// serves this one component for every path under each.
 //
-// Every host draws this: hanzo.ai at `/`, the desktop app as its main window.
-// The host mounts IamProvider and `<Rooms>` with its router and the path, and
-// draws this only for a signed-in reader; what a stranger sees is the host's.
+//   OUTER  the rail (Rail.tsx) and the sidebar beside it (Column.tsx), on the
+//          window's floor, with the window's bar above them where the host has
+//          no browser around it (`bar`).
+//   INNER  the content, cut as one rounded panel inset from the window's edges
+//          and from the sidebar by the gutter (`--pane-gap`): Chat's
+//          conversation with its tabs beside it (Paned), or Dev's builder.
+//
+// The rail moves between the modes; the sidebar holds the mode's name, its
+// search, New, Dev's places and the reader's Recents. The address says the
+// mode, as a path (lib/host `talk`, `app`, `place`): `/` and `/chat` are Chat on
+// a new conversation, `/chat/<id>` one of the reader's, and a path under `/dev`
+// is Dev: `/dev/run/<id>` a run, `/dev/projects/<org>/<repo>` a project. Moving
+// between the modes is a history entry (`go`), never a load, so a host serves
+// this one component for every path under each.
+//
+// Every host draws this: hanzo.ai at `/`, `/chat` and `/dev`, and the desktop
+// app as its main window. The host mounts IamProvider and `<Rooms>` with its
+// router and the path, and draws this only for a signed-in reader; what a
+// stranger sees is the host's.
+//
+// THE SIDEBAR'S TOGGLE IS AT THE WINDOW'S TOP-LEFT. In a browser tab it leads
+// the rail. A host that is a window of its own (`bar`) has no browser around
+// it, so the app draws the window's bar: the toggle, then Back and Forward
+// through the host's router, clear of the window's own controls, and the bar
+// drags the window. Shut, the sidebar leaves the rail alone at the edge; the
+// choice is kept per browser under the key the builder's rail kept it under.
+//
+// THE KEYS: ⌘K / Ctrl+K searches the sidebar (opening it first), ⌘, / Ctrl+,
+// opens Settings, and in a window ⌘[ ⌘] / Alt+← Alt+→ are Back and Forward —
+// never while the reader types.
 //
 // DEV'S PANE HAS NO COLUMN BESIDE IT. The column beside a pane is Chat's (its
-// pinned summary, `useOpen().aside`), and that choice outlives a move to Dev,
-// where nothing fills it: drawn there it was an empty pane to the right of the
-// builder. So Dev's pane is cut on its own and the summary is Chat's alone.
+// tabs, `useOpen().aside`), and that choice outlives a move to Dev, where
+// nothing fills it. So Dev's pane is cut on its own and the tabs are Chat's.
 //
 // EVERY MOVE PUTS THE DRAWER AWAY, the one to where the reader already is
-// included. Pressed on the page it names, a row moves nothing, and a drawer
-// that closed only on a new address stayed open over the page it had asked for.
+// included.
 //
 // THE PLANS' OWN ADDRESS LEAVES for the pay site in its place (dev.tsx `leave`),
 // so the builder's own plans are never drawn.
-//
-// THE WINDOW IS A FRAME (`data-slot="frame"`): the column, the pane and the
-// column beside it are three panes floating on a lit floor (ground.ts), one
-// gutter round them and between them, `--pane-gap`, each sized by the edge
-// beside it.
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Menu } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowLeft, ArrowRight, Menu } from 'lucide-react'
 import { AiProvider } from '@hanzo/ai/react'
 import { Text, XStack, YStack } from '@hanzo/gui'
-import { Builder, HostProvider, route } from '@hanzo/build'
+import { Builder, HostProvider, path as written, route } from '@hanzo/build'
 import { SidebarIconButton } from '@hanzo/ui/chat'
 import { useAi } from './lib/ai'
 import { Chat } from './Chat'
 import { Column } from './Column'
 import { isPlans, leave, useDevHost } from './dev'
 import { useRooms } from './host'
-import { wordmark } from './ModeMark'
+import { useKept } from './kept'
+import { Mark, Rail, Toggle } from './Rail'
 import { empty, openThread, useOpen } from './open'
 import { Paned } from './Shell'
 import { floor, pane } from './ground'
+import { pick } from './lib/session'
 import { app, go, place, talk, type Place } from './lib/host'
+import { wordmark } from './where'
 
 /** `/` is Chat on a new conversation. */
 const HOME: Place = { mode: 'chat', thread: null }
 
 /**
+ * The window's bar, for a host that is a window of its own: `inset` px kept
+ * clear at its left for the window's own controls (macOS paints its traffic
+ * lights over the page there), and `drag`, the attributes the host's shell
+ * reads as the region that moves the window.
+ */
+export interface Bar {
+  inset?: number
+  drag?: Record<string, unknown>
+}
+
+/** The bar's height, px: the reference window's title bar. */
+const BAR = 40
+
+/**
  * The dim under the phone's drawer: design's scrim at two fifths, so the page
- * still reads through the drawer's glass the way it reads through the browser's
- * own bar, rather than a black wall the glass has nothing to show of. gui
- * carries a `color-mix()` to the page unchanged; its types only name custom
- * properties.
+ * still reads through the drawer's glass. gui carries a `color-mix()` to the
+ * page unchanged; its types only name custom properties.
  */
 const DIM = 'color-mix(in srgb, var(--surface-scrim) 40%, transparent)' as `var(--${string})`
 
@@ -67,12 +95,25 @@ const INSET = {
   left: 'max(var(--pane-gap), var(--safe-left))',
 } as const
 
-/** Where each mode was last, so the switch goes back to it. */
+/** Where each mode was last, so the rail goes back to it. */
 const last = { chat: '', dev: '' }
 
-export function App() {
+/** Whether a key press is the reader typing, where the app's keys are the field's. */
+const typing = (e: KeyboardEvent): boolean => {
+  const el = e.target as HTMLElement | null
+  return !!el && (el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')
+}
+
+/** The builder's Settings, general section. */
+const SETTINGS = written({ kind: 'settings', section: 'general' })
+
+export function App({ bar }: { bar?: Bar } = {}) {
   const [drawer, setDrawer] = useState(false)
   const shut = useCallback(() => setDrawer(false), [])
+  // The sidebar shut, kept per browser under the key the builder's rail kept it under.
+  const [closed, setClosed] = useKept('hanzo.build.rail', false)
+  // Each ⌘K: the sidebar's search, asked for again.
+  const [seek, setSeek] = useState(0)
   const dev = useDevHost()
   // The builder's moves put the drawer away first.
   const host = useMemo<typeof dev>(
@@ -86,19 +127,22 @@ export function App() {
     [dev, shut],
   )
   const { client } = useAi()
-  const here = useRooms().path ?? '/'
+  const { router, path } = useRooms()
+  const here = path ?? '/'
   const at = place(here) ?? HOME
   const mode = at.mode
+  const where = at.mode === 'dev' ? at.at : null
   // A run floats two panes of its own, so the pane it stands in is not cut.
-  const run = at.mode === 'dev' && route(at.at).kind === 'run'
+  const run = where !== null && route(where).kind === 'run'
   const asked = at.mode === 'chat' ? at.thread : null
   const { thread } = useOpen()
-  const plans = at.mode === 'dev' && isPlans(at.at)
+  const plans = where !== null && isPlans(where)
   useEffect(() => {
     if (plans) leave('app')
   }, [plans])
 
-  // An address names Chat's conversation, and one just begun writes its id back.
+  // An address names Chat's conversation, a conversation just begun writes its
+  // id back, and one emptied (New chat, wherever it was pressed) leaves for /chat.
   useEffect(() => {
     if (mode !== 'chat') return
     if (asked && asked !== thread) openThread(asked)
@@ -106,8 +150,15 @@ export function App() {
     // The address decides; the selection follows it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, asked])
+  // The conversation the pane held before this render: an emptied one is the
+  // address's own conversation let go of, never a first render before it opens.
+  const held = useRef<string | null>(null)
   useEffect(() => {
-    if (mode === 'chat' && thread && thread !== asked) go(talk(thread), true)
+    const was = held.current
+    held.current = thread
+    if (mode !== 'chat') return
+    if (thread && thread !== asked) go(talk(thread), true)
+    else if (!thread && was && asked === was) go(talk())
     // The selection writes the address only when it moves.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, thread])
@@ -125,50 +176,118 @@ export function App() {
     },
     [shut],
   )
+
+  // The app's keys.
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey
+      if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setClosed(false)
+        if (window.matchMedia('(max-width: 767.98px)').matches) setDrawer(true)
+        setSeek((n) => n + 1)
+        return
+      }
+      if (typing(e)) return
+      if (mod && !e.shiftKey && !e.altKey && e.key === ',') {
+        e.preventDefault()
+        move(app(SETTINGS))
+        return
+      }
+      if (!bar) return
+      const back = (e.metaKey && e.key === '[') || (e.altKey && e.key === 'ArrowLeft')
+      const forth = (e.metaKey && e.key === ']') || (e.altKey && e.key === 'ArrowRight')
+      if ((!back && !forth) || e.ctrlKey || e.shiftKey) return
+      e.preventDefault()
+      if (back) router.back()
+      else router.forward()
+    }
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+    // setClosed is the kept setter of this render; the keys read it fresh each time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bar, router, move])
+
   const toChat = () => move(last.chat || talk())
   const toDev = () => move(last.dev || app(''))
+  // Another organization: picked, and the app opened in it at the mode's New.
+  const org = (o: string) => {
+    pick(o)
+    window.location.assign(mode === 'dev' ? app('') : talk())
+  }
+  const flip = () => setClosed(!closed)
 
   return (
     <AiProvider client={client ?? undefined}>
       <HostProvider host={host}>
-        <XStack
-          data-room=""
-          data-app={mode}
-          data-slot="frame"
-          {...floor}
-          flex={1}
-          minW={0}
-          p="var(--pane-gap)"
-          gap="var(--pane-gap)"
-          height="100dvh"
-          overflow="hidden"
-          // A phone's frame is full-bleed on the floor, which follows the theme,
-          // so the top of the page the browser's bar tints from does too.
-          $max-md={{ p: 0, gap: 0 }}
-        >
-          <Column host={host} mode={mode} thread={thread} onChat={toChat} onDev={toDev} go={move} />
-          <YStack data-slot="stage" flex={1} minW={0} minH={0} gap="var(--pane-gap)" $max-md={{ gap: 0 }}>
-            {/* A phone has no column: the bar opens it as a drawer, whose top row holds the switch. */}
-            <XStack data-slot="app-bar" height={44} px="$1" gap="$1" items="center" shrink={0} $md={{ display: 'none' }}>
-              <SidebarIconButton label="Open sidebar" onPress={() => setDrawer(true)} width={44} height={44} rounded={999}>
-                <Menu size={18} />
-              </SidebarIconButton>
-              <Text fontSize="$4" fontWeight="600" color="$ink" numberOfLines={1}>
-                {wordmark(mode)}
-              </Text>
+        {/* The floor runs under the bar where there is one, so the window is one ground. */}
+        <YStack data-slot="window" {...(bar ? floor : null)} flex={1} minW={0} height="100dvh" overflow="hidden">
+          {bar ? (
+            <XStack data-slot="title-bar" height={BAR} shrink={0} items="center" gap={2} pl={(bar.inset ?? 0) + 6} pr="$2" {...bar.drag}>
+              {/* From a tablet up the toggle shuts the sidebar; on a phone it opens the drawer. */}
+              <XStack $max-md={{ display: 'none' }}>
+                <Toggle open={!closed} onPress={flip} />
+              </XStack>
+              <XStack $md={{ display: 'none' }}>
+                <Toggle open={drawer} onPress={() => setDrawer(true)} label="Open sidebar" />
+              </XStack>
+              <Mark label="Back" data-slot="back" onPress={() => router.back()}>
+                <ArrowLeft size={18} aria-hidden />
+              </Mark>
+              <Mark label="Forward" data-slot="forward" onPress={() => router.forward()}>
+                <ArrowRight size={18} aria-hidden />
+              </Mark>
+              <XStack flex={1} self="stretch" {...bar.drag} />
             </XStack>
-            <XStack data-slot="panes" flex={1} minW={0} minH={0}>
-              {mode === 'chat' ? (
-                <Paned framed>
-                  <Chat />
-                </Paned>
-              ) : (
-                <YStack render="main" data-slot="pane" {...(run ? null : { ...pane(), overflow: 'hidden' })} flex={1} minW={0} minH={0}>
-                  {plans ? null : <Builder host={host} rail={false} />}
-                </YStack>
+          ) : null}
+          <XStack
+            data-room=""
+            data-app={mode}
+            data-slot="frame"
+            {...(bar ? null : floor)}
+            flex={1}
+            minW={0}
+            minH={0}
+            pr="var(--pane-gap)"
+            pb="var(--pane-gap)"
+            pt={bar ? 0 : 'var(--pane-gap)'}
+            // A phone's frame is full-bleed on the floor, which follows the theme,
+            // so the top of the page the browser's bar tints from does too.
+            $max-md={{ p: 0 }}
+          >
+            <YStack height="100%" $max-md={{ display: 'none' }}>
+              <Rail host={host} mode={mode} at={where} open={!closed} toggle={bar ? undefined : flip} onChat={toChat} onDev={toDev} go={move} onOrg={org} />
+            </YStack>
+            {closed ? null : (
+              <YStack $max-md={{ display: 'none' }}>
+                <Column host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} seek={seek} />
+              </YStack>
+            )}
+            <YStack data-slot="stage" flex={1} minW={0} minH={0} ml="var(--pane-gap)" $max-md={{ ml: 0 }}>
+              {/* A phone has no rail and no sidebar: the bar opens them as a drawer. */}
+              {bar ? null : (
+                <XStack data-slot="app-bar" height={44} px="$1" gap="$1" items="center" shrink={0} $md={{ display: 'none' }}>
+                  <SidebarIconButton label="Open sidebar" onPress={() => setDrawer(true)} width={44} height={44} rounded={999}>
+                    <Menu size={18} />
+                  </SidebarIconButton>
+                  <Text fontSize="$4" fontWeight="600" color="$ink" numberOfLines={1}>
+                    {wordmark(mode)}
+                  </Text>
+                </XStack>
               )}
-            </XStack>
-          </YStack>
+              <XStack data-slot="panes" flex={1} minW={0} minH={0}>
+                {mode === 'chat' ? (
+                  <Paned framed>
+                    <Chat />
+                  </Paned>
+                ) : (
+                  <YStack render="main" data-slot="pane" {...(run ? null : { ...pane(), overflow: 'hidden' })} flex={1} minW={0} minH={0}>
+                    {plans ? null : <Builder host={host} rail={false} />}
+                  </YStack>
+                )}
+              </XStack>
+            </YStack>
+          </XStack>
           {drawer ? (
             <>
               <YStack
@@ -184,9 +303,9 @@ export function App() {
                 z="var(--z-overlay)"
                 $md={{ display: 'none' }}
               />
-              {/* A phone's column is a drawer: the same pane, floating in from
+              {/* A phone's sidebar is a drawer: the same column, floating in from
                   the left with the gutter round it, clear of the notch and the
-                  home indicator. */}
+                  home indicator, the rail laid along its foot. */}
               <YStack
                 data-slot="drawer"
                 position="absolute"
@@ -197,11 +316,20 @@ export function App() {
                 z="var(--z-modal)"
                 $md={{ display: 'none' }}
               >
-                <Column host={host} mode={mode} thread={thread} onChat={toChat} onDev={toDev} go={move} drawer />
+                <Column
+                  host={host}
+                  mode={mode}
+                  thread={thread}
+                  go={move}
+                  onShut={shut}
+                  seek={seek}
+                  drawer
+                  foot={<Rail host={host} mode={mode} at={where} open flat onChat={toChat} onDev={toDev} go={move} onOrg={org} />}
+                />
               </YStack>
             </>
           ) : null}
-        </XStack>
+        </YStack>
       </HostProvider>
     </AiProvider>
   )

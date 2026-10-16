@@ -151,7 +151,6 @@ import { Profile } from "./Profile";
 import { SupportPicker } from "./Support";
 import { Find } from "./Find";
 import { Account } from "./Account";
-import { ModeMark } from "./ModeMark";
 import { called } from "./team";
 import type { OrgCommandItem } from "@hanzogui/shell";
 import { checkoutUrl } from './lib/pay';
@@ -203,7 +202,7 @@ import {
 } from "./contacts-store";
 import { bare } from './lib/bare'
 import { BAD } from './lib/mix'
-import { brand, site, where } from './where'
+import { brand, site, where, wordmark } from './where'
 
 export type Mode =
   | "home"
@@ -902,11 +901,11 @@ function Team({
   // THE ORDER IS SESSION, THEN REFUSAL, THEN SILENCE — the ladder every room in
   // this app climbs (see Home's `Waiting`). "Reading." never resolves for a
   // reader nobody is going to answer, so the session is asked first.
-  if (!signedIn) return <Note>Sign in to see your org&apos;s rooms.</Note>;
-  if (wrong) return <Note>{say(wrong, "your rooms")}</Note>;
-  if (rooms === null) return <Note>Reading your rooms.</Note>;
+  if (!signedIn) return <Note>Sign in to see your org&apos;s channels.</Note>;
+  if (wrong) return <Note>{say(wrong, "your channels")}</Note>;
+  if (rooms === null) return <Note>Reading your channels.</Note>;
   if (rooms.length === 0)
-    return <Note>No rooms yet. Open one and the conversation has somewhere to live.</Note>;
+    return <Note>No channels yet.</Note>;
   if (shown.length === 0) return <Note>No room matches “{filter}”.</Note>;
 
   return (
@@ -2124,7 +2123,7 @@ function Frame({
           // Drive names the company rather than the room.
           id: place.id,
           title: place.label,
-          category: "Rooms",
+          category: "Apps",
           icon: <place.icon size={15} aria-hidden />,
           href: place.route,
         })),
@@ -2188,15 +2187,12 @@ function Frame({
         onShut={() => setAsked(false)}
         label="Resize sidebar"
       />
-      {/* THE WORKSPACE LEADS THE SIDEBAR: switching it changes everything below,
-          so it sits above everything below. It is the one switcher — the account
-          menu at the foot is about the person, not the workspace. */}
-      <XStack data-slot="mode-switch" items="center" px="$2" pt="$2" minW={0}>
-        <ModeMark
-          mode={mode === "dev" ? "dev" : "chat"}
-          onChat={() => navigate?.("/chat")}
-          onDev={() => navigate?.(dev())}
-        />
+      {/* THE PRODUCT'S NAME LEADS THE SIDEBAR. Chat and Dev are places on the
+          rail and rows below, so the name carries no switch of its own. */}
+      <XStack data-slot="mode-name" items="center" px="$2" pt="$2" minW={0}>
+        <Text fontSize="$4" fontWeight="600" color="$ink" numberOfLines={1}>
+          {wordmark(mode === "dev" ? "dev" : "chat")}
+        </Text>
       </XStack>
       <XStack data-slot="workspace-switcher" items="center" gap="$2" px="$2" pt="$1" pb="$1" minW={0}>
         {/* THE MARK GOES HOME, and only home. A plain link: the session lives

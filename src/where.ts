@@ -74,5 +74,8 @@ export const where = (): Addresses => addresses
 /** The product's name, as the host states it. Read at call time, like every address. */
 export const brand = (): string => addresses.brand ?? 'Hanzo AI'
 
+/** The product's name in each mode of the app: the host's brand in Chat (Hanzo AI, Hanzo Team), Hanzo Dev in Dev. */
+export const wordmark = (mode: 'chat' | 'dev'): string => (mode === 'dev' ? 'Hanzo Dev' : brand())
+
 /** A page of the app's own, from wherever the rooms are mounted. */
 export const site = (path: string): string => `${addresses.site}${path}`

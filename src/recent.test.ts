@@ -26,7 +26,13 @@ describe('Recents', () => {
   })
 
   test('words narrow the pinned ones too, and an empty Pinned is no group', () => {
-    expect(arrange(rows, PLAIN, 'aur', now)).toEqual([{ title: 'Today', rows: [rows[0]] }])
+    expect(arrange(rows, PLAIN, 'aur', now)).toEqual([{ title: '', rows: [rows[0]] }])
+    expect(arrange(rows, { ...PLAIN, group: 'date' }, 'aur', now)).toEqual([{ title: 'Today', rows: [rows[0]] }])
+  })
+
+  test('the plain view is Pinned, then every other row under one Recents heading, as the reference lists them', () => {
+    expect(PLAIN.group).toBe('none')
+    expect(arrange(rows, PLAIN, '', now).map((g) => g.title)).toEqual([PINNED, ''])
   })
 
   test('an archived conversation reads as archived, and the archived view keeps it', () => {

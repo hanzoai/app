@@ -10,13 +10,13 @@
 
 import { useEffect, useId, useMemo, useRef } from 'react'
 import { ScrollView, SizableText, XStack, YStack } from '@hanzo/gui'
-import { ListFilter, MessageSquare } from 'lucide-react'
+import { ListFilter } from 'lucide-react'
 import type { Thread } from '@hanzo/ai'
 import { DOTS, route, useSessions, type Host } from '@hanzo/build'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { SidebarItem, StatusDot } from '@hanzo/ui/chat'
 import { useKept } from './kept'
-import { ago, arrange, chats, MENUS, PLAIN, runs, SINCE, viewOf, type Mode, type Option, type Recent, type View } from './recent'
+import { arrange, chats, MENUS, PINNED, PLAIN, runs, SINCE, viewOf, type Mode, type Option, type Recent, type View } from './recent'
 import { ConversationMenu, ThreadRow, useThreadList } from './thread'
 
 /** The menu's items: each section a heading and its options, the one in force checked. */
@@ -172,83 +172,101 @@ function List({
   const label = useId()
   const groups = arrange(rows, view, words)
   const narrowed = view.status !== PLAIN.status || view.since !== PLAIN.since
-  const now = new Date()
   const running = mode === 'dev' ? rows.filter((r) => r.status === 'running').length : 0
+  // A row is its title alone, as the reference draws it: a conversation's ⋯
+  // shows on hover and focus, a run's state is a dot at its end.
   const row = (r: Recent) => {
-    const when = ago(r.at, now)
     const t = threads?.get(r.id)
     const item = (
-        <SidebarItem
-          data-kind={r.kind}
-          active={open(r)}
-          rounded="$4"
-          minH={32}
-          pr={when || t ? '$8' : '$2'}
-          // A conversation's ⋯ is a thumb wide on a touch screen and always there: the title stops short of it.
-          {...(t ? { $touchable: { pr: 52 } } : null)}
-          onKeyDown={(e: { key?: string; preventDefault?: () => void }) => {
-            if (e.key !== 'Enter' && e.key !== ' ') return
-            e.preventDefault?.()
-            onOpen(r)
-          }}
-          icon={
-            r.kind === 'chat' ? (
-              <MessageSquare size={14} aria-hidden />
-            ) : (
-              <XStack width={14} justify="center">
-                <StatusDot status={DOTS[r.status as keyof typeof DOTS] ?? 'idle'} />
-              </XStack>
-            )
-          }
-          onPress={() => onOpen(r)}
-        >
+      <SidebarItem
+        data-kind={r.kind}
+        active={open(r)}
+        rounded="$4"
+        minH={31}
+        px="$2"
+        pr={t || r.kind === 'dev' ? '$7' : '$2'}
+        // A conversation's ⋯ is a thumb wide on a touch screen and always there: the title stops short of it.
+        {...(t ? { $touchable: { pr: 52 } } : null)}
+        onKeyDown={(e: { key?: string; preventDefault?: () => void }) => {
+          if (e.key !== 'Enter' && e.key !== ' ') return
+          e.preventDefault?.()
+          onOpen(r)
+        }}
+        onPress={() => onOpen(r)}
+      >
+        <SizableText size="$3" color={open(r) ? '$ink' : '$quiet'} numberOfLines={1}>
           {r.title}
-        </SidebarItem>
+        </SizableText>
+      </SidebarItem>
     )
-    // How long ago, at the row's end; the full time is its title.
-    const age = when ? (
-      <SizableText size="$1" color="$soft" pointerEvents="none" display="flex" items="center" fontVariant={['tabular-nums']}>
-        <time dateTime={r.at} title={new Date(r.at).toLocaleString()}>
-          {when}
-        </time>
-      </SizableText>
-    ) : null
     if (t)
       return (
-        <ThreadRow key={r.id} t={t} active={open(r)} aside={age}>
+        <ThreadRow key={r.id} t={t} active={open(r)}>
           {item}
         </ThreadRow>
       )
     return (
       <YStack role="listitem" key={r.id} position="relative">
         {item}
-        {age ? (
-          <XStack position="absolute" r="$2" t={0} b={0} items="center" pointerEvents="none">
-            {age}
+        {r.kind === 'dev' ? (
+          <XStack position="absolute" r="$2.5" t={0} b={0} items="center" pointerEvents="none">
+            <StatusDot status={DOTS[r.status as keyof typeof DOTS] ?? 'idle'} />
           </XStack>
         ) : null}
       </YStack>
     )
   }
 
-  const body = groups.length ? (
-    <YStack role="list" aria-labelledby={label} gap={1}>
-      {groups.map((g) =>
-        g.title ? (
-          <YStack role="listitem" key={g.title} gap={1} pt="$2">
-            <SizableText size="$1" color="$soft" px="$2" pb="$1">
-              {g.title}
+  // The view menu stands at the end of the Recents heading: the target's own, quiet until the pointer is near.
+  const menu = (
+    <DropdownMenu
+      minWidth={200}
+      trigger={
+        <XStack
+          render="button"
+          aria-label="Recents view"
+          width={26}
+          height={26}
+          rounded="$2"
+          items="center"
+          justify="center"
+          cursor="pointer"
+          opacity={narrowed ? 1 : 0}
+          $group-hover={{ opacity: 1 }}
+          focusStyle={{ opacity: 1 }}
+          $touchable={{ opacity: 1 }}
+          hoverStyle={{ bg: '$hover' }}
+          bg={narrowed ? '$hover' : 'transparent'}
+        >
+          <ListFilter size={14} aria-hidden />
+        </XStack>
+      }
+      items={items(mode, view, keep)}
+    />
+  )
+  /** A section's heading: the reference's quiet 14px label, the Recents one carrying the count and the menu. */
+  const heading = (title: string, id?: string, lead = false) => (
+    <XStack group items="center" justify="space-between" height={31} pl="$2" pr="$1" mt="$3" shrink={0}>
+      <XStack items="center" gap="$2">
+        <SizableText id={id} size="$3" color="$soft">
+          {title}
+        </SizableText>
+        {lead && running ? (
+          // A count where there is one to keep an eye on: the runs still working.
+          <XStack aria-label={`${running} running`} minW={18} height={18} px="$1.5" rounded={999} items="center" justify="center" bg="$edge" borderWidth={1} borderColor="$borderColor">
+            <SizableText size="$1" fontWeight="600" color="$ink" aria-hidden>
+              {String(running)}
             </SizableText>
-            <YStack role="list" aria-label={g.title} gap={1}>
-              {g.rows.map(row)}
-            </YStack>
-          </YStack>
-        ) : (
-          g.rows.map(row)
-        ),
-      )}
-    </YStack>
-  ) : reading ? (
+          </XStack>
+        ) : null}
+      </XStack>
+      {lead ? menu : null}
+    </XStack>
+  )
+
+  const loose = groups.filter((g) => g.title !== PINNED)
+  const pinned = groups.find((g) => g.title === PINNED)
+  const note = reading ? (
     <Note>{mode === 'chat' ? 'Reading your chats…' : 'Reading your runs…'}</Note>
   ) : error ? null : words.trim() ? (
     <Note>{`Nothing matches “${words.trim()}”.`}</Note>
@@ -257,46 +275,46 @@ function List({
   ) : narrowed ? (
     <Note>Nothing in this view.</Note>
   ) : (
-    <Note>{mode === 'chat' ? 'No chats yet. Say something and it lands here.' : 'No runs yet.'}</Note>
+    <Note>{mode === 'chat' ? 'No chats yet.' : 'No runs yet.'}</Note>
+  )
+  const body = (
+    <YStack role="list" aria-labelledby={label} gap={1}>
+      {pinned ? (
+        <YStack role="listitem" gap={1}>
+          {heading(PINNED)}
+          <YStack role="list" aria-label={PINNED} gap={1}>
+            {pinned.rows.map(row)}
+          </YStack>
+        </YStack>
+      ) : null}
+      <YStack role="listitem" gap={1}>
+        {heading('Recents', label, true)}
+        {loose.length
+          ? loose.map((g) =>
+              g.title ? (
+                <YStack key={g.title} gap={1} pt="$1">
+                  <SizableText size="$1" color="$soft" px="$2" pb="$1">
+                    {g.title}
+                  </SizableText>
+                  <YStack role="list" aria-label={g.title} gap={1}>
+                    {g.rows.map(row)}
+                  </YStack>
+                </YStack>
+              ) : (
+                <YStack key="all" role="list" aria-label="All" gap={1}>
+                  {g.rows.map(row)}
+                </YStack>
+              ),
+            )
+          : pinned
+            ? null
+            : note}
+      </YStack>
+    </YStack>
   )
 
   return (
-    <YStack data-slot="recents" flex={1} minH={0} mt="$2">
-      <XStack items="center" justify="space-between" height={30} pl="$2" pr="$1" shrink={0}>
-        <XStack items="center" gap="$2">
-          <SizableText id={label} size="$1" color="$soft" fontWeight="600" textTransform="uppercase" letterSpacing={0.6}>
-            Recents
-          </SizableText>
-          {running ? (
-            // A count where there is one to keep an eye on: the runs still working.
-            <XStack aria-label={`${running} running`} minW={18} height={18} px="$1.5" rounded={999} items="center" justify="center" bg="$edge" borderWidth={1} borderColor="$borderColor">
-              <SizableText size="$1" fontWeight="600" color="$ink" aria-hidden>
-                {String(running)}
-              </SizableText>
-            </XStack>
-          ) : null}
-        </XStack>
-        <DropdownMenu
-          minWidth={200}
-          trigger={
-            <XStack
-              render="button"
-              aria-label="Recents view"
-              width={26}
-              height={26}
-              rounded="$2"
-              items="center"
-              justify="center"
-              cursor="pointer"
-              hoverStyle={{ bg: '$hover' }}
-              bg={narrowed ? '$hover' : 'transparent'}
-            >
-              <ListFilter size={14} aria-hidden />
-            </XStack>
-          }
-          items={items(mode, view, keep)}
-        />
-      </XStack>
+    <YStack data-slot="recents" flex={1} minH={0}>
       <ScrollView flex={1} showsVerticalScrollIndicator={false}>
         {error ? <Note>{error.message}</Note> : null}
         {threads ? (

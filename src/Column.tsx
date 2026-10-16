@@ -1,41 +1,41 @@
 'use client'
 
-// The app's one column, the same in both modes: the Chat / Dev switch, a filter,
-// New, Dev's places, the Recents of the mode it is in, and at the foot the
-// account (components/workspace/Me.tsx).
+// The app's sidebar, beside the rail on the window's floor (App.tsx): the
+// mode's name with the bell and the search at its right, New, Dev's places in
+// Dev, the reader's Recents (Pinned first), and the first-run cards. Which
+// product it lists is the rail's to say; the account is at the rail's foot.
+//
+// It is the window, not a panel: no fill, no edge, the floor's own ground. The
+// content beside it is the panel, inset by the gutter.
+//
+// The bell is the org's run activity (@hanzo/build `useSessions`): the runs
+// that moved last, each one press from its page, and Notifications in Settings.
+// The search opens the filter over Recents (⌘K / Ctrl+K from anywhere, `seek`).
 //
 // Dev's places are @hanzo/build's `nav`, the one list every rail draws, each a
-// row of its own under a quiet group label: nothing waits behind a More.
+// row under a quiet group label.
 //
-// Tabs sits under New in both modes. Hanzo Tabs lives at tabs.hanzo.ai, so the
-// row is a link there, in a tab of its own.
-//
-// It is a pane on the frame's ground (app/_web.tsx), sized by the edge in the
-// gutter to its right: dragged, keyed or double-clicked back (@hanzo/build's
-// `Grip`), kept per browser. Pulled in past its floor it collapses to a rail of
-// marks, kept under the key the builder's rail kept it under, so a reader's
-// choice outlives the move.
+// Its width is the edge's in the gutter to its right: dragged, keyed or
+// double-clicked back (@hanzo/build's `Grip`), kept per browser. Pulled in past
+// its floor it shuts (`onShut`), as the sidebar's toggle shuts it.
 
 import { Text, XStack, YStack } from '@hanzo/gui'
-import { PanelLeft, Plus, Search, SquareTerminal } from 'lucide-react'
-import { Grip, nav, NEW, type Host } from '@hanzo/build'
-import { Sidebar, SidebarIconButton, SidebarItem } from '@hanzo/ui/chat'
-import { HanzoMark } from '@hanzogui/shell'
-import { Fragment, useId, useState } from 'react'
-import { ModeMark } from './ModeMark'
-import { useKept } from './kept'
-import { Made, Me } from './Me'
+import { Bell, Search, Settings2, SquarePen, X } from 'lucide-react'
+import { DOTS, Grip, nav, NEW, path as written, useSessions, type Host } from '@hanzo/build'
+import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
+import { Sidebar, SidebarIconButton, SidebarItem, StatusDot } from '@hanzo/ui/chat'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { Made } from './Me'
 import { Recents } from './Recents'
 import { Setup } from './Setup'
-import type { Mode, Recent } from './recent'
+import { ago, type Mode, type Recent } from './recent'
 import { empty } from './open'
 import { useSpan } from './span'
 import { pane } from './ground'
-import { pick } from './lib/session'
-import { app, TABS, talk } from './lib/host'
-import { brand } from './where'
+import { talk } from './lib/host'
+import { brand, wordmark } from './where'
 
-/** The grip stands in the gutter between the column and the pane. gui carries a `calc()` to the page unchanged; its
+/** The grip stands in the gutter between the sidebar and the panel. gui carries a `calc()` to the page unchanged; its
  *  types only name custom properties. */
 const GUTTER_END = 'calc(-1 * var(--pane-gap))' as `var(--${string})`
 /** The sidebar fills the column. Its `width` is typed in px alone, though its frame takes any gui size — the type is
@@ -53,12 +53,10 @@ const FLOAT = {
   boxShadow: 'var(--edge-highlight), var(--shadow-floating)',
 } as const
 
-/** The column's width, px: its default, and the two a drag holds it between. */
-const WIDTH = 272
-const FLOOR = 220
+/** The sidebar's width, px: its default, and the two a drag holds it between. */
+const WIDTH = 240
+const FLOOR = 200
 const CEIL = 420
-/** The collapsed rail's width, px. */
-const RAIL = 60
 /** Per reader, per browser. */
 const SPAN = 'hanzo.app.column'
 
@@ -71,53 +69,86 @@ const keys = (press: () => void) => ({
   },
 })
 
-/** A row of the column: a pill, lit where the reader is. Compact, so every place fits a laptop's height with Recents under them. */
-const ROW = { rounded: '$4', minH: 30, py: 0 } as const
+/** A row of the sidebar: a pill on a 31px pitch, lit where the reader is. */
+const ROW = { rounded: '$4', minH: 31, py: 0, px: '$2' } as const
 
-/** Tabs, a row drawn as a link out: another origin, its own tab, no handle back to this page. */
-const OUT = { 'data-slot': 'app-tabs', role: 'link', render: <a href={TABS} target="_blank" rel="noopener noreferrer" /> } as const
+/** The run activity behind the bell: the runs that moved last, newest first. */
+const RECENT = 6
 
-/** Tabs in the rail, as its mark. */
-const Mark = () => (
-  <SidebarIconButton label="Tabs" width={36} height={32} rounded={999} {...OUT}>
-    <SquareTerminal size={16} />
-  </SidebarIconButton>
-)
+/** A header mark: a 16px glyph in a 32px target. */
+const HEAD = { width: 32, height: 32, rounded: '$3' } as const
 
-/** Tabs in the column, as a row. */
-const Row = () => (
-  <YStack role="listitem">
-    <SidebarItem {...ROW} icon={<SquareTerminal size={16} aria-hidden />} {...OUT}>
-      Tabs
-    </SidebarItem>
-  </YStack>
-)
+function Activity({ host }: { host: Host }) {
+  const store = useSessions(host)
+  const latest = [...store.value].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)).slice(0, RECENT)
+  const items: NonNullable<DropdownMenuProps['items']> = [
+    { type: 'label', key: 'head', label: 'Activity' },
+    ...(latest.length
+      ? latest.map((s) => ({
+          key: s.id,
+          label: s.title || 'Untitled run',
+          description: [s.status, ago(s.updatedAt || s.createdAt)].filter(Boolean).join(' · '),
+          icon: <StatusDot status={DOTS[s.status as keyof typeof DOTS] ?? 'idle'} />,
+          onSelect: () => host.go(s.id),
+        }))
+      : [{ key: 'none', label: 'Nothing new', disabled: true, onSelect: () => {} }]),
+    { type: 'separator', key: 'line' },
+    { key: 'settings', label: 'Notification settings', icon: <Settings2 size={16} aria-hidden />, onSelect: () => host.go(written({ kind: 'settings', section: 'notifications' })) },
+  ]
+  return (
+    <DropdownMenu
+      minWidth={280}
+      trigger={
+        <XStack
+          render="button"
+          aria-label="Activity"
+          {...({ title: 'Activity' } as object)}
+          {...HEAD}
+          items="center"
+          justify="center"
+          cursor="pointer"
+          opacity={0.7}
+          hoverStyle={{ bg: '$hover', opacity: 1 }}
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+        >
+          <Bell size={16} aria-hidden />
+        </XStack>
+      }
+      items={items}
+    />
+  )
+}
 
 export function Column({
   host,
   mode,
   thread,
-  onChat,
-  onDev,
   go,
+  onShut,
+  seek = 0,
   drawer = false,
+  foot,
 }: {
   host: Host
   mode: Mode
   /** The Chat conversation the pane holds, or null. */
   thread: string | null
-  /** The switch: to Chat and to Dev, each where the reader left it. */
-  onChat: () => void
-  onDev: () => void
   /** Moves the app to an address of this page. */
   go: (address: string) => void
-  /** Drawn in the phone's drawer: no collapse, no edge, always open. */
+  /** Shut the sidebar: its edge pulled in past the floor. */
+  onShut: () => void
+  /** Each new value asks for the search, focused (⌘K). */
+  seek?: number
+  /** Drawn in the phone's drawer: no edge, cut as a floating pane. */
   drawer?: boolean
+  /** What stands at its foot: the drawer's rail, laid flat. */
+  foot?: ReactNode
 }) {
-  const [kept, setCollapsed] = useKept('hanzo.build.rail', false)
-  const collapsed = kept && !drawer
   const [words, setWords] = useState('')
-  // The desktop column and a phone's drawer can both be in the page: each names its own group labels.
+  // The search field shows once asked for, and while it holds words.
+  const [seeking, setSeeking] = useState(false)
+  const field = useRef<HTMLInputElement | null>(null)
+  // The desktop sidebar and a phone's drawer can both be in the page: each names its own group labels.
   const uid = useId()
   const span = useSpan(SPAN, WIDTH, FLOOR, CEIL)
 
@@ -129,58 +160,17 @@ export function Column({
     empty()
     go(talk())
   }
-  // Another organization: picked, and the app opened in it at the mode's New.
-  const org = (o: string) => {
-    pick(o)
-    window.location.assign(mode === 'dev' ? app('') : talk())
+  const ask = () => {
+    setSeeking(true)
+    requestAnimationFrame(() => field.current?.focus())
   }
-
-  if (collapsed)
-    return (
-      <YStack data-slot="app-column" data-collapsed="" position="relative" shrink={0} width={RAIL} $max-md={{ display: 'none' }}>
-        <Sidebar
-          data-slot="app-rail"
-          data-collapsed="true"
-          role="navigation"
-          aria-label={brand()}
-          {...pane()}
-          {...FILL}
-          px="$1.5"
-          py="$2.5"
-          gap="$1.5"
-          items="center"
-        >
-          <SidebarIconButton label="Expand sidebar" onPress={() => setCollapsed(false)} width={36} height={36} rounded={999}>
-            <PanelLeft size={16} />
-          </SidebarIconButton>
-          <ModeMark mode={mode} onChat={onChat} onDev={onDev} stacked />
-          {mode === 'chat' ? (
-            <>
-              <SidebarIconButton label="New chat" onPress={create} width={36} height={36} rounded={999}>
-                <Plus size={16} />
-              </SidebarIconButton>
-              <Mark />
-            </>
-          ) : (
-            // Every place, as its mark: collapsed is narrower, never shorter of a destination.
-            groups.map((g) => (
-              <YStack key={g.id} role="group" aria-label={g.label} items="center" gap={2} pt="$1">
-                {g.links.map((link) => (
-                  <Fragment key={link.id}>
-                    <SidebarIconButton label={link.label} onPress={() => link.onPress?.()} width={36} height={32} rounded={999} aria-current={link.active ? 'page' : undefined}>
-                      {link.icon}
-                    </SidebarIconButton>
-                    {link.id === NEW ? <Mark /> : null}
-                  </Fragment>
-                ))}
-              </YStack>
-            ))
-          )}
-          <YStack flex={1} />
-          <Me host={host} narrow onOrg={org} />
-        </Sidebar>
-      </YStack>
-    )
+  const done = () => {
+    setWords('')
+    setSeeking(false)
+  }
+  useEffect(() => {
+    if (seek) ask()
+  }, [seek])
 
   return (
     <YStack
@@ -189,107 +179,120 @@ export function Column({
       // inline-style: `--span`, the width a drag rewrites on the element itself (span.ts); no prop sets a variable.
       style={drawer ? undefined : span.style}
       position="relative"
-      shrink={0}
+      flex={drawer ? 1 : undefined}
+      shrink={drawer ? 1 : 0}
+      minW={0}
       height="100%"
-      width={drawer ? '100%' : 'var(--span)'}
-      {...(drawer ? {} : { '$max-md': { display: 'none' } })}
+      width={drawer ? undefined : 'var(--span)'}
     >
       <Sidebar
         data-slot="app-rail"
-        data-collapsed="false"
         role="navigation"
         aria-label={brand()}
-        {...pane()}
-        {...(drawer ? FLOAT : null)}
+        {...(drawer ? { ...pane(), ...FLOAT } : { bg: 'transparent', borderWidth: 0 })}
         {...FILL}
-        px="$2.5"
-        pt="$3"
+        px="$2"
+        pt={drawer ? '$2' : 0}
         pb="$2"
         gap="$0"
       >
-        <XStack data-slot="mode-switch" items="center" gap="$2" px="$1.5" pb="$3" minW={0}>
-          <HanzoMark size={18} />
-          <ModeMark mode={mode} onChat={onChat} onDev={onDev} />
+        <XStack data-slot="app-head" items="center" gap="$1" pl="$2" pr={2} height={52} shrink={0} minW={0}>
+          <Text flex={1} minW={0} fontSize={18} lineHeight={24} fontWeight="600" color="$ink" numberOfLines={1}>
+            {wordmark(mode)}
+          </Text>
+          <Activity host={host} />
+          <SidebarIconButton
+            label={mode === 'chat' ? 'Search chats' : 'Search runs'}
+            onPress={seeking ? done : ask}
+            aria-expanded={seeking || !!words}
+            {...HEAD}
+          >
+            <Search size={16} aria-hidden />
+          </SidebarIconButton>
         </XStack>
-        <XStack data-slot="app-filter" items="center" gap="$2" px="$3" height={36} rounded={999} borderWidth={1} borderColor="$borderColor" bg="$edge" shrink={0}>
-          <Search size={15} aria-hidden color="var(--soft, var(--muted-foreground))" />
-          <Text
-            render={
-              <input
-                value={words}
-                onChange={(e) => setWords(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') setWords('')
-                }}
-                placeholder={mode === 'chat' ? 'Filter chats' : 'Filter runs'}
-                aria-label="Filter recents"
-              />
-            }
-            flex={1}
-            minW={0}
-            bg="transparent"
-            borderWidth={0}
-            outlineStyle="none"
-            color="inherit"
-            fontSize="$2"
-          />
-        </XStack>
+        {seeking || words ? (
+          <XStack data-slot="app-filter" items="center" gap="$2" pl="$3" pr="$1" height={36} rounded={999} borderWidth={1} borderColor="$borderColor" bg="$edge" shrink={0} mb="$1.5">
+            <Search size={15} aria-hidden color="var(--soft, var(--muted-foreground))" />
+            <Text
+              render={
+                <input
+                  ref={field}
+                  value={words}
+                  onChange={(e) => setWords(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') done()
+                  }}
+                  onBlur={() => {
+                    if (!words) setSeeking(false)
+                  }}
+                  placeholder={mode === 'chat' ? 'Search chats' : 'Search runs'}
+                  aria-label="Filter recents"
+                />
+              }
+              flex={1}
+              minW={0}
+              bg="transparent"
+              borderWidth={0}
+              outlineStyle="none"
+              color="inherit"
+              fontSize="$3"
+            />
+            {words ? (
+              <SidebarIconButton label="Clear search" onPress={done} width={28} height={28} rounded={999}>
+                <X size={14} aria-hidden />
+              </SidebarIconButton>
+            ) : null}
+          </XStack>
+        ) : null}
         {mode === 'chat' ? (
-          <YStack role="list" mt="$2.5" gap={2} shrink={0}>
+          <YStack role="list" gap={2} shrink={0}>
             <YStack role="listitem">
-              <SidebarItem data-slot="app-new" {...ROW} active={!thread} icon={<Plus size={16} aria-hidden />} onPress={create} {...keys(create)}>
-                New chat
+              {/* Current while the pane holds a new conversation, and never lit: the reference lights the conversation open, not New. */}
+              <SidebarItem data-slot="app-new" {...ROW} active={!thread} bg="transparent" hoverStyle={{ bg: '$hover' }} icon={<SquarePen size={16} aria-hidden />} onPress={create} {...keys(create)}>
+                <Text fontSize="$3" color="$ink">
+                  New chat
+                </Text>
               </SidebarItem>
             </YStack>
-            <Row />
           </YStack>
         ) : (
-          <YStack data-slot="app-places" mt="$1.5" shrink={0}>
-            {groups.map((g) => (
-              <YStack key={g.id} pt="$1.5">
-                {/* The same quiet label Recents wears, so the column reads as one list of headed parts. */}
-                <Text id={`${uid}-${g.id}`} pl="$2" pb={2} fontSize="$1" color="$soft" fontWeight="600" textTransform="uppercase" letterSpacing={0.6}>
-                  {g.label}
-                </Text>
-                <YStack role="list" aria-labelledby={`${uid}-${g.id}`} gap={1}>
+          <YStack data-slot="app-places" shrink={0}>
+            {groups.map((g, i) => (
+              <YStack key={g.id} pt={i ? '$2' : 0}>
+                {/* The same quiet label Recents wears, so the sidebar reads as one list of headed parts. */}
+                {i ? (
+                  <Text id={`${uid}-${g.id}`} pl="$2" pb={2} fontSize="$3" color="$soft">
+                    {g.label}
+                  </Text>
+                ) : null}
+                <YStack role="list" aria-labelledby={i ? `${uid}-${g.id}` : undefined} aria-label={i ? undefined : g.label} gap={1}>
                   {g.links.map((link) => (
-                    <Fragment key={link.id}>
-                      <YStack role="listitem">
-                        <SidebarItem
-                          {...ROW}
-                          {...(link.id === NEW ? { 'data-slot': 'app-new' } : {})}
-                          active={link.active}
-                          icon={link.icon}
-                          onPress={link.onPress}
-                          {...keys(() => link.onPress?.())}
-                        >
+                    <YStack key={link.id} role="listitem">
+                      <SidebarItem
+                        {...ROW}
+                        {...(link.id === NEW ? { 'data-slot': 'app-new' } : {})}
+                        active={link.active}
+                        icon={link.id === NEW ? <SquarePen size={16} aria-hidden /> : link.icon}
+                        onPress={link.onPress}
+                        {...keys(() => link.onPress?.())}
+                      >
+                        <Text fontSize="$3" color={link.active ? '$ink' : '$quiet'}>
                           {link.label}
-                        </SidebarItem>
-                      </YStack>
-                      {link.id === NEW ? <Row /> : null}
-                    </Fragment>
+                        </Text>
+                      </SidebarItem>
+                    </YStack>
                   ))}
                 </YStack>
               </YStack>
             ))}
           </YStack>
         )}
-        <XStack height={1} bg="$borderColor" mx="$1.5" mt="$3" shrink={0} />
         <Recents host={host} mode={mode} thread={thread} words={words} onOpen={open} onNew={create} />
         <YStack gap="$2" pt="$2" shrink={0}>
           <Made />
           <Setup />
         </YStack>
-        <XStack data-slot="app-foot" items="center" gap="$1" pt="$2" shrink={0}>
-          <YStack flex={1} minW={0}>
-            <Me host={host} onOrg={org} />
-          </YStack>
-          {drawer ? null : (
-            <SidebarIconButton label="Collapse sidebar" onPress={() => setCollapsed(true)} width={32} height={32} rounded={999}>
-              <PanelLeft size={16} />
-            </SidebarIconButton>
-          )}
-        </XStack>
+        {foot}
       </Sidebar>
       {drawer ? null : (
         <Grip
@@ -300,9 +303,9 @@ export function Column({
           reset={WIDTH}
           onSpan={span.move}
           onKeep={span.keep}
-          onShut={() => setCollapsed(true)}
+          onShut={onShut}
           label="Resize sidebar"
-          // In the gutter between the column and the pane, not over the column's own rows.
+          // In the gutter between the sidebar and the panel, not over the sidebar's own rows.
           r={GUTTER_END}
           width="var(--pane-gap)"
         />

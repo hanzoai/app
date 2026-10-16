@@ -30,7 +30,7 @@ export interface View {
   sort: Sort
 }
 
-export const PLAIN: View = { status: 'all', since: 'any', group: 'date', sort: 'activity' }
+export const PLAIN: View = { status: 'all', since: 'any', group: 'none', sort: 'activity' }
 
 export type Option<T> = { id: T; label: string }
 
