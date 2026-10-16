@@ -18,7 +18,7 @@ vi.mock('@hanzo/gui', () => {
     return Draw(props)
   }
   const Popover = Object.assign(Draw, { Anchor: Draw, Content: Draw })
-  return { Popover, SizableText: Draw, View: Draw, XStack: Row, YStack: Draw }
+  return { Popover, SizableText: Draw, View: Draw, XStack: Row, YStack: Draw, usePopperContextSlow: () => ({ update: () => {} }) }
 })
 vi.mock('@hanzo/ui', () => ({ Button: () => null, Dialog: () => null, DialogContent: () => null, DialogTitle: () => null, Input: () => null }))
 vi.mock('@hanzo/ui/glass', () => ({ glass: () => ({}) }))

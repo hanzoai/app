@@ -25,7 +25,7 @@
 // Orgs.tsx); the next load mints a token that carries it.
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
-import { Popover, SizableText, View, XStack, YStack } from '@hanzo/gui'
+import { Popover, SizableText, usePopperContextSlow, View, XStack, YStack } from '@hanzo/gui'
 import { Building2, ChevronsUpDown, CreditCard, ExternalLink, Gauge, KeyRound, LifeBuoy, LogOut, Plus, Settings, Sparkles, Users, X } from 'lucide-react'
 import { label, Meter, path, said as spoken, useStanding, useWho, type Host } from '@hanzo/build'
 import { useOrganizations } from '@hanzo/iam/react'
@@ -229,6 +229,28 @@ function rove(e: KeyboardEvent<HTMLDivElement>, close: () => void) {
   rows[to]?.focus()
 }
 
+/**
+ * The menu grows once the plan is read (`Meter`), after it was placed, and the
+ * popover follows its anchor, not its own size. So it is placed again whenever
+ * its content changes size, and never hangs over the row it opens from.
+ */
+function Refit({ children }: { children: ReactNode }) {
+  const { update } = usePopperContextSlow()
+  const box = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const node = box.current
+    if (!node || typeof ResizeObserver === 'undefined') return
+    const watch = new ResizeObserver(() => update())
+    watch.observe(node)
+    return () => watch.disconnect()
+  }, [update])
+  return (
+    <View render={<div ref={box} />} self="stretch" minW={0}>
+      {children}
+    </View>
+  )
+}
+
 export function Me({
   host,
   narrow = false,
@@ -320,6 +342,7 @@ export function Me({
           </XStack>
         </Popover.Anchor>
         <Popover.Content {...glass(2)} items="stretch" borderWidth={1} rounded="$6" p="$1.5" width={288} maxW="calc(100vw - 16px)" maxH="calc(100dvh - 32px)" overflowY="auto" overflowX="hidden">
+          <Refit>
           <View render={<div ref={land} role="menu" aria-label="Account" onKeyDown={(e) => rove(e, close)} />} self="stretch" minW={0}>
           <YStack gap={2}>
             <SizableText size="$2" color="$soft" px="$2" py="$1.5" numberOfLines={1}>
@@ -379,6 +402,7 @@ export function Me({
             ) : null}
           </YStack>
           </View>
+          </Refit>
         </Popover.Content>
       </Popover>
       <Create open={creating} onOpenChange={setCreating} />
