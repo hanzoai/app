@@ -342,7 +342,7 @@ reference captures; outer window, inner panel):
   no fill, no edge. INNER: the content is one rounded panel (`pane()`), inset
   from the window's edges and from the sidebar by `--pane-gap`; Chat's tabs
   are a second panel beside it (Paned), Dev's run floats its own two.
-- The rail, one order: Chat, Dev, Studio (hanzo.ai/studio, a page load),
+- The rail, one order: Chat, Dev, Studio (@hanzo/studio, the app's third mode at /studio),
   Library (Dev's Artifacts), Scheduled tasks (Automations), Customize, then More (Projects, Templates, Issues, Machines,
   Environments | Tabs, Team), the account's face at the foot. Each mark is an
   app: 36px on a 44px pitch, its name its tooltip, lit where the reader is.

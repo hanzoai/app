@@ -1,7 +1,9 @@
 'use client'
 
-// The web app as the whole window, in two modes: Chat, a conversation with the
-// product's AI, and Dev, @hanzo/build's `<Builder>` without a rail of its own.
+// The web app as the whole window, in three modes: Chat, a conversation with
+// the product's AI; Dev, @hanzo/build's `<Builder>` without a rail of its own;
+// and Studio, @hanzo/studio's `<Studio>` the same way, its places (`nav`) in the
+// sidebar where Dev's stand for Dev.
 //
 //   OUTER  the rail (Rail.tsx) and the sidebar beside it (Column.tsx), on the
 //          window's floor, with the window's bar above them where the host has
@@ -14,11 +16,12 @@
 // search, New, Dev's places and the reader's Recents. The address says the
 // mode, as a path (lib/host `talk`, `app`, `place`): `/` and `/chat` are Chat on
 // a new conversation, `/chat/<id>` one of the reader's, and a path under `/dev`
-// is Dev: `/dev/run/<id>` a run, `/dev/projects/<org>/<repo>` a project. Moving
+// is Dev: `/dev/run/<id>` a run, `/dev/projects/<org>/<repo>` a project; a path
+// under `/studio` is Studio, its own address after it (`c/<id>`, `library`). Moving
 // between the modes is a history entry (`go`), never a load, so a host serves
 // this one component for every path under each.
 //
-// Every host draws this: hanzo.ai at `/`, `/chat` and `/dev`, and the desktop
+// Every host draws this: hanzo.ai at `/`, `/chat`, `/dev` and `/studio`, and the desktop
 // app as its main window. The host mounts IamProvider and `<Rooms>` with its
 // router and the path, and draws this only for a signed-in reader; what a
 // stranger sees is the host's.
@@ -46,14 +49,20 @@
 // EVERY MOVE PUTS THE DRAWER AWAY, the one to where the reader already is
 // included.
 //
+// STUDIO LOADS WITH ITS MODE. Its module (and three.js behind a 3D tab) is
+// fetched the first time the reader stands in Studio; its places are a few
+// lines and come with the app. Another organization opens it at its New, so
+// nothing it read under the last one stays.
+//
 // THE PLANS' OWN ADDRESS LEAVES for the pay site in its place (dev.tsx `leave`),
 // so the builder's own plans are never drawn.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Menu } from 'lucide-react'
 import { AiProvider } from '@hanzo/ai/react'
 import { Text, XStack, YStack } from '@hanzo/gui'
-import { Builder, HostProvider, path as written, route } from '@hanzo/build'
+import { Builder, HostProvider, path as written, route, type Host } from '@hanzo/build'
+import { nav as places } from '@hanzo/studio'
 import { SidebarIconButton } from '@hanzo/ui/chat'
 import { useAi } from './lib/ai'
 import { Chat } from './Chat'
@@ -67,8 +76,11 @@ import { empty, openThread, useOpen } from './open'
 import { Paned } from './Shell'
 import { floor, pane } from './ground'
 import { pick } from './lib/session'
-import { app, go, place, talk, type Place } from './lib/host'
+import { app, go, place, studio, talk, type Place } from './lib/host'
 import { wordmark } from './where'
+
+/** Studio, fetched the first time the reader stands in it. */
+const Studio = lazy(() => import('@hanzo/studio').then((m) => ({ default: m.Studio })))
 
 /** `/` is Chat on a new conversation. */
 const HOME: Place = { mode: 'chat', thread: null }
@@ -102,7 +114,7 @@ const INSET = {
 } as const
 
 /** Where each mode was last, so the rail goes back to it. */
-const last = { chat: '', dev: '' }
+const last = { chat: '', dev: '', studio: '' }
 
 /** Whether a key press is the reader typing, where the app's keys are the field's. */
 const typing = (e: KeyboardEvent): boolean => {
@@ -147,6 +159,25 @@ function Window({ bar }: { bar?: Bar }) {
   const at = place(here) ?? HOME
   const mode = at.mode
   const where = at.mode === 'dev' ? at.at : null
+  // Studio's host: Dev's, at Studio's address, its moves under /studio, and
+  // another organization opening Studio's New in it.
+  const made = at.mode === 'studio' ? at.at : ''
+  const maker = useMemo<Host>(
+    () => ({
+      ...host,
+      name: 'Hanzo Studio',
+      path: made,
+      go: (to, how) => {
+        shut()
+        go(studio(to), how?.replace)
+      },
+      chooseOrg: (next) => {
+        pick(next)
+        window.location.assign(studio(''))
+      },
+    }),
+    [host, made, shut],
+  )
   // A run floats two panes of its own, so the pane it stands in is not cut.
   const run = where !== null && route(where).kind === 'run'
   const asked = at.mode === 'chat' ? at.thread : null
@@ -225,11 +256,13 @@ function Window({ bar }: { bar?: Bar }) {
 
   const toChat = () => move(last.chat || talk())
   const toDev = () => move(last.dev || app(''))
+  const toStudio = () => move(last.studio || studio(''))
   // Another organization: picked, and the app opened in it at the mode's New.
   const org = (o: string) => {
     pick(o)
-    window.location.assign(mode === 'dev' ? app('') : talk())
+    window.location.assign(mode === 'dev' ? app('') : mode === 'studio' ? studio('') : talk())
   }
+  const sidebar = mode === 'studio' ? places(maker, (p) => maker.go(p)) : undefined
   const flip = () => setClosed(!closed)
 
   return (
@@ -271,11 +304,11 @@ function Window({ bar }: { bar?: Bar }) {
             $max-md={{ p: 0 }}
           >
             <YStack height="100%" $max-md={{ display: 'none' }}>
-              <Rail host={host} mode={mode} at={where} open={!closed} toggle={bar ? undefined : flip} onChat={toChat} onDev={toDev} go={move} onOrg={org} />
+              <Rail host={host} mode={mode} at={where} open={!closed} toggle={bar ? undefined : flip} onChat={toChat} onDev={toDev} onStudio={toStudio} go={move} onOrg={org} />
             </YStack>
             {closed ? null : (
               <YStack $max-md={{ display: 'none' }}>
-                <Column host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} seek={seek} />
+                <Column host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} seek={seek} places={sidebar} />
               </YStack>
             )}
             <YStack data-slot="stage" flex={1} minW={0} minH={0} ml="var(--pane-gap)" $max-md={{ ml: 0 }}>
@@ -295,6 +328,14 @@ function Window({ bar }: { bar?: Bar }) {
                   <Paned framed>
                     <Chat />
                   </Paned>
+                ) : mode === 'studio' ? (
+                  <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                    <YStack flex={1} minH={0} height="100%">
+                      <Suspense fallback={null}>
+                        <Studio host={maker} rail={false} />
+                      </Suspense>
+                    </YStack>
+                  </YStack>
                 ) : (
                   <YStack render="main" data-slot="pane" {...(run ? null : { ...pane(), overflow: 'hidden' })} flex={1} minW={0} minH={0}>
                     {plans ? null : <Builder host={host} rail={false} />}
@@ -339,7 +380,8 @@ function Window({ bar }: { bar?: Bar }) {
                   onShut={shut}
                   seek={seek}
                   drawer
-                  foot={<Rail host={host} mode={mode} at={where} open flat onChat={toChat} onDev={toDev} go={move} onOrg={org} />}
+                  places={sidebar}
+                  foot={<Rail host={host} mode={mode} at={where} open flat onChat={toChat} onDev={toDev} onStudio={toStudio} go={move} onOrg={org} />}
                 />
               </YStack>
             </>

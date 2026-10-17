@@ -23,16 +23,16 @@ import { Text, XStack, YStack } from '@hanzo/gui'
 import { Bell, Search, Settings2, SquarePen, X } from 'lucide-react'
 import { DOTS, Grip, nav, NEW, path as written, useSessions, type Host } from '@hanzo/build'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
-import { Sidebar, SidebarIconButton, SidebarItem, StatusDot } from '@hanzo/ui/chat'
+import { Sidebar, SidebarIconButton, SidebarItem, StatusDot, type RailLink } from '@hanzo/ui/chat'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { Made } from './Me'
 import { Recents } from './Recents'
 import { Setup } from './Setup'
-import { ago, type Mode, type Recent } from './recent'
+import { ago, type Recent } from './recent'
 import { empty } from './open'
 import { useSpan } from './span'
 import { pane } from './ground'
-import { talk } from './lib/host'
+import { talk, type Place } from './lib/host'
 import { brand, wordmark } from './where'
 
 /** The grip stands in the gutter between the sidebar and the panel. gui carries a `calc()` to the page unchanged; its
@@ -128,9 +128,10 @@ export function Column({
   seek = 0,
   drawer = false,
   foot,
+  places,
 }: {
   host: Host
-  mode: Mode
+  mode: Place['mode']
   /** The Chat conversation the pane holds, or null. */
   thread: string | null
   /** Moves the app to an address of this page. */
@@ -143,6 +144,8 @@ export function Column({
   drawer?: boolean
   /** What stands at its foot: the drawer's rail, laid flat. */
   foot?: ReactNode
+  /** The mode's places, where they are not Dev's (Studio's `nav`). */
+  places?: { id: string; label: string; links: RailLink[] }[]
 }) {
   const [words, setWords] = useState('')
   // The search field shows once asked for, and while it holds words.
@@ -153,7 +156,7 @@ export function Column({
   const span = useSpan(SPAN, WIDTH, FLOOR, CEIL)
 
   const dev = (p: string) => host.go(p)
-  const groups = nav(host, dev)
+  const groups = places ?? nav(host, dev)
   const open = (row: Recent) => (row.kind === 'chat' ? go(talk(row.id)) : dev(row.id))
   // Chat's New; Dev's is the first of its places.
   const create = () => {
@@ -201,14 +204,16 @@ export function Column({
             {wordmark(mode)}
           </Text>
           <Activity host={host} />
-          <SidebarIconButton
-            label={mode === 'chat' ? 'Search chats' : 'Search runs'}
-            onPress={seeking ? done : ask}
-            aria-expanded={seeking || !!words}
-            {...HEAD}
-          >
-            <Search size={16} aria-hidden />
-          </SidebarIconButton>
+          {mode === 'studio' ? null : (
+            <SidebarIconButton
+              label={mode === 'chat' ? 'Search chats' : 'Search runs'}
+              onPress={seeking ? done : ask}
+              aria-expanded={seeking || !!words}
+              {...HEAD}
+            >
+              <Search size={16} aria-hidden />
+            </SidebarIconButton>
+          )}
         </XStack>
         {seeking || words ? (
           <XStack data-slot="app-filter" items="center" gap="$2" pl="$3" pr="$1" height={36} rounded={999} borderWidth={1} borderColor="$borderColor" bg="$edge" shrink={0} mb="$1.5">
@@ -287,7 +292,7 @@ export function Column({
             ))}
           </YStack>
         )}
-        <Recents host={host} mode={mode} thread={thread} words={words} onOpen={open} onNew={create} />
+        {mode === 'studio' ? null : <Recents host={host} mode={mode} thread={thread} words={words} onOpen={open} onNew={create} />}
         <YStack gap="$2" pt="$2" shrink={0}>
           <Made />
           <Setup />

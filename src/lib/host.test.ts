@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { app, CHAT, DEV, dev, page, place, talk } from './host'
+import { app, CHAT, DEV, dev, page, place, studio, talk } from './host'
 import { configure } from '../where'
 
 const RUN = `sess_${'0123456789abcdef'.repeat(2)}`
@@ -76,3 +76,17 @@ describe('the app is two roots of paths', () => {
     configure({ site: '' })
   })
 })
+
+describe('Studio is the third root', () => {
+  test('a path under /studio is Studio at its own address, and Studio writes it back', () => {
+    expect(place('/studio')).toEqual({ mode: 'studio', at: '' })
+    expect(place('/studio/')).toEqual({ mode: 'studio', at: '' })
+    expect(place('/studio/c/abc')).toEqual({ mode: 'studio', at: 'c/abc' })
+    expect(place('/studio/library')).toEqual({ mode: 'studio', at: 'library' })
+    expect(studio('')).toBe('/studio')
+    expect(studio('c/abc')).toBe('/studio/c/abc')
+    expect(studio('/explore')).toBe('/studio/explore')
+    expect(place('/studios'), 'a neighbour of /studio is not Studio').toBeNull()
+  })
+})
+

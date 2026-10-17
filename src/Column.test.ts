@@ -65,7 +65,7 @@ const noop = () => {}
 
 const column = (mode: Mode) => renderToStaticMarkup(createElement(Column, { host, mode, thread: null, go: noop, onShut: noop }))
 const rail = (mode: Mode, toggle?: () => void, at: string | null = null) =>
-  renderToStaticMarkup(createElement(Rail, { host, mode, at, open: true, toggle, onChat: noop, onDev: noop, go: noop, onOrg: noop }))
+  renderToStaticMarkup(createElement(Rail, { host, mode, at, open: true, toggle, onChat: noop, onDev: noop, onStudio: noop, go: noop, onOrg: noop }))
 
 /** Where a string first stands in the markup, failing when it is absent. */
 const at = (html: string, s: string): number => {

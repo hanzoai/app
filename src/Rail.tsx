@@ -5,8 +5,8 @@
 // menu of the rest, and the account at the foot. It is how the app moves
 // between its products; there is no switch anywhere else.
 //
-// Studio is its own page, hanzo.ai/studio, opened in this tab: the app draws it
-// there for a signed-in reader.
+// Studio is the app's third mode (@hanzo/studio at /studio), each of the three
+// opened where the reader left it.
 //
 // Library, Scheduled tasks and Customize are Dev's own places (@hanzo/build's
 // Artifacts, Automations and Customize), raised to the rail; each is lit while
@@ -29,9 +29,7 @@ import { XStack, YStack } from '@hanzo/gui'
 import { route, type Host } from '@hanzo/build'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { Me } from './Me'
-import { app, STUDIO, TABS, WORKSPACE } from './lib/host'
-import { site } from './where'
-import type { Mode } from './recent'
+import { app, TABS, WORKSPACE, type Place } from './lib/host'
 
 /** The rail's width, px. */
 export const RAIL = 48
@@ -129,11 +127,12 @@ export function Rail({
   flat = false,
   onChat,
   onDev,
+  onStudio,
   go,
   onOrg,
 }: {
   host: Host
-  mode: Mode
+  mode: Place['mode']
   /** Dev's builder address, or null in Chat. */
   at: string | null
   /** The sidebar beside the rail is open. */
@@ -142,9 +141,10 @@ export function Rail({
   toggle?: () => void
   /** Laid along the foot of the phone's drawer rather than down the window's edge. */
   flat?: boolean
-  /** To Chat and to Dev, each where the reader left it. */
+  /** To Chat, Dev and Studio, each where the reader left it. */
   onChat: () => void
   onDev: () => void
+  onStudio: () => void
   /** Moves the app to an address of this page. */
   go: (address: string) => void
   /** Work in another organization. */
@@ -192,7 +192,7 @@ export function Rail({
       <Mark label="Dev" on={mode === 'dev' && !here} onPress={onDev} data-slot="rail-dev">
         <Code2 size={18} aria-hidden />
       </Mark>
-      <Mark label="Studio" onPress={() => window.location.assign(site(STUDIO))} data-slot="rail-studio">
+      <Mark label="Studio" on={mode === 'studio'} onPress={onStudio} data-slot="rail-studio">
         <WandSparkles size={18} aria-hidden />
       </Mark>
       {flat ? null : (

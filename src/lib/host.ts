@@ -61,6 +61,9 @@ export const DEV = '/dev'
  */
 export const STUDIO = '/studio'
 
+/** Studio at an address of its own (@hanzo/studio `route`): '' is New, /studio. */
+export const studio = (at: string): string => (at ? `${STUDIO}/${at.replace(/^\/+/, '')}` : STUDIO)
+
 /** Chat on a conversation, or /chat itself for a new one. */
 export const talk = (id?: string | null): string => (id ? `${CHAT}/${encodeURIComponent(id)}` : CHAT)
 
@@ -68,7 +71,7 @@ export const talk = (id?: string | null): string => (id ? `${CHAT}/${encodeURICo
 export const app = (at: string): string => DEV + href(route(at))
 
 /** A place in the app: Chat on a conversation or none, or Dev at a builder address. */
-export type Place = { mode: 'chat'; thread: string | null } | { mode: 'dev'; at: string }
+export type Place = { mode: 'chat'; thread: string | null } | { mode: 'dev'; at: string } | { mode: 'studio'; at: string }
 
 /** /chat/shared is a page of its own, where a chat shared by link is read (lib/share.ts). */
 const SHARED = 'shared'
@@ -78,6 +81,7 @@ export function place(pathname: string): Place | null {
   const p = pathname.replace(/\/+$/, '') || '/'
   if (p === CHAT) return { mode: 'chat', thread: null }
   if (p === DEV || p.startsWith(`${DEV}/`)) return { mode: 'dev', at: path(parse(p.slice(DEV.length))) }
+  if (p === STUDIO || p.startsWith(`${STUDIO}/`)) return { mode: 'studio', at: p.slice(STUDIO.length + 1) }
   if (!p.startsWith(`${CHAT}/`)) return null
   const id = p.slice(CHAT.length + 1)
   if (id.includes('/') || id === SHARED) return null
@@ -141,7 +145,8 @@ export function remember(mode: Place['mode']): void {
 /** Where `/` takes a member: the mode they were last in, Chat when none is kept. */
 export function resume(): string {
   try {
-    return window.localStorage.getItem(MODE) === 'dev' ? DEV : CHAT
+    const kept = window.localStorage.getItem(MODE)
+    return kept === 'dev' ? DEV : kept === 'studio' ? STUDIO : CHAT
   } catch {
     return CHAT
   }
