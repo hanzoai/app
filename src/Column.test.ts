@@ -75,9 +75,9 @@ const at = (html: string, s: string): number => {
 }
 
 describe('the rail', () => {
-  test('Chat, Dev, Library, Scheduled tasks, Customize, then More, and the account at the foot', () => {
+  test('Chat, Dev, Studio, Library, Scheduled tasks, Customize, then More, and the account at the foot', () => {
     const html = rail('chat')
-    const order = ['Chat', 'Dev', 'Library', 'Scheduled tasks', 'Customize', 'More'].map((n) => at(html, `aria-label="${n}"`))
+    const order = ['Chat', 'Dev', 'Studio', 'Library', 'Scheduled tasks', 'Customize', 'More'].map((n) => at(html, `aria-label="${n}"`))
     expect(order).toEqual([...order].sort((a, b) => a - b))
     expect(at(html, 'data-slot="me"')).toBeGreaterThan(order.at(-1)!)
   })

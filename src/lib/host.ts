@@ -55,6 +55,11 @@ export const TABS = 'https://tabs.hanzo.ai'
  */
 export const CHAT = '/chat'
 export const DEV = '/dev'
+/**
+ * Studio: making images, audio, video and documents, and editing them.
+ * hanzo.ai/studio, whose page draws the app for a signed-in reader.
+ */
+export const STUDIO = '/studio'
 
 /** Chat on a conversation, or /chat itself for a new one. */
 export const talk = (id?: string | null): string => (id ? `${CHAT}/${encodeURIComponent(id)}` : CHAT)

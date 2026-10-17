@@ -293,9 +293,9 @@ catalog files under Enso or Zen (`house`).
   panel; `Served` says which model answered when it was not the one asked for.
   Code blocks are `@hanzo/ui/chat` `Code` (`Prose`).
 - The crew's faces stand under the composer only while nothing has been said.
-- The side panel is @hanzo/build's `Panel`: Chat's kinds are Artifacts and
-  Sources (`RightPane.tsx` `useKinds`), page tabs render an artifact from its
-  own bytes, a file or an address. Tabs, order and the chosen one are kept per
+- The side panel is @hanzo/build's `Panel`, page tabs only in Chat: an
+  artifact rendered from its own bytes, a file or an address. A tab can be
+  pinned (`Deck.pin`): it leads the strip and closes only on purpose. Tabs, order and the chosen one are kept per
   conversation (`useDeck`, `chat:<channel>`); open or shut is kept on a laptop
   (`hanzo.side.chat.open`), where the frame's column holds it (`Beside`), and a
   phone opens it as a sheet. The header's Panel button and ⌘. / Ctrl+. toggle it.
@@ -328,8 +328,8 @@ reference captures; outer window, inner panel):
   no fill, no edge. INNER: the content is one rounded panel (`pane()`), inset
   from the window's edges and from the sidebar by `--pane-gap`; Chat's tabs
   are a second panel beside it (Paned), Dev's run floats its own two.
-- The rail, one order: Chat, Dev, Library (Dev's Artifacts), Scheduled tasks
-  (Automations), Customize, then More (Projects, Templates, Issues, Machines,
+- The rail, one order: Chat, Dev, Studio (hanzo.ai/studio, a page load),
+  Library (Dev's Artifacts), Scheduled tasks (Automations), Customize, then More (Projects, Templates, Issues, Machines,
   Environments | Tabs, Team), the account's face at the foot. Each mark is an
   app: 36px on a 44px pitch, its name its tooltip, lit where the reader is.
   Library, Scheduled tasks and Customize are Dev places raised to the rail.
@@ -351,9 +351,9 @@ reference captures; outer window, inner panel):
   settings, Team, All organizations for a SuperAdmin), API keys (the
   platform's page), Settings (⌘, / Ctrl+,), Help ›, Log out.
 - Chat's header: the conversation's title at the left, then Share (icon and
-  word), the row's own ⋯ menu (`ThreadMore`), the Summary (RightPane.tsx:
-  Outputs led by Create file or site, Sources with its +, each row opening in a
-  tab) and the tabs' control (@hanzo/build `PanelToggle`), never a second
+  word), the row's own ⋯ menu (`ThreadMore`), the Summary (@hanzo/build
+  `Summary` over RightPane.tsx `useSections`: Outputs led by Create file or
+  site, Sources with its +, each row opening in a tab) and the tabs' control (@hanzo/build `PanelToggle`), never a second
   sidebar toggle. New chat anywhere is `empty()`; App moves an emptied
   conversation's address to /chat.
 - The transcript reads at the reference's type (Prose.tsx): a 16px body on a

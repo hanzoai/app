@@ -1,9 +1,12 @@
 'use client'
 
 // The app's rail: its products as marks down the window's left edge, in one
-// order — Chat, Dev, Library, Scheduled tasks, Customize — then More, a menu of
-// the rest, and the account at the foot. It is how the app moves between Chat
-// and Dev; there is no switch anywhere else.
+// order — Chat, Dev, Studio, Library, Scheduled tasks, Customize — then More, a
+// menu of the rest, and the account at the foot. It is how the app moves
+// between its products; there is no switch anywhere else.
+//
+// Studio is its own page, hanzo.ai/studio, opened in this tab: the app draws it
+// there for a signed-in reader.
 //
 // Library, Scheduled tasks and Customize are Dev's own places (@hanzo/build's
 // Artifacts, Automations and Customize), raised to the rail; each is lit while
@@ -20,13 +23,14 @@
 // drawer is too narrow for every mark, so Library, Scheduled tasks and
 // Customize lead More there.
 
-import { Boxes, Clock, Code2, Ellipsis, FolderGit2, LayoutTemplate, Library, ListTodo, MessageSquare, PanelLeft, Puzzle, Server, SquareTerminal, Users } from 'lucide-react'
+import { Boxes, Clock, Code2, Ellipsis, FolderGit2, LayoutTemplate, Library, ListTodo, MessageSquare, PanelLeft, Puzzle, Server, SquareTerminal, Users, WandSparkles } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { XStack, YStack } from '@hanzo/gui'
 import { route, type Host } from '@hanzo/build'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { Me } from './Me'
-import { app, TABS, WORKSPACE } from './lib/host'
+import { app, STUDIO, TABS, WORKSPACE } from './lib/host'
+import { site } from './where'
 import type { Mode } from './recent'
 
 /** The rail's width, px. */
@@ -187,6 +191,9 @@ export function Rail({
       </Mark>
       <Mark label="Dev" on={mode === 'dev' && !here} onPress={onDev} data-slot="rail-dev">
         <Code2 size={18} aria-hidden />
+      </Mark>
+      <Mark label="Studio" onPress={() => window.location.assign(site(STUDIO))} data-slot="rail-studio">
+        <WandSparkles size={18} aria-hidden />
       </Mark>
       {flat ? null : (
         <>
