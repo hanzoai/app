@@ -16,6 +16,7 @@
  */
 
 import { api } from './api'
+import { where } from '../where'
 
 /** The SDK's own keys, `hanzo_iam_`-prefixed. The far side of a boundary. */
 const PREFIX = 'hanzo_iam_'
@@ -23,6 +24,16 @@ const ACCESS = `${PREFIX}access_token`
 const REFRESH = `${PREFIX}refresh_token`
 const EXPIRES = `${PREFIX}expires_at`
 const KEYS = [ACCESS, REFRESH, `${PREFIX}id_token`, EXPIRES]
+
+/**
+ * The store the SDK keeps the session in: the host's (`configure({ session })`,
+ * Hanzo Desktop's keychain, where no token reaches the webview's localStorage),
+ * else this page's localStorage. Only the SDK's own keys are read from it; the
+ * rooms' own choices (the organization, the person) stay in localStorage.
+ */
+function tokens(): Storage {
+  return where().session ?? window.localStorage
+}
 
 
 /**
@@ -35,7 +46,7 @@ const KEYS = [ACCESS, REFRESH, `${PREFIX}id_token`, EXPIRES]
 export function bearer(): string | null {
   if (typeof window === 'undefined') return null
   try {
-    return window.localStorage.getItem(ACCESS)
+    return tokens().getItem(ACCESS)
   } catch {
     return null
   }
@@ -50,7 +61,7 @@ export function bearer(): string | null {
 export function live(): boolean {
   if (typeof window === 'undefined') return false
   try {
-    const expires = window.localStorage.getItem(EXPIRES)
+    const expires = tokens().getItem(EXPIRES)
     return Boolean(bearer()) && (!expires || Date.now() < Number(expires))
   } catch {
     return false
@@ -380,7 +391,7 @@ export function scope(): Record<string, string> {
  */
 export function renew(): void {
   try {
-    window.localStorage.setItem(EXPIRES, '0')
+    tokens().setItem(EXPIRES, '0')
   } catch {
     /* no store to renew */
   }
@@ -456,8 +467,8 @@ export async function support(org: string | null): Promise<void> {
   const next = body?.data?.accessToken
   const exp = claimsOf(next ?? null)?.exp
   if (!res.ok || !next || typeof exp !== 'number') throw new Error(body?.msg || `IAM answered ${res.status}.`)
-  window.localStorage.setItem(ACCESS, next)
-  window.localStorage.setItem(EXPIRES, String(exp * 1000))
+  tokens().setItem(ACCESS, next)
+  tokens().setItem(EXPIRES, String(exp * 1000))
   pick(org ?? homeOf(next))
   window.location.reload()
 }

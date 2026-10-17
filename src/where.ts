@@ -34,6 +34,12 @@ export interface Addresses {
   brand?: string
   /** The publishable key anonymous calls carry. */
   key?: string
+  /**
+   * Where the IAM session is kept when it is not this page's `localStorage`:
+   * the `storage` the host hands its IamProvider (Hanzo Desktop's keychain).
+   * The rooms read the access token, its expiry and its claims from it.
+   */
+  session?: Storage
   /** The plan catalogue as the host's build last read it: the first paint. */
   plans?: BillingPlan[]
   /**
