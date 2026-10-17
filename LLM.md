@@ -24,6 +24,9 @@ Two halves, because two kinds of caller read them.
 // Once, at module scope, in a module the host's root imports (pure: where.ts).
 import { configure } from '@hanzo/rooms'
 configure({ site: '', home: '/home', signUp: '/signup', api, iam, key, plans })
+// A host whose IAM session is not in localStorage names its store (Hanzo
+// Desktop: its keychain); lib/session reads the token, expiry and claims there.
+configure({ session: keychain })
 ```
 
 ```tsx
@@ -34,9 +37,11 @@ configure({ site: '', home: '/home', signUp: '/signup', api, iam, key, plans })
 ```
 
 The app's addresses are paths (lib/host.ts, "The app's addresses" below): Chat
-is `/chat[/<id>]`, Dev `/dev[/<place>]`. `useDevHost` reads Dev's place from
-`path`; the host serves its one Chat page and its one Dev page for every path
-under each (hanzo.ai: lib/edge.ts `APP`). `dev(ref)` opens Dev on a run, a
+is `/chat[/<id>]`, Dev `/dev[/<place>]`, Studio `/studio[/<place>]`
+(@hanzo/studio's `route`: `c/<id>`, `library`, `explore`, `activity`).
+`useDevHost` reads Dev's place from `path`, and App gives Studio the same host
+at Studio's place; the host serves its one Chat, Dev and Studio page for every
+path under each (hanzo.ai: lib/edge.ts `APP`). `dev(ref)` opens Dev on a run, a
 repository or a site from any surface.
 
 | address | hanzo.ai | hanzo.team |
