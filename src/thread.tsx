@@ -37,7 +37,7 @@ import {
 } from 'react'
 import type { AiClient, Thread, ThreadChange } from '@hanzo/ai'
 import { useAi } from '@hanzo/ai/react'
-import { Archive, ArchiveRestore, ExternalLink, Link2, MoreHorizontal, Pencil, Pin, PinOff, Share2, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, Clock, ExternalLink, Link2, MoreHorizontal, Pencil, Pin, PinOff, Share2, Trash2 } from 'lucide-react'
 import {
   Button,
   ContextMenu,
@@ -263,17 +263,21 @@ const own = (row: Element | null): HTMLElement | null => row?.querySelector<HTML
  * child holds the rows (`ThreadRow`). `threads` are the list's conversations by
  * id, `active` the one the pane holds (what the keys act on with no menu open),
  * and `onGone` runs after that one is deleted — the room moves to a new chat —
- * defaulting to emptying the room.
+ * defaulting to emptying the room. `onSchedule`, where the list's host can say
+ * what the conversation asks, adds Schedule…: the conversation's question as a
+ * task that runs itself.
  */
 export function ConversationMenu({
   threads,
   active = null,
   onGone = empty,
+  onSchedule,
   children,
 }: {
   threads: Map<string, Thread>
   active?: string | null
   onGone?: () => void
+  onSchedule?: (t: Thread) => void
   children: ReactElement
 }) {
   const act = useThreadActions()
@@ -371,6 +375,7 @@ export function ConversationMenu({
           run: () => void act.pin(subject),
         },
         { key: 'share', label: 'Share…', icon: <Share2 size={16} aria-hidden />, run: () => ask('share', subject) },
+        ...(onSchedule ? [{ key: 'schedule', label: 'Schedule…', icon: <Clock size={16} aria-hidden />, run: () => onSchedule(subject) }] : []),
         { key: 'copy', label: 'Copy link', icon: <Link2 size={16} aria-hidden />, run: () => void copy(subject.id) },
         { key: 'tab', label: 'Open in new tab', icon: <ExternalLink size={16} aria-hidden />, run: () => away(subject.id) },
         {

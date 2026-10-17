@@ -66,13 +66,15 @@ import { useHydrated } from "./lib/hydrated";
 import { base, served } from "./lib/ai";
 import { onServed, type Served as Heard } from "./lib/served";
 import { refused as worded, speech, useDictation, useTalk, useVoice } from "@hanzo/voice";
-import { FileText, Image as ImageMark, Paperclip, X } from "lucide-react";
+import { Check, Clock, FileText, Image as ImageMark, Library as LibraryMark, Paperclip, X } from "lucide-react";
 import { FREE } from "./lib/ai";
 import { openThread, useOpen } from "./open";
 import { Beside, Framed } from "./Shell";
 import { SEED, look, useSections, useSites, type Mark } from "./RightPane";
 import { Share } from "./Share";
 import { ConversationMenu, ThreadMore, useThreadList } from "./thread";
+import { Schedule } from "./Schedule";
+import { keepFile, useAttach, useKeep } from "./keep";
 import {
   artifacts,
   lead,
@@ -532,6 +534,7 @@ function Chip({
   picture,
   onOpen,
   onRemove,
+  onSave,
 }: {
   name: string;
   type: string;
@@ -543,6 +546,8 @@ function Chip({
   picture: string;
   onOpen: () => void;
   onRemove?: () => void;
+  /** Keeps it in the reader's Library. */
+  onSave?: () => Promise<unknown>;
 }) {
   const kind = kindOf(name, type);
   const bad = state === "failed";
@@ -551,11 +556,16 @@ function Chip({
   const [broken, setBroken] = useState("");
   const word = state === "ready" ? (file?.clipped ? "in part" : "") : progress(state, sent, file);
   const meta = [kind === "pdf" ? "PDF" : "", size > 0 ? weigh(size) : "", word].filter(Boolean).join(" \u00b7 ");
-  const remove = onRemove ? (
-    <Box render="button" aria-label={`Remove ${name}`} onClick={onRemove} p="$1" rounded="$10" shrink={0} hoverStyle={{ bg: "$hover" }}>
-      <X size={12} aria-hidden />
-    </Box>
-  ) : null;
+  const remove = (
+    <>
+      {onSave ? <Keep name={name} onSave={onSave} /> : null}
+      {onRemove ? (
+        <Box render="button" aria-label={`Remove ${name}`} onClick={onRemove} p="$1" rounded="$10" shrink={0} hoverStyle={{ bg: "$hover" }}>
+          <X size={12} aria-hidden />
+        </Box>
+      ) : null}
+    </>
+  );
   const marks = {
     role: "listitem",
     "data-slot": "file-chip",
@@ -637,8 +647,47 @@ function Chip({
   );
 }
 
+/**
+ * "Save to Library" on a file the reader put into the conversation: pressed, it
+ * keeps the file in their Library and says so; a refusal is its title.
+ */
+function Keep({ name, onSave }: { name: string; onSave: () => Promise<unknown> }) {
+  const [state, setState] = useState<"" | "saving" | "saved">("");
+  const [wrong, setWrong] = useState("");
+  const label = state === "saved" ? `${name} is in your Library` : wrong || `Save ${name} to Library`;
+  return (
+    <Box
+      render="button"
+      aria-label={label}
+      {...({ title: label } as object)}
+      data-slot="keep"
+      data-state={state || (wrong ? "failed" : "")}
+      aria-disabled={state !== ""}
+      onClick={() => {
+        if (state) return;
+        setState("saving");
+        setWrong("");
+        onSave().then(
+          () => setState("saved"),
+          (e: unknown) => {
+            setState("");
+            setWrong((e as Error)?.message || `${name} was not saved.`);
+          },
+        );
+      }}
+      p="$1"
+      rounded="$10"
+      shrink={0}
+      opacity={state === "saving" ? 0.5 : 1}
+      hoverStyle={{ bg: "$hover" }}
+    >
+      {state === "saved" ? <Check size={12} aria-hidden /> : <LibraryMark size={12} aria-hidden color={wrong ? BAD : undefined} />}
+    </Box>
+  );
+}
+
 /** A file held for the next message: uploading, then indexing, then ready. */
-function HeldChip({ one, onOpen, onRemove }: { one: Held; onOpen: (m: Mark) => void; onRemove: () => void }) {
+function HeldChip({ one, onOpen, onRemove, onSave }: { one: Held; onOpen: (m: Mark) => void; onRemove: () => void; onSave?: (url: string, id: string) => Promise<unknown> }) {
   const live = useWorkFile(one.file?.id);
   const file = live ?? one.file;
   const state = one.state === "uploading" ? one.state : (file?.status ?? one.state);
@@ -656,27 +705,44 @@ function HeldChip({ one, onOpen, onRemove }: { one: Held; onOpen: (m: Mark) => v
       picture={picture}
       onOpen={() => onOpen(mark)}
       onRemove={onRemove}
+      // Its bytes are on this machine until the upload lands, and are kept by the workspace file it became.
+      onSave={onSave && one.href ? () => onSave(one.href, file?.id ?? one.id) : undefined}
     />
   );
 }
 
 /** A file a sent turn carried, as the index says of it now. */
-function TurnChip({ f, onOpen }: { f: FileRef; onOpen: (m: Mark) => void }) {
+function TurnChip({ f, onOpen, onSave }: { f: FileRef; onOpen: (m: Mark) => void; onSave?: (url: string, id: string) => Promise<unknown> }) {
+  const api = useAi();
   const live = useWorkFile(f.id);
   const picture = usePicture(kindOf(f.name, f.type) === "image", "", f.id, live);
   const mark: Mark = { id: f.id, name: f.name, kind: kindOf(f.name, f.type) === "image" ? "image" : "file", file: f.id, mime: f.type };
-  return <Chip name={f.name} type={f.type} size={f.size} state={live?.status ?? "ready"} sent={1} file={live} picture={picture} onOpen={() => onOpen(mark)} />;
+  // The bytes on this machine where this document still holds them, else the workspace's copy.
+  const save = onSave ? async () => onSave(localOf(f.id) || (await signedOf(api, f.id, live)), f.id) : undefined;
+  return <Chip name={f.name} type={f.type} size={f.size} state={live?.status ?? "ready"} sent={1} file={live} picture={picture} onOpen={() => onOpen(mark)} onSave={save} />;
 }
 
 /** A question that carried files: its words, the files put into it, and those read again. */
-function Carried({ text, attached, reused, onOpen }: { text: string; attached: FileRef[]; reused: FileRef[]; onOpen: (m: Mark) => void }) {
+function Carried({
+  text,
+  attached,
+  reused,
+  onOpen,
+  onSave,
+}: {
+  text: string;
+  attached: FileRef[];
+  reused: FileRef[];
+  onOpen: (m: Mark) => void;
+  onSave?: (url: string, id: string, f: FileRef) => Promise<unknown>;
+}) {
   return (
     <YStack gap="$2" data-slot="turn-files">
       {text ? <Prose text={text} /> : null}
       {attached.length ? (
         <XStack gap="$1.5" flexWrap="wrap" role="list" aria-label="Files in this message">
           {attached.map((f) => (
-            <TurnChip key={f.id} f={f} onOpen={onOpen} />
+            <TurnChip key={f.id} f={f} onOpen={onOpen} onSave={onSave ? (url, id) => onSave(url, id, f) : undefined} />
           ))}
         </XStack>
       ) : null}
@@ -686,6 +752,36 @@ function Carried({ text, attached, reused, onOpen }: { text: string; attached: F
         </Text>
       ) : null}
     </YStack>
+  );
+}
+
+/**
+ * "Schedule this" under a question: the quiet control that opens the dialog
+ * which makes the question run itself (Schedule.tsx).
+ */
+function Plan({ onPress }: { onPress: () => void }) {
+  return (
+    <XStack justify="flex-end" data-slot="plan">
+      <XStack
+        render="button"
+        aria-label="Schedule this"
+        onPress={onPress}
+        items="center"
+        gap="$1"
+        px="$1"
+        height={22}
+        rounded="$2"
+        cursor="pointer"
+        opacity={0.55}
+        hoverStyle={{ opacity: 1, bg: "$hover" }}
+        focusStyle={{ opacity: 1 }}
+      >
+        <Clock size={12} aria-hidden />
+        <Text fontSize="$1" color="$ink">
+          Schedule this
+        </Text>
+      </XStack>
+    </XStack>
   );
 }
 
@@ -1086,6 +1182,15 @@ function Thread({
   // read from it for the question.
   const { held: files, refused: turnedAway } = usePane(at);
   const via = useMemo<Via>(() => ({ api: ai, org: anonymous ? null : org() }), [ai, anonymous]);
+  // "Use in Chat" from the Library: `?attach=<item>` holds it for the next message.
+  useAttach(at, via);
+  // "Schedule this": the prompt the dialog opens on, or null while it is shut.
+  const [plan, setPlan] = useState<string | null>(null);
+  // A file the reader keeps from this conversation goes to their Library under it.
+  const keepOne = useCallback(
+    (url: string, id: string, name: string, type: string) => keepFile(ai, { id, name, type, url, thread: kept ?? open }),
+    [ai, kept, open],
+  );
   // What the send is waiting on — uploads landing, the files being read — said
   // over the field, and the reason a second press does nothing meanwhile.
   const [preparing, setPreparing] = useState<string | null>(null);
@@ -1146,6 +1251,14 @@ function Thread({
   streaming.current = chat.streaming;
   const turns = useRef(chat.messages);
   turns.current = chat.messages;
+  // The conversation's last question as its person wrote it: what the header's
+  // Schedule… opens on.
+  const lastAsked = () => {
+    const q = [...turns.current].reverse().find((m) => m.role === "user");
+    if (!q) return "";
+    if (typeof q.content === "string") return told(q.content).text;
+    return Array.isArray(q.content) ? partsOf(q.content).flatMap((p) => (p.type === "text" ? [p.text] : [])).join("\n") : "";
+  };
 
   /**
    * WHAT EACH UNANSWERED QUESTION WAS TOLD, by the question's own turn id: the
@@ -1287,6 +1400,10 @@ function Thread({
     return a ? () => see(a) : undefined;
   };
 
+  // WHAT AN ANSWER MAKES IS KEPT IN THE LIBRARY as it finishes (keep.ts): the
+  // answer that just stopped, once the conversation it belongs to has an id.
+  const [finished, setFinished] = useState<{ id: string; text: string } | null>(null);
+  useKeep(ai, !anonymous, kept ?? open, finished, artifacts);
   // WHAT AN ANSWER MAKES OPENS BESIDE IT. With the panel open, a page or a
   // picture an answer just finished writing is opened as a tab; with it shut,
   // the answer's own Open does it.
@@ -1294,8 +1411,11 @@ function Thread({
   useEffect(() => {
     const was = writing.current;
     writing.current = chat.streaming;
-    if (!was || chat.streaming || !panel) return;
-    const answer = [...turns.current].reverse().find((m) => m.role === "assistant");
+    if (!was || chat.streaming) return;
+    const done = [...turns.current].reverse().find((m) => m.role === "assistant");
+    if (done && typeof done.content === "string" && done.content) setFinished({ id: String(done.id), text: done.content });
+    if (!panel) return;
+    const answer = done;
     const made = typeof answer?.content === "string" ? artifacts(answer.content).filter(renders) : [];
     if (made.length) see(made[made.length - 1]!);
     // On the turn's end only.
@@ -1590,6 +1710,15 @@ function Thread({
         void dropped(e.dataTransfer).then((list) => hold(at, list, via));
       }}
     >
+      <Schedule
+        open={plan !== null}
+        onOpenChange={(open) => {
+          if (!open) setPlan(null);
+        }}
+        prompt={plan ?? ""}
+        model={model}
+        models={models.map((m) => ({ id: m.id, name: nameOf(m.id, listed) }))}
+      />
       {dragging ? (
         <YStack
           aria-hidden
@@ -1703,7 +1832,7 @@ function Thread({
         <XStack data-slot="conversation-controls" items="center" gap={2} shrink={0}>
           {open ? <Share thread={open} /> : null}
           {mine ? (
-            <ConversationMenu threads={alone} active={open}>
+            <ConversationMenu threads={alone} active={open} onSchedule={anonymous ? undefined : () => setPlan(lastAsked())}>
               <XStack>
                 <ThreadMore t={mine} />
               </XStack>
@@ -1762,14 +1891,34 @@ function Thread({
             return question ? failure(question) : null;
           }
           // A QUESTION THAT CARRIED PICTURES draws them beside its words.
-          if (turn.role === "user" && Array.isArray(turn.content))
-            return <Parts parts={partsOf(turn.content)} prose={(text) => <Prose text={text} />} />;
+          if (turn.role === "user" && Array.isArray(turn.content)) {
+            const parts = partsOf(turn.content);
+            const asked = parts.flatMap((p) => (p.type === "text" ? [p.text] : [])).join("\n");
+            return (
+              <YStack gap="$1">
+                <Parts parts={parts} prose={(text) => <Prose text={text} />} />
+                {!anonymous && asked ? <Plan onPress={() => setPlan(asked)} /> : null}
+              </YStack>
+            );
+          }
           const said = typeof turn.content === "string" ? turn.content : "";
           // A QUESTION THAT CARRIED FILES draws its words and the files' chips;
           // the passages it handed the model are the model's to read, not ours.
           if (turn.role === "user" && said) {
             const read = told(said);
-            if (read.carried) return <Carried text={read.text} attached={read.carried.attached} reused={read.carried.reused} onOpen={openFile} />;
+            if (read.carried)
+              return (
+                <YStack gap="$1">
+                  <Carried
+                    text={read.text}
+                    attached={read.carried.attached}
+                    reused={read.carried.reused}
+                    onOpen={openFile}
+                    onSave={anonymous ? undefined : (url, id, f) => keepOne(url, id, f.name, f.type)}
+                  />
+                  {!anonymous && read.text ? <Plan onPress={() => setPlan(read.text)} /> : null}
+                </YStack>
+              );
           }
           // WHILE THE ANSWER HAS NO WORDS YET: who is answering (the agents the
           // question addresses, or the whole room when it names nobody), and the
@@ -1842,6 +1991,7 @@ function Thread({
                   Only an answer, and only one with words in it. */}
               {turn.role === "assistant" && said ? <Reply text={said} listen={listen(withWhom ?? undefined)} onOpen={opener(said)} /> : null}
               {turn.role === "assistant" && said ? byline(turn.id) : null}
+              {turn.role === "user" && said && !anonymous ? <Plan onPress={() => setPlan(said)} /> : null}
             </YStack>
           );
         }}
@@ -2008,7 +2158,13 @@ function Thread({
                 {files.length ? (
                   <XStack gap="$1.5" flexWrap="wrap" role="list" aria-label="Attached files" data-slot="composer-attached">
                     {files.map((one) => (
-                      <HeldChip key={one.id} one={one} onOpen={openFile} onRemove={() => drop(at, one.id)} />
+                      <HeldChip
+                        key={one.id}
+                        one={one}
+                        onOpen={openFile}
+                        onRemove={() => drop(at, one.id)}
+                        onSave={anonymous ? undefined : (url, id) => keepOne(url, id, one.name, one.type)}
+                      />
                     ))}
                   </XStack>
                 ) : null}
