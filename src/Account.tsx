@@ -3,29 +3,30 @@
 /**
  * WHO YOU ARE, at the foot of the sidebar: the person, and the person's menu.
  *
- * The plan leads it — @hanzo/build's `Meter`, the block every account menu opens
- * with: the plan by its family and its windows as shares, the free allowance on
- * Free, the balance only with no plan. Then profile, appearance, usage, billing,
+ * The plan leads it — @hanzo/build's `Meter` (Standing.tsx, loaded with the
+ * menu), the block every account menu opens with: the plan by its family and its
+ * windows as shares, the free allowance on Free, the balance only with no plan. Then profile, appearance, usage, billing,
  * API keys, security and sign out — the account, and nothing that belongs to the
  * workspace. Which workspace you stand in is the switcher at the TOP of the
  * sidebar, and what it may spend is its Billing: a plan never sits beside a
  * balance here.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Activity, ChevronsUpDown, CreditCard, KeyRound, LogOut, PanelLeftClose, Palette, Shield, UserRound } from 'lucide-react'
-import { Meter, useStanding } from '@hanzo/build'
 import { XStack, YStack, Text, Box } from '@hanzo/ui'
 import { sheet } from '@hanzo/ui/glass'
 import { useIam } from '@hanzo/iam/react'
 import { useSignOut } from './lib/signout'
 import { useAccount } from './lib/account'
 import { Face } from './cast'
-import { api, iam } from './lib/api'
-import { bearer, org } from './lib/session'
+import { iam } from './lib/api'
 import { link } from './lib/tags'
 import { showSettings } from './open'
 import { site } from './where'
+
+/** The plan at the menu's head, loaded with the menu. */
+const Standing = lazy(() => import('./Standing').then((m) => ({ default: m.Standing })))
 
 function Row({
   icon,
@@ -71,9 +72,6 @@ export function Account({
   const { user: account } = useAccount()
   const [open, setOpen] = useState(false)
   const holder = useRef<HTMLDivElement>(null)
-  const scoped = org()
-  const target = useMemo(() => ({ api: api(), token: bearer, org: scoped }), [scoped])
-  const plan = useStanding(target, open)
 
   useEffect(() => {
     if (!open) return
@@ -121,11 +119,9 @@ export function Account({
           gap="$1"
           z="var(--z-modal)"
         >
-          <Meter
-            read={plan}
-            onPlans={act(() => window.location.assign(site('/pricing')))}
-            onBilling={act(() => showSettings('billing'))}
-          />
+          <Suspense fallback={null}>
+            <Standing onPlans={act(() => window.location.assign(site('/pricing')))} onBilling={act(() => showSettings('billing'))} />
+          </Suspense>
           <Box height={1} bg="$borderColor" my="$1" />
           <Row
             icon={<UserRound size={15} aria-hidden />}

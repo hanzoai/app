@@ -16,6 +16,8 @@
 
 import {
   createContext,
+  lazy,
+  Suspense,
   useContext,
   useEffect,
   useMemo,
@@ -144,7 +146,6 @@ import { netKey } from "./conversations";
 import {
   FIRST,
   SettingsList,
-  SettingsPane,
   type Row as SettingsRow,
 } from "./Settings";
 import { Profile } from "./Profile";
@@ -203,6 +204,9 @@ import {
 import { bare } from './lib/bare'
 import { BAD } from './lib/mix'
 import { brand, site, where, wordmark } from './where'
+
+/** The room while a settings row is open, loaded when one is: none of it is a room's first screen. */
+const SettingsPane = lazy(() => import('./SettingsPane').then((m) => ({ default: m.SettingsPane })))
 
 export type Mode =
   | "home"
@@ -2667,7 +2671,7 @@ function Frame({
             something else. What the workspace is holding — which thread, which
             run — lives in `open.ts`, above every component, so coming back
             opens the same work. */}
-        <Paned swap={settingsPane ? <SettingsPane id={settingsPane} /> : undefined}>{children}</Paned>
+        <Paned swap={settingsPane ? <Suspense fallback={null}><SettingsPane id={settingsPane} /></Suspense> : undefined}>{children}</Paned>
         <Profile open={profiling} onClose={() => setProfiling(false)} />
         {supporting ? <SupportPicker onClose={() => setSupporting(false)} /> : null}
 
