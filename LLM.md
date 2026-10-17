@@ -148,6 +148,12 @@ the one conversation the pane holds).
   `plans`, `pay` (the pay site and money, apart from the plan catalogue), `share`, `coding`, `todo`, `durable`, `tags`, `host` (estate routing and the app's addresses),
   `mix`, `hydrated` … Apps import these from the package
   (`@hanzo/rooms/lib/session`) and keep no copy.
+- `lib/session` `orgs()` is every org of the token's `orgs` claim but a brand's
+  directory (`DIRECTORIES`: hanzo-id, lux-id, zoo-id, pars-id, hanzoai/authz
+  `IsDirectory`): a directory is a customer account's home and nobody's tenant,
+  so no picker offers it and no request is scoped to it. `home()` is the claim's
+  first entry, directory or not: `me()` keys the account by it and
+  `superAdmin()` is `home() === 'admin'`.
 - `src/team.gen.ts` — the core team's persona files as strings, generated from
   `@hanzo/personas` by `scripts/team.mjs`, so no host needs an asset loader.
 - `src/lib/integrations.ts` — the integrations catalogue, the one copy:

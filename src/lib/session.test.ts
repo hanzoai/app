@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { configure } from '../where'
-import { bearer, live, renew } from './session'
+import { bearer, home, live, me, org, orgs, renew, scope, superAdmin } from './session'
 
 /** A Storage held in a map. */
 function memory(seed: Record<string, string> = {}): Storage {
@@ -38,5 +38,32 @@ describe('the session is read where the host keeps it', () => {
     renew()
     expect(keychain.getItem('hanzo_iam_expires_at')).toBe('0')
     expect(live()).toBe(false)
+  })
+})
+
+describe('a directory is a home, and nobody works in it', () => {
+  const token = (orgs: { org: string; role?: string }[]) => `h.${btoa(JSON.stringify({ name: 'ada', orgs })).replace(/=+$/, '')}.s`
+  const signed = (orgs: { org: string; role?: string }[]) =>
+    vi.stubGlobal('window', { localStorage: memory({ hanzo_iam_access_token: token(orgs), hanzo_iam_expires_at: String(Date.now() + 60_000) }) })
+
+  test('the orgs worked in leave out the directory; the account is still keyed by it', () => {
+    signed([{ org: 'hanzo-id', role: 'member' }, { org: 'ada', role: 'owner' }, { org: 'acme', role: 'admin' }])
+    expect(orgs()).toEqual(['ada', 'acme'])
+    expect(home()).toBe('hanzo-id')
+    expect(me()).toBe('hanzo-id/ada')
+    expect(superAdmin()).toBe(false)
+  })
+
+  test('a person with a directory and one org of their own works in it from the first read', () => {
+    signed([{ org: 'lux-id', role: 'member' }, { org: 'ada', role: 'owner' }])
+    expect(orgs()).toEqual(['ada'])
+    expect(org()).toBe('ada')
+    expect(scope()['X-Org-Id']).toBe('ada')
+  })
+
+  test('a SuperAdmin is one whose own row is in admin, and admin is still an org to work in', () => {
+    signed([{ org: 'admin', role: 'owner' }, { org: 'hanzo', role: 'admin' }])
+    expect(superAdmin()).toBe(true)
+    expect(orgs()).toEqual(['admin', 'hanzo'])
   })
 })

@@ -302,18 +302,36 @@ function claims(): Record<string, unknown> | null {
 }
 
 /**
- * The organizations the token says this person belongs to, home first.
- * Empty for an account that has not made one: the SDK's own list falls back to
- * the `owner` claim, which is the application's org and nobody's to work in.
+ * The brands' directories (hanzoai/authz `IsDirectory`): the org a customer's
+ * account lives in, its home, and nobody's to work in. IAM lists the home first
+ * in the token's `orgs`; cloud opens a directory to no one.
  */
-export function orgs(): string[] {
-  const set = claims()?.orgs
+export const DIRECTORIES: readonly string[] = ['hanzo-id', 'lux-id', 'zoo-id', 'pars-id']
+
+/** Every org the token's `orgs` names, home first, each once. */
+function listed(token: string | null): string[] {
+  const set = claimsOf(token)?.orgs
   const out: string[] = []
   for (const ref of Array.isArray(set) ? set : []) {
     const o = (ref as { org?: unknown } | null)?.org
     if (typeof o === 'string' && o && !out.includes(o)) out.push(o)
   }
   return out
+}
+
+/**
+ * The organizations this person works in, as the token names them: every org of
+ * its `orgs` but a directory, which is a home and nobody's tenant. Empty for an
+ * account that has not made one: the SDK's own list falls back to the `owner`
+ * claim, which is the application's org and nobody's to work in.
+ */
+export function orgs(): string[] {
+  return listed(bearer()).filter((o) => !DIRECTORIES.includes(o))
+}
+
+/** The org of the person's own row: the first entry of the token's `orgs`, a directory or not. */
+export function home(): string | null {
+  return listed(bearer())[0] ?? null
 }
 
 /**
@@ -350,8 +368,8 @@ export function named(): { name: string; email: string } | null {
  */
 export function me(): string | null {
   const name = claims()?.name
-  const home = orgs()[0]
-  return typeof name === 'string' && name && home ? `${home}/${name}` : null
+  const at = home()
+  return typeof name === 'string' && name && at ? `${at}/${name}` : null
 }
 
 /** The organization this browser works in: the SDK's selection, when it is one of the token's. */
@@ -433,7 +451,7 @@ export const ADMIN_ORG = 'admin'
  * organization and the step into one.
  */
 export function superAdmin(): boolean {
-  return orgs()[0] === ADMIN_ORG
+  return home() === ADMIN_ORG
 }
 
 /** The organization a SuperAdmin stepped into through IAM, from the token's `assumed` claim, or null. */
@@ -469,15 +487,8 @@ export async function support(org: string | null): Promise<void> {
   if (!res.ok || !next || typeof exp !== 'number') throw new Error(body?.msg || `IAM answered ${res.status}.`)
   tokens().setItem(ACCESS, next)
   tokens().setItem(EXPIRES, String(exp * 1000))
-  pick(org ?? homeOf(next))
+  pick(org ?? listed(next).find((o) => !DIRECTORIES.includes(o)) ?? '')
   window.location.reload()
-}
-
-/** The org of the person's own row: the first entry of a token's `orgs`. */
-function homeOf(token: string): string {
-  const set = claimsOf(token)?.orgs
-  const first = Array.isArray(set) ? (set[0] as { org?: unknown } | null)?.org : undefined
-  return typeof first === 'string' ? first : ''
 }
 
 /**
