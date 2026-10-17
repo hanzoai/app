@@ -18,7 +18,7 @@
 // it stands in (`Beside` in `Shell.tsx`).
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { FileCode, Globe, Image as ImageMark, ListTodo, Paperclip, Plus, Search } from 'lucide-react'
+import { FileCode, Globe, Image as ImageMark, Paperclip, Plus } from 'lucide-react'
 import {
   Box,
   DropdownMenu,
@@ -28,16 +28,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
   Text,
-  XStack,
-  YStack,
 } from '@hanzo/ui'
 import { useAi, type ChatMessage } from '@hanzo/ai/react'
-import { artifacts, name as titleOf, PAGE, type Deck, type Kind, type Tabs } from '@hanzo/build'
-import { Card, Quiet, Row } from './card'
+import { artifacts, name as titleOf, PAGE, type Deck, type Entry, type Section, type Tabs } from '@hanzo/build'
 import { said as told } from './lib/attach'
 import { download, fileOf, type Api } from './lib/files'
 import { org, scope } from './lib/session'
@@ -150,70 +144,6 @@ export async function look(deck: Deck, m: Mark, api: Api): Promise<void> {
   } catch {
     // A file forgotten or a store unreachable opens nothing; the row stays.
   }
-}
-
-/** A list of marks, every one of them; pressing one opens it. */
-function Marks({ kind, title, icon, marks, deck, action, children }: { kind: string; title: string; icon: ReactNode; marks: Mark[]; deck: Deck; action?: ReactNode; children: ReactNode }) {
-  const ai = useAi()
-  return (
-    <Card kind={kind} icon={icon} title={title} action={action}>
-      {marks.length === 0 ? <Quiet>{children}</Quiet> : null}
-      {marks.map((m) => {
-        const Glyph = GLYPH[m.kind]
-        return (
-          <Row key={m.id} icon={<Glyph size={16} aria-hidden />} onPress={() => void look(deck, m, ai)}>
-            {m.name}
-          </Row>
-        )
-      })}
-    </Card>
-  )
-}
-
-/** Chat's kinds of tab, over the conversation `said` and the files `held` for the next message. */
-export function useKinds({ at, said, held, deck }: { at: string; said: ChatMessage[]; held: Held[]; deck: Deck }): Kind[] {
-  const made = useMemo(() => outputs(said), [said])
-  const took = useMemo(() => sources(said, held), [said, held])
-  const done = useMemo(() => lookups(said), [said])
-  return [
-    {
-      id: 'artifacts',
-      label: 'Artifacts',
-      render: () => (
-        <Marks kind="outputs" title="Outputs" icon={<FileCode size={16} aria-hidden />} marks={made} deck={deck}>
-          This conversation has produced nothing yet.
-        </Marks>
-      ),
-    },
-    {
-      id: 'sources',
-      label: 'Sources',
-      render: () => (
-        <YStack gap="$3">
-          <Marks kind="sources" title="Sources" icon={<Paperclip size={16} aria-hidden />} marks={took} deck={deck} action={<Add at={at} />}>
-            Nothing has been put into this conversation yet.
-          </Marks>
-          <Card kind="lookups" icon={<Search size={16} aria-hidden />} title="Looked up">
-            {done.length === 0 ? <Quiet>Nothing was looked up for this conversation yet.</Quiet> : null}
-            {done.map((call) => (
-              <YStack key={call.id} gap="$1" p="$2" rounded="$3" borderWidth={1} borderColor="$borderColor">
-                <Text fontSize="$2" color="$ink">
-                  {call.name}
-                </Text>
-                <Text fontSize="$1" color="$soft" numberOfLines={2}>
-                  {call.asked}
-                </Text>
-                {/* A call still in flight has no answer yet, which is a state and reads as one. */}
-                <Text fontSize="$1" color="$soft" numberOfLines={6}>
-                  {call.got ?? 'Running…'}
-                </Text>
-              </YStack>
-            ))}
-          </Card>
-        </YStack>
-      ),
-    },
-  ]
 }
 
 /**
@@ -350,130 +280,31 @@ function Services() {
   )
 }
 
-/** A row of the summary: its mark and its name, one press from a tab. */
-function Line({ icon, children, onPress, quiet = false }: { icon?: ReactNode; children: ReactNode; onPress?: () => void; quiet?: boolean }) {
-  return (
-    <XStack
-      render={onPress ? 'button' : undefined}
-      role={onPress ? 'button' : undefined}
-      onPress={onPress}
-      items="center"
-      gap="$2.5"
-      px="$2"
-      minH={30}
-      width="100%"
-      rounded="$3"
-      cursor={onPress ? 'pointer' : undefined}
-      hoverStyle={onPress ? { bg: '$hover' } : undefined}
-      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
-    >
-      {icon ? (
-        <XStack width={16} justify="center" shrink={0} opacity={0.75}>
-          {icon}
-        </XStack>
-      ) : null}
-      <Text flex={1} minW={0} fontSize="$2" color={quiet ? '$soft' : '$ink'} numberOfLines={1}>
-        {children}
-      </Text>
-    </XStack>
-  )
-}
-
-/** A heading of the summary, with what it adds at its end. */
-const Head = ({ children, action }: { children: string; action?: ReactNode }) => (
-  <XStack items="center" justify="space-between" px="$2" pt="$1.5" pb="$1" minH={28}>
-    <Text fontSize="$2" color="$soft">
-      {children}
-    </Text>
-    {action}
-  </XStack>
-)
-
 /**
- * The conversation's summary, from the outline mark in its header: what it
+ * The conversation's summary as sections (@hanzo/build `Summary`): what it
  * produced (Outputs, led by Create file or site, which starts a Dev run) and
  * what went into it (Sources, with the `+` that brings more). Each row opens in
- * a tab beside the conversation. A section with nothing in it keeps its heading
- * and one quiet line.
+ * a tab beside the conversation.
  */
-export function Summary({ at, said, held, deck, onOpen, onCreate }: { at: string; said: ChatMessage[]; held: Held[]; deck: Deck; onOpen: () => void; onCreate: () => void }) {
+export function useSections({ at, said, held, deck, onCreate }: { at: string; said: ChatMessage[]; held: Held[]; deck: Deck; onCreate: () => void }): Section[] {
   const ai = useAi()
-  const [open, setOpen] = useState(false)
   const made = useMemo(() => outputs(said), [said])
   const took = useMemo(() => sources(said, held), [said, held])
   const done = useMemo(() => lookups(said), [said])
-  const show = (m: Mark) => {
-    setOpen(false)
-    void look(deck, m, ai)
-    onOpen()
-  }
-  return (
-    <Popover open={open} onOpenChange={setOpen} allowFlip>
-      <PopoverTrigger>
-        <XStack
-          render="button"
-          data-slot="summary-toggle"
-          aria-label="Summary"
-          aria-haspopup="dialog"
-          aria-expanded={open}
-          {...({ title: 'Summary' } as object)}
-          width={32}
-          height={32}
-          rounded="$3"
-          items="center"
-          justify="center"
-          cursor="pointer"
-          bg={open ? '$hover' : 'transparent'}
-          hoverStyle={{ bg: '$hover' }}
-          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
-        >
-          <ListTodo size={16} aria-hidden />
-        </XStack>
-      </PopoverTrigger>
-      <PopoverContent solid align="end" p={6} width={300}>
-        <YStack data-slot="summary" role="dialog" aria-label="Summary" gap={1} self="stretch" width="100%" maxH="min(70dvh, 520px)" overflowY="auto" overflowX="hidden">
-          <Head>Outputs</Head>
-          <Line
-            quiet
-            onPress={() => {
-              setOpen(false)
-              onCreate()
-            }}
-          >
-            Create file or site
-          </Line>
-          {made.map((m) => {
-            const Glyph = GLYPH[m.kind]
-            return (
-              <Line key={m.id} icon={<Glyph size={15} aria-hidden />} onPress={() => show(m)}>
-                {m.name}
-              </Line>
-            )
-          })}
-          <XStack height={1} bg="$borderColor" my="$1.5" mx="$1" />
-          <Head action={<Add at={at} />}>Sources</Head>
-          {done.map((call) => (
-            <Line
-              key={call.id}
-              icon={<Globe size={15} aria-hidden />}
-              onPress={() => show({ id: call.id, name: call.name, kind: 'file', body: [call.asked, call.got ?? ''].filter(Boolean).join('\n\n'), mime: 'text/plain' })}
-            >
-              {call.name === 'web_search' || call.name === 'search' ? 'Web search' : call.name}
-            </Line>
-          ))}
-          {took.map((m) => {
-            const Glyph = GLYPH[m.kind]
-            return (
-              <Line key={m.id} icon={<Glyph size={15} aria-hidden />} onPress={() => show(m)}>
-                {m.name}
-              </Line>
-            )
-          })}
-          {!done.length && !took.length ? <Line quiet>Nothing yet</Line> : null}
-        </YStack>
-      </PopoverContent>
-    </Popover>
-  )
+  return useMemo(() => {
+    const row = (m: Mark): Entry => {
+      const Glyph = GLYPH[m.kind]
+      return { id: m.id, title: m.name, icon: <Glyph size={15} aria-hidden />, open: () => void look(deck, m, ai) }
+    }
+    const asked = done.map((call) => {
+      const m: Mark = { id: call.id, name: call.name, kind: 'file', body: [call.asked, call.got ?? ''].filter(Boolean).join('\n\n'), mime: 'text/plain' }
+      return { ...row(m), title: call.name === 'web_search' || call.name === 'search' ? 'Web search' : call.name, icon: <Globe size={15} aria-hidden />, detail: call.asked }
+    })
+    return [
+      { id: 'outputs', title: 'Outputs', lead: { title: 'Create file or site', run: onCreate }, entries: made.map(row) },
+      { id: 'sources', title: 'Sources', action: <Add at={at} />, empty: 'Nothing yet', entries: [...asked, ...took.map(row)] },
+    ]
+  }, [at, made, took, done, deck, ai, onCreate])
 }
 
 /**
@@ -489,7 +320,7 @@ export function useSites(): { title: string; url: string }[] {
       .then((body: unknown) => {
         if (stop.signal.aborted) return
         const all = list<{ name?: string; slug?: string; liveUrl?: string }>(Array.isArray(body) ? body : (body as { data?: unknown } | null)?.data)
-        setRows(all.filter((p) => typeof p.liveUrl === 'string' && /^https:\/\//.test(p.liveUrl)).map((p) => ({ title: p.name || p.slug || 'Site', url: p.liveUrl as string })))
+        setRows(all.filter((p) => typeof p.liveUrl === 'string' && (p.liveUrl as string).startsWith('https://')).map((p) => ({ title: p.name || p.slug || 'Site', url: p.liveUrl as string })))
       })
       .catch(() => {})
     return () => stop.abort()

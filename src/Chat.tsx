@@ -68,9 +68,9 @@ import { onServed, type Served as Heard } from "./lib/served";
 import { refused as worded, speech, useDictation, useTalk, useVoice } from "@hanzo/voice";
 import { FileText, Image as ImageMark, Paperclip, X } from "lucide-react";
 import { FREE } from "./lib/ai";
-import { openThread, showSettings, useOpen } from "./open";
+import { openThread, useOpen } from "./open";
 import { Beside, Framed } from "./Shell";
-import { SEED, Summary, look, useSites, type Mark } from "./RightPane";
+import { SEED, look, useSections, useSites, type Mark } from "./RightPane";
 import { Share } from "./Share";
 import { ConversationMenu, ThreadMore, useThreadList } from "./thread";
 import {
@@ -84,6 +84,7 @@ import {
   renders,
   Reply,
   Served,
+  Summary,
   useDeck,
   useKey,
   useMind,
@@ -1529,6 +1530,7 @@ function Thread({
   // Dev place goes from a host without it (hanzo.team).
   const pathed = useRooms().path !== null;
   const create = () => (pathed ? go(app("")) : window.location.assign(dev()));
+  const sections = useSections({ at, said, held: files, deck, onCreate: create });
 
   /** The tabs' browser, as this conversation offers it: the org's sites to start from, and a page asked about, captured or opened in Dev. */
   const browsing = {
@@ -1707,7 +1709,7 @@ function Thread({
               </XStack>
             </ConversationMenu>
           ) : null}
-          <Summary at={at} said={said} held={files} deck={deck} onOpen={() => setPanel(true)} onCreate={create} />
+          <Summary sections={sections} onOpen={() => setPanel(true)} />
           {/* THE TABS' OWN CONTROL, at the header's end while they are shut;
               open, the strip beside the conversation holds it. Its mark is
               never the sidebar's: that toggle is the window's, at its top-left. */}
