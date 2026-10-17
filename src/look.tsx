@@ -13,7 +13,7 @@
 import { Text, YStack } from "@hanzo/ui";
 import { Appearance } from "@hanzo/appearance";
 import { useIam } from "@hanzo/iam/react";
-import { iam } from "./lib/api";
+import { api } from "./lib/api";
 import { useOrg } from "./host";
 import { brand } from "./where";
 
@@ -31,7 +31,7 @@ export function Look() {
       <Appearance
         org={org.id}
         orgName={org.name || brand()}
-        account={{ base: iam(), token: accessToken ?? undefined }}
+        account={{ base: api(), token: accessToken ?? undefined }}
       />
     </YStack>
   );

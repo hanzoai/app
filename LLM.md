@@ -175,6 +175,12 @@ reopens. Retired addresses — `/?at=`, `/?chat=`,
 /chat (`/chat?q=`, `/chat?thread=`) are that app's addresses and stay as they
 are.
 
+**IAM's API is the gateway's.** `api()` (api.hanzo.ai on every Hanzo host) answers
+`/v1/iam/*`, so the account door (`lib/account.tsx`), the host's account and the
+appearance account (`host.tsx`, `look.tsx`) ask it there; a browser on hanzo.ai
+sends nothing to hanzo.id. `iam()` is the identity origin and only names IAM's own
+pages (/account, /account/security, /join, the org switcher's link out).
+
 ## Build and ship
 
 `pnpm build` = team strings → `tsc` → `scripts/specifiers.mjs` (every relative

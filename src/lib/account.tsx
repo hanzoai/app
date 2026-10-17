@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { useIam, useIamIdentity, useIamToken, useOrganizations } from '@hanzo/iam/react';
 import type { User as IamUser, Organization as IamOrg } from '@hanzo/iam';
-import { iam } from './api';
+import { api } from './api';
 
 export interface OrganizationMember {
   id: string;
@@ -115,8 +115,8 @@ function mapOrg(o: Pick<IamOrg, 'name' | 'displayName'>, role: string | undefine
 // draw a control that pretends otherwise.
 
 
-/** IAM's self-scoped account door, at the host's IAM. */
-const account = (): string => `${iam()}/v1/iam/account`;
+/** IAM's self-scoped account door, asked through the gateway (`api()`), which answers /v1/iam. */
+const account = (): string => `${api()}/v1/iam/account`;
 
 // ── The read ───────────────────────────────────────────────────────────────
 //

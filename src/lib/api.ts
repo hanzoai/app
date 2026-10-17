@@ -67,6 +67,11 @@ export function api(): string {
  * Two spellings of one setting are indistinguishable from a working one until
  * the day it is changed.
  */
+/**
+ * The identity origin, for IAM's own PAGES (/account, /join). IAM's API is asked
+ * through the gateway, `api()`, which answers /v1/iam for every Hanzo origin, so
+ * a browser on hanzo.ai sends nothing to the identity origin.
+ */
 export function iam(): string {
   if (onDevnet()) return IAM_DEV
   return (where().iam || 'https://hanzo.id').replace(/\/+$/, '')
