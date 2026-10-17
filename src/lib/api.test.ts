@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { API_DEV, IAM_DEV, api, iam } from './api'
-import { answers, devnet } from './host'
+import { answers, devnet, visits } from './host'
 import { billing, payUrl } from './pay'
 import { term } from './plans'
 import { configure, where } from '../where'
@@ -84,14 +84,25 @@ describe('every other host answers as it did', () => {
 })
 
 describe('the hosts that answer IAM on their own origin', () => {
-  test('the export’s own hosts, testnet and every devnet host', () => {
-    for (const host of ['hanzo.ai', 'www.hanzo.ai', 'cloud.hanzo.ai', 'hanzo.bot', 'test.hanzo.ai', 'app-dev.hanzo.ai', 'id-dev.hanzo.ai'])
+  test('hanzo.ai, testnet and every devnet host', () => {
+    for (const host of ['hanzo.ai', 'www.hanzo.ai', 'test.hanzo.ai', 'app-dev.hanzo.ai', 'id-dev.hanzo.ai'])
       expect(answers(host), host).toBe(true)
   })
 
-  test('dev.hanzo.ai, a lookalike and a customer site do not', () => {
-    for (const host of ['dev.hanzo.ai', 'app-dev.hanzo.ai.evil.com', 'a.b-dev.hanzo.ai', 'hanzo.app', 'acme.hanzo.app'])
+  test('the hosts that sign in on hanzo.ai, dev.hanzo.ai, a lookalike and a customer site do not', () => {
+    for (const host of ['cloud.hanzo.ai', 'hanzo.bot', 'bot.hanzo.ai', 'dev.hanzo.ai', 'app-dev.hanzo.ai.evil.com', 'a.b-dev.hanzo.ai', 'hanzo.app', 'acme.hanzo.app'])
       expect(answers(host), host).toBe(false)
+  })
+})
+
+describe('the hosts that sign in on hanzo.ai with their own request', () => {
+  test('cloud.hanzo.ai, hanzo.bot and bot.hanzo.ai', () => {
+    for (const host of ['cloud.hanzo.ai', 'hanzo.bot', 'bot.hanzo.ai']) expect(visits(host), host).toBe(true)
+  })
+
+  test('not hanzo.ai itself, a separate IAM, or a host that signs nobody in', () => {
+    for (const host of ['hanzo.ai', 'www.hanzo.ai', 'test.hanzo.ai', 'app-dev.hanzo.ai', 'hanzo.app', 'hanzo.chat', 'hanzo.bot.evil.com'])
+      expect(visits(host), host).toBe(false)
   })
 })
 

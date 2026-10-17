@@ -181,6 +181,14 @@ appearance account (`host.tsx`, `look.tsx`) ask it there; a browser on hanzo.ai
 sends nothing to hanzo.id. `iam()` is the identity origin and only names IAM's own
 pages (/account, /account/security, /join, the org switcher's link out).
 
+**Where each host signs in** (`lib/host.ts`). `answers()`: hanzo.ai (and testnet,
+devnet, the dev proxy) answers IAM on its own origin and signs people in there.
+`visits()`: cloud.hanzo.ai, hanzo.bot and bot.hanzo.ai keep a session of their own
+but sign in on hanzo.ai, sending the host's own authorize request to
+hanzo.ai/login, which finishes it and returns the code to the host's callback.
+`guest()`: hanzo.app, `*.hanzo.app` and hanzo.chat sign nobody in and hand off to
+the same address on hanzo.ai.
+
 ## Build and ship
 
 `pnpm build` = team strings → `tsc` → `scripts/specifiers.mjs` (every relative

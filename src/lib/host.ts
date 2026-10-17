@@ -240,11 +240,24 @@ export function devnet(hostname: string): boolean {
 
 /**
  * The hosts that answer IAM's sign-in and sign-out calls on their own origin:
- * every host this export is served on and signs in at (universe static-sites
- * `iam-on-hanzo-ai` and cloud.yaml `iam-signin`), testnet's test.hanzo.ai, and
- * the dev server's /v1 proxy.
+ * hanzo.ai, where Hanzo signs in (universe static-sites `iam-on-hanzo-ai` and
+ * cloud.yaml `iam-signin`), testnet's test.hanzo.ai, and the dev server's /v1
+ * proxy.
  */
-const ANSWERS = new Set([...APEX, 'cloud.hanzo.ai', 'hanzo.bot', 'bot.hanzo.ai', 'test.hanzo.ai', 'localhost', '127.0.0.1'])
+const ANSWERS = new Set([...APEX, 'test.hanzo.ai', 'localhost', '127.0.0.1'])
+
+/**
+ * The hosts this export is served on that keep a session of their own and sign
+ * in on hanzo.ai: a person signed out there is sent to hanzo.ai/login carrying
+ * the host's OWN authorize request (its callback, its PKCE challenge), which
+ * hanzo.ai's page finishes, and the code comes back to the host's
+ * /auth/callback. One sign-in page for Hanzo, and nobody types a credential on
+ * these hosts.
+ */
+const VISITS = new Set(['cloud.hanzo.ai', 'hanzo.bot', 'bot.hanzo.ai'])
+
+/** Whether a host signs in on hanzo.ai with its own request (`VISITS`). */
+export const visits = (hostname: string): boolean => VISITS.has(hostname)
 
 /**
  * Whether a host answers IAM's sign-in and sign-out calls on its own origin, so
