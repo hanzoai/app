@@ -67,3 +67,42 @@ describe('a directory is a home, and nobody works in it', () => {
     expect(orgs()).toEqual(['admin', 'hanzo'])
   })
 })
+
+describe('SuperAdmin is hanzoai/authz Claims.Sudo, read one way', () => {
+  const as = (claims: Record<string, unknown>) =>
+    vi.stubGlobal('window', {
+      localStorage: memory({
+        hanzo_iam_access_token: `h.${btoa(JSON.stringify({ name: 'ada', ...claims })).replace(/=+$/, '')}.s`,
+        hanzo_iam_expires_at: String(Date.now() + 60_000),
+      }),
+    })
+
+  test('an admin membership held from a brand org is not it', () => {
+    as({ orgs: [{ org: 'hanzo', role: 'owner' }, { org: 'admin', role: 'admin' }] })
+    expect(superAdmin()).toBe(false)
+  })
+
+  test('an org admin is not it', () => {
+    as({ isAdmin: true, owner: 'acme', orgs: [{ org: 'acme', role: 'admin' }] })
+    expect(superAdmin()).toBe(false)
+  })
+
+  test('an org named like admin in another case is not it', () => {
+    for (const org of ['Admin', 'ADMIN']) {
+      as({ orgs: [{ org, role: 'owner' }] })
+      expect(superAdmin()).toBe(false)
+    }
+  })
+
+  test('a program is never it', () => {
+    as({ type: 'application', owner: 'admin', orgs: [{ org: 'admin', role: 'owner' }] })
+    expect(superAdmin()).toBe(false)
+    as({ owner: 'admin' })
+    expect(superAdmin()).toBe(false)
+  })
+
+  test('an empty home is not shifted onto a later admin entry', () => {
+    as({ orgs: [{ org: '' }, { org: 'admin', role: 'admin' }] })
+    expect(superAdmin()).toBe(false)
+  })
+})

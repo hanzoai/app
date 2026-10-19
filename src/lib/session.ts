@@ -15,6 +15,7 @@
  * Two derivations of one name never agree; this is the one derivation.
  */
 
+import { superAdmin as sudo } from '@hanzo/iam/browser'
 import { api } from './api'
 import { where } from '../where'
 
@@ -436,22 +437,16 @@ export function pick(o: string): void {
   window.dispatchEvent(new Event(ORG))
 }
 
-/** The reserved org whose own people are the platform's operators. */
-export const ADMIN_ORG = 'admin'
-
 /**
- * Whether the signed-in person is a SUPERADMIN, as IAM signs it: the org of the
- * person's own row — the first entry of the token's `orgs`, which IAM always puts
- * first (hanzoai/iam internal/store/membership.go `MemberOrgRefs`) — is the
- * reserved `admin` org. It is the equality IAM decides `assume` and the
- * organization list on (pkg/schema/user.go `SuperAdmin`) and cloud's `Super`.
- * Not the `owner` claim: a sign-in token carries the APPLICATION's org there. A
- * membership of `admin` is not it either, and neither is being an org's admin.
+ * Whether the signed-in person is a SUPERADMIN: @hanzo/iam's `superAdmin`, which is
+ * hanzoai/authz `Claims.Sudo` exactly — a person (never a program) whose own row's
+ * org, the first entry of the token's `orgs`, is the reserved `admin` org, compared
+ * verbatim. Not the `owner` claim, not a membership of `admin`, not an org's admin.
  * It decides only what is drawn: IAM refuses everyone else the list of every
  * organization and the step into one.
  */
 export function superAdmin(): boolean {
-  return home() === ADMIN_ORG
+  return sudo(claims())
 }
 
 /** The organization a SuperAdmin stepped into through IAM, from the token's `assumed` claim, or null. */
