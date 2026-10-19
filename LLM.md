@@ -152,8 +152,10 @@ the one conversation the pane holds).
   directory (`DIRECTORIES`: hanzo-id, lux-id, zoo-id, pars-id, hanzoai/authz
   `IsDirectory`): a directory is a customer account's home and nobody's tenant,
   so no picker offers it and no request is scoped to it. `home()` is the claim's
-  first entry, directory or not: `me()` keys the account by it and
-  `superAdmin()` is `home() === 'admin'`.
+  first entry, directory or not: `me()` keys the account by it.
+  `superAdmin()` is @hanzo/iam's `superAdmin(claims)` (hanzoai/authz
+  `Claims.Sudo`): a person whose `orgs[0].org` is `admin`, never a program and
+  never an empty home shifted onto a later entry. No copy of the rule lives here.
 - `src/team.gen.ts` — the core team's persona files as strings, generated from
   `@hanzo/personas` by `scripts/team.mjs`, so no host needs an asset loader.
 - `src/lib/integrations.ts` — the integrations catalogue, the one copy:
