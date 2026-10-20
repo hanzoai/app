@@ -10,7 +10,7 @@
 //
 // The bell is the org's run activity (@hanzo/build `useSessions`): the runs
 // that moved last, each one press from its page, and Notifications in Settings.
-// The search opens the filter over Recents (⌘K / Ctrl+K from anywhere, `seek`).
+// The search opens the palette (Palette.tsx; ⌘K / Ctrl+K from anywhere).
 //
 // Dev's places are @hanzo/build's `nav`, the one list every rail draws, each a
 // row under a quiet group label.
@@ -20,11 +20,11 @@
 // its floor it shuts (`onShut`), as the sidebar's toggle shuts it.
 
 import { Text, XStack, YStack } from '@hanzo/gui'
-import { Bell, Search, Settings2, SquarePen, X } from 'lucide-react'
+import { Bell, Search, Settings2, SquarePen } from 'lucide-react'
 import { DOTS, Grip, nav, NEW, path as written, useSessions, type Host } from '@hanzo/build'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { Sidebar, SidebarIconButton, SidebarItem, StatusDot, type RailLink } from '@hanzo/ui/chat'
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { Made } from './Me'
 import { Recents } from './Recents'
 import { Setup } from './Setup'
@@ -125,7 +125,7 @@ export function Column({
   thread,
   go,
   onShut,
-  seek = 0,
+  onSeek,
   drawer = false,
   foot,
   places,
@@ -138,8 +138,8 @@ export function Column({
   go: (address: string) => void
   /** Shut the sidebar: its edge pulled in past the floor. */
   onShut: () => void
-  /** Each new value asks for the search, focused (⌘K). */
-  seek?: number
+  /** Opens the palette. */
+  onSeek?: () => void
   /** Drawn in the phone's drawer: no edge, cut as a floating pane. */
   drawer?: boolean
   /** What stands at its foot: the drawer's rail, laid flat. */
@@ -147,10 +147,6 @@ export function Column({
   /** The mode's places, where they are not Dev's (Studio's `nav`). */
   places?: { id: string; label: string; links: RailLink[] }[]
 }) {
-  const [words, setWords] = useState('')
-  // The search field shows once asked for, and while it holds words.
-  const [seeking, setSeeking] = useState(false)
-  const field = useRef<HTMLInputElement | null>(null)
   // The desktop sidebar and a phone's drawer can both be in the page: each names its own group labels.
   const uid = useId()
   const span = useSpan(SPAN, WIDTH, FLOOR, CEIL)
@@ -163,17 +159,6 @@ export function Column({
     empty()
     go(talk())
   }
-  const ask = () => {
-    setSeeking(true)
-    requestAnimationFrame(() => field.current?.focus())
-  }
-  const done = () => {
-    setWords('')
-    setSeeking(false)
-  }
-  useEffect(() => {
-    if (seek) ask()
-  }, [seek])
 
   return (
     <YStack
@@ -204,51 +189,10 @@ export function Column({
             {wordmark(mode)}
           </Text>
           <Activity host={host} />
-          {mode === 'studio' ? null : (
-            <SidebarIconButton
-              label={mode === 'chat' ? 'Search chats' : 'Search runs'}
-              onPress={seeking ? done : ask}
-              aria-expanded={seeking || !!words}
-              {...HEAD}
-            >
-              <Search size={16} aria-hidden />
-            </SidebarIconButton>
-          )}
+          <SidebarIconButton label="Search" onPress={onSeek} aria-haspopup="dialog" {...HEAD}>
+            <Search size={16} aria-hidden />
+          </SidebarIconButton>
         </XStack>
-        {seeking || words ? (
-          <XStack data-slot="app-filter" items="center" gap="$2" pl="$3" pr="$1" height={36} rounded={999} borderWidth={1} borderColor="$borderColor" bg="$edge" shrink={0} mb="$1.5">
-            <Search size={15} aria-hidden color="var(--soft, var(--muted-foreground))" />
-            <Text
-              render={
-                <input
-                  ref={field}
-                  value={words}
-                  onChange={(e) => setWords(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') done()
-                  }}
-                  onBlur={() => {
-                    if (!words) setSeeking(false)
-                  }}
-                  placeholder={mode === 'chat' ? 'Search chats' : 'Search runs'}
-                  aria-label="Filter recents"
-                />
-              }
-              flex={1}
-              minW={0}
-              bg="transparent"
-              borderWidth={0}
-              outlineStyle="none"
-              color="inherit"
-              fontSize="$3"
-            />
-            {words ? (
-              <SidebarIconButton label="Clear search" onPress={done} width={28} height={28} rounded={999}>
-                <X size={14} aria-hidden />
-              </SidebarIconButton>
-            ) : null}
-          </XStack>
-        ) : null}
         {mode === 'chat' ? (
           <YStack role="list" gap={2} shrink={0}>
             <YStack role="listitem">
@@ -292,7 +236,7 @@ export function Column({
             ))}
           </YStack>
         )}
-        {mode === 'studio' ? null : <Recents host={host} mode={mode} thread={thread} words={words} onOpen={open} onNew={create} />}
+        {mode === 'studio' ? null : <Recents host={host} mode={mode} thread={thread} onOpen={open} onNew={create} />}
         <YStack gap="$2" pt="$2" shrink={0}>
           <Made />
           <Setup />

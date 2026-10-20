@@ -51,7 +51,6 @@ export function Recents({
   host,
   mode,
   thread,
-  words,
   onOpen,
   onNew,
 }: {
@@ -59,7 +58,6 @@ export function Recents({
   mode: Mode
   /** The Chat conversation the pane holds, or null. */
   thread: string | null
-  words: string
   onOpen: (r: Recent) => void
   /** Moves the pane to a new conversation: where it goes when the one it holds is deleted. */
   onNew: () => void
@@ -67,23 +65,21 @@ export function Recents({
   const [kept, keep] = useKept<unknown>(`hanzo.recents.${mode}`, PLAIN)
   const view = viewOf(mode, kept)
   return mode === 'chat' ? (
-    <Chats thread={thread} words={words} view={view} keep={keep} onOpen={onOpen} onNew={onNew} />
+    <Chats thread={thread} view={view} keep={keep} onOpen={onOpen} onNew={onNew} />
   ) : (
-    <Runs host={host} words={words} view={view} keep={keep} onOpen={onOpen} />
+    <Runs host={host} view={view} keep={keep} onOpen={onOpen} />
   )
 }
 
 /** Chat's Recents: the conversation store alone, the archived ones when the view asks for them. */
 function Chats({
   thread,
-  words,
   view,
   keep,
   onOpen,
   onNew,
 }: {
   thread: string | null
-  words: string
   view: View
   keep: (v: View) => void
   onOpen: (r: Recent) => void
@@ -96,7 +92,6 @@ function Chats({
     <List
       mode="chat"
       rows={rows}
-      words={words}
       view={view}
       keep={keep}
       open={(r) => r.id === thread}
@@ -111,7 +106,7 @@ function Chats({
 }
 
 /** Dev's Recents: the org's coding runs alone. */
-function Runs({ host, words, view, keep, onOpen }: { host: Host; words: string; view: View; keep: (v: View) => void; onOpen: (r: Recent) => void }) {
+function Runs({ host, view, keep, onOpen }: { host: Host; view: View; keep: (v: View) => void; onOpen: (r: Recent) => void }) {
   const store = useSessions(host)
   const r = route(host.path)
   const run = r.kind === 'run' ? r.id : null
@@ -128,7 +123,6 @@ function Runs({ host, words, view, keep, onOpen }: { host: Host; words: string; 
     <List
       mode="dev"
       rows={rows}
-      words={words}
       view={view}
       keep={keep}
       open={(row) => row.id === run}
@@ -142,7 +136,6 @@ function Runs({ host, words, view, keep, onOpen }: { host: Host; words: string; 
 function List({
   mode,
   rows,
-  words,
   view,
   keep,
   open,
@@ -155,7 +148,6 @@ function List({
 }: {
   mode: Mode
   rows: Recent[]
-  words: string
   view: View
   keep: (v: View) => void
   open: (r: Recent) => boolean
@@ -170,7 +162,7 @@ function List({
   onNew?: () => void
 }) {
   const label = useId()
-  const groups = arrange(rows, view, words)
+  const groups = arrange(rows, view)
   const narrowed = view.status !== PLAIN.status || view.since !== PLAIN.since
   const running = mode === 'dev' ? rows.filter((r) => r.status === 'running').length : 0
   // A row is its title alone, as the reference draws it: a conversation's ⋯
@@ -268,9 +260,7 @@ function List({
   const pinned = groups.find((g) => g.title === PINNED)
   const note = reading ? (
     <Note>{mode === 'chat' ? 'Reading your chats…' : 'Reading your runs…'}</Note>
-  ) : error ? null : words.trim() ? (
-    <Note>{`Nothing matches “${words.trim()}”.`}</Note>
-  ) : view.status === 'archived' ? (
+  ) : error ? null : view.status === 'archived' ? (
     <Note>No archived chats.</Note>
   ) : narrowed ? (
     <Note>Nothing in this view.</Note>

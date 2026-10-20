@@ -13,32 +13,27 @@ const rows = chats([
 
 describe('Recents', () => {
   test('pinned conversations come first, under Pinned, in the order the view sorts them', () => {
-    const groups = arrange(rows, PLAIN, '', now)
+    const groups = arrange(rows, PLAIN, now)
     expect(groups[0]).toEqual({ title: PINNED, rows: [rows[3], rows[1]] })
     expect(groups.slice(1).flatMap((g) => g.rows.map((r) => r.id))).toEqual(['a', 'c'])
     expect(groups.slice(1).some((g) => g.title === PINNED)).toBe(false)
   })
 
   test('a view grouped by None still lists the pinned ones first', () => {
-    const groups = arrange(rows, { ...PLAIN, group: 'none' }, '', now)
+    const groups = arrange(rows, { ...PLAIN, group: 'none' }, now)
     expect(groups.map((g) => g.title)).toEqual([PINNED, ''])
     expect(groups[1].rows.map((r) => r.id)).toEqual(['a', 'c'])
   })
 
-  test('words narrow the pinned ones too, and an empty Pinned is no group', () => {
-    expect(arrange(rows, PLAIN, 'aur', now)).toEqual([{ title: '', rows: [rows[0]] }])
-    expect(arrange(rows, { ...PLAIN, group: 'date' }, 'aur', now)).toEqual([{ title: 'Today', rows: [rows[0]] }])
-  })
-
   test('the plain view is Pinned, then every other row under one Recents heading, as the reference lists them', () => {
     expect(PLAIN.group).toBe('none')
-    expect(arrange(rows, PLAIN, '', now).map((g) => g.title)).toEqual([PINNED, ''])
+    expect(arrange(rows, PLAIN, now).map((g) => g.title)).toEqual([PINNED, ''])
   })
 
   test('an archived conversation reads as archived, and the archived view keeps it', () => {
     const away = chats([{ id: 'e', title: 'Eclipse', updatedAt: at(5), archived: true }])
     expect(away[0].status).toBe('archived')
-    expect(arrange(away, { ...PLAIN, status: 'archived' }, '', now).flatMap((g) => g.rows)).toEqual(away)
+    expect(arrange(away, { ...PLAIN, status: 'archived' }, now).flatMap((g) => g.rows)).toEqual(away)
   })
 
   test("Chat's Status is whether a conversation is archived, and there is no Starred group", () => {

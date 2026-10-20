@@ -73,7 +73,7 @@ export const HOUSE: readonly string[] = TEAM.map((one) => one.name)
 const DEFAULT_HOUSE_AGENTS = TEAM.map((one) => ({ id: `house-${one.id}`, name: one.name, avatar: `/agents/${one.id}.png` }))
 
 /** The org's agents, the cast first in its own order, then the rest as listed. */
-function ordered<T extends { id?: string; name: string }>(agents: T[]): (T | (typeof DEFAULT_HOUSE_AGENTS)[number])[] {
+export function ordered<T extends { id?: string; name: string }>(agents: T[]): (T | (typeof DEFAULT_HOUSE_AGENTS)[number])[] {
   const list = Array.isArray(agents) ? agents : []
   const names = new Set(list.map((a) => a.name?.toLowerCase()))
   const combined: (T | (typeof DEFAULT_HOUSE_AGENTS)[number])[] = [...list]

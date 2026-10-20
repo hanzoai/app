@@ -18,6 +18,7 @@ import {
   createContext,
   lazy,
   Suspense,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -77,7 +78,7 @@ import {
 import type { Thread } from "@hanzo/ai";
 import { PINNED } from "./recent";
 import { ConversationMenu, ThreadRow, useThreadList } from "./thread";
-import { Box, XStack, YStack, Text } from "@hanzo/ui";
+import { Box, Shortcut, XStack, YStack, Text } from "@hanzo/ui";
 // THE PAPER LADDER. `sheet(n)` is a fill AND the light on it, published as a
 // pair by @hanzo/design, so a surface asks for a HEIGHT instead of composing a
 // shadow — which is the only way three panels on one screen end up lit from one
@@ -150,10 +151,10 @@ import {
 } from "./Settings";
 import { Profile } from "./Profile";
 import { SupportPicker } from "./Support";
-import { Find } from "./Find";
+import { Palette, type Action } from "./Palette";
+import { summons } from "./seek";
 import { Account } from "./Account";
 import { called } from "./team";
-import type { OrgCommandItem } from "@hanzogui/shell";
 import { checkoutUrl } from './lib/pay';
 
 /** Tabs: the terminals, at their own host. */
@@ -1924,6 +1925,7 @@ function Frame({
   // hook it no longer runs.
   const hydrated = useHydrated();
   const [finding, setFinding] = useState(false);
+  const found = useCallback(() => setFinding(false), []);
   /**
    * WHICH SETTINGS ROW IS OPEN, and null for none. ONE value, not two.
    *
@@ -2008,7 +2010,7 @@ function Frame({
   const onPick = typeof window !== "undefined" && window.innerWidth < 1024 ? dismiss : undefined;
   useEffect(() => {
     const shortcut = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      if (summons(event)) {
         event.preventDefault();
         setFinding(true);
       }
@@ -2105,16 +2107,17 @@ function Frame({
   /**
    * WHERE THE PALETTE CAN GO WITHOUT ASKING ANYONE.
    *
-   * The rooms this identity may open, and the surfaces above. The lists that
-   * have to be read — conversations, projects — are `Find`'s, which is why they
-   * are not here: this half is known before anyone types.
+   * The rooms this identity may open, and the surfaces above, as the palette's
+   * Actions; this Settings and Customize stand in for the palette's own. The
+   * lists that have to be read — conversations, projects, agents, skills — are
+   * the palette's, which is why they are not here.
    */
   const onApex = apex(useHost());
   const places = useMemo(
     () => [CHAT, ...PLACES].filter((place) => shows(place, tiers, hidden, onApex)),
     [tiers, hidden, onApex],
   );
-  const doors: OrgCommandItem[] = useMemo(
+  const doors: Action[] = useMemo(
     () => [
       // HOME LEADS, and the palette is the only way to it: it is off the rail
       // by design and no control anywhere else points at it, which left 400
@@ -2126,20 +2129,18 @@ function Frame({
           // Home's is the brand — one row reading "Hanzo" among Chat, Dev and
           // Drive names the company rather than the room.
           id: place.id,
-          title: place.label,
-          category: "Apps",
-          icon: <place.icon size={15} aria-hidden />,
-          href: place.route,
+          label: place.label,
+          icon: <place.icon size={16} aria-hidden />,
+          run: () => navigate?.(place.route),
         })),
       ...tools.map((tool) => ({
         id: tool.id,
-        title: tool.label,
-        category: "Workspace",
-        icon: <tool.icon size={15} aria-hidden />,
-        action: tool.go,
+        label: tool.label,
+        icon: <tool.icon size={16} aria-hidden />,
+        run: tool.go,
       })),
     ],
-    [tiers, hidden, onApex, tools],
+    [tiers, hidden, onApex, tools, navigate],
   );
 
   // The org IS the workspace. Naming it twice is how the bar and the rail come
@@ -2540,24 +2541,8 @@ function Frame({
               <Text fontSize="$1" color="$soft" $max-md={{ display: "none" }}>
                 Search {workspace}
               </Text>
-              {/* THE KEY CAP. Its fill was a raw `rgba(255,255,255,0.08)`, and
-                  this config only admits token values — so the cap shipped as
-                  bare text on no ground at all. `$edge` is what the icon
-                  buttons already hover with, and it survives to the page. */}
-              <XStack
-                ml="auto"
-                items="center"
-                justify="center"
-                height={18}
-                px="$1"
-                rounded="$1"
-                bg="$edge"
-                $max-md={{ display: "none" }}
-              >
-                <Text fontSize="$1" fontWeight="600" color="$soft">
-                  ⌘K
-                </Text>
-              </XStack>
+              {/* The kit's keycaps: ⌘K on a Mac, Ctrl+K elsewhere. */}
+              <Shortcut keys={["Mod", "K"]} ml="auto" $max-md={{ display: "none" }} />
             </Box>
           </YStack>
         </XStack>
@@ -2676,10 +2661,11 @@ function Frame({
         {supporting ? <SupportPicker onClose={() => setSupporting(false)} /> : null}
 
         {finding ? (
-          <Find
-            doors={doors}
-            onClose={() => setFinding(false)}
-            navigate={navigate}
+          <Palette
+            actions={doors}
+            onClose={found}
+            // A chat opens in this workspace's Chat, the palette having picked it; the rest is the app's.
+            go={(to) => navigate?.(to.startsWith(CHAT.route) ? CHAT.route : site(to))}
           />
         ) : null}
     </YStack>
