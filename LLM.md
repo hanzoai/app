@@ -325,7 +325,16 @@ catalog files under Enso or Zen (`house`).
   pinned (`Deck.pin`): it leads the strip and closes only on purpose. Tabs, order and the chosen one are kept per
   conversation (`useDeck`, `chat:<channel>`); open or shut is kept on a laptop
   (`hanzo.side.chat.open`), where the frame's column holds it (`Beside`), and a
-  phone opens it as a sheet. The header's Panel button and ⌘. / Ctrl+. toggle it.
+  phone opens it over the whole window. The header's Panel button and ⌘. /
+  Ctrl+. toggle it.
+- The column is @hanzo/build's `useSplit` (Paned), the one Dev's run stands its
+  panel in. Its edge is the kit's `Grip`; the width is the person's, kept in
+  their preferences (`side.width`, `PATCH /v1/pref`, read by the `PrefsProvider`
+  App mounts, one document for Chat and Dev; without one, as in hanzo.team's
+  shell, it lasts the page). Pulled over the conversation the column takes its
+  room, the conversation hidden and never unmounted, until the strip's Show chat
+  or a pull back out; the strip's full-screen button puts the panel over the
+  window and Escape returns. A drag writes two elements a frame, no React commit.
   An answer that finishes writing a page while the panel is open opens it there.
 - `pane.ts` holds only what goes with the next message (files, refusals).
 

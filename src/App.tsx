@@ -61,7 +61,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { ArrowLeft, ArrowRight, Menu } from 'lucide-react'
 import { AiProvider } from '@hanzo/ai/react'
 import { Text, XStack, YStack } from '@hanzo/gui'
-import { Builder, HostProvider, path as written, route, type Host } from '@hanzo/build'
+import { Builder, HostProvider, PrefsProvider, path as written, route, type Host } from '@hanzo/build'
 import { nav as places } from '@hanzo/studio'
 import { SidebarIconButton } from '@hanzo/ui/chat'
 import { useAi } from './lib/ai'
@@ -268,6 +268,8 @@ function Window({ bar }: { bar?: Bar }) {
   return (
     <AiProvider client={client ?? undefined}>
       <HostProvider host={host}>
+        {/* The person's preferences, read once for Chat and Dev: the side panel's width is one of them. */}
+        <PrefsProvider>
         {/* The floor runs under the bar where there is one, so the window is one ground. */}
         <YStack data-slot="window" {...(bar ? floor : null)} flex={1} minW={0} height="100dvh" overflow="hidden">
           {bar ? (
@@ -387,6 +389,7 @@ function Window({ bar }: { bar?: Bar }) {
             </>
           ) : null}
         </YStack>
+        </PrefsProvider>
       </HostProvider>
     </AiProvider>
   )
