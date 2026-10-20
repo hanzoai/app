@@ -99,11 +99,12 @@ export function plainly(error: unknown, subject: string): string {
  * does not include, and the Free plan's two limits — a person's own share of
  * the pool spent for the window, and the pool every free user shares used up.
  */
-const LIFTED: Record<string, number> = {
-  plan_required: 402,
-  allowance_spent: 402,
-  pool_busy: 429,
-  pool_exhausted: 429,
+const LIFTED: Record<string, readonly number[]> = {
+  plan_required: [402],
+  // 429 since the gateway's free notice (object/free_notice.go); 402 before it.
+  allowance_spent: [402, 429],
+  pool_busy: [429],
+  pool_exhausted: [429],
 }
 
 /**
@@ -111,7 +112,7 @@ const LIFTED: Record<string, number> = {
  *
  * The gateway refuses a model the plan does not include with 402
  * `plan_required`, a Free caller whose share is spent with 402
- * `allowance_spent`, and a free request the shared pool cannot serve with 429
+ * (now 429) `allowance_spent`, and a free request the shared pool cannot serve with 429
  * `pool_busy` or `pool_exhausted`, each with an `upgrade_url`. The code decides,
  * never the sentence. The address is kept only when it is an https page on
  * hanzo.ai or one of its hosts; any other leaves `href` empty and the caller
@@ -120,7 +121,7 @@ const LIFTED: Record<string, number> = {
 export function planRequired(error: unknown): { href?: string } | null {
   const said = ((error as { body?: unknown } | null)?.body as { error?: { code?: unknown; upgrade_url?: unknown } } | null)?.error
   const code = typeof said?.code === 'string' ? said.code : ''
-  if (!LIFTED[code] || status(error) !== LIFTED[code]) return null
+  if (!LIFTED[code]?.includes(status(error) ?? 0)) return null
   return { href: ours(said?.upgrade_url) }
 }
 

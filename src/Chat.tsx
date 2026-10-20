@@ -1576,14 +1576,14 @@ function Thread({
               ? `${familyOf(model) || nameOf(model, listed)} is unavailable right now.`
               : plainly(wrong, "this conversation");
     return (
-      <Failure onRetry={resign || bill?.code === "free_plan_cap" ? undefined : () => speak(text, question.id)}>
+      <Failure onRetry={resign || lift || bill?.code === "free_plan_cap" ? undefined : () => speak(text, question.id)}>
         <YStack gap="$2">
           <Text fontSize="$3" color="$ink">
             {whom.length ? `No answer from ${join(whom)}. ` : ""}
             {said}
           </Text>
           {how?.provider && wrong ? <Why text={detail(wrong)} /> : null}
-          {!bill && (resign || lift || how?.wallet || how?.visitor) ? (
+          {lift || (!bill && (resign || how?.wallet || how?.visitor)) ? (
             <XStack gap="$2" flexWrap="wrap">
               {resign ? (
                 <Button
