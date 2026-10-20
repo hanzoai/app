@@ -89,8 +89,10 @@ import {
   Summary,
   useDeck,
   useKey,
+  Suggestions,
   useCarry,
   useMind,
+  useSuggestions,
   usePanel,
   type Artifact,
   frames,
@@ -126,27 +128,6 @@ const SCRIM = mix("var(--pure-black)", 72, "srgb");
  * room has always read at, so an untouched setting changes nothing.
  */
 const MEASURE = "var(--container-prose, 48rem)";
-
-/**
- * WHAT AN EMPTY ROOM OFFERS.
- *
- * A blank field asks the reader to invent the first move, and the commonest
- * answer to "what can I help with?" is not knowing what to ask for. These are
- * four shapes of question rather than four topics — read the code you have,
- * find the fault in what it printed, plan the thing you have not built, and
- * shorten something long — so between them they say what kind of help this is
- * without claiming a skill nobody verified.
- *
- * Pressing one FILLS the field and does not send it. Each is the opening of a
- * question the reader has to finish with their own material, and sending it as
- * written would ask about nothing.
- */
-const STARTERS = [
-  "Explain what this code does",
-  "Find the fault in this stack trace",
-  "Plan how to ship this feature",
-  "Summarise this document",
-];
 
 /**
  * The store, or null when the browser will not give us one.
@@ -845,6 +826,8 @@ function Thread({
   // end of the room's system turn so every request carries them.
   const carry = useCarry(target, open ?? "", (tab) => go(app(`-/customize/${tab}`)));
   const agentShelf = useAgentShelf();
+  // Up to three things worth doing next, from the person's own activity (@hanzo/build).
+  const hints = useSuggestions(target);
   // THE HEADER'S ⋯ IS THE ROW'S MENU (thread.tsx): rename, pin, share, its
   // link, a new tab, archive and delete, kept by the server. A conversation not
   // in the list yet (just begun, or archived) has no menu until it is.
@@ -2092,35 +2075,6 @@ function Thread({
                 </Text>
               ) : null}
 
-              {/* STARTER CHIPS */}
-              <XStack
-                flexWrap="wrap"
-                justify="center"
-                gap="$2"
-                maxW={560}
-                px="$3"
-                pb="$4"
-              >
-                {STARTERS.map((one) => (
-                  <Box
-                    key={one}
-                    render="button"
-                    onClick={() => {
-                      setDraft(`${one} `);
-                    }}
-                    px="$3"
-                    py="$2"
-                    rounded="$4"
-                    borderWidth={1}
-                    borderColor="$borderColor"
-                    hoverStyle={{ bg: "$raised" }}
-                  >
-                    <Text fontSize="$2" color="$soft">
-                      {one}
-                    </Text>
-                  </Box>
-                ))}
-              </XStack>
             </YStack>
           )
         }
@@ -2239,6 +2193,8 @@ function Thread({
           onUpgrade: (id) => setAsk({ model: nameOf(id, listed) } as Ask),
           voice,
           talk,
+          // While nothing has been said: what is worth doing next.
+          below: said.length === 0 && !anonymous ? <Suggestions rows={hints.rows} onPick={setDraft} onDismiss={hints.dismiss} /> : undefined,
         })}
       />
       <AgentMaker />
