@@ -3,7 +3,8 @@
 // The app's rail: its products as marks down the window's left edge, in one
 // order — Chat, Dev, Studio, Library, Scheduled tasks, Customize — then More, a
 // menu of the rest, and the account at the foot. It is how the app moves
-// between its products; there is no switch anywhere else.
+// between its products; a phone, which has no rail, switches Chat and Dev in
+// its bar (Top.tsx).
 //
 // Studio is the app's third mode (@hanzo/studio at /studio), each of the three
 // opened where the reader left it.

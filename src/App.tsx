@@ -58,12 +58,11 @@
 // so the builder's own plans are never drawn.
 
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, Menu } from 'lucide-react'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { AiProvider } from '@hanzo/ai/react'
-import { Text, XStack, YStack } from '@hanzo/gui'
+import { XStack, YStack } from '@hanzo/gui'
 import { Builder, HostProvider, path as written, route, type Host } from '@hanzo/build'
 import { nav as places } from '@hanzo/studio'
-import { SidebarIconButton } from '@hanzo/ui/chat'
 import { useAi } from './lib/ai'
 import { Chat } from './Chat'
 import { Column } from './Column'
@@ -77,7 +76,8 @@ import { Paned } from './Shell'
 import { floor, pane } from './ground'
 import { pick } from './lib/session'
 import { app, go, place, studio, talk, type Place } from './lib/host'
-import { wordmark } from './where'
+import { Top } from './Top'
+import { FOOT, HEIGHT, TOP, useView } from './view'
 
 /** Studio, fetched the first time the reader stands in it. */
 const Studio = lazy(() => import('@hanzo/studio').then((m) => ({ default: m.Studio })))
@@ -136,6 +136,8 @@ export function App({ bar }: { bar?: Bar } = {}) {
 /** The window itself, drawn once the organization is settled. */
 function Window({ bar }: { bar?: Bar }) {
   const [drawer, setDrawer] = useState(false)
+  // On a phone the window stands in the visual viewport, so the keyboard never covers the composer (view.ts).
+  const view = useView()
   const shut = useCallback(() => setDrawer(false), [])
   // The sidebar shut, kept per browser under the key the builder's rail kept it under.
   const [closed, setClosed] = useKept('hanzo.build.rail', false)
@@ -269,7 +271,16 @@ function Window({ bar }: { bar?: Bar }) {
     <AiProvider client={client ?? undefined}>
       <HostProvider host={host}>
         {/* The floor runs under the bar where there is one, so the window is one ground. */}
-        <YStack data-slot="window" {...(bar ? floor : null)} flex={1} minW={0} height="100dvh" overflow="hidden">
+        <YStack
+          ref={view}
+          data-slot="window"
+          {...(bar ? floor : null)}
+          flex={1}
+          minW={0}
+          height="100dvh"
+          overflow="hidden"
+          $max-md={{ position: 'fixed', t: TOP, l: 0, r: 0, height: HEIGHT }}
+        >
           {bar ? (
             <XStack data-slot="title-bar" height={BAR} shrink={0} items="center" gap={2} pl={(bar.inset ?? 0) + 6} pr="$2" {...bar.drag}>
               {/* From a tablet up the toggle shuts the sidebar; on a phone it opens the drawer. */}
@@ -311,18 +322,9 @@ function Window({ bar }: { bar?: Bar }) {
                 <Column host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} seek={seek} places={sidebar} />
               </YStack>
             )}
-            <YStack data-slot="stage" flex={1} minW={0} minH={0} ml="var(--pane-gap)" $max-md={{ ml: 0 }}>
-              {/* A phone has no rail and no sidebar: the bar opens them as a drawer. */}
-              {bar ? null : (
-                <XStack data-slot="app-bar" height={44} px="$1" gap="$1" items="center" shrink={0} $md={{ display: 'none' }}>
-                  <SidebarIconButton label="Open sidebar" onPress={() => setDrawer(true)} width={44} height={44} rounded={999}>
-                    <Menu size={18} />
-                  </SidebarIconButton>
-                  <Text fontSize="$4" fontWeight="600" color="$ink" numberOfLines={1}>
-                    {wordmark(mode)}
-                  </Text>
-                </XStack>
-              )}
+            <YStack data-slot="stage" flex={1} minW={0} minH={0} ml="var(--pane-gap)" $max-md={{ ml: 0, pb: FOOT }}>
+              {/* A phone has no rail and no sidebar: its bar opens them as a drawer and switches Chat and Dev. */}
+              {bar ? null : <Top host={host} mode={mode} places={sidebar} go={move} onMenu={() => setDrawer(true)} onChat={toChat} onDev={toDev} />}
               <XStack data-slot="panes" flex={1} minW={0} minH={0}>
                 {mode === 'chat' ? (
                   <Paned framed>
