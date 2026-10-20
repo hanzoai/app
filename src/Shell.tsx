@@ -97,7 +97,8 @@ import {
   useIam,
   useOrganizations,
 } from "@hanzo/iam/react";
-import { Grip } from "@hanzo/build";
+import { SideProvider, useSplit } from "@hanzo/build";
+import { Grip } from "@hanzo/ui";
 import {
   HanzoMark,
 } from "@hanzogui/shell";
@@ -135,6 +136,7 @@ const FIELD = {
  *  custom properties. */
 const GUTTER_START = "calc(-1 * var(--pane-gap, 0px))" as `var(--${string})`
 const GUTTER = "max(8px, var(--pane-gap, 8px))" as `var(--${string})`
+const TOUCH_START = "calc(-22px - var(--pane-gap, 0px) / 2)" as `var(--${string})`
 const HOME_INDICATOR = "env(safe-area-inset-bottom)" as `var(--${string})`
 import { invite } from "./lib/home";
 import { reach } from "./lib/reach";
@@ -1478,14 +1480,11 @@ function Bots({
 /** A phone's tab bar: the rail along the foot, above the home indicator. */
 const TABS_HEIGHT = "calc(56px + env(safe-area-inset-bottom))"
 
-/** A column's width, px: the floor a drag holds, the ceiling, and the default a double-click returns to. */
+/** The sidebar's width, px: the floor a drag holds, the ceiling, and the default a double-click returns to. */
 const FLOOR = 200
 const CEIL = 480
 /** Per-reader, per-browser. A width that resets is a width you set every load. */
 const SPAN = "hanzo.sidebar.span"
-const BESIDE = "hanzo.aside.span"
-/** The column beside a room: its default width, px. */
-const BESIDE_WIDTH = 380
 /** The rooms' sidebar: its default width, px. */
 const SIDEBAR_WIDTH = 244
 
@@ -1525,6 +1524,13 @@ export function Beside({ children }: { children: ReactNode }) {
  * the app at `/` lay a room out with this, so a room's column is one mechanism.
  * `swap` stands in the pane in the room's place (a chosen Settings row).
  *
+ * The column is @hanzo/build's (`useSplit`), the one Dev's runs stand their
+ * panel in: its edge, the width the person drags (kept in their preferences
+ * where a `PrefsProvider` is above, as in the app), the pane hidden while the
+ * column is pulled over it until Show chat, and full screen from the panel's
+ * strip. The pane is hidden, never unmounted, so the conversation keeps its
+ * state.
+ *
  * `framed` is the app at `/`: both are panes floating on the frame's ground
  * (app/_web.tsx), filled with `--pane-fill` and cut by `pane()`, and the edge
  * that sizes the column sits in the gutter between them. In a room they lie on
@@ -1544,7 +1550,7 @@ export function Paned({
   bare?: boolean;
 }) {
   const { aside, showAside } = useOpen();
-  const beside = useSpan(BESIDE, BESIDE_WIDTH, FLOOR, CEIL);
+  const split = useSplit(Boolean(aside), "chat", () => showAside(null));
   // State and not a ref: a ref set during commit does not re-render, so the
   // portal would have nowhere to go on the pass that created its target.
   const [slot, setSlot] = useState<HTMLElement | null>(null);
@@ -1562,13 +1568,18 @@ export function Paned({
             ? null
             : { ...pane(), overflow: "hidden" as const }
           : { ...sheet(0), borderLeftWidth: 1, borderColor: "var(--edge, var(--white-06))" })}
+        ref={split.main}
+        // inline-style: the pane hidden while the column has its room, written by a drag too (useSplit).
+        style={split.mainStyle}
         flex={1}
         minW={0}
         minH={0}
       >
         {swap ?? (
           <Framed.Provider value={framed}>
-            <Slot.Provider value={slot}>{children}</Slot.Provider>
+            <SideProvider value={split.side}>
+              <Slot.Provider value={slot}>{children}</Slot.Provider>
+            </SideProvider>
           </Framed.Provider>
         )}
       </YStack>
@@ -1580,34 +1591,29 @@ export function Paned({
           {...pane(framed ? undefined : sheet(1).backgroundColor)}
           // In the frame the gutter stands between the pane and this column.
           ml={framed ? "var(--pane-gap)" : undefined}
-          ref={beside.ref}
-          // inline-style: `--span`, the width a drag rewrites on the element itself (span.ts); no prop sets a variable.
-          style={beside.style}
+          ref={split.aside}
+          // inline-style: the width a drag rewrites on the element itself, and full screen (useSplit).
+          style={split.asideStyle}
           position="relative"
-          width="var(--span)"
-          // Half the WINDOW. Half of an `auto` grid track is half of this
-          // column's own width, so the rooms' shell drew it at half its span
-          // beside an empty strip of the same size.
-          maxW="50vw"
           shrink={0}
           minH={0}
           display="none"
           $lg={{ display: "flex" }}
         >
-          <Grip
-            side="right"
-            span={beside.span}
-            floor={FLOOR}
-            ceil={CEIL}
-            reset={BESIDE_WIDTH}
-            onSpan={beside.move}
-            onKeep={beside.keep}
-            onShut={() => showAside(null)}
-            label="Resize side panel"
-            // In the gutter the frame leaves between the panes; a room has none.
-            l={GUTTER_START}
-            width={GUTTER}
-          />
+          {split.grip ? (
+            <Grip
+              {...split.grip}
+              label="Resize side panel"
+              bar="inline"
+              // The handle halfway down the edge, where a hand looks for it.
+              justify="center"
+              // In the gutter the frame leaves between the panes; a room has none.
+              l={GUTTER_START}
+              width={GUTTER}
+              // A finger's band, centred on the gutter.
+              $touchable={{ l: TOUCH_START, width: 44 }}
+            />
+          ) : null}
           {/* The column above is the landmark; this is the box the room
               projects into, a container and not a second region. It carries the
               corner, so what scrolls in it is cut to the pane. */}
