@@ -53,6 +53,7 @@ import { AgentMaker, HOUSE, useAgentShelf, useCrew } from "./crew";
 import { called } from "./team";
 import { Anchor, Box, Button, Text, View, XStack, YStack } from "@hanzo/ui";
 import { useMedia } from "@hanzo/gui";
+import { tidy } from "./lib/title";
 import { useIam, useIamToken } from "@hanzo/iam/react";
 import { bearer, hasSession, org } from "./lib/session";
 import { api } from "./lib/api";
@@ -851,12 +852,13 @@ function Thread({
   const at = channel(opened);
   // The first of them: what a surface that addresses one person reads.
   const withWhom = room[0] ?? null;
-  // THE SIDE PANEL (@hanzo/build `Panel`), the one Dev's runs open too: open or
-  // shut as Chat was left on a laptop, a sheet asked for on a phone, its tabs
-  // kept per conversation. The header's Panel button and ⌘. move it.
+  // THE SIDE PANEL (@hanzo/build `Panel`), the one Dev's runs open too: shut
+  // until the reader opens it or a preview lands (`see`, a link that frames),
+  // kept per conversation with its tabs, so a chat opens as it was left and
+  // never as the last chat was. The header's Panel button and ⌘. move it.
   const media = useMedia();
   const wide = media.lg;
-  const [panel, setPanel] = usePanel("chat", false, wide);
+  const [panel, setPanel] = usePanel(`chat:${at}`, false, wide);
   const deck = useDeck(`chat:${at}`, SEED);
   // The org's sites, which an empty tab suggests.
   const sites = useSites();
@@ -1944,7 +1946,7 @@ function Thread({
         <XStack items="center" gap="$2" minW={0} flex={1}>
           {mine ? (
             <Text fontSize={15} lineHeight={20} color="$ink" numberOfLines={1} shrink={1} minW={0}>
-              {mine.title || "Untitled"}
+              {tidy(mine.title)}
             </Text>
           ) : null}
           {/* WHO IS AT THE OTHER END, or nothing at all.
@@ -2038,20 +2040,6 @@ function Thread({
       ) : null}
       {!wide && panel ? <Panel side={deck} kinds={NONE} sheet onHide={() => setPanel(false)} label="Tabs" {...browsing} /> : null}
 
-      {isFree(model) ? (
-        <Text
-          fontSize="$2"
-          color="$soft"
-          text="center"
-          maxW={MEASURE}
-          mx="auto"
-          px="$4"
-          py="$2"
-        >
-          {freeCopy.notice}{" "}
-          <Anchor href={site("/legal/privacy")}>{freeCopy.noticeCta}</Anchor>
-        </Text>
-      ) : null}
       <ChatSurface
         {...chat}
         messages={shown}
@@ -2272,21 +2260,13 @@ function Thread({
       />
       <AgentMaker />
       {carry.dialog}
-      {isFree(model) ? (
-        <XStack
-          items="center"
-          justify="center"
-          py="$1"
-          px="$3"
-          borderTopWidth={1}
-          borderColor="$borderColor"
-          bg="$background"
-        >
-          <Text fontSize="$1" color="$soft">
-            Free chat is data-shared to train models. <Anchor href={site("/privacy")} fontSize="$1" color="$ink">Privacy</Anchor>
-          </Text>
-        </XStack>
-      ) : null}
+      {/* The terms every answer is sent under, as links and nothing more: a
+          statement about a plan or a model is a statement that changes. */}
+      <XStack items="center" justify="center" py="$1" px="$3" gap="$2">
+        <Anchor href={site("/legal/terms")} fontSize="$1" color="$soft">Terms</Anchor>
+        <Text fontSize="$1" color="$soft">·</Text>
+        <Anchor href={site("/legal/privacy")} fontSize="$1" color="$soft">Privacy</Anchor>
+      </XStack>
       {consent}
       <Upgrade ask={ask} onClose={() => setAsk(null)} />
     </YStack>

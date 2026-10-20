@@ -423,10 +423,15 @@ reference captures; outer window, inner panel):
   from the window's edges and from the sidebar by `--pane-gap`; Chat's tabs
   are a second panel beside it (Paned), Dev's run floats its own two.
 - The rail, one order: Chat, Dev, Studio (@hanzo/studio, the app's third mode at /studio),
-  Library (Dev's Artifacts), Scheduled tasks (Automations), Customize, then More (Projects, Templates, Issues, Machines,
-  Environments | Tabs, Team), the account's face at the foot. Each mark is an
-  app: 36px on a 44px pitch, its name its tooltip, lit where the reader is.
-  Library, Scheduled tasks and Customize are Dev places raised to the rail.
+  then More (Tabs, Team: the products on hosts of their own), the account's face
+  at the foot. Each mark is a product, 36px on a 44px pitch, its name its
+  tooltip, lit where the reader is, and a product owns the sidebar beside the
+  rail: Chat its conversations and recents, Dev its places (New, Projects,
+  Issues, Library, Templates, Scheduled tasks, Machines, Environments,
+  Customize, Docs) and its runs, Studio its own. One level of the app a place:
+  nothing of Dev's is raised to the rail and nothing of the rail's is listed
+  inside Dev (0.1.83; before it Library, Scheduled tasks and Customize stood on
+  the rail and More listed Dev's places twice over).
 - The sidebar's toggle is at the window's top-left: the rail's first mark in a
   browser tab. A host that is a window passes `bar` (`<App bar={{ inset, drag
   }} />`) and App draws the window's 40px bar: the toggle, then Back and
@@ -494,10 +499,22 @@ search box: the Recents filter and the old `Find` (`OrgCommandPalette`) are
 gone. It is @hanzo/ui's `CommandMenu` in a dialog, 680 wide and 520 tall,
 the whole screen on a phone (its rows a 44px target, the kit's `touch`).
 
-- An empty field lists Recent chats, the newest eight; a query lists Chats,
-  Projects, Agents, Skills and Actions, each its best five (`find`, `rank`:
-  every word found, the label's start first). Arrows move, Enter opens, Escape
-  closes; Keyboard shortcuts is a page of the app's keys, Backspace comes back.
+- The palette is the product's: in Chat an empty field lists Recent chats, the
+  newest eight, and a query lists Chats, Projects, Agents, Skills and Actions;
+  in Dev an empty field lists Recent runs and a query lists Runs, Dev (its
+  places), Projects, Skills, Actions, then Chats (`findIn`, `rank`: every word
+  found, the label's start first; each group its best five). A title is drawn
+  tidied (`lib/title.ts` `tidy`: a first message's `<workspace-files>` markup
+  and a leading JSON object stripped, cut at 80), in the palette, the sidebar
+  and the bell's Activity (56). Arrows move, Enter opens, Escape closes;
+  Keyboard shortcuts is a page of the app's keys, Backspace comes back.
+- Under every answer: "<brand> can make mistakes. Check important info." above
+  the composer and Terms · Privacy under it, and nothing about the plan or the
+  model: the free lane's notice and its footer went in 0.1.83, since a line
+  that says what a plan does is a line that changes; the consent Free asks for
+  stays. The side panel is per conversation (`usePanel("chat:<thread>")`): shut
+  until the reader opens it or a preview lands, never carried from the last
+  chat.
 - Every list is read once as it opens and searched in the page; nothing is
   read per key. Chats are titles: the conversations store (hanzoai/agent
   v1.0.14, `GET /v1/agents/chat/conversations`) answers the whole list and

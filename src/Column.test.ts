@@ -64,8 +64,8 @@ const host = { go: () => {} } as unknown as Parameters<typeof Column>[0]['host']
 const noop = () => {}
 
 const column = (mode: Place['mode']) => renderToStaticMarkup(createElement(Column, { host, mode, thread: null, go: noop, onShut: noop }))
-const rail = (mode: Mode, toggle?: () => void, at: string | null = null) =>
-  renderToStaticMarkup(createElement(Rail, { host, mode, at, open: true, toggle, onChat: noop, onDev: noop, onStudio: noop, go: noop, onOrg: noop }))
+const rail = (mode: Mode, toggle?: () => void) =>
+  renderToStaticMarkup(createElement(Rail, { host, mode, open: true, toggle, onChat: noop, onDev: noop, onStudio: noop, onOrg: noop }))
 
 /** Where a string first stands in the markup, failing when it is absent. */
 const at = (html: string, s: string): number => {
@@ -75,18 +75,20 @@ const at = (html: string, s: string): number => {
 }
 
 describe('the rail', () => {
-  test('Chat, Dev, Studio, Library, Scheduled tasks, Customize, then More, and the account at the foot', () => {
+  test('Chat, Dev, Studio, then More, and the account at the foot: the products, and nothing of a product’s inside', () => {
     const html = rail('chat')
-    const order = ['Chat', 'Dev', 'Studio', 'Library', 'Scheduled tasks', 'Customize', 'More'].map((n) => at(html, `aria-label="${n}"`))
+    const order = ['Chat', 'Dev', 'Studio', 'More'].map((n) => at(html, `aria-label="${n}"`))
     expect(order).toEqual([...order].sort((a, b) => a - b))
     expect(at(html, 'data-slot="me"')).toBeGreaterThan(order.at(-1)!)
+    for (const place of ['Library', 'Scheduled tasks', 'Customize', 'Templates', 'Projects', 'Issues', 'Machines', 'Environments']) {
+      expect(html, `${place} is Dev’s, listed in Dev’s sidebar alone`).not.toContain(`aria-label="${place}"`)
+      expect(html).not.toContain(`data-item="${place.toLowerCase().replace(' ', '-')}"`)
+    }
   })
 
-  test('a place raised out of Dev is lit where the reader stands, and Dev for the rest of Dev', () => {
-    expect(rail('dev', undefined, '-/artifacts')).toMatch(/aria-label="Library" aria-current="page"/)
-    expect(rail('dev', undefined, '-/artifacts')).not.toMatch(/aria-label="Dev" aria-current="page"/)
-    expect(rail('dev', undefined, '-/customize')).toMatch(/aria-label="Customize" aria-current="page"/)
-    expect(rail('dev', undefined, '')).toMatch(/aria-label="Dev" aria-current="page"/)
+  test('Dev is lit for every place of Dev', () => {
+    expect(rail('dev')).toMatch(/aria-label="Dev" aria-current="page"/)
+    expect(rail('dev')).not.toMatch(/aria-label="Chat" aria-current="page"/)
   })
 
   test('the mode the reader is in is the one lit', () => {
@@ -102,11 +104,12 @@ describe('the rail', () => {
     expect(html).toContain('aria-label="Close sidebar"')
   })
 
-  test('More holds the rest: Dev’s other places, then the apps on hosts of their own', () => {
+  test('More holds the products on hosts of their own, and none of Dev’s places', () => {
     const html = rail('chat')
-    const order = ['projects', 'templates', 'issues', 'machines', 'environments', 'tabs', 'team'].map((k) => at(html, `data-item="${k}"`))
+    const order = ['tabs', 'team'].map((k) => at(html, `data-item="${k}"`))
     expect(order[0]).toBeGreaterThan(at(html, 'aria-label="More"'))
     expect(order).toEqual([...order].sort((a, b) => a - b))
+    for (const k of ['projects', 'templates', 'issues', 'machines', 'environments', 'library', 'scheduled', 'customize']) expect(html).not.toContain(`data-item="${k}"`)
     expect(TABS).toBe('https://tabs.hanzo.ai')
     expect(WORKSPACE).toBe('https://hanzo.team')
   })

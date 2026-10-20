@@ -63,13 +63,20 @@ export function rank<T extends Hit>(rows: T[], query: string, cap = CAP): T[] {
  * `CAP`, a group with nothing left out.
  */
 export function find<T extends Hit>(query: string, chats: T[], groups: Group<T>[]): Group<T>[] {
+  return findIn(query, { label: 'Recent chats', items: chats }, [{ id: 'chats', label: 'Chats', items: chats }, ...groups])
+}
+
+/**
+ * The same search for any product: an empty field lists the newest `RECENT` of
+ * `recent` under its label (a product's own recents: Chat's conversations, Dev's
+ * runs), and a query ranks every group in the order given.
+ */
+export function findIn<T extends Hit>(query: string, recent: { label: string; items: T[] }, groups: Group<T>[]): Group<T>[] {
   if (!query.trim()) {
-    const newest = [...chats].sort((a, b) => (b.at ?? '').localeCompare(a.at ?? '')).slice(0, RECENT)
-    return newest.length ? [{ id: 'recent', label: 'Recent chats', items: newest }] : []
+    const newest = [...recent.items].sort((a, b) => (b.at ?? '').localeCompare(a.at ?? '')).slice(0, RECENT)
+    return newest.length ? [{ id: 'recent', label: recent.label, items: newest }] : []
   }
-  return [{ id: 'chats', label: 'Chats', items: chats }, ...groups]
-    .map((g) => ({ ...g, items: rank(g.items, query) }))
-    .filter((g) => g.items.length)
+  return groups.map((g) => ({ ...g, items: rank(g.items, query) })).filter((g) => g.items.length)
 }
 
 /** Whether a key press opens the palette: ⌘K or Ctrl+K, once a press, from anywhere, a field included. */

@@ -21,6 +21,7 @@
 // A pin is the server's, never this browser's: it follows the person to every
 // device they sign in on.
 
+import { tidy } from './lib/title'
 import {
   createContext,
   useCallback,
@@ -179,7 +180,7 @@ export function useThreadActions() {
   }, [ai])
 }
 
-const titleOf = (t: Thread) => t.title || 'Untitled'
+const titleOf = (t: Thread) => tidy(t.title)
 
 /** A conversation's own address, whole: the app at `/?chat=<id>` (lib/host `talk`), wherever the rooms are drawn. */
 export const href = (id: string): string => new URL(site(talk(id)), window.location.href).href

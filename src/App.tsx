@@ -320,7 +320,7 @@ function Window({ bar }: { bar?: Bar }) {
             $max-md={{ p: 0 }}
           >
             <YStack height="100%" $max-md={{ display: 'none' }}>
-              <Rail host={host} mode={mode} at={where} open={!closed} toggle={bar ? undefined : flip} onChat={toChat} onDev={toDev} onStudio={toStudio} go={move} onOrg={org} />
+              <Rail host={host} mode={mode} open={!closed} toggle={bar ? undefined : flip} onChat={toChat} onDev={toDev} onStudio={toStudio} onOrg={org} />
             </YStack>
             {closed ? null : (
               <YStack $max-md={{ display: 'none' }}>
@@ -388,12 +388,12 @@ function Window({ bar }: { bar?: Bar }) {
                   onSeek={seek}
                   drawer
                   places={sidebar}
-                  foot={<Rail host={host} mode={mode} at={where} open flat onChat={toChat} onDev={toDev} onStudio={toStudio} go={move} onOrg={org} />}
+                  foot={<Rail host={host} mode={mode} open flat onChat={toChat} onDev={toDev} onStudio={toStudio} onOrg={org} />}
                 />
               </YStack>
             </>
           ) : null}
-          {finding ? <Palette go={move} onClose={found} /> : null}
+          {finding ? <Palette go={move} onClose={found} mode={mode} host={host} /> : null}
         </YStack>
         </PrefsProvider>
       </HostProvider>

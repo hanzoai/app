@@ -155,6 +155,7 @@ import {
 import { Me, type Who } from "./Me";
 import { SupportPicker } from "./Support";
 import { Palette, type Action } from "./Palette";
+import { tidy } from "./lib/title";
 import { summons } from "./seek";
 import { called } from "./team";
 import { checkoutUrl } from './lib/pay';
@@ -572,7 +573,7 @@ function Chats({
   const mergedThreads = useMemo(() => {
     const list: Array<{ id: string; title: string; updatedAt: any; kind?: "call" | "group"; thread?: Thread }> = threads.map((t) => ({
       id: t.id,
-      title: t.title || "Untitled",
+      title: tidy(t.title),
       updatedAt: t.updatedAt,
       thread: t,
     }));
@@ -589,7 +590,7 @@ function Chats({
     return list;
   }, [threads, customThreads]);
 
-  const found = mergedThreads.filter((t) => matches(t.title || "Untitled", filter));
+  const found = mergedThreads.filter((t) => matches(tidy(t.title), filter));
   const byId = useMemo(() => new Map(threads.map((t) => [t.id, t])), [threads]);
 
   // PINNED FIRST, by the server's pin (thread.tsx), then the days.
@@ -645,7 +646,7 @@ function Chats({
                       {t.kind === "call" ? <Video size={13} color="var(--muted-foreground)" aria-label="Call" /> : null}
                       {t.kind === "group" ? <Users size={13} color="var(--muted-foreground)" aria-label="Group" /> : null}
                       <Text fontSize="$2" color="$ink" numberOfLines={1}>
-                        {t.title || "Untitled"}
+                        {tidy(t.title)}
                       </Text>
                     </XStack>
                     <Span id={t.id} updatedAt={t.updatedAt} />
@@ -687,7 +688,7 @@ function SharedWithYou({ filter, onPick }: { filter: string; onPick?: () => void
       on = false;
     };
   }, []);
-  const shown = (items ?? []).filter((one) => matches(one.title || "Untitled", filter));
+  const shown = (items ?? []).filter((one) => matches(tidy(one.title), filter));
   if (shown.length === 0) return null;
   return (
     <SidebarSection label="Shared with you">
@@ -701,7 +702,7 @@ function SharedWithYou({ filter, onPick }: { filter: string; onPick?: () => void
         >
           <YStack minW={0}>
             <Text fontSize="$2" color="$ink" numberOfLines={1}>
-              {one.title || "Untitled"}
+              {tidy(one.title)}
             </Text>
             {one.by ? (
               <Text fontSize="$1" color="$soft" numberOfLines={1}>

@@ -1,13 +1,17 @@
 'use client'
 
 // The one search. ⌘K / Ctrl+K from anywhere and the sidebar's search open it:
-// a dialog with the field on top, listing Recent chats while the field is empty
-// and, for a query, Chats, Projects, Agents, Skills and Actions, each cut to its
-// best five (seek.ts `find`). A row opens where it lives: a chat at its
-// address, a project in Dev, an agent in a new chat with it, a skill in Dev's
-// Customize, an action runs. Arrows move, Enter opens, Escape closes
-// (@hanzo/ui's CommandMenu); Keyboard shortcuts lists the app's keys, and
-// Backspace on an empty field comes back.
+// a dialog with the field on top, listing the product's own recents while the
+// field is empty — Chat's Recent chats, Dev's Recent runs — and, for a query,
+// the product's own things first: in Chat, Chats, Projects, Agents, Skills and
+// Actions; in Dev, Runs, Dev's places (Templates, Projects, Issues, Machines,
+// Environments, Library, Scheduled tasks, Customize), Projects, Skills, Actions
+// and Chats last; each cut to its best five (seek.ts `findIn`). A row opens
+// where it lives: a chat at its address, a run or a place in Dev, a project in
+// Dev, an agent in a new chat with it, a skill in Dev's Customize, an action
+// runs. Arrows move, Enter opens, Escape closes (@hanzo/ui's CommandMenu);
+// Keyboard shortcuts lists the app's keys, and Backspace on an empty field
+// comes back.
 //
 // MOUNTED ONLY WHILE OPEN, and every list is read once as it opens, then
 // searched here as the reader types: the conversations store (hanzoai/agent)
@@ -19,9 +23,9 @@
 // palette closes on is aborted.
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { BookOpen, Bot, Code2, FolderGit2, Keyboard, LogOut, MessageCircle, Puzzle, Settings, SquarePen } from 'lucide-react'
+import { BookOpen, Bot, Boxes, Clock, Code2, FolderGit2, Keyboard, LayoutTemplate, Library, ListTodo, LogOut, MessageCircle, Puzzle, Server, Settings, SquarePen } from 'lucide-react'
 import { useAi } from '@hanzo/ai/react'
-import { path as written } from '@hanzo/build'
+import { path as written, useSessions, type Host } from '@hanzo/build'
 import { Dialog, DialogContent, DialogTitle, type ShortcutKeys } from '@hanzo/ui'
 import { CommandMenu, type CommandMenuGroup } from '@hanzo/ui/product/CommandMenu'
 import { ordered } from './agents'
@@ -30,8 +34,9 @@ import { called } from './team'
 import { empty, openThread, withAgents } from './open'
 import { useThreadList } from './thread'
 import { useSignOut } from './lib/signout'
-import { app, talk } from './lib/host'
-import { find, type Hit } from './seek'
+import { app, talk, type Place } from './lib/host'
+import { tidy } from './lib/title'
+import { find, findIn, type Hit } from './seek'
 
 /** A row: what it is called, its glyph, and what pressing it does. */
 export interface Action extends Hit {
@@ -56,6 +61,18 @@ const KEYS: { id: string; label: string; shortcut: ShortcutKeys }[] = [
 ]
 
 const SKILLS = written({ kind: 'customize', tab: 'skills' })
+
+/** Dev's places, as its sidebar lists them, by the builder address each opens. */
+const PLACES: { id: string; label: string; at: string; icon: ReactNode }[] = [
+  { id: 'templates', label: 'Templates', at: '-/templates', icon: <LayoutTemplate {...ICON} /> },
+  { id: 'projects', label: 'Projects', at: '-/projects', icon: <FolderGit2 {...ICON} /> },
+  { id: 'issues', label: 'Issues', at: '-/issues', icon: <ListTodo {...ICON} /> },
+  { id: 'machines', label: 'Machines', at: '-/settings/machines', icon: <Server {...ICON} /> },
+  { id: 'environments', label: 'Environments', at: '-/settings/environments', icon: <Boxes {...ICON} /> },
+  { id: 'library', label: 'Library', at: '-/artifacts', icon: <Library {...ICON} /> },
+  { id: 'scheduled', label: 'Scheduled tasks', at: '-/automations', icon: <Clock {...ICON} /> },
+  { id: 'customize', label: 'Customize', at: '-/customize', icon: <Puzzle {...ICON} /> },
+]
 
 /** A list read once as the palette opens; a refusal leaves it empty and the rest still answer. */
 function useRead(path: string, shape: (body: unknown) => Hit[]): Hit[] {
@@ -96,12 +113,18 @@ export function Palette({
   onClose,
   go,
   actions = [],
+  mode = 'chat',
+  host,
 }: {
   onClose: () => void
   /** Moves the app to one of its addresses (lib/host `talk`, `app`). */
   go: (address: string) => void
   /** The frame's own actions, after the palette's; one with a palette action's id stands in for it. */
   actions?: Action[]
+  /** The product the reader is in: what the empty field lists and what a query ranks first. */
+  mode?: Place['mode']
+  /** Dev's host, whose runs the palette lists in Dev. */
+  host?: Host
 }) {
   const [query, setQuery] = useState('')
   const [keys, setKeys] = useState(false)
@@ -110,6 +133,7 @@ export function Palette({
   const made = useRead('/v1/projects', projects)
   const known = useRead('/v1/tool/skills?activated=true', skills)
   const signOut = useSignOut()
+  const runs = useSessions(host ?? null)
 
   const groups = useMemo<CommandMenuGroup[]>(() => {
     const own: Action[] = [
@@ -123,24 +147,51 @@ export function Palette({
     const doing = [...own.map((a) => actions.find((b) => b.id === a.id) ?? a), ...actions.filter((b) => !own.some((a) => a.id === b.id))]
     const chats: Action[] = threads.map((t) => ({
       id: `chat-${t.id}`,
-      label: t.title || 'Untitled',
+      label: tidy(t.title),
       at: t.updatedAt,
       icon: <MessageCircle {...ICON} />,
       run: () => (openThread(t.id), go(talk(t.id))),
     }))
-    const shown = find<Action>(query, chats, [
-      { id: 'projects', label: 'Projects', items: made.map((p) => ({ ...p, id: `project-${p.id}`, icon: <FolderGit2 {...ICON} />, run: () => go(app(p.id)) })) },
-      {
-        id: 'agents',
-        label: 'Agents',
-        items: ordered(agents).map((one) => {
-          const name = called(one.name)
-          return { id: `agent-${one.id || one.name}`, label: name, icon: <Bot {...ICON} />, run: () => (withAgents([name]), go(talk())) }
-        }),
-      },
-      { id: 'skills', label: 'Skills', items: known.map((s) => ({ ...s, id: `skill-${s.id}`, icon: <BookOpen {...ICON} />, run: () => go(app(SKILLS)) })) },
-      { id: 'actions', label: 'Actions', items: doing },
-    ])
+    const projectRows = { id: 'projects', label: 'Projects', items: made.map((p) => ({ ...p, id: `project-${p.id}`, icon: <FolderGit2 {...ICON} />, run: () => go(app(p.id)) })) }
+    const skillRows = { id: 'skills', label: 'Skills', items: known.map((s) => ({ ...s, id: `skill-${s.id}`, icon: <BookOpen {...ICON} />, run: () => go(app(SKILLS)) })) }
+    const actionRows = { id: 'actions', label: 'Actions', items: doing }
+    const shown =
+      mode === 'dev'
+        ? findIn<Action>(
+            query,
+            {
+              label: 'Recent runs',
+              items: [...(runs?.value ?? [])].map((s) => ({
+                id: `run-${s.id}`,
+                label: tidy(s.title, 80, 'Untitled run'),
+                at: s.updatedAt || s.createdAt,
+                keywords: [s.status ?? ''],
+                icon: <Code2 {...ICON} />,
+                run: () => go(app(s.id)),
+              })),
+            },
+            [
+              { id: 'runs', label: 'Runs', items: [...(runs?.value ?? [])].map((s) => ({ id: `run-${s.id}`, label: tidy(s.title, 80, 'Untitled run'), at: s.updatedAt || s.createdAt, keywords: [s.status ?? ''], icon: <Code2 {...ICON} />, run: () => go(app(s.id)) })) },
+              { id: 'places', label: 'Dev', items: PLACES.map((p) => ({ id: `place-${p.id}`, label: p.label, icon: p.icon, run: () => go(app(p.at)) })) },
+              projectRows,
+              skillRows,
+              actionRows,
+              { id: 'chats', label: 'Chats', items: chats },
+            ],
+          )
+        : find<Action>(query, chats, [
+            projectRows,
+            {
+              id: 'agents',
+              label: 'Agents',
+              items: ordered(agents).map((one) => {
+                const name = called(one.name)
+                return { id: `agent-${one.id || one.name}`, label: name, icon: <Bot {...ICON} />, run: () => (withAgents([name]), go(talk())) }
+              }),
+            },
+            skillRows,
+            actionRows,
+          ])
     return shown.map((g) => ({
       ...g,
       items: g.items.map((a) => ({
@@ -156,7 +207,7 @@ export function Palette({
         },
       })),
     }))
-  }, [query, threads, agents, made, known, actions, go, onClose, signOut])
+  }, [query, threads, agents, made, known, actions, go, onClose, signOut, mode, runs])
 
   const listed: CommandMenuGroup[] = keys
     ? [{ id: 'keys', label: 'Keyboard shortcuts', items: KEYS.map((k) => ({ ...k, id: `key-${k.id}`, onSelect: () => setKeys(false) })) }]
@@ -185,7 +236,7 @@ export function Palette({
           onQueryChange={setQuery}
           placeholder="Search…"
           label="Search"
-          empty={keys ? 'No such key.' : query.trim() ? `Nothing matches “${query.trim()}”.` : 'No chats yet.'}
+          empty={keys ? 'No such key.' : query.trim() ? `Nothing matches “${query.trim()}”.` : mode === 'dev' ? 'No runs yet.' : 'No chats yet.'}
           onBack={keys ? () => setKeys(false) : undefined}
           onClose={onClose}
         />

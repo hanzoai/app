@@ -22,6 +22,7 @@
 import { Text, XStack, YStack } from '@hanzo/gui'
 import { Bell, Search, Settings2, SquarePen } from 'lucide-react'
 import { DOTS, Grip, nav, NEW, path as written, useSessions, type Host } from '@hanzo/build'
+import { tidy } from './lib/title'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { Sidebar, SidebarIconButton, SidebarItem, StatusDot, type RailLink } from '@hanzo/ui/chat'
 import { useId, type ReactNode } from 'react'
@@ -86,7 +87,7 @@ function Activity({ host }: { host: Host }) {
     ...(latest.length
       ? latest.map((s) => ({
           key: s.id,
-          label: s.title || 'Untitled run',
+          label: tidy(s.title, 56, 'Untitled run'),
           description: [s.status, ago(s.updatedAt || s.createdAt)].filter(Boolean).join(' · '),
           icon: <StatusDot status={DOTS[s.status as keyof typeof DOTS] ?? 'idle'} />,
           onSelect: () => host.go(s.id),
