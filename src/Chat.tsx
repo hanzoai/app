@@ -49,7 +49,7 @@ import { download, dropped, fileOf, pct, readable, refOf, retrieve, type Api, ty
 import { channel, drop, hold, landed, localOf, spend, take, usePane, useWorkFile, type Held, type Via } from "./pane";
 import { Face, brief as roomBrief, join, roleOf, roomTurn, roster as rosterLine, rosterOf, speakers, speaksOf, voiceOf } from "./cast";
 import { cleanForSpeech, speakAgent } from "./speech";
-import { Crew, HOUSE, useCrew } from "./crew";
+import { AgentMaker, HOUSE, useAgentShelf, useCrew } from "./crew";
 import { called } from "./team";
 import { Anchor, Box, Button, Text, View, XStack, YStack } from "@hanzo/ui";
 import { useMedia } from "@hanzo/gui";
@@ -61,7 +61,7 @@ import { useRooms } from "./host";
 import { chats, house, paidPlan, paused, setCreditsAfterAllowance, useLimits } from "./lib/limits";
 import { LimitedBanner } from "@hanzo/ui/product/LimitedBanner";
 import type { LimitAction } from "@hanzo/ui/product/limits";
-import { WEB } from "./lib/web";
+import { RESEARCH, WEB } from "./lib/web";
 import { useHydrated } from "./lib/hydrated";
 import { base, served } from "./lib/ai";
 import { onServed, type Served as Heard } from "./lib/served";
@@ -89,6 +89,7 @@ import {
   Summary,
   useDeck,
   useKey,
+  useCarry,
   useMind,
   usePanel,
   type Artifact,
@@ -97,6 +98,7 @@ import {
   type Kind,
   type Listen,
 } from "@hanzo/build";
+import type { ModelCatalogEntry as Model } from "@hanzo/ui/models/catalog";
 import { checkoutUrl } from './lib/pay';
 import { Upgrade, useFree, type Ask } from './Upgrade';
 import { enter, LOGIN } from './lib/destination';
@@ -827,12 +829,22 @@ function Thread({
   // (@hanzo/build `useMind`): the catalog from `GET /v1/models` and what the
   // reader kept, changed from the composer's chip or from Settings.
   const target = useMemo(() => ({ api: api(), token: bearer, org: org() }), [anonymous]); // eslint-disable-line react-hooks/exhaustive-deps
-  const mind = useMind(target);
+  // THE PLAN decides what the chip may offer: Free answers from the free lane
+  // alone, so it opens there and lists the rest as upgrades (@hanzo/build).
+  const catalog = useRef<Model[]>([]);
+  const { limits, notice, reload: reread } = useLimits(!anonymous, org(), (id) => nameOf(id, catalog.current));
+  const mind = useMind(target, anonymous ? "free" : limits?.plan);
+  catalog.current = mind.models;
   const ai = useAi();
   // In the app's frame the composer floats on the pane as a pane of its own.
   const framed = useContext(Framed);
   const opened = useOpen();
   const { thread: open, open: reopen, agents: room, openAgent, seat, emptied, aside, showAside, showSettings } = opened;
+  // What the conversation carries beside its words (@hanzo/build `useCarry`):
+  // the skills picked from `+`, what Hanzo remembers and the mode, said at the
+  // end of the room's system turn so every request carries them.
+  const carry = useCarry(target, open ?? "", (tab) => go(app(`-/customize/${tab}`)));
+  const agentShelf = useAgentShelf();
   // THE HEADER'S ⋯ IS THE ROW'S MENU (thread.tsx): rename, pin, share, its
   // link, a new tab, archive and delete, kept by the server. A conversation not
   // in the list yet (just begun, or archived) has no menu until it is.
@@ -1013,7 +1025,6 @@ function Thread({
   // bars and no near note — those live on Settings → Usage. It says something
   // only once the reader is turned away: a reply answered from a free model, or
   // a refusal.
-  const { limits, notice, reload: reread } = useLimits(!anonymous, org(), (id) => nameOf(id, listed));
   const held = paidPlan(limits);
   const pause = notice && (notice.fallback || notice.refused) ? notice : null;
   // The banner's words and ways: the plan by name, when it comes back, and the two ways on.
@@ -1041,7 +1052,10 @@ function Thread({
     // web tools mark the turn, and the client's fetch (lib/web.ts) looks it up
     // before the model is asked and asks without them, so a question about the
     // world, in any language, is answered from what the web says now and streams.
-    params: { reasoning_effort: mind.effort, ...(!anonymous && house(rowOf(model)?.family) ? { tools: WEB } : {}) },
+    params: {
+      reasoning_effort: mind.effort,
+      ...(!anonymous && house(rowOf(model)?.family) ? { tools: carry.gear.gear.research ? [...WEB, RESEARCH] : WEB } : {}),
+    },
     ...(open ? { thread: open } : {}),
     onError: (e) => {
       const needs = planRequired(e);
@@ -1083,7 +1097,7 @@ function Thread({
   // of them talks. It is the first turn every request carries and it follows the room, so
   // pressing a face adds them to the conversation that is open rather than
   // starting another; the turns already said stay where they are.
-  const turn = useMemo(() => roomTurn(room, brief), [room, brief]);
+  const turn = useMemo(() => [roomTurn(room, brief), carry.text].filter(Boolean).join("\n\n") || null, [room, brief, carry.text]);
   const turnNow = useRef(turn);
   turnNow.current = turn;
   const roomNow = useRef(room);
@@ -2121,9 +2135,7 @@ function Thread({
           busy: chat.streaming,
           // Files alone are a message: what is held goes with an empty draft too.
           ready: Boolean(draft.trim() || files.length),
-          // A CHARACTER IS WHO YOU ARE WRITING TO, so the field says so, and
-          // `label` keeps the accessible name constant while it does.
-          placeholder: room.length ? `Message ${join(room)}` : placeholder,
+          // `label` keeps the accessible name constant; the placeholder is the composer's own.
           label: ASK,
           note: caution(),
           // A phone's pill is the tall one: the field across the top, the controls under it.
@@ -2198,22 +2210,38 @@ function Thread({
                 ) : null}
               </>
             ) : undefined,
-          // THE PAPERCLIP is the Sources tab's "Attach files", one press closer:
-          // the same `take`, into the same `hold`.
-          onAttach: () => take(at, via),
-          // The one model-and-effort chip Dev's composer has (@hanzo/build).
+          // THE `+`: files (the Sources tab's "Attach files", one press closer),
+          // who is in the conversation, the skills, and the two switches.
+          plus: anonymous
+            ? { upload: () => take(at, via) }
+            : {
+                upload: () => take(at, via),
+                agents: agentShelf,
+                skills: carry.skills,
+                research: { on: carry.gear.gear.research, set: (on) => carry.gear.set({ research: on }) },
+                memory: { on: carry.gear.gear.memory, set: (on) => carry.gear.set({ memory: on }) },
+              },
+          // Who is in the room, then what the conversation carries, as chips after `+`.
+          on: [
+            ...room.map((name) => ({
+              id: `agent:${name}`,
+              label: name,
+              icon: <Face src={faces[name]?.avatar} emoji={faces[name]?.emoji} name={name} size={16} />,
+              onRemove: () => seat(room.filter((one) => one !== name)),
+            })),
+            ...(anonymous ? [] : carry.on),
+          ],
+          slash: anonymous ? undefined : carry.skills,
+          mode: anonymous ? null : { value: carry.gear.gear.mode, set: (m) => carry.gear.set({ mode: m }) },
+          // The model, the effort and the mode under the frame (@hanzo/build).
           mind,
           limits,
+          onUpgrade: (id) => setAsk({ model: nameOf(id, listed) } as Ask),
           voice,
           talk,
         })}
       />
-      {/* The crew sits under the composer: who you can talk to, and the
-          outline that makes one more. Below the field rather than in the hero
-          above it, so the question stays the first thing on the page. It is
-          for starting a conversation: once something has been said the faces
-          are out of the way. */}
-      {said.length === 0 ? <Crew /> : null}
+      <AgentMaker />
       {isFree(model) ? (
         <XStack
           items="center"
