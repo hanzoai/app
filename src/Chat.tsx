@@ -1079,8 +1079,13 @@ function Thread({
     if (kept && kept !== open) {
       written.current.add(kept);
       reopen(kept);
+      // THE SERVER TITLES A THREAD FROM ITS FIRST TURN, block and all: a turn
+      // that carried files or a plugin's words is renamed to the words alone.
+      const first = chat.messages.find((m) => m.role === "user");
+      const read = first ? told(words(first.content as Said)) : null;
+      if (read?.carried) void ai.threads.update(kept, { title: read.text.trim().slice(0, 80) || "Files" }).catch(() => {});
     }
-  }, [kept, open, reopen]);
+  }, [kept, open, reopen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // The thread's turns, replaced wholesale or through an updater. `set` is the
   // hook's own state setter, so it takes either.
@@ -1521,7 +1526,8 @@ function Thread({
           files.filter((h) => h.href).map(async (h) => new File([await (await fetch(h.href)).blob()], h.name, { type: h.type })),
         );
         const got = await carry.prep({ text, files: bytes, thread: open ?? "" }, new AbortController().signal);
-        if (got.reply && !got.system) return answered(text, got.reply);
+        // An answer of a plugin's own (a deck) is the answer, whatever else was prepared.
+        if (got.reply) return answered(text, got.reply);
         deliver(text, got.system ?? "");
       } catch (e) {
         setPrepWrong(e instanceof Error ? e.message : String(e));
