@@ -355,7 +355,7 @@ export function Me({
               </YStack>
             </DropdownMenuSubTrigger>
             {account ? (
-              <DropdownMenuSubContent minW={260} maxW="calc(100vw - 16px)">
+              <DropdownMenuSubContent minW={260} maxW="calc(100vw - 16px)" pointerEvents="auto">
                 <Meter read={read} onPlans={() => leave('here')} onBilling={() => (setOpen(false), showSettings('billing'))} />
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel>Organizations</DropdownMenuLabel>
@@ -417,7 +417,7 @@ export function Me({
               <Line icon={<LifeBuoy size={16} aria-hidden />}>Help</Line>
             </DropdownMenuSubTrigger>
             {help ? (
-              <DropdownMenuSubContent minW={240} maxW="calc(100vw - 16px)">
+              <DropdownMenuSubContent minW={240} maxW="calc(100vw - 16px)" pointerEvents="auto">
                 {pages().map((p) => (
                   <DropdownMenuItem key={p.key} onSelect={() => out(p.href)}>
                     <Line icon={ICONS[p.key]} trail={p.key === 'help' ? <ArrowUpRight size={14} aria-hidden opacity={0.6} /> : null}>
