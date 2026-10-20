@@ -77,7 +77,8 @@ describe('base64', () => {
   test('is the bytes, in chunks past the call stack', async () => {
     const bytes = new Uint8Array(200_000).map((_, i) => i % 251)
     const got = await base64(new Blob([bytes]))
-    expect(Uint8Array.from(atob(got), (c) => c.charCodeAt(0))).toEqual(bytes)
+    // One string comparison: an element-wise toEqual over 200 KB outran a slow runner's 5 s.
+    expect(got).toBe(Buffer.from(bytes).toString('base64'))
   })
 })
 
