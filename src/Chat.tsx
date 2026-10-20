@@ -2007,7 +2007,8 @@ function Thread({
             // in the middle of whatever height the window happens to have, and
             // stays right when the sidebar, the notice line or an error banner
             // changes what is left over.
-            <YStack data-slot="opening" items="center" width="100%" py="$6">
+            // On a phone (no `center`) it takes the height above the composer, which docks at the foot.
+            <YStack data-slot="opening" items="center" width="100%" py="$6" {...(media.sm ? null : { flex: 1, justify: "center" as const })}>
               {/* THE PORTRAIT IS A DM'S, AND ONLY A DM'S. It used to draw for
                   everyone, because `withWhom || "jobs"` gave a reader who had
                   chosen nobody a 160px photograph of somebody — and the heading
