@@ -81,8 +81,9 @@ repository or a site from any surface.
 
 - The app's products are marks on its rail (Rail.tsx), Chat first and Dev
   second, then More, a menu of the products on hosts of their own (Tabs, Team),
-  and the account at the foot. There is no Chat / Dev switch anywhere: the rail
-  moves the app, and Shell's sidebar wears the product's name alone. Dev's
+  and the account at the foot. The rail moves the app, and Shell's sidebar wears
+  the product's name alone; the one Chat | Dev switch is a phone's bar, which
+  has no rail. Dev's
   places are rows in the sidebar (Column), from @hanzo/build's `nav`
   (≥ 0.2.53), the one list every rail draws, each under a quiet group label
   (Work, Make, Run, Setup); Shell draws its Setup rows the same way. Shut, the
@@ -425,8 +426,21 @@ reference captures; outer window, inner panel):
   conversation's address to /chat.
 - The transcript reads at the reference's type (Prose.tsx): a 16px body on a
   24px line, headings 28/24/20.
-- A phone has neither rail nor sidebar: its bar opens the sidebar as a drawer,
-  the rail laid along the drawer's foot (`flat`).
+- A phone has neither rail nor sidebar (under gui's `md`): its bar (Top.tsx,
+  the owner's iPhone reference) is three glass pieces on one 48px line under
+  the device's top inset — a 44px circle that opens the sidebar as a drawer, the
+  rail laid along the drawer's foot (`flat`); the 158×48 pill Chat | Dev, which
+  moves the app as the rail does (neither lit in Studio); and a 44px circle for
+  the mode's New (New chat, else the mode's `nav` `NEW` row). Glass is `pane()`
+  cut round with a `--border-strong` edge, so the solid fallback and both themes
+  are design's.
+- A phone's window stands in the VISUAL viewport (view.ts `useView`), so the
+  keyboard never covers the composer: `window.visualViewport` resize and scroll,
+  once a frame, write `--view-top`, `--view-height` and `--keyboard` on the
+  window, which is `position: fixed` at `top: var(--view-top, 0px)`, `height:
+  var(--view-height, 100dvh)`. The stage's foot is the home indicator's inset
+  while the keyboard is down (`FOOT`). A pinch zoom is not followed. Every
+  descendant reads `--keyboard` (px the keyboard takes, 0 when down).
 - What a person reads calls these apps, and a team's conversation spaces
   channels; "room" is a name in the code only (the package, `Room`, `rooms.ts`,
   `useRooms`, the `rooms` card kind), kept for the @hanzo/apps rename.
