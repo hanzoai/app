@@ -91,6 +91,7 @@ import {
   useKey,
   Suggestions,
   useCarry,
+  useLanguage,
   useMind,
   useSuggestions,
   usePanel,
@@ -1205,7 +1206,9 @@ function Thread({
   // as a transcript.
   const { token } = useIamToken();
   const ear = useMemo(() => speech({ ...base(), ...(token ? { token } : {}) }), [token]);
-  const voice = useVoice({ speech: ear, ...useDictation(draft, setDraft) });
+  // The language dictation listens in: the person's own (Settings › General), or the browser's.
+  const [spoken, speakIn] = useLanguage(target);
+  const voice = useVoice({ speech: ear, ...(spoken ? { language: spoken } : {}), ...useDictation(draft, setDraft) });
 
   // TALK MODE: a hands-free conversation on Hanzo's realtime socket, /v1/voice.
   // The mic streams up, the answer streams back as speech with its words in
@@ -1870,12 +1873,12 @@ function Thread({
         {...chat}
         messages={shown}
         send={guarded}
-        // AN EMPTY ROOM CENTRES ITS COMPOSER. While nothing has been said the
-        // opening (the heading and the starters) and the composer sit as one
-        // group in the middle of the height, with or without the plan bars in
-        // the composer's foot; the moment a turn exists the transcript takes the
-        // height and the composer docks under it.
-        center
+        // AN EMPTY ROOM CENTRES ITS COMPOSER on a laptop. While nothing has been
+        // said the opening (the heading) and the composer sit as one group in the
+        // middle of the height; the moment a turn exists the transcript takes the
+        // height and the composer docks under it. A phone keeps it at the foot,
+        // over the keyboard, from the first moment.
+        center={media.sm}
         // AS IT WAS WRITTEN. The package renders a turn's words plainly and
         // says so — it ships no markdown pipeline because the plugin set is the
         // surface's to choose — so an answer arrived here reading "```ts" with
@@ -2192,6 +2195,8 @@ function Thread({
           limits,
           onUpgrade: (id) => setAsk({ model: nameOf(id, listed) } as Ask),
           voice,
+          language: spoken,
+          onLanguage: speakIn,
           talk,
           // While nothing has been said: what is worth doing next.
           below: said.length === 0 && !anonymous ? <Suggestions rows={hints.rows} onPick={setDraft} onDismiss={hints.dismiss} /> : undefined,
