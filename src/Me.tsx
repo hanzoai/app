@@ -1,54 +1,107 @@
 'use client'
 
-// The account row at the foot of the app's column, and the menu it opens.
+// The account row and the menu it opens: the one account menu. The app's rail
+// draws it for Chat, Dev and Studio (Rail.tsx) and the shell's sidebar for every
+// other app (Shell.tsx).
 //
-// The row says who is signed in and where: the person's face or initials, their
-// name, and their role in the organization they work in. The menu lists every
-// organization the token names — the personal one first, with its plan — and
-// switches with `pick()` (lib/auth/session.ts), the one switch the app has.
+// Top to bottom: who, with their plan, a row whose › opens the account itself;
+// then Upgrade plan, Personalization, Profile and Settings (⌘, / Ctrl+,); then
+// Help ›, the site's own pages and the keyboard shortcuts (⌘/ / Ctrl+/ from
+// anywhere); and Log out. Every row opens a real destination: Settings'
+// sections through `showSettings` (open.ts), which the app answers with the
+// builder's Settings (dev.tsx) and the shell with its own pane; the plans on the
+// pay site (`leave`); the site's pages through `site()`, so hanzo.team names
+// hanzo.ai (help.ts).
 //
-// THE PLAN LEADS: @hanzo/build's `Meter`, the block every account menu opens
-// with — the plan by its family (`Max` with `20x` beside it) and, on a plan, its
-// windows as shares; the free allowance left today on Free; the balance only
-// for an account with no plan, whose meter it is. Credits are Billing's, so a
-// plan never sits beside a balance here.
-//
-// Under the list: Create organization, Organization settings, and Hanzo Team —
-// opened in the same organization for a team, offered as "Create a team" for a
-// personal one. Then Settings, Usage, Billing, API keys, the plans, help and Log
-// out. A SuperAdmin also gets All organizations (support mode).
+// THE ACCOUNT'S › LEADS WITH THE PLAN: @hanzo/build's `Meter`, the plan by its
+// family (`Max` with `20x` beside it) and, on a plan, its windows as shares; the
+// free allowance left today on Free; the balance only for an account with no
+// plan, whose meter it is. Then every organization the token names — the
+// personal one first, with its plan — switched with `onOrg`; Create
+// organization, Organization settings, and Hanzo Team (opened in the same
+// organization for a team, offered as "Create a team" for a personal one); and
+// All organizations for a SuperAdmin (support mode).
 //
 // IAM is the source of every fact here: names and roles from the token's `orgs`
 // claim, display names and which org is personal from `GET /v1/iam/organizations`,
 // the plan from billing and the limits. An organization is created by the same
-// `POST /v1/account/orgs` the no-organization gate uses (components/workspace/
-// Orgs.tsx); the next load mints a token that carries it.
+// `POST /v1/account/orgs` the no-organization gate uses (Orgs.tsx); the next load
+// mints a token that carries it.
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
-import { Popover, SizableText, usePopperContextSlow, View, XStack, YStack } from '@hanzo/gui'
-import { Building2, ChevronLeft, ChevronRight, ChevronsUpDown, CreditCard, ExternalLink, Gauge, KeyRound, LifeBuoy, LogOut, Mail, Plus, Settings, Sparkles, Users, X } from 'lucide-react'
-import { label, Meter, path, said as spoken, useStanding, useWho, type Host } from '@hanzo/build'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { SizableText, XStack, YStack } from '@hanzo/gui'
+import {
+  ArrowUpRight,
+  Building2,
+  Check,
+  ChevronsUpDown,
+  CircleHelp,
+  CircleUserRound,
+  Download,
+  FileText,
+  Info,
+  Keyboard,
+  LifeBuoy,
+  LogOut,
+  Palette,
+  Plus,
+  ScrollText,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Users,
+  X,
+} from 'lucide-react'
+import { label, Meter, said as spoken, useStanding, type Host } from '@hanzo/build'
 import { useOrganizations } from '@hanzo/iam/react'
-import { Button, Dialog, DialogContent, DialogTitle, Input } from '@hanzo/ui'
-import { glass } from '@hanzo/ui/glass'
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+  Input,
+  Kbd,
+} from '@hanzo/ui'
 import { api } from './lib/api'
 import { createOrg, say } from './lib/org'
 import type { Tier } from './lib/tier'
 import { list } from './lib/list'
 import { org as current, orgs, pick, renew, scope, superAdmin } from './lib/session'
 import { ENTRY } from './lib/host'
+import { leave } from './dev'
+import { asked, KEYS, legal, out, pages } from './help'
+import { showSettings } from './open'
 import { site, where } from './where'
 import { SupportPicker } from './Support'
 import { BAD } from './lib/mix'
 
-/** The documentation Get help opens. */
-const DOCS = 'https://docs.hanzo.ai/docs/dev'
 /** Where an organization's own settings live: a page of the site (`site()`), not of the app. */
 const ORG_SETTINGS = '/settings/organization'
-/** The organization's API keys: one home, the platform's keys page, never a second copy in an app. */
-const KEYS = 'https://platform.hanzo.ai/api-keys'
 /** An organization this tab created, until the token carries it. */
 const MADE = 'hanzo:org:made'
+
+/** What the menu reads of its host: who is signed in, in which organization, and how they leave. */
+export type Who = Pick<Host, 'api' | 'token' | 'org' | 'person' | 'signOut'>
+
+/** Each Help page's icon, by its key in help.ts. */
+const ICONS: Record<string, ReactNode> = {
+  help: <CircleHelp size={16} aria-hidden />,
+  center: <ShieldCheck size={16} aria-hidden />,
+  releases: <ScrollText size={16} aria-hidden />,
+  download: <Download size={16} aria-hidden />,
+  terms: <FileText size={16} aria-hidden />,
+  privacy: <Info size={16} aria-hidden />,
+}
 
 /** One organization as the menu draws it. */
 export interface Org {
@@ -118,7 +171,7 @@ function usePlan(org: string | null, enabled: boolean): string {
 }
 
 /** The person's picture, or their initials. */
-export function Face({ host, size = 28 }: { host: Host; size?: number }) {
+export function Face({ host, size = 28 }: { host: Who; size?: number }) {
   const p = host.person
   return (
     <XStack width={size} height={size} rounded={9999} items="center" justify="center" bg="$raised" overflow="hidden" shrink={0} borderWidth={1} borderColor="$borderColor">
@@ -133,123 +186,40 @@ export function Face({ host, size = 28 }: { host: Host; size?: number }) {
   )
 }
 
-/** One row of the menu: a real button, so Enter, Space and focus are the browser's. */
-function Item({
-  icon,
-  label,
-  sub,
-  checked,
-  onPress,
-  trail,
-}: {
-  icon?: ReactNode
-  label: string
-  sub?: string
-  /** Present on a row of a set: whether it is the chosen one. */
-  checked?: boolean
-  onPress: () => void
-  trail?: ReactNode
-}) {
-  const radio = checked !== undefined
+/** A row's face: its icon in a 16px well, its words, and what trails them. */
+function Line({ icon, children, sub, trail }: { icon: ReactNode; children: string; sub?: string; trail?: ReactNode }) {
   return (
-    <XStack
-      render="button"
-      // gui's role union is React Native's, which has no menuitemradio; on the
-      // web the attribute reaches the button as written.
-      {...({ role: radio ? 'menuitemradio' : 'menuitem' } as object)}
-      aria-checked={radio ? checked : undefined}
-      data-item=""
-      onPress={onPress}
-      items="center"
-      gap="$2.5"
-      px="$2"
-      minH={30}
-      py={4}
-      rounded="$3"
-      bg={checked ? '$edge' : 'transparent'}
-      hoverStyle={{ bg: '$hover' }}
-      focusVisibleStyle={{ bg: '$hover', outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
-      cursor="pointer"
-      width="100%"
-    >
-      {icon ? (
-        <XStack width={20} justify="center" shrink={0} opacity={0.8}>
-          {icon}
-        </XStack>
-      ) : null}
-      {/* A `<button>` centres its text; a menu row reads left. */}
+    <>
+      <XStack width={16} height={16} items="center" justify="center" shrink={0}>
+        {icon}
+      </XStack>
       <YStack flex={1} minW={0}>
-        <SizableText size="$2" color="$ink" numberOfLines={1} text="left">
-          {label}
+        <SizableText size="$2" color="$ink" numberOfLines={1}>
+          {children}
         </SizableText>
         {sub ? (
-          <SizableText size="$1" color="$soft" numberOfLines={1} text="left">
+          <SizableText size="$1" color="$soft" numberOfLines={1}>
             {sub}
           </SizableText>
         ) : null}
       </YStack>
       {trail}
-    </XStack>
+    </>
   )
 }
 
-const Rule = () => <XStack height={1} bg="$borderColor" my="$1" mx="$1" />
-const Label = ({ children }: { children: string }) => (
-  <SizableText size="$1" color="$soft" px="$2" pt="$1.5" pb="$1">
-    {children}
-  </SizableText>
-)
-
 /** An organization's mark in the list: its initials on a rounded square. */
 const Mark = ({ org }: { org: Org }) => (
-  <XStack width={20} height={20} rounded="$2" items="center" justify="center" bg="$raised" shrink={0}>
+  <XStack width={16} height={16} rounded="$2" items="center" justify="center" bg="$raised" shrink={0}>
     {org.personal ? (
       <SizableText size="$1" fontWeight="600" color="$ink">
-        {initials(org.display)}
+        {initials(org.display).charAt(0)}
       </SizableText>
     ) : (
       <Building2 size={12} aria-hidden />
     )}
   </XStack>
 )
-
-/** Arrows, Home and End move between the menu's rows; Escape closes it. */
-function rove(e: KeyboardEvent<HTMLDivElement>, close: () => void) {
-  const rows = [...e.currentTarget.querySelectorAll<HTMLElement>('[data-item]')]
-  const at = rows.indexOf(document.activeElement as HTMLElement)
-  const to =
-    e.key === 'ArrowDown' ? (at + 1) % rows.length : e.key === 'ArrowUp' ? (at - 1 + rows.length) % rows.length : e.key === 'Home' ? 0 : e.key === 'End' ? rows.length - 1 : -2
-  if (e.key === 'Escape') {
-    e.preventDefault()
-    close()
-    return
-  }
-  if (to === -2 || !rows.length) return
-  e.preventDefault()
-  rows[to]?.focus()
-}
-
-/**
- * The menu grows once the plan is read (`Meter`), after it was placed, and the
- * popover follows its anchor, not its own size. So it is placed again whenever
- * its content changes size, and never hangs over the row it opens from.
- */
-function Refit({ children }: { children: ReactNode }) {
-  const { update } = usePopperContextSlow()
-  const box = useRef<HTMLDivElement | null>(null)
-  useEffect(() => {
-    const node = box.current
-    if (!node || typeof ResizeObserver === 'undefined') return
-    const watch = new ResizeObserver(() => update())
-    watch.observe(node)
-    return () => watch.disconnect()
-  }, [update])
-  return (
-    <View render={<div ref={box} />} self="stretch" minW={0}>
-      {children}
-    </View>
-  )
-}
 
 /**
  * The plans row, named by the plan the organization is on: Enterprise and
@@ -262,93 +232,77 @@ export const upgrade = (family: string | null | undefined): string =>
 /** The keys a row prints, in this platform's spelling. */
 const mac = (): boolean => typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
 
-/** A row's keys at its end, quiet. */
-const Keys = ({ children }: { children: string }) => (
-  <SizableText size="$1" color="$soft" shrink={0}>
-    {children}
-  </SizableText>
-)
-
-/** A row that opens a page of the menu. */
-const More = () => <ChevronRight size={14} aria-hidden opacity={0.6} />
-
-/** The pages of the menu: the account's rows, then each one that opens a list of its own. */
-type Page = 'main' | 'orgs' | 'usage' | 'help'
-
 export function Me({
   host,
   narrow = false,
   above = false,
   onOrg,
 }: {
-  host: Host
+  host: Who
   /** The rail's: the face alone, the menu opening beside it. */
   narrow?: boolean
-  /** The menu opens above the face, not beside it: the rail laid along a phone drawer's foot. */
+  /**
+   * The menu opens above the face, not beside it: the rail laid along a phone
+   * drawer's foot. That copy leaves ⌘/ to the rail's own, so one press opens one dialog.
+   */
   above?: boolean
   /** Work in another organization: picked, then the app opened in it. */
   onOrg: (org: string) => void
 }) {
-  const menu = useWho()
-  const [page, setPage] = useState<Page>('main')
+  const [open, setOpen] = useState(false)
+  const [account, setAccount] = useState(false)
+  const [help, setHelp] = useState(false)
   const [creating, setCreating] = useState(false)
   const [supporting, setSupporting] = useState(false)
+  const [keys, setKeys] = useState(false)
   const row = useRef<HTMLElement | null>(null)
-  const content = useRef<HTMLDivElement | null>(null)
   const current = host.org
   const all = useOrgs(current)
   const here = all.find((o) => o.name === current) ?? null
   const personal = all.find((o) => o.personal) ?? null
   const target = useMemo(() => ({ api: host.api, token: host.token, org: host.org }), [host.api, host.token, host.org])
-  const read = useStanding(target, menu.open)
-  const other = usePlan(personal && personal.name !== current ? personal.name : null, menu.open)
+  const read = useStanding(target, open)
+  const other = usePlan(personal && personal.name !== current ? personal.name : null, open)
   const planFor = (o: Org) => (o.name === current ? spoken(read.value?.label ?? null) : o.personal ? other : '')
   const who = host.person?.name || host.person?.email || ''
   const plan = spoken(read.value?.label ?? null)
   const apple = mac()
 
-  // Each page opens on its first row, once it is drawn — after the popover has
-  // placed its own focus — so the keys reach the rows at once.
-  const land = (node: HTMLDivElement | null) => {
-    content.current = node
-    if (!node) return
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => (node.querySelector<HTMLElement>('[data-item][aria-checked="true"]') ?? node.querySelector<HTMLElement>('[data-item]'))?.focus()),
-    )
+  useEffect(() => {
+    if (above) return
+    const press = (e: KeyboardEvent) => {
+      if (!asked(e)) return
+      e.preventDefault()
+      setOpen(false)
+      setKeys(true)
+    }
+    window.addEventListener('keydown', press)
+    return () => window.removeEventListener('keydown', press)
+  }, [above])
+
+  // Focus goes back to the row only when nothing the menu opened (a dialog) took it.
+  const back = (e: Event) => {
+    e.preventDefault()
+    requestAnimationFrame(() => {
+      const now = document.activeElement
+      if (!now || now === document.body) row.current?.focus()
+    })
   }
-  const turn = (to: Page) => {
-    setPage(to)
-    requestAnimationFrame(() => land(content.current))
-  }
-  const toggle = () => {
-    setPage('main')
-    menu.toggle()
-  }
-  const close = () => {
-    menu.onOpenChange(false)
-    row.current?.focus()
-  }
-  const go = (p: string) => {
-    menu.onOpenChange(false)
-    host.go(p)
-  }
-  const back = (title: string) => <Item icon={<ChevronLeft size={15} aria-hidden />} label={title} onPress={() => turn('main')} />
 
   if (!host.person) return null
   return (
     <>
-      <Popover
-        open={menu.open}
-        onOpenChange={(open) => {
-          if (open) setPage('main')
-          menu.onOpenChange(open)
+      <DropdownMenu
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next)
+          if (next) return
+          setAccount(false)
+          setHelp(false)
         }}
         placement={narrow && !above ? 'right-end' : above ? 'top-end' : 'top-start'}
-        allowFlip
-        stayInFrame
-        offset={8}
       >
-        <Popover.Anchor width={narrow ? undefined : '100%'}>
+        <DropdownMenuTrigger asChild>
           <XStack
             ref={(el: unknown) => {
               row.current = el instanceof HTMLElement ? el : null
@@ -358,9 +312,6 @@ export function Me({
             // The name the gates and a screen reader know it by: who, and in which organization.
             aria-label={`Account: ${[who, current].filter(Boolean).join(' · ')}`}
             {...({ title: who } as object)}
-            aria-haspopup="menu"
-            aria-expanded={menu.open}
-            onPress={toggle}
             width={narrow ? 36 : '100%'}
             minH={narrow ? 36 : 48}
             px={narrow ? 0 : '$2'}
@@ -389,99 +340,137 @@ export function Me({
               </>
             )}
           </XStack>
-        </Popover.Anchor>
-        <Popover.Content {...glass(2)} items="stretch" borderWidth={1} rounded="$5" p="$1" width={240} maxW="calc(100vw - 16px)" maxH="calc(100dvh - 32px)" overflowY="auto" overflowX="hidden">
-          <Refit>
-          <View render={<div ref={land} role="menu" aria-label="Account" onKeyDown={(e) => rove(e, close)} />} self="stretch" minW={0}>
-          {page === 'main' ? (
-            <YStack gap={1}>
-              {/* Who, and on what plan: the reference's header, not a row. */}
-              <XStack items="center" gap="$2.5" px="$2" pt="$1.5" pb="$2">
-                <Face host={host} size={28} />
-                <YStack flex={1} minW={0}>
-                  <SizableText size="$2" fontWeight="600" color="$ink" numberOfLines={1}>
-                    {who}
-                  </SizableText>
-                  <SizableText size="$1" color="$soft" numberOfLines={1}>
-                    {plan || host.person.email || ''}
-                  </SizableText>
-                </YStack>
-              </XStack>
-              <Rule />
-              <Item icon={<Gauge size={15} aria-hidden />} label="Usage remaining" trail={<More />} onPress={() => turn('usage')} />
-              <Item icon={<Building2 size={15} aria-hidden />} label={here?.display ?? current ?? 'Organization'} sub="Organization" trail={<More />} onPress={() => turn('orgs')} />
-              <Item icon={<KeyRound size={15} aria-hidden />} label="API keys" trail={<ExternalLink size={13} aria-hidden opacity={0.6} />} onPress={() => (menu.onOpenChange(false), window.location.assign(KEYS))} />
-              <Item icon={<Settings size={15} aria-hidden />} label="Settings" trail={<Keys>{apple ? '⌘,' : 'Ctrl+,'}</Keys>} onPress={() => go(path({ kind: 'settings', section: 'general' }))} />
-              <Rule />
-              <Item icon={<LifeBuoy size={15} aria-hidden />} label="Help" trail={<More />} onPress={() => turn('help')} />
-              {host.signOut ? <Item icon={<LogOut size={15} aria-hidden />} label="Log out" onPress={() => (menu.onOpenChange(false), host.signOut?.())} /> : null}
-            </YStack>
-          ) : page === 'usage' ? (
-            <YStack gap={1}>
-              {back('Usage remaining')}
-              <Rule />
-              <Meter
-                read={read}
-                onPlans={() => go(path({ kind: 'screen', screen: 'plans' }))}
-                onBilling={() => go(path({ kind: 'settings', section: 'billing' }))}
-              />
-              <Rule />
-              <Item icon={<Gauge size={15} aria-hidden />} label="Usage" onPress={() => go(path({ kind: 'settings', section: 'usage' }))} />
-              <Item icon={<CreditCard size={15} aria-hidden />} label="Billing" onPress={() => go(path({ kind: 'settings', section: 'billing' }))} />
-              <Item icon={<Sparkles size={15} aria-hidden />} label={upgrade(read.value?.label?.name)} onPress={() => go(path({ kind: 'screen', screen: 'plans' }))} />
-            </YStack>
-          ) : page === 'orgs' ? (
-            <YStack gap={1}>
-              {back('Organization')}
-              <Rule />
-              <Label>Organizations</Label>
-              <YStack role="group" aria-label="Organizations" gap={2}>
-                {all.map((o) => (
-                  <Item
-                    key={o.name}
-                    icon={<Mark org={o} />}
-                    label={o.display}
-                    sub={[o.personal ? 'Personal' : said(o.role), planFor(o)].filter(Boolean).join(' · ')}
-                    checked={o.name === current}
-                    onPress={() => {
-                      menu.onOpenChange(false)
-                      if (o.name !== current) onOrg(o.name)
-                    }}
-                  />
-                ))}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent minW={260} maxW="calc(100vw - 16px)" aria-labelledby={undefined} aria-label="Account" onCloseAutoFocus={back}>
+          <DropdownMenuSub open={account} onOpenChange={setAccount}>
+            <DropdownMenuSubTrigger minH={48} gap="$2.5">
+              <Face host={host} size={28} />
+              <YStack flex={1} minW={0}>
+                <SizableText size="$2" fontWeight="600" color="$ink" numberOfLines={1}>
+                  {who}
+                </SizableText>
+                <SizableText size="$1" color="$soft" numberOfLines={1}>
+                  {plan || host.person.email || ''}
+                </SizableText>
               </YStack>
-              <Item icon={<Plus size={15} aria-hidden />} label="Create organization" onPress={() => (menu.onOpenChange(false), setCreating(true))} />
-              <Item icon={<Settings size={15} aria-hidden />} label="Organization settings" onPress={() => (menu.onOpenChange(false), window.location.assign(site(ORG_SETTINGS)))} />
-              {/* On hanzo.team the reader is already in the team, and a team is founded through its setup. */}
-              {where().team ? null : here && !here.personal ? (
-                <Item
-                  icon={<Users size={15} aria-hidden />}
-                  label="Open in Hanzo Team"
-                  trail={<ExternalLink size={13} aria-hidden opacity={0.6} />}
-                  onPress={() => (menu.onOpenChange(false), window.location.assign(`${ENTRY}&org=${encodeURIComponent(here.name)}`))}
-                />
-              ) : (
-                <Item icon={<Users size={15} aria-hidden />} label="Create a team" onPress={() => (menu.onOpenChange(false), setCreating(true))} />
-              )}
-              {superAdmin() ? (
-                <Item icon={<Building2 size={15} aria-hidden />} label="All organizations" onPress={() => (menu.onOpenChange(false), setSupporting(true))} />
-              ) : null}
-            </YStack>
-          ) : (
-            <YStack gap={1}>
-              {back('Help')}
-              <Rule />
-              <Item icon={<LifeBuoy size={15} aria-hidden />} label="Get help" trail={<ExternalLink size={13} aria-hidden opacity={0.6} />} onPress={() => (menu.onOpenChange(false), window.open(DOCS, '_blank', 'noopener,noreferrer'))} />
-              <Item icon={<Mail size={15} aria-hidden />} label="Contact us" onPress={() => (menu.onOpenChange(false), window.location.assign(site('/contact')))} />
-            </YStack>
-          )}
-          </View>
-          </Refit>
-        </Popover.Content>
-      </Popover>
+            </DropdownMenuSubTrigger>
+            {account ? (
+              <DropdownMenuSubContent minW={260} maxW="calc(100vw - 16px)">
+                <Meter read={read} onPlans={() => leave('here')} onBilling={() => (setOpen(false), showSettings('billing'))} />
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Organizations</DropdownMenuLabel>
+                {all.map((o) => (
+                  <DropdownMenuItem key={o.name} onSelect={() => o.name !== current && onOrg(o.name)}>
+                    <Line
+                      icon={<Mark org={o} />}
+                      sub={[o.personal ? 'Personal' : said(o.role), planFor(o)].filter(Boolean).join(' · ')}
+                      trail={o.name === current ? <Check size={16} aria-label="Current" /> : null}
+                    >
+                      {o.display}
+                    </Line>
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuItem onSelect={() => setCreating(true)}>
+                  <Line icon={<Plus size={16} aria-hidden />}>Create organization</Line>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => window.location.assign(site(ORG_SETTINGS))}>
+                  <Line icon={<Settings size={16} aria-hidden />}>Organization settings</Line>
+                </DropdownMenuItem>
+                {/* On hanzo.team the reader is already in the team, and a team is founded through its setup. */}
+                {where().team ? null : here && !here.personal ? (
+                  <DropdownMenuItem onSelect={() => out(`${ENTRY}&org=${encodeURIComponent(here.name)}`)}>
+                    <Line icon={<Users size={16} aria-hidden />} trail={<ArrowUpRight size={14} aria-hidden opacity={0.6} />}>
+                      Open in Hanzo Team
+                    </Line>
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onSelect={() => setCreating(true)}>
+                    <Line icon={<Users size={16} aria-hidden />}>Create a team</Line>
+                  </DropdownMenuItem>
+                )}
+                {superAdmin() ? (
+                  <DropdownMenuItem onSelect={() => setSupporting(true)}>
+                    <Line icon={<Building2 size={16} aria-hidden />}>All organizations</Line>
+                  </DropdownMenuItem>
+                ) : null}
+              </DropdownMenuSubContent>
+            ) : null}
+          </DropdownMenuSub>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => leave('here')}>
+            <Line icon={<Sparkles size={16} aria-hidden />}>{upgrade(read.value?.label?.name)}</Line>
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => showSettings('general')}>
+            <Line icon={<Palette size={16} aria-hidden />}>Personalization</Line>
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => showSettings('account')}>
+            <Line icon={<CircleUserRound size={16} aria-hidden />}>Profile</Line>
+          </DropdownMenuItem>
+          <DropdownMenuItem aria-keyshortcuts="Control+, Meta+," onSelect={() => showSettings('general')}>
+            <Line icon={<Settings size={16} aria-hidden />} trail={<DropdownMenuShortcut aria-hidden>{apple ? '⌘,' : 'Ctrl+,'}</DropdownMenuShortcut>}>
+              Settings
+            </Line>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuSub open={help} onOpenChange={setHelp}>
+            <DropdownMenuSubTrigger>
+              <Line icon={<LifeBuoy size={16} aria-hidden />}>Help</Line>
+            </DropdownMenuSubTrigger>
+            {help ? (
+              <DropdownMenuSubContent minW={240} maxW="calc(100vw - 16px)">
+                {pages().map((p) => (
+                  <DropdownMenuItem key={p.key} onSelect={() => out(p.href)}>
+                    <Line icon={ICONS[p.key]} trail={p.key === 'help' ? <ArrowUpRight size={14} aria-hidden opacity={0.6} /> : null}>
+                      {p.label}
+                    </Line>
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuItem aria-keyshortcuts="Control+/ Meta+/" onSelect={() => setKeys(true)}>
+                  <Line icon={<Keyboard size={16} aria-hidden />} trail={<DropdownMenuShortcut aria-hidden>{apple ? '⌘/' : 'Ctrl+/'}</DropdownMenuShortcut>}>
+                    Keyboard shortcuts
+                  </Line>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {legal().map((p) => (
+                  <DropdownMenuItem key={p.key} onSelect={() => out(p.href)}>
+                    <Line icon={ICONS[p.key]}>{p.label}</Line>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            ) : null}
+          </DropdownMenuSub>
+          {host.signOut ? (
+            <DropdownMenuItem onSelect={() => host.signOut?.()}>
+              <Line icon={<LogOut size={16} aria-hidden />}>Log out</Line>
+            </DropdownMenuItem>
+          ) : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
       <Create open={creating} onOpenChange={setCreating} />
+      <Shortcuts open={keys} onOpenChange={setKeys} apple={apple} />
       {supporting ? <SupportPicker onClose={() => setSupporting(false)} /> : null}
     </>
+  )
+}
+
+/** The app's keys (help.ts `KEYS`), one row each, spelled for this platform. */
+function Shortcuts({ open, onOpenChange, apple }: { open: boolean; onOpenChange: (open: boolean) => void; apple: boolean }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent maxW={440} rounded="$6" gap="$3">
+        <DialogTitle>Keyboard shortcuts</DialogTitle>
+        <YStack gap="$1">
+          {KEYS.map((k) => (
+            <XStack key={k.does} items="center" justify="space-between" gap="$3" minH={32}>
+              <SizableText size="$2" color="$ink">
+                {k.does}
+              </SizableText>
+              <Kbd>{apple ? k.mac : k.pc}</Kbd>
+            </XStack>
+          ))}
+        </YStack>
+      </DialogContent>
+    </Dialog>
   )
 }
 

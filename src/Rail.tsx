@@ -28,6 +28,7 @@ import type { ReactNode } from 'react'
 import { XStack, YStack } from '@hanzo/gui'
 import { route, type Host } from '@hanzo/build'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
+import { out } from './help'
 import { Me } from './Me'
 import { app, TABS, WORKSPACE, type Place } from './lib/host'
 
@@ -36,21 +37,6 @@ export const RAIL = 48
 
 /** A mark, px: a 36px square on a 44px pitch. */
 const MARK = 36
-
-/**
- * Opens an address of another product in a tab of its own, through an anchor,
- * so a host that sends links out of its window (the desktop's system browser)
- * hears it as the link it is.
- */
-function out(href: string): void {
-  const a = document.createElement('a')
-  a.href = href
-  a.target = '_blank'
-  a.rel = 'noopener noreferrer'
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-}
 
 /** The places the rail raises out of Dev, by the builder address each opens. */
 const RAISED = { library: '-/artifacts', scheduled: '-/automations', customize: '-/customize' } as const
