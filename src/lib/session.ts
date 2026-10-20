@@ -437,6 +437,14 @@ export function pick(o: string): void {
   window.dispatchEvent(new Event(ORG))
 }
 
+/** Fired on `window` to open the organization chooser over the room. */
+export const CHOOSE = 'hanzo:org:choose'
+
+/** Open the chooser (`Orgs`): every organization of the person's, and every one for a SuperAdmin. */
+export function choose(): void {
+  window.dispatchEvent(new Event(CHOOSE))
+}
+
 /**
  * Whether the signed-in person is a SUPERADMIN: @hanzo/iam's `superAdmin`, which is
  * hanzoai/authz `Claims.Sudo` exactly — a person (never a program) whose own row's

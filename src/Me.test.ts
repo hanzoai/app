@@ -44,9 +44,8 @@ vi.mock('@hanzo/build', () => ({
   said: () => '',
   useStanding: () => ({ value: null, error: null, loading: false }),
 }))
-vi.mock('./lib/session', () => ({ org: () => 'acme', orgs: () => ['acme'], pick: () => {}, renew: () => {}, scope: () => ({}), superAdmin: () => false }))
+vi.mock('./lib/session', () => ({ choose: () => {}, org: () => 'acme', orgs: () => ['acme'], pick: () => {}, renew: () => {}, scope: () => ({}), superAdmin: () => false }))
 vi.mock('./lib/org', () => ({ createOrg: async () => '', say: String }))
-vi.mock('./Support', () => ({ SupportPicker: () => null }))
 vi.mock('./dev', () => ({ leave: left }))
 vi.mock('./open', () => ({ showSettings: settings }))
 

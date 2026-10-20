@@ -153,7 +153,6 @@ import {
   type Row as SettingsRow,
 } from "./Settings";
 import { Me, type Who } from "./Me";
-import { SupportPicker } from "./Support";
 import { Palette, type Action } from "./Palette";
 import { tidy } from "./lib/title";
 import { summons } from "./seek";

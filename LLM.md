@@ -157,6 +157,19 @@ the one conversation the pane holds).
   `superAdmin()` is @hanzo/iam's `superAdmin(claims)` (hanzoai/authz
   `Claims.Sudo`): a person whose `orgs[0].org` is `admin`, never a program and
   never an empty home shifted onto a later entry. No copy of the rule lives here.
+- The chooser is `Orgs.tsx` `Pick`: on arrival with several orgs and none picked,
+  or over the room when `choose()` fires (the account menu's All organizations).
+  Rows are the token's orgs with IAM's rows beside them (`GET
+  /v1/iam/organizations`: the first page carries all of one's own) — the mark
+  (@hanzo/ui `Avatar`: IAM's avatar, emoji or logo, else the initial in the
+  slug's hue, which needs the host to load `@hanzo/tokens/css/data`), the role
+  the token signs (`role()`), the plan billing reads per org. The search filters
+  them as typed (`lib/orgname` `matches`, IAM's own rule). A person founds one
+  there through IAM's `POST /v1/iam/onboard`, the slug following the name as
+  IAM's `slugifyOrg` makes it and a typed slug refused, never folded
+  (`refusal`). A SuperAdmin gets no create (IAM refuses them a customer org)
+  and an `Everyone` section instead: IAM's list searched on the server, paged
+  by cursor, each row stepped into through `support()` (IAM `assume`, audited).
 - `src/team.gen.ts` — the core team's persona files as strings, generated from
   `@hanzo/personas` by `scripts/team.mjs`, so no host needs an asset loader:
   every member the package publishes, in the crew's order (`ORDER`, then any

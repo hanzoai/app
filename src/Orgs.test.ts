@@ -10,6 +10,10 @@ const state = vi.hoisted(() => ({
   // The host's front door: `team` on hanzo.team, nothing on hanzo.ai.
   where: {} as { team?: boolean },
   host: 'hanzo.ai',
+  // The token's organizations, the one this browser works in, and whether IAM signed a SuperAdmin.
+  orgs: ['acme'],
+  org: 'acme' as string | null,
+  sudo: false,
 }))
 
 // The drawing libraries are not under test and do not load outside a bundler.
@@ -21,8 +25,17 @@ vi.mock('@hanzo/gui', () => {
     isValidElement(render) ? cloneElement(render, undefined, children) : createElement('div', null, children)
   return { Text: Draw, View, XStack: Draw, YStack: Draw }
 })
-vi.mock('@hanzo/ui', () => ({ Button: () => null }))
-vi.mock('lucide-react', () => ({ Minus: () => null, Plus: () => null, X: () => null }))
+vi.mock('@hanzo/ui', () => ({
+  Avatar: () => null,
+  Button: ({ children }: { children?: ReactNode }) => createElement('button', null, children),
+  Tag: ({ children }: { children?: ReactNode }) => createElement('span', null, children),
+}))
+vi.mock('@hanzo/ui/product/Filters', () => ({
+  SearchInput: ({ placeholder, actions }: { placeholder?: string; actions?: ReactNode }) =>
+    createElement('div', null, createElement('input', { placeholder }), actions),
+}))
+vi.mock('@hanzo/build/plan', () => ({ label: () => null, said: () => '' }))
+vi.mock('lucide-react', () => ({ Check: () => null, Minus: () => null, Plus: () => null, X: () => null }))
 vi.mock('@hanzo/iam/react', () => ({ useIam: () => state.iam }))
 vi.mock('./waiting', () => ({ Waiting: () => null }))
 vi.mock('./lib/destination', () => ({ LOGIN: '/login', enter: () => {} }))
@@ -35,15 +48,20 @@ vi.mock('./lib/tier', () => ({
   usePersonal: () => state.personal,
 }))
 vi.mock('./lib/session', () => ({
+  CHOOSE: 'hanzo:org:choose',
   ORG: 'hanzo:org',
   PICKED: 'hanzo:org:picked',
   assumed: () => null,
+  bearer: () => 't',
   hasSession: () => true,
-  org: () => 'acme',
-  orgs: () => ['acme'],
+  org: () => state.org,
+  orgs: () => state.orgs,
   pick: () => {},
   renew: () => {},
+  role: () => 'owner',
   scope: () => ({}),
+  superAdmin: () => state.sudo,
+  support: async () => {},
 }))
 vi.mock('./lib/host', () => ({ dev: () => '/dev', team: (host: string) => host === 'hanzo.team' }))
 vi.mock('./lib/pay', () => ({ checkoutUrl: () => '', money: () => '' }))
@@ -70,6 +88,9 @@ describe('the organization gate', () => {
     state.personal = null
     state.where = {}
     state.host = 'hanzo.ai'
+    state.orgs = ['acme']
+    state.org = 'acme'
+    state.sudo = false
   })
 
   test('while the session settles, the room under the veil is inert and hidden', () => {
@@ -139,6 +160,36 @@ describe('the organization gate', () => {
       const html = drawn()
       expect(html).not.toContain('<textarea')
       expect(held(html)).toBe('')
+    })
+  })
+
+  describe('the chooser', () => {
+    beforeEach(() => {
+      state.orgs = ['acme', 'webby-ai']
+      state.org = null
+    })
+
+    test('several organizations and none chosen: each of the reader\'s is a row, with its slug and the role the token signs', () => {
+      const html = drawn()
+      expect(html).toContain('>Choose an organization<')
+      for (const o of ['acme', 'webby-ai']) expect(html).toContain(`>${o}<`)
+      expect(html).toContain('>Owner<')
+      expect(html).not.toContain('<textarea')
+    })
+
+    test('a person may found one here, and is never shown every organization', () => {
+      const html = drawn()
+      expect(html).toContain('New organization')
+      expect(html).toContain('placeholder="Find an organization"')
+      expect(html).not.toContain('All organizations')
+    })
+
+    test('a SuperAdmin is shown every organization, and no way to own one', () => {
+      state.sudo = true
+      const html = drawn()
+      expect(html).toContain('>All organizations<')
+      expect(html).toContain('placeholder="Search every organization"')
+      expect(html).not.toContain('New organization')
     })
   })
 })

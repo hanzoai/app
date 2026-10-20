@@ -20,7 +20,7 @@
 // personal one first, with its plan — switched with `onOrg`; Create
 // organization, Organization settings, and Hanzo Team (opened in the same
 // organization for a team, offered as "Create a team" for a personal one); and
-// All organizations for a SuperAdmin (support mode).
+// All organizations for a SuperAdmin, which opens the chooser (Orgs.tsx).
 //
 // IAM is the source of every fact here: names and roles from the token's `orgs`
 // claim, display names and which org is personal from `GET /v1/iam/organizations`,
@@ -76,13 +76,12 @@ import { api } from './lib/api'
 import { createOrg, say } from './lib/org'
 import type { Tier } from './lib/tier'
 import { list } from './lib/list'
-import { org as current, orgs, pick, renew, scope, superAdmin } from './lib/session'
+import { choose, org as current, orgs, pick, renew, scope, superAdmin } from './lib/session'
 import { ENTRY } from './lib/host'
 import { leave } from './dev'
 import { asked, KEYS, legal, out, pages } from './help'
 import { showSettings } from './open'
 import { site, where } from './where'
-import { SupportPicker } from './Support'
 import { BAD } from './lib/mix'
 
 /** Where an organization's own settings live: a page of the site (`site()`), not of the app. */
@@ -253,7 +252,6 @@ export function Me({
   const [account, setAccount] = useState(false)
   const [help, setHelp] = useState(false)
   const [creating, setCreating] = useState(false)
-  const [supporting, setSupporting] = useState(false)
   const [keys, setKeys] = useState(false)
   const row = useRef<HTMLElement | null>(null)
   const current = host.org
@@ -389,7 +387,7 @@ export function Me({
                   </DropdownMenuItem>
                 )}
                 {superAdmin() ? (
-                  <DropdownMenuItem onSelect={() => setSupporting(true)}>
+                  <DropdownMenuItem onSelect={choose}>
                     <Line icon={<Building2 size={16} aria-hidden />}>All organizations</Line>
                   </DropdownMenuItem>
                 ) : null}
@@ -448,7 +446,6 @@ export function Me({
       </DropdownMenu>
       <Create open={creating} onOpenChange={setCreating} />
       <Shortcuts open={keys} onOpenChange={setKeys} apple={apple} />
-      {supporting ? <SupportPicker onClose={() => setSupporting(false)} /> : null}
     </>
   )
 }

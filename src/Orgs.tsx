@@ -29,11 +29,13 @@
 // door, and only there, nothing opens without a live plan.
 
 import { dev } from './lib/host'
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useIam } from '@hanzo/iam/react'
 import { Text, View, XStack, YStack } from '@hanzo/gui'
-import { Button } from '@hanzo/ui'
-import { Minus, Plus, X } from 'lucide-react'
+import { Avatar, Button, Tag } from '@hanzo/ui'
+import { SearchInput } from '@hanzo/ui/product/Filters'
+import { label, said as spoken } from '@hanzo/build/plan'
+import { Check, Minus, Plus, X } from 'lucide-react'
 import { Waiting } from './waiting'
 import { LOGIN, enter } from './lib/destination'
 import { useAi } from './lib/ai'
@@ -41,7 +43,8 @@ import { useHost } from './lib/hostname'
 import { useHydrated } from './lib/hydrated'
 import { api } from './lib/api'
 import { usePersonal, useTier } from './lib/tier'
-import { ORG, PICKED, assumed, hasSession, org, orgs as claimed, pick, renew, scope } from './lib/session'
+import { CHOOSE, ORG, PICKED, assumed, bearer, hasSession, org, orgs as claimed, pick, renew, role, scope, superAdmin, support } from './lib/session'
+import { matches, refusal, slugify } from './lib/orgname'
 import { team as workspace } from './lib/host'
 import { checkoutUrl, money } from './lib/pay'
 import { cartUrl, charge, priced, usePlan, usePlans, type Interval, type SubscriptionPlan } from './lib/plans'
@@ -139,9 +142,18 @@ export function Orgs({
     }
   }, [reload])
 
+  // The chooser over the room, asked for from the account menu (session.ts `choose`).
+  const [choosing, setChoosing] = useState(false)
+  useEffect(() => {
+    const ask = () => setChoosing(true)
+    window.addEventListener(CHOOSE, ask)
+    return () => window.removeEventListener(CHOOSE, ask)
+  }, [])
+
   const choose = useCallback((o: string) => {
     pick(o)
     setPicked(true)
+    setChoosing(false)
   }, [])
 
   // The organization a link arrives for. hanzo.ai opens the workspace at
@@ -206,7 +218,9 @@ export function Orgs({
     if (front && Landing) return <Landing member />
     return door ? <Start onFounded={setFounding} first /> : <Create />
   }
-  if (!current || (members.length > 1 && !picked)) return <Pick members={members} onPick={choose} />
+  if (!current || (members.length > 1 && !picked)) return <Pick members={members} current={current} onPick={choose} />
+  // Asked for over an open room, the room keeps its place under the chooser and closing it goes back.
+  if (choosing) return <><Held veiled>{children}</Held><Pick members={members} current={current} onPick={choose} onClose={() => setChoosing(false)} /></>
   if (open) return forward ? <Forward to={forward} /> : <><Held veiled={false}>{children}</Held></>
   // IN THE WORKSPACE NOTHING OPENS WITHOUT A LIVE PLAN. Every branch here
   // used to hand the room over when the answer was anything but a plain
@@ -735,37 +749,507 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
   )
 }
 
-/** Several organizations: which one, this time. */
-function Pick({ members, onPick }: { members: string[]; onPick: (o: string) => void }) {
+// ── the chooser ────────────────────────────────────────────────────────────────
+
+/** One organization as IAM's list answers it: its name and how it appears. */
+interface Listed {
+  name: string
+  displayName?: string
+  /** The square mark: an image, or one emoji, never both (IAM `Organization.avatar`, `.emoji`). */
+  avatar?: string
+  emoji?: string
+  /** The wordmark a sign-in screen draws, the mark where no square one is set. */
+  logo?: string
+}
+
+/** One page of IAM's organization list and the cursor that continues it. */
+interface Listing {
+  organizations?: Listed[]
+  cursor?: string
+}
+
+/**
+ * A page of IAM's organization list (`GET /v1/iam/organizations`): the reader's
+ * own organizations whole on the first page, then, for a SuperAdmin only, every
+ * other one, newest first. `q` narrows it by name or display name on the server;
+ * `cursor` continues it. IAM decides the scope from the bearer, so this asks the
+ * same thing for everyone.
+ */
+async function listing(q: string, cursor: string, limit: number, signal?: AbortSignal): Promise<Listing> {
+  const query = new URLSearchParams({ limit: String(limit) })
+  if (q.trim()) query.set('q', q.trim())
+  if (cursor) query.set('cursor', cursor)
+  const res = await fetch(`${api()}/v1/iam/organizations?${query}`, {
+    headers: { Authorization: `Bearer ${bearer() ?? ''}` },
+    signal,
+  })
+  if (!res.ok) throw new Error(`IAM answered ${res.status}.`)
+  return (await res.json()) as Listing
+}
+
+/** How each of the reader's organizations appears, by name, from IAM's rows: the first page carries all of them. */
+function useMarks(members: string[]): Record<string, Listed> {
+  const [rows, setRows] = useState<Record<string, Listed>>({})
+  const key = members.join(',')
+  useEffect(() => {
+    if (!key) return
+    const stop = new AbortController()
+    listing('', '', 1, stop.signal)
+      .then((page) => {
+        if (!stop.signal.aborted) setRows(Object.fromEntries((page.organizations ?? []).map((o) => [o.name, o])))
+      })
+      .catch(() => {})
+    return () => stop.abort()
+  }, [key])
+  return rows
+}
+
+/** Each organization's plan by its family (`Max 20x`), billing asked in its name; absent where it names none. */
+function useBilled(members: string[]): Record<string, string> {
+  const [plans, setPlans] = useState<Record<string, string>>({})
+  const key = members.join(',')
+  useEffect(() => {
+    const stop = new AbortController()
+    for (const o of key.split(',').filter(Boolean)) {
+      fetch(`${api()}/v1/billing/tier`, { headers: { ...scope(), 'X-Org-Id': o }, signal: stop.signal })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((t: { plan?: string; tier?: { name?: string } } | null) => {
+          const plan = t ? spoken(label(t.plan, t.tier?.name)) : ''
+          if (plan && !stop.signal.aborted) setPlans((had) => ({ ...had, [o]: plan }))
+        })
+        .catch(() => {})
+    }
+    return () => stop.abort()
+  }, [key])
+  return plans
+}
+
+/** A role as a person reads it: `owner` → Owner. */
+const said = (role: string): string => (role ? role.charAt(0).toUpperCase() + role.slice(1) : '')
+
+/** One organization as a row draws it. */
+interface Shown {
+  name: string
+  display: string
+  mark: Listed | undefined
+  role?: string
+  plan?: string
+}
+
+/** An organization's mark: its image, else its emoji, else its initial in its own hue (keyed on the slug, so a rename keeps it). */
+function Mark({ org }: { org: Shown }) {
+  const emoji = org.mark?.avatar ? '' : org.mark?.emoji
+  return (
+    <Avatar
+      size="xl"
+      shape="rounded"
+      src={org.mark?.avatar || (emoji ? null : org.mark?.logo) || null}
+      name={org.display}
+      colorSeed={org.name}
+      icon={emoji ? <Text fontSize="$7">{emoji}</Text> : undefined}
+      alt=""
+    />
+  )
+}
+
+/** One organization: its mark, its name and slug, the reader's role and its plan; the current one checked. */
+function Choice({ org, current = false, note, disabled, onPress }: { org: Shown; current?: boolean; note?: string; disabled?: boolean; onPress: () => void }) {
+  return (
+    <View render="li" display="block">
+      <XStack
+        render="button"
+        onClick={onPress}
+        disabled={disabled}
+        aria-current={current || undefined}
+        width="100%"
+        items="center"
+        gap={12}
+        px={12}
+        py={10}
+        rounded={12}
+        borderWidth={1}
+        borderColor={current ? '$ink' : '$edge'}
+        bg="transparent"
+        cursor="pointer"
+        hoverStyle={{ bg: '$hover' }}
+      >
+        <Mark org={org} />
+        <YStack flex={1} minW={0} gap={4}>
+          <Text fontSize="$4" fontWeight="500" color="$ink" numberOfLines={1} text="left">
+            {org.display}
+          </Text>
+          <XStack items="center" gap={6} flexWrap="wrap">
+            <Text fontSize="$2" fontFamily="$mono" color="$soft" numberOfLines={1}>
+              {org.name}
+            </Text>
+            {org.role ? <Tag variant="outline">{said(org.role)}</Tag> : null}
+            {org.plan ? <Tag>{org.plan}</Tag> : null}
+            {note ? (
+              <Text fontSize="$2" color="$soft">
+                {note}
+              </Text>
+            ) : null}
+          </XStack>
+        </YStack>
+        {current ? <Check size={16} aria-label="Current" /> : null}
+      </XStack>
+    </View>
+  )
+}
+
+/**
+ * WHICH ORGANIZATION, THIS TIME — and, for a SuperAdmin, any organization.
+ *
+ * The reader's organizations are the token's `orgs` (no other list is theirs),
+ * drawn with IAM's rows beside them: the mark, the display name, the role the
+ * token signs and the plan billing reads in each one's name. The search filters
+ * them as it is typed, by slug or display name. A person founds another here
+ * (`Found`); a SuperAdmin, whom IAM never lets own a customer organization, is
+ * shown every organization instead (`Everyone`), stepped into through IAM.
+ */
+function Pick({
+  members,
+  current,
+  onPick,
+  onClose,
+}: {
+  members: string[]
+  current: string | null
+  onPick: (o: string) => void
+  /** Opened over a room the reader is in: closing goes back to it. */
+  onClose?: () => void
+}) {
+  // IAM's verdict as it signed it into the token (authz `Claims.Sudo`). It only
+  // decides what is drawn: IAM answers anyone else's list with their own
+  // organizations and refuses them the step in.
+  const sudo = superAdmin()
+  const [q, setQ] = useState('')
+  const [founding, setFounding] = useState(false)
+  const marks = useMarks(members)
+  const plans = useBilled(members)
+  const mine: Shown[] = members.map((name) => ({
+    name,
+    display: marks[name]?.displayName || name,
+    mark: marks[name],
+    role: role(name) ?? '',
+    plan: plans[name],
+  }))
+  const shown = mine.filter((o) => matches(o, q))
+
+  useEffect(() => {
+    if (!onClose || founding) return
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', key)
+    return () => document.removeEventListener('keydown', key)
+  }, [onClose, founding])
+
   return (
     <Page label="Choose an organization">
       <Column>
-        <Brand />
+        <XStack items="flex-start" justify="space-between" gap={12}>
+          <Brand />
+          {onClose ? (
+            <Button variant="ghost" size="icon-sm" mt={-6} mr={-8} onClick={onClose} aria-label="Close">
+              <X size={16} aria-hidden />
+            </Button>
+          ) : null}
+        </XStack>
         <Heading title="Choose an organization" lede={<>Everything you open — chats, agents, credit — is this one&apos;s.</>} />
         <Rule />
-        <View display="grid" gap={10}>
-          {members.map((o) => (
-            <View
-              key={o}
-              render="button"
-              onClick={() => onPick(o)}
-              items="flex-start"
-              px={16}
-              py={14}
-              rounded={12}
-              borderWidth={1}
-              borderColor="var(--border)"
-              bg="transparent"
-              cursor="pointer"
-            >
-              <Text fontSize="$4" color="var(--foreground)" text="left">
-                {o}
-              </Text>
-            </View>
+        {/* Enter opens the first organization the search leaves. */}
+        <XStack
+          render="form"
+          {...{
+            onSubmit: (e: React.FormEvent) => {
+              e.preventDefault()
+              if (shown[0]) onPick(shown[0].name)
+            },
+          }}
+        >
+          <SearchInput
+            name="organizations"
+            value={q}
+            onChange={setQ}
+            placeholder={sudo ? 'Search every organization' : 'Find an organization'}
+            actions={
+              sudo ? null : (
+                <Button type="button" onClick={() => setFounding(true)}>
+                  <Plus size={16} aria-hidden />
+                  New organization
+                </Button>
+              )
+            }
+          />
+        </XStack>
+        <YStack render="ul" aria-label="Your organizations" m={0} p={0} mt={14} gap={8}>
+          {shown.map((o) => (
+            <Choice key={o.name} org={o} current={o.name === current} onPress={() => onPick(o.name)} />
           ))}
-        </View>
+        </YStack>
+        {shown.length === 0 ? (
+          <Text render="p" mt={14} fontSize="$3" color="$soft">
+            None of yours matches “{q.trim()}”.
+          </Text>
+        ) : null}
+        {sudo ? <Everyone q={q} skip={members} /> : null}
       </Column>
+      {founding ? <Found onClose={() => setFounding(false)} onMade={onPick} /> : null}
     </Page>
+  )
+}
+
+/**
+ * EVERY ORGANIZATION, for a SuperAdmin to step into.
+ *
+ * The list and the search are IAM's, a page at a time, and IAM records each new
+ * search under the operator's name. Opening one is IAM's `assume` (session.ts
+ * `support`): the operator's own token re-scoped to it and the step recorded in
+ * that organization's audit log. Nobody is made a member of anything.
+ */
+function Everyone({ q, skip }: { q: string; skip: string[] }) {
+  const [rows, setRows] = useState<Listed[]>([])
+  const [cursor, setCursor] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [refused, setRefused] = useState<string | null>(null)
+  const [stepping, setStepping] = useState<string | null>(null)
+  // Only the newest read lands: a search typed while a page is in flight
+  // supersedes it, so a slow answer to an old query never overwrites the new one.
+  const asked = useRef(0)
+
+  const load = useCallback(async (query: string, from: string) => {
+    const mine = ++asked.current
+    setLoading(true)
+    setRefused(null)
+    try {
+      const next = await listing(query, from, 20)
+      if (mine !== asked.current) return
+      setRows((had) => {
+        // IAM's cursor is a position, so an org created mid-walk can shift a row
+        // across a page edge; each org is kept once.
+        const all = from ? [...had, ...(next.organizations ?? [])] : next.organizations ?? []
+        return all.filter((o, i) => all.findIndex((x) => x.name === o.name) === i)
+      })
+      setCursor(next.cursor ?? '')
+    } catch (e) {
+      if (mine === asked.current) setRefused(e instanceof Error ? e.message : 'The list did not load.')
+    } finally {
+      if (mine === asked.current) setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    const id = setTimeout(() => void load(q, ''), 250)
+    return () => clearTimeout(id)
+  }, [q, load])
+
+  const enter = (org: string) => {
+    setStepping(org)
+    setRefused(null)
+    support(org).catch((e: unknown) => {
+      setRefused(e instanceof Error ? e.message : 'IAM did not step in.')
+      setStepping(null)
+    })
+  }
+
+  const others = rows.filter((o) => !skip.includes(o.name))
+  return (
+    <YStack render="section" aria-label="All organizations" mt={36}>
+      <Text render="h2" fontSize="$6" fontWeight="500" color="$ink">
+        All organizations
+      </Text>
+      <Text render="p" mt={4} fontSize="$3" color="$soft" lineHeight={21}>
+        Support mode. Step into any organization to see it as it does; IAM records every step under your name.
+      </Text>
+      <YStack render="ul" aria-label="Every organization" m={0} p={0} mt={14} gap={8}>
+        {others.map((o) => (
+          <Choice
+            key={o.name}
+            org={{ name: o.name, display: o.displayName || o.name, mark: o }}
+            note={stepping === o.name ? 'Stepping in…' : undefined}
+            disabled={stepping !== null}
+            onPress={() => enter(o.name)}
+          />
+        ))}
+      </YStack>
+      {!loading && others.length === 0 && !refused ? (
+        <Text render="p" mt={8} fontSize="$3" color="$soft">
+          No organization matches.
+        </Text>
+      ) : null}
+      {refused ? (
+        <Text render="p" role="alert" mt={8} fontSize="$3" color={BAD}>
+          {refused}
+        </Text>
+      ) : null}
+      {cursor ? (
+        <Button self="flex-start" mt={10} onClick={() => void load(q, cursor)} disabled={loading}>
+          {loading ? 'Loading…' : 'More'}
+        </Button>
+      ) : null}
+    </YStack>
+  )
+}
+
+/**
+ * FOUND AN ORGANIZATION: its name, then the slug IAM keys it by.
+ *
+ * The slug follows the name the way IAM's onboarding makes it, until it is typed
+ * over; a slug typed is IAM's to take as it is, so one IAM would not keep is
+ * refused here with the rule, never rewritten. IAM's own onboarding makes it
+ * (`POST /v1/iam/onboard`): the organization, the reader as its owner and its
+ * first API key, the founder's account untouched. It is sent the name when the
+ * name makes the slug, and the slug when the slug was typed, the display name
+ * then written on the row (`/v1/iam/organizations/profile`). The token in hand
+ * predates it, so it is refreshed before the organization opens.
+ */
+function Found({ onClose, onMade }: { onClose: () => void; onMade: (org: string) => void }) {
+  const { sdk } = useIam()
+  const [name, setName] = useState('')
+  const [typed, setTyped] = useState<string | null>(null)
+  const slug = typed ?? slugify(name)
+  const wrong = slug ? refusal(slug) : null
+  const [busy, setBusy] = useState(false)
+  const [refused, setRefused] = useState<string | null>(null)
+
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', key)
+    return () => document.removeEventListener('keydown', key)
+  }, [onClose])
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const display = name.trim()
+    if (busy) return
+    if (!display) return setRefused('Give it a name.')
+    if (wrong) return setRefused(wrong)
+    setBusy(true)
+    setRefused(null)
+    const headers = { Authorization: `Bearer ${bearer() ?? ''}`, 'Content-Type': 'application/json' }
+    const why = async (r: Response): Promise<string> => {
+      const body = (await r.json().catch(() => null)) as { error?: string; detail?: string; msg?: string; message?: string } | null
+      return body?.error || body?.detail || body?.msg || body?.message || `IAM answered ${r.status}.`
+    }
+    try {
+      const named = slugify(display) === slug
+      const r = await fetch(`${api()}/v1/iam/onboard`, { method: 'POST', headers, body: JSON.stringify({ name: named ? display : slug }) })
+      if (!r.ok) throw new Error(await why(r))
+      const made = ((await r.json().catch(() => null)) as { org?: string } | null)?.org
+      if (!made) throw new Error('IAM made no organization. Try again.')
+      renew()
+      await sdk.refreshAccessToken().catch(() => null)
+      if (!named) {
+        const p = await fetch(`${api()}/v1/iam/organizations/profile`, {
+          method: 'POST',
+          headers: { ...headers, Authorization: `Bearer ${bearer() ?? ''}` },
+          body: JSON.stringify({ owner: 'admin', name: made, displayName: display }),
+        })
+        if (!p.ok) throw new Error(`${made} is made, and it is still called ${made}: ${await why(p)}`)
+      }
+      // A token that does not carry it yet is minted on the next load, which opens it.
+      if (!claimed().includes(made)) {
+        pick(made)
+        window.location.reload()
+        return
+      }
+      onMade(made)
+    } catch (err) {
+      setRefused(err instanceof Error ? err.message : 'Could not create it.')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <YStack
+      role="dialog"
+      aria-modal
+      aria-label="New organization"
+      position="fixed"
+      inset={0}
+      z={DIALOG}
+      bg={shade(28)}
+      overflowY="auto"
+      py="6vh"
+      px={16}
+      onClick={onClose}
+    >
+      <YStack
+        render="form"
+        {...{ onSubmit: submit }}
+        onClick={(e) => e.stopPropagation()}
+        width="100%"
+        maxW={480}
+        mx="auto"
+        bg="var(--background)"
+        rounded={16}
+        borderWidth={1}
+        borderColor="$edge"
+        boxShadow={`0 24px 64px ${shade(28)}`}
+        pt={24}
+        px={24}
+        pb={20}
+      >
+        <XStack items="flex-start" justify="space-between" gap={12}>
+          <YStack shrink={1} minW="auto">
+            <Text render="h2" fontSize="$8" fontWeight="500" color="$ink">
+              New organization
+            </Text>
+            <Text render="p" mt={6} fontSize="$3" color="$soft" lineHeight={21}>
+              You own it. Its agents, credit and members are its own.
+            </Text>
+          </YStack>
+          <Button type="button" variant="ghost" size="icon-sm" mr={-8} onClick={onClose} aria-label="Close">
+            <X size={16} aria-hidden />
+          </Button>
+        </XStack>
+        <View render="label" display="block" mt={20}>
+          <Text display="block" fontSize="$4" fontWeight="500" mb={8} color="$ink">
+            Name
+          </Text>
+          <Text render={<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme" maxLength={100} autoFocus />} {...FIELD} />
+        </View>
+        <View render="label" display="block" mt={16}>
+          <Text display="block" fontSize="$4" fontWeight="500" mb={8} color="$ink">
+            Slug
+          </Text>
+          <Text
+            render={
+              <input
+                value={slug}
+                onChange={(e) => setTyped(e.target.value)}
+                placeholder="acme"
+                spellCheck={false}
+                autoCapitalize="off"
+                autoCorrect="off"
+                aria-invalid={Boolean(slug && wrong) || undefined}
+              />
+            }
+            {...FIELD}
+            fontFamily="$mono"
+          />
+          <Text display="block" fontSize="$3" color={slug && wrong ? BAD : '$soft'} mt={8}>
+            {slug && wrong ? wrong : 'How every request names it: lowercase letters, digits and hyphens. It does not change.'}
+          </Text>
+        </View>
+        {refused ? (
+          <Text render="p" role="alert" mt={14} fontSize="$3" color={BAD}>
+            {refused}
+          </Text>
+        ) : null}
+        <XStack justify="flex-end" gap={10} mt={22} flexWrap="wrap">
+          <Button type="button" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" disabled={busy || !name.trim() || Boolean(wrong)}>
+            {busy ? 'Creating…' : 'Create and open'}
+          </Button>
+        </XStack>
+      </YStack>
+    </YStack>
   )
 }
 
