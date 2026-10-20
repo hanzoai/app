@@ -79,6 +79,9 @@ export interface ThreadList {
   reload: () => void
 }
 
+/** Each client's last read of each shelf. */
+const last = new WeakMap<AiClient, Record<string, { threads: Thread[]; at: number; archived: boolean }>>()
+
 /**
  * The member's conversations: pinned first, then most recently spoken in, the
  * archived ones left out — or, with `archived`, those alone — with every change
@@ -89,7 +92,8 @@ export interface ThreadList {
 export function useThreadList(archived = false, seek: string | null = null): ThreadList {
   const ai = useAi()
   // What was read, when, and from which shelf: the other shelf's rows are never drawn as this one's.
-  const [read, setRead] = useState<{ threads: Thread[]; at: number; archived: boolean }>({ threads: [], at: 0, archived })
+  // A list mounted later (the palette) draws the client's last read of its shelf at once.
+  const [read, setRead] = useState<{ threads: Thread[]; at: number; archived: boolean }>(() => last.get(ai)?.[`${archived}`] ?? { threads: [], at: 0, archived })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const [asks, ask] = useState(0)
@@ -105,7 +109,9 @@ export function useThreadList(archived = false, seek: string | null = null): Thr
       (threads) => {
         if (control.signal.aborted) return
         me.current.at = at
-        setRead({ threads, at, archived })
+        const got = { threads, at, archived }
+        last.set(ai, { ...last.get(ai), [`${archived}`]: got })
+        setRead(got)
         setError(null)
         setLoading(false)
         sweep()

@@ -143,16 +143,14 @@ function day(at: string, now: Date): string {
 const newest = (a: string, b: string) => (a < b ? 1 : a > b ? -1 : 0)
 
 /**
- * The list as drawn: the rows the view and the words admit, sorted, and cut into
+ * The list as drawn: the rows the view admits, sorted, and cut into
  * headed groups in the order they read. Pinned rows come first, under Pinned,
  * whatever the grouping; a view grouped by None holds the rest in one group with
  * no heading.
  */
-export function arrange(rows: Recent[], view: View, words: string, now = new Date()): { title: string; rows: Recent[] }[] {
-  const w = words.trim().toLowerCase()
+export function arrange(rows: Recent[], view: View, now = new Date()): { title: string; rows: Recent[] }[] {
   const kept = rows.filter(
     (r) =>
-      (!w || r.title.toLowerCase().includes(w)) &&
       (view.status === 'all' || r.status === view.status) &&
       (view.since === 'any' || now.getTime() - new Date(r.at).getTime() <= SPAN[view.since]),
   )

@@ -57,13 +57,13 @@ vi.mock('./span', () => ({ useSpan: () => ({ ref: null, style: {}, span: 272, mo
 
 import { Column } from './Column'
 import { Rail } from './Rail'
-import { TABS, WORKSPACE } from './lib/host'
+import { TABS, WORKSPACE, type Place } from './lib/host'
 import type { Mode } from './recent'
 
 const host = { go: () => {} } as unknown as Parameters<typeof Column>[0]['host']
 const noop = () => {}
 
-const column = (mode: Mode) => renderToStaticMarkup(createElement(Column, { host, mode, thread: null, go: noop, onShut: noop }))
+const column = (mode: Place['mode']) => renderToStaticMarkup(createElement(Column, { host, mode, thread: null, go: noop, onShut: noop }))
 const rail = (mode: Mode, toggle?: () => void, at: string | null = null) =>
   renderToStaticMarkup(createElement(Rail, { host, mode, at, open: true, toggle, onChat: noop, onDev: noop, onStudio: noop, go: noop, onOrg: noop }))
 
@@ -124,8 +124,8 @@ describe('the sidebar', () => {
   test('Chat: its name, the bell and the search, New chat, then Recents', () => {
     const html = column('chat')
     expect(at(html, 'Hanzo AI')).toBeLessThan(at(html, 'aria-label="Activity"'))
-    expect(at(html, 'aria-label="Activity"')).toBeLessThan(at(html, 'aria-label="Search chats"'))
-    expect(at(html, 'aria-label="Search chats"')).toBeLessThan(at(html, 'New chat'))
+    expect(at(html, 'aria-label="Activity"')).toBeLessThan(at(html, 'aria-label="Search"'))
+    expect(at(html, 'aria-label="Search"')).toBeLessThan(at(html, 'New chat'))
     expect(at(html, 'New chat')).toBeLessThan(at(html, 'data-slot="recents"'))
     expect(html, 'Tabs lives behind the rail’s More').not.toContain(TABS)
   })
@@ -138,7 +138,11 @@ describe('the sidebar', () => {
     expect(html).not.toContain(TABS)
   })
 
-  test('the search field shows once asked for', () => {
-    expect(column('chat')).not.toContain('Filter recents')
+  test('the search is the palette, in every mode: the sidebar holds no field of its own', () => {
+    for (const mode of ['chat', 'dev', 'studio'] as const) {
+      const html = column(mode)
+      expect(html).toContain('aria-label="Search"')
+      expect(html).not.toContain('<input')
+    }
   })
 })

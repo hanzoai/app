@@ -12,11 +12,11 @@
 //          and from the sidebar by the gutter (`--pane-gap`): Chat's
 //          conversation with its tabs beside it (Paned), or Dev's builder.
 //
-// The rail moves between the modes; the sidebar holds the mode's name, its
-// search, New, Dev's places and the reader's Recents. The address says the
-// mode, as a path (lib/host `talk`, `app`, `place`): `/` and `/chat` are Chat on
-// a new conversation, `/chat/<id>` one of the reader's, and a path under `/dev`
-// is Dev: `/dev/run/<id>` a run, `/dev/projects/<org>/<repo>` a project; a path
+// The rail moves between the modes; the sidebar holds the mode's name, the
+// search (the palette, Palette.tsx), New, Dev's places and the reader's
+// Recents. The address says the mode, as a path (lib/host `talk`, `app`,
+// `place`): `/` and `/chat` are Chat on a new conversation, `/chat/<id>` one of
+// the reader's, and a path under `/dev` is Dev: `/dev/run/<id>` a run, `/dev/projects/<org>/<repo>` a project; a path
 // under `/studio` is Studio, its own address after it (`c/<id>`, `library`). Moving
 // between the modes is a history entry (`go`), never a load, so a host serves
 // this one component for every path under each.
@@ -38,7 +38,7 @@
 // drags the window. Shut, the sidebar leaves the rail alone at the edge; the
 // choice is kept per browser under the key the builder's rail kept it under.
 //
-// THE KEYS: ⌘K / Ctrl+K searches the sidebar (opening it first), ⌘, / Ctrl+,
+// THE KEYS: ⌘K / Ctrl+K opens the palette, from a field too, ⌘, / Ctrl+,
 // opens Settings, and in a window ⌘[ ⌘] / Alt+← Alt+→ are Back and Forward —
 // never while the reader types.
 //
@@ -74,6 +74,8 @@ import { useKept } from './kept'
 import { Mark, Rail, Toggle } from './Rail'
 import { empty, openThread, useOpen } from './open'
 import { Paned } from './Shell'
+import { Palette } from './Palette'
+import { summons } from './seek'
 import { floor, pane } from './ground'
 import { pick } from './lib/session'
 import { app, go, place, studio, talk, type Place } from './lib/host'
@@ -139,8 +141,9 @@ function Window({ bar }: { bar?: Bar }) {
   const shut = useCallback(() => setDrawer(false), [])
   // The sidebar shut, kept per browser under the key the builder's rail kept it under.
   const [closed, setClosed] = useKept('hanzo.build.rail', false)
-  // Each ⌘K: the sidebar's search, asked for again.
-  const [seek, setSeek] = useState(0)
+  // The palette is open (⌘K, the sidebar's search).
+  const [finding, setFinding] = useState(false)
+  const found = useCallback(() => setFinding(false), [])
   const dev = useDevHost()
   // The builder's moves put the drawer away first.
   const host = useMemo<typeof dev>(
@@ -226,15 +229,13 @@ function Window({ bar }: { bar?: Bar }) {
   // The app's keys.
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      const mod = e.metaKey || e.ctrlKey
-      if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') {
+      if (summons(e)) {
         e.preventDefault()
-        setClosed(false)
-        if (window.matchMedia('(max-width: 767.98px)').matches) setDrawer(true)
-        setSeek((n) => n + 1)
+        setFinding(true)
         return
       }
       if (typing(e)) return
+      const mod = e.metaKey || e.ctrlKey
       if (mod && !e.shiftKey && !e.altKey && e.key === ',') {
         e.preventDefault()
         move(app(SETTINGS))
@@ -250,8 +251,6 @@ function Window({ bar }: { bar?: Bar }) {
     }
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
-    // setClosed is the kept setter of this render; the keys read it fresh each time.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bar, router, move])
 
   const toChat = () => move(last.chat || talk())
@@ -264,6 +263,10 @@ function Window({ bar }: { bar?: Bar }) {
   }
   const sidebar = mode === 'studio' ? places(maker, (p) => maker.go(p)) : undefined
   const flip = () => setClosed(!closed)
+  const seek = () => {
+    shut()
+    setFinding(true)
+  }
 
   return (
     <AiProvider client={client ?? undefined}>
@@ -308,7 +311,7 @@ function Window({ bar }: { bar?: Bar }) {
             </YStack>
             {closed ? null : (
               <YStack $max-md={{ display: 'none' }}>
-                <Column host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} seek={seek} places={sidebar} />
+                <Column host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} onSeek={seek} places={sidebar} />
               </YStack>
             )}
             <YStack data-slot="stage" flex={1} minW={0} minH={0} ml="var(--pane-gap)" $max-md={{ ml: 0 }}>
@@ -378,7 +381,7 @@ function Window({ bar }: { bar?: Bar }) {
                   thread={thread}
                   go={move}
                   onShut={shut}
-                  seek={seek}
+                  onSeek={seek}
                   drawer
                   places={sidebar}
                   foot={<Rail host={host} mode={mode} at={where} open flat onChat={toChat} onDev={toDev} onStudio={toStudio} go={move} onOrg={org} />}
@@ -386,6 +389,7 @@ function Window({ bar }: { bar?: Bar }) {
               </YStack>
             </>
           ) : null}
+          {finding ? <Palette go={move} onClose={found} /> : null}
         </YStack>
       </HostProvider>
     </AiProvider>

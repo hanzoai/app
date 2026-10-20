@@ -394,7 +394,7 @@ reference captures; outer window, inner panel):
   kept per browser under `hanzo.build.rail`; the sidebar's edge pulled in past
   its floor shuts it too.
 - The sidebar: the mode's name (18/600, no chevron), the bell (the org's run
-  activity and Notification settings) and the search (the filter over Recents;
+  activity and Notification settings) and the search (the palette, below;
   ⌘K / Ctrl+K from anywhere), New chat or Dev's places, then Pinned and
   Recents as plain 14px titles on a 31px pitch — no dates, no icons; a run's
   state is a dot at its end. The Recents view menu stands at the heading's end.
@@ -430,6 +430,35 @@ reference captures; outer window, inner panel):
 - What a person reads calls these apps, and a team's conversation spaces
   channels; "room" is a name in the code only (the package, `Room`, `rooms.ts`,
   `useRooms`, the `rooms` card kind), kept for the @hanzo/apps rename.
+
+## The palette
+
+ONE search (Palette.tsx, its decisions in seek.ts): the sidebar's search,
+⌘K / Ctrl+K from anywhere (a field included; `summons`) in Chat, Dev and
+Studio, and in the workspace frame (Shell) its bar's Search and ⌘K. No other
+search box: the Recents filter and the old `Find` (`OrgCommandPalette`) are
+gone. It is @hanzo/ui's `CommandMenu` in a dialog, 680 wide and 520 tall,
+the whole screen on a phone (its rows a 44px target, the kit's `touch`).
+
+- An empty field lists Recent chats, the newest eight; a query lists Chats,
+  Projects, Agents, Skills and Actions, each its best five (`find`, `rank`:
+  every word found, the label's start first). Arrows move, Enter opens, Escape
+  closes; Keyboard shortcuts is a page of the app's keys, Backspace comes back.
+- Every list is read once as it opens and searched in the page; nothing is
+  read per key. Chats are titles: the conversations store (hanzoai/agent
+  v1.0.14, `GET /v1/agents/chat/conversations`) answers the whole list and
+  searches nothing, title or content, and no transcript is fetched to search
+  one. They are the sidebar's last read (`useThreadList` keeps each client's
+  last read per shelf), drawn at once and read again behind it. Projects are
+  `GET /v1/projects` (name, slug, repository), Skills the org's active ones
+  (`GET /v1/tool/skills?activated=true`), Agents the org's and the house cast
+  (crew.tsx `ordered(useCrew())`). A read the palette closes on is aborted.
+- A row opens where it lives: a chat at `talk(id)`, a project in Dev
+  (`app(slug)`), an agent in a new chat with it alone (`withAgents`), a skill
+  in Dev's Customize, an action runs: New chat, New Dev task, Settings,
+  Customize, Keyboard shortcuts, Log out (`lib/signout`). A frame passes its
+  own `actions`; one with a palette action's id stands in for it (Shell's
+  Settings opens its own pane), the rest follow (Shell's apps and Setup rows).
 
 ## What each app still owns
 
