@@ -347,10 +347,15 @@ catalog files under Enso or Zen (`house`).
   asked.
   What a conversation carries is @hanzo/build's `useCarry`/`useGear`: per
   conversation in /v1/pref `gears` (the last 30), the person's default in
-  `gear`. A row with no service behind it is not drawn: Connectors (a chat
-  completion runs no tool the client did not loop), Design system (Studio's
-  brands reach only Studio) and Devices (Dev's runs only) are not offered in
-  Chat.
+  `gear` (only Research, Memory and the mode carry to a new conversation).
+  Design system › lists Studio's brands, the one store: one attached is said to
+  the model on every message (colours, type, radii, components, voice) and
+  Presentations runs with it as the deck's brand. "Create design system" turns
+  on the Design system plugin and starts the brief; a Hanzo model drafts it
+  under a strict schema, it is saved as a brand, drawn as a page in the side
+  panel and attached. A row with no service behind it is not drawn: Connectors
+  (a chat completion runs no tool the client did not loop) and Devices (Dev's
+  runs only) are not offered in Chat.
 - The side panel is @hanzo/build's `Panel`, page tabs only in Chat: an
   artifact rendered from its own bytes, a file or an address. A tab can be
   pinned (`Deck.pin`): it leads the strip and closes only on purpose. Tabs, order and the chosen one are kept per

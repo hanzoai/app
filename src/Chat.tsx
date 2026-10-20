@@ -1818,6 +1818,7 @@ function Thread({
             upload: () => take(at, via),
             agents: agentShelf,
             skills: carry.skills,
+            design: carry.design,
             plugins: carry.plugins,
             research: { on: carry.gear.gear.research, set: (on) => carry.gear.set({ research: on }) },
             memory: { on: carry.gear.gear.memory, set: (on) => carry.gear.set({ memory: on }) },
