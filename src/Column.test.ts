@@ -34,7 +34,7 @@ vi.mock('@hanzo/ui/chat', () => ({ Sidebar: part, SidebarIconButton: part, Sideb
 vi.mock('@hanzogui/shell', () => ({ HanzoMark: () => null }))
 vi.mock('@hanzo/build', () => ({
   DOTS: {},
-  Grip: () => null,
+  Gutter: () => null,
   path: () => '-/settings/notifications',
   route: (at: string) => (at === '-/artifacts' ? { kind: 'screen', screen: 'artifacts' } : at === '-/customize' ? { kind: 'customize' } : { kind: 'new' }),
   useSessions: () => ({ value: [], loading: false, error: null, reload: () => {} }),

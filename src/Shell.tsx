@@ -97,8 +97,7 @@ import {
   useIam,
   useOrganizations,
 } from "@hanzo/iam/react";
-import { SideProvider, useSplit } from "@hanzo/build";
-import { Grip } from "@hanzo/ui";
+import { Gutter, SideProvider, useSplit } from "@hanzo/build";
 import {
   HanzoMark,
 } from "@hanzogui/shell";
@@ -131,12 +130,8 @@ const FIELD = {
   color: "inherit",
   fontSize: "$2",
 } as const
-/** The side column's grip stands in the gutter the frame leaves, or 8px where there is none; the rail clears the
- *  home indicator on a phone. gui carries a `calc()`, `max()` or `env()` to the page unchanged; its types only name
+/** The rail clears the home indicator on a phone. gui carries an `env()` to the page unchanged; its types only name
  *  custom properties. */
-const GUTTER_START = "calc(-1 * var(--pane-gap, 0px))" as `var(--${string})`
-const GUTTER = "max(8px, var(--pane-gap, 8px))" as `var(--${string})`
-const TOUCH_START = "calc(-22px - var(--pane-gap, 0px) / 2)" as `var(--${string})`
 const HOME_INDICATOR = "env(safe-area-inset-bottom)" as `var(--${string})`
 import { invite } from "./lib/home";
 import { reach } from "./lib/reach";
@@ -1601,18 +1596,8 @@ export function Paned({
           $lg={{ display: "flex" }}
         >
           {split.grip ? (
-            <Grip
-              {...split.grip}
-              label="Resize side panel"
-              bar="inline"
-              // The handle halfway down the edge, where a hand looks for it.
-              justify="center"
-              // In the gutter the frame leaves between the panes; a room has none.
-              l={GUTTER_START}
-              width={GUTTER}
-              // A finger's band, centred on the gutter.
-              $touchable={{ l: TOUCH_START, width: 44 }}
-            />
+            // In the gutter the frame leaves between the panes (a room has none), measured inside the column's 1px edge.
+            <Gutter {...split.grip} label="Resize side panel" inset={1} />
           ) : null}
           {/* The column above is the landmark; this is the box the room
               projects into, a container and not a second region. It carries the
@@ -2195,7 +2180,7 @@ function Frame({
       borderColor="var(--edge, var(--white-06))"
       position="relative"
     >
-      <Grip
+      <Gutter
         side="left"
         span={side.span}
         floor={FLOOR}

@@ -55,7 +55,7 @@ import { Anchor, Box, Button, Text, View, XStack, YStack } from "@hanzo/ui";
 import { useMedia } from "@hanzo/gui";
 import { tidy } from "./lib/title";
 import { useIam, useIamToken } from "@hanzo/iam/react";
-import { bearer, hasSession, org } from "./lib/session";
+import { bearer, hasSession, named, org } from "./lib/session";
 import { api } from "./lib/api";
 import { app, dev, go } from "./lib/host";
 import { useRooms } from "./host";
@@ -96,6 +96,7 @@ import {
   useMention,
   useMind,
   useSuggestions,
+  CHAT_MODES,
   usePanel,
   type Artifact,
   frames,
@@ -290,9 +291,6 @@ export function Ask({
  * accessible name does not move when the placeholder does.
  */
 const message = (): string => `Ask ${brand()}`;
-
-/** The line every answer is sent under, above the composer, as the reference sets it. */
-const caution = (): string => `${brand()} can make mistakes. Check important info.`;
 
 /** The panel offers no kinds of its own in Chat: its tabs are pages. */
 const NONE: readonly Kind[] = [];
@@ -838,8 +836,10 @@ function Thread({
     setDraft: (x) => lent.current.setDraft(x),
     attach: (f) => lent.current.attach(f),
     go: (href) => (/^https?:/.test(href) ? void window.open(href, "_blank", "noopener,noreferrer") : go(href)),
-  });
+  }, CHAT_MODES);
   const agentShelf = useAgentShelf();
+  // The opening greets the person by their first name, as their account spells it.
+  const firstName = useMemo(() => (anonymous ? "" : ((named()?.name ?? "").trim().split(/\s+/)[0] ?? "")), [anonymous]);
   // Up to three things worth doing next, from the person's own activity (@hanzo/build).
   const hints = useSuggestions(target);
   // THE HEADER'S ⋯ IS THE ROW'S MENU (thread.tsx): rename, pin, share, its
@@ -1739,7 +1739,6 @@ function Thread({
       ready: Boolean(draft.trim() || files.length),
       // `label` keeps the accessible name constant; the placeholder is the composer's own.
       label: ASK,
-      note: caution(),
       // A phone's pill is the tall one: the field across the top, the controls under it.
       narrow: !media.sm,
       // In the app's frame the composer floats on the pane as a pane of its own.
@@ -1837,7 +1836,7 @@ function Thread({
       ],
       slash: anonymous ? undefined : carry.skills,
       at: anonymous ? undefined : carry.plugins,
-      mode: anonymous ? null : { value: carry.gear.gear.mode, set: (m) => carry.gear.set({ mode: m }) },
+      mode: anonymous ? null : carry.mode,
       // The model, the effort and the mode under the frame (@hanzo/build).
       mind,
       limits,
@@ -2179,7 +2178,7 @@ function Thread({
             // stays right when the sidebar, the notice line or an error banner
             // changes what is left over.
             // On a phone (no `center`) it takes the height above the composer, which docks at the foot.
-            <YStack data-slot="opening" items="center" width="100%" py="$6" {...(media.sm ? null : { flex: 1, justify: "center" as const })}>
+            <YStack data-slot="opening" items="center" width="100%" pt="$6" pb="$2" {...(media.sm ? null : { flex: 1, justify: "center" as const })}>
               {/* THE PORTRAIT IS A DM'S, AND ONLY A DM'S. It used to draw for
                   everyone, because `withWhom || "jobs"` gave a reader who had
                   chosen nobody a 160px photograph of somebody — and the heading
@@ -2227,7 +2226,7 @@ function Thread({
                 text="center"
                 mb="$1"
               >
-                {join(room) || heading || "What can I help with?"}
+                {join(room) || heading || (firstName ? `What’s up, ${firstName}?` : "What’s up?")}
               </Text>
 
               {/* WHAT THE AGENT ROW SAYS ABOUT ITSELF, and only that. The
@@ -2260,12 +2259,21 @@ function Thread({
       />
       <AgentMaker />
       {carry.dialog}
-      {/* The terms every answer is sent under, as links and nothing more: a
-          statement about a plan or a model is a statement that changes. */}
+      {/* THE ONE NOTE, at the foot: what a free answer is sent under, or the
+          terms every answer is. Nothing is said above the composer. */}
       <XStack items="center" justify="center" py="$1" px="$3" gap="$2">
-        <Anchor href={site("/legal/terms")} fontSize="$1" color="$soft">Terms</Anchor>
-        <Text fontSize="$1" color="$soft">·</Text>
-        <Anchor href={site("/legal/privacy")} fontSize="$1" color="$soft">Privacy</Anchor>
+        {isFree(model) ? (
+          <Text fontSize="$1" color="$soft">
+            Free chat is data-shared to train models.{" "}
+            <Anchor href={site("/legal/privacy")} fontSize="$1" color="$ink">Privacy</Anchor>
+          </Text>
+        ) : (
+          <>
+            <Anchor href={site("/legal/terms")} fontSize="$1" color="$soft">Terms</Anchor>
+            <Text fontSize="$1" color="$soft">·</Text>
+            <Anchor href={site("/legal/privacy")} fontSize="$1" color="$soft">Privacy</Anchor>
+          </>
+        )}
       </XStack>
       {consent}
       <Upgrade ask={ask} onClose={() => setAsk(null)} />

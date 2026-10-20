@@ -339,11 +339,16 @@ catalog files under Enso or Zen (`house`).
   the end dictation (the mic and its menu: the microphones with a live level,
   Dictation settings, Language) and one round button that is voice mode while
   the draft is empty, send with words, stop while a turn runs. Under the frame,
-  at its end: the model, the effort (dim) and the mode pill (Auto, Plan); Dev
-  puts where the run goes and its repository at that row's start. Under that,
-  up to three suggestions while nothing has been said (above the frame on a
+  at its end: the model, the effort (dim) and the mode pill (Chat: Auto,
+  Manual; Dev adds Plan). Manual pauses before each plugin runs for a message
+  (allow once, always in this chat, deny; `gear.allowed`), and Dev asks before
+  a run starts. Dev puts where the run goes and its repository at that row's
+  start. Under that, three suggestions while nothing has been said (the
+  person's activity, then signup, then Hanzo's starters; above the frame on a
   phone). `/` lists the skills above the frame. As wide as the words above it
-  (`measure`); cut as a pane in the app's frame.
+  (`measure`); cut as a pane in the app's frame. The opening above it is one
+  line, "What's up, <first name>?" (Dev: "Build what's next."); no line sits
+  above the composer: the free-chat note at the foot is the one note.
 - `+` (@hanzo/build `Plus`): Upload or add files (Ctrl+U), Agents ›
   (`useAgentShelf`: the org's agents, the cast first; a pick seats or unseats
   one; Create agent opens `Hire`), Skills › (the org's active skills; a pick
@@ -377,7 +382,9 @@ catalog files under Enso or Zen (`house`).
   phone opens it over the whole window. The header's Panel button and ⌘. /
   Ctrl+. toggle it.
 - The column is @hanzo/build's `useSplit` (Paned), the one Dev's run stands its
-  panel in. Its edge is the kit's `Grip`; the width is the person's, kept in
+  panel in. Its edge is @hanzo/build's `Gutter` (the kit's `Grip` with its
+  inline bar, centred in the gutter, drawn only while reached for), the same
+  one the sidebar's edge uses; the width is the person's, kept in
   their preferences (`side.width`, `PATCH /v1/pref`, read by the `PrefsProvider`
   App mounts, one document for Chat and Dev; without one, as in hanzo.team's
   shell, it lasts the page). Pulled over the conversation the column takes its

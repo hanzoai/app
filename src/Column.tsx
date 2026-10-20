@@ -21,7 +21,7 @@
 
 import { Text, XStack, YStack } from '@hanzo/gui'
 import { Bell, Search, Settings2, SquarePen } from 'lucide-react'
-import { DOTS, Grip, nav, NEW, path as written, useSessions, type Host } from '@hanzo/build'
+import { DOTS, Gutter, nav, NEW, path as written, useSessions, type Host } from '@hanzo/build'
 import { tidy } from './lib/title'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { Sidebar, SidebarIconButton, SidebarItem, StatusDot, type RailLink } from '@hanzo/ui/chat'
@@ -36,9 +36,6 @@ import { pane } from './ground'
 import { talk, type Place } from './lib/host'
 import { brand, wordmark } from './where'
 
-/** The grip stands in the gutter between the sidebar and the panel. gui carries a `calc()` to the page unchanged; its
- *  types only name custom properties. */
-const GUTTER_END = 'calc(-1 * var(--pane-gap))' as `var(--${string})`
 /** The sidebar fills the column. Its `width` is typed in px alone, though its frame takes any gui size — the type is
  *  @hanzo/ui's to widen. */
 const FILL = { width: '100%' } as object
@@ -245,7 +242,8 @@ export function Column({
         {foot}
       </Sidebar>
       {drawer ? null : (
-        <Grip
+        // In the gutter between the sidebar and the pane, the side panel's handle on this edge.
+        <Gutter
           side="left"
           span={span.span}
           floor={FLOOR}
@@ -255,9 +253,6 @@ export function Column({
           onKeep={span.keep}
           onShut={onShut}
           label="Resize sidebar"
-          // In the gutter between the sidebar and the panel, not over the sidebar's own rows.
-          r={GUTTER_END}
-          width="var(--pane-gap)"
         />
       )}
     </YStack>
