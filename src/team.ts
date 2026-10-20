@@ -6,23 +6,15 @@
 // build (scripts/team.mjs), so the rooms keep no copy of a persona: moving the
 // pin is how a persona changes.
 //
-// The order is the order the crew is drawn in.
+// Every member the package publishes, in the order the crew is drawn in
+// (scripts/team.mjs `ORDER`): this is the default cast.
 
 import { parse, type Member } from '@hanzo/personas/team.js'
 import { FILES } from './team.gen'
 
 export type { Member }
 
-export const TEAM: readonly Member[] = [
-  parse('dev', FILES.dev),
-  parse('des', FILES.des),
-  parse('vi', FILES.vi),
-  parse('feynman', FILES.feynman),
-  parse('einstein', FILES.einstein),
-  parse('nora', FILES.nora),
-  parse('maya', FILES.maya),
-  parse('leo', FILES.leo),
-]
+export const TEAM: readonly Member[] = Object.entries(FILES).map(([id, text]) => parse(id, text))
 
 const BY_ID = new Map(TEAM.map((one) => [one.id, one]))
 
