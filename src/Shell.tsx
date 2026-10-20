@@ -35,7 +35,7 @@ import {
   HardDrive,
   Settings2,
   UserPlus,
-  Building2,
+  PanelLeftClose,
   Search,
   Hash,
   AtSign,
@@ -54,7 +54,6 @@ import {
   BookOpen,
   SquareTerminal,
   Share2,
-  Sparkles,
   PanelLeft,
   PanelRight,
   Users,
@@ -106,7 +105,9 @@ import { useHost } from "./lib/hostname";
 import { useAi } from "./lib/ai";
 import { useTiers, useHidden, type Tier } from "./lib/tiers";
 import { useAccount } from "./lib/account";
-import { hasSession, superAdmin } from "./lib/session";
+import { bearer, hasSession, org as scoped, pick as choose } from "./lib/session";
+import { api } from "./lib/api";
+import { useSignOut } from "./lib/signout";
 import { enter, LOGIN } from "./lib/destination";
 import { address, sharedWithMe, type SharedItem } from "./lib/share";
 import { list } from "./lib/list";
@@ -148,10 +149,8 @@ import {
   SettingsList,
   type Row as SettingsRow,
 } from "./Settings";
-import { Profile } from "./Profile";
-import { SupportPicker } from "./Support";
 import { Find } from "./Find";
-import { Account } from "./Account";
+import { Me, type Who } from "./Me";
 import { called } from "./team";
 import type { OrgCommandItem } from "@hanzogui/shell";
 import { checkoutUrl } from './lib/pay';
@@ -1933,12 +1932,6 @@ function Frame({
    * act — which is why there is no second `panel` state beside this one.
    */
   const { settings: settingsPane, showSettings } = useOpen();
-  // The profile is a COLUMN, not a modal, so it is not one of the panels above:
-  // those lift off the window and dim it, this one stands in the row beside the
-  // room. It is the slot the thread view will share.
-  const [profiling, setProfiling] = useState(false);
-  // Every organization, for a SuperAdmin to step into (components/workspace/Support.tsx).
-  const [supporting, setSupporting] = useState(false);
   /**
    * The sidebar is open by default on desktop and stays open.
    *
@@ -2159,6 +2152,20 @@ function Frame({
 
   const { user: account } = useAccount();
   const signedIn = isAuthenticated || Boolean(user) || Boolean(account) || hasSession();
+  const logout = useSignOut();
+  const face = account?.avatar ?? user?.avatar;
+  // The account menu's reading of this host: who, in which organization, and how they leave.
+  const who: Who = {
+    api: api(),
+    token: bearer,
+    org: scoped(),
+    person: {
+      name: account?.name || user?.displayName || user?.name || user?.email || "",
+      email: user?.email || "",
+      avatar: typeof face === "string" && face.startsWith("https://") ? face : "",
+    },
+    signOut: () => void logout(),
+  };
 
 
   const list = (
@@ -2362,17 +2369,6 @@ function Frame({
       {settled ? (
         signedIn ? (
           <>
-            {/* SUPPORT MODE is drawn for the person IAM signs as a SuperAdmin and
-                nobody else; IAM answers anyone else only their own organizations
-                and refuses them the step in. */}
-            {superAdmin() ? (
-              <SidebarItem
-                icon={<Building2 size={15} aria-hidden />}
-                onPress={() => setSupporting(true)}
-              >
-                All organizations
-              </SidebarItem>
-            ) : null}
             <SidebarItem
               icon={<UserPlus size={15} aria-hidden />}
               onPress={() => window.open(invite(), "_blank", "noopener")}
@@ -2380,8 +2376,8 @@ function Frame({
               Invite Teammates
             </SidebarItem>
             {/* THE TWO ROWS hanzo.app KEPT AT ITS FOOT, and both already have a
-                home here: sharing is the referral page, and a plan is chosen at
-                billing. Inviting a teammate and sharing Hanzo are different
+                home here: sharing is the referral page, and a plan is chosen from
+                the account menu's Upgrade plan. Inviting a teammate and sharing Hanzo are different
                 errands — one adds somebody to your org, the other hands the
                 product to somebody who has none — which is why hanzo.app drew
                 them separately and so does this. */}
@@ -2394,23 +2390,24 @@ function Frame({
             >
               Share Hanzo
             </SidebarItem>
-            <SidebarItem
-              icon={<Sparkles size={15} aria-hidden />}
-              onPress={() => window.open(BILLING, "_blank", "noopener")}
-            >
-              Upgrade
-            </SidebarItem>
-            {/* WHO YOU ARE, at the foot: the person's menu — profile,
-                appearance, usage, API keys, security, sign out. The workspace
-                switcher is at the top, and credits live under Billing, so
-                neither is here. */}
-            <Account
-              onToggleCollapse={toggle}
-              onProfile={() => setProfiling(true)}
-              onAppearance={() => showSettings("general")}
-              onUsage={() => showSettings("usage")}
-              onKeys={() => showSettings("keys")}
-            />
+            {/* WHO YOU ARE, at the foot: the app's one account menu (Me.tsx),
+                SuperAdmin's All organizations under its account row. */}
+            <XStack items="center" gap="$1" px="$1.5" py="$1" borderTopWidth={1} borderColor="$borderColor">
+              <YStack flex={1} minW={0}>
+                <Me host={who} onOrg={(o) => (choose(o), window.location.reload())} />
+              </YStack>
+              <Box
+                render="button"
+                onClick={toggle}
+                aria-label="Collapse sidebar"
+                p="$2"
+                rounded="$2"
+                hoverStyle={{ bg: "$hover" }}
+                cursor="pointer"
+              >
+                <PanelLeftClose size={16} aria-hidden />
+              </Box>
+            </XStack>
           </>
         ) : null
       ) : null}
@@ -2672,8 +2669,6 @@ function Frame({
             run — lives in `open.ts`, above every component, so coming back
             opens the same work. */}
         <Paned swap={settingsPane ? <Suspense fallback={null}><SettingsPane id={settingsPane} /></Suspense> : undefined}>{children}</Paned>
-        <Profile open={profiling} onClose={() => setProfiling(false)} />
-        {supporting ? <SupportPicker onClose={() => setSupporting(false)} /> : null}
 
         {finding ? (
           <Find

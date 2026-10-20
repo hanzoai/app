@@ -219,8 +219,8 @@ Gates: `pnpm typecheck`, `pnpm lint:design` (ratchet in
 The plan is named, read and drawn once, in @hanzo/build (≥ 0.2.53), and the
 rooms mount it: `label` names a plan by family with its rung as a small tag
 (`max-20x` reads Max, 20x; never a slug or an id), `useStanding` reads the
-tier, the limits, the free allowance and the balance, `Meter` leads every
-account menu (`Me` in the app's column, `Account` in the shell), `Plan` is
+tier, the limits, the free allowance and the balance, `Meter` leads the
+account menu's account row › (`Me`, the one account menu), `Plan` is
 Settings → Usage and `Credits` is Settings → Billing. A plan's meter is its
 session, day and month as shares, never money; Free reads the free allowance
 left today; only an account with no plan and money in its balance sees the
@@ -398,11 +398,25 @@ reference captures; outer window, inner panel):
   ⌘K / Ctrl+K from anywhere), New chat or Dev's places, then Pinned and
   Recents as plain 14px titles on a 31px pitch — no dates, no icons; a run's
   state is a dot at its end. The Recents view menu stands at the heading's end.
-- The account menu (Me.tsx), from the face: who and the plan, Usage remaining ›
-  (the meter, Usage, Billing, and the plans row named by the plan: Enterprise
-  plan, Agency plan, else Upgrade plan), the organization › (switch, create,
-  settings, Team, All organizations for a SuperAdmin), API keys (the
-  platform's page), Settings (⌘, / Ctrl+,), Help ›, Log out.
+- The account menu (Me.tsx) is the one account menu: the rail's face draws it
+  for Chat, Dev and Studio, and the shell's sidebar foot for every other app
+  (`Who`, the host's person, org, api, token and sign-out). @hanzo/ui's
+  DropdownMenu, top to bottom: the account row (face, name, plan) whose ›
+  holds the meter and the organizations (switch, create, settings, Team, All
+  organizations for a SuperAdmin); Upgrade plan (named by the plan: Enterprise
+  plan, Agency plan, else Upgrade plan; the pay site, `leave`);
+  Personalization (Settings → General), Profile (Settings → Account), Settings
+  (⌘, / Ctrl+,); Help ›; Log out. Settings' rows go through `showSettings`,
+  which App answers with the builder's Settings (dev.tsx) and the shell with
+  its pane. Help › (help.ts, every address through `site()`): Help center
+  (/support), Privacy center (/legal), Release notes (hanzoai/cli releases, as
+  the site's nav), Download apps (/download), Keyboard shortcuts, then Terms of
+  Service (/legal/terms) and Privacy Policy (/legal/privacy). Keyboard
+  shortcuts is a dialog over help.ts `KEYS`, the one list of the app's keys;
+  ⌘/ / Ctrl+/ opens it from anywhere (the drawer's copy of the rail, `above`,
+  leaves the key to the rail's own). Report a bug is not drawn: the one intake,
+  `POST /v1/help/tickets` (cloud apps/help), answers 503 "help center not
+  configured" until the Help model is installed in the public help org.
 - Chat's header: the conversation's title at the left, then Share (icon and
   word), the row's own ⋯ menu (`ThreadMore`), the Summary (@hanzo/build
   `Summary` over RightPane.tsx `useSections`: Outputs led by Create file or
