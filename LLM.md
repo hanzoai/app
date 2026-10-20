@@ -334,15 +334,23 @@ catalog files under Enso or Zen (`house`).
 - `+` (@hanzo/build `Plus`): Upload or add files (Ctrl+U), Agents ›
   (`useAgentShelf`: the org's agents, the cast first; a pick seats or unseats
   one; Create agent opens `Hire`), Skills › (the org's active skills; a pick
-  puts its SKILL.md in the room's system turn), then Research (the live web
-  reads deeper and answers with a cited report: `RESEARCH` beside `WEB`) and
-  Memory (what Hanzo remembers, from /v1/ai/memory/list, in the system turn).
+  puts its SKILL.md in the room's system turn), Plugins › (@hanzo/build
+  `usePlugins`: what runs for this person — Work in a project, Deep research,
+  Sketch, Template Creator, Presentations, PDF; `@` lists the same), then
+  Research (the Deep research plugin: a Hanzo model plans the searches, the
+  pages are read, and the turn asks for a cited report) and Memory (what Hanzo
+  remembers, from /v1/ai/memory/list, in the system turn). A plugin that
+  prepares a message is asked in `submit`, just before it goes: its words ride
+  the turn's own block (`carrying`, the block files ride in, so the transcript
+  draws the words alone and `lookup` does not search the turn again), and an
+  answer of its own (Presentations' deck) is drawn as the reply with no model
+  asked.
   What a conversation carries is @hanzo/build's `useCarry`/`useGear`: per
   conversation in /v1/pref `gears` (the last 30), the person's default in
   `gear`. A row with no service behind it is not drawn: Connectors (a chat
   completion runs no tool the client did not loop), Design system (Studio's
-  brands reach only Studio), Plugins and Devices (Dev's runs only) are not
-  offered in Chat.
+  brands reach only Studio) and Devices (Dev's runs only) are not offered in
+  Chat.
 - The side panel is @hanzo/build's `Panel`, page tabs only in Chat: an
   artifact rendered from its own bytes, a file or an address. A tab can be
   pinned (`Deck.pin`): it leads the strip and closes only on purpose. Tabs, order and the chosen one are kept per

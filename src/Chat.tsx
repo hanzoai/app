@@ -44,7 +44,7 @@ import {
   isFree,
 } from "@hanzo/ai";
 import { ASK, Chat as ChatSurface, Failure, Parts, words, type Said } from "@hanzo/ui/chat";
-import { carriedIn, compose, partsOf, said as told, weigh } from "./lib/attach";
+import { carriedIn, carrying, compose, partsOf, said as told, weigh } from "./lib/attach";
 import { download, dropped, fileOf, pct, readable, refOf, retrieve, type Api, type FileRef, type WorkFile } from "./lib/files";
 import { channel, drop, hold, landed, localOf, spend, take, usePane, useWorkFile, type Held, type Via } from "./pane";
 import { Face, brief as roomBrief, join, roleOf, roomTurn, roster as rosterLine, rosterOf, speakers, speaksOf, voiceOf } from "./cast";
@@ -61,7 +61,7 @@ import { useRooms } from "./host";
 import { chats, house, paidPlan, paused, setCreditsAfterAllowance, useLimits } from "./lib/limits";
 import { LimitedBanner } from "@hanzo/ui/product/LimitedBanner";
 import type { LimitAction } from "@hanzo/ui/product/limits";
-import { RESEARCH, WEB } from "./lib/web";
+import { WEB } from "./lib/web";
 import { useHydrated } from "./lib/hydrated";
 import { base, served } from "./lib/ai";
 import { onServed, type Served as Heard } from "./lib/served";
@@ -825,7 +825,17 @@ function Thread({
   // What the conversation carries beside its words (@hanzo/build `useCarry`):
   // the skills picked from `+`, what Hanzo remembers and the mode, said at the
   // end of the room's system turn so every request carries them.
-  const carry = useCarry(target, open ?? "", (tab) => go(app(`-/customize/${tab}`)));
+  // What the plugins act on — the draft and the files held for the next message —
+  // read when they act, so it is lent through a ref filled further down.
+  const lent = useRef<{ draft: string; setDraft: (x: string) => void; attach: (f: File[]) => void }>({ draft: "", setDraft: () => {}, attach: () => {} });
+  const carry = useCarry(target, open ?? "", (tab) => go(app(`-/customize/${tab}`)), {
+    get draft() {
+      return lent.current.draft;
+    },
+    setDraft: (x) => lent.current.setDraft(x),
+    attach: (f) => lent.current.attach(f),
+    go: (href) => (/^https?:/.test(href) ? void window.open(href, "_blank", "noopener,noreferrer") : go(href)),
+  });
   const agentShelf = useAgentShelf();
   // Up to three things worth doing next, from the person's own activity (@hanzo/build).
   const hints = useSuggestions(target);
@@ -1038,7 +1048,7 @@ function Thread({
     // world, in any language, is answered from what the web says now and streams.
     params: {
       reasoning_effort: mind.effort,
-      ...(!anonymous && house(rowOf(model)?.family) ? { tools: carry.gear.gear.research ? [...WEB, RESEARCH] : WEB } : {}),
+      ...(!anonymous && house(rowOf(model)?.family) ? { tools: WEB } : {}),
     },
     ...(open ? { thread: open } : {}),
     onError: (e) => {
@@ -1180,6 +1190,7 @@ function Thread({
   // read from it for the question.
   const { held: files, refused: turnedAway } = usePane(at);
   const via = useMemo<Via>(() => ({ api: ai, org: anonymous ? null : org() }), [ai, anonymous]);
+  lent.current = { draft, setDraft, attach: (f) => void hold(at, f, via) };
   // "Use in Chat" from the Library: `?attach=<item>` holds it for the next message.
   useAttach(at, via);
   // "Schedule this": the prompt the dialog opens on, or null while it is shut.
@@ -1479,14 +1490,54 @@ function Thread({
    * while; past it the turn says the file is not readable yet rather than
    * answering as though it had been read.
    */
+  // WHAT THE PLUGINS THAT ARE ON ADD, asked just before a message goes: words
+  // the model reads with it (carried in the turn's own block, as files are), or
+  // an answer of the plugin's own, drawn as the reply without asking a model.
+  const [prepWrong, setPrepWrong] = useState<string | null>(null);
+  const answered = (text: string, reply: string) => {
+    apply.current((held) => [
+      ...held,
+      { id: `u-${Date.now()}`, role: "user", content: text },
+      { id: `a-${Date.now()}`, role: "assistant", content: reply },
+    ]);
+    if (!anonymous)
+      void ai.threads
+        .record([{ role: "user", content: text }, { role: "assistant", content: reply }], open ?? undefined)
+        .then((id) => (!open && id ? reopen(id) : undefined))
+        .catch(() => {});
+  };
+
   const submit = () => {
     const text = draft.trim();
     if (preparing || (!text && !files.length)) return;
+    if (!carry.preparing) return deliver(text, "");
+    setDraft("");
+    setPrepWrong(null);
+    void (async () => {
+      setPreparing("Preparing");
+      try {
+        // The files held for this message, as bytes, for a plugin that reads them (PDF).
+        const bytes = await Promise.all(
+          files.filter((h) => h.href).map(async (h) => new File([await (await fetch(h.href)).blob()], h.name, { type: h.type })),
+        );
+        const got = await carry.prep({ text, files: bytes, thread: open ?? "" }, new AbortController().signal);
+        if (got.reply && !got.system) return answered(text, got.reply);
+        deliver(text, got.system ?? "");
+      } catch (e) {
+        setPrepWrong(e instanceof Error ? e.message : String(e));
+        setDraft(text);
+      } finally {
+        setPreparing(null);
+      }
+    })();
+  };
+
+  const deliver = (text: string, extra: string) => {
     const holding = files.slice();
     const earlier = carriedIn(chat.messages);
     if (!holding.length && !earlier.length) {
       setDraft("");
-      guarded(text);
+      guarded(extra ? carrying(text, extra) : text);
       return;
     }
     setDraft("");
@@ -1499,7 +1550,7 @@ function Thread({
         const reused = earlier.filter((f) => !attached.some((a) => a.id === f.id));
         const all = [...attached, ...reused];
         if (!all.length) {
-          if (text) guarded(text);
+          if (text) guarded(extra ? carrying(text, extra) : text);
           else setDraft(text);
           return;
         }
@@ -1513,7 +1564,7 @@ function Thread({
           why = "the workspace could not be read just now";
         }
         if (!grounds?.passages.length) why = why ?? unread(now);
-        guarded(compose(text, { attached, reused }, grounds, why, partly(now)));
+        guarded(compose(text, { attached, reused }, grounds, why, partly(now), extra));
       } finally {
         setPreparing(null);
       }
@@ -1628,7 +1679,7 @@ function Thread({
   const consent =
     asking === null ? null : (
       <Consent
-        question={asking}
+        question={told(asking).text}
         onAgree={() => {
           const s = store();
           // Nothing to persist into is not a reason to refuse the turn the
@@ -2112,7 +2163,7 @@ function Thread({
           // WHAT GOES WITH THE MESSAGE, above the frame and at its width: the
           // pause and its ways past, one chip a file, and talk mode's words.
           head:
-            files.length || turnedAway || preparing || talk.open || talk.refusal || pause ? (
+            files.length || turnedAway || prepWrong || preparing || talk.open || talk.refusal || pause ? (
               <>
                 {/* TURNED AWAY: what is used and until when, the ways past it, and
                     the usage page — the shell's Settings pane, or the builder's
@@ -2143,9 +2194,9 @@ function Thread({
                     {preparing}…
                   </Text>
                 ) : null}
-                {turnedAway ? (
+                {turnedAway || prepWrong ? (
                   <Text role="alert" fontSize="$2" color={BAD}>
-                    {turnedAway}
+                    {turnedAway || prepWrong}
                   </Text>
                 ) : null}
                 {/* TALK MODE'S OWN TURNS: what Hanzo is saying, or why it cannot. */}
@@ -2176,6 +2227,7 @@ function Thread({
                 upload: () => take(at, via),
                 agents: agentShelf,
                 skills: carry.skills,
+                plugins: carry.plugins,
                 research: { on: carry.gear.gear.research, set: (on) => carry.gear.set({ research: on }) },
                 memory: { on: carry.gear.gear.memory, set: (on) => carry.gear.set({ memory: on }) },
               },
@@ -2190,6 +2242,7 @@ function Thread({
             ...(anonymous ? [] : carry.on),
           ],
           slash: anonymous ? undefined : carry.skills,
+          at: anonymous ? undefined : carry.plugins,
           mode: anonymous ? null : { value: carry.gear.gear.mode, set: (m) => carry.gear.set({ mode: m }) },
           // The model, the effort and the mode under the frame (@hanzo/build).
           mind,
@@ -2204,6 +2257,7 @@ function Thread({
         })}
       />
       <AgentMaker />
+      {carry.dialog}
       {isFree(model) ? (
         <XStack
           items="center"

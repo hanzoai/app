@@ -49,7 +49,7 @@ const inert = (s: string): string => s.split(CLOSE).join('</workspace files>')
  * stored without indexing, or the read failed — so the model says so rather
  * than answering as though it had read the files.
  */
-export function compose(text: string, carried: Carried, grounds: Grounds | null, why?: string, partial?: string): string {
+export function compose(text: string, carried: Carried, grounds: Grounds | null, why?: string, partial?: string, extra?: string): string {
   const words = text.trim()
   const all = [...carried.attached, ...carried.reused]
   if (!all.length) return words
@@ -72,8 +72,21 @@ export function compose(text: string, carried: Carried, grounds: Grounds | null,
   } else {
     lines.push(`No passages could be read from them${why ? ` (${why})` : ''}: say so, and answer only what you can without them.`)
   }
+  if (extra) lines.push('', inert(extra))
   lines.push(CLOSE)
   const block = lines.join('\n')
+  return words ? `${words}\n\n${block}` : block
+}
+
+/**
+ * The message as sent with what a plugin found for it (research, a PDF's text):
+ * the words, then the same block files ride in, holding no files, so it is
+ * drawn as the words alone and `lookup` reads the turn as carried, never
+ * searching it a second time.
+ */
+export function carrying(text: string, extra: string): string {
+  const words = text.trim()
+  const block = [OPEN, JSON.stringify({ attached: [], reused: [] }), inert(extra), CLOSE].join('\n')
   return words ? `${words}\n\n${block}` : block
 }
 

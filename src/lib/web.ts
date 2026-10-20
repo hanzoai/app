@@ -43,9 +43,6 @@ export const PAGES = 3
 /** Results a search lists, and how many of them it reads. */
 const LISTED = 6
 const READ = 2
-/** What Research lists and reads instead. */
-const DEEP_LISTED = 10
-const DEEP_READ = 5
 /** Characters of a page a search quotes, and a named page quotes. */
 const PAGE_CHARS = 3500
 const CRAWL_CHARS = 6000
@@ -58,24 +55,6 @@ const GATE = 8192
 const SEARCH_MS = 20_000
 const SKIM_MS = 10_000
 const READ_MS = 25_000
-
-/**
- * Research: beside `WEB`, a turn that carries this reads deeper — ten results
- * listed, five pages read — whatever its shape, and the model is asked for a
- * report that cites them.
- */
-export const RESEARCH: ChatCompletionTool = {
-  type: 'function',
-  function: {
-    name: 'research',
-    description: 'Research the question in depth on the live web and answer with a cited report.',
-    parameters: { type: 'object', properties: {}, required: [] },
-  },
-}
-
-/** The word a Research turn's model is given. */
-const REPORT =
-  'Research mode: answer with a detailed report — a short direct answer first, then the evidence under headings — citing each claim with the numbered sources above as [n](url). Say plainly where the sources disagree or fall short.'
 
 /** The two tools that mark a turn as one that may use the web. */
 export const WEB: ChatCompletionTool[] = [
@@ -564,7 +543,7 @@ const withheld = (url: string) =>
   `The person's message names ${label(url)}. It was not opened: opening an address like it can sign in, confirm, unsubscribe or spend a one-time link for them.`
 
 /** Runs one search: the results, best first, and the text of the best pages. */
-async function search(call: Call, q: string, lang: string, now: Date, deep = false): Promise<string> {
+async function search(call: Call, q: string, lang: string, now: Date): Promise<string> {
   let found: { results?: Result[] }
   try {
     found = await call('/v1/websearch', lang ? { q, language: lang } : { q }, SEARCH_MS)
@@ -572,11 +551,11 @@ async function search(call: Call, q: string, lang: string, now: Date, deep = fal
     return unavailable(e)
   }
   const words = keywords(q)
-  const ranked = rank(found?.results ?? [], words).slice(0, deep ? DEEP_LISTED : LISTED)
+  const ranked = rank(found?.results ?? [], words).slice(0, LISTED)
   const head = `Web search for "${q}", ${stamp(now)}.`
   if (!ranked.length) return `${head}\nNothing was found.`
   const pages = await Promise.all(
-    ranked.slice(0, deep ? DEEP_READ : READ).map((r) =>
+    ranked.slice(0, READ).map((r) =>
       call('/v1/crawl', { url: r.url }, SKIM_MS)
         .then((d: { success?: boolean; data?: { markdown?: string } }) => (d?.success ? excerpt(d.data?.markdown ?? '', words, PAGE_CHARS) : ''))
         .catch(() => ''),
@@ -610,17 +589,6 @@ interface Lookup {
   lang: string
   /** The words a page about the turn would carry. */
   about: string[]
-}
-
-/** A Research turn is looked up whatever its shape: its own words, searched. Files and pictures still stay home. */
-function forced(messages: ChatCompletionMessage[], spoken: readonly string[]): Lookup | null {
-  const last = messages.at(-1)
-  if (last?.role !== 'user') return null
-  const { text: said, carried } = told(textOf(last.content))
-  if (carried || pictured(last.content)) return null
-  const plain = spell(said.trim().slice(0, GATE)).trim()
-  if (!plain) return null
-  return { pages: [], held: [], q: plain.slice(0, QUERY), lang: language(plain, spoken), about: keywords(plain) }
 }
 
 /**
@@ -721,8 +689,7 @@ export function researched(base: typeof fetch, clock: () => Date = () => new Dat
     if (!asked.stream || !Array.isArray(asked.messages) || !WEB.every((t) => names.has(t.function.name))) return base(input, init)
     const { tools: _tools, tool_choice: _choice, ...bare } = asked
 
-    const deep = names.has(RESEARCH.function.name)
-    const look = lookup(asked.messages, spoken()) ?? (deep ? forced(asked.messages, spoken()) : null)
+    const look = lookup(asked.messages, spoken())
     if (!look) return base(input, { ...init, body: JSON.stringify(bare) })
 
     // The reader's stop, and the stream's own cancel, end every request below.
@@ -750,11 +717,11 @@ export function researched(base: typeof fetch, clock: () => Date = () => new Dat
     const found = (
       await Promise.all([
         ...look.pages.map((u) => read(call, u, look.about)),
-        ...(look.q ? [search(call, look.q, look.lang, now, deep)] : []),
+        ...(look.q ? [search(call, look.q, look.lang, now)] : []),
         ...look.held.map(async (u) => withheld(u)),
       ])
     ).join('\n\n')
-    const messages = primed(asked.messages, found, now, deep ? REPORT : '')
+    const messages = primed(asked.messages, found, now)
 
     const first = await send(messages)
     if (!streams(first)) return first
@@ -765,7 +732,7 @@ export function researched(base: typeof fetch, clock: () => Date = () => new Dat
           // results: asked once more, it answers. One that failed is not asked again.
           const { said, failed } = await relay(first, out)
           if (!said.trim() && !failed) {
-            const again = await send(primed(asked.messages, found, now, deep ? `${REPORT}\n\n${SILENT}` : SILENT))
+            const again = await send(primed(asked.messages, found, now, SILENT))
             if (streams(again)) await relay(again, out)
             else out.enqueue(event({ error: { message: await refusal(again) } }))
           }
