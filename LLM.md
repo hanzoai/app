@@ -157,17 +157,21 @@ the one conversation the pane holds).
   `Claims.Sudo`): a person whose `orgs[0].org` is `admin`, never a program and
   never an empty home shifted onto a later entry. No copy of the rule lives here.
 - `src/team.gen.ts` — the core team's persona files as strings, generated from
-  `@hanzo/personas` by `scripts/team.mjs`, so no host needs an asset loader.
+  `@hanzo/personas` by `scripts/team.mjs`, so no host needs an asset loader:
+  every member the package publishes, in the crew's order (`ORDER`, then any
+  other). That list is the default cast (`team.ts` `TEAM`).
 - `src/lib/integrations.ts` — the integrations catalogue, the one copy:
   hanzo.ai's /integrations pages render it, Directory's "Works with" tab lists
   it (loaded when the tab opens).
 - `src/lib/terms.ts` — the Terms and AUP versions (`POLICY`), the one copy:
   hanzo.ai's legal pages print them, every sign-up card records them.
 - `assets/` — the files the rooms name by path: the cast's portraits
-  (`assets/agents`, `/agents/<id>.png` in `cast.tsx`) and the Bots room's
-  avatars (`assets/bots`). A host serves the directory at its root: it copies
-  `@hanzo/rooms/assets` into `public/` on `prebuild`/`predev` and keeps no
-  copy in git.
+  (`assets/agents`, `/agents/<id>.png` in `cast.tsx`), the Bots room's
+  avatars (`assets/bots`) and the personas roster (`assets/personas`, written
+  by `scripts/team.mjs` at build and ignored by git: `index.json` lists every
+  figure, `<slug>.md` is a figure's PERSONA.md where one is written). A host
+  serves the directory at its root: it copies `@hanzo/rooms/assets` into
+  `public/` on `prebuild`/`predev` and keeps no copy in git.
 
 ## The app's addresses
 
@@ -328,6 +332,28 @@ catalog files under Enso or Zen (`house`).
   phone opens it as a sheet. The header's Panel button and ⌘. / Ctrl+. toggle it.
   An answer that finishes writing a page while the panel is open opens it there.
 - `pane.ts` holds only what goes with the next message (files, refusals).
+
+## Agents
+
+- The composer's `+` › Agents is `useAgentShelf()` (crew.tsx): the org's agents
+  (`useCrew`) with the default cast filling in any member the org keeps no row
+  for, the cast first (agents.ts `ordered`), each by its `Face` at 16px; on is
+  in the open conversation (`useOpen().agents`) and a pick toggles it there
+  (`openAgent`). Create agent and Browse personas open `Hire` through `make()`;
+  the host mounts `<AgentMaker />` once beside the composer to draw it. Manage
+  agents is Dev's Customize › Agents (`app('-/customize/agents')`). The Shelf,
+  Row and Link types are @hanzo/build plus.tsx's, copied in agents.ts until
+  build publishes them.
+- `Hire` (New agent) starts from a persona: @hanzo/personas' figures, fetched
+  from `/personas/index.json`, fill the name, the instructions (the figure's
+  PERSONA.md body word for word, or one paragraph saying who it is where none is
+  written) and the face's description (agents.ts `draft`).
+- A face is drawn by Hanzo's own image model, `zen-image` (agents.ts `PAINTER`,
+  hanzo-inc/zen catalog.yaml), named on every `/v1/images/generations` call: the
+  endpoint refuses a call with no model. One call per press of Draw or
+  Regenerate, and one on Create when no picture or emoji was chosen; a drawing
+  that fails on Create says why and the next press creates without one. Every
+  face goes through `mark` and is kept as the row's `avatar`.
 
 ## The app is `App`
 

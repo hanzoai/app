@@ -1,32 +1,33 @@
 'use client'
 
-// The crew, under the composer: who you can talk to, and a place to make one more.
+// Who a conversation can hold, and the sheet that makes one more.
 //
-// The first disc is an outline with a plus — the shape of a face that is not
-// drawn yet — and it opens the sheet that makes an agent: a name, what it does,
-// which mind, and a likeness you upload or describe. The rest are the org's
-// agents, the house crew first in the order the cast lists them, each drawn by
-// the one `Face` every surface draws with. The house crew is the core team
-// hanzoai/personas publishes (team.ts).
+// The composer's `+` › Agents (`useAgentShelf`) lists the org's agents, the
+// default cast first: the core team hanzoai/personas publishes (team.ts), drawn
+// for an org that keeps no row of its own for a member. Picking one adds it to
+// the conversation that is open, and the reply comes back in each voice in the
+// room; picking it again lets it out. The page does not move. Create agent and
+// Browse personas open the sheet (`Hire`, mounted once by `AgentMaker`); Manage
+// agents is Dev's Customize › Agents.
 //
-// Under a chat, pressing a face adds that character to the conversation that is
-// open, and the reply comes back in each voice in the room; pressing one again
-// lets them out. The page does not move: the organization, the thread and the
-// address stay as they are. On a page that is not a chat (`to`), pressing a
-// face opens a chat with that character there. The sidebar's roster row opens a
-// chat with one character alone.
+// The crew strip (`Crew`) is the same list as faces, on Home: pressing one opens
+// a chat with that character there (`to`).
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useRooms } from './host'
-import { Camera, Check, Plus, Upload } from 'lucide-react'
+import { ArrowLeft, Camera, Check, Plus, Sparkles, Upload, Users } from 'lucide-react'
+import { generateImages } from '@hanzo/ai'
 import { useAgents, useModels } from '@hanzo/ai/react'
 import { Box, Button, Input, Text, Textarea, View, XStack, YStack } from '@hanzo/ui'
 import { useAi } from './lib/ai'
 import { mark } from './lib/mark'
 import { reach } from './lib/reach'
-import { CAST, Face } from './cast'
+import { Face } from './cast'
 import { useOpen } from './open'
-import { TEAM, called } from './team'
+import { TEAM, called, member } from './team'
+import { FIGURES, MEMOJI, PAINTER, draft, line, ordered, title, type Figure, type Shelf } from './agents'
+import { app, go } from './lib/host'
+import { site } from './where'
 import { bare } from './lib/bare'
 import { BAD, mix } from './lib/mix'
 
@@ -69,25 +70,71 @@ export function useCrew(): ReturnType<typeof useAgents> {
 /** The house crew's names, which a reply may be split by even after one has left the room. */
 export const HOUSE: readonly string[] = TEAM.map((one) => one.name)
 
-/** The core team, drawn for an org that does not keep a member under its own row. */
-const DEFAULT_HOUSE_AGENTS = TEAM.map((one) => ({ id: `house-${one.id}`, name: one.name, avatar: `/agents/${one.id}.png` }))
+/** Two names for one agent differ only in case ("Dev" and "dev"). */
+const same = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase()
 
-/** The org's agents, the cast first in its own order, then the rest as listed. */
-function ordered<T extends { id?: string; name: string }>(agents: T[]): (T | (typeof DEFAULT_HOUSE_AGENTS)[number])[] {
-  const list = Array.isArray(agents) ? agents : []
-  const names = new Set(list.map((a) => a.name?.toLowerCase()))
-  const combined: (T | (typeof DEFAULT_HOUSE_AGENTS)[number])[] = [...list]
-  for (const house of DEFAULT_HOUSE_AGENTS) {
-    if (!names.has(house.name.toLowerCase())) {
-      combined.push(house)
-    }
+// THE SHEET IS OPENED FROM A MENU AND DRAWN BESIDE THE COMPOSER, two places
+// that share no parent, so whether it is open lives here, outside React, the
+// way open.ts keeps the conversation.
+let making: 'new' | 'persona' | null = null
+const heard = new Set<() => void>()
+const listen = (f: () => void) => {
+  heard.add(f)
+  return () => void heard.delete(f)
+}
+
+/** Opens the New agent sheet, blank or on its persona list; null shuts it. */
+export function make(how: 'new' | 'persona' | null): void {
+  making = how
+  for (const f of heard) f()
+}
+
+/**
+ * The New agent sheet, wherever the host mounts this once (beside the
+ * composer). It is drawn while `make` holds it open, and an agent it makes joins
+ * the conversation that is open.
+ */
+export function AgentMaker() {
+  const how = useSyncExternalStore(listen, () => making, () => null)
+  const { agents: room, openAgent } = useOpen()
+  if (!how) return null
+  return (
+    <Hire
+      start={how === 'persona'}
+      onClose={() => make(null)}
+      onMade={(name) => {
+        if (!room.some((there) => same(there, name))) openAgent(name)
+      }}
+    />
+  )
+}
+
+/**
+ * The composer's `+` › Agents: the org's agents, the default cast first, each
+ * by its face; on is in the open conversation, and a pick toggles it there.
+ */
+export function useAgentShelf(): Shelf {
+  const { agents, loading, error } = useCrew()
+  const { agents: room, openAgent } = useOpen()
+  const pathed = useRooms().path !== null
+  return {
+    rows: ordered(agents).map((one) => ({
+      id: one.name,
+      label: called(one.name),
+      icon: <Face src={one.avatar} emoji={(one as { emoji?: string }).emoji} name={one.name} size={16} />,
+      note: member(one.name)?.role ?? (one as { description?: string }).description,
+      on: room.some((there) => same(there, one.name)),
+    })),
+    pick: (id) => openAgent(called(id)),
+    loading,
+    error: error ? reach(error) : null,
+    search: 'Search agents',
+    create: { label: 'Create agent', onPress: () => make('new') },
+    // Dev's Customize › Agents: a move inside the app where the host reads the
+    // path (hanzo.ai), else Dev on hanzo.ai, as Chat's Create file or site goes.
+    manage: { label: 'Manage agents', onPress: () => (pathed ? go(app('-/customize/agents')) : window.location.assign(site(app('-/customize/agents')))) },
+    browse: { label: 'Browse personas', onPress: () => make('persona') },
   }
-  const rank = new Map(Object.keys(CAST).map((name, i) => [name, i]))
-  return combined.sort((a, b) => {
-    const ra = rank.get(a.name?.toLowerCase() ?? '') ?? Infinity
-    const rb = rank.get(b.name?.toLowerCase() ?? '') ?? Infinity
-    return ra - rb
-  })
 }
 
 /**
@@ -262,23 +309,116 @@ function Said({ id, text }: { id: string; text: string | null }) {
   )
 }
 
+/** A file the host serves, as text; a refusal says which and why. */
+async function text(path: string): Promise<string> {
+  const r = await fetch(path)
+  if (!r.ok) throw new Error(`${path} did not load (${r.status}).`)
+  return r.text()
+}
+
+/** The roster, read once a page when the list first opens; a failed read is asked again next time. */
+let roster: Promise<Figure[]> | null = null
+const figures = (): Promise<Figure[]> =>
+  (roster ??= text(`${FIGURES}/index.json`)
+    .then((t) => JSON.parse(t) as Figure[])
+    .catch((e) => {
+      roster = null
+      throw e
+    }))
+
+/** How many matches the list draws; typing narrows the rest. */
+const SHOWN = 50
+
+/**
+ * Start from a persona: @hanzo/personas' figures by name and one line, the ones
+ * with a written PERSONA.md first, searched by either.
+ */
+function Figures({ onPick }: { onPick: (f: Figure) => void }) {
+  const [all, setAll] = useState<Figure[] | null>(null)
+  const [failed, setFailed] = useState<string | null>(null)
+  const [q, setQ] = useState('')
+  useEffect(() => {
+    let live = true
+    figures().then(
+      (list) => live && setAll([...list].sort((a, b) => Number(!a.called) - Number(!b.called))),
+      (e) => live && setFailed(reach(e)),
+    )
+    return () => {
+      live = false
+    }
+  }, [])
+  const needle = q.trim().toLowerCase()
+  const found = (all ?? []).filter((f) => !needle || `${title(f)} ${line(f)}`.toLowerCase().includes(needle))
+  return (
+    <YStack gap="$2">
+      <Input
+        value={q}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQ(e.target.value)}
+        placeholder={all ? `Search ${all.length.toLocaleString()} figures` : 'Search figures'}
+        aria-label="Search personas"
+        autoFocus
+      />
+      <YStack maxH={360} overflowY="auto" overflowX="hidden" role="group" aria-label="Personas">
+        {found.slice(0, SHOWN).map((f) => (
+          <YStack
+            key={f.slug}
+            render="button"
+            onClick={() => onPick(f)}
+            items="flex-start"
+            gap={2}
+            px="$2"
+            py="$2"
+            rounded="$3"
+            cursor="pointer"
+            hoverStyle={{ bg: '$raised' }}
+            focusVisibleStyle={{ bg: '$raised' }}
+          >
+            <Text fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1}>
+              {title(f)}
+            </Text>
+            <Text fontSize="$2" color="$soft" numberOfLines={1}>
+              {line(f)}
+            </Text>
+          </YStack>
+        ))}
+      </YStack>
+      <Text fontSize="$2" color={failed ? BAD : '$soft'} role={failed ? 'alert' : undefined}>
+        {failed ??
+          (!all
+            ? 'Reading the personas…'
+            : !found.length
+              ? 'No figure matches.'
+              : found.length > SHOWN
+                ? `${SHOWN} of ${found.length.toLocaleString()} shown. Type to narrow them.`
+                : null)}
+      </Text>
+    </YStack>
+  )
+}
+
 /**
  * The sheet that makes an agent.
  *
  * A name, a mind and a spending limit are what the agents API requires; what it
  * does becomes its instructions; the likeness is whichever the maker gives — a
  * photo uploaded onto the round picture (pressed, or dropped on), or a face
- * described and drawn by the image model. Both go through `mark`, the one crop
- * every saved face takes, so a drawn face and an uploaded one are the same kind
- * of picture. The row keeps at most one of a picture and an emoji, so choosing
- * one clears the other here too.
+ * described and drawn by Hanzo's image model (`PAINTER`), one call per press of
+ * Draw or Regenerate. An agent created with neither a picture nor an emoji has
+ * one drawn then, once, from the description or else its name. Every face goes
+ * through `mark`, the one crop every saved face takes, and is kept as the row's
+ * `avatar`. The row keeps at most one of a picture and an emoji, so choosing one
+ * clears the other here too.
+ *
+ * Start from a persona fills the name, the instructions and the face's
+ * description from a figure of @hanzo/personas' roster (agents.ts `draft`);
+ * `start` opens the sheet on that list.
  *
  * Create stays off until the required fields are filled in the API's own
  * terms, and a refusal is said in plain words under the field it concerns.
  *
  * EXPORTED, because Contacts adds agents too and there is one way to make one.
  */
-export function Hire({ onClose, onMade }: { onClose: () => void; onMade: (name: string) => void }) {
+export function Hire({ onClose, onMade, start = false }: { onClose: () => void; onMade: (name: string) => void; start?: boolean }) {
   const { create } = useAgents()
   const { models } = useModels()
   const { client } = useAi()
@@ -295,15 +435,20 @@ export function Hire({ onClose, onMade }: { onClose: () => void; onMade: (name: 
   const [wrong, setWrong] = useState<{ field: Field; text: string } | null>(null)
   const [over, setOver] = useState(false)
   const [lit, setLit] = useState(false)
+  const [choosing, setChoosing] = useState(start)
+  /** A drawing failed on Create, so the next press makes the agent without one. */
+  const [faceless, setFaceless] = useState(false)
   const picking = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key !== 'Escape') return
+      if (choosing) setChoosing(false)
+      else onClose()
     }
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
-  }, [onClose])
+  }, [onClose, choosing])
 
   // WHAT CREATE WAITS FOR, in the API's own terms, so a request it would refuse
   // is never sent. Each rule names the field it belongs to.
@@ -332,28 +477,28 @@ export function Hire({ onClose, onMade }: { onClose: () => void; onMade: (name: 
     }
   }
 
-  // The image model draws the face; `mark` makes it the same 256px square every
-  // saved picture is, so a drawn face weighs what an uploaded one weighs.
+  /** What a drawing is of: the description, else the name. */
+  const subject = look.trim() || called
+
+  // One call to the image model; `mark` makes the answer the same 256px square
+  // every saved picture is, so a drawn face weighs what an uploaded one weighs.
+  const paint = async (): Promise<string> => {
+    const [image] = await generateImages(client!, `${subject}, ${MEMOJI}`, { model: PAINTER, n: 1, size: '512x512', response_format: 'b64_json' })
+    if (!image?.b64_json) throw new Error('The image model answered with no picture.')
+    const bytes = Uint8Array.from(atob(image.b64_json), (c) => c.charCodeAt(0))
+    const face = await mark(new File([bytes], 'face.png', { type: 'image/png' }))
+    setAvatar(face)
+    setEmoji('')
+    return face
+  }
+
   const draw = async () => {
-    if (!client || !look.trim()) return
+    if (!client || !subject || busy) return
     setBusy('draw')
     setWrong(null)
     try {
-      const out = await client.http.json<{ data?: { b64_json?: string }[] }>({
-        method: 'POST',
-        path: '/v1/images/generations',
-        body: {
-          prompt: `${look.trim()}, memoji style 3D emoji portrait, head and shoulders, centered, plain background`,
-          n: 1,
-          size: '512x512',
-          response_format: 'b64_json',
-        },
-      })
-      const b64 = out?.data?.[0]?.b64_json
-      if (!b64) throw new Error('The image model answered with no picture.')
-      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
-      setAvatar(await mark(new File([bytes], 'face.png', { type: 'image/png' })))
-      setEmoji('')
+      await paint()
+      setFaceless(false)
     } catch (e) {
       setWrong({ field: 'picture', text: reach(e) })
     } finally {
@@ -361,17 +506,46 @@ export function Hire({ onClose, onMade }: { onClose: () => void; onMade: (name: 
     }
   }
 
+  // A figure fills the sheet: its PERSONA.md is read where one is written.
+  const become = async (f: Figure) => {
+    setChoosing(false)
+    setWrong(null)
+    try {
+      const md = f.called ? await text(`${FIGURES}/${f.slug}.md`) : null
+      const d = draft(f, md)
+      setName(d.name)
+      setDoes(d.does)
+      setLook(d.look)
+      setFaceless(false)
+    } catch (e) {
+      setWrong({ field: 'form', text: reach(e) })
+    }
+  }
+
   const make = async () => {
     if (!ready || busy) return
     setBusy('make')
     setWrong(null)
+    // NO PICTURE CHOSEN, SO ONE IS DRAWN, once. A drawing that fails says why,
+    // and the next press makes the agent without one.
+    let face = avatar
+    if (!face && !emoji.trim() && !faceless && client) {
+      try {
+        face = await paint()
+      } catch (e) {
+        setWrong({ field: 'picture', text: `${reach(e).replace(/[.!?]?$/, '.')} Press Create again to make ${called} without a picture.` })
+        setFaceless(true)
+        setBusy(null)
+        return
+      }
+    }
     // The budget fields are the agents API's (cloud apps/agents createAgentIn);
     // @hanzo/ai 0.6.16's AgentCreateParams predates them.
     const body: Parameters<typeof create>[0] & { cap_micro_usd: number; max_task_micro_usd: number; period: Period } = {
       name: called,
       model,
       ...(does.trim() ? { instructions: does.trim() } : {}),
-      ...(avatar ? { avatar } : emoji.trim() ? { emoji: emoji.trim() } : {}),
+      ...(face ? { avatar: face } : emoji.trim() ? { emoji: emoji.trim() } : {}),
       cap_micro_usd: micro(cap),
       max_task_micro_usd: micro(task),
       period,
@@ -424,249 +598,266 @@ export function Hire({ onClose, onMade }: { onClose: () => void; onMade: (name: 
         borderColor="$borderColor"
         bg="$background"
       >
-        <Text id="hire-title" render="h2" fontSize="$5" fontWeight="600" color="$ink">
-          New agent
-        </Text>
-
-        {/* THE PICTURE. The round is where a photo goes: pressed, it opens the
-            file picker; a file dropped on it is taken the same way. The camera
-            and the words under it say so before anything is chosen, and once a
-            picture is set they say Change photo, with Remove beside it. */}
-        <XStack items="center" gap="$4" flexWrap="wrap">
-          <Box
-            render="button"
-            onClick={() => picking.current?.click()}
-            onMouseEnter={() => setLit(true)}
-            onMouseLeave={() => setLit(false)}
-            onFocus={() => setLit(true)}
-            onBlur={() => setLit(false)}
-            onDragOver={(e: React.DragEvent) => {
-              e.preventDefault()
-              setOver(true)
-            }}
-            onDragLeave={() => setOver(false)}
-            onDrop={(e: React.DragEvent) => {
-              e.preventDefault()
-              setOver(false)
-              void pick(e.dataTransfer.files?.[0])
-            }}
-            aria-label={avatar ? 'Change photo' : 'Upload photo'}
-            aria-describedby="hire-picture-hint"
-            position="relative"
-            width={88}
-            height={88}
-            rounded={9999}
-            overflow="hidden"
-            shrink={0}
-            items="center"
-            justify="center"
-            bg="$raised"
-            borderWidth={2}
-            borderStyle={avatar || emoji ? 'solid' : 'dashed'}
-            borderColor={over || lit ? '$ink' : '$soft'}
-          >
-            {face}
-            {!face || lit || over ? (
-              <YStack
-                aria-hidden
-                position="absolute"
-                inset={0}
-                items="center"
-                justify="center"
-                gap="$1"
-                bg={face ? VEIL : undefined}
-              >
-                <Camera size={22} color={face ? 'var(--pure-white)' : 'var(--soft, var(--muted-foreground))'} />
-              </YStack>
-            ) : null}
-          </Box>
-          <input
-            ref={picking}
-            type="file"
-            hidden
-            accept="image/png,image/jpeg,image/gif,image/webp"
-            onChange={(e) => {
-              void pick(e.target.files?.[0])
-              e.target.value = ''
-            }}
-          />
-          <YStack flex={1} minW={180} gap="$1.5">
-            <XStack gap="$2" items="center" flexWrap="wrap">
-              <Button size="sm" variant="outline" onClick={() => picking.current?.click()}>
-                <Upload size={14} aria-hidden /> {avatar ? 'Change photo' : 'Upload photo'}
-              </Button>
-              {avatar ? (
-                <Button size="sm" variant="ghost" onClick={() => setAvatar('')}>
-                  Remove
-                </Button>
-              ) : null}
-            </XStack>
-            <Text id="hire-picture-hint" fontSize="$2" color="$soft">
-              {over ? 'Drop the photo to use it.' : 'Press the circle or drop a photo on it. PNG, JPEG, GIF or WebP.'}
-            </Text>
-          </YStack>
+        <XStack items="center" justify="space-between" gap="$2" flexWrap="wrap">
+          <Text id="hire-title" render="h2" fontSize="$5" fontWeight="600" color="$ink">
+            {choosing ? 'Start from a persona' : 'New agent'}
+          </Text>
+          {choosing ? (
+            <Button size="sm" variant="ghost" onClick={() => setChoosing(false)}>
+              <ArrowLeft size={14} aria-hidden /> Back
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" onClick={() => setChoosing(true)}>
+              <Users size={14} aria-hidden /> Start from a persona
+            </Button>
+          )}
         </XStack>
 
-        <YStack gap="$1.5">
-          <Text render="label" htmlFor="hire-look" fontSize="$2" color="var(--soft, var(--muted-foreground))">
-            Or describe a face and press Draw
-          </Text>
-          <XStack gap="$1.5" items="center">
-            <Box flex={1}>
-              <Input
-                id="hire-look"
-                value={look}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLook(e.target.value)}
-                onKeyDown={(e: React.KeyboardEvent) => {
-                  if (e.key === 'Enter') void draw()
+        {choosing ? (
+          <Figures onPick={(f) => void become(f)} />
+        ) : (
+          <>
+            {/* THE PICTURE. The round is where a photo goes: pressed, it opens the
+                file picker; a file dropped on it is taken the same way. The camera
+                and the words under it say so before anything is chosen, and once a
+                picture is set they say Change photo, with Remove beside it. */}
+            <XStack items="center" gap="$4" flexWrap="wrap">
+              <Box
+                render="button"
+                onClick={() => picking.current?.click()}
+                onMouseEnter={() => setLit(true)}
+                onMouseLeave={() => setLit(false)}
+                onFocus={() => setLit(true)}
+                onBlur={() => setLit(false)}
+                onDragOver={(e: React.DragEvent) => {
+                  e.preventDefault()
+                  setOver(true)
                 }}
-                placeholder="A calm engineer with round glasses"
-              />
-            </Box>
-            <Button size="sm" variant="outline" disabled={busy !== null || !look.trim()} onClick={() => void draw()}>
-              {busy === 'draw' ? 'Drawing…' : 'Draw'}
-            </Button>
-          </XStack>
-          <XStack gap="$2" items="center">
-            <Text render="label" htmlFor="hire-emoji" fontSize="$2" color="var(--soft, var(--muted-foreground))">
-              Or one emoji
-            </Text>
-            <Box width={64}>
-              <Input
-                id="hire-emoji"
-                value={emoji}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  setEmoji(e.target.value)
-                  if (e.target.value) setAvatar('')
+                onDragLeave={() => setOver(false)}
+                onDrop={(e: React.DragEvent) => {
+                  e.preventDefault()
+                  setOver(false)
+                  void pick(e.dataTransfer.files?.[0])
                 }}
-                aria-describedby="hire-picture-wrong"
-              />
-            </Box>
-          </XStack>
-          <Said id="hire-picture-wrong" text={shown('picture')} />
-        </YStack>
-
-        <YStack gap="$1.5">
-          <Text render="label" htmlFor="hire-name" fontSize="$2" fontWeight="600">
-            Name
-          </Text>
-          <Input
-            id="hire-name"
-            value={name}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
-            onKeyDown={(e: React.KeyboardEvent) => {
-              if (e.key === 'Enter') void make()
-            }}
-            placeholder="Michael"
-            autoFocus
-            aria-required="true"
-            aria-invalid={Boolean(nameWrong || shown('name'))}
-            aria-describedby="hire-name-wrong"
-          />
-          <Said id="hire-name-wrong" text={nameWrong ?? shown('name')} />
-        </YStack>
-
-        <YStack gap="$1.5">
-          <Text render="label" htmlFor="hire-model" fontSize="$2" fontWeight="600">
-            Model
-          </Text>
-          <Text
-            render={<select id="hire-model" value={model} onChange={(e) => setModel(e.target.value)} aria-describedby="hire-model-wrong" />}
-            {...FIELD}
-          >
-            <option value="enso">enso</option>
-            {models.map((one) => (
-              <option key={one.id} value={one.id}>
-                {one.id}
-              </option>
-            ))}
-          </Text>
-          <Said id="hire-model-wrong" text={shown('model')} />
-        </YStack>
-
-        <YStack gap="$1.5">
-          <Text render="label" htmlFor="hire-does" fontSize="$2" fontWeight="600">
-            What it does{' '}
-            <Text fontWeight="400" color="var(--soft, var(--muted-foreground))">
-              — optional
-            </Text>
-          </Text>
-          <Textarea
-            id="hire-does"
-            value={does}
-            onChangeText={setDoes}
-            placeholder="The work it takes and the voice it answers in"
-            rows={3}
-            aria-describedby="hire-does-wrong"
-          />
-          <Said id="hire-does-wrong" text={shown('does')} />
-        </YStack>
-
-        {/* THE SPENDING LIMIT. The agents API requires one on every agent: what
-            it may spend in a window, and the most one task may spend. */}
-        <View render={<fieldset aria-describedby="hire-budget-wrong" />} display="block" borderWidth={0} p={0} m={0}>
-          <Text render="legend" display="block" fontSize="$2" fontWeight="600" mb={6}>
-            Spending limit
-          </Text>
-          <YStack gap="$2">
-            <XStack gap="$2" items="center" flexWrap="wrap">
-              <Text fontSize="$2" color="$soft">
-                Up to $
-              </Text>
-              <Box width={84}>
-                <Input
-                  aria-label="Spending limit in dollars"
-                  inputMode="decimal"
-                  value={cap}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCap(e.target.value)}
-                  aria-invalid={!capOk}
-                />
-              </Box>
-              <Text
-                render={<select aria-label="Spending limit period" value={period} onChange={(e) => setPeriod(e.target.value as Period)} />}
-                {...FIELD}
-                width="auto"
+                aria-label={avatar ? 'Change photo' : 'Upload photo'}
+                aria-describedby="hire-picture-hint"
+                position="relative"
+                width={88}
+                height={88}
+                rounded={9999}
+                overflow="hidden"
+                shrink={0}
+                items="center"
+                justify="center"
+                bg="$raised"
+                borderWidth={2}
+                borderStyle={avatar || emoji ? 'solid' : 'dashed'}
+                borderColor={over || lit ? '$ink' : '$soft'}
               >
-                {PERIODS.map(([value, words]) => (
-                  <option key={value} value={value}>
-                    {words}
+                {face}
+                {!face || lit || over ? (
+                  <YStack
+                    aria-hidden
+                    position="absolute"
+                    inset={0}
+                    items="center"
+                    justify="center"
+                    gap="$1"
+                    bg={face ? VEIL : undefined}
+                  >
+                    <Camera size={22} color={face ? 'var(--pure-white)' : 'var(--soft, var(--muted-foreground))'} />
+                  </YStack>
+                ) : null}
+              </Box>
+              <input
+                ref={picking}
+                type="file"
+                hidden
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                onChange={(e) => {
+                  void pick(e.target.files?.[0])
+                  e.target.value = ''
+                }}
+              />
+              <YStack flex={1} minW={180} gap="$1.5">
+                <XStack gap="$2" items="center" flexWrap="wrap">
+                  <Button size="sm" variant="outline" onClick={() => picking.current?.click()}>
+                    <Upload size={14} aria-hidden /> {avatar ? 'Change photo' : 'Upload photo'}
+                  </Button>
+                  {avatar ? (
+                    <Button size="sm" variant="ghost" onClick={() => setAvatar('')}>
+                      Remove
+                    </Button>
+                  ) : null}
+                </XStack>
+                <Text id="hire-picture-hint" fontSize="$2" color="$soft">
+                  {over ? 'Drop the photo to use it.' : 'Press the circle or drop a photo on it, or Create draws one.'}
+                </Text>
+              </YStack>
+            </XStack>
+
+            <YStack gap="$1.5">
+              <Text render="label" htmlFor="hire-look" fontSize="$2" color="var(--soft, var(--muted-foreground))">
+                Or describe a face and press Draw
+              </Text>
+              <XStack gap="$1.5" items="center">
+                <Box flex={1}>
+                  <Input
+                    id="hire-look"
+                    value={look}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLook(e.target.value)}
+                    onKeyDown={(e: React.KeyboardEvent) => {
+                      if (e.key === 'Enter') void draw()
+                    }}
+                    placeholder="A calm engineer with round glasses"
+                  />
+                </Box>
+                <Button size="sm" variant="outline" disabled={busy !== null || !subject || !client} onClick={() => void draw()}>
+                  <Sparkles size={14} aria-hidden /> {busy === 'draw' ? 'Drawing…' : avatar ? 'Regenerate' : 'Draw'}
+                </Button>
+              </XStack>
+              <XStack gap="$2" items="center">
+                <Text render="label" htmlFor="hire-emoji" fontSize="$2" color="var(--soft, var(--muted-foreground))">
+                  Or one emoji
+                </Text>
+                <Box width={64}>
+                  <Input
+                    id="hire-emoji"
+                    value={emoji}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setEmoji(e.target.value)
+                      if (e.target.value) setAvatar('')
+                    }}
+                    aria-describedby="hire-picture-wrong"
+                  />
+                </Box>
+              </XStack>
+              <Said id="hire-picture-wrong" text={shown('picture')} />
+            </YStack>
+
+            <YStack gap="$1.5">
+              <Text render="label" htmlFor="hire-name" fontSize="$2" fontWeight="600">
+                Name
+              </Text>
+              <Input
+                id="hire-name"
+                value={name}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+                onKeyDown={(e: React.KeyboardEvent) => {
+                  if (e.key === 'Enter') void make()
+                }}
+                placeholder="Michael"
+                autoFocus
+                aria-required="true"
+                aria-invalid={Boolean(nameWrong || shown('name'))}
+                aria-describedby="hire-name-wrong"
+              />
+              <Said id="hire-name-wrong" text={nameWrong ?? shown('name')} />
+            </YStack>
+
+            <YStack gap="$1.5">
+              <Text render="label" htmlFor="hire-model" fontSize="$2" fontWeight="600">
+                Model
+              </Text>
+              <Text
+                render={<select id="hire-model" value={model} onChange={(e) => setModel(e.target.value)} aria-describedby="hire-model-wrong" />}
+                {...FIELD}
+              >
+                <option value="enso">enso</option>
+                {models.map((one) => (
+                  <option key={one.id} value={one.id}>
+                    {one.id}
                   </option>
                 ))}
               </Text>
-            </XStack>
-            <XStack gap="$2" items="center" flexWrap="wrap">
-              <Text fontSize="$2" color="$soft">
-                At most $
+              <Said id="hire-model-wrong" text={shown('model')} />
+            </YStack>
+
+            <YStack gap="$1.5">
+              <Text render="label" htmlFor="hire-does" fontSize="$2" fontWeight="600">
+                What it does{' '}
+                <Text fontWeight="400" color="var(--soft, var(--muted-foreground))">
+                  — optional
+                </Text>
               </Text>
-              <Box width={84}>
-                <Input
-                  aria-label="Most one task may spend, in dollars"
-                  inputMode="decimal"
-                  value={task}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTask(e.target.value)}
-                  aria-invalid={!taskOk}
-                />
+              <Textarea
+                id="hire-does"
+                value={does}
+                onChangeText={setDoes}
+                placeholder="The work it takes and the voice it answers in"
+                rows={3}
+                aria-describedby="hire-does-wrong"
+              />
+              <Said id="hire-does-wrong" text={shown('does')} />
+            </YStack>
+
+            {/* THE SPENDING LIMIT. The agents API requires one on every agent: what
+                it may spend in a window, and the most one task may spend. */}
+            <View render={<fieldset aria-describedby="hire-budget-wrong" />} display="block" borderWidth={0} p={0} m={0}>
+              <Text render="legend" display="block" fontSize="$2" fontWeight="600" mb={6}>
+                Spending limit
+              </Text>
+              <YStack gap="$2">
+                <XStack gap="$2" items="center" flexWrap="wrap">
+                  <Text fontSize="$2" color="$soft">
+                    Up to $
+                  </Text>
+                  <Box width={84}>
+                    <Input
+                      aria-label="Spending limit in dollars"
+                      inputMode="decimal"
+                      value={cap}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCap(e.target.value)}
+                      aria-invalid={!capOk}
+                    />
+                  </Box>
+                  <Text
+                    render={<select aria-label="Spending limit period" value={period} onChange={(e) => setPeriod(e.target.value as Period)} />}
+                    {...FIELD}
+                    width="auto"
+                  >
+                    {PERIODS.map(([value, words]) => (
+                      <option key={value} value={value}>
+                        {words}
+                      </option>
+                    ))}
+                  </Text>
+                </XStack>
+                <XStack gap="$2" items="center" flexWrap="wrap">
+                  <Text fontSize="$2" color="$soft">
+                    At most $
+                  </Text>
+                  <Box width={84}>
+                    <Input
+                      aria-label="Most one task may spend, in dollars"
+                      inputMode="decimal"
+                      value={task}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTask(e.target.value)}
+                      aria-invalid={!taskOk}
+                    />
+                  </Box>
+                  <Text fontSize="$2" color="$soft">
+                    on one task
+                  </Text>
+                </XStack>
+              </YStack>
+              <Box mt="$1.5">
+                <Said id="hire-budget-wrong" text={budgetWrong ?? shown('budget')} />
               </Box>
-              <Text fontSize="$2" color="$soft">
-                on one task
-              </Text>
+            </View>
+
+            <Said id="hire-form-wrong" text={shown('form')} />
+
+            <XStack justify="flex-end" gap="$2">
+              <Button size="sm" variant="ghost" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button size="sm" disabled={busy !== null || !ready} onClick={() => void make()}>
+                {busy === 'make' ? 'Creating…' : 'Create'}
+              </Button>
             </XStack>
-          </YStack>
-          <Box mt="$1.5">
-            <Said id="hire-budget-wrong" text={budgetWrong ?? shown('budget')} />
-          </Box>
-        </View>
-
-        <Said id="hire-form-wrong" text={shown('form')} />
-
-        <XStack justify="flex-end" gap="$2">
-          <Button size="sm" variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button size="sm" disabled={busy !== null || !ready} onClick={() => void make()}>
-            {busy === 'make' ? 'Creating…' : 'Create'}
-          </Button>
-        </XStack>
+          </>
+        )}
       </YStack>
     </Box>
   )
