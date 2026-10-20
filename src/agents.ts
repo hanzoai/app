@@ -2,41 +2,9 @@
 // Pure: the composer's Agents shelf (crew.tsx `useAgentShelf`), the crew strip
 // and the New agent sheet read these, and the tests run them in Node.
 
-import type { ReactNode } from 'react'
 import { TEAM } from './team'
 
-// THE COMPOSER'S SHELF, as @hanzo/build's `+` menu (plus.tsx) takes it. Defined
-// here, structurally identical, until @hanzo/build publishes them; then these
-// three become its imports.
-
-/** One thing a shelf holds. `on` marks what the conversation already has. */
-export interface Row {
-  id: string
-  label: string
-  icon?: ReactNode
-  /** A few dim words beside the label, where they help. */
-  note?: string
-  on?: boolean
-}
-
-export interface Link {
-  label: string
-  onPress: () => void
-}
-
-export interface Shelf {
-  rows: Row[]
-  pick: (id: string) => void
-  loading?: boolean
-  error?: string | null
-  /** A search field over the rows, with this placeholder. */
-  search?: string
-  /** Said when there are no rows and nothing is loading. */
-  empty?: string
-  create?: Link
-  manage?: Link
-  browse?: Link
-}
+export type { Link, Shelf, ShelfRow as Row } from '@hanzo/build'
 
 /**
  * The model that draws an agent's face: Hanzo's own image SKU (hanzo-inc/zen

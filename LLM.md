@@ -301,7 +301,10 @@ label, `SpeakButton`'s, Meet's status line).
 
 The model and the effort are ONE choice for Chat and Dev, kept in this browser
 by @hanzo/build (`useMind`, `hanzo.mind` = `{model, effort}`, Enso and Medium by
-default). Chat's composer draws @hanzo/build's chip (`Tune`): the effort (Low,
+default). On Free (`GET /v1/ai/limits` `plan` = `free`, and every
+visitor) the choice is the catalog's free class alone: Enso Free by default,
+every other model listed with Upgrade, which opens the upgrade instead of
+picking. Chat's composer draws @hanzo/build's chip (`Tune`): the effort (Low,
 Medium, High — what `reasoning_effort` and a coding run's `effort` both take;
 a model the catalog lists as not reasoning offers none), a sentence saying
 what serves the ask, and `@hanzo/ui/models` `ModelPicker` over the whole catalog
@@ -310,21 +313,36 @@ every maker. A listed pick is sent as picked; only a name the catalog does not
 list falls to `served`. A model's class and family are the catalog's fields,
 never read from its id. A premium pick holds for the conversation and is never
 kept (`usePick`); Settings' default picker writes the same choice and offers no
-premium model. Nothing gates a pick on the plan: the gateway refuses or answers
+premium model. A paid plan's pick is not gated: the gateway refuses or answers
 from Enso, and the room shows that. The live web rides a turn whose model the
 catalog files under Enso or Zen (`house`).
 
 ## Chat and Dev are drawn alike
 
 - The composer is @hanzo/build's `prompt` (Chat passes it to `@hanzo/ui/chat`
-  `Chat`'s `composer`): the field, then in the frame the paperclip, the chip,
-  dictation, talk and send; as wide as the words above it (`measure`, the
-  prose measure less the thread's gutters); cut as a pane in the app's frame.
-- Under an answer, @hanzo/build's `Reply`: copy the markdown, Listen (the
-  speaker's cast voice, `speakAgent`), and Open what it wrote in the side
-  panel; `Served` says which model answered when it was not the one asked for.
-  Code blocks are `@hanzo/ui/chat` `Code` (`Prose`).
-- The crew's faces stand under the composer only while nothing has been said.
+  `Chat`'s `composer`), one frame for Chat and Dev: the field on top ("Type /
+  for skills"), then one row — `+` at the start and what the conversation
+  carries as chips (who is in the room, the skills on, Research, Plan), and at
+  the end dictation (the mic and its menu: the microphones with a live level,
+  Dictation settings, Language) and one round button that is voice mode while
+  the draft is empty, send with words, stop while a turn runs. Under the frame,
+  at its end: the model, the effort (dim) and the mode pill (Auto, Plan); Dev
+  puts where the run goes and its repository at that row's start. Under that,
+  up to three suggestions while nothing has been said (above the frame on a
+  phone). `/` lists the skills above the frame. As wide as the words above it
+  (`measure`); cut as a pane in the app's frame.
+- `+` (@hanzo/build `Plus`): Upload or add files (Ctrl+U), Agents ›
+  (`useAgentShelf`: the org's agents, the cast first; a pick seats or unseats
+  one; Create agent opens `Hire`), Skills › (the org's active skills; a pick
+  puts its SKILL.md in the room's system turn), then Research (the live web
+  reads deeper and answers with a cited report: `RESEARCH` beside `WEB`) and
+  Memory (what Hanzo remembers, from /v1/ai/memory/list, in the system turn).
+  What a conversation carries is @hanzo/build's `useCarry`/`useGear`: per
+  conversation in /v1/pref `gears` (the last 30), the person's default in
+  `gear`. A row with no service behind it is not drawn: Connectors (a chat
+  completion runs no tool the client did not loop), Design system (Studio's
+  brands reach only Studio), Plugins and Devices (Dev's runs only) are not
+  offered in Chat.
 - The side panel is @hanzo/build's `Panel`, page tabs only in Chat: an
   artifact rendered from its own bytes, a file or an address. A tab can be
   pinned (`Deck.pin`): it leads the strip and closes only on purpose. Tabs, order and the chosen one are kept per
