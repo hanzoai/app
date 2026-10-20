@@ -92,6 +92,7 @@ import {
   Suggestions,
   useCarry,
   useLanguage,
+  useMention,
   useMind,
   useSuggestions,
   usePanel,
@@ -100,6 +101,7 @@ import {
   name as tabName,
   type Kind,
   type Listen,
+  type PromptOptions,
 } from "@hanzo/build";
 import type { ModelCatalogEntry as Model } from "@hanzo/ui/models/catalog";
 import { checkoutUrl } from './lib/pay';
@@ -1723,6 +1725,129 @@ function Thread({
     },
   };
 
+  // THE COMPOSER'S OPTIONS, held apart so its keys (the `/` and `@` lists' arrows,
+  // Ctrl+U) hook in through `useMention` before the frame is drawn.
+  const composing: PromptOptions = {
+      value: draft,
+      onChange: setDraft,
+      onSend: submit,
+      onStop: chat.stop,
+      busy: chat.streaming,
+      // Files alone are a message: what is held goes with an empty draft too.
+      ready: Boolean(draft.trim() || files.length),
+      // `label` keeps the accessible name constant; the placeholder is the composer's own.
+      label: ASK,
+      note: caution(),
+      // A phone's pill is the tall one: the field across the top, the controls under it.
+      narrow: !media.sm,
+      // In the app's frame the composer floats on the pane as a pane of its own.
+      framed,
+      // A file or an image pasted into the field is held like a picked one;
+      // words paste as words.
+      field: {
+        onPaste: (e: React.ClipboardEvent) => {
+          if (!e.clipboardData?.files?.length) return;
+          e.preventDefault();
+          void hold(at, Array.from(e.clipboardData.files), via);
+        },
+      },
+      // WHAT GOES WITH THE MESSAGE, above the frame and at its width: the
+      // pause and its ways past, one chip a file, and talk mode's words.
+      head:
+        files.length || turnedAway || prepWrong || preparing || talk.open || talk.refusal || pause ? (
+          <>
+            {/* TURNED AWAY: what is used and until when, the ways past it, and
+                the usage page — the shell's Settings pane, or the builder's
+                Usage (dev.tsx answers the request there). */}
+            {banner ? (
+              <LimitedBanner message={banner.message} actions={banner.actions} onAction={act} onUsage={() => showSettings("usage")} />
+            ) : null}
+            {actWrong ? (
+              <Text role="alert" data-slot="limited-banner-wrong" fontSize="$2" color={BAD}>
+                {actWrong}
+              </Text>
+            ) : null}
+            {files.length ? (
+              <XStack gap="$1.5" flexWrap="wrap" role="list" aria-label="Attached files" data-slot="composer-attached">
+                {files.map((one) => (
+                  <HeldChip
+                    key={one.id}
+                    one={one}
+                    onOpen={openFile}
+                    onRemove={() => drop(at, one.id)}
+                    onSave={anonymous ? undefined : (url, id) => keepOne(url, id, one.name, one.type)}
+                  />
+                ))}
+              </XStack>
+            ) : null}
+            {preparing ? (
+              <Text role="status" aria-live="polite" data-slot="composer-preparing" fontSize="$2" color="$soft">
+                {preparing}…
+              </Text>
+            ) : null}
+            {turnedAway || prepWrong ? (
+              <Text role="alert" fontSize="$2" color={BAD}>
+                {turnedAway || prepWrong}
+              </Text>
+            ) : null}
+            {/* TALK MODE'S OWN TURNS: what Hanzo is saying, or why it cannot. */}
+            {talk.open || talk.refusal ? (
+              <Text
+                role="status"
+                aria-live="polite"
+                data-slot="composer-talk-reply"
+                fontSize="$2"
+                color={talk.refusal ? BAD : "$soft"}
+              >
+                {talk.refusal
+                  ? worded(talk.refusal)
+                  : talk.reply
+                    ? `Hanzo: ${talk.reply}`
+                    : talk.state === "listening"
+                      ? "Listening — speak, and Hanzo answers aloud."
+                      : "Connecting…"}
+              </Text>
+            ) : null}
+          </>
+        ) : undefined,
+      // THE `+`: files (the Sources tab's "Attach files", one press closer),
+      // who is in the conversation, the skills, and the two switches.
+      plus: anonymous
+        ? { upload: () => take(at, via) }
+        : {
+            upload: () => take(at, via),
+            agents: agentShelf,
+            skills: carry.skills,
+            plugins: carry.plugins,
+            research: { on: carry.gear.gear.research, set: (on) => carry.gear.set({ research: on }) },
+            memory: { on: carry.gear.gear.memory, set: (on) => carry.gear.set({ memory: on }) },
+          },
+      // Who is in the room, then what the conversation carries, as chips after `+`.
+      on: [
+        ...room.map((name) => ({
+          id: `agent:${name}`,
+          label: name,
+          icon: <Face src={faces[name]?.avatar} emoji={faces[name]?.emoji} name={name} size={16} />,
+          onRemove: () => seat(room.filter((one) => one !== name)),
+        })),
+        ...(anonymous ? [] : carry.on),
+      ],
+      slash: anonymous ? undefined : carry.skills,
+      at: anonymous ? undefined : carry.plugins,
+      mode: anonymous ? null : { value: carry.gear.gear.mode, set: (m) => carry.gear.set({ mode: m }) },
+      // The model, the effort and the mode under the frame (@hanzo/build).
+      mind,
+      limits,
+      onUpgrade: (id) => setAsk({ model: nameOf(id, listed) } as Ask),
+      voice,
+      language: spoken,
+      onLanguage: speakIn,
+      talk,
+      // While nothing has been said: what is worth doing next.
+      below: said.length === 0 && !anonymous ? <Suggestions rows={hints.rows} onPick={setDraft} onDismiss={hints.dismiss} /> : undefined,
+  };
+  const mention = useMention(composing);
+
   return (
     <YStack
       flex={1}
@@ -2142,125 +2267,7 @@ function Thread({
         // The transcript reads at the same measure. `Thread` defaults to 768
         // itself; handing it the column here is what lets Width reach it.
         column={{ maxW: MEASURE }}
-        composer={prompt({
-          value: draft,
-          onChange: setDraft,
-          onSend: submit,
-          onStop: chat.stop,
-          busy: chat.streaming,
-          // Files alone are a message: what is held goes with an empty draft too.
-          ready: Boolean(draft.trim() || files.length),
-          // `label` keeps the accessible name constant; the placeholder is the composer's own.
-          label: ASK,
-          note: caution(),
-          // A phone's pill is the tall one: the field across the top, the controls under it.
-          narrow: !media.sm,
-          // In the app's frame the composer floats on the pane as a pane of its own.
-          framed,
-          // A file or an image pasted into the field is held like a picked one;
-          // words paste as words.
-          field: {
-            onPaste: (e: React.ClipboardEvent) => {
-              if (!e.clipboardData?.files?.length) return;
-              e.preventDefault();
-              void hold(at, Array.from(e.clipboardData.files), via);
-            },
-          },
-          // WHAT GOES WITH THE MESSAGE, above the frame and at its width: the
-          // pause and its ways past, one chip a file, and talk mode's words.
-          head:
-            files.length || turnedAway || prepWrong || preparing || talk.open || talk.refusal || pause ? (
-              <>
-                {/* TURNED AWAY: what is used and until when, the ways past it, and
-                    the usage page — the shell's Settings pane, or the builder's
-                    Usage (dev.tsx answers the request there). */}
-                {banner ? (
-                  <LimitedBanner message={banner.message} actions={banner.actions} onAction={act} onUsage={() => showSettings("usage")} />
-                ) : null}
-                {actWrong ? (
-                  <Text role="alert" data-slot="limited-banner-wrong" fontSize="$2" color={BAD}>
-                    {actWrong}
-                  </Text>
-                ) : null}
-                {files.length ? (
-                  <XStack gap="$1.5" flexWrap="wrap" role="list" aria-label="Attached files" data-slot="composer-attached">
-                    {files.map((one) => (
-                      <HeldChip
-                        key={one.id}
-                        one={one}
-                        onOpen={openFile}
-                        onRemove={() => drop(at, one.id)}
-                        onSave={anonymous ? undefined : (url, id) => keepOne(url, id, one.name, one.type)}
-                      />
-                    ))}
-                  </XStack>
-                ) : null}
-                {preparing ? (
-                  <Text role="status" aria-live="polite" data-slot="composer-preparing" fontSize="$2" color="$soft">
-                    {preparing}…
-                  </Text>
-                ) : null}
-                {turnedAway || prepWrong ? (
-                  <Text role="alert" fontSize="$2" color={BAD}>
-                    {turnedAway || prepWrong}
-                  </Text>
-                ) : null}
-                {/* TALK MODE'S OWN TURNS: what Hanzo is saying, or why it cannot. */}
-                {talk.open || talk.refusal ? (
-                  <Text
-                    role="status"
-                    aria-live="polite"
-                    data-slot="composer-talk-reply"
-                    fontSize="$2"
-                    color={talk.refusal ? BAD : "$soft"}
-                  >
-                    {talk.refusal
-                      ? worded(talk.refusal)
-                      : talk.reply
-                        ? `Hanzo: ${talk.reply}`
-                        : talk.state === "listening"
-                          ? "Listening — speak, and Hanzo answers aloud."
-                          : "Connecting…"}
-                  </Text>
-                ) : null}
-              </>
-            ) : undefined,
-          // THE `+`: files (the Sources tab's "Attach files", one press closer),
-          // who is in the conversation, the skills, and the two switches.
-          plus: anonymous
-            ? { upload: () => take(at, via) }
-            : {
-                upload: () => take(at, via),
-                agents: agentShelf,
-                skills: carry.skills,
-                plugins: carry.plugins,
-                research: { on: carry.gear.gear.research, set: (on) => carry.gear.set({ research: on }) },
-                memory: { on: carry.gear.gear.memory, set: (on) => carry.gear.set({ memory: on }) },
-              },
-          // Who is in the room, then what the conversation carries, as chips after `+`.
-          on: [
-            ...room.map((name) => ({
-              id: `agent:${name}`,
-              label: name,
-              icon: <Face src={faces[name]?.avatar} emoji={faces[name]?.emoji} name={name} size={16} />,
-              onRemove: () => seat(room.filter((one) => one !== name)),
-            })),
-            ...(anonymous ? [] : carry.on),
-          ],
-          slash: anonymous ? undefined : carry.skills,
-          at: anonymous ? undefined : carry.plugins,
-          mode: anonymous ? null : { value: carry.gear.gear.mode, set: (m) => carry.gear.set({ mode: m }) },
-          // The model, the effort and the mode under the frame (@hanzo/build).
-          mind,
-          limits,
-          onUpgrade: (id) => setAsk({ model: nameOf(id, listed) } as Ask),
-          voice,
-          language: spoken,
-          onLanguage: speakIn,
-          talk,
-          // While nothing has been said: what is worth doing next.
-          below: said.length === 0 && !anonymous ? <Suggestions rows={hints.rows} onPick={setDraft} onDismiss={hints.dismiss} /> : undefined,
-        })}
+        composer={prompt({ ...composing, field: mention.field }, mention.state)}
       />
       <AgentMaker />
       {carry.dialog}
