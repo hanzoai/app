@@ -15,7 +15,7 @@
  * Two derivations of one name never agree; this is the one derivation.
  */
 
-import { superAdmin as sudo } from '@hanzo/iam/browser'
+import { superAdmin as sudoOf } from '@hanzo/iam/browser'
 import { api } from './api'
 import { where } from '../where'
 
@@ -321,13 +321,45 @@ function listed(token: string | null): string[] {
 }
 
 /**
- * The organizations this person works in, as the token names them: every org of
- * its `orgs` but a directory, which is a home and nobody's tenant. Empty for an
- * account that has not made one: the SDK's own list falls back to the `owner`
- * claim, which is the application's org and nobody's to work in.
+ * The orgs the platform runs under its own names (hanzoai/authz claims.go
+ * `platformOrgs`): the brands and the estate's own namespaces. One is a tenant
+ * only of the people who run it, its owners and admins, and of a SuperAdmin; a
+ * customer who landed in a brand org as a plain member belongs to none of its
+ * data, and cloud refuses every request scoped to it.
+ */
+export const PLATFORM: readonly string[] = [
+  'hanzo', 'lux', 'zoo', 'pars', 'platform', 'hanzoai', 'luxfi', 'zooai', 'hanzo-inc', 'hanzo-apps', 'hanzo-community',
+]
+
+/**
+ * The orgs a token opens to the person it names, home first, each once:
+ * hanzoai/authz `Claims.opens`, the rule cloud scopes every request by. A
+ * directory opens to no one, `admin` to a SuperAdmin, a platform org to its
+ * owners and admins and a SuperAdmin, and any other org to every member.
+ */
+function opened(token: string | null): string[] {
+  const c = claimsOf(token)
+  const sudo = sudoOf(c)
+  const set = c?.orgs
+  const out: string[] = []
+  for (const ref of Array.isArray(set) ? set : []) {
+    const m = ref as { org?: unknown; role?: unknown } | null
+    const o = m?.org
+    if (typeof o !== 'string' || !o || out.includes(o) || DIRECTORIES.includes(o)) continue
+    const runs = typeof m?.role === 'string' && ['owner', 'admin'].includes(m.role.trim().toLowerCase())
+    if (o === 'admin' ? sudo : PLATFORM.includes(o) ? sudo || runs : true) out.push(o)
+  }
+  return out
+}
+
+/**
+ * The organizations this person works in: the token's `orgs` its claims open
+ * (`opened`). Empty for an account that has not made one, or that is only a plain
+ * member of a brand org: the SDK's own list falls back to the `owner` claim, which
+ * is the application's org and nobody's to work in.
  */
 export function orgs(): string[] {
-  return listed(bearer()).filter((o) => !DIRECTORIES.includes(o))
+  return opened(bearer())
 }
 
 /** The org of the person's own row: the first entry of the token's `orgs`, a directory or not. */
@@ -454,7 +486,7 @@ export function choose(): void {
  * organization and the step into one.
  */
 export function superAdmin(): boolean {
-  return sudo(claims())
+  return sudoOf(claims())
 }
 
 /** The organization a SuperAdmin stepped into through IAM, from the token's `assumed` claim, or null. */
@@ -490,7 +522,7 @@ export async function support(org: string | null): Promise<void> {
   if (!res.ok || !next || typeof exp !== 'number') throw new Error(body?.msg || `IAM answered ${res.status}.`)
   tokens().setItem(ACCESS, next)
   tokens().setItem(EXPIRES, String(exp * 1000))
-  pick(org ?? listed(next).find((o) => !DIRECTORIES.includes(o)) ?? '')
+  pick(org ?? opened(next)[0] ?? '')
   window.location.reload()
 }
 

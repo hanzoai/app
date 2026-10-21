@@ -66,7 +66,7 @@ vi.mock('./lib/session', () => ({
 vi.mock('./lib/host', () => ({ dev: () => '/dev', team: (host: string) => host === 'hanzo.team' }))
 vi.mock('./lib/pay', () => ({ checkoutUrl: () => '', money: () => '' }))
 vi.mock('./lib/plans', () => ({ cartUrl: () => '', charge: () => 0, priced: () => ({}), usePlan: () => ({}), usePlans: () => [] }))
-vi.mock('./lib/invite', () => ({ createInvitation: async () => '', inviteLink: () => '' }))
+vi.mock('./lib/invite', () => ({ createInvitation: async () => '', inviteLink: () => '', setOrganizationProfile: async () => {} }))
 vi.mock('./lib/intent', () => ({ countSignup: () => {} }))
 vi.mock('./lib/tags', () => ({ track: () => {} }))
 vi.mock('./lib/mix', () => ({ BAD: 'red', mix: () => '' }))

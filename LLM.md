@@ -152,10 +152,14 @@ the one conversation the pane holds).
   `plans`, `pay` (the pay site and money, apart from the plan catalogue), `share`, `coding`, `todo`, `durable`, `tags`, `host` (estate routing and the app's addresses),
   `mix`, `hydrated` … Apps import these from the package
   (`@hanzo/rooms/lib/session`) and keep no copy.
-- `lib/session` `orgs()` is every org of the token's `orgs` claim but a brand's
-  directory (`DIRECTORIES`: hanzo-id, lux-id, zoo-id, pars-id, hanzoai/authz
-  `IsDirectory`): a directory is a customer account's home and nobody's tenant,
-  so no picker offers it and no request is scoped to it. `home()` is the claim's
+- `lib/session` `orgs()` is every org of the token's `orgs` claim its claims
+  open, hanzoai/authz `Claims.opens` (cloud scopes every request by it): never a
+  brand's directory (`DIRECTORIES`: hanzo-id, lux-id, zoo-id, pars-id, authz
+  `IsDirectory`), a customer account's home and nobody's tenant; `admin` only for
+  a SuperAdmin; a platform org (`PLATFORM`, authz `platformOrgs`: the brands and
+  the estate's namespaces) only for its owners and admins and a SuperAdmin, so a
+  customer who is a plain member of `hanzo` is offered nothing there and makes an
+  org of its own. No picker offers what it drops and no request is scoped to it. `home()` is the claim's
   first entry, directory or not: `me()` keys the account by it.
   `superAdmin()` is @hanzo/iam's `superAdmin(claims)` (hanzoai/authz
   `Claims.Sudo`): a person whose `orgs[0].org` is `admin`, never a program and
@@ -168,9 +172,10 @@ the one conversation the pane holds).
   slug's hue, which needs the host to load `@hanzo/tokens/css/data`), the role
   the token signs (`role()`), the plan billing reads per org. The search filters
   them as typed (`lib/orgname` `matches`, IAM's own rule). A person founds one
-  there through IAM's `POST /v1/iam/onboard`, the slug following the name as
-  IAM's `slugifyOrg` makes it and a typed slug refused, never folded
-  (`refusal`). A SuperAdmin gets no create (IAM refuses them a customer org)
+  there through `createOrg` (`POST /v1/account/orgs`, which files it in IAM and
+  makes them its owner; IAM's `/v1/iam/onboard` gets no CORS answer for an app
+  origin), the slug following the name as IAM's `slugifyOrg` makes it and a
+  typed slug refused, never folded (`refusal`). A SuperAdmin gets no create (IAM refuses them a customer org)
   and an `Everyone` section instead: IAM's list searched on the server, paged
   by cursor, each row stepped into through `support()` (IAM `assume`, audited).
 - `src/team.gen.ts` — the core team's persona files as strings, generated from

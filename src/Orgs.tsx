@@ -48,7 +48,8 @@ import { matches, refusal, slugify } from './lib/orgname'
 import { team as workspace } from './lib/host'
 import { checkoutUrl, money } from './lib/pay'
 import { cartUrl, charge, priced, usePlan, usePlans, type Interval, type SubscriptionPlan } from './lib/plans'
-import { createInvitation, inviteLink } from './lib/invite'
+import { createInvitation, inviteLink, setOrganizationProfile } from './lib/invite'
+import { createOrg, say } from './lib/org'
 import { countSignup } from './lib/intent'
 import { BAD, mix } from './lib/mix'
 import { useRooms } from './host'
@@ -1097,12 +1098,15 @@ function Everyone({ q, skip }: { q: string; skip: string[] }) {
  *
  * The slug follows the name the way IAM's onboarding makes it, until it is typed
  * over; a slug typed is IAM's to take as it is, so one IAM would not keep is
- * refused here with the rule, never rewritten. IAM's own onboarding makes it
- * (`POST /v1/iam/onboard`): the organization, the reader as its owner and its
- * first API key, the founder's account untouched. It is sent the name when the
- * name makes the slug, and the slug when the slug was typed, the display name
- * then written on the row (`/v1/iam/organizations/profile`). The token in hand
- * predates it, so it is refreshed before the organization opens.
+ * refused here with the rule, never rewritten. The create is the one every
+ * surface uses, `POST /v1/account/orgs` (lib/org.ts `createOrg`): it files the
+ * organization in IAM and records the reader as its owner through IAM's
+ * membership API, the account untouched. IAM's own `/v1/iam/onboard` is not
+ * reachable from here: the edge answers no app origin's CORS on it, because it
+ * re-keys the session (cloud cors_origin.go `sessionRoutes`). It is sent the
+ * name when the name makes the slug, and the slug when the slug was typed, the
+ * display name then written on the row (lib/invite.ts `setOrganizationProfile`).
+ * The token in hand predates it, so it is refreshed before the organization opens.
  */
 function Found({ onClose, onMade }: { onClose: () => void; onMade: (org: string) => void }) {
   const { sdk } = useIam()
@@ -1129,26 +1133,15 @@ function Found({ onClose, onMade }: { onClose: () => void; onMade: (org: string)
     if (wrong) return setRefused(wrong)
     setBusy(true)
     setRefused(null)
-    const headers = { Authorization: `Bearer ${bearer() ?? ''}`, 'Content-Type': 'application/json' }
-    const why = async (r: Response): Promise<string> => {
-      const body = (await r.json().catch(() => null)) as { error?: string; detail?: string; msg?: string; message?: string } | null
-      return body?.error || body?.detail || body?.msg || body?.message || `IAM answered ${r.status}.`
-    }
     try {
       const named = slugify(display) === slug
-      const r = await fetch(`${api()}/v1/iam/onboard`, { method: 'POST', headers, body: JSON.stringify({ name: named ? display : slug }) })
-      if (!r.ok) throw new Error(await why(r))
-      const made = ((await r.json().catch(() => null)) as { org?: string } | null)?.org
-      if (!made) throw new Error('IAM made no organization. Try again.')
+      const made = await createOrg(named ? display : slug)
       renew()
       await sdk.refreshAccessToken().catch(() => null)
       if (!named) {
-        const p = await fetch(`${api()}/v1/iam/organizations/profile`, {
-          method: 'POST',
-          headers: { ...headers, Authorization: `Bearer ${bearer() ?? ''}` },
-          body: JSON.stringify({ owner: 'admin', name: made, displayName: display }),
+        await setOrganizationProfile('admin', made, { displayName: display }).catch((err: unknown) => {
+          throw new Error(`${made} is made, and it is still called ${made}: ${say(err)}`)
         })
-        if (!p.ok) throw new Error(`${made} is made, and it is still called ${made}: ${await why(p)}`)
       }
       // A token that does not carry it yet is minted on the next load, which opens it.
       if (!claimed().includes(made)) {
@@ -1158,7 +1151,7 @@ function Found({ onClose, onMade }: { onClose: () => void; onMade: (org: string)
       }
       onMade(made)
     } catch (err) {
-      setRefused(err instanceof Error ? err.message : 'Could not create it.')
+      setRefused(say(err))
       setBusy(false)
     }
   }

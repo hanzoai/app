@@ -68,6 +68,34 @@ describe('a directory is a home, and nobody works in it', () => {
   })
 })
 
+describe('a platform org opens to the people who run it (authz Claims.opens)', () => {
+  const token = (claims: Record<string, unknown>) => `h.${btoa(JSON.stringify({ name: 'ada', ...claims })).replace(/=+$/, '')}.s`
+  const signed = (claims: Record<string, unknown>) =>
+    vi.stubGlobal('window', { localStorage: memory({ hanzo_iam_access_token: token(claims), hanzo_iam_expires_at: String(Date.now() + 60_000) }) })
+
+  test('a plain member of a brand org is offered none of it, and is scoped to nothing there', () => {
+    signed({ orgs: [{ org: 'hanzo', role: 'member' }, { org: 'acme', role: 'owner' }] })
+    expect(orgs()).toEqual(['acme'])
+    expect(org()).toBe('acme')
+    signed({ orgs: [{ org: 'hanzo', role: 'member' }] })
+    expect(orgs()).toEqual([])
+    expect(org()).toBeNull()
+    expect(scope()['X-Org-Id']).toBeUndefined()
+  })
+
+  test('its owners and admins work in it', () => {
+    signed({ orgs: [{ org: 'hanzo', role: 'Admin' }, { org: 'lux', role: 'owner' }, { org: 'zoo', role: 'member' }] })
+    expect(orgs()).toEqual(['hanzo', 'lux'])
+  })
+
+  test('admin is a SuperAdmin\'s alone; a membership of it opens nothing', () => {
+    signed({ orgs: [{ org: 'hanzo', role: 'owner' }, { org: 'admin', role: 'admin' }] })
+    expect(orgs()).toEqual(['hanzo'])
+    signed({ orgs: [{ org: 'admin', role: 'admin' }, { org: 'zoo', role: 'member' }] })
+    expect(orgs()).toEqual(['admin', 'zoo'])
+  })
+})
+
 describe('SuperAdmin is hanzoai/authz Claims.Sudo, read one way', () => {
   const as = (claims: Record<string, unknown>) =>
     vi.stubGlobal('window', {
