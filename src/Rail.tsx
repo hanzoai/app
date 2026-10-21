@@ -1,8 +1,8 @@
 'use client'
 
 // The app's rail: its products as marks down the window's left edge, in one
-// order — Chat, Dev, Studio, Library, Scheduled tasks, Customize — then More, a
-// menu of the products on hosts of their own, and the account at the foot. It
+// order — Chat, Dev, Studio, Tabs, Library, Scheduled tasks, Customize — then
+// More (Team, on a host of its own), and the account at the foot. It
 // is how the app moves between its products; a phone, which has no rail,
 // switches Chat and Dev in its bar (Top.tsx).
 //
@@ -34,7 +34,7 @@ import { route, type Host } from '@hanzo/build'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { out } from './help'
 import { Me } from './Me'
-import { app, TABS, WORKSPACE, type Place } from './lib/host'
+import { app, WORKSPACE, type Place } from './lib/host'
 
 /** The rail's width, px. */
 export const RAIL = 48
@@ -124,6 +124,7 @@ export function Rail({
   onChat,
   onDev,
   onStudio,
+  onTabs,
   go,
   onOrg,
 }: {
@@ -141,6 +142,7 @@ export function Rail({
   onChat: () => void
   onDev: () => void
   onStudio: () => void
+  onTabs: () => void
   /** Moves the app to an address of this page. */
   go: (address: string) => void
   /** Work in another organization. */
@@ -158,7 +160,6 @@ export function Rail({
           { type: 'separator' as const, key: 'raised' },
         ]
       : []),
-    { key: 'tabs', label: 'Tabs', icon: <SquareTerminal size={16} aria-hidden />, onSelect: () => out(TABS) },
     { key: 'team', label: 'Team', icon: <Users size={16} aria-hidden />, onSelect: () => out(WORKSPACE) },
   ]
   const Stack = flat ? XStack : YStack
@@ -184,6 +185,9 @@ export function Rail({
       </Mark>
       <Mark label="Studio" on={mode === 'studio'} onPress={onStudio} data-slot="rail-studio">
         <WandSparkles size={18} aria-hidden />
+      </Mark>
+      <Mark label="Tabs" on={mode === 'tabs'} onPress={onTabs} data-slot="rail-tabs">
+        <SquareTerminal size={18} aria-hidden />
       </Mark>
       {flat ? null : (
         <>

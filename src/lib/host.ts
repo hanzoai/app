@@ -38,7 +38,7 @@ export const ENTRY = `${WORKSPACE}/?signin`
  */
 export const START = `${WORKSPACE}/start`
 
-/** Hanzo Tabs, its own origin, opened from the column in a tab of its own. */
+/** Hanzo Tabs on its own origin, which hanzo.team's shell opens; the app draws it in place at `TERMINALS`. */
 export const TABS = 'https://tabs.hanzo.ai'
 
 /**
@@ -61,6 +61,12 @@ export const DEV = '/dev'
  */
 export const STUDIO = '/studio'
 
+/**
+ * Tabs: the terminals on the reader's linked machines and sandboxes, tiled
+ * (@hanzo/tabs `Workspace`), drawn in the app at hanzo.ai/tabs.
+ */
+export const TERMINALS = '/tabs'
+
 /** Studio at an address of its own (@hanzo/studio `route`): '' is New, /studio. */
 export const studio = (at: string): string => (at ? `${STUDIO}/${at.replace(/^\/+/, '')}` : STUDIO)
 
@@ -71,7 +77,7 @@ export const talk = (id?: string | null): string => (id ? `${CHAT}/${encodeURICo
 export const app = (at: string): string => DEV + href(route(at))
 
 /** A place in the app: Chat on a conversation or none, or Dev at a builder address. */
-export type Place = { mode: 'chat'; thread: string | null } | { mode: 'dev'; at: string } | { mode: 'studio'; at: string }
+export type Place = { mode: 'chat'; thread: string | null } | { mode: 'dev'; at: string } | { mode: 'studio'; at: string } | { mode: 'tabs' }
 
 /** /chat/shared is a page of its own, where a chat shared by link is read (lib/share.ts). */
 const SHARED = 'shared'
@@ -82,6 +88,7 @@ export function place(pathname: string): Place | null {
   if (p === CHAT) return { mode: 'chat', thread: null }
   if (p === DEV || p.startsWith(`${DEV}/`)) return { mode: 'dev', at: path(parse(p.slice(DEV.length))) }
   if (p === STUDIO || p.startsWith(`${STUDIO}/`)) return { mode: 'studio', at: p.slice(STUDIO.length + 1) }
+  if (p === TERMINALS) return { mode: 'tabs' }
   if (!p.startsWith(`${CHAT}/`)) return null
   const id = p.slice(CHAT.length + 1)
   if (id.includes('/') || id === SHARED) return null
@@ -97,6 +104,8 @@ export function page(pathname: string): string {
   const at = place(pathname)
   if (!at) return pathname
   if (at.mode === 'chat') return at.thread ? `${CHAT}/:id` : CHAT
+  if (at.mode === 'tabs') return TERMINALS
+  if (at.mode === 'studio') return STUDIO
   const r = route(at.at)
   if (r.kind === 'run') return `${DEV}/run/:id`
   if (r.kind === 'repo') return `${DEV}/projects/:org/:repo`
@@ -146,7 +155,7 @@ export function remember(mode: Place['mode']): void {
 export function resume(): string {
   try {
     const kept = window.localStorage.getItem(MODE)
-    return kept === 'dev' ? DEV : kept === 'studio' ? STUDIO : CHAT
+    return kept === 'dev' ? DEV : kept === 'studio' ? STUDIO : kept === 'tabs' ? TERMINALS : CHAT
   } catch {
     return CHAT
   }

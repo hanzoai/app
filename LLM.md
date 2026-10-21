@@ -79,17 +79,23 @@ repository or a site from any surface.
 
 ## Rules the rooms keep
 
-- The app's places are marks on its rail (Rail.tsx): Chat, Dev, Studio,
-  Library, Scheduled tasks, Customize, then More, a menu of the products on
-  hosts of their own (Tabs, Team), and the account at the foot. The rail moves
+- The app's places are marks on its rail (Rail.tsx): Chat, Dev, Studio, Tabs,
+  Library, Scheduled tasks, Customize, then More (Team, on a host of its own),
+  and the account at the foot. Tabs is drawn in the app at /tabs (Terminals.tsx:
+  @hanzo/tabs `Workspace` and `useFleet` with the reader's bearer, the pane
+  edge to edge, no sidebar); nothing on the rail leaves for tabs.hanzo.ai.
+  @hanzo/tabs is taken from its git commit (hanzo-apps/tabs, pinned in the
+  catalog) until it publishes to npm. The rail moves
   the app, and Shell's sidebar wears the product's name alone; the one Chat |
   Dev switch is a phone's bar, which has no rail. Dev's own places (New run,
   Projects, Issues, Templates: @hanzo/build `own`) are rows in Dev's sidebar
   (Column), with no group labels. Library, Scheduled tasks, Customize and
   Settings each take the sidebar (Rail.tsx `spot`): Back (to where the reader
   was, Chat or Dev), the place's name, and its own rows — Settings' sections
-  (`sections`), Customize's tabs Agents first (`tabs`) — and the page draws
-  neither (the host's `sections`). Shut, the sidebar takes them with it and the
+  (`sections`), Customize's tabs Agents first (`tabs`), Library's Upload and
+  kinds (`library`, the kind in the address, /dev/artifacts/<kind>), Scheduled
+  tasks' New task and the person's tasks (`useScheduled`) — and the page draws
+  none of them itself (the host's `sections`). Shut, the sidebar takes them with it and the
   rail stays.
 - Skills, connectors, plugins and agents have one home, Dev's Customize: Shell's
   Customize row and Settings' Plugins and Skills rows lead there (`app()`), and

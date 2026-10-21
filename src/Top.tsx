@@ -127,7 +127,7 @@ export function Top({
         <Lines />
       </Round>
       <XStack data-slot="bar-mode" {...GLASS} height={LINE} p="$1" items="center">
-        <ToggleGroup type="single" aria-label="App" value={mode === 'studio' ? '' : mode} disableDeactivation onValueChange={(v) => (v === 'chat' ? onChat() : v === 'dev' ? onDev() : undefined)}>
+        <ToggleGroup type="single" aria-label="App" value={mode === 'chat' || mode === 'dev' ? mode : ''} disableDeactivation onValueChange={(v) => (v === 'chat' ? onChat() : v === 'dev' ? onDev() : undefined)}>
           <Side value="chat">Chat</Side>
           <Side value="dev">Dev</Side>
         </ToggleGroup>

@@ -78,6 +78,13 @@ describe('the app is two roots of paths', () => {
 })
 
 describe('Studio is the third root', () => {
+  test('/tabs is Tabs, drawn in the app, and only /tabs', () => {
+    expect(place('/tabs')).toEqual({ mode: 'tabs' })
+    expect(place('/tabs/')).toEqual({ mode: 'tabs' })
+    expect(place('/tabs/x'), 'Tabs has no addresses of its own').toBeNull()
+    expect(page('/tabs')).toBe('/tabs')
+  })
+
   test('a path under /studio is Studio at its own address, and Studio writes it back', () => {
     expect(place('/studio')).toEqual({ mode: 'studio', at: '' })
     expect(place('/studio/')).toEqual({ mode: 'studio', at: '' })

@@ -23,7 +23,7 @@ minimumReleaseAge: 0
 catalog:
   '@hanzo/ai': 0.6.23
   '@hanzo/appearance': 0.2.8
-  '@hanzo/build': 0.2.74
+  '@hanzo/build': 0.2.77
   '@hanzo/composer': 0.2.0
   '@hanzo/design': 0.5.34
   '@hanzo/event': 0.3.56
@@ -34,6 +34,7 @@ catalog:
   '@hanzo/ui': 8.29.0
   '@hanzo/usage': 0.1.18
   '@hanzo/studio': 0.1.0
+  '@hanzo/tabs': github:hanzo-apps/tabs#af6f1e4c02a3ef7faa192a8310e193219fa5c1c5
   '@hanzo/voice': 0.1.19
   '@hanzogui/config': 8.3.5
   '@hanzogui/core': 8.3.5

@@ -54,6 +54,8 @@ vi.mock('@hanzo/build', () => {
     own: () => [group('work', 'Work', ['New run', 'Projects', 'Issues', 'Templates'])],
     sections: () => [group('Settings', '', ['General', 'Account']), group('Organization', 'Organization', ['Members'])],
     tabs: () => [group('customize', '', ['Agents', 'Skills', 'Connectors', 'Plugins'])],
+    library: () => [group('library-do', '', ['Upload']), group('library-kinds', '', ['All', 'Images', 'Documents'])],
+    useScheduled: () => [group('scheduled-do', '', ['New task']), group('scheduled-tasks', 'Tasks', ['Morning brief'])],
   }
 })
 vi.mock('./Me', () => ({ Made: () => null, Me: () => createElement('div', { 'data-slot': 'me' }) }))
@@ -72,7 +74,7 @@ const noop = () => {}
 
 const column = (mode: Place['mode'], path = '') => renderToStaticMarkup(createElement(Column, { host: hostAt(path), mode, thread: null, go: noop, onShut: noop, onBack: noop }))
 const rail = (mode: Mode, toggle?: () => void, where: string | null = null) =>
-  renderToStaticMarkup(createElement(Rail, { host, mode, at: where, open: true, toggle, onChat: noop, onDev: noop, onStudio: noop, go: noop, onOrg: noop }))
+  renderToStaticMarkup(createElement(Rail, { host, mode, at: where, open: true, toggle, onChat: noop, onDev: noop, onStudio: noop, onTabs: noop, go: noop, onOrg: noop }))
 
 /** Where a string first stands in the markup, failing when it is absent. */
 const at = (html: string, s: string): number => {
@@ -82,9 +84,9 @@ const at = (html: string, s: string): number => {
 }
 
 describe('the rail', () => {
-  test('Chat, Dev, Studio, Library, Scheduled tasks, Customize, then More, and the account at the foot', () => {
+  test('Chat, Dev, Studio, Tabs, Library, Scheduled tasks, Customize, then More, and the account at the foot', () => {
     const html = rail('chat')
-    const order = ['Chat', 'Dev', 'Studio', 'Library', 'Scheduled tasks', 'Customize', 'More'].map((n) => at(html, `aria-label="${n}"`))
+    const order = ['Chat', 'Dev', 'Studio', 'Tabs', 'Library', 'Scheduled tasks', 'Customize', 'More'].map((n) => at(html, `aria-label="${n}"`))
     expect(order).toEqual([...order].sort((a, b) => a - b))
     expect(at(html, 'data-slot="me"')).toBeGreaterThan(order.at(-1)!)
     for (const place of ['Templates', 'Projects', 'Issues', 'Machines', 'Environments']) {
@@ -114,12 +116,11 @@ describe('the rail', () => {
     expect(html).toContain('aria-label="Close sidebar"')
   })
 
-  test('More holds the products on hosts of their own, and none of Dev’s places', () => {
+  test('More holds the products on hosts of their own, and none of Dev’s places; Tabs is drawn in the app', () => {
     const html = rail('chat')
-    const order = ['tabs', 'team'].map((k) => at(html, `data-item="${k}"`))
-    expect(order[0]).toBeGreaterThan(at(html, 'aria-label="More"'))
-    expect(order).toEqual([...order].sort((a, b) => a - b))
-    for (const k of ['projects', 'templates', 'issues', 'machines', 'environments', 'library', 'scheduled', 'customize']) expect(html).not.toContain(`data-item="${k}"`)
+    expect(at(html, 'data-item="team"')).toBeGreaterThan(at(html, 'aria-label="More"'))
+    for (const k of ['tabs', 'projects', 'templates', 'issues', 'machines', 'environments', 'library', 'scheduled', 'customize']) expect(html).not.toContain(`data-item="${k}"`)
+    expect(html, 'nothing on the rail leaves for tabs.hanzo.ai').not.toContain(TABS)
     expect(TABS).toBe('https://tabs.hanzo.ai')
     expect(WORKSPACE).toBe('https://hanzo.team')
   })
@@ -161,8 +162,13 @@ describe('the sidebar', () => {
     expect(at(customize, '>Customize<')).toBeLessThan(at(customize, 'Agents'))
     expect(at(customize, 'Agents')).toBeLessThan(at(customize, 'Skills'))
     const library = column('dev', '-/artifacts')
-    expect(library).toContain('>Library<')
+    expect(at(library, '>Library<')).toBeLessThan(at(library, 'Upload'))
+    expect(at(library, 'Upload')).toBeLessThan(at(library, 'Images'))
     expect(library).not.toContain('New run')
+    const scheduled = column('dev', '-/automations')
+    expect(at(scheduled, '>Scheduled tasks<')).toBeLessThan(at(scheduled, 'New task'))
+    expect(at(scheduled, 'New task')).toBeLessThan(at(scheduled, 'Morning brief'))
+    expect(scheduled).not.toContain('New run')
   })
 
   test('the search is the palette, in every mode: the sidebar holds no field of its own', () => {

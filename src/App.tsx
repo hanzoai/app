@@ -77,12 +77,14 @@ import { Palette } from './Palette'
 import { summons } from './seek'
 import { floor, pane } from './ground'
 import { pick } from './lib/session'
-import { app, go, place, studio, talk, type Place } from './lib/host'
+import { app, go, place, studio, talk, TERMINALS, type Place } from './lib/host'
 import { Top } from './Top'
 import { FOOT, HEIGHT, TOP, useView } from './view'
 
 /** Studio, fetched the first time the reader stands in it. */
 const Studio = lazy(() => import('@hanzo/studio').then((m) => ({ default: m.Studio })))
+/** Tabs, the same way: the terminals on the reader's machines (Terminals.tsx). */
+const Terminals = lazy(() => import('./Terminals'))
 
 /** `/` is Chat on a new conversation. */
 const HOME: Place = { mode: 'chat', thread: null }
@@ -116,7 +118,7 @@ const INSET = {
 } as const
 
 /** Where each mode was last, so the rail goes back to it. */
-const last = { chat: '', dev: '', studio: '' }
+const last = { chat: '', dev: '', studio: '', tabs: '' }
 
 /** Whether a key press is the reader typing, where the app's keys are the field's. */
 const typing = (e: KeyboardEvent): boolean => {
@@ -266,10 +268,11 @@ function Window({ bar }: { bar?: Bar }) {
   const toChat = () => move(last.chat || talk())
   const toDev = () => move(last.dev || app(''))
   const toStudio = () => move(last.studio || studio(''))
+  const toTabs = () => move(TERMINALS)
   // Another organization: picked, and the app opened in it at the mode's New.
   const org = (o: string) => {
     pick(o)
-    window.location.assign(mode === 'dev' ? app('') : mode === 'studio' ? studio('') : talk())
+    window.location.assign(mode === 'dev' ? app('') : mode === 'studio' ? studio('') : mode === 'tabs' ? TERMINALS : talk())
   }
   const sidebar = mode === 'studio' ? places(maker, (p) => maker.go(p)) : undefined
   const flip = () => setClosed(!closed)
@@ -328,9 +331,10 @@ function Window({ bar }: { bar?: Bar }) {
             $max-md={{ p: 0 }}
           >
             <YStack height="100%" $max-md={{ display: 'none' }}>
-              <Rail host={host} mode={mode} at={where} open={!closed} toggle={bar ? undefined : flip} onChat={toChat} onDev={toDev} onStudio={toStudio} go={move} onOrg={org} />
+              <Rail host={host} mode={mode} at={where} open={!closed} toggle={bar ? undefined : flip} onChat={toChat} onDev={toDev} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />
             </YStack>
-            {closed ? null : (
+            {/* Tabs is its panes edge to edge: no sidebar beside them. */}
+            {closed || mode === 'tabs' ? null : (
               <YStack $max-md={{ display: 'none' }}>
                 <Column host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} onSeek={seek} onBack={back} places={sidebar} />
               </YStack>
@@ -343,6 +347,12 @@ function Window({ bar }: { bar?: Bar }) {
                   <Paned framed>
                     <Chat />
                   </Paned>
+                ) : mode === 'tabs' ? (
+                  <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                    <Suspense fallback={null}>
+                      <Terminals />
+                    </Suspense>
+                  </YStack>
                 ) : mode === 'studio' ? (
                   <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
                     <YStack flex={1} minH={0} height="100%">
@@ -397,7 +407,7 @@ function Window({ bar }: { bar?: Bar }) {
                   onBack={back}
                   drawer
                   places={sidebar}
-                  foot={<Rail host={host} mode={mode} at={where} open flat onChat={toChat} onDev={toDev} onStudio={toStudio} go={move} onOrg={org} />}
+                  foot={<Rail host={host} mode={mode} at={where} open flat onChat={toChat} onDev={toDev} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />}
                 />
               </YStack>
             </>

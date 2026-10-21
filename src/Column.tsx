@@ -23,7 +23,7 @@
 
 import { Text, XStack, YStack } from '@hanzo/gui'
 import { ArrowLeft, Bell, Search, Settings2, SquarePen } from 'lucide-react'
-import { DOTS, Gutter, NEW, own, path as written, sections, tabs, useSessions, type Host } from '@hanzo/build'
+import { DOTS, Gutter, library, NEW, own, path as written, sections, tabs, useScheduled, useSessions, type Host } from '@hanzo/build'
 import { tidy } from './lib/title'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { Sidebar, SidebarIconButton, SidebarItem, StatusDot, type RailLink } from '@hanzo/ui/chat'
@@ -160,7 +160,19 @@ export function Column({
 
   const dev = (p: string) => host.go(p)
   const at = mode === 'dev' ? spot(host.path) : null
-  const groups = places ?? (at === 'settings' ? sections(host, dev) : at === 'customize' ? tabs(host, dev) : at ? [] : own(host, dev))
+  // Each place the rail holds lists its own rows: Library its kinds and Upload, Scheduled tasks its tasks and New task.
+  const scheduled = useScheduled(host, dev, at === 'scheduled')
+  const groups =
+    places ??
+    (at === 'settings'
+      ? sections(host, dev)
+      : at === 'customize'
+        ? tabs(host, dev)
+        : at === 'library'
+          ? library(host, dev)
+          : at === 'scheduled'
+            ? scheduled
+            : own(host, dev))
   const open = (row: Recent) => (row.kind === 'chat' ? go(talk(row.id)) : dev(row.id))
   // Chat's New; Dev's is the first of its places.
   const create = () => {
@@ -255,7 +267,7 @@ export function Column({
             ))}
           </YStack>
         )}
-        {mode === 'studio' || at ? null : <Recents host={host} mode={mode} thread={thread} onOpen={open} onNew={create} />}
+        {mode === 'studio' || mode === 'tabs' || at ? null : <Recents host={host} mode={mode} thread={thread} onOpen={open} onNew={create} />}
         {at ? null : (
           <YStack gap="$2" pt="$2" shrink={0}>
             <Made />
