@@ -18,9 +18,9 @@
 //
 // The FREE lane is about PRICE, not identity: a free turn spends no balance and
 // is data-shared in exchange. That choice is made once, at onboarding, where
-// the terms are linked. The line under the composer says so for as long as a
-// free model answers. Signing in buys the paid models and a history that
-// follows you; it is never the price of asking a question.
+// the terms are linked. Nothing under the composer repeats it. Signing in buys
+// the paid models and a history that follows you; it is never the price of
+// asking a question.
 //
 // This file used to branch on `isAuthenticated` and hand a visitor a composer
 // whose only action was a trip to hanzo.id, captioned "Sign in to send". The
@@ -37,7 +37,6 @@ import {
   useChat,
   type ChatMessage,
 } from "@hanzo/ai/react";
-import { isFree } from "@hanzo/ai";
 import { ASK, Chat as ChatSurface, Failure, Parts, words, type Said } from "@hanzo/ui/chat";
 import { carriedIn, carrying, compose, partsOf, said as told, weigh } from "./lib/attach";
 import { download, dropped, fileOf, pct, readable, refOf, retrieve, type Api, type FileRef, type WorkFile } from "./lib/files";
@@ -112,7 +111,7 @@ import { Upgrade, useFree, type Ask } from './Upgrade';
 import { enter, LOGIN } from './lib/destination';
 import { first } from './lib/first';
 import { BAD } from "./lib/mix";
-import { brand, site } from './where'
+import { brand } from './where'
 
 // NO REASONING PANEL HERE. Every assistant turn opened a "Thinking" disclosure
 // listing seven steps — "Planning CSS extraction for chat styles", "Designing
@@ -778,8 +777,7 @@ function Thread({
    * `useState(anonymous ? FREE : ENSO)` read the flag ONCE, on the first render
    * — which is the render before hydration settles, where `anonymous` is always
    * false. So every visitor opened on ENSO while the composer beside them said
-   * "Enso Free", and `isFree(model)` was false, so the data-sharing notice
-   * never appeared. A visitor was sending on the paid pool, because a state
+   * "Enso Free". A visitor was sending on the paid pool, because a state
    * initialiser cannot see a value that arrives later.
    *
    * A CHOICE, or the identity. `null` is "nobody has chosen", which is a
@@ -1009,8 +1007,7 @@ function Thread({
   // EVERY MODEL IS CHOSEN, never asked for: one the plan does not cover still
   // picks, and the gateway answers it with the policy's refusal or from Enso,
   // which the room then shows. A turn the gateway refuses `plan_required`
-  // opens the upgrade, titled with the model. `isFree` still drives the
-  // free-lane notice.
+  // opens the upgrade, titled with the model.
   const free = useFree(!anonymous) && !held;
   const [ask, setAsk] = useState<Ask | null>(null);
   // KEEPING THE CONVERSATION is the reader's account, not this pane's choice:
@@ -1452,8 +1449,7 @@ function Thread({
    *  stylesheet that would hold it cannot reach past gui's own rule, so the
    *  state is read where the event is. */
 
-  // A free send goes. The data-share choice was made at onboarding, once,
-  // and the line under the composer still says what a free model does.
+  // A free send goes. The data-share choice was made at onboarding, once.
   const guarded = speak;
 
   /**
@@ -2242,22 +2238,6 @@ function Thread({
       />
       <AgentMaker />
       {carry.dialog}
-      {/* THE ONE NOTE, at the foot: what a free answer is sent under, or the
-          terms every answer is. Nothing is said above the composer. */}
-      <XStack items="center" justify="center" py="$1" px="$3" gap="$2">
-        {isFree(model) ? (
-          <Text fontSize="$1" color="$soft">
-            Free chat is data-shared to train models.{" "}
-            <Anchor href={site("/legal/privacy")} fontSize="$1" color="$ink">Privacy</Anchor>
-          </Text>
-        ) : (
-          <>
-            <Anchor href={site("/legal/terms")} fontSize="$1" color="$soft">Terms</Anchor>
-            <Text fontSize="$1" color="$soft">·</Text>
-            <Anchor href={site("/legal/privacy")} fontSize="$1" color="$soft">Privacy</Anchor>
-          </>
-        )}
-      </XStack>
       <Upgrade ask={ask} onClose={() => setAsk(null)} />
     </YStack>
   );

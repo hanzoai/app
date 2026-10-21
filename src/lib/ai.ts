@@ -6,8 +6,8 @@
 // their account like every other turn they run.
 //
 // Signed out — the FREE POOL, anonymously. There is no account to bill and none
-// is needed: a free turn spends no balance, and what it costs instead is stated
-// in the consent block the composer asks before the first send. A widget key, if
+// is needed: a free turn spends no balance. The data-share choice is made
+// once, at onboarding. A widget key, if
 // one is configured, rides along so the turn attributes to the org that minted
 // it; without one the turn is simply anonymous. Either way the client EXISTS,
 // because a chat you cannot send is not a chat.
@@ -83,7 +83,7 @@ export const base = (): { baseUrl?: string } => ({ baseUrl: api() })
 export interface Ai {
   client: AiClient | null
   model: string
-  /** Answering free, so the turn is data-shared and owes the notice. */
+  /** Answering on the free pool. The data-share choice was made at onboarding. */
   free: boolean
   /** Mounted client-side. The static export always prerenders the signed-out
    *  page, so nothing interactive may render until this is true. */
