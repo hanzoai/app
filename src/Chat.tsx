@@ -1509,6 +1509,9 @@ function Thread({
       { id: `u-${Date.now()}`, role: "user", content: text },
       { id: `a-${Date.now()}`, role: "assistant", content: reply },
     ]);
+    // A page a plugin's answer carries (a design system's preview) opens beside it at once.
+    const made = artifacts(reply).filter(renders);
+    if (made.length) see(made[made.length - 1]!);
     if (!anonymous)
       void ai.threads
         .record([{ role: "user", content: text }, { role: "assistant", content: reply }], open ?? undefined)
