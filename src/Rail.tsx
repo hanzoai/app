@@ -2,7 +2,7 @@
 
 // The app's rail: its products as marks down the window's left edge, in one
 // order — Chat, Dev, Studio, Tabs, Library, Scheduled tasks, Customize — then
-// More (Team, on a host of its own), and the account at the foot. It
+// More (Team, on a host of its own, never in Studio), and the account at the foot. It
 // is how the app moves between its products; a phone, which has no rail,
 // switches Chat and Dev in its bar (Top.tsx).
 //
@@ -151,16 +151,18 @@ export function Rail({
   const here = mode === 'dev' ? spot(at) : null
   const to = (p: string) => () => go(app(p))
   // The products on hosts of their own, behind More; on a phone the raised places lead it.
+  // Studio offers no Team, so on a laptop it draws no More.
+  const team = mode !== 'studio'
   const rest: NonNullable<DropdownMenuProps['items']> = [
     ...(flat
       ? [
           { key: 'library', label: 'Library', icon: <Library size={16} aria-hidden />, onSelect: to(RAISED.library) },
           { key: 'scheduled', label: 'Scheduled tasks', icon: <Clock size={16} aria-hidden />, onSelect: to(RAISED.scheduled) },
           { key: 'customize', label: 'Customize', icon: <Puzzle size={16} aria-hidden />, onSelect: to(RAISED.customize) },
-          { type: 'separator' as const, key: 'raised' },
+          ...(team ? [{ type: 'separator' as const, key: 'raised' }] : []),
         ]
       : []),
-    { key: 'team', label: 'Team', icon: <Users size={16} aria-hidden />, onSelect: () => out(WORKSPACE) },
+    ...(team ? [{ key: 'team', label: 'Team', icon: <Users size={16} aria-hidden />, onSelect: () => out(WORKSPACE) }] : []),
   ]
   const Stack = flat ? XStack : YStack
   return (
@@ -202,32 +204,34 @@ export function Rail({
           </Mark>
         </>
       )}
-      <DropdownMenu
-        placement={flat ? 'top-start' : 'right-start'}
-        minWidth={220}
-        trigger={
-          <XStack
-            render="button"
-            aria-label="More"
-            {...({ title: 'More' } as object)}
-            data-slot="rail-more"
-            width={MARK}
-            height={MARK}
-            rounded="$4"
-            items="center"
-            justify="center"
-            cursor="pointer"
-            opacity={0.62}
-            hoverStyle={{ bg: '$hover', opacity: 1 }}
-            pressStyle={{ bg: '$raised' }}
-            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
-            $touchable={{ width: 44, height: 44 }}
-          >
-            <Ellipsis size={18} aria-hidden />
-          </XStack>
-        }
-        items={rest}
-      />
+      {rest.length ? (
+        <DropdownMenu
+          placement={flat ? 'top-start' : 'right-start'}
+          minWidth={220}
+          trigger={
+            <XStack
+              render="button"
+              aria-label="More"
+              {...({ title: 'More' } as object)}
+              data-slot="rail-more"
+              width={MARK}
+              height={MARK}
+              rounded="$4"
+              items="center"
+              justify="center"
+              cursor="pointer"
+              opacity={0.62}
+              hoverStyle={{ bg: '$hover', opacity: 1 }}
+              pressStyle={{ bg: '$raised' }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+              $touchable={{ width: 44, height: 44 }}
+            >
+              <Ellipsis size={18} aria-hidden />
+            </XStack>
+          }
+          items={rest}
+        />
+      ) : null}
       <YStack flex={1} />
       <Me host={host} narrow above={flat} onOrg={onOrg} />
     </Stack>

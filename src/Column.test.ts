@@ -66,14 +66,13 @@ vi.mock('./span', () => ({ useSpan: () => ({ ref: null, style: {}, span: 272, mo
 import { Column } from './Column'
 import { Rail } from './Rail'
 import { TABS, WORKSPACE, type Place } from './lib/host'
-import type { Mode } from './recent'
 
 const hostAt = (path = '') => ({ go: () => {}, path }) as unknown as Parameters<typeof Column>[0]['host']
 const host = hostAt()
 const noop = () => {}
 
 const column = (mode: Place['mode'], path = '') => renderToStaticMarkup(createElement(Column, { host: hostAt(path), mode, thread: null, go: noop, onShut: noop, onBack: noop }))
-const rail = (mode: Mode, toggle?: () => void, where: string | null = null) =>
+const rail = (mode: Place['mode'], toggle?: () => void, where: string | null = null) =>
   renderToStaticMarkup(createElement(Rail, { host, mode, at: where, open: true, toggle, onChat: noop, onDev: noop, onStudio: noop, onTabs: noop, go: noop, onOrg: noop }))
 
 /** Where a string first stands in the markup, failing when it is absent. */
@@ -123,6 +122,16 @@ describe('the rail', () => {
     expect(html, 'nothing on the rail leaves for tabs.hanzo.ai').not.toContain(TABS)
     expect(TABS).toBe('https://tabs.hanzo.ai')
     expect(WORKSPACE).toBe('https://hanzo.team')
+  })
+
+  test('Studio offers no Team: no More on a laptop, and a phone’s More holds the raised places alone', () => {
+    const html = rail('studio')
+    expect(html).not.toContain('data-item="team"')
+    expect(html).not.toContain('aria-label="More"')
+    const flat = renderToStaticMarkup(createElement(Rail, { host, mode: 'studio', at: null, open: true, flat: true, onChat: noop, onDev: noop, onStudio: noop, onTabs: noop, go: noop, onOrg: noop }))
+    expect(flat).toContain('data-item="library"')
+    expect(flat).not.toContain('data-item="team"')
+    expect(flat).not.toContain('data-item="raised"')
   })
 })
 
