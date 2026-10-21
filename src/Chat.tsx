@@ -17,9 +17,9 @@
 // the free pool, so what changes at sign-in is the menu, not the room.
 //
 // The FREE lane is about PRICE, not identity: a free turn spends no balance and
-// is data-shared in exchange, which is what the consent block asks about, at
-// SEND rather than on arrival — consent is owed when someone sends, not when
-// they walk in. Signing in is what buys the paid models and a history that
+// is data-shared in exchange. That choice is made once, at onboarding, where
+// the terms are linked. The line under the composer says so for as long as a
+// free model answers. Signing in buys the paid models and a history that
 // follows you; it is never the price of asking a question.
 //
 // This file used to branch on `isAuthenticated` and hand a visitor a composer
@@ -37,12 +37,7 @@ import {
   useChat,
   type ChatMessage,
 } from "@hanzo/ai/react";
-import {
-  freeCopy,
-  grantConsent,
-  hasConsent,
-  isFree,
-} from "@hanzo/ai";
+import { isFree } from "@hanzo/ai";
 import { ASK, Chat as ChatSurface, Failure, Parts, words, type Said } from "@hanzo/ui/chat";
 import { carriedIn, carrying, compose, partsOf, said as told, weigh } from "./lib/attach";
 import { download, dropped, fileOf, pct, readable, refOf, retrieve, type Api, type FileRef, type WorkFile } from "./lib/files";
@@ -116,11 +111,8 @@ import { checkoutUrl } from './lib/pay';
 import { Upgrade, useFree, type Ask } from './Upgrade';
 import { enter, LOGIN } from './lib/destination';
 import { first } from './lib/first';
-import { BAD, mix } from "./lib/mix";
+import { BAD } from "./lib/mix";
 import { brand, site } from './where'
-
-/** The veil under the free lane's consent sheet. */
-const SCRIM = mix("var(--pure-black)", 72, "srgb");
 
 // NO REASONING PANEL HERE. Every assistant turn opened a "Thinking" disclosure
 // listing seven steps — "Planning CSS extraction for chat styles", "Designing
@@ -139,23 +131,6 @@ const SCRIM = mix("var(--pure-black)", 72, "srgb");
  * room has always read at, so an untouched setting changes nothing.
  */
 const MEASURE = "var(--container-prose, 48rem)";
-
-/**
- * The store, or null when the browser will not give us one.
- *
- * Reading `window.localStorage` THROWS `SecurityError` where site data is
- * blocked — third-party contexts, Safari's Block All Cookies, a hardened
- * profile — and this is called from inside a send handler, so an unguarded
- * access takes the send down rather than the storage.
- */
-const store = (): Storage | null => {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage;
-  } catch {
-    return null;
-  }
-};
 
 /**
  * The text this screen arrived with, TYPED INTO THE COMPOSER — never sent.
@@ -240,8 +215,8 @@ export function Chat() {
   // mounted under the provider the shell already put above it.
   //
   // ONE room, for everyone. `anonymous` changes which models are on offer and
-  // nothing else — the composer, the consent and the transcript are the same
-  // components either way, because a visitor is having the same conversation.
+  // nothing else — the composer and the transcript are the same components
+  // either way, because a visitor is having the same conversation.
   //
   // The conversations are NOT drawn here. `Threads` is the list and the shell
   // owns the column it sits in — one sidebar for six rooms, already built, and a
@@ -253,10 +228,9 @@ export function Chat() {
 /**
  * The same conversation, embedded in a page that is not /chat.
  *
- * R8: there were TWO live chat surfaces with different consent semantics — this
- * one asks at SEND and fails closed, the other gated on ARRIVAL through a
- * separate copy of the consent code. Two answers to one question is how they
- * drift, so /models mounts this and the second surface is gone. It carries no
+ * R8: there were TWO live chat surfaces, so /models mounts this one and the
+ * second is gone. The data-share choice is made once at onboarding; this room
+ * does not ask again when a message is sent. It carries no
  * heading of its own: the host page already has one, and a second `<h1>` is the
  * defect that took the landings off /chat and /dev.
  *
@@ -781,9 +755,9 @@ function Plan({ onPress }: { onPress: () => void }) {
  *
  * `anonymous` opens on the free pool and offers only what the free pool can
  * answer, because listing a paid model to someone with no balance is an offer
- * that fails at send. Everything else — the transcript, the composer, the
- * consent — is identical, which is the point: signing in later changes the
- * models on the menu, not the room.
+ * that fails at send. Everything else — the transcript, the composer — is
+ * identical, which is the point: signing in later changes the models on the
+ * menu, not the room.
  */
 function Thread({
   placeholder = message(),
@@ -804,16 +778,14 @@ function Thread({
    * `useState(anonymous ? FREE : ENSO)` read the flag ONCE, on the first render
    * — which is the render before hydration settles, where `anonymous` is always
    * false. So every visitor opened on ENSO while the composer beside them said
-   * "Enso Free", `isFree(model)` was false, and the two things that hang off it
-   * both went quiet: the data-sharing notice never appeared, and the consent
-   * block never asked. A visitor was sending on the paid pool having agreed to
-   * nothing, because a state initialiser cannot see a value that arrives later.
+   * "Enso Free", and `isFree(model)` was false, so the data-sharing notice
+   * never appeared. A visitor was sending on the paid pool, because a state
+   * initialiser cannot see a value that arrives later.
    *
    * A CHOICE, or the identity. `null` is "nobody has chosen", which is a
    * different fact from either model and the only one that can defer to a flag
    * that settles after mount. Picking from the menu still wins, permanently.
    */
-  const [asking, setAsking] = useState<string | null>(null);
   // THE MODEL AND THE EFFORT are the one choice Chat and Dev share
   // (@hanzo/build `useMind`): the catalog from `GET /v1/models` and what the
   // reader kept, changed from the composer's chip or from Settings.
@@ -1480,20 +1452,9 @@ function Thread({
    *  stylesheet that would hold it cannot reach past gui's own rule, so the
    *  state is read where the event is. */
 
-  const guarded = useCallback(
-    (text: string) => {
-      const s = store();
-      // FAILS CLOSED. This read `s && !hasConsent(s)`, so a browser that gives
-      // us no store answered "no consent needed" and sent a data-shared turn
-      // having asked nobody. No store means no record, and no record means ask.
-      if (isFree(model) && (!s || !hasConsent(s))) {
-        setAsking(text);
-        return;
-      }
-      speak(text);
-    },
-    [model, speak],
-  );
+  // A free send goes. The data-share choice was made at onboarding, once,
+  // and the line under the composer still says what a free model does.
+  const guarded = speak;
 
   /**
    * The draft and the files, sent as one turn.
@@ -1690,31 +1651,6 @@ function Thread({
       </Failure>
     );
   };
-
-  // The agreement is asked OVER the room, not instead of it. Returning the
-  // consent on its own replaced the whole pane: the question the reader had
-  // just typed left the screen, and the first thing a stranger saw of the
-  // product was a page about training data. The room stays; the sheet sits on
-  // top of it, and the question is still there behind it.
-  const consent =
-    asking === null ? null : (
-      <Consent
-        question={told(asking).text}
-        onAgree={() => {
-          const s = store();
-          // Nothing to persist into is not a reason to refuse the turn the
-          // reader just agreed to; it means the question is asked again next
-          // time, which is the honest cost of a browser that stores nothing.
-          if (s) grantConsent(s);
-          const held = asking;
-          setAsking(null);
-          if (held) speak(held);
-        }}
-        onCancel={() => {
-          setAsking(null);
-        }}
-      />
-    );
 
   // Dev, from the Summary's Create file or site: a move inside the app where the
   // host's app reads the path (hanzo.ai), else Dev on hanzo.ai, as the shell's
@@ -2322,79 +2258,7 @@ function Thread({
           </>
         )}
       </XStack>
-      {consent}
       <Upgrade ask={ask} onClose={() => setAsk(null)} />
     </YStack>
   );
 }
-
-/** The agreement free asks for, in @hanzo/ai's words so every surface says one thing. */
-function Consent({
-  question,
-  onAgree,
-  onCancel,
-}: {
-  /** What the reader asked, shown back so the sheet answers about THAT turn. */
-  question?: string;
-  onAgree: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <YStack
-      position="absolute"
-      t={0}
-      l={0}
-      r={0}
-      b={0}
-      items="center"
-      justify="center"
-      p="$4"
-      z={40}
-      bg={SCRIM}
-    >
-    <YStack
-      width="100%"
-      maxW={512}
-      px="$5"
-      py="$5"
-      gap="$4"
-      rounded="$4"
-      borderWidth={1}
-      borderColor="$borderColor"
-      bg="$background"
-    >
-      <Text render="h2" fontSize="$6" fontWeight="500" color="$ink">
-        {freeCopy.consentTitle}
-      </Text>
-      {question ? (
-        <Text fontSize="$3" color="$soft" numberOfLines={2}>
-          Your question is waiting: &ldquo;{question}&rdquo;
-        </Text>
-      ) : null}
-      <Text fontSize="$4" color="$soft">
-        {freeCopy.consentBody}
-      </Text>
-      <YStack gap="$2">
-        {freeCopy.consentPoints.map((point) => (
-          <Text key={point} fontSize="$3" color="$soft">
-            {point}
-          </Text>
-        ))}
-      </YStack>
-      <XStack gap="$3" flexWrap="wrap">
-        <Button onClick={onAgree}>{freeCopy.consentAgreeCta}</Button>
-        <Button variant="outline" onClick={onCancel}>
-          {freeCopy.consentCancelCta}
-        </Button>
-      </XStack>
-      <Text fontSize="$2" color="$soft">
-        {freeCopy.termsText} <Anchor href={site("/legal/terms")}>Terms</Anchor>
-        {" · "}
-        <Anchor href={site("/legal/privacy")}>Privacy</Anchor>
-      </Text>
-    </YStack>
-    </YStack>
-  );
-}
-
-/** The agreement free asks for, in @hanzo/ai's words so every surface says one thing. */

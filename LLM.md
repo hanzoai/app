@@ -587,8 +587,9 @@ field; a phone's is a sheet the size of the screen, rows 44 high.
 - Under every answer: "<brand> can make mistakes. Check important info." above
   the composer and Terms · Privacy under it, and nothing about the plan or the
   model: the free lane's notice and its footer went in 0.1.83, since a line
-  that says what a plan does is a line that changes; the consent Free asks for
-  stays. The side panel is per conversation (`usePanel("chat:<thread>")`): shut
+  that says what a plan does is a line that changes. The sheet that asked
+  again at send is gone: the data-share choice is made once at onboarding, and
+  a free model still says so in the line under the composer. The side panel is per conversation (`usePanel("chat:<thread>")`): shut
   until the reader opens it or a preview lands, never carried from the last
   chat.
 - Every list is read once as it opens and searched in the page; nothing is
