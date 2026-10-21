@@ -996,7 +996,7 @@ function Pick({
         ) : null}
         {sudo ? <Everyone q={q} skip={members} /> : null}
       </Column>
-      {founding ? <Found onClose={() => setFounding(false)} onMade={onPick} /> : null}
+      {founding ? <Found onClose={() => setFounding(false)} /> : null}
     </Page>
   )
 }
@@ -1106,9 +1106,12 @@ function Everyone({ q, skip }: { q: string; skip: string[] }) {
  * re-keys the session (cloud cors_origin.go `sessionRoutes`). It is sent the
  * name when the name makes the slug, and the slug when the slug was typed, the
  * display name then written on the row (lib/invite.ts `setOrganizationProfile`).
- * The token in hand predates it, so it is refreshed before the organization opens.
+ * The token in hand predates it, so it is refreshed, and the organization opens on
+ * a load: @hanzo/iam's `useOrganizations` reads the token once per mount, and an
+ * instance the room mounts on the old token writes its home (the token's first
+ * org) back over the pick, which left the room unscoped after one request.
  */
-function Found({ onClose, onMade }: { onClose: () => void; onMade: (org: string) => void }) {
+function Found({ onClose }: { onClose: () => void }) {
   const { sdk } = useIam()
   const [name, setName] = useState('')
   const [typed, setTyped] = useState<string | null>(null)
@@ -1143,13 +1146,8 @@ function Found({ onClose, onMade }: { onClose: () => void; onMade: (org: string)
           throw new Error(`${made} is made, and it is still called ${made}: ${say(err)}`)
         })
       }
-      // A token that does not carry it yet is minted on the next load, which opens it.
-      if (!claimed().includes(made)) {
-        pick(made)
-        window.location.reload()
-        return
-      }
-      onMade(made)
+      pick(made)
+      window.location.reload()
     } catch (err) {
       setRefused(say(err))
       setBusy(false)
