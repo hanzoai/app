@@ -32,6 +32,8 @@ vi.mock('@hanzo/gui', () => ({ Text: part, XStack: part, YStack: part }))
 vi.mock('@hanzo/ui', () => ({ DropdownMenu: menu }))
 vi.mock('@hanzo/ui/chat', () => ({ Sidebar: part, SidebarIconButton: part, SidebarItem: part, StatusDot: () => null }))
 vi.mock('@hanzogui/shell', () => ({ HanzoMark: () => null }))
+// The reader holds beta.crm and nothing else.
+vi.mock('./Betas', () => ({ BetasDialog: () => null, useBetas: () => ({ open: (id: string) => id === 'crm' }) }))
 vi.mock('@hanzo/build', () => {
   const route = (at: string) =>
     at === '-/artifacts'
@@ -122,6 +124,13 @@ describe('the rail', () => {
     expect(html, 'nothing on the rail leaves for tabs.hanzo.ai').not.toContain(TABS)
     expect(TABS).toBe('https://tabs.hanzo.ai')
     expect(WORKSPACE).toBe('https://hanzo.team')
+  })
+
+  test('More holds the apps in beta the reader may open, then Betas, the list of all of them', () => {
+    const html = rail('chat')
+    expect(at(html, 'data-item="beta-crm"')).toBeGreaterThan(at(html, 'data-item="team"'))
+    expect(at(html, 'data-item="betas"')).toBeGreaterThan(at(html, 'data-item="beta-crm"'))
+    expect(html, 'an app in beta the reader was not granted').not.toContain('data-item="beta-erp"')
   })
 
   test('Studio offers no Team: no More on a laptop, and a phone’s More holds the raised places alone', () => {

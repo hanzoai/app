@@ -101,6 +101,17 @@ repository or a site from any surface.
   Customize row and Settings' Plugins and Skills rows lead there (`app()`), and
   Directory lists only Works with and Channels. A list is the registry's answer
   or a plain line saying why there is none — never rows standing in for it.
+- The apps in beta are one list, `lib/betas.ts` (`BETAS`, `GROUPS`): every app
+  no one has yet on hanzo.ai or platform.hanzo.ai, with its id, name, line, group
+  and where it opens. hanzo.ai/beta reads the same list. Each is the cloud's
+  principal switch `beta.<id>` (cloud apps/flags betas.go, same ids), answered by
+  `GET /v1/flag/platform`; `opens` is the one predicate (a SuperAdmin opens
+  every one). `Betas.tsx` `useBetas` reads the switches and the person's CRM
+  beta record (`GET /v1/marketing/beta`) once a token, and asks with
+  `POST /v1/marketing/beta/request`. The rail's More lists the granted ones,
+  each at its `href`, then Betas, the dialog of all of them. A switch only adds:
+  nothing a person has is hidden by one. The grant is a SuperAdmin's,
+  `POST /v1/admin/flags/beta.<id>/grant {user, on}`.
 - A scroller says `overflowY="auto" overflowX="hidden"` (or the reverse for a
   strip that scrolls sideways), never `overflow="scroll"`: a classic scrollbar
   draws its track and steppers whether or not anything overflows. The bars

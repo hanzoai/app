@@ -2,7 +2,9 @@
 
 // The app's rail: its products as marks down the window's left edge, in one
 // order — Chat, Dev, Studio, Tabs, Library, Scheduled tasks, Customize — then
-// More (Team, on a host of its own, never in Studio), and the account at the foot. It
+// More (Team, on a host of its own, then the apps in beta this reader may open
+// and Betas, the list of every app in beta; none of it in Studio), and the
+// account at the foot. It
 // is how the app moves between its products; a phone, which has no rail,
 // switches Chat and Dev in its bar (Top.tsx).
 //
@@ -27,12 +29,14 @@
 // drawer is too narrow for every mark, so Library, Scheduled tasks and
 // Customize lead More there.
 
-import { Clock, Code2, Ellipsis, Library, MessageSquare, PanelLeft, Puzzle, SquareTerminal, Users, WandSparkles } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { Clock, Code2, Ellipsis, FlaskConical, Library, MessageSquare, PanelLeft, Puzzle, Sparkles, SquareTerminal, Users, WandSparkles } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
 import { XStack, YStack } from '@hanzo/gui'
 import { route, type Host } from '@hanzo/build'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
+import { BetasDialog, useBetas } from './Betas'
 import { out } from './help'
+import { BETAS } from './lib/betas'
 import { Me } from './Me'
 import { app, WORKSPACE, type Place } from './lib/host'
 
@@ -153,6 +157,10 @@ export function Rail({
   // The products on hosts of their own, behind More; on a phone the raised places lead it.
   // Studio offers no Team, so on a laptop it draws no More.
   const team = mode !== 'studio'
+  const { open: opened } = useBetas()
+  const [betas, setBetas] = useState(false)
+  // The apps in beta this reader may open, each where it lives.
+  const granted = BETAS.filter((b) => b.href && opened(b.id))
   const rest: NonNullable<DropdownMenuProps['items']> = [
     ...(flat
       ? [
@@ -162,7 +170,14 @@ export function Rail({
           ...(team ? [{ type: 'separator' as const, key: 'raised' }] : []),
         ]
       : []),
-    ...(team ? [{ key: 'team', label: 'Team', icon: <Users size={16} aria-hidden />, onSelect: () => out(WORKSPACE) }] : []),
+    ...(team
+      ? [
+          { key: 'team', label: 'Team', icon: <Users size={16} aria-hidden />, onSelect: () => out(WORKSPACE) },
+          ...granted.map((b) => ({ key: `beta-${b.id}`, label: b.name, icon: <Sparkles size={16} aria-hidden />, onSelect: () => out(b.href as string) })),
+          { type: 'separator' as const, key: 'betas-rule' },
+          { key: 'betas', label: 'Betas', icon: <FlaskConical size={16} aria-hidden />, onSelect: () => setBetas(true) },
+        ]
+      : []),
   ]
   const Stack = flat ? XStack : YStack
   return (
@@ -204,6 +219,7 @@ export function Rail({
           </Mark>
         </>
       )}
+      <BetasDialog open={betas} onOpenChange={setBetas} go={out} />
       {rest.length ? (
         <DropdownMenu
           placement={flat ? 'top-start' : 'right-start'}
