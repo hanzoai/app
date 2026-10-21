@@ -5,7 +5,8 @@
 // other app (Shell.tsx).
 //
 // Top to bottom: who, with their plan, a row whose › opens the account itself;
-// then Upgrade plan, Personalization, Profile and Settings (⌘, / Ctrl+,); then
+// then Upgrade plan, Personalization, Profile and Settings (⌘, / Ctrl+,); Beta,
+// the person's place on the beta waitlist (the site's /beta/status); then
 // Help ›, the site's own pages and the keyboard shortcuts (⌘/ / Ctrl+/ from
 // anywhere); and Log out. Every row opens a real destination: Settings'
 // sections through `showSettings` (open.ts), which the app answers with the
@@ -39,6 +40,7 @@ import {
   CircleUserRound,
   Download,
   FileText,
+  FlaskConical,
   Info,
   Keyboard,
   LifeBuoy,
@@ -448,6 +450,9 @@ export function Me({
             <Line icon={<Settings size={16} aria-hidden />} trail={<DropdownMenuShortcut aria-hidden>{apple ? '⌘,' : 'Ctrl+,'}</DropdownMenuShortcut>}>
               Settings
             </Line>
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => window.location.assign(site('/beta/status'))}>
+            <Line icon={<FlaskConical size={16} aria-hidden />}>Beta</Line>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuSub open={help} onOpenChange={setHelp}>
