@@ -2177,8 +2177,9 @@ function Thread({
             // in the middle of whatever height the window happens to have, and
             // stays right when the sidebar, the notice line or an error banner
             // changes what is left over.
-            // On a phone (no `center`) it takes the height above the composer, which docks at the foot.
-            <YStack data-slot="opening" items="center" width="100%" pt="$6" pb="$2" {...(media.sm ? null : { flex: 1, justify: "center" as const })}>
+            // On a phone (no `center`) it takes the height above the composer, which docks at the foot,
+            // and stands at the foot of that height: close above what it opens, as on a laptop.
+            <YStack data-slot="opening" items="center" width="100%" pt="$6" pb="$2" {...(media.sm ? null : { flex: 1, justify: "flex-end" as const })}>
               {/* THE PORTRAIT IS A DM'S, AND ONLY A DM'S. It used to draw for
                   everyone, because `withWhom || "jobs"` gave a reader who had
                   chosen nobody a 160px photograph of somebody — and the heading
