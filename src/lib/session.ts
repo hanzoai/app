@@ -15,7 +15,7 @@
  * Two derivations of one name never agree; this is the one derivation.
  */
 
-import { superAdmin as sudoOf } from '@hanzo/iam/browser'
+import { superAdmin as sudoOf } from '@hanzo/iam/identity'
 import { api } from './api'
 import { where } from '../where'
 

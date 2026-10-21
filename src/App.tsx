@@ -188,7 +188,12 @@ function Window({ bar }: { bar?: Bar }) {
   // A run floats two panes of its own, so the pane it stands in is not cut.
   const run = where !== null && route(where).kind === 'run'
   const asked = at.mode === 'chat' ? at.thread : null
-  const { thread } = useOpen()
+  const { thread, settings } = useOpen()
+  // A row of the account menu asks for Settings: the drawer goes away even when
+  // the address does not move (the reader was on that page already).
+  useEffect(() => {
+    if (settings) setDrawer(false)
+  }, [settings])
   const plans = where !== null && isPlans(where)
   useEffect(() => {
     if (plans) leave('app')

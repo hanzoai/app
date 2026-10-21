@@ -28,7 +28,7 @@ catalog:
   '@hanzo/design': 0.5.34
   '@hanzo/event': 0.3.56
   '@hanzo/gui': 8.3.5
-  '@hanzo/iam': 0.21.33
+  '@hanzo/iam': 0.21.35
   '@hanzo/logo': 1.0.26
   '@hanzo/personas': 1.0.5
   '@hanzo/ui': 8.29.0
