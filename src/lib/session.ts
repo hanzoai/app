@@ -384,15 +384,16 @@ export function role(o: string | null): string | null {
 }
 
 /**
- * Who the token names — its display name and email — or null. The IAM user says
+ * Who the token names — its display name (the username when it has none; `display`
+ * is the display name alone) and email — or null. The IAM user says
  * the same once userinfo answers; this is the answer before it, so a signed-in
  * reader is never drawn as a stranger while it is asked.
  */
-export function named(): { name: string; email: string } | null {
+export function named(): { name: string; display: string; email: string } | null {
   const c = claims()
   if (!c) return null
   const text = (k: string): string => (typeof c[k] === 'string' ? (c[k] as string) : '')
-  return { name: text('displayName') || text('name'), email: text('email') }
+  return { name: text('displayName') || text('name'), display: text('displayName'), email: text('email') }
 }
 
 /**

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { tidy } from './title'
+import { given, tidy } from './title'
 
 describe('tidy', () => {
   test('a plain title stays, trimmed and single-spaced', () => {
@@ -20,5 +20,15 @@ describe('tidy', () => {
   test('nothing readable is the fallback', () => {
     expect(tidy('')).toBe('Untitled')
     expect(tidy(null, 40, 'Untitled run')).toBe('Untitled run')
+  })
+})
+
+describe('given', () => {
+  test('the first word of a display name, its first letter capitalised', () => {
+    expect(given('z')).toBe('Z')
+    expect(given(' ada lovelace ')).toBe('Ada')
+    expect(given('Zach Kelling')).toBe('Zach')
+    expect(given('')).toBe('')
+    expect(given('   ')).toBe('')
   })
 })

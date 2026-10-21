@@ -53,7 +53,7 @@ import { AgentMaker, HOUSE, useAgentShelf, useCrew } from "./crew";
 import { called } from "./team";
 import { Anchor, Box, Button, Text, View, XStack, YStack } from "@hanzo/ui";
 import { useMedia } from "@hanzo/gui";
-import { tidy } from "./lib/title";
+import { given, tidy } from "./lib/title";
 import { useIam, useIamToken } from "@hanzo/iam/react";
 import { bearer, hasSession, named, org } from "./lib/session";
 import { api } from "./lib/api";
@@ -96,6 +96,12 @@ import {
   useMention,
   useMind,
   useSuggestions,
+  book,
+  hand,
+  taken,
+  want,
+  path as devPath,
+  type Act,
   CHAT_MODES,
   usePanel,
   type Artifact,
@@ -838,8 +844,9 @@ function Thread({
     go: (href) => (/^https?:/.test(href) ? void window.open(href, "_blank", "noopener,noreferrer") : go(href)),
   }, CHAT_MODES);
   const agentShelf = useAgentShelf();
-  // The opening greets the person by their first name, as their account spells it.
-  const firstName = useMemo(() => (anonymous ? "" : ((named()?.name ?? "").trim().split(/\s+/)[0] ?? "")), [anonymous]);
+  // The opening greets the person by the first word of their display name, capitalised ("What’s up, Z?").
+  // A username is a handle, not a name: without a display name the greeting has none.
+  const firstName = useMemo(() => (anonymous ? "" : given(named()?.display ?? "")), [anonymous]);
   // Up to three things worth doing next, from the person's own activity (@hanzo/build).
   const hints = useSuggestions(target);
   // THE HEADER'S ⋯ IS THE ROW'S MENU (thread.tsx): rename, pin, share, its
@@ -1519,8 +1526,8 @@ function Thread({
         .catch(() => {});
   };
 
-  const submit = () => {
-    const text = draft.trim();
+  const submit = (ask: string = draft) => {
+    const text = ask.trim();
     if (preparing || (!text && !files.length)) return;
     if (!carry.preparing) return deliver(text, "");
     setDraft("");
@@ -1732,10 +1739,46 @@ function Thread({
 
   // THE COMPOSER'S OPTIONS, held apart so its keys (the `/` and `@` lists' arrows,
   // Ctrl+U) hook in through `useMention` before the frame is drawn.
+  // What pressing a suggestion does, at once: open what it names, send its prompt
+  // here (the room is a new chat while one shows), hand its run to Dev, or make
+  // its scheduled task and show it in Scheduled tasks.
+  const hint = (a: Act) => {
+    switch (a.kind) {
+      case "open":
+        if (a.item) want(a.item);
+        if (/^https:\/\//.test(a.to)) window.open(a.to, "_blank", "noopener,noreferrer");
+        else go(a.to.startsWith("/") ? a.to : app(a.to));
+        return;
+      case "send":
+        submit(a.prompt);
+        return;
+      case "task":
+        hand("task", a.prompt);
+        go(app(""));
+        return;
+      case "schedule":
+        void book(target, a, "chat").then(
+          (made) => go(app(devPath({ kind: "automation", id: made.id }))),
+          (e: unknown) => setPrepWrong(e instanceof Error && e.message ? e.message : "The scheduled task could not be made."),
+        );
+        return;
+    }
+  };
+  // A chat a suggestion in Dev left for this room is sent once the room is a new
+  // chat: the address's own conversation let go of, nothing said yet.
+  const [handed] = useState(() => ({ prompt: anonymous ? "" : taken("send") }));
+  useEffect(() => {
+    if (!handed.prompt || open || said.length) return;
+    const p = handed.prompt;
+    handed.prompt = "";
+    submit(p);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, said.length]);
+
   const composing: PromptOptions = {
       value: draft,
       onChange: setDraft,
-      onSend: submit,
+      onSend: () => submit(),
       onStop: chat.stop,
       busy: chat.streaming,
       // Files alone are a message: what is held goes with an empty draft too.
@@ -1849,7 +1892,7 @@ function Thread({
       onLanguage: speakIn,
       talk,
       // While nothing has been said: what is worth doing next.
-      below: said.length === 0 && !anonymous ? <Suggestions rows={hints.rows} onPick={setDraft} onDismiss={hints.dismiss} /> : undefined,
+      below: said.length === 0 && !anonymous ? <Suggestions rows={hints.rows} onAct={hint} onDismiss={hints.dismiss} /> : undefined,
   };
   const mention = useMention(composing);
 

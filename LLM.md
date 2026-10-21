@@ -370,10 +370,18 @@ catalog files under Enso or Zen (`house`).
   a run starts. Dev puts where the run goes and its repository at that row's
   start. Under that, three suggestions while nothing has been said (the
   person's activity, then signup, then Hanzo's starters; above the frame on a
-  phone). `/` lists the skills above the frame. As wide as the words above it
-  (`measure`); cut as a pane in the app's frame. The opening above it is one
-  line, "What's up, <first name>?" (Dev: "Build what's next."); no line sits
-  above the composer: the free-chat note at the foot is the one note.
+  phone). Each is one short action and pressing it does it (@hanzo/build
+  `Act`): open goes to what it names, send is sent here at once (`submit`),
+  task is handed to Dev (`hand`, which Dev's New `taken`s and starts), schedule
+  is made (`book`) and opened in Scheduled tasks; a send pressed in Dev arrives
+  here the same way and is sent once the room is a new chat. `/` lists the
+  skills above the frame. As wide as the words above it (`measure`); cut as a
+  pane in the app's frame. At rest the frame is two rows, a line of text and
+  the tools, and grows with the text. The opening above it is one line,
+  "What's up, <first name>?", the first word of the display name capitalised
+  (`given`; the username is never used, so with no display name it is "What's
+  up?"; Dev: "Build what's next."); no line sits above the composer: the
+  free-chat note at the foot is the one note.
 - `+` (@hanzo/build `Plus`): Upload or add files (Ctrl+U), Agents ›
   (`useAgentShelf`: the org's agents, the cast first; a pick seats or unseats
   one; Create agent opens `Hire`), Skills › (the org's active skills; a pick

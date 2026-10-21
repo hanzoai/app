@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { configure } from '../where'
-import { bearer, home, live, me, org, orgs, renew, scope, superAdmin } from './session'
+import { bearer, home, live, me, named, org, orgs, renew, scope, superAdmin } from './session'
 
 /** A Storage held in a map. */
 function memory(seed: Record<string, string> = {}): Storage {
@@ -132,5 +132,17 @@ describe('SuperAdmin is hanzoai/authz Claims.Sudo, read one way', () => {
   test('an empty home is not shifted onto a later admin entry', () => {
     as({ orgs: [{ org: '' }, { org: 'admin', role: 'admin' }] })
     expect(superAdmin()).toBe(false)
+  })
+})
+
+describe('who the token names', () => {
+  const as = (claims: Record<string, unknown>) =>
+    vi.stubGlobal('window', { localStorage: memory({ hanzo_iam_access_token: `h.${btoa(JSON.stringify(claims)).replace(/=+$/, '')}.s`, hanzo_iam_expires_at: String(Date.now() + 60_000) }) })
+
+  test('the display name apart from the username: a greeting reads the one, never the handle', () => {
+    as({ name: 'z', displayName: 'Zach Kelling', email: 'z@hanzo.ai' })
+    expect(named()).toEqual({ name: 'Zach Kelling', display: 'Zach Kelling', email: 'z@hanzo.ai' })
+    as({ name: 'z', email: 'z@hanzo.ai' })
+    expect(named()).toEqual({ name: 'z', display: '', email: 'z@hanzo.ai' })
   })
 })

@@ -28,3 +28,9 @@ export function tidy(title: string | null | undefined, max = 80, fallback = 'Unt
   if (!t) return fallback
   return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t
 }
+
+/** A name's first word, its first letter capitalised ("z" → "Z", "ada lovelace" → "Ada"), or '' for none. */
+export function given(name: string): string {
+  const w = name.trim().split(/\s+/)[0] ?? ''
+  return w ? w[0]!.toUpperCase() + w.slice(1) : ''
+}
