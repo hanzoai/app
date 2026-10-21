@@ -12,22 +12,25 @@
 // that moved last, each one press from its page, and Notifications in Settings.
 // The search opens the palette (Palette.tsx; ⌘K / Ctrl+K from anywhere).
 //
-// Dev's places are @hanzo/build's `nav`, the one list every rail draws, each a
-// row under a quiet group label.
+// Dev's places are @hanzo/build's `own`: New run, Projects, Issues, Templates.
+// A place the rail holds (Library, Scheduled tasks, Customize) and Settings
+// each take the sidebar instead (Rail.tsx `spot`): Back, the place's name, and
+// its own rows (Settings' sections, Customize's tabs), never Dev's beside them.
 //
 // Its width is the edge's in the gutter to its right: dragged, keyed or
 // double-clicked back (@hanzo/build's `Grip`), kept per browser. Pulled in past
 // its floor it shuts (`onShut`), as the sidebar's toggle shuts it.
 
 import { Text, XStack, YStack } from '@hanzo/gui'
-import { Bell, Search, Settings2, SquarePen } from 'lucide-react'
-import { DOTS, Gutter, nav, NEW, path as written, useSessions, type Host } from '@hanzo/build'
+import { ArrowLeft, Bell, Search, Settings2, SquarePen } from 'lucide-react'
+import { DOTS, Gutter, NEW, own, path as written, sections, tabs, useSessions, type Host } from '@hanzo/build'
 import { tidy } from './lib/title'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { Sidebar, SidebarIconButton, SidebarItem, StatusDot, type RailLink } from '@hanzo/ui/chat'
 import { useId, type ReactNode } from 'react'
 import { Made } from './Me'
 import { Recents } from './Recents'
+import { spot, type Spot } from './Rail'
 import { Setup } from './Setup'
 import { ago, type Recent } from './recent'
 import { empty } from './open'
@@ -72,6 +75,9 @@ const ROW = { rounded: '$4', minH: 31, py: 0, px: '$2' } as const
 
 /** The run activity behind the bell: the runs that moved last, newest first. */
 const RECENT = 6
+
+/** What a place that takes the sidebar is called at its head. */
+const TITLE: Record<Spot, string> = { library: 'Library', scheduled: 'Scheduled tasks', customize: 'Customize', settings: 'Settings' }
 
 /** A header mark: a 16px glyph in a 32px target. */
 const HEAD = { width: 32, height: 32, rounded: '$3' } as const
@@ -124,6 +130,7 @@ export function Column({
   go,
   onShut,
   onSeek,
+  onBack,
   drawer = false,
   foot,
   places,
@@ -138,6 +145,8 @@ export function Column({
   onShut: () => void
   /** Opens the palette. */
   onSeek?: () => void
+  /** Leaves a place that took the sidebar, for where the reader was before it. */
+  onBack: () => void
   /** Drawn in the phone's drawer: no edge, cut as a floating pane. */
   drawer?: boolean
   /** What stands at its foot: the drawer's rail, laid flat. */
@@ -150,7 +159,8 @@ export function Column({
   const span = useSpan(SPAN, WIDTH, FLOOR, CEIL)
 
   const dev = (p: string) => host.go(p)
-  const groups = places ?? nav(host, dev)
+  const at = mode === 'dev' ? spot(host.path) : null
+  const groups = places ?? (at === 'settings' ? sections(host, dev) : at === 'customize' ? tabs(host, dev) : at ? [] : own(host, dev))
   const open = (row: Recent) => (row.kind === 'chat' ? go(talk(row.id)) : dev(row.id))
   // Chat's New; Dev's is the first of its places.
   const create = () => {
@@ -182,15 +192,26 @@ export function Column({
         pb="$2"
         gap="$0"
       >
-        <XStack data-slot="app-head" items="center" gap="$1" pl="$2" pr={2} height={52} shrink={0} minW={0}>
-          <Text flex={1} minW={0} fontSize={18} lineHeight={24} fontWeight="600" color="$ink" numberOfLines={1}>
-            {wordmark(mode)}
-          </Text>
-          <Activity host={host} />
-          <SidebarIconButton label="Search" onPress={onSeek} aria-haspopup="dialog" {...HEAD}>
-            <Search size={16} aria-hidden />
-          </SidebarIconButton>
-        </XStack>
+        {at ? (
+          <XStack data-slot="app-head" items="center" gap="$1" pl={2} pr={2} height={52} shrink={0} minW={0}>
+            <SidebarIconButton label="Back" data-slot="place-back" onPress={onBack} {...HEAD}>
+              <ArrowLeft size={16} aria-hidden />
+            </SidebarIconButton>
+            <Text flex={1} minW={0} fontSize={18} lineHeight={24} fontWeight="600" color="$ink" numberOfLines={1} data-slot="place-name">
+              {TITLE[at]}
+            </Text>
+          </XStack>
+        ) : (
+          <XStack data-slot="app-head" items="center" gap="$1" pl="$2" pr={2} height={52} shrink={0} minW={0}>
+            <Text flex={1} minW={0} fontSize={18} lineHeight={24} fontWeight="600" color="$ink" numberOfLines={1}>
+              {wordmark(mode)}
+            </Text>
+            <Activity host={host} />
+            <SidebarIconButton label="Search" onPress={onSeek} aria-haspopup="dialog" {...HEAD}>
+              <Search size={16} aria-hidden />
+            </SidebarIconButton>
+          </XStack>
+        )}
         {mode === 'chat' ? (
           <YStack role="list" gap={2} shrink={0}>
             <YStack role="listitem">
@@ -207,12 +228,12 @@ export function Column({
             {groups.map((g, i) => (
               <YStack key={g.id} pt={i ? '$2' : 0}>
                 {/* The same quiet label Recents wears, so the sidebar reads as one list of headed parts. */}
-                {i ? (
+                {i && g.label ? (
                   <Text id={`${uid}-${g.id}`} pl="$2" pb={2} fontSize="$3" color="$soft">
                     {g.label}
                   </Text>
                 ) : null}
-                <YStack role="list" aria-labelledby={i ? `${uid}-${g.id}` : undefined} aria-label={i ? undefined : g.label} gap={1}>
+                <YStack role="list" aria-labelledby={i && g.label ? `${uid}-${g.id}` : undefined} aria-label={i && g.label ? undefined : g.label || (at ? TITLE[at] : g.id)} gap={1}>
                   {g.links.map((link) => (
                     <YStack key={link.id} role="listitem">
                       <SidebarItem
@@ -234,11 +255,13 @@ export function Column({
             ))}
           </YStack>
         )}
-        {mode === 'studio' ? null : <Recents host={host} mode={mode} thread={thread} onOpen={open} onNew={create} />}
-        <YStack gap="$2" pt="$2" shrink={0}>
-          <Made />
-          <Setup />
-        </YStack>
+        {mode === 'studio' || at ? null : <Recents host={host} mode={mode} thread={thread} onOpen={open} onNew={create} />}
+        {at ? null : (
+          <YStack gap="$2" pt="$2" shrink={0}>
+            <Made />
+            <Setup />
+          </YStack>
+        )}
         {foot}
       </Sidebar>
       {drawer ? null : (

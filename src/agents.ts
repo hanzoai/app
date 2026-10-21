@@ -2,6 +2,7 @@
 // Pure: the composer's Agents shelf (crew.tsx `useAgentShelf`), the crew strip
 // and the New agent sheet read these, and the tests run them in Node.
 
+import type { Host } from '@hanzo/build'
 import { TEAM } from './team'
 
 export type { Link, Shelf, ShelfRow as Row } from '@hanzo/build'
@@ -16,27 +17,27 @@ export const PAINTER = 'zen-image'
 /** The words every drawn face is asked for after its description. */
 export const MEMOJI = 'memoji style 3D emoji portrait, head and shoulders, centered, plain background'
 
-/** A core member, drawn for an org that keeps no row of its own for them. */
-export interface House {
-  id: string
-  name: string
-  avatar: string
-}
-
-/** The default cast: the core team @hanzo/personas publishes, in the crew's order. */
-export const CORE: readonly House[] = TEAM.map((one) => ({ id: `house-${one.id}`, name: one.name, avatar: `/agents/${one.id}.png` }))
+/**
+ * The default agents an org adds in one press (Customize › Agents, @hanzo/build
+ * `hire`): the core team, each as its persona writes it, then QA, Ops and
+ * Support. An org starts with none of them and loads none until it adds them.
+ */
+export const CAST: NonNullable<Host['cast']> = [
+  ...TEAM.map((one) => ({ name: one.id, description: `${one.name} — ${one.role}`, model: one.model, instructions: one.instructions, avatar: `/agents/${one.id}.png` })),
+  { name: 'qa', description: 'QA — Automated Testing & Verification', model: 'enso-auto', instructions: '' },
+  { name: 'ops', description: 'Ops — Site Reliability & Cloud Infrastructure', model: 'enso-auto', instructions: '' },
+  { name: 'support', description: 'Support — Customer Support & Triage Specialist', model: 'enso-auto', instructions: '' },
+]
 
 const RANK = new Map(TEAM.map((one, i) => [one.id, i]))
 
 /**
- * The org's agents with the default cast filling in any member the org keeps no
- * row for, the cast first in its own order, then the rest as listed. With no
- * list yet (or none at all) it is the default cast.
+ * The org's own agents, the core team's first in the crew's order, then the
+ * rest as listed. Nothing stands in for a member the org has not added: an org
+ * with no agents has none to show.
  */
-export function ordered<T extends { name: string }>(agents: readonly T[] | null | undefined): (T | House)[] {
-  const list: (T | House)[] = Array.isArray(agents) ? [...agents] : []
-  const names = new Set(list.map((one) => one.name?.toLowerCase()))
-  for (const one of CORE) if (!names.has(one.name.toLowerCase())) list.push(one)
+export function ordered<T extends { name: string }>(agents: readonly T[] | null | undefined): T[] {
+  const list: T[] = Array.isArray(agents) ? [...agents] : []
   const rank = (one: { name: string }) => RANK.get(one.name?.toLowerCase() ?? '') ?? Infinity
   return list.sort((a, b) => rank(a) - rank(b))
 }

@@ -70,7 +70,7 @@ import { isPlans, leave, useDevHost } from './dev'
 import { Orgs } from './Orgs'
 import { useRooms } from './host'
 import { useKept } from './kept'
-import { Mark, Rail, Toggle } from './Rail'
+import { Mark, Rail, spot, Toggle } from './Rail'
 import { empty, openThread, useOpen } from './open'
 import { Paned } from './Shell'
 import { Palette } from './Palette'
@@ -218,6 +218,13 @@ function Window({ bar }: { bar?: Bar }) {
     last[mode] = `${window.location.pathname}${window.location.search}`
     setDrawer(false)
   }, [mode, here])
+  // Where the reader was before a place that takes the sidebar (Library, Scheduled
+  // tasks, Customize, Settings): its Back returns there, Chat or Dev alike.
+  const away = useRef('')
+  const inPlace = mode === 'dev' && spot(where) !== null
+  useEffect(() => {
+    if (!inPlace) away.current = `${window.location.pathname}${window.location.search}`
+  }, [inPlace, here])
 
   /** A move of the app's own: the drawer away, then the address. */
   const move = useCallback(
@@ -255,6 +262,7 @@ function Window({ bar }: { bar?: Bar }) {
     return () => window.removeEventListener('keydown', key)
   }, [bar, router, move])
 
+  const back = () => move(away.current || app(''))
   const toChat = () => move(last.chat || talk())
   const toDev = () => move(last.dev || app(''))
   const toStudio = () => move(last.studio || studio(''))
@@ -320,11 +328,11 @@ function Window({ bar }: { bar?: Bar }) {
             $max-md={{ p: 0 }}
           >
             <YStack height="100%" $max-md={{ display: 'none' }}>
-              <Rail host={host} mode={mode} open={!closed} toggle={bar ? undefined : flip} onChat={toChat} onDev={toDev} onStudio={toStudio} onOrg={org} />
+              <Rail host={host} mode={mode} at={where} open={!closed} toggle={bar ? undefined : flip} onChat={toChat} onDev={toDev} onStudio={toStudio} go={move} onOrg={org} />
             </YStack>
             {closed ? null : (
               <YStack $max-md={{ display: 'none' }}>
-                <Column host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} onSeek={seek} places={sidebar} />
+                <Column host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} onSeek={seek} onBack={back} places={sidebar} />
               </YStack>
             )}
             <YStack data-slot="stage" flex={1} minW={0} minH={0} ml="var(--pane-gap)" $max-md={{ ml: 0, pb: FOOT }}>
@@ -386,9 +394,10 @@ function Window({ bar }: { bar?: Bar }) {
                   go={move}
                   onShut={shut}
                   onSeek={seek}
+                  onBack={back}
                   drawer
                   places={sidebar}
-                  foot={<Rail host={host} mode={mode} open flat onChat={toChat} onDev={toDev} onStudio={toStudio} onOrg={org} />}
+                  foot={<Rail host={host} mode={mode} at={where} open flat onChat={toChat} onDev={toDev} onStudio={toStudio} go={move} onOrg={org} />}
                 />
               </YStack>
             </>

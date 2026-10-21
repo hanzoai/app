@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getPersonaMd, team } from '@hanzo/personas'
 import { beforeAll, describe, expect, test } from 'vitest'
-import { CORE, draft, handle, line, ordered, title, type Figure } from './agents'
+import { CAST, draft, handle, line, ordered, title, type Figure } from './agents'
 import { TEAM } from './team'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -15,18 +15,28 @@ const names = (list: readonly { name: string }[]) => list.map((one) => one.name)
 describe('the default cast', () => {
   test('is every member @hanzo/personas publishes as the team, Dev first', () => {
     expect(TEAM.map((one) => one.id).sort()).toEqual(team().map((one) => one.id).sort())
-    expect(names(CORE)).toEqual(['Dev', 'Des', 'Vi', 'Feynman', 'Einstein', 'Nora', 'Maya', 'Leo'])
+    expect(names(TEAM)).toEqual(['Dev', 'Des', 'Vi', 'Feynman', 'Einstein', 'Nora', 'Maya', 'Leo'])
   })
 
-  test('stands in for an org with no list, or none yet', () => {
-    expect(names(ordered([]))).toEqual(names(CORE))
-    expect(names(ordered(undefined))).toEqual(names(CORE))
-    expect(names(ordered(null))).toEqual(names(CORE))
+  test('stands in for nobody: an org with no agents has none to show', () => {
+    expect(ordered([])).toEqual([])
+    expect(ordered(undefined)).toEqual([])
+    expect(ordered(null)).toEqual([])
+  })
+
+  test('is what Add default agents makes: the team by its handles, each a valid agent name with a budget-ready model, then QA, Ops and Support', () => {
+    expect(CAST.map((c) => c.name)).toEqual([...TEAM.map((one) => one.id), 'qa', 'ops', 'support'])
+    for (const c of CAST) {
+      expect(c.name).toMatch(NAME)
+      expect(c.model).toBeTruthy()
+    }
+    expect(CAST[0]).toMatchObject({ name: 'dev', description: 'Dev — Engineer', avatar: '/agents/dev.png' })
+    expect(CAST[0]!.instructions.length).toBeGreaterThan(100)
   })
 })
 
 describe('the shelf’s order', () => {
-  test('an org’s own row takes a member’s place, whatever its case, and the rest follow as listed', () => {
+  test('the core team’s rows lead in the crew’s order, whatever their case, and the rest follow as listed', () => {
     const org = [
       { id: 'agent_zed', name: 'zed' },
       { id: 'agent_des', name: 'des', avatar: 'data:image/png;base64,AA' },
@@ -34,9 +44,8 @@ describe('the shelf’s order', () => {
       { id: 'agent_dev', name: 'DEV' },
     ]
     const out = ordered(org)
-    expect(names(out)).toEqual(['DEV', 'des', 'Vi', 'Feynman', 'Einstein', 'Nora', 'Maya', 'Leo', 'zed', 'ops'])
+    expect(names(out)).toEqual(['DEV', 'des', 'zed', 'ops'])
     expect(out[1]).toBe(org[1])
-    expect(out[2]).toEqual({ id: 'house-vi', name: 'Vi', avatar: '/agents/vi.png' })
   })
 })
 

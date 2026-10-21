@@ -79,15 +79,18 @@ repository or a site from any surface.
 
 ## Rules the rooms keep
 
-- The app's products are marks on its rail (Rail.tsx), Chat first and Dev
-  second, then More, a menu of the products on hosts of their own (Tabs, Team),
-  and the account at the foot. The rail moves the app, and Shell's sidebar wears
-  the product's name alone; the one Chat | Dev switch is a phone's bar, which
-  has no rail. Dev's
-  places are rows in the sidebar (Column), from @hanzo/build's `nav`
-  (≥ 0.2.53), the one list every rail draws, each under a quiet group label
-  (Work, Make, Run, Setup); Shell draws its Setup rows the same way. Shut, the
-  sidebar takes Dev's places with it and the rail stays.
+- The app's places are marks on its rail (Rail.tsx): Chat, Dev, Studio,
+  Library, Scheduled tasks, Customize, then More, a menu of the products on
+  hosts of their own (Tabs, Team), and the account at the foot. The rail moves
+  the app, and Shell's sidebar wears the product's name alone; the one Chat |
+  Dev switch is a phone's bar, which has no rail. Dev's own places (New run,
+  Projects, Issues, Templates: @hanzo/build `own`) are rows in Dev's sidebar
+  (Column), with no group labels. Library, Scheduled tasks, Customize and
+  Settings each take the sidebar (Rail.tsx `spot`): Back (to where the reader
+  was, Chat or Dev), the place's name, and its own rows — Settings' sections
+  (`sections`), Customize's tabs Agents first (`tabs`) — and the page draws
+  neither (the host's `sections`). Shut, the sidebar takes them with it and the
+  rail stays.
 - Skills, connectors, plugins and agents have one home, Dev's Customize: Shell's
   Customize row and Settings' Plugins and Skills rows lead there (`app()`), and
   Directory lists only Works with and Channels. A list is the registry's answer
@@ -396,9 +399,12 @@ catalog files under Enso or Zen (`house`).
 
 ## Agents
 
-- The composer's `+` › Agents is `useAgentShelf()` (crew.tsx): the org's agents
-  (`useCrew`) with the default cast filling in any member the org keeps no row
-  for, the cast first (agents.ts `ordered`), each by its `Face` at 16px; on is
+- The composer's `+` › Agents is `useAgentShelf()` (crew.tsx): the org's own
+  agents (`useCrew`), the core team's first (agents.ts `ordered`), each by its
+  `Face` at 16px. Nothing stands in for an agent the org has not added: a new
+  org has none and loads none until Customize › Agents' Add default agents makes
+  the cast (agents.ts `CAST`: the core team, then QA, Ops and Support, each with
+  a $10 a month, $1 a run budget; @hanzo/build `hire`). On is
   in the open conversation (`useOpen().agents`) and a pick toggles it there
   (`openAgent`). Create agent and Browse personas open `Hire` through `make()`;
   the host mounts `<AgentMaker />` once beside the composer to draw it. Manage
@@ -442,16 +448,16 @@ reference captures; outer window, inner panel):
   no fill, no edge. INNER: the content is one rounded panel (`pane()`), inset
   from the window's edges and from the sidebar by `--pane-gap`; Chat's tabs
   are a second panel beside it (Paned), Dev's run floats its own two.
-- The rail, one order: Chat, Dev, Studio (@hanzo/studio, the app's third mode at /studio),
-  then More (Tabs, Team: the products on hosts of their own), the account's face
-  at the foot. Each mark is a product, 36px on a 44px pitch, its name its
-  tooltip, lit where the reader is, and a product owns the sidebar beside the
-  rail: Chat its conversations and recents, Dev its places (New, Projects,
-  Issues, Library, Templates, Scheduled tasks, Machines, Environments,
-  Customize, Docs) and its runs, Studio its own. One level of the app a place:
-  nothing of Dev's is raised to the rail and nothing of the rail's is listed
-  inside Dev (0.1.83; before it Library, Scheduled tasks and Customize stood on
-  the rail and More listed Dev's places twice over).
+- The rail, one order: Chat, Dev, Studio (@hanzo/studio, the app's third mode
+  at /studio), Library, Scheduled tasks, Customize, then More (Tabs, Team: the
+  products on hosts of their own; on a phone the three places lead it), the
+  account's face at the foot. Each mark is 36px on a 44px pitch, its name its
+  tooltip, lit where the reader is (Dev is not lit on a place of the rail's or
+  on Settings), and each owns the sidebar beside the rail: Chat its
+  conversations and recents, Dev its own places and its runs, Studio its own,
+  the three places and Settings theirs. Nothing on the rail is listed inside
+  Dev (owner, 2026-10-20: 0.1.83 had moved the three into Dev's sidebar; 0.1.85
+  put them back).
 - The sidebar's toggle is at the window's top-left: the rail's first mark in a
   browser tab. A host that is a window passes `bar` (`<App bar={{ inset, drag
   }} />`) and App draws the window's 40px bar: the toggle, then Back and
@@ -467,9 +473,14 @@ reference captures; outer window, inner panel):
 - The account menu (Me.tsx) is the one account menu: the rail's face draws it
   for Chat, Dev and Studio, and the shell's sidebar foot for every other app
   (`Who`, the host's person, org, api, token and sign-out). @hanzo/ui's
-  DropdownMenu, top to bottom: the account row (face, name, plan) whose ›
+  DropdownMenu, top to bottom: the account row (face, name, email) whose ›
   holds the meter and the organizations (switch, create, settings, Team, All
-  organizations for a SuperAdmin); Upgrade plan (named by the plan: Enterprise
+  organizations for a SuperAdmin); the two accounts apart, each a row that
+  works in it — the organization with its plan ("hanzo · Enterprise") and the
+  person's own ("Personal · Pro", or "Personal · No plan" with Get Pro, the pay
+  site's cart for the personal organization); the trigger reads where the
+  reader works ("hanzo · Enterprise"). Submenus open in a portal of their own
+  over every pane (@hanzo/ui ≥ 8.29.4). Upgrade plan (named by the plan: Enterprise
   plan, Agency plan, else Upgrade plan; the pay site, `leave`);
   Personalization (Settings → General), Profile (Settings → Account), Settings
   (⌘, / Ctrl+,); Help ›; Log out. Settings' rows go through `showSettings`,

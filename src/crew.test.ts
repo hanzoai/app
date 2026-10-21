@@ -52,20 +52,21 @@ afterEach(() => {
 })
 
 describe('the Agents shelf', () => {
-  test('lists the default cast by name and part, with the ways to make, manage and find more', () => {
+  test('lists none for an org that has added none, and the ways to add, make, manage and find more', () => {
     const s = shelf()
-    expect(s.rows.map((r) => r.label)).toEqual(['Dev', 'Des', 'Vi', 'Feynman', 'Einstein', 'Nora', 'Maya', 'Leo'])
-    expect(s.rows[0].note).toBe('Engineer')
+    expect(s.rows).toEqual([])
+    expect(s.empty).toContain('Add the default team')
     expect([s.create?.label, s.manage?.label, s.browse?.label]).toEqual(['Create agent', 'Manage agents', 'Browse personas'])
     s.manage!.onPress()
     expect(went).toEqual(['/dev/customize/agents'])
   })
 
-  test('puts the org’s agents after the cast, under their own names', () => {
+  test('lists the org’s agents, the core team’s first by name and part, the rest under their own names', () => {
     org.agents = [{ id: 'agent_ops', name: 'ops' }, { id: 'agent_dev', name: 'dev' }]
     const s = shelf()
-    expect(s.rows.map((r) => r.id)).toEqual(['dev', 'Des', 'Vi', 'Feynman', 'Einstein', 'Nora', 'Maya', 'Leo', 'ops'])
+    expect(s.rows.map((r) => r.id)).toEqual(['dev', 'ops'])
     expect(s.rows[0].label).toBe('Dev')
+    expect(s.rows[0].note).toBe('Engineer')
     expect(s.rows.at(-1)?.label).toBe('ops')
   })
 
@@ -80,11 +81,11 @@ describe('the Agents shelf', () => {
     expect(seated).toEqual(['Dev', 'Vi', 'ops'])
   })
 
-  test('says why the org’s list did not load and keeps the cast', () => {
+  test('says why the org’s list did not load, and stands nobody in', () => {
     org.error = new Error('agents: 503')
     const s = shelf()
     expect(s.error).toContain('503')
-    expect(s.rows).toHaveLength(8)
+    expect(s.rows).toHaveLength(0)
   })
 })
 

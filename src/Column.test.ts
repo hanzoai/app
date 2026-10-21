@@ -32,24 +32,30 @@ vi.mock('@hanzo/gui', () => ({ Text: part, XStack: part, YStack: part }))
 vi.mock('@hanzo/ui', () => ({ DropdownMenu: menu }))
 vi.mock('@hanzo/ui/chat', () => ({ Sidebar: part, SidebarIconButton: part, SidebarItem: part, StatusDot: () => null }))
 vi.mock('@hanzogui/shell', () => ({ HanzoMark: () => null }))
-vi.mock('@hanzo/build', () => ({
-  DOTS: {},
-  Gutter: () => null,
-  path: () => '-/settings/notifications',
-  route: (at: string) => (at === '-/artifacts' ? { kind: 'screen', screen: 'artifacts' } : at === '-/customize' ? { kind: 'customize' } : { kind: 'new' }),
-  useSessions: () => ({ value: [], loading: false, error: null, reload: () => {} }),
-  NEW: 'new',
-  nav: () => [
-    {
-      id: 'work',
-      label: 'Work',
-      links: [
-        { id: 'new', label: 'New run', icon: null },
-        { id: 'projects', label: 'Projects', icon: null },
-      ],
-    },
-  ],
-}))
+vi.mock('@hanzo/build', () => {
+  const route = (at: string) =>
+    at === '-/artifacts'
+      ? { kind: 'screen', screen: 'artifacts' }
+      : at === '-/automations'
+        ? { kind: 'screen', screen: 'automations' }
+        : at.startsWith('-/customize')
+          ? { kind: 'customize', tab: 'agents' }
+          : at.startsWith('-/settings')
+            ? { kind: 'settings', section: 'general' }
+            : { kind: 'new' }
+  const group = (id: string, label: string, names: string[]) => ({ id, label, links: names.map((n) => ({ id: n.toLowerCase(), label: n, icon: null })) })
+  return {
+    DOTS: {},
+    Gutter: () => null,
+    path: () => '-/settings/notifications',
+    route,
+    useSessions: () => ({ value: [], loading: false, error: null, reload: () => {} }),
+    NEW: 'new',
+    own: () => [group('work', 'Work', ['New run', 'Projects', 'Issues', 'Templates'])],
+    sections: () => [group('Settings', '', ['General', 'Account']), group('Organization', 'Organization', ['Members'])],
+    tabs: () => [group('customize', '', ['Agents', 'Skills', 'Connectors', 'Plugins'])],
+  }
+})
 vi.mock('./Me', () => ({ Made: () => null, Me: () => createElement('div', { 'data-slot': 'me' }) }))
 vi.mock('./Recents', () => ({ Recents: () => createElement('div', { 'data-slot': 'recents' }) }))
 vi.mock('./Setup', () => ({ Setup: () => null }))
@@ -60,12 +66,13 @@ import { Rail } from './Rail'
 import { TABS, WORKSPACE, type Place } from './lib/host'
 import type { Mode } from './recent'
 
-const host = { go: () => {} } as unknown as Parameters<typeof Column>[0]['host']
+const hostAt = (path = '') => ({ go: () => {}, path }) as unknown as Parameters<typeof Column>[0]['host']
+const host = hostAt()
 const noop = () => {}
 
-const column = (mode: Place['mode']) => renderToStaticMarkup(createElement(Column, { host, mode, thread: null, go: noop, onShut: noop }))
-const rail = (mode: Mode, toggle?: () => void) =>
-  renderToStaticMarkup(createElement(Rail, { host, mode, open: true, toggle, onChat: noop, onDev: noop, onStudio: noop, onOrg: noop }))
+const column = (mode: Place['mode'], path = '') => renderToStaticMarkup(createElement(Column, { host: hostAt(path), mode, thread: null, go: noop, onShut: noop, onBack: noop }))
+const rail = (mode: Mode, toggle?: () => void, where: string | null = null) =>
+  renderToStaticMarkup(createElement(Rail, { host, mode, at: where, open: true, toggle, onChat: noop, onDev: noop, onStudio: noop, go: noop, onOrg: noop }))
 
 /** Where a string first stands in the markup, failing when it is absent. */
 const at = (html: string, s: string): number => {
@@ -75,20 +82,23 @@ const at = (html: string, s: string): number => {
 }
 
 describe('the rail', () => {
-  test('Chat, Dev, Studio, then More, and the account at the foot: the products, and nothing of a product’s inside', () => {
+  test('Chat, Dev, Studio, Library, Scheduled tasks, Customize, then More, and the account at the foot', () => {
     const html = rail('chat')
-    const order = ['Chat', 'Dev', 'Studio', 'More'].map((n) => at(html, `aria-label="${n}"`))
+    const order = ['Chat', 'Dev', 'Studio', 'Library', 'Scheduled tasks', 'Customize', 'More'].map((n) => at(html, `aria-label="${n}"`))
     expect(order).toEqual([...order].sort((a, b) => a - b))
     expect(at(html, 'data-slot="me"')).toBeGreaterThan(order.at(-1)!)
-    for (const place of ['Library', 'Scheduled tasks', 'Customize', 'Templates', 'Projects', 'Issues', 'Machines', 'Environments']) {
+    for (const place of ['Templates', 'Projects', 'Issues', 'Machines', 'Environments']) {
       expect(html, `${place} is Dev’s, listed in Dev’s sidebar alone`).not.toContain(`aria-label="${place}"`)
-      expect(html).not.toContain(`data-item="${place.toLowerCase().replace(' ', '-')}"`)
     }
   })
 
-  test('Dev is lit for every place of Dev', () => {
-    expect(rail('dev')).toMatch(/aria-label="Dev" aria-current="page"/)
-    expect(rail('dev')).not.toMatch(/aria-label="Chat" aria-current="page"/)
+  test('a place on the rail is lit while the reader is on it, and Dev is not', () => {
+    expect(rail('dev', undefined, '')).toMatch(/aria-label="Dev" aria-current="page"/)
+    const library = rail('dev', undefined, '-/artifacts')
+    expect(library).toMatch(/aria-label="Library" aria-current="page"/)
+    expect(library).not.toMatch(/aria-label="Dev" aria-current="page"/)
+    expect(rail('dev', undefined, '-/customize')).toMatch(/aria-label="Customize" aria-current="page"/)
+    expect(rail('dev', undefined, '-/settings')).not.toMatch(/aria-label="Dev" aria-current="page"/)
   })
 
   test('the mode the reader is in is the one lit', () => {
@@ -133,17 +143,31 @@ describe('the sidebar', () => {
     expect(html, 'Tabs lives behind the rail’s More').not.toContain(TABS)
   })
 
-  test('Dev: its name, then every place, then Recents', () => {
+  test('Dev: its name, then its own places, then Recents; nothing the rail holds', () => {
     const html = column('dev')
     expect(at(html, 'Hanzo Dev')).toBeLessThan(at(html, 'New run'))
-    expect(at(html, 'New run')).toBeLessThan(at(html, 'Projects'))
-    expect(at(html, 'Projects')).toBeLessThan(at(html, 'data-slot="recents"'))
+    expect(at(html, 'New run')).toBeLessThan(at(html, 'Templates'))
+    expect(at(html, 'Templates')).toBeLessThan(at(html, 'data-slot="recents"'))
+    for (const word of ['Library', 'Scheduled tasks', 'Customize', '>Make<', '>Run<', '>Setup<']) expect(html).not.toContain(word)
     expect(html).not.toContain(TABS)
+  })
+
+  test('Settings and Customize take the sidebar: Back, the name, their own rows, and nothing of Dev’s', () => {
+    const settings = column('dev', '-/settings')
+    expect(at(settings, 'aria-label="Back"')).toBeLessThan(at(settings, '>Settings<'))
+    expect(at(settings, 'General')).toBeLessThan(at(settings, 'Members'))
+    for (const word of ['New run', 'data-slot="recents"', 'aria-label="Search"']) expect(settings).not.toContain(word)
+    const customize = column('dev', '-/customize')
+    expect(at(customize, '>Customize<')).toBeLessThan(at(customize, 'Agents'))
+    expect(at(customize, 'Agents')).toBeLessThan(at(customize, 'Skills'))
+    const library = column('dev', '-/artifacts')
+    expect(library).toContain('>Library<')
+    expect(library).not.toContain('New run')
   })
 
   test('the search is the palette, in every mode: the sidebar holds no field of its own', () => {
     for (const mode of ['chat', 'dev', 'studio'] as const) {
-      const html = column(mode)
+      const html = column(mode, '')
       expect(html).toContain('aria-label="Search"')
       expect(html).not.toContain('<input')
     }

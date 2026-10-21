@@ -67,8 +67,8 @@ afterEach(() => {
 })
 
 describe('the account menu', () => {
-  test('reads top to bottom: the account, Upgrade plan, Personalization, Profile, Settings, Help and Log out', () => {
-    expect(menu().map((r) => r.label)).toEqual(['Ada', 'Upgrade plan', 'Personalization', 'Profile', 'Settings', 'Help', 'Log out'])
+  test('reads top to bottom: the account, the organization with its plan, Upgrade plan, Personalization, Profile, Settings, Help and Log out', () => {
+    expect(menu().map((r) => r.label)).toEqual(['Ada', 'acme · No plan', 'Upgrade plan', 'Personalization', 'Profile', 'Settings', 'Help', 'Log out'])
   })
 
   test("each Settings row opens its section of Settings, the one door the app and the shell both answer", () => {

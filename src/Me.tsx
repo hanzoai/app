@@ -79,6 +79,7 @@ import { list } from './lib/list'
 import { choose, org as current, orgs, pick, renew, scope, superAdmin } from './lib/session'
 import { ENTRY } from './lib/host'
 import { leave } from './dev'
+import { payUrl } from './lib/pay'
 import { asked, KEYS, legal, out, pages } from './help'
 import { showSettings } from './open'
 import { site, where } from './where'
@@ -261,9 +262,20 @@ export function Me({
   const target = useMemo(() => ({ api: host.api, token: host.token, org: host.org }), [host.api, host.token, host.org])
   const read = useStanding(target, open)
   const other = usePlan(personal && personal.name !== current ? personal.name : null, open)
+  // THE TWO ACCOUNTS, apart: the organization's plan (hanzo · Enterprise) and the
+  // person's own (Personal · Pro, or none and the way to one). A business plan is
+  // the organization's; a personal plan is held beside it, never instead of it.
+  const team = here && !here.personal ? here : (all.find((o) => !o.personal) ?? null)
+  const teamOther = usePlan(team && team.name !== current ? team.name : null, open)
   const planFor = (o: Org) => (o.name === current ? spoken(read.value?.label ?? null) : o.personal ? other : '')
   const who = host.person?.name || host.person?.email || ''
   const plan = spoken(read.value?.label ?? null)
+  const teamPlan = team ? (team.name === current ? plan : teamOther) : ''
+  const ownPlan = personal ? (personal.name === current ? plan : other) : ''
+  // Where the reader works, and on what: "hanzo · Enterprise", "Personal · Pro".
+  const working = [here ? (here.personal ? 'Personal' : here.display) : current, plan].filter(Boolean).join(' · ')
+  // A personal plan is bought for the personal organization, beside any business one.
+  const getPro = () => personal && window.location.assign(payUrl('/cart', { plan: 'pro', org: personal.name, returnUrl: window.location.href }))
   const apple = mac()
 
   useEffect(() => {
@@ -299,6 +311,8 @@ export function Me({
           setHelp(false)
         }}
         placement={narrow && !above ? 'right-end' : above ? 'top-end' : 'top-start'}
+        // Clear of the rail's mark (or the row) it opens from, and flush with its foot.
+        offset={8}
       >
         <DropdownMenuTrigger asChild>
           <XStack
@@ -328,9 +342,9 @@ export function Me({
                   <SizableText size="$3" fontWeight="600" color="$ink" numberOfLines={1} text="left">
                     {who}
                   </SizableText>
-                  {plan ? (
+                  {working ? (
                     <SizableText size="$1" color="$soft" numberOfLines={1} text="left">
-                      {plan}
+                      {working}
                     </SizableText>
                   ) : null}
                 </YStack>
@@ -348,7 +362,7 @@ export function Me({
                   {who}
                 </SizableText>
                 <SizableText size="$1" color="$soft" numberOfLines={1}>
-                  {plan || host.person.email || ''}
+                  {host.person.email || working}
                 </SizableText>
               </YStack>
             </DropdownMenuSubTrigger>
@@ -394,6 +408,32 @@ export function Me({
               </DropdownMenuSubContent>
             ) : null}
           </DropdownMenuSub>
+          {/* The organization and the person's own account, each with its plan: pressing one works in it. */}
+          {team ? (
+            <DropdownMenuItem data-slot="me-team" onSelect={() => team.name !== current && onOrg(team.name)}>
+              <Line icon={<Mark org={team} />} trail={team.name === current ? <Check size={16} aria-label="Current" /> : null}>
+                {`${team.display} · ${teamPlan || 'No plan'}`}
+              </Line>
+            </DropdownMenuItem>
+          ) : null}
+          {personal ? (
+            <DropdownMenuItem
+              data-slot="me-personal"
+              onSelect={() => personal.name !== current && onOrg(personal.name)}
+              actionsVisibility="always"
+              actions={
+                ownPlan ? undefined : (
+                  <Button size="xs" variant="outline" onPress={getPro}>
+                    Get Pro
+                  </Button>
+                )
+              }
+            >
+              <Line icon={<CircleUserRound size={16} aria-hidden />} trail={personal.name === current ? <Check size={16} aria-label="Current" /> : null}>
+                {`Personal · ${ownPlan || 'No plan'}`}
+              </Line>
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => leave('here')}>
             <Line icon={<Sparkles size={16} aria-hidden />}>{upgrade(read.value?.label?.name)}</Line>

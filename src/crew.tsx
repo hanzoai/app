@@ -129,6 +129,7 @@ export function useAgentShelf(): Shelf {
     loading,
     error: error ? reach(error) : null,
     search: 'Search agents',
+    empty: 'No agents yet. Add the default team from Manage agents.',
     create: { label: 'Create agent', onPress: () => make('new') },
     // Dev's Customize › Agents: a move inside the app where the host reads the
     // path (hanzo.ai), else Dev on hanzo.ai, as Chat's Create file or site goes.
