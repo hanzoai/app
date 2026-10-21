@@ -1997,7 +1997,7 @@ function Frame({
     const shortcut = (event: KeyboardEvent) => {
       if (summons(event)) {
         event.preventDefault();
-        setFinding(true);
+        setFinding((open) => !open);
       }
     };
     window.addEventListener("keydown", shortcut);

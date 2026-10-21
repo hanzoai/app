@@ -33,34 +33,47 @@ describe('which rows a query keeps, and in what order', () => {
 })
 
 describe('what the palette lists', () => {
-  test('an empty field: the newest chats under Recent chats, and nothing else', () => {
-    const groups = find('', chats, [{ id: 'actions', label: 'Actions', items: [hit('New chat')] }])
-    expect(groups.map((g) => g.label)).toEqual(['Recent chats'])
+  const actions = { id: 'actions', label: 'Actions', items: [hit('New chat'), hit('New Dev task'), hit('Toggle theme')] }
+  const go = {
+    id: 'go',
+    label: 'Go to',
+    items: [hit('Chat'), hit('Studio'), hit('Settings'), hit('Account', { keywords: ['Settings', 'profile'] }), hit('Explore', { keywords: ['Studio'] })],
+  }
+
+  test('an empty field: Recent, newest first, then the idle groups as they are', () => {
+    const groups = find('', chats, [actions, go], [])
+    expect(groups.map((g) => g.label)).toEqual(['Recent', 'Actions', 'Go to'])
     expect(groups[0].items.map((r) => r.label)).toEqual(['Write private investor reply', 'Kai-1 DDT', 'GPU speed and memory', 'Pitch evaluation options'])
   })
 
-  test('the newest eight at most', () => {
+  test(`Recent lists the newest ${RECENT} at most, and none at all is no group`, () => {
     const many = Array.from({ length: 20 }, (_, i) => hit(`chat ${i}`, { at: `2026-10-${String(i + 1).padStart(2, '0')}` }))
-    expect(find('', many, [])[0].items).toHaveLength(RECENT)
-    expect(find('', many, [])[0].items[0].label).toBe('chat 19')
+    expect(find('', many, [], [])[0].items).toHaveLength(RECENT)
+    expect(find('', many, [], [])[0].items[0].label).toBe('chat 19')
+    expect(find('', [], [actions], []).map((g) => g.label)).toEqual(['Actions'])
   })
 
-  test('no chats yet: no group at all', () => {
-    expect(find('', [], [])).toEqual([])
+  test('"set" finds Settings, then its sections', () => {
+    const groups = find('set', chats, [], [actions, go])
+    expect(groups[0].label).toBe('Go to')
+    expect(groups[0].items.map((r) => r.label)).toEqual(['Settings', 'Account'])
   })
 
-  test('a query: Chats first, then the groups in their order, an empty one left out', () => {
-    const groups = find('new', chats, [
-      { id: 'projects', label: 'Projects', items: [hit('hanzo.ai')] },
-      { id: 'agents', label: 'Agents', items: [hit('Newton')] },
-      { id: 'actions', label: 'Actions', items: [hit('Settings'), hit('New chat'), hit('New Dev task')] },
-    ])
-    expect(groups.map((g) => g.label)).toEqual(['Agents', 'Actions'])
-    expect(groups[1].items.map((r) => r.label)).toEqual(['New chat', 'New Dev task'])
+  test('"studio" finds Studio first, then its places, and New Studio creation under Actions', () => {
+    const groups = find('studio', chats, [], [{ ...actions, items: [...actions.items, hit('New Studio creation')] }, go])
+    expect(groups.map((g) => g.label)).toEqual(['Go to', 'Actions'])
+    expect(groups[0].items.map((r) => r.label)).toEqual(['Studio', 'Explore'])
+    expect(groups[1].items.map((r) => r.label)).toEqual(['New Studio creation'])
   })
 
-  test('a chat is found by its title', () => {
-    expect(find('investor', chats, [])).toEqual([{ id: 'chats', label: 'Chats', items: [chats[1]] }])
+  test('a chat is found by its title, and its group leads when it is the best answer', () => {
+    const groups = find('investor', chats, [], [actions, go, { id: 'chats', label: 'Chats', items: chats }])
+    expect(groups).toEqual([{ id: 'chats', label: 'Chats', items: [chats[1]] }])
+  })
+
+  test('a typo still finds its row, below an exact one', () => {
+    expect(rank([hit('Settings'), hit('Usage')], 'sttngs').map((r) => r.label)).toEqual(['Settings'])
+    expect(fit(hit('Settings'), 'sttngs')).toBeLessThan(fit(hit('Nothing', { keywords: ['sttngs'] }), 'sttngs'))
   })
 })
 

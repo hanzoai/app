@@ -22,15 +22,23 @@ export interface Group<T extends Hit = Hit> {
 
 /** The most rows one group shows for a query. */
 export const CAP = 5
-/** The chats an empty field lists. */
-export const RECENT = 8
+/** The rows Recent lists on an empty field. */
+export const RECENT = 6
+
+/** Whether `term`'s letters stand in `word` in order: "sttngs" in "settings". */
+const spelled = (word: string, term: string): boolean => {
+  let i = 0
+  for (const c of word) if (c === term[i]) i++
+  return i === term.length
+}
 
 /**
  * How well a row answers a query: 0 drops it, more ranks it higher. Every word
  * of the query must be found, in the label or the row's other words; each counts
  * most where the label starts with it, then where a word of the label does, then
- * anywhere in the label, then in the other words alone. The label read whole
- * outranks everything.
+ * anywhere in the label, then in the other words, then spelled out in order
+ * within a word of the label (a typo's fuzz). The label read whole outranks
+ * everything.
  */
 export function fit(row: Hit, query: string): number {
   const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
@@ -40,7 +48,17 @@ export function fit(row: Hit, query: string): number {
   const more = (row.keywords ?? []).join(' ').toLowerCase()
   let total = label === terms.join(' ') ? 10 : 0
   for (const t of terms) {
-    const s = label.startsWith(t) ? 4 : words.some((w) => w.startsWith(t)) ? 3 : label.includes(t) ? 2 : more.includes(t) ? 1 : 0
+    const s = label.startsWith(t)
+      ? 4
+      : words.some((w) => w.startsWith(t))
+        ? 3
+        : label.includes(t)
+          ? 2
+          : more.includes(t)
+            ? 1
+            : t.length > 2 && words.some((w) => w[0] === t[0] && spelled(w, t))
+              ? 0.5
+              : 0
     if (!s) return 0
     total += s
   }
@@ -58,25 +76,22 @@ export function rank<T extends Hit>(rows: T[], query: string, cap = CAP): T[] {
 }
 
 /**
- * What the palette lists. An empty field: the newest chats, under Recent chats.
- * A query: Chats, then each other group in its order, each cut to its best
- * `CAP`, a group with nothing left out.
+ * What the palette lists. An empty field: the newest `RECENT` of `recent` under
+ * Recent, then `idle` as it is. A query: every group of `all` cut to its best
+ * `CAP`, a group with nothing left out, and the group with the best answer
+ * first, ties in the order given.
  */
-export function find<T extends Hit>(query: string, chats: T[], groups: Group<T>[]): Group<T>[] {
-  return findIn(query, { label: 'Recent chats', items: chats }, [{ id: 'chats', label: 'Chats', items: chats }, ...groups])
-}
-
-/**
- * The same search for any product: an empty field lists the newest `RECENT` of
- * `recent` under its label (a product's own recents: Chat's conversations, Dev's
- * runs), and a query ranks every group in the order given.
- */
-export function findIn<T extends Hit>(query: string, recent: { label: string; items: T[] }, groups: Group<T>[]): Group<T>[] {
+export function find<T extends Hit>(query: string, recent: T[], idle: Group<T>[], all: Group<T>[]): Group<T>[] {
   if (!query.trim()) {
-    const newest = [...recent.items].sort((a, b) => (b.at ?? '').localeCompare(a.at ?? '')).slice(0, RECENT)
-    return newest.length ? [{ id: 'recent', label: recent.label, items: newest }] : []
+    const newest = [...recent].sort((a, b) => (b.at ?? '').localeCompare(a.at ?? '')).slice(0, RECENT)
+    return [{ id: 'recent', label: 'Recent', items: newest }, ...idle].filter((g) => g.items.length)
   }
-  return groups.map((g) => ({ ...g, items: rank(g.items, query) })).filter((g) => g.items.length)
+  return all
+    .map((g) => ({ ...g, items: rank(g.items, query) }))
+    .filter((g) => g.items.length)
+    .map((g, i) => ({ g, i, best: fit(g.items[0], query) }))
+    .sort((a, b) => b.best - a.best || a.i - b.i)
+    .map((x) => x.g)
 }
 
 /** Whether a key press opens the palette: ⌘K or Ctrl+K, once a press, from anywhere, a field included. */

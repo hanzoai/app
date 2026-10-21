@@ -145,7 +145,7 @@ function Window({ bar }: { bar?: Bar }) {
   const shut = useCallback(() => setDrawer(false), [])
   // The sidebar shut, kept per browser under the key the builder's rail kept it under.
   const [closed, setClosed] = useKept('hanzo.build.rail', false)
-  // The palette is open (⌘K, the sidebar's search).
+  // The palette is open (the sidebar's search; ⌘K toggles it).
   const [finding, setFinding] = useState(false)
   const found = useCallback(() => setFinding(false), [])
   const dev = useDevHost()
@@ -247,7 +247,7 @@ function Window({ bar }: { bar?: Bar }) {
     const key = (e: KeyboardEvent) => {
       if (summons(e)) {
         e.preventDefault()
-        setFinding(true)
+        setFinding((open) => !open)
         return
       }
       if (typing(e)) return

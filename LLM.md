@@ -546,21 +546,36 @@ reference captures; outer window, inner panel):
 ## The palette
 
 ONE search (Palette.tsx, its decisions in seek.ts): the sidebar's search,
-⌘K / Ctrl+K from anywhere (a field included; `summons`) in Chat, Dev and
-Studio, and in the workspace frame (Shell) its bar's Search and ⌘K. No other
-search box: the Recents filter and the old `Find` (`OrgCommandPalette`) are
-gone. It is @hanzo/ui's `CommandMenu` in a dialog, 680 wide and 520 tall,
-the whole screen on a phone (its rows a 44px target, the kit's `touch`).
+⌘K / Ctrl+K from anywhere (a field included; `summons`), which toggles it, in
+Chat, Dev and Studio, and in the workspace frame (Shell) its bar's Search and
+⌘K. No other search box: the Recents filter and the old `Find`
+(`OrgCommandPalette`) are gone. It is @hanzo/ui's `CommandMenu` in a dialog
+with no close button: one surface (the field and the list on the dialog's
+ground, a hairline between), no box or ring on the field, a quiet `esc` at its
+end, icons bare, the field's text, headings and labels on one edge. 640 wide,
+as tall as its rows up to 520, its top fixed at 12% so typing never moves the
+field; a phone's is a sheet the size of the screen, rows 44 high.
 
-- The palette is the product's: in Chat an empty field lists Recent chats, the
-  newest eight, and a query lists Chats, Projects, Agents, Skills and Actions;
-  in Dev an empty field lists Recent runs and a query lists Runs, Dev (its
-  places), Projects, Skills, Actions, then Chats (`findIn`, `rank`: every word
-  found, the label's start first; each group its best five). A title is drawn
-  tidied (`lib/title.ts` `tidy`: a first message's `<workspace-files>` markup
-  and a leading JSON object stripped, cut at 80), in the palette, the sidebar
-  and the bell's Activity (56). Arrows move, Enter opens, Escape closes;
-  Keyboard shortcuts is a page of the app's keys, Backspace comes back.
+- An empty field lists Recent (chats and Dev tasks mixed, newest six, each its
+  kind's icon), Actions, and Go to. A query searches Go to with the deeper
+  places, Actions, Chats, Dev tasks (the product's own first on a tie),
+  Projects, Agents, Skills and Connectors; each group keeps its best five and
+  the group with the best answer leads (`find`, `rank`, `fit`: every word
+  found, the label's start first, a typo's letters in order last). A title is
+  drawn tidied (`lib/title.ts` `tidy`: a first message's `<workspace-files>`
+  markup and a leading JSON object stripped, cut at 80), in the palette, the
+  sidebar and the bell's Activity (56). Arrows move, Enter opens, Escape
+  closes; Keyboard shortcuts is a page of help.ts's `KEYS`, Backspace comes
+  back.
+- GO TO IS DERIVED (`places`): the products (Chat, Dev, Studio, Tabs, Team),
+  Dev's places from @hanzo/build `nav`, Settings, Referral and Beta status (the
+  site's pages, loaded by the browser), Help center, and the apps in beta the
+  reader may open (lib/betas.ts through `useBetas`, as the rail's More); a query also reaches
+  Settings' sections (`sections`, with the account menu's names for two of
+  them as keywords), Customize's tabs (`tabs`), the Library's kinds
+  (`library`), Studio's places (@hanzo/studio `nav`) and the rest of help.ts's
+  pages. A page added to any of those registries is in the palette with
+  nothing written here. A place two registries hold (Machines) is Dev's.
 - Under every answer: "<brand> can make mistakes. Check important info." above
   the composer and Terms · Privacy under it, and nothing about the plan or the
   model: the free lane's notice and its footer went in 0.1.83, since a line
@@ -573,16 +588,22 @@ the whole screen on a phone (its rows a 44px target, the kit's `touch`).
   v1.0.14, `GET /v1/agents/chat/conversations`) answers the whole list and
   searches nothing, title or content, and no transcript is fetched to search
   one. They are the sidebar's last read (`useThreadList` keeps each client's
-  last read per shelf), drawn at once and read again behind it. Projects are
-  `GET /v1/projects` (name, slug, repository), Skills the org's active ones
-  (`GET /v1/tool/skills?activated=true`), Agents the org's and the house cast
+  last read per shelf), drawn at once and read again behind it. Dev tasks are
+  `useSessions(host)`, Projects `GET /v1/projects` (name, slug, repository),
+  Skills the org's active ones (`GET /v1/tool/skills?activated=true`),
+  Connectors `GET /v1/tool/mcp/servers`, Agents the org's and the house cast
   (crew.tsx `ordered(useCrew())`). A read the palette closes on is aborted.
-- A row opens where it lives: a chat at `talk(id)`, a project in Dev
-  (`app(slug)`), an agent in a new chat with it alone (`withAgents`), a skill
-  in Dev's Customize, an action runs: New chat, New Dev task, Settings,
-  Customize, Keyboard shortcuts, Log out (`lib/signout`). A frame passes its
-  own `actions`; one with a palette action's id stands in for it (Shell's
-  Settings opens its own pane), the rest follow (Shell's apps and Setup rows).
+  Studio's conversations are not listed: @hanzo/studio exports no reader of
+  them (its `useChats` is internal).
+- A row opens where it lives: a chat at `talk(id)`, a task or a project in Dev
+  (`app(id)`), an agent in a new chat with it alone (`withAgents`), a skill or
+  a connector in Dev's Customize. The actions (`actions`): New chat, New Dev
+  task, New Studio creation, New scheduled task, Upload (the Library's own),
+  Switch model (opens the composer's model menu, New chat's on a page without
+  one), Toggle theme (`host.chooseTheme`), Switch organization (session.ts
+  `choose`), Keyboard shortcuts, Log out; what the host cannot do is not
+  offered. A frame passes its own `actions`: one with a Go to row's id stands
+  in for it, the rest follow under Go to (Shell's apps and Setup rows).
 
 ## What each app still owns
 
