@@ -35,8 +35,7 @@ import { Text, View, XStack, YStack } from '@hanzo/gui'
 import { Avatar, Button, Tag } from '@hanzo/ui'
 import { SearchInput } from '@hanzo/ui/product/Filters'
 import { label, said as spoken } from '@hanzo/build/plan'
-import { Check, LogOut, Minus, Plus, X } from 'lucide-react'
-import { HanzoWordmark } from '@hanzogui/shell'
+import { Check, Minus, Plus, X } from 'lucide-react'
 import { Waiting } from './waiting'
 import { LOGIN, enter } from './lib/destination'
 import { useAi } from './lib/ai'
@@ -44,7 +43,7 @@ import { useHost } from './lib/hostname'
 import { useHydrated } from './lib/hydrated'
 import { api } from './lib/api'
 import { usePersonal, useTier } from './lib/tier'
-import { CHOOSE, ORG, PICKED, assumed, bearer, hasSession, named, org, orgs as claimed, pick, renew, role, scope, superAdmin, support } from './lib/session'
+import { CHOOSE, ORG, PICKED, assumed, bearer, hasSession, org, orgs as claimed, pick, renew, role, scope, superAdmin, support } from './lib/session'
 import { matches, refusal, slugify } from './lib/orgname'
 import { team as workspace } from './lib/host'
 import { checkoutUrl, money } from './lib/pay'
@@ -54,8 +53,8 @@ import { createOrg, say } from './lib/org'
 import { countSignup } from './lib/intent'
 import { BAD, mix } from './lib/mix'
 import { useRooms } from './host'
-import { useSignOut } from './lib/signout'
-import { brand, site, where } from './where'
+import { Chrome } from './Chrome'
+import { site, where } from './where'
 
 /** A template to set up once the organization is live. */
 const SETUP = 'hanzo:org:template'
@@ -298,79 +297,20 @@ const FIELD = {
   color: 'var(--foreground)',
 } as const
 
-function PageHeader() {
-  const { user, isAuthenticated } = useIam()
-  const claimed = named()
-  const signOut = useSignOut()
-  const u = user as { displayName?: string; name?: string; email?: string; avatar?: string } | null
-  const name = u?.displayName || u?.name || claimed?.display || claimed?.name || ''
-  const email = u?.email || claimed?.email || ''
-  const avatar = typeof u?.avatar === 'string' && u.avatar.startsWith('https://') ? u.avatar : ''
-
-  return (
-    <XStack
-      position="fixed"
-      t={0}
-      l={0}
-      r={0}
-      height={56}
-      px={20}
-      items="center"
-      justify="space-between"
-      z={'calc(var(--z-modal) + 15)' as `var(--${string})`}
-      bg="var(--background)"
-      borderBottomWidth={1}
-      borderColor="var(--border)"
-      backdropFilter="blur(20px)"
-    >
-      <XStack render={<a href="/" />} aria-label="Hanzo" items="center" gap={8} style={{ textDecoration: 'none', color: 'var(--foreground)' }}>
-        <HanzoWordmark label="Hanzo" size={22} />
-      </XStack>
-
-      <XStack items="center" gap={12}>
-        {name || email ? (
-          <XStack items="center" gap={8} py={4} px={10} rounded={999} bg="var(--surface-1)" borderWidth={1} borderColor="var(--border)">
-            <Avatar size="sm" shape="circle" src={avatar || null} name={name || email} alt="" />
-            <Text fontSize="$2" fontWeight="500" color="var(--foreground)" numberOfLines={1}>
-              {name || email}
-            </Text>
-          </XStack>
-        ) : null}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => void signOut()}
-          style={{ gap: 6, color: 'var(--muted-foreground)' }}
-          aria-label="Log out"
-        >
-          <LogOut size={14} aria-hidden />
-          <span>Log out</span>
-        </Button>
-      </XStack>
-    </XStack>
-  )
-}
-
-/** The sheet every screen stands on: the whole viewport, scrolling, its column centred. */
+/**
+ * The sheet every screen stands on: the whole viewport, scrolling, its column
+ * centred, under the focused pages' one bar (`Chrome`) once someone is signed
+ * in. "Signing you in" stands alone.
+ */
 function Page({ label, children }: { label: string; children: ReactNode }) {
+  const { isAuthenticated } = useIam()
   return (
-    <>
-      <PageHeader />
-      <YStack
-        position="fixed"
-        inset={0}
-        z={SHEET}
-        overflowY="auto"
-        bg="var(--background)"
-        pt={TOP}
-        px={20}
-        pb={48}
-        role="region"
-        aria-label={label}
-      >
+    <YStack position="fixed" inset={0} z={SHEET} overflowY="auto" bg="var(--background)" role="region" aria-label={label}>
+      {isAuthenticated ? <Chrome /> : null}
+      <YStack pt={TOP} px={20} pb={48}>
         {children}
       </YStack>
-    </>
+    </YStack>
   )
 }
 
@@ -437,14 +377,6 @@ function Step({ at, of }: { at: number; of: number }) {
   )
 }
 
-function Brand() {
-  return (
-    <Text fontSize="$6" fontWeight="500" mb={28} color="var(--foreground)">
-      {brand()}
-    </Text>
-  )
-}
-
 /** The free rung's name in the billing catalog. */
 const FREE_TIER = 'free'
 
@@ -483,7 +415,6 @@ function Create() {
   return (
     <Page label="Organizations">
       <Column>
-        <Brand />
         <XStack items="flex-start" justify="space-between" gap={16} flexWrap="wrap">
           <YStack>
             <Text render="h1" fontSize="$10" fontWeight="500" letterSpacing={-0.32} color="var(--text-primary)">
@@ -1008,14 +939,15 @@ function Pick({
     <Page label="Choose an organization">
       <Column>
         <XStack items="flex-start" justify="space-between" gap={12}>
-          <Brand />
+          <YStack flex={1} minW={0}>
+            <Heading title="Choose an organization" lede={<>Everything you open — chats, agents, credit — is this one&apos;s.</>} />
+          </YStack>
           {onClose ? (
-            <Button variant="ghost" size="icon-sm" mt={-6} mr={-8} onClick={onClose} aria-label="Close">
+            <Button variant="ghost" size="icon-sm" mr={-8} onClick={onClose} aria-label="Close">
               <X size={16} aria-hidden />
             </Button>
           ) : null}
         </XStack>
-        <Heading title="Choose an organization" lede={<>Everything you open — chats, agents, credit — is this one&apos;s.</>} />
         <Rule />
         {/* Enter opens the first organization the search leaves. */}
         <XStack
@@ -1317,7 +1249,6 @@ function Subscribe({
   return (
     <Page label="Subscribe">
       <Column>
-        <Brand />
         <Heading
           title={org}
           lead={22.5}
@@ -1452,7 +1383,6 @@ function Start({
   return (
     <Page label="Create your team">
       <Column>
-        <Brand />
         {step === 'name' ? (
           <YStack render="form" {...{ onSubmit: create }}>
             <Step at={1} of={3} />
@@ -1607,7 +1537,6 @@ function Plan({
   return (
     <Page label="Choose your plan">
       <Column>
-        <Brand />
         {setup ? <Step at={3} of={3} /> : null}
         <Heading
           title={org}

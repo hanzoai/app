@@ -195,6 +195,20 @@ the one conversation the pane holds).
   typed slug refused, never folded (`refusal`). A SuperAdmin gets no create (IAM refuses them a customer org)
   and an `Everyone` section instead: IAM's list searched on the server, paged
   by cursor, each row stepped into through `support()` (IAM `assume`, audited).
+  An organization's mark is its IAM row alone: Hanzo's H is `admin/hanzo`'s
+  `avatar`, never drawn here for a brand.
+- `Chrome` (root export) is the one bar over a focused page: the chooser and
+  every gate screen (`Orgs.tsx` `Page`, once someone is signed in; "Signing you
+  in" stands alone), and the host's own focused pages (the way in, the way to
+  pay, a beta application), none of which draws a bar of its own. Sticky, 60px
+  under the notch, `header[data-slot="masthead"]`. The brand at the start
+  (@hanzogui/shell `HanzoLockup`: the mark and `brand()`, going to the host's
+  `/`), then the host's `back`; at the end, signed in, the face, name and
+  address with Use another account (`rememberDestination`, then sign-out, so the
+  sign-in comes back to the page, as hanzo.ai's /join does) and Log out
+  (lib/signout, the account menu's). Under gui's `md` the account folds into its
+  face, a menu of the address and the same two ways out. Signed out, the brand
+  alone. It reads the session from `IamProvider`.
 - `src/team.gen.ts` — the core team's persona files as strings, generated from
   `@hanzo/personas` by `scripts/team.mjs`, so no host needs an asset loader:
   every member the package publishes, in the crew's order (`ORDER`, then any

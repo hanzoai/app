@@ -73,6 +73,8 @@ vi.mock('./lib/invite', () => ({ createInvitation: async () => '', inviteLink: (
 vi.mock('./lib/intent', () => ({ countSignup: () => {} }))
 vi.mock('./lib/tags', () => ({ track: () => {} }))
 vi.mock('./lib/mix', () => ({ BAD: 'red', mix: () => '' }))
+// The focused pages' bar has its own tests (Chrome.test.ts); here it is only where it stands.
+vi.mock('./Chrome', () => ({ Chrome: () => createElement('header', { 'data-slot': 'masthead' }) }))
 vi.mock('./host', () => ({ useRooms: () => ({ router: { replace: () => {} } }) }))
 vi.mock('./where', () => ({ brand: () => 'Hanzo AI', site: (p: string) => p, where: () => state.where }))
 
@@ -94,6 +96,11 @@ describe('the organization gate', () => {
     state.orgs = ['acme']
     state.org = 'acme'
     state.sudo = false
+  })
+
+  test('signed out, "Signing you in" stands with no bar', () => {
+    state.iam = { isAuthenticated: false, isLoading: false, accessToken: '' }
+    expect(drawn()).not.toContain('data-slot="masthead"')
   })
 
   test('while the session settles, the room under the veil is inert and hidden', () => {
@@ -175,6 +182,7 @@ describe('the organization gate', () => {
     test('several organizations and none chosen: each of the reader\'s is a row, with its slug and the role the token signs', () => {
       const html = drawn()
       expect(html).toContain('>Choose an organization<')
+      expect(html.match(/data-slot="masthead"/g), 'under the focused pages\' one bar, once').toHaveLength(1)
       for (const o of ['acme', 'webby-ai']) expect(html).toContain(`>${o}<`)
       expect(html).toContain('>Owner<')
       expect(html).not.toContain('<textarea')
