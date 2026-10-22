@@ -95,14 +95,25 @@ repository or a site from any surface.
   the app, and Shell's sidebar wears the product's name alone; the one Chat |
   Dev switch is a phone's bar, which has no rail. Dev's own places (New run,
   Projects, Issues, Templates: @hanzo/build `own`) are rows in Dev's sidebar
-  (Column), with no group labels. Library, Scheduled tasks, Customize and
-  Settings each take the sidebar (Rail.tsx `spot`): Back (to where the reader
-  was, Chat or Dev), the place's name, and its own rows — Settings' sections
-  (`sections`), Customize's tabs Agents first (`tabs`), Library's Upload and
-  kinds (`library`, the kind in the address, /dev/artifacts/<kind>), Scheduled
-  tasks' New task and the person's tasks (`useScheduled`) — and the page draws
-  none of them itself (the host's `sections`). Shut, the sidebar takes them with it and the
-  rail stays.
+  (Column), with no group labels. Library, Scheduled tasks and Customize each
+  take the sidebar (Rail.tsx `raised`): Back (to where the reader was, Chat or
+  Dev), the place's name, and its own rows — Customize's tabs Agents first
+  (`tabs`), Library's Upload and kinds (`library`, the kind in the address,
+  /dev/artifacts/<kind>), Scheduled tasks' New task and the person's tasks
+  (`useScheduled`) — and the page draws none of them itself (the host's
+  `sections`). Shut, the sidebar takes them with it and the rail stays.
+- Settings is the host's own pages, one tree at /settings (hanzo.ai's
+  app/(app)/settings, with a column of its own), never a place of Dev's
+  (owner, 2026-10-22: "don't stick all settings under /dev"). `lib/host.ts`
+  `settings(section)` names the page: General `/settings`, the organization's
+  `/settings/organization[/members|billing|usage|keys]`; a section with no page
+  of its own (the builder's Account, Privacy, Memory, Notifications…) opens
+  General. Every way in reaches it through the host's router (`visit`): the
+  account menu's rows (`showSettings`, dev.tsx), ⌘, / Ctrl+, (App.tsx), the
+  palette, and a builder section the builder moves to (`app()` writes the page,
+  never `/dev/settings`). Machines and Environments, which the builder files
+  under its Settings, stay Dev's places at /dev/machines and /dev/environments,
+  with Dev's sidebar.
 - Skills, connectors, plugins and agents have one home, Dev's Customize: Shell's
   Customize row and Settings' Plugins and Skills rows lead there (`app()`), and
   Directory lists only Works with and Channels. A list is the registry's answer
@@ -241,9 +252,11 @@ and they are paths: `/chat`, `/chat/<id>` (`talk`), `/dev` and every builder
 place under it (`app`, from @hanzo/build/route `href`): `/dev/run/<id>`,
 `/dev/projects`, `/dev/projects/<org>/<repo>` a repository,
 `/dev/projects/<slug>` a deployed site, `/dev/issues`, `/dev/artifacts`,
-`/dev/machines`, `/dev/environments`, `/dev/customize[/<tab>]`,
-`/dev/settings[/<section>]` … `place` reads a path back, `go` moves the app with
-a history entry, `dev(ref)` is the door from anywhere (through `site()`), `page`
+`/dev/machines`, `/dev/environments`, `/dev/customize[/<tab>]` … and no
+`/dev/settings`: a builder Settings section is the site's page (`settings`).
+`place` reads a path back, `go` moves the app with a history entry, `visit`
+moves to any address of the site (the app's by `go`, Settings through the
+host's router), `dev(ref)` is the door from anywhere (through `site()`), `page`
 folds a record for analytics, and `remember`/`resume` keep the mode `/`
 reopens. Retired addresses — `/?at=`, `/?chat=`,
 `/dev?run=|project=|view=|at=`, and the builder's own grammar under /dev that
@@ -297,7 +310,7 @@ over the composer says `paused()`: the plan by name and when it comes back, then
 two ways — Continue with credits (writes `setCreditsAfterAllowance(true)` and
 asks the last question again) where the org holds credit, else Add credits; and
 the upgrade — plus See usage, which opens the shell's Settings → Usage, or the
-builder's Usage (`useDevHost` answers `showSettings` there). A switch goes
+site's /settings/organization/usage (`useDevHost` answers `showSettings` there). A switch goes
 through the chip's pick. The model picker marks a paused model "Paused" (its
 class `limited`, or a `paused` entry naming it) and still picks it, and a
 refusal is said in the thread in the server's words. The pure half (`label`,
@@ -506,10 +519,10 @@ reference captures; outer window, inner panel):
   at /studio), Library, Scheduled tasks, Customize, then More (Tabs, Team: the
   products on hosts of their own; on a phone the three places lead it), the
   account's face at the foot. Each mark is 36px on a 44px pitch, its name its
-  tooltip, lit where the reader is (Dev is not lit on a place of the rail's or
-  on Settings), and each owns the sidebar beside the rail: Chat its
-  conversations and recents, Dev its own places and its runs, Studio its own,
-  the three places and Settings theirs. Nothing on the rail is listed inside
+  tooltip, lit where the reader is (Dev is not lit on a place of the rail's),
+  and each owns the sidebar beside the rail: Chat its conversations and
+  recents, Dev its own places and its runs, Studio its own, the three places
+  theirs. Nothing on the rail is listed inside
   Dev (owner, 2026-10-20: 0.1.83 had moved the three into Dev's sidebar; 0.1.85
   put them back).
 - The sidebar's toggle is at the window's top-left: the rail's first mark in a
@@ -520,7 +533,7 @@ reference captures; outer window, inner panel):
   kept per browser under `hanzo.build.rail`; the sidebar's edge pulled in past
   its floor shuts it too.
 - The sidebar: the mode's name (18/600, no chevron), the bell (the org's run
-  activity and Notification settings) and the search (the palette, below;
+  activity) and the search (the palette, below;
   ⌘K / Ctrl+K from anywhere), New chat or Dev's places, then Pinned and
   Recents as plain 14px titles on a 31px pitch — no dates, no icons; a run's
   state is a dot at its end. The Recents view menu stands at the heading's end.
@@ -536,10 +549,10 @@ reference captures; outer window, inner panel):
   reader works ("hanzo · Enterprise"). Submenus open in a portal of their own
   over every pane (@hanzo/ui ≥ 8.29.4). Upgrade plan (named by the plan: Enterprise
   plan, Agency plan, else Upgrade plan; the pay site, `leave`);
-  Personalization (Settings → General), Profile (Settings → Account), Settings
+  Personalization (Settings → General), Profile (Settings → General), Settings
   (⌘, / Ctrl+,); Help ›; Log out. Settings' rows go through `showSettings`,
-  which App answers with the builder's Settings (dev.tsx) and the shell with
-  its pane. Help › (help.ts, every address through `site()`): Help center
+  which App answers with the site's page at /settings (dev.tsx, `settings`)
+  and the shell with its pane. Help › (help.ts, every address through `site()`): Help center
   (/support), Privacy center (/legal), Release notes (hanzoai/cli releases, as
   the site's nav), Download apps (/download), Keyboard shortcuts, then Terms of
   Service (/legal/terms) and Privacy Policy (/legal/privacy). Keyboard
@@ -623,11 +636,12 @@ field; a phone's is a sheet the size of the screen, rows 44 high.
   Dev's places from @hanzo/build `nav`, Settings, Referral and Beta status (the
   site's pages, loaded by the browser), Help center, and the apps in beta the
   reader may open (lib/betas.ts through `useBetas`, as the rail's More); a query also reaches
-  Settings' sections (`sections`, with the account menu's names for two of
-  them as keywords), Customize's tabs (`tabs`), the Library's kinds
-  (`library`), Studio's places (@hanzo/studio `nav`) and the rest of help.ts's
-  pages. A page added to any of those registries is in the palette with
-  nothing written here. A place two registries hold (Machines) is Dev's.
+  Settings' pages (the `sections` that have one, `paged`, opened at
+  /settings, with the account menu's names for General as keywords),
+  Customize's tabs (`tabs`), the Library's kinds (`library`), Studio's places
+  (@hanzo/studio `nav`) and the rest of help.ts's pages. A page added to any of
+  those registries is in the palette with nothing written here. Machines is
+  Dev's, never a Settings row.
 - Under the composer: nothing. No plan line, no model line, no Terms · Privacy.
   The free lane's notice went in 0.1.83, the sheet that asked again at send
   went in 0.1.93, and the line under the composer went in 0.1.94. The

@@ -48,10 +48,12 @@ export const TABS = 'https://tabs.hanzo.ai'
  * read by `href`/`parse` (@hanzo/build/route): /dev/run/<id>, /dev/projects,
  * /dev/projects/<org>/<repo> a repository, /dev/projects/<slug> a deployed
  * site, /dev/issues, /dev/artifacts, /dev/templates, /dev/automations[/<id>],
- * /dev/machines, /dev/environments, /dev/customize[/<tab>],
- * /dev/settings[/<section>], /dev/plans. The export holds one page per root,
- * /chat and /dev, and the edge serves it for every path under it (hanzo.ai's
- * lib/edge.ts `APP`), so every address reloads.
+ * /dev/machines, /dev/environments, /dev/customize[/<tab>], /dev/plans. The
+ * export holds one page per root, /chat and /dev, and the edge serves it for
+ * every path under it (hanzo.ai's lib/edge.ts `APP`), so every address reloads.
+ *
+ * Settings is none of them: it is the host's own pages, one tree at /settings
+ * (`settings`), and no builder section is written under /dev.
  */
 export const CHAT = '/chat'
 export const DEV = '/dev'
@@ -73,8 +75,45 @@ export const studio = (at: string): string => (at ? `${STUDIO}/${at.replace(/^\/
 /** Chat on a conversation, or /chat itself for a new one. */
 export const talk = (id?: string | null): string => (id ? `${CHAT}/${encodeURIComponent(id)}` : CHAT)
 
-/** Dev at a builder address (`route` in @hanzo/build); '' is New, /dev. What is not an address is New. */
-export const app = (at: string): string => DEV + href(route(at))
+/**
+ * Settings, and every page under it: the person's and the organization's, the
+ * host's own pages beside the app (hanzo.ai's app/(app)/settings), served
+ * wherever the app is.
+ */
+export const SETTINGS = '/settings'
+
+/** The organization's settings. */
+const ORGANIZATION = `${SETTINGS}/organization`
+
+/** Settings' pages, by the name a surface asks for each: General at /settings, the organization's under it. */
+const PAGES: Readonly<Record<string, string>> = {
+  general: SETTINGS,
+  organization: ORGANIZATION,
+  members: `${ORGANIZATION}/members`,
+  billing: `${ORGANIZATION}/billing`,
+  usage: `${ORGANIZATION}/usage`,
+  keys: `${ORGANIZATION}/keys`,
+}
+
+/** Whether a section of Settings (a builder section, or what `showSettings` asks for) has a page of its own. */
+export const paged = (section: string): boolean => Object.hasOwn(PAGES, section)
+
+/** The Settings page a section names; one with no page of its own opens General, /settings. */
+export const settings = (section?: string | null): string => (section && paged(section) ? PAGES[section] : SETTINGS)
+
+/**
+ * The app's address for a builder address (`route` in @hanzo/build): Dev's
+ * path, '' New at /dev, and what is not an address New too. A section of the
+ * builder's Settings is the Settings page that answers for it (`settings`),
+ * never a path under /dev. Machines and Environments, which the builder files
+ * under Settings and writes as places of their own (/machines, /environments),
+ * stay Dev's.
+ */
+export function app(at: string): string {
+  const r = route(at)
+  const to = href(r)
+  return r.kind === 'settings' && (to === SETTINGS || to.startsWith(`${SETTINGS}/`)) ? settings(r.section) : DEV + to
+}
 
 /** A place in the app: Chat on a conversation or none, or Dev at a builder address. */
 export type Place = { mode: 'chat'; thread: string | null } | { mode: 'dev'; at: string } | { mode: 'studio'; at: string } | { mode: 'tabs' }
@@ -139,6 +178,23 @@ export function go(address: string, replace = false): void {
   else window.history.pushState(null, '', address)
 }
 
+/** The host's router, as far as moving to a page goes (`useRooms().router`). */
+interface Router {
+  push(href: string): void
+  replace(href: string): void
+}
+
+/**
+ * Move to an address of this site: one of the app's (`place`) by `go`, which
+ * the app follows; any other page — Settings — through the host's router, which
+ * draws that page. A history entry, or in place of this one.
+ */
+export function visit(router: Router, address: string, replace = false): void {
+  if (place(address.split(/[?#]/)[0])) go(address, replace)
+  else if (replace) router.replace(address)
+  else router.push(address)
+}
+
 /** Where this browser keeps the mode its reader was last in. */
 const MODE = 'hanzo.app.mode'
 
@@ -163,9 +219,6 @@ export function resume(): string {
 
 /** The routes under app/(app) the apex keeps: the app — /chat, a chat shared by link, and /dev. */
 const KEPT = new Set(['/chat', '/chat/shared', '/dev'])
-
-/** Settings, and every page under it: the person's and the organization's, served wherever the app is. */
-const SETTINGS = '/settings'
 
 /**
  * The workspace's rooms: every route under app/(app) the apex does not keep.

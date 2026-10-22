@@ -63,7 +63,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { AiProvider } from '@hanzo/ai/react'
 import { XStack, YStack } from '@hanzo/gui'
-import { Builder, HostProvider, PrefsProvider, path as written, route, type Host } from '@hanzo/build'
+import { Builder, HostProvider, PrefsProvider, route, type Host } from '@hanzo/build'
 import { nav as places } from '@hanzo/studio'
 import { useAi } from './lib/ai'
 import { Chat } from './Chat'
@@ -72,7 +72,7 @@ import { isPlans, leave, useDevHost } from './dev'
 import { Orgs } from './Orgs'
 import { useRooms } from './host'
 import { useKept } from './kept'
-import { Mark, Rail, spot, Toggle } from './Rail'
+import { Mark, raised, Rail, Toggle } from './Rail'
 import { Foot, Layer, Lift, RAISED, useDrawer } from './Drawer'
 import { empty, openThread, useOpen } from './open'
 import { Paned } from './Shell'
@@ -80,7 +80,7 @@ import { Palette } from './Palette'
 import { summons } from './seek'
 import { floor, pane } from './ground'
 import { pick } from './lib/session'
-import { app, go, place, studio, talk, TERMINALS, type Place } from './lib/host'
+import { app, go, place, settings, studio, talk, TERMINALS, visit, type Place } from './lib/host'
 import { Top } from './Top'
 import { FOOT, HEIGHT, TOP, useView } from './view'
 
@@ -114,9 +114,6 @@ const typing = (e: KeyboardEvent): boolean => {
   const el = e.target as HTMLElement | null
   return !!el && (el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')
 }
-
-/** The builder's Settings, general section. */
-const SETTINGS = written({ kind: 'settings', section: 'general' })
 
 export function App({ bar }: { bar?: Bar } = {}) {
   return (
@@ -179,12 +176,12 @@ function Window({ bar }: { bar?: Bar }) {
   // A run floats two panes of its own, so the pane it stands in is not cut.
   const run = where !== null && route(where).kind === 'run'
   const asked = at.mode === 'chat' ? at.thread : null
-  const { thread, settings } = useOpen()
+  const { thread, settings: wanted } = useOpen()
   // A row of the account menu asks for Settings: the drawer goes away even when
   // the address does not move (the reader was on that page already).
   useEffect(() => {
-    if (settings) shut()
-  }, [settings, shut])
+    if (wanted) shut()
+  }, [wanted, shut])
   const plans = where !== null && isPlans(where)
   useEffect(() => {
     if (plans) leave('app')
@@ -219,15 +216,15 @@ function Window({ bar }: { bar?: Bar }) {
     drop()
   }, [mode, here, drop])
   // Where the reader was before a place that takes the sidebar (Library, Scheduled
-  // tasks, Customize, Settings): its Back returns there, Chat or Dev alike.
+  // tasks, Customize): its Back returns there, Chat or Dev alike.
   const away = useRef('')
-  const inPlace = mode === 'dev' && spot(where) !== null
+  const inPlace = mode === 'dev' && raised(where) !== null
   useEffect(() => {
     if (!inPlace) away.current = `${window.location.pathname}${window.location.search}`
   }, [inPlace, here])
 
-  /** A move of the app's own: the drawer away, the address in its place. */
-  const move = useCallback((address: string) => depart((replace) => go(address, replace)), [depart])
+  /** A move: the drawer away, the address in its place; a page that is not the app's (Settings) through the router. */
+  const move = useCallback((address: string) => depart((replace) => visit(router, address, replace)), [depart, router])
 
   // The app's keys.
   useEffect(() => {
@@ -241,7 +238,7 @@ function Window({ bar }: { bar?: Bar }) {
       const mod = e.metaKey || e.ctrlKey
       if (mod && !e.shiftKey && !e.altKey && e.key === ',') {
         e.preventDefault()
-        move(app(SETTINGS))
+        move(settings())
         return
       }
       if (!bar) return

@@ -10,16 +10,18 @@
 //
 // THE ADDRESS IS A PATH. Dev is /dev, and every place the builder shows is a
 // path under it in the builder's real-path grammar (lib/host.ts `app`, `place`;
-// @hanzo/build/route `href`, `parse`): a run, a screen, a Settings section, a
-// Customize tab, the plans and a project all survive a reload, and Back steps
-// through them. The host hands the rooms the path (`<Rooms path>`); a move is a
-// native history entry, which the Next router folds into `usePathname`, so
-// reading the address and moving it are one path.
+// @hanzo/build/route `href`, `parse`): a run, a screen, a Customize tab, the
+// plans and a project all survive a reload, and Back steps through them. The
+// host hands the rooms the path (`<Rooms path>`); a move is a native history
+// entry, which the Next router folds into `usePathname`, so reading the address
+// and moving it are one path.
 //
-// A PANE THAT ASKS FOR SETTINGS (`showSettings`, open.ts) is answered here: the
-// rooms' shell draws its own Settings pane, and the app has none, so Chat's
-// "See usage" opens the builder's Usage — the page the account menu's Usage
-// opens — rather than nothing.
+// SETTINGS IS THE SITE'S, never Dev's: one tree at /settings, the host's own
+// pages (lib/host.ts `settings`). A builder section the builder moves to
+// (`go`), a link it opens (`open`) and a pane that asks for Settings
+// (`showSettings`, open.ts: the account menu's rows, Chat's "See usage") all
+// reach that page through the host's router (`visit`). The rooms' shell draws
+// its own Settings pane; the app has none.
 //
 // THE PLANS ARE THE PAY SITE'S. Every way the app reaches the plans — the
 // account menu's View all plans and its plan's Upgrade, Billing's Adjust plan,
@@ -38,7 +40,7 @@ import { bearer, named, org, orgs, pick } from './lib/session'
 import { enter } from './lib/destination'
 import { api } from './lib/api'
 import { CAST } from './agents'
-import { app, go, place } from './lib/host'
+import { app, place, settings, visit } from './lib/host'
 import { link } from './lib/tags'
 import { payUrl } from './lib/pay'
 import { showSettings, useOpen } from './open'
@@ -47,7 +49,7 @@ import { showSettings, useOpen } from './open'
 const LINKS: Host['links'] = {
   github: app('-/sync'),
   customize: app('-/customize'),
-  settings: '/settings',
+  settings: settings(),
   home: '/',
 }
 
@@ -86,19 +88,14 @@ export function useDevHost(): Host {
   const { router, path: pathname } = useRooms()
   const here = path(route(at(pathname)))
   const look = useLook()
-  const { settings } = useOpen()
+  const { settings: asked } = useOpen()
 
-  // Settings is top-level /settings; organization settings are at /settings/organization.
+  // A pane asked for Settings: its page, through the router.
   useEffect(() => {
-    if (!settings) return
+    if (!asked) return
     showSettings(null)
-    const s = settings.toLowerCase()
-    if (s.includes('member')) router.push('/settings/organization/members')
-    else if (s.includes('billing')) router.push('/settings/organization/billing')
-    else if (s.includes('usage')) router.push('/settings/organization/usage')
-    else if (s.includes('org')) router.push('/settings/organization')
-    else router.push('/settings')
-  }, [settings, router])
+    router.push(settings(asked))
+  }, [asked, router])
 
   // The token's claims change only when the token does: a sign-in, a refresh.
   const memberships = useMemo(() => orgs(), [accessToken]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -129,7 +126,7 @@ export function useDevHost(): Host {
       person: { name, email, avatar },
       admin: administers(bearer(), scoped),
       path: here,
-      go: (to, how) => (isPlans(to) ? leave('here') : go(app(to), how?.replace)),
+      go: (to, how) => (isPlans(to) ? leave('here') : visit(router, app(to), how?.replace)),
       links: LINKS,
       // The sidebar lists Settings' sections and Customize's tabs (Column.tsx), and Customize › Agents offers the cast.
       sections: true,
@@ -148,8 +145,7 @@ export function useDevHost(): Host {
         if (url.hostname === 'platform.hanzo.ai') return
         const to = `${url.pathname}${url.search}${url.hash}`
         if (url.origin !== window.location.origin) window.location.assign(link(url.href))
-        else if (place(url.pathname)) go(to)
-        else router.push(to)
+        else visit(router, to)
       },
       signIn: () => enter(),
       signOut: () => void logout(),

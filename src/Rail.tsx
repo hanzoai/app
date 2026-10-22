@@ -15,8 +15,9 @@
 // conversations, Dev its own places (@hanzo/build `own`: New run, Projects,
 // Issues, Templates) and its runs, Studio its own; Library, Scheduled tasks and
 // Customize (@hanzo/build's Artifacts, Automations and Customize) each their
-// own, and Settings its sections (Column.tsx). Nothing on the rail is listed
-// inside Dev: one level of the app a place, each lit while the reader is on it.
+// own (Column.tsx); Settings is the site's pages at /settings, beside the app
+// (lib/host.ts `settings`). Nothing on the rail is listed inside Dev: one level
+// of the app a place, each lit while the reader is on it.
 //
 // It stands on the frame's floor, never cut as a pane (ground.ts): the rail and
 // the sidebar beside it are the window, and the content is the panel inset in
@@ -53,13 +54,7 @@ const MARK = 36
 export const RAISED = { library: '-/artifacts', scheduled: '-/automations', customize: '-/customize' } as const
 export type Raised = keyof typeof RAISED
 
-/** A place that takes the sidebar: one of the rail's, or Settings (the account menu's). */
-export type Spot = Raised | 'settings'
-
-/** The place a builder address stands on, if it is one that takes the sidebar. */
-export const spot = (at: string | null): Spot | null => (at !== null && route(at).kind === 'settings' ? 'settings' : raised(at))
-
-/** Which of them a builder address stands on, if any: an agent's page is Customize's, an automation Scheduled tasks'. */
+/** Which of them a builder address stands on, if any, and so takes the sidebar: an agent's page is Customize's, an automation Scheduled tasks'. */
 export function raised(at: string | null): Raised | null {
   if (at === null) return null
   const r = route(at)
@@ -196,7 +191,7 @@ export function Rail({
   onOrg: (org: string) => void
 }) {
   const { t } = useI18n();
-  const here = mode === 'dev' ? spot(at) : null
+  const here = mode === 'dev' ? raised(at) : null
   const to = (p: string) => () => go(app(p))
   // The products on hosts of their own, behind More; on a phone the raised places lead it.
   // Studio offers no Team, so on a laptop it draws no More.

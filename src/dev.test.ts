@@ -4,10 +4,10 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { Host } from '@hanzo/build'
 
 // The host is read off one render; everything it asks of IAM, the router and
-// the look is answered here, and a move inside the app is recorded rather than
-// made. The builder does not load outside a bundler, so its address grammar is
-// the two kinds this reads: a screen and a Settings section.
-const { moved } = vi.hoisted(() => ({ moved: [] as string[] }))
+// the look is answered here, and a move inside the app or through the router is
+// recorded rather than made. The builder does not load outside a bundler, so its
+// address grammar is the two kinds this reads: a screen and a Settings section.
+const { moved, routed } = vi.hoisted(() => ({ moved: [] as string[], routed: [] as string[] }))
 
 vi.mock('@hanzo/build', () => {
   type Route = { kind: string; screen?: string; section?: string }
@@ -17,16 +17,15 @@ vi.mock('@hanzo/build', () => {
   return { administers: () => true, path, route }
 })
 vi.mock('@hanzo/iam/react', () => ({ useIam: () => ({ user: { name: 'Ada', email: 'ada@acme.dev' }, accessToken: 't' }) }))
-vi.mock('./host', () => ({ useRooms: () => ({ router: { push: () => {} }, path: '/chat' }), useLook: () => ({ pref: {}, set: () => {} }) }))
+vi.mock('./host', () => ({
+  useRooms: () => ({ router: { push: (to: string) => void routed.push(to), replace: (to: string) => void routed.push(to) }, path: '/chat' }),
+  useLook: () => ({ pref: {}, set: () => {} }),
+}))
 vi.mock('./lib/signout', () => ({ useSignOut: () => () => {} }))
 vi.mock('./lib/session', () => ({ bearer: () => 't', named: () => null, org: () => 'acme', orgs: () => ['acme'], pick: () => {} }))
 vi.mock('./lib/destination', () => ({ enter: () => {} }))
 vi.mock('./lib/api', () => ({ api: () => 'https://api.hanzo.ai' }))
 vi.mock('./open', () => ({ showSettings: () => {}, useOpen: () => ({ settings: null }) }))
-vi.mock('./lib/host', async (actual) => ({
-  ...((await actual()) as object),
-  go: (address: string) => void moved.push(address),
-}))
 
 import { path } from '@hanzo/build'
 import { leave, useDevHost } from './dev'
@@ -45,14 +44,19 @@ function host(): Host {
 afterEach(() => {
   vi.unstubAllGlobals()
   moved.length = 0
+  routed.length = 0
 })
 
-/** A browser at `href`, whose page loads are recorded. */
+/** A browser at `href`, whose page loads and history entries are recorded. */
 function at(href: string) {
   const assign = vi.fn()
   const replace = vi.fn()
   const u = new URL(href)
-  vi.stubGlobal('window', { location: { href, hostname: u.hostname, origin: u.origin, pathname: u.pathname, search: u.search, assign, replace } })
+  const entry = (_: unknown, __: string, to: string) => void moved.push(to)
+  vi.stubGlobal('window', {
+    location: { href, hostname: u.hostname, origin: u.origin, pathname: u.pathname, search: u.search, assign, replace },
+    history: { pushState: entry, replaceState: entry },
+  })
   return { assign, replace }
 }
 
@@ -78,11 +82,24 @@ describe('the app host', () => {
     expect(where(replace.mock.calls[0][0])).toEqual({ at: 'https://hanzo.ai/pay/cart', org: 'acme', back: 'https://hanzo.ai/dev' })
   })
 
+  test('opens a Settings section at its page of the site, through the router, never under /dev', () => {
+    const { assign } = at('https://hanzo.ai/dev')
+    host().go(path({ kind: 'settings', section: 'billing' }))
+    host().go(path({ kind: 'settings', section: 'notifications' }))
+    expect(assign).not.toHaveBeenCalled()
+    expect(moved, 'not a move inside the app').toEqual([])
+    expect(routed).toEqual(['/settings/organization/billing', '/settings'])
+  })
+
   test('moves inside the app to every other place', () => {
     const { assign } = at('https://hanzo.ai/chat')
-    host().go(path({ kind: 'settings', section: 'billing' }))
+    host().go(path({ kind: 'screen', screen: 'projects' }))
     expect(assign).not.toHaveBeenCalled()
-    expect(moved).toHaveLength(1)
-    expect(moved[0]).toMatch(/^\/dev\//)
+    expect(routed).toEqual([])
+    expect(moved).toEqual(['/dev/projects'])
+  })
+
+  test('names Settings by its page', () => {
+    expect(host().links?.settings).toBe('/settings')
   })
 })
