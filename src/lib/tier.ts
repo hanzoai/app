@@ -28,6 +28,7 @@ import { api } from './api'
 import { bearer, org, orgs, scope } from './session'
 import { list } from './list'
 import { money } from './pay'
+import { english, type Say } from '../say'
 
 /** A period's end as a sentence states it — "Oct 30, 2026" — or '' for none. Periods end on UTC days. */
 function date(iso: string | null | undefined): string {
@@ -154,14 +155,18 @@ export async function readSubscription(signal?: AbortSignal): Promise<Subscripti
 }
 
 /**
- * The term as a sentence: "$200/month subscription, renews Oct 30, 2026". The
+ * The term as a sentence, through `t`: "$200/month subscription, renews Oct 30, 2026". The
  * price is per seat, so it is the seats times it; a cancelled term ends rather
  * than renews.
  */
-export function renewal(s: Subscription): string {
+export function renewal(s: Subscription, t: Say = english): string {
   const each = money((s.plan.price * Math.max(1, s.quantity || 1)) / 100)
   const when = date(s.currentPeriodEnd)
-  return `${each}/${s.plan.interval || 'month'} subscription${when ? `, ${s.cancelAtPeriodEnd ? 'ends' : 'renews'} ${when}` : ''}`
+  const interval = s.plan.interval || 'month'
+  // A term the catalogue names other than a month or a year is drawn as it names it.
+  const price = interval === 'month' ? t('{price}/month', { price: each }) : interval === 'year' ? t('{price}/year', { price: each }) : `${each}/${interval}`
+  if (!when) return t('{price} subscription', { price })
+  return s.cancelAtPeriodEnd ? t('{price} subscription, ends {date}', { price, date: when }) : t('{price} subscription, renews {date}', { price, date: when })
 }
 
 /** The live subscription, held: null while unknown, refused, or on no plan. */

@@ -12,6 +12,7 @@
 import { label, said, spent, ways, when } from '@hanzo/build/plan'
 import { useLimits as useHeld, type UseLimits } from '@hanzo/ui/product/useLimits'
 import { paidPlan, type LimitAction, type LimitNotice } from '@hanzo/ui/product/limits'
+import { english, type Say } from '../say'
 import { api } from './api'
 import { scope } from './session'
 
@@ -62,22 +63,29 @@ export { paidPlan }
  * back — `Your Max 20x plan’s included premium model usage is used until 5:00
  * PM.` — and a spent request window the same way; any other refusal in the
  * server's own words. The ways are @hanzo/build's `ways`: continue with credits
- * where the org holds some, else add credits; then the upgrade.
+ * where the org holds some, else add credits; then the upgrade. What this module
+ * says goes through `t`; the spent allowance's sentence and the ways' labels are
+ * @hanzo/build's own.
  */
 export function paused(
   n: LimitNotice,
   plan: string,
   name: (id: string) => string = (id) => id,
   now: number = Date.now(),
+  t: Say = english,
 ): { message: string; actions: LimitAction[] } {
   const l = label(plan)
   const until = when(n.resets_at ?? '', now)
-  const on = n.fallback ? ` You’re chatting on ${name(n.fallback)}.` : ''
+  const on = n.fallback ? t(' You’re chatting on {model}.', { model: name(n.fallback) }) : ''
+  const used = (): string => {
+    if (l) return until ? t('Your {plan} plan’s requests are used until {until}.', { plan: said(l), until }) : t('Your {plan} plan’s requests are used.', { plan: said(l) })
+    return until ? t('Your plan’s requests are used until {until}.', { until }) : t('Your plan’s requests are used.')
+  }
   const message =
     n.reason === 'plan_allowance_used' || (!n.reason && n.classes.length > 0)
       ? spent(l, n.classes, n.resets_at ?? '', now) + on
       : n.reason === 'usage_cap_exceeded'
-        ? `Your ${l ? `${said(l)} plan’s` : 'plan’s'} requests are used${until ? ` until ${until}` : ''}.${on}`
+        ? used() + on
         : n.message
   return { message, actions: ways(n.actions) }
 }

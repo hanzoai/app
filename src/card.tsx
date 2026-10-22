@@ -113,8 +113,8 @@ export function Row({
       {/* A `<button>` CENTRES ITS TEXT and nothing above says otherwise:
           `alignItems` places the box, which is already full width, and the
           words inside still came to rest in the middle — a pressable row read
-          centred beside the identical row with an `href`. The line says left. */}
-      <Text fontSize="$2" color={SOFT} numberOfLines={1} flex={1} minW={0} text="left">
+          centred beside the identical row with an `href`. The line says start. */}
+      <Text fontSize="$2" color={SOFT} numberOfLines={1} flex={1} minW={0} text="start">
         {children}
       </Text>
     </XStack>
@@ -173,7 +173,7 @@ export function Go({
       <Text fontSize="$2" fontWeight="500" color={INK}>
         {children}
       </Text>
-      <ArrowRight size={12} aria-hidden />
+      <ArrowRight size={12} aria-hidden data-i18n-mirror />
     </XStack>
   )
   if (href) {

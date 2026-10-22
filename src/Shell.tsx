@@ -27,6 +27,8 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { phrase } from "@hanzo/i18n";
+import { useI18n } from "@hanzo/i18n/react";
 import {
   MessageSquare,
   Code2,
@@ -136,6 +138,7 @@ const HOME_INDICATOR = "env(safe-area-inset-bottom)" as `var(--${string})`
 import { invite } from "./lib/home";
 import { reach } from "./lib/reach";
 import { say } from "./failure";
+import type { Say } from "./say";
 import { Face } from "./cast";
 import { useStarred, titleOf } from "./stars";
 import { roomName } from "./network";
@@ -223,9 +226,12 @@ interface Place {
   id: Mode;
   /** Where it is: a route of this export. */
   route: string;
-  /** The rail's title here. The product name, never the workspace. */
-  title: string;
-  /** The rail's word for it. Shorter than the title, because it sits in a row. */
+  /** The rail's title here where it is a product's own name, drawn as it is
+   *  and never translated: the brand, Hanzo Dev, Hanzo Meet. Never the workspace. */
+  name?: string;
+  /** The rail's title where it is a word other than the label, authored English (`phrase`). */
+  title?: string;
+  /** The rail's word for it, authored English (`phrase`). Shorter than the title, because it sits in a row. */
   label: string;
   icon: LucideIcon;
   /** What "new" means here, where it means anything. A destination that cannot
@@ -250,10 +256,10 @@ const HOME: Place = {
   get route() {
     return where().home;
   },
-  get title() {
+  get name() {
     return brand();
   },
-  label: "Home",
+  label: phrase("Home"),
   // The chat bubble. Home IS the conversation with the org — the rooms it talks
   // in and the people in them — so it is drawn as one. It shared this glyph with
   // Chat once and was given a house to separate them; the two never sit in the
@@ -276,10 +282,10 @@ const HOME: Place = {
 const CHAT: Place = {
   id: "chat",
   route: "/chat",
-  get title() {
+  get name() {
     return brand();
   },
-  label: "Chat",
+  label: phrase("Chat"),
   icon: MessageSquare,
   create: "New chat",
 };
@@ -290,68 +296,62 @@ const PLACES: Place[] = [
     get route() {
       return dev();
     },
-    title: "Hanzo Dev",
-    label: "Dev",
+    name: "Hanzo Dev",
+    label: phrase("Dev"),
     icon: Code2,
     create: "New run",
   },
   {
     id: "agents",
     route: "/work",
-    title: "Agents",
-    label: "Agents",
+    label: phrase("Agents"),
     icon: Bot,
     tier: "alpha",
   },
   {
     id: "bots",
     route: "/bots",
-    title: "Bots",
-    label: "Bots",
+    label: phrase("Bots"),
     icon: Cpu,
   },
   {
     id: "meet",
     route: "/meet",
-    title: "Hanzo Meet",
-    label: "Meet",
+    name: "Hanzo Meet",
+    label: phrase("Meet"),
     icon: Video,
   },
   {
     id: "cal",
     route: "/cal",
-    title: "Calendar",
-    label: "Calendar",
+    label: phrase("Calendar"),
     icon: Calendar,
   },
   {
     id: "contacts",
     route: "/contacts",
-    title: "People & Agents",
-    label: "Contacts",
+    title: phrase("People & Agents"),
+    label: phrase("Contacts"),
     icon: Users,
   },
   {
     id: "inbox",
     route: "/inbox",
-    title: "Inbox",
-    label: "Inbox",
+    label: phrase("Inbox"),
     icon: Inbox,
     tier: "beta",
   },
   {
     id: "tasks",
     route: "/board",
-    title: "Board",
-    label: "Board",
+    label: phrase("Board"),
     icon: ListChecks,
     tier: "alpha",
   },
   {
     id: "drive",
     route: "/drive",
-    title: "Drive",
-    label: "Drive",
+    label: phrase("Drive"),
     icon: HardDrive,
     tier: "beta",
   },
@@ -359,22 +359,23 @@ const PLACES: Place[] = [
 
 export interface ConsoleProduct {
   id: string;
+  /** Authored English (`phrase`), drawn through `t`. */
   label: string;
   icon: LucideIcon;
   href: string;
 }
 
 export const CONSOLE_PRODUCTS: ConsoleProduct[] = [
-  { id: "cloud", label: "Compute & VMs", icon: Cpu, href: "https://platform.hanzo.ai/cloud" },
-  { id: "storage", label: "S3 Object Storage", icon: HardDrive, href: "https://platform.hanzo.ai/storage" },
-  { id: "datastore", label: "Datastore", icon: Boxes, href: "https://platform.hanzo.ai/datastore" },
-  { id: "iam", label: "Identity & Access", icon: Lock, href: "https://identity.hanzo.ai" },
-  { id: "observe", label: "Observability", icon: Activity, href: "https://platform.hanzo.ai/observability" },
-  { id: "network", label: "Zero Trust & Zap", icon: Globe, href: "https://platform.hanzo.ai/network" },
-  { id: "flow", label: "Agent Flow", icon: Workflow, href: "https://flow.hanzo.ai" },
-  { id: "models", label: "Foundation Models", icon: Blocks, href: "https://models.hanzo.ai" },
-  { id: "webhooks", label: "Webhooks & Events", icon: Send, href: "https://platform.hanzo.ai/webhooks" },
-  { id: "billing", label: "Billing & Wallet", icon: Wallet, href: BILLING },
+  { id: "cloud", label: phrase("Compute & VMs"), icon: Cpu, href: "https://platform.hanzo.ai/cloud" },
+  { id: "storage", label: phrase("S3 Object Storage"), icon: HardDrive, href: "https://platform.hanzo.ai/storage" },
+  { id: "datastore", label: phrase("Datastore"), icon: Boxes, href: "https://platform.hanzo.ai/datastore" },
+  { id: "iam", label: phrase("Identity & Access"), icon: Lock, href: "https://identity.hanzo.ai" },
+  { id: "observe", label: phrase("Observability"), icon: Activity, href: "https://platform.hanzo.ai/observability" },
+  { id: "network", label: phrase("Zero Trust & Zap"), icon: Globe, href: "https://platform.hanzo.ai/network" },
+  { id: "flow", label: phrase("Agent Flow"), icon: Workflow, href: "https://flow.hanzo.ai" },
+  { id: "models", label: phrase("Foundation Models"), icon: Blocks, href: "https://models.hanzo.ai" },
+  { id: "webhooks", label: phrase("Webhooks & Events"), icon: Send, href: "https://platform.hanzo.ai/webhooks" },
+  { id: "billing", label: phrase("Billing & Wallet"), icon: Wallet, href: BILLING },
 ];
 
 /**
@@ -473,20 +474,21 @@ export function Workspace({
  * are named because someone remembers those; past that a date is a better
  * answer than a count of days, and past a month the month alone is enough.
  */
-function when(iso: string | undefined, now: Date): string {
-  if (!iso) return "Earlier";
+function when(iso: string | undefined, now: Date, t: Say, locale: string): string {
+  if (!iso) return t("Earlier");
   const at = new Date(iso);
-  if (Number.isNaN(at.getTime())) return "Earlier";
+  if (Number.isNaN(at.getTime())) return t("Earlier");
   const day = (d: Date) =>
     new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const days = Math.round((day(now) - day(at)) / 86400000);
-  if (days <= 0) return "Today";
-  if (days === 1) return "Yesterday";
-  if (days < 7) return "Previous 7 days";
-  if (days < 30) return "Previous 30 days";
+  if (days <= 0) return t("Today");
+  if (days === 1) return t("Yesterday");
+  if (days < 7) return t("Previous 7 days");
+  if (days < 30) return t("Previous 30 days");
+  // The month in the reader's language, as every other word in the column.
   if (at.getFullYear() === now.getFullYear())
-    return at.toLocaleDateString(undefined, { month: "long" });
-  return at.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    return at.toLocaleDateString(locale, { month: "long" });
+  return at.toLocaleDateString(locale, { month: "long", year: "numeric" });
 }
 
 /**
@@ -507,8 +509,8 @@ function born(id: string): Date | null {
 }
 
 /** A day and a clock, in the reader's own locale. */
-const moment = (at: Date): string =>
-  at.toLocaleString(undefined, {
+const moment = (at: Date, locale: string): string =>
+  at.toLocaleString(locale, {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -524,13 +526,14 @@ const moment = (at: Date): string =>
  * one moment instead of the same moment twice.
  */
 function Span({ id, updatedAt }: { id: string; updatedAt?: string }) {
+  const { t, locale } = useI18n();
   const from = born(id);
   const to = updatedAt ? new Date(updatedAt) : null;
   if (!from) return null;
   const moved = to && !Number.isNaN(to.getTime()) && to.getTime() - from.getTime() > 60_000;
   return (
     <Text fontSize="$1" color="$soft" numberOfLines={1}>
-      {moved ? `${moment(from)} — ${moment(to)}` : moment(from)}
+      {moved ? t("{from} — {to}", { from: moment(from, locale), to: moment(to, locale) }) : moment(from, locale)}
     </Text>
   );
 }
@@ -542,6 +545,7 @@ function Chats({
   filter?: string;
   onPick?: () => void;
 }) {
+  const { t, dir, locale } = useI18n();
   const { thread, open } = useOpen();
   // RECENTS ARE THE READER'S OWN, or there are none.
   //
@@ -591,26 +595,27 @@ function Chats({
   const shown = found.filter((t) => !t.thread?.pinned);
   const kept = found.filter((t) => t.thread?.pinned);
 
-  const bands: { label: string; rows: typeof shown }[] = [];
-  if (kept.length) bands.push({ label: PINNED, rows: kept });
+  // A band is keyed by what it is (`pinned`, or the day's heading) and drawn in the reader's words.
+  const bands: { key: string; label: string; rows: typeof shown }[] = [];
+  if (kept.length) bands.push({ key: PINNED, label: t("Pinned"), rows: kept });
   const now = new Date();
-  for (const t of shown) {
-    const label = when(t.updatedAt, now);
+  for (const one of shown) {
+    const label = when(one.updatedAt, now, t, locale);
     const last = bands[bands.length - 1];
-    if (last && last.label === label && last.label !== PINNED) last.rows.push(t);
-    else bands.push({ label, rows: [t] });
+    if (last && last.label === label && last.key !== PINNED) last.rows.push(one);
+    else bands.push({ key: label, label, rows: [one] });
   }
 
-  if (!signedIn) return <Note>Sign in to see your recent chats.</Note>;
+  if (!signedIn) return <Note>{t("Sign in to see your recent chats.")}</Note>;
 
   const mine = wrong ? (
-    <Note>{say(wrong, "your chats")}</Note>
+    <Note>{say(wrong, t("your chats"), "read", t)}</Note>
   ) : loading && threads.length === 0 ? (
-    <Note>Reading your chats.</Note>
+    <Note>{t("Reading your chats.")}</Note>
   ) : found.length === 0 && filter ? (
-    <Note>No chat matches “{filter}”.</Note>
+    <Note>{t("No chat matches “{filter}”.", { filter })}</Note>
   ) : threads.length === 0 ? (
-    <Note>No chats yet. Say something and it lands here.</Note>
+    <Note>{t("No chats yet. Say something and it lands here.")}</Note>
   ) : null;
 
   return (
@@ -620,36 +625,37 @@ function Chats({
         <YStack>
           {mine}
           {mine ? null : bands.map((band) => (
-            <SidebarSection key={band.label} label={band.label}>
-              {band.rows.map((t) => {
+            <SidebarSection key={band.key} label={band.label}>
+              {band.rows.map((row) => {
                 const item = (
                 <SidebarItem
-                  key={t.id}
-                  active={t.id === thread}
+                  key={row.id}
+                  active={row.id === thread}
                   // A stored conversation's ⋯ stands at the row's end: its title and dates stop short of it,
-                  // a thumb's width short on a touch screen.
-                  {...(t.thread ? { pr: "$8", $touchable: { pr: 52 } } : null)}
+                  // a thumb's width short on a touch screen. The end is the left in a right-to-left
+                  // language; the side is the row's own physical padding, so it overrides the kit's `px`.
+                  {...(row.thread ? (dir === "rtl" ? { pl: "$8", $touchable: { pl: 52 } } : { pr: "$8", $touchable: { pr: 52 } }) : null)}
                   onPress={() => {
-                    open(t.id);
+                    open(row.id);
                     onPick?.();
                   }}
                 >
                   <YStack minW={0}>
                     {/* A call or a group says so with the shell's own monochrome glyph, never a colour emoji. */}
                     <XStack items="center" gap="$1.5" minW={0}>
-                      {t.kind === "call" ? <Video size={13} color="var(--muted-foreground)" aria-label="Call" /> : null}
-                      {t.kind === "group" ? <Users size={13} color="var(--muted-foreground)" aria-label="Group" /> : null}
+                      {row.kind === "call" ? <Video size={13} color="var(--muted-foreground)" aria-label={t("Call")} /> : null}
+                      {row.kind === "group" ? <Users size={13} color="var(--muted-foreground)" aria-label={t("Group")} /> : null}
                       <Text fontSize="$2" color="$ink" numberOfLines={1}>
-                        {tidy(t.title)}
+                        {tidy(row.title)}
                       </Text>
                     </XStack>
-                    <Span id={t.id} updatedAt={t.updatedAt} />
+                    <Span id={row.id} updatedAt={row.updatedAt} />
                   </YStack>
                 </SidebarItem>
                 );
                 // A stored conversation carries its menu; a call or a group is no conversation of the store's.
-                return t.thread ? (
-                  <ThreadRow key={t.id} t={t.thread} active={t.id === thread} listed={false}>
+                return row.thread ? (
+                  <ThreadRow key={row.id} t={row.thread} active={row.id === thread} listed={false}>
                     {item}
                   </ThreadRow>
                 ) : (
@@ -672,6 +678,7 @@ function Chats({
  * it.
  */
 function SharedWithYou({ filter, onPick }: { filter: string; onPick?: () => void }) {
+  const { t } = useI18n();
   const [items, setItems] = useState<SharedItem[] | null>(null);
   useEffect(() => {
     let on = true;
@@ -685,7 +692,7 @@ function SharedWithYou({ filter, onPick }: { filter: string; onPick?: () => void
   const shown = (items ?? []).filter((one) => matches(tidy(one.title), filter));
   if (shown.length === 0) return null;
   return (
-    <SidebarSection label="Shared with you">
+    <SidebarSection label={t("Shared with you")}>
       {shown.map((one) => (
         <SidebarItem
           key={one.share}
@@ -700,7 +707,7 @@ function SharedWithYou({ filter, onPick }: { filter: string; onPick?: () => void
             </Text>
             {one.by ? (
               <Text fontSize="$1" color="$soft" numberOfLines={1}>
-                From {one.by}
+                {t("From {name}", { name: one.by })}
               </Text>
             ) : null}
           </YStack>
@@ -726,6 +733,7 @@ function Projects({
   filter: string;
   onPick?: (slug: string) => void;
 }) {
+  const { t } = useI18n();
   const { client } = useAi();
   const [starred] = useStarred('projects');
   const [rows, setRows] = useState<{ id: string; name: string; slug?: string }[] | null>(null);
@@ -763,13 +771,13 @@ function Projects({
   return (
     <>
       {wrong ? (
-        <Note>{say(wrong, "your projects")}</Note>
+        <Note>{say(wrong, t("your projects"), "read", t)}</Note>
       ) : rows === null ? (
-        <Note>Reading your projects.</Note>
+        <Note>{t("Reading your projects.")}</Note>
       ) : list.length === 0 ? (
-        <Note>Nothing deployed yet.</Note>
+        <Note>{t("Nothing deployed yet.")}</Note>
       ) : shown.length === 0 ? (
-        <Note>No project matches “{filter}”.</Note>
+        <Note>{t("No project matches “{filter}”.", { filter })}</Note>
       ) : null}
 
       {shown.map((one) => (
@@ -865,7 +873,7 @@ const matches = (name: string, filter: string): boolean =>
  */
 function Note({ children }: { children: ReactNode }) {
   return (
-    <YStack pl="$4" pr="$3" py="$1.5">
+    <YStack paddingInlineStart="$4" paddingInlineEnd="$3" py="$1.5">
       <Text fontSize="$1" color="$soft">
         {children}
       </Text>
@@ -884,6 +892,7 @@ function Team({
    *  that names it, so the host can carry it to hanzo.team from the apex. */
   navigate?: (route: string) => void;
 }) {
+  const { t } = useI18n();
   const { room, openRoom } = useOpen();
   const { rooms, wrong } = useTeamRooms();
   const { isAuthenticated, user } = useIam();
@@ -903,17 +912,17 @@ function Team({
   // THE ORDER IS SESSION, THEN REFUSAL, THEN SILENCE — the ladder every room in
   // this app climbs (see Home's `Waiting`). "Reading." never resolves for a
   // reader nobody is going to answer, so the session is asked first.
-  if (!signedIn) return <Note>Sign in to see your org&apos;s channels.</Note>;
-  if (wrong) return <Note>{say(wrong, "your channels")}</Note>;
-  if (rooms === null) return <Note>Reading your channels.</Note>;
+  if (!signedIn) return <Note>{t("Sign in to see your org's channels.")}</Note>;
+  if (wrong) return <Note>{say(wrong, t("your channels"), "read", t)}</Note>;
+  if (rooms === null) return <Note>{t("Reading your channels.")}</Note>;
   if (rooms.length === 0)
-    return <Note>No channels yet.</Note>;
-  if (shown.length === 0) return <Note>No channel matches “{filter}”.</Note>;
+    return <Note>{t("No channels yet.")}</Note>;
+  if (shown.length === 0) return <Note>{t("No channel matches “{filter}”.", { filter })}</Note>;
 
   return (
     <>
       {favourites.length > 0 ? (
-        <SidebarFolder name="Favorites" defaultOpen>
+        <SidebarFolder name={t("Favorites")} defaultOpen>
           {favourites.map((one) => (
             <SidebarItem
               key={one.id}
@@ -932,7 +941,7 @@ function Team({
       ) : null}
 
       {publicChannels.length > 0 ? (
-        <SidebarFolder name="Public Channels" defaultOpen>
+        <SidebarFolder name={t("Public Channels")} defaultOpen>
           {publicChannels.map((one) => (
             <SidebarItem
               key={one.id}
@@ -951,7 +960,7 @@ function Team({
       ) : null}
 
       {orgChannels.length > 0 ? (
-        <SidebarFolder name="Org Channels" defaultOpen>
+        <SidebarFolder name={t("Org Channels")} defaultOpen>
           {orgChannels.map((one) => (
             <SidebarItem
               key={one.id}
@@ -970,7 +979,7 @@ function Team({
       ) : null}
 
       {privateChannels.length > 0 ? (
-        <SidebarFolder name="Private Channels" defaultOpen>
+        <SidebarFolder name={t("Private Channels")} defaultOpen>
           {privateChannels.map((one) => (
             <SidebarItem
               key={one.id}
@@ -989,7 +998,7 @@ function Team({
       ) : null}
 
       {directs.length > 0 ? (
-        <SidebarFolder name="Direct messages" defaultOpen>
+        <SidebarFolder name={t("Direct messages")} defaultOpen>
           {directs.map((one) => (
             <SidebarItem
               key={one.id}
@@ -1067,6 +1076,7 @@ function Bots({
   onPick?: () => void;
   navigate?: (route: string) => void;
 }) {
+  const { t } = useI18n();
   const { agents: room, openAgent, withAgents, openSession, open: openThread } = useOpen();
   const { agents, create, remove, loading: agentsLoading, error: agentsWrong } = useAgents();
   const {
@@ -1203,10 +1213,10 @@ function Bots({
         >
           <XStack items="center" gap="$1.5">
             <Text fontSize="$2" color="$quiet" numberOfLines={1}>
-              {show === "agents" ? "Agents" : "People"}
+              {t(show === "agents" ? "Agents" : "People")}
             </Text>
             {folk.length + shown.length > 0 ? (
-              <Text fontSize="$1" color="$soft">
+              <Text fontSize="$1" color="$soft" data-i18n-ltr="">
                 {folk.length + shown.length}
               </Text>
             ) : null}
@@ -1218,7 +1228,7 @@ function Bots({
             e.stopPropagation();
             setSortMode((m) => (m === "alpha" ? "recent" : "alpha"));
           }}
-          title={sortMode === "alpha" ? "Sorting A-Z (Click for Recent)" : "Sorting Recent (Click for A-Z)"}
+          title={t(sortMode === "alpha" ? "Sorting A-Z (Click for Recent)" : "Sorting Recent (Click for A-Z)")}
           px="$1.5"
           py="$0.5"
           rounded="$1"
@@ -1230,7 +1240,7 @@ function Bots({
           $touchable={{ minH: 40, minW: 40 }}
         >
           <Text fontSize={12} fontWeight="600" color="$soft">
-            {sortMode === "alpha" ? "A-Z" : "Recent"}
+            {t(sortMode === "alpha" ? "A-Z" : "Recent")}
           </Text>
         </Box>
         {show === "agents" ? (
@@ -1243,7 +1253,7 @@ function Bots({
           }}
           aria-disabled={busy}
           aria-expanded={making}
-          aria-label="New agent"
+          aria-label={t("New agent")}
           p="$1"
           rounded="$2"
           hoverStyle={{ bg: "$raised" }}
@@ -1255,8 +1265,8 @@ function Bots({
 
       {open && making ? (
         <YStack
-          pl="$4"
-          pr="$3"
+          paddingInlineStart="$4"
+          paddingInlineEnd="$3"
           py="$2"
           gap="$2"
         >
@@ -1266,7 +1276,7 @@ function Bots({
             <Box
               render="button"
               onClick={() => picking.current?.click()}
-              aria-label="Pick a picture"
+              aria-label={t("Pick a picture")}
               rounded={9999}
             >
               <Face src={avatar} emoji={emoji} name={name || "?"} size={32} person />
@@ -1290,8 +1300,8 @@ function Bots({
                     if (e.key === "Enter" && !busy) void add();
                     if (e.key === "Escape") setMaking(false);
                   }}
-                  placeholder="Name"
-                  aria-label="Agent name"
+                  placeholder={t("Name")}
+                  aria-label={t("Agent name")}
                   autoFocus
                 />
               }
@@ -1312,7 +1322,7 @@ function Bots({
                     if (e.target.value) setAvatar("");
                   }}
                   placeholder="🙂"
-                  aria-label="Emoji"
+                  aria-label={t("Emoji")}
                 />
               }
               {...FIELD}
@@ -1323,7 +1333,7 @@ function Bots({
             {/* WHICH MIND. The catalog is the org's own, so this offers what
                 actually answers rather than a name that has to match one. */}
             <YStack flex={1} minW={0}>
-              <ModelPicker models={listed} scope="chat" value={model} onChange={setModel} size="sm" />
+              <ModelPicker models={listed} scope="chat" value={model} onChange={setModel} size="sm" placeholder={t("Choose a model")} name={t("Model")} />
             </YStack>
             <Box
               render="button"
@@ -1340,7 +1350,7 @@ function Bots({
               hoverStyle={{ bg: "$raised" }}
             >
               <Text fontSize="$1" color="$ink">
-                {busy ? "Adding" : "Add"}
+                {t(busy ? "Adding" : "Add")}
               </Text>
             </Box>
           </XStack>
@@ -1354,16 +1364,16 @@ function Bots({
       ) : null}
 
       {open ? (
-        <YStack pl="$4" gap="$0.5">
+        <YStack paddingInlineStart="$4" gap="$0.5">
           {/* The section keeps its `+` and its way into the directory in every
               state — those are how a roster STOPS being empty, and hiding them
               while it is empty is what made an empty org a dead end. */}
           {broke ? (
-            <Note>{say(broke, "this org's roster")}</Note>
+            <Note>{say(broke, t("this org's roster"), "read", t)}</Note>
           ) : waiting && empty ? (
-            <Note>Reading the roster.</Note>
+            <Note>{t("Reading the roster.")}</Note>
           ) : empty ? (
-            <Note>{show === "agents" ? "No agents yet. Add one with +." : "No one here yet. Invite a teammate."}</Note>
+            <Note>{t(show === "agents" ? "No agents yet. Add one with +." : "No one here yet. Invite a teammate.")}</Note>
           ) : null}
 
           {folk.map((person) => {
@@ -1436,8 +1446,8 @@ function Bots({
                 }}
                 aria-label={
                   arming === agent.id
-                    ? `Remove ${called(agent.name)}`
-                    : `Remove ${called(agent.name)}?`
+                    ? t("Remove {name}", { name: called(agent.name) })
+                    : t("Remove {name}?", { name: called(agent.name) })
                 }
                 p="$1"
                 rounded="$2"
@@ -1446,7 +1456,7 @@ function Bots({
               >
                 {arming === agent.id ? (
                   <Text fontSize="$1" color={BAD}>
-                    Remove
+                    {t("Remove")}
                   </Text>
                 ) : (
                   <Minus size={13} aria-hidden />
@@ -1464,7 +1474,7 @@ function Bots({
               navigate?.("/contacts");
             }}
           >
-            Browse the directory
+            {t("Browse the directory")}
           </SidebarItem>
         </YStack>
       ) : null}
@@ -1544,6 +1554,7 @@ export function Paned({
   framed?: boolean;
   bare?: boolean;
 }) {
+  const { t } = useI18n();
   const { aside, showAside } = useOpen();
   const split = useSplit(Boolean(aside), "chat", () => showAside(null));
   // State and not a ref: a ref set during commit does not re-render, so the
@@ -1562,7 +1573,13 @@ export function Paned({
           ? bare
             ? null
             : { ...pane(), overflow: "hidden" as const }
-          : { ...sheet(0), borderLeftWidth: 1, borderColor: "var(--edge, var(--white-06))" })}
+          : {
+              ...sheet(0),
+              // The edge the room shares with the column before it: the left, or the right in a right-to-left language.
+              borderInlineStartWidth: 1,
+              borderInlineStartStyle: "solid" as const,
+              borderColor: "var(--edge, var(--white-06))",
+            })}
         ref={split.main}
         // inline-style: the pane hidden while the column has its room, written by a drag too (useSplit).
         style={split.mainStyle}
@@ -1585,7 +1602,7 @@ export function Paned({
           gridArea="side"
           {...pane(framed ? undefined : sheet(1).backgroundColor)}
           // In the frame the gutter stands between the pane and this column.
-          ml={framed ? "var(--pane-gap)" : undefined}
+          marginInlineStart={framed ? "var(--pane-gap)" : undefined}
           ref={split.aside}
           // inline-style: the width a drag rewrites on the element itself, and full screen (useSplit).
           style={split.asideStyle}
@@ -1597,7 +1614,7 @@ export function Paned({
         >
           {split.grip ? (
             // In the gutter the frame leaves between the panes (a room has none), measured inside the column's 1px edge.
-            <Gutter {...split.grip} label="Resize side panel" inset={1} />
+            <Gutter {...split.grip} label={t("Resize side panel")} inset={1} />
           ) : null}
           {/* The column above is the landmark; this is the box the room
               projects into, a container and not a second region. It carries the
@@ -1632,6 +1649,7 @@ export function Paned({
  * site-wide rule that shortens every transition.
  */
 function Leave({ href, children }: { href: string; children: ReactNode }) {
+  const { dir } = useI18n();
   const [turned, setTurned] = useState(false);
   const [near, setNear] = useState(false);
   return (
@@ -1643,8 +1661,9 @@ function Leave({ href, children }: { href: string; children: ReactNode }) {
       onBlur={() => setNear(false)}
       onPressIn={() => setNear(true)}
       icon={
-        <YStack data-arrow="" transition="quickest" rotate={turned || near ? "90deg" : "0deg"}>
-          <ArrowUpLeft size={15} aria-hidden />
+        // Right to left the arrow is mirrored, up and to the right at rest, and turns the other way.
+        <YStack data-arrow="" transition="quickest" rotate={turned || near ? (dir === "rtl" ? "-90deg" : "90deg") : "0deg"}>
+          <ArrowUpLeft size={15} aria-hidden data-i18n-mirror="" />
         </YStack>
       }
       onPress={() => {
@@ -1677,21 +1696,23 @@ function Rail({
   onSettings: () => void;
   onMore: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <YStack
       data-slot="rail"
       render="nav"
-      aria-label="Places"
+      aria-label={t("Places")}
       {...sheet(0)}
       gridArea="rail"
       minH={0}
-      borderRightWidth={1}
+      borderInlineEndWidth={1}
+      borderInlineEndStyle="solid"
       borderColor="var(--edge, var(--white-06))"
       $md={open ? { display: "none" } : undefined}
       $max-md={{
         flexDirection: "row",
         items: "center",
-        borderRightWidth: 0,
+        borderInlineEndWidth: 0,
         borderTopWidth: 1,
         borderTopColor: "var(--border)",
       }}
@@ -1726,9 +1747,9 @@ function Rail({
                 key={place.id}
                 render="button"
                 onClick={() => navigate?.(place.route)}
-                aria-label={place.label}
+                aria-label={t(place.label)}
                 aria-current={here ? "page" : undefined}
-                title={place.title}
+                title={place.name ?? (place.title ? t(place.title) : t(place.label))}
                 display="flex"
                 $max-md={{ display: i < 4 ? "flex" : "none", width: "auto", minW: 0 }}
                 flexDirection="column"
@@ -1744,14 +1765,14 @@ function Rail({
               >
                 <place.icon size={18} aria-hidden />
                 <Text fontSize={12} lineHeight={14} color={here ? "$ink" : "$quiet"} numberOfLines={1}>
-                  {place.label}
+                  {t(place.label)}
                 </Text>
               </Box>
             );
           })}
           {team ? (
             <XStack $max-md={{ display: places.length < 4 ? "flex" : "none", width: "auto", minW: 0 }}>
-            <Text render={<a href={team} aria-label="Workspace" title="Hanzo Team" />} display="flex" width={56} color="inherit">
+            <Text render={<a href={team} aria-label={t("Workspace")} title="Hanzo Team" />} display="flex" width={56} color="inherit">
               {/* `Box` is a block until told otherwise. */}
               <Box
                 display="flex"
@@ -1767,7 +1788,7 @@ function Rail({
               >
                 <LayoutGrid size={18} aria-hidden />
                 <Text fontSize={12} lineHeight={14} color="$quiet" numberOfLines={1}>
-                  Workspace
+                  {t("Workspace")}
                 </Text>
               </Box>
             </Text>
@@ -1777,8 +1798,8 @@ function Rail({
             data-slot="more"
             render="button"
             onClick={onMore}
-            aria-label="More places"
-            title="More"
+            aria-label={t("More places")}
+            title={t("More")}
             display="none"
             $max-md={{ display: "flex", width: "auto", minW: 0 }}
             flexDirection="column"
@@ -1793,7 +1814,7 @@ function Rail({
           >
             <Search size={18} aria-hidden />
             <Text fontSize={12} lineHeight={14} color="$quiet">
-              More
+              {t("More")}
             </Text>
           </Box>
         </YStack>
@@ -1802,8 +1823,8 @@ function Rail({
           <Box
             render="button"
             onClick={onSettings}
-            aria-label="Settings"
-            title="Settings"
+            aria-label={t("Settings")}
+            title={t("Settings")}
             display="flex"
             flexDirection="column"
             width={56}
@@ -1817,7 +1838,7 @@ function Rail({
           >
             <Settings2 size={18} aria-hidden />
             <Text fontSize={12} lineHeight={14} color="$quiet">
-              Settings
+              {t("Settings")}
             </Text>
           </Box>
       </YStack>
@@ -1839,6 +1860,7 @@ function App({
   onPick?: () => void;
   navigate?: (route: string) => void;
 }) {
+  const { t } = useI18n();
   const { empty } = useOpen();
   const open = (slug: string) => {
     navigate?.(dev(slug));
@@ -1847,12 +1869,13 @@ function App({
   return (
     <>
       <SidebarNewChat
+        label={t("New chat")}
         onPress={() => {
           empty();
           onPick?.();
         }}
       />
-      <SidebarFolder name="Projects" open={filter ? true : undefined}>
+      <SidebarFolder name={t("Projects")} open={filter ? true : undefined}>
         <Projects filter={filter} onPick={open} />
       </SidebarFolder>
       <Chats filter={filter} onPick={onPick} />
@@ -1910,6 +1933,7 @@ function Frame({
   back?: () => void;
   forward?: () => void;
 }) {
+  const { t, dir } = useI18n();
   const { user, isAuthenticated, isLoading } = useIam();
   // Bumping this REMOUNTS whichever list is drawn, and a fresh mount re-reads.
   // It is how "New" refreshes without this component holding a `reload` for a
@@ -2025,7 +2049,7 @@ function Frame({
       // there; a second list here would be the second copy that drifts.
       {
         id: "customize",
-        label: "Customize",
+        label: t("Customize"),
         icon: Blocks,
         go: () => {
           navigate?.(site(app("-/customize")));
@@ -2038,19 +2062,19 @@ function Frame({
       // they were building to reach a shell.
       {
         id: "terminals",
-        label: "Terminals",
+        label: t("Terminals"),
         icon: SquareTerminal,
         go: () => window.open(TABS, "_blank", "noopener"),
       },
       {
         id: "usage",
-        label: "Usage",
+        label: t("Usage"),
         icon: Activity,
         go: () => showSettings("usage"),
       },
       {
         id: "docs",
-        label: "Docs",
+        label: t("Docs"),
         icon: BookOpen,
         go: () => {
           navigate?.(site("/docs"));
@@ -2059,12 +2083,12 @@ function Frame({
       },
       {
         id: "settings",
-        label: "Settings",
+        label: t("Settings"),
         icon: Settings2,
         go: () => showSettings(FIRST),
       },
     ],
-    [navigate, dismiss, showSettings],
+    [navigate, dismiss, showSettings, t],
   );
 
   /**
@@ -2114,7 +2138,7 @@ function Frame({
           // Home's is the brand — one row reading "Hanzo" among Chat, Dev and
           // Drive names the company rather than the room.
           id: place.id,
-          label: place.label,
+          label: t(place.label),
           icon: <place.icon size={16} aria-hidden />,
           run: () => navigate?.(place.route),
         })),
@@ -2125,7 +2149,7 @@ function Frame({
         run: tool.go,
       })),
     ],
-    [tiers, hidden, onApex, tools, navigate],
+    [tiers, hidden, onApex, tools, navigate, t],
   );
 
   // The org IS the workspace. Naming it twice is how the bar and the rail come
@@ -2134,7 +2158,7 @@ function Frame({
   const owner = currentOrgId ?? "";
 
   // The folder's rows and Setup's, narrowed by the column's filter like every other list.
-  const products = CONSOLE_PRODUCTS.filter((prod) => matches(prod.label, filter));
+  const products = CONSOLE_PRODUCTS.filter((prod) => matches(t(prod.label), filter));
   const more = tools.filter((tool) => matches(tool.label, filter));
 
   // The static export prerenders the signed-out room, so the rail's identity
@@ -2176,12 +2200,15 @@ function Frame({
       $md={{ width: "var(--span)" }}
       $max-md={{ width: "100%", maxW: 280 }}
       {...sheet(0)}
-      borderRightWidth={1}
+      // The kit draws the sidebar's edge on its right, a physical side, so the edge is
+      // traded here: the left in a right-to-left language, where the sidebar stands at the right.
+      {...(dir === "rtl" ? { borderRightWidth: 0, borderLeftWidth: 1 } : { borderRightWidth: 1 })}
       borderColor="var(--edge, var(--white-06))"
       position="relative"
     >
       <Gutter
-        side="left"
+        // The edge the sidebar is pinned to (Grip's, physical): its free edge is the other one.
+        side={dir === "rtl" ? "right" : "left"}
         span={side.span}
         floor={FLOOR}
         ceil={CEIL}
@@ -2189,7 +2216,7 @@ function Frame({
         onSpan={side.move}
         onKeep={side.keep}
         onShut={() => setAsked(false)}
-        label="Resize sidebar"
+        label={t("Resize sidebar")}
       />
       {/* THE PRODUCT'S NAME LEADS THE SIDEBAR. Chat and Dev are places on the
           rail and rows below, so the name carries no switch of its own. */}
@@ -2210,8 +2237,8 @@ function Frame({
                 e.preventDefault();
                 navigate("/");
               }}
-              aria-label={`${brand()} home`}
-              title="Home"
+              aria-label={t("{brandName} home", { brandName: brand() })}
+              title={t("Home")}
             />
           }
           // On the gui element, not the anchor: gui stamps its own `data-slot` over the element it renders into.
@@ -2237,7 +2264,7 @@ function Frame({
           chats and code. */}
       {/* On a phone the tab bar below already lists the places. */}
       <YStack data-slot="places-list" px="$2" pb="$2" $max-md={{ display: "none" }}>
-        {places.filter((place) => matches(place.label, filter)).map((place) => (
+        {places.filter((place) => matches(t(place.label), filter)).map((place) => (
           <SidebarItem
             key={place.id}
             icon={<place.icon size={16} aria-hidden />}
@@ -2247,7 +2274,7 @@ function Frame({
               onPick?.();
             }}
           >
-            {place.label}
+            {t(place.label)}
           </SidebarItem>
         ))}
       </YStack>
@@ -2255,7 +2282,7 @@ function Frame({
           list, under every conversation, where a first visit never found it. */}
       {more.length ? (
         <YStack data-slot="setup-list" px="$2" pb="$2">
-          <SidebarSection label="Setup">
+          <SidebarSection label={t("Setup")}>
             {more.map((tool) => (
               <SidebarItem key={tool.id} icon={<tool.icon size={16} aria-hidden />} onPress={tool.go}>
                 {tool.label}
@@ -2288,8 +2315,8 @@ function Frame({
                 // FILTER, not Search. Two controls that both said Search did two
                 // different things: this one narrows the list beside you, and the
                 // bar above opens the palette that finds anything anywhere.
-                placeholder="Filter"
-                aria-label="Filter sidebar"
+                placeholder={t("Filter")}
+                aria-label={t("Filter sidebar")}
               />
             }
             flex={1}
@@ -2334,14 +2361,14 @@ function Frame({
               {/* A folder narrows with the column: while filtering it opens on its
                   matches, and one with none is not drawn at all. */}
               {products.length ? (
-              <SidebarFolder name="Cloud & Platform" open={filter ? true : undefined}>
+              <SidebarFolder name={t("Cloud & Platform")} open={filter ? true : undefined}>
                 {products.map((prod) => (
                   <SidebarItem
                     key={prod.id}
                     icon={<prod.icon size={13} aria-hidden />}
                     onPress={() => window.open(prod.href, "_blank", "noopener")}
                   >
-                    {prod.label}
+                    {t(prod.label)}
                   </SidebarItem>
                 ))}
               </SidebarFolder>
@@ -2358,7 +2385,7 @@ function Frame({
           whole foot: no invite, no billing, and no account row at all. Holding
           a token is what makes somebody signed in; what they are called arrives
           after, and `Account` already says "You" until it does. */}
-      {settled && onApex ? <Leave href={signedIn ? ENTRY : WORKSPACE}>Workspace</Leave> : null}
+      {settled && onApex ? <Leave href={signedIn ? ENTRY : WORKSPACE}>{t("Workspace")}</Leave> : null}
       {settled ? (
         signedIn ? (
           <>
@@ -2366,7 +2393,7 @@ function Frame({
               icon={<UserPlus size={15} aria-hidden />}
               onPress={() => window.open(invite(), "_blank", "noopener")}
             >
-              Invite Teammates
+              {t("Invite Teammates")}
             </SidebarItem>
             {/* THE TWO ROWS hanzo.app KEPT AT ITS FOOT, and both already have a
                 home here: sharing is the referral page, and a plan is chosen from
@@ -2381,7 +2408,7 @@ function Frame({
                 dismiss();
               }}
             >
-              Share Hanzo
+              {t("Share Hanzo")}
             </SidebarItem>
             {/* WHO YOU ARE, at the foot: the app's one account menu (Me.tsx),
                 SuperAdmin's All organizations under its account row. */}
@@ -2392,13 +2419,13 @@ function Frame({
               <Box
                 render="button"
                 onClick={toggle}
-                aria-label="Collapse sidebar"
+                aria-label={t("Collapse sidebar")}
                 p="$2"
                 rounded="$2"
                 hoverStyle={{ bg: "$hover" }}
                 cursor="pointer"
               >
-                <PanelLeftClose size={16} aria-hidden />
+                <PanelLeftClose size={16} aria-hidden data-i18n-mirror="" />
               </Box>
             </XStack>
           </>
@@ -2469,11 +2496,11 @@ function Frame({
           >
             <SidebarIconButton
               {...TAP}
-              label={shown ? "Close sidebar" : "Open sidebar"}
+              label={t(shown ? "Close sidebar" : "Open sidebar")}
               onPress={toggle}
               onMouseEnter={() => setPeeking(true)}
             >
-              <PanelLeft size={16} aria-hidden />
+              <PanelLeft size={16} aria-hidden data-i18n-mirror="" />
             </SidebarIconButton>
 
             {/* Not on a phone: the browser's own back gesture is there, and
@@ -2486,15 +2513,15 @@ function Frame({
                 gap="$1"
                 shrink={0}
               >
-                <SidebarIconButton {...TAP} label="Back" onPress={() => back?.()}>
-                  <ArrowLeft size={16} aria-hidden />
+                <SidebarIconButton {...TAP} label={t("Back")} onPress={() => back?.()}>
+                  <ArrowLeft size={16} aria-hidden data-i18n-mirror="" />
                 </SidebarIconButton>
                 <SidebarIconButton
                   {...TAP}
-                  label="Forward"
+                  label={t("Forward")}
                   onPress={() => forward?.()}
                 >
-                  <ArrowRight size={16} aria-hidden />
+                  <ArrowRight size={16} aria-hidden data-i18n-mirror="" />
                 </SidebarIconButton>
               </XStack>
             ) : null}
@@ -2528,10 +2555,10 @@ function Frame({
             >
               <Search size={13} aria-hidden color="var(--soft, var(--muted-foreground))" />
               <Text fontSize="$1" color="$soft" $max-md={{ display: "none" }}>
-                Search {workspace}
+                {t("Search {workspace}", { workspace })}
               </Text>
-              {/* The kit's keycaps: ⌘K on a Mac, Ctrl+K elsewhere. */}
-              <Shortcut keys={["Mod", "K"]} ml="auto" $max-md={{ display: "none" }} />
+              {/* The kit's keycaps: ⌘K on a Mac, Ctrl+K elsewhere, in their own order in any language. */}
+              <Shortcut keys={["Mod", "K"]} marginInlineStart="auto" data-i18n-ltr="" $max-md={{ display: "none" }} />
             </Box>
           </YStack>
         </XStack>
@@ -2572,7 +2599,7 @@ function Frame({
                 hoverStyle={{ bg: '$hover' }}
               >
                 <Text fontSize="$1" fontWeight="600" color="$ink">
-                  Sign in
+                  {t("Sign in")}
                 </Text>
               </XStack>
             </Box>
@@ -2585,17 +2612,17 @@ function Frame({
           <XStack display="none" $lg={{ display: "flex" }} items="center" gap="$1">
             <SidebarIconButton
               {...TAP}
-              label={aside === "roster" ? "Hide directory & roster" : "Show directory & roster"}
+              label={t(aside === "roster" ? "Hide directory & roster" : "Show directory & roster")}
               onPress={() => showAside(aside === "roster" ? null : "roster")}
             >
               <Users size={16} aria-hidden />
             </SidebarIconButton>
             <SidebarIconButton
               {...TAP}
-              label={aside === "tasks" ? "Close side panel" : "Open side panel"}
+              label={t(aside === "tasks" ? "Close side panel" : "Open side panel")}
               onPress={() => showAside(aside === "tasks" ? null : "tasks")}
             >
-              <PanelRight size={16} aria-hidden />
+              <PanelRight size={16} aria-hidden data-i18n-mirror="" />
             </SidebarIconButton>
           </XStack>
         </XStack>
@@ -2605,7 +2632,7 @@ function Frame({
       {shown ? (
         <Box
           render="button"
-          aria-label="Close sidebar"
+          aria-label={t("Close sidebar")}
           onClick={dismiss}
           {...scrim}
           data-slot="scrim"
@@ -2625,7 +2652,8 @@ function Frame({
           data-slot="list"
           gridArea="list"
           position={asked ? "relative" : "absolute"}
-          {...(asked ? {} : { top: 44, bottom: 0, left: 64 })}
+          // Peeking, it stands past the rail, which is at the start edge.
+          {...(asked ? {} : { top: 44, bottom: 0, insetInlineStart: 64 })}
           // A phone's list is a sheet between the bar and the tab bar.
           $max-md={{ position: "fixed", t: 44, r: 0, b: TABS_HEIGHT, l: 0, width: "100%" }}
           z="var(--z-drawer)"

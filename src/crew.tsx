@@ -12,8 +12,15 @@
 //
 // The crew strip (`Crew`) is the same list as faces, on Home: pressing one opens
 // a chat with that character there (`to`).
+//
+// Its words go through `t`; an agent's name, a persona's name and line, and the
+// core team's parts (team.ts) are drawn as they are written. The spending limit
+// is one sentence with its fields in it (`Sentence`), so a translation places
+// the fields where its own word order puts them.
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { phrase, pieces } from '@hanzo/i18n'
+import { useI18n } from '@hanzo/i18n/react'
+import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useRooms } from './host'
 import { ArrowLeft, Camera, Check, Plus, Sparkles, Upload, Users } from 'lucide-react'
 import { generateImages } from '@hanzo/ai'
@@ -30,6 +37,7 @@ import { app, go } from './lib/host'
 import { site } from './where'
 import { bare } from './lib/bare'
 import { BAD, mix } from './lib/mix'
+import type { Say } from './say'
 
 /** One disc's edge, and the name under it. */
 const DISC = 48
@@ -114,6 +122,7 @@ export function AgentMaker() {
  * by its face; on is in the open conversation, and a pick toggles it there.
  */
 export function useAgentShelf(): Shelf {
+  const { t } = useI18n()
   const { agents, loading, error } = useCrew()
   const { agents: room, openAgent } = useOpen()
   const pathed = useRooms().path !== null
@@ -128,13 +137,13 @@ export function useAgentShelf(): Shelf {
     pick: (id) => openAgent(called(id)),
     loading,
     error: error ? reach(error) : null,
-    search: 'Search agents',
-    empty: 'No agents yet. Add the default team from Manage agents.',
-    create: { label: 'Create agent', onPress: () => make('new') },
+    search: t('Search agents'),
+    empty: t('No agents yet. Add the default team from Manage agents.'),
+    create: { label: t('Create agent'), onPress: () => make('new') },
     // Dev's Customize › Agents: a move inside the app where the host reads the
     // path (hanzo.ai), else Dev on hanzo.ai, as Chat's Create file or site goes.
-    manage: { label: 'Manage agents', onPress: () => (pathed ? go(app('-/customize/agents')) : window.location.assign(site(app('-/customize/agents')))) },
-    browse: { label: 'Browse personas', onPress: () => make('persona') },
+    manage: { label: t('Manage agents'), onPress: () => (pathed ? go(app('-/customize/agents')) : window.location.assign(site(app('-/customize/agents')))) },
+    browse: { label: t('Browse personas'), onPress: () => make('persona') },
   }
 }
 
@@ -143,6 +152,7 @@ export function useAgentShelf(): Shelf {
  * the strip sits under a chat and a press changes who is in it.
  */
 export function Crew({ to }: { to?: string } = {}) {
+  const { t } = useI18n()
   const { agents } = useCrew()
   const { agents: room, openAgent, withAgents } = useOpen()
   const { router, route } = useRooms()
@@ -171,7 +181,7 @@ export function Crew({ to }: { to?: string } = {}) {
         data-slot="crew"
         {...bare}
         role="group"
-        aria-label="Agents"
+        aria-label={t('Agents')}
       >
         {ordered(agents).map((one) => {
           const name = called(one.name)
@@ -182,8 +192,8 @@ export function Crew({ to }: { to?: string } = {}) {
               render="button"
               onClick={() => talk(name)}
               aria-pressed={on}
-              aria-label={`Chat with ${name}`}
-              title={to ? `Chat with ${name}` : on ? `Remove ${name} from this chat` : `Add ${name} to this chat`}
+              aria-label={t('Chat with {name}', { name })}
+              title={to ? t('Chat with {name}', { name }) : on ? t('Remove {name} from this chat', { name }) : t('Add {name} to this chat', { name })}
               shrink={0}
             >
               <YStack items="center" gap="$1.5" width={68}>
@@ -208,7 +218,7 @@ export function Crew({ to }: { to?: string } = {}) {
                       aria-hidden
                       position="absolute"
                       b={-2}
-                      r={-2}
+                      insetInlineEnd={-2}
                       width={18}
                       height={18}
                       rounded={9}
@@ -233,7 +243,7 @@ export function Crew({ to }: { to?: string } = {}) {
         <Box
           render="button"
           onClick={() => setHiring(true)}
-          aria-label="New agent"
+          aria-label={t('New agent')}
           aria-haspopup="dialog"
           shrink={0}
         >
@@ -252,7 +262,7 @@ export function Crew({ to }: { to?: string } = {}) {
               <Plus size={18} aria-hidden />
             </YStack>
             <Text fontSize="$1" color="$soft" numberOfLines={1}>
-              New
+              {t('New')}
             </Text>
           </YStack>
         </Box>
@@ -269,11 +279,11 @@ const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
 const micro = (dollars: string): number => Math.round(Number(dollars) * 1_000_000)
 
 /** The windows a spending limit resets on (cloud apps/agents `validPeriod`). */
-const PERIODS = [
-  ['day', 'a day'],
-  ['week', 'a week'],
-  ['month', 'a month'],
-] as const
+const PERIODS: readonly (readonly ['day' | 'week' | 'month', string])[] = [
+  ['day', phrase('a day')],
+  ['week', phrase('a week')],
+  ['month', phrase('a month')],
+]
 
 type Period = (typeof PERIODS)[number][0]
 
@@ -285,20 +295,48 @@ type Field = 'name' | 'model' | 'picture' | 'does' | 'budget' | 'form'
  * The platform's sentence is kept where it already reads plainly; the budget's
  * refusals name request fields (`cap_micro_usd`), so those are said in dollars.
  */
-function refusal(e: unknown): { field: Field; text: string } {
+function refusal(e: unknown, t: Say): { field: Field; text: string } {
   const text = reach(e)
   const status = (e as { status?: number } | null)?.status
-  if (/cap_micro_usd/.test(text)) return { field: 'budget', text: 'Set a spending limit above $0.' }
+  if (/cap_micro_usd/.test(text)) return { field: 'budget', text: t('Set a spending limit above $0.') }
   if (/max_task_micro_usd cannot exceed/.test(text))
-    return { field: 'budget', text: 'The most one task may spend cannot be more than the spending limit.' }
-  if (/max_task_micro_usd/.test(text)) return { field: 'budget', text: 'Set the most one task may spend, above $0.' }
-  if (/\bperiod\b/.test(text)) return { field: 'budget', text: 'Choose a day, a week or a month for the spending limit.' }
+    return { field: 'budget', text: t('The most one task may spend cannot be more than the spending limit.') }
+  if (/max_task_micro_usd/.test(text)) return { field: 'budget', text: t('Set the most one task may spend, above $0.') }
+  if (/\bperiod\b/.test(text)) return { field: 'budget', text: t('Choose a day, a week or a month for the spending limit.') }
   if (status === 409 || /\bname\b/i.test(text)) return { field: 'name', text }
   if (/\bmodel\b/i.test(text)) return { field: 'model', text }
   if (/avatar|image|emoji/i.test(text)) return { field: 'picture', text }
-  if (/instructions/i.test(text)) return { field: 'does', text: 'What it does is too long. Shorten it.' }
+  if (/instructions/i.test(text)) return { field: 'does', text: t('What it does is too long. Shorten it.') }
   return { field: 'form', text }
 }
+
+/**
+ * One sentence with fields standing in it — `Up to ${amount} {period}` — drawn
+ * in the reader's language: its words as text, each `{name}` the field `fields`
+ * names, where the translation puts it. `source` is written through `phrase`.
+ */
+function Sentence({ source, fields }: { source: string; fields: Record<string, ReactNode> }) {
+  const { messages } = useI18n()
+  return (
+    <>
+      {pieces(messages, source).map((piece, i) =>
+        typeof piece === 'string' ? (
+          piece.trim() ? (
+            <Text key={i} fontSize="$2" color="$soft">
+              {piece.trim()}
+            </Text>
+          ) : null
+        ) : (
+          <Fragment key={i}>{fields[piece.name]}</Fragment>
+        ),
+      )}
+    </>
+  )
+}
+
+/** The budget's two lines, each one sentence around its fields. */
+const UP_TO = phrase('Up to ${amount} {period}')
+const AT_MOST = phrase('At most ${amount} on one task')
 
 /** A field's own refusal, under it, announced when it appears. */
 function Said({ id, text }: { id: string; text: string | null }) {
@@ -335,6 +373,7 @@ const SHOWN = 50
  * with a written PERSONA.md first, searched by either.
  */
 function Figures({ onPick }: { onPick: (f: Figure) => void }) {
+  const { t } = useI18n()
   const [all, setAll] = useState<Figure[] | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
   const [q, setQ] = useState('')
@@ -355,11 +394,11 @@ function Figures({ onPick }: { onPick: (f: Figure) => void }) {
       <Input
         value={q}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQ(e.target.value)}
-        placeholder={all ? `Search ${all.length.toLocaleString()} figures` : 'Search figures'}
-        aria-label="Search personas"
+        placeholder={all ? t('Search {n} figures', { n: all.length.toLocaleString() }) : t('Search figures')}
+        aria-label={t('Search personas')}
         autoFocus
       />
-      <YStack maxH={360} overflowY="auto" overflowX="hidden" role="group" aria-label="Personas">
+      <YStack maxH={360} overflowY="auto" overflowX="hidden" role="group" aria-label={t('Personas')}>
         {found.slice(0, SHOWN).map((f) => (
           <YStack
             key={f.slug}
@@ -386,11 +425,11 @@ function Figures({ onPick }: { onPick: (f: Figure) => void }) {
       <Text fontSize="$2" color={failed ? BAD : '$soft'} role={failed ? 'alert' : undefined}>
         {failed ??
           (!all
-            ? 'Reading the personas…'
+            ? t('Reading the personas…')
             : !found.length
-              ? 'No figure matches.'
+              ? t('No figure matches.')
               : found.length > SHOWN
-                ? `${SHOWN} of ${found.length.toLocaleString()} shown. Type to narrow them.`
+                ? t('{shown} of {n} shown. Type to narrow them.', { shown: SHOWN, n: found.length.toLocaleString() })
                 : null)}
       </Text>
     </YStack>
@@ -420,6 +459,7 @@ function Figures({ onPick }: { onPick: (f: Figure) => void }) {
  * EXPORTED, because Contacts adds agents too and there is one way to make one.
  */
 export function Hire({ onClose, onMade, start = false }: { onClose: () => void; onMade: (name: string) => void; start?: boolean }) {
+  const { t } = useI18n()
   const { create } = useAgents()
   const { models } = useModels()
   const { client } = useAi()
@@ -454,15 +494,15 @@ export function Hire({ onClose, onMade, start = false }: { onClose: () => void; 
   // WHAT CREATE WAITS FOR, in the API's own terms, so a request it would refuse
   // is never sent. Each rule names the field it belongs to.
   const called = name.trim()
-  const nameWrong = !called ? null : NAME.test(called) ? null : 'Use letters, digits, dots, dashes or underscores, starting with a letter or digit, up to 64.'
+  const nameWrong = !called ? null : NAME.test(called) ? null : t('Use letters, digits, dots, dashes or underscores, starting with a letter or digit, up to 64.')
   const capOk = Number.isFinite(Number(cap)) && micro(cap) > 0
   const taskOk = Number.isFinite(Number(task)) && micro(task) > 0
   const budgetWrong = !capOk
-    ? 'Set a spending limit above $0.'
+    ? t('Set a spending limit above $0.')
     : !taskOk
-      ? 'Set the most one task may spend, above $0.'
+      ? t('Set the most one task may spend, above $0.')
       : micro(task) > micro(cap)
-        ? 'The most one task may spend cannot be more than the spending limit.'
+        ? t('The most one task may spend cannot be more than the spending limit.')
         : null
   const ready = Boolean(called) && !nameWrong && !budgetWrong && Boolean(model)
   const shown = (field: Field): string | null => (wrong?.field === field ? wrong.text : null)
@@ -485,7 +525,7 @@ export function Hire({ onClose, onMade, start = false }: { onClose: () => void; 
   // every saved picture is, so a drawn face weighs what an uploaded one weighs.
   const paint = async (): Promise<string> => {
     const [image] = await generateImages(client!, `${subject}, ${MEMOJI}`, { model: PAINTER, n: 1, size: '512x512', response_format: 'b64_json' })
-    if (!image?.b64_json) throw new Error('The image model answered with no picture.')
+    if (!image?.b64_json) throw new Error(t('The image model answered with no picture.'))
     const bytes = Uint8Array.from(atob(image.b64_json), (c) => c.charCodeAt(0))
     const face = await mark(new File([bytes], 'face.png', { type: 'image/png' }))
     setAvatar(face)
@@ -534,7 +574,7 @@ export function Hire({ onClose, onMade, start = false }: { onClose: () => void; 
       try {
         face = await paint()
       } catch (e) {
-        setWrong({ field: 'picture', text: `${reach(e).replace(/[.!?]?$/, '.')} Press Create again to make ${called} without a picture.` })
+        setWrong({ field: 'picture', text: t('{reason} Press Create again to make {name} without a picture.', { reason: reach(e).replace(/[.!?]?$/, '.'), name: called }) })
         setFaceless(true)
         setBusy(null)
         return
@@ -557,7 +597,7 @@ export function Hire({ onClose, onMade, start = false }: { onClose: () => void; 
       onMade(called)
       onClose()
     } catch (e) {
-      setWrong(refusal(e))
+      setWrong(refusal(e, t))
     } finally {
       setBusy(null)
     }
@@ -601,15 +641,15 @@ export function Hire({ onClose, onMade, start = false }: { onClose: () => void; 
       >
         <XStack items="center" justify="space-between" gap="$2" flexWrap="wrap">
           <Text id="hire-title" render="h2" fontSize="$5" fontWeight="600" color="$ink">
-            {choosing ? 'Start from a persona' : 'New agent'}
+            {t(choosing ? 'Start from a persona' : 'New agent')}
           </Text>
           {choosing ? (
             <Button size="sm" variant="ghost" onClick={() => setChoosing(false)}>
-              <ArrowLeft size={14} aria-hidden /> Back
+              <ArrowLeft size={14} aria-hidden data-i18n-mirror /> {t('Back')}
             </Button>
           ) : (
             <Button size="sm" variant="outline" onClick={() => setChoosing(true)}>
-              <Users size={14} aria-hidden /> Start from a persona
+              <Users size={14} aria-hidden /> {t('Start from a persona')}
             </Button>
           )}
         </XStack>
@@ -640,7 +680,7 @@ export function Hire({ onClose, onMade, start = false }: { onClose: () => void; 
                   setOver(false)
                   void pick(e.dataTransfer.files?.[0])
                 }}
-                aria-label={avatar ? 'Change photo' : 'Upload photo'}
+                aria-label={t(avatar ? 'Change photo' : 'Upload photo')}
                 aria-describedby="hire-picture-hint"
                 position="relative"
                 width={88}
@@ -683,23 +723,23 @@ export function Hire({ onClose, onMade, start = false }: { onClose: () => void; 
               <YStack flex={1} minW={180} gap="$1.5">
                 <XStack gap="$2" items="center" flexWrap="wrap">
                   <Button size="sm" variant="outline" onClick={() => picking.current?.click()}>
-                    <Upload size={14} aria-hidden /> {avatar ? 'Change photo' : 'Upload photo'}
+                    <Upload size={14} aria-hidden /> {t(avatar ? 'Change photo' : 'Upload photo')}
                   </Button>
                   {avatar ? (
                     <Button size="sm" variant="ghost" onClick={() => setAvatar('')}>
-                      Remove
+                      {t('Remove')}
                     </Button>
                   ) : null}
                 </XStack>
                 <Text id="hire-picture-hint" fontSize="$2" color="$soft">
-                  {over ? 'Drop the photo to use it.' : 'Press the circle or drop a photo on it, or Create draws one.'}
+                  {t(over ? 'Drop the photo to use it.' : 'Press the circle or drop a photo on it, or Create draws one.')}
                 </Text>
               </YStack>
             </XStack>
 
             <YStack gap="$1.5">
               <Text render="label" htmlFor="hire-look" fontSize="$2" color="var(--soft, var(--muted-foreground))">
-                Or describe a face and press Draw
+                {t('Or describe a face and press Draw')}
               </Text>
               <XStack gap="$1.5" items="center">
                 <Box flex={1}>
@@ -710,16 +750,16 @@ export function Hire({ onClose, onMade, start = false }: { onClose: () => void; 
                     onKeyDown={(e: React.KeyboardEvent) => {
                       if (e.key === 'Enter') void draw()
                     }}
-                    placeholder="A calm engineer with round glasses"
+                    placeholder={t('A calm engineer with round glasses')}
                   />
                 </Box>
                 <Button size="sm" variant="outline" disabled={busy !== null || !subject || !client} onClick={() => void draw()}>
-                  <Sparkles size={14} aria-hidden /> {busy === 'draw' ? 'Drawing…' : avatar ? 'Regenerate' : 'Draw'}
+                  <Sparkles size={14} aria-hidden /> {t(busy === 'draw' ? 'Drawing…' : avatar ? 'Regenerate' : 'Draw')}
                 </Button>
               </XStack>
               <XStack gap="$2" items="center">
                 <Text render="label" htmlFor="hire-emoji" fontSize="$2" color="var(--soft, var(--muted-foreground))">
-                  Or one emoji
+                  {t('Or one emoji')}
                 </Text>
                 <Box width={64}>
                   <Input
@@ -738,7 +778,7 @@ export function Hire({ onClose, onMade, start = false }: { onClose: () => void; 
 
             <YStack gap="$1.5">
               <Text render="label" htmlFor="hire-name" fontSize="$2" fontWeight="600">
-                Name
+                {t('Name')}
               </Text>
               <Input
                 id="hire-name"
@@ -747,7 +787,7 @@ export function Hire({ onClose, onMade, start = false }: { onClose: () => void; 
                 onKeyDown={(e: React.KeyboardEvent) => {
                   if (e.key === 'Enter') void make()
                 }}
-                placeholder="Michael"
+                placeholder={t('Michael')}
                 autoFocus
                 aria-required="true"
                 aria-invalid={Boolean(nameWrong || shown('name'))}
@@ -758,7 +798,7 @@ export function Hire({ onClose, onMade, start = false }: { onClose: () => void; 
 
             <YStack gap="$1.5">
               <Text render="label" htmlFor="hire-model" fontSize="$2" fontWeight="600">
-                Model
+                {t('Model')}
               </Text>
               <Text
                 render={<select id="hire-model" value={model} onChange={(e) => setModel(e.target.value)} aria-describedby="hire-model-wrong" />}
@@ -776,16 +816,19 @@ export function Hire({ onClose, onMade, start = false }: { onClose: () => void; 
 
             <YStack gap="$1.5">
               <Text render="label" htmlFor="hire-does" fontSize="$2" fontWeight="600">
-                What it does{' '}
-                <Text fontWeight="400" color="var(--soft, var(--muted-foreground))">
-                  — optional
-                </Text>
+                {t('What it does {optional}', {
+                  optional: (
+                    <Text fontWeight="400" color="var(--soft, var(--muted-foreground))">
+                      {t('— optional')}
+                    </Text>
+                  ),
+                })}
               </Text>
               <Textarea
                 id="hire-does"
                 value={does}
                 onChangeText={setDoes}
-                placeholder="The work it takes and the voice it answers in"
+                placeholder={t('The work it takes and the voice it answers in')}
                 rows={3}
                 aria-describedby="hire-does-wrong"
               />
@@ -796,50 +839,57 @@ export function Hire({ onClose, onMade, start = false }: { onClose: () => void; 
                 it may spend in a window, and the most one task may spend. */}
             <View render={<fieldset aria-describedby="hire-budget-wrong" />} display="block" borderWidth={0} p={0} m={0}>
               <Text render="legend" display="block" fontSize="$2" fontWeight="600" mb={6}>
-                Spending limit
+                {t('Spending limit')}
               </Text>
               <YStack gap="$2">
                 <XStack gap="$2" items="center" flexWrap="wrap">
-                  <Text fontSize="$2" color="$soft">
-                    Up to $
-                  </Text>
-                  <Box width={84}>
-                    <Input
-                      aria-label="Spending limit in dollars"
-                      inputMode="decimal"
-                      value={cap}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCap(e.target.value)}
-                      aria-invalid={!capOk}
-                    />
-                  </Box>
-                  <Text
-                    render={<select aria-label="Spending limit period" value={period} onChange={(e) => setPeriod(e.target.value as Period)} />}
-                    {...FIELD}
-                    width="auto"
-                  >
-                    {PERIODS.map(([value, words]) => (
-                      <option key={value} value={value}>
-                        {words}
-                      </option>
-                    ))}
-                  </Text>
+                  <Sentence
+                    source={UP_TO}
+                    fields={{
+                      amount: (
+                        <Box width={84}>
+                          <Input
+                            aria-label={t('Spending limit in dollars')}
+                            inputMode="decimal"
+                            value={cap}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCap(e.target.value)}
+                            aria-invalid={!capOk}
+                          />
+                        </Box>
+                      ),
+                      period: (
+                        <Text
+                          render={<select aria-label={t('Spending limit period')} value={period} onChange={(e) => setPeriod(e.target.value as Period)} />}
+                          {...FIELD}
+                          width="auto"
+                        >
+                          {PERIODS.map(([value, words]) => (
+                            <option key={value} value={value}>
+                              {t(words)}
+                            </option>
+                          ))}
+                        </Text>
+                      ),
+                    }}
+                  />
                 </XStack>
                 <XStack gap="$2" items="center" flexWrap="wrap">
-                  <Text fontSize="$2" color="$soft">
-                    At most $
-                  </Text>
-                  <Box width={84}>
-                    <Input
-                      aria-label="Most one task may spend, in dollars"
-                      inputMode="decimal"
-                      value={task}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTask(e.target.value)}
-                      aria-invalid={!taskOk}
-                    />
-                  </Box>
-                  <Text fontSize="$2" color="$soft">
-                    on one task
-                  </Text>
+                  <Sentence
+                    source={AT_MOST}
+                    fields={{
+                      amount: (
+                        <Box width={84}>
+                          <Input
+                            aria-label={t('Most one task may spend, in dollars')}
+                            inputMode="decimal"
+                            value={task}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTask(e.target.value)}
+                            aria-invalid={!taskOk}
+                          />
+                        </Box>
+                      ),
+                    }}
+                  />
                 </XStack>
               </YStack>
               <Box mt="$1.5">
@@ -851,10 +901,10 @@ export function Hire({ onClose, onMade, start = false }: { onClose: () => void; 
 
             <XStack justify="flex-end" gap="$2">
               <Button size="sm" variant="ghost" onClick={onClose}>
-                Cancel
+                {t('Cancel')}
               </Button>
               <Button size="sm" disabled={busy !== null || !ready} onClick={() => void make()}>
-                {busy === 'make' ? 'Creating…' : 'Create'}
+                {t(busy === 'make' ? 'Creating…' : 'Create')}
               </Button>
             </XStack>
           </>

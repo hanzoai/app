@@ -4,6 +4,8 @@
 // holds the rows). Loaded when a row is chosen, never with the room.
 
 import { useMemo, useState } from 'react'
+import { phrase } from '@hanzo/i18n'
+import { useI18n } from '@hanzo/i18n/react'
 import { ArrowUpRight, ExternalLink } from 'lucide-react'
 import {
   Box,
@@ -31,7 +33,7 @@ import { Look } from './look'
 import { ProviderMark } from './ProviderMark'
 import { bearer, org, pick } from './lib/session'
 import { site } from './where'
-import { ROWS } from './Settings'
+import { named, ROWS } from './Settings'
 
 /** A choice among a few: a hairline edge and a corner. The fill and the edge's
  *  ink are the call site's, because they say which one is chosen. */
@@ -45,22 +47,24 @@ const CHOICE = { rounded: 8, borderWidth: 1, borderStyle: 'solid', cursor: 'poin
  * shell down the page.
  */
 export function SettingsPane({ id }: { id: string }) {
+  const { t } = useI18n()
   const row = ROWS.find((r) => r.id === id)
 
   return (
     <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden">
       <YStack p="$5" gap="$4" maxW={860}>
         <Text fontSize="$6" fontWeight="600" color="$ink">
-          {row?.label ?? 'Settings'}
+          {row ? named(row, t) : t('Settings')}
         </Text>
-        <Pane id={id} note={row?.note} />
+        <Pane id={id} note={row?.note ? t(row.note) : undefined} />
       </YStack>
     </YStack>
   )
 }
 
-/** One pane. */
+/** One pane. `note` arrives translated. */
 function Pane({ id, note }: { id: string; note?: string }) {
+  const { t } = useI18n()
   if (id === 'apps' || id === 'channels') return <Catalog tab={id} />
   if (id === 'general') return <Look />
   if (id === 'account') return <Account />
@@ -74,7 +78,7 @@ function Pane({ id, note }: { id: string; note?: string }) {
 
   return (
     <Text fontSize="$3" color="$soft">
-      {note ?? 'Nothing to configure here yet.'}
+      {note ?? t('Nothing to configure here yet.')}
     </Text>
   )
 }
@@ -85,6 +89,7 @@ function Pane({ id, note }: { id: string; note?: string }) {
  * this picker offers the rest of the catalog.
  */
 function Model() {
+  const { t } = useI18n()
   const { models: served } = useModels()
   const models = useMemo(() => parseModels(served).filter((m) => m.class !== 'premium'), [served])
   // The one choice Chat and Dev share (@hanzo/build): changed here, changed in both composers.
@@ -93,8 +98,7 @@ function Model() {
   return (
     <YStack gap="$3" maxW={420}>
       <Text fontSize="$3" color="$soft">
-        Used for new chats and new runs. An agent with its own model keeps that choice. Premium models are picked per
-        conversation in the composer.
+        {t('Used for new chats and new runs. An agent with its own model keeps that choice. Premium models are picked per conversation in the composer.')}
       </Text>
       <XStack self="flex-start">
         <ModelPicker models={models} scope="chat" value={choice.model} onChange={(id) => choose({ model: id })} size="sm" />
@@ -112,18 +116,19 @@ function Model() {
  * id so a family wears the logo of the lab that makes it.
  */
 function Served() {
+  const { t } = useI18n()
   const { models, loading, error } = useModels()
 
   if (loading) {
-    return <Text fontSize="$3" color="$soft">Reading the catalog.</Text>
+    return <Text fontSize="$3" color="$soft">{t('Reading the catalog.')}</Text>
   }
   if (error) {
-    return <Text fontSize="$3" color="$soft">The catalog did not answer: {error.message}</Text>
+    return <Text fontSize="$3" color="$soft">{t('The catalog did not answer: {message}', { message: error.message })}</Text>
   }
   if (models.length === 0) {
     return (
       <Text fontSize="$3" color="$soft">
-        No model answers on this account. Sign in to reach the ones your org opens.
+        {t('No model answers on this account. Sign in to reach the ones your org opens.')}
       </Text>
     )
   }
@@ -131,7 +136,7 @@ function Served() {
   return (
     <YStack gap="$3">
       <Text fontSize="$3" color="$soft">
-        {models.length} models answer at /v1/models on this account.
+        {t('{count} models answer at {path} on this account.', { count: models.length, path: '/v1/models' })}
       </Text>
       <YStack>
         {models.map((m) => (
@@ -144,15 +149,15 @@ function Served() {
             borderColor="$borderColor"
           >
             <ProviderMark model={m.id} org={m.owned_by} size={16} ink />
-            <Text fontSize="$2" color="$ink" flex={1}>{m.id}</Text>
-            {m.owned_by ? <Text fontSize="$1" color="$soft">{m.owned_by}</Text> : null}
+            <Text fontSize="$2" color="$ink" flex={1}><bdi dir="ltr">{m.id}</bdi></Text>
+            {m.owned_by ? <Text fontSize="$1" color="$soft"><bdi dir="ltr">{m.owned_by}</bdi></Text> : null}
           </XStack>
         ))}
       </YStack>
       <XStack>
         <Box render={<a href={site('/models')} />} {...tap}>
           <XStack items="center" gap="$2" py="$2">
-            <Text fontSize="$3" color="$ink">Browse the model catalog</Text>
+            <Text fontSize="$3" color="$ink">{t('Browse the model catalog')}</Text>
             <ArrowUpRight size={13} aria-hidden />
           </XStack>
         </Box>
@@ -163,13 +168,14 @@ function Served() {
 
 /** Who is signed in, and where they can act. */
 function Account() {
+  const { t } = useI18n()
   const identity = useIamIdentity()
   const { isAuthenticated } = useIam()
   const logout = useSignOut()
   const { organizations, currentOrgId, currentRole, switchOrg } = useOrganizations()
 
   if (!isAuthenticated || !identity) {
-    return <Text fontSize="$3" color="$soft">Sign in to see your account.</Text>
+    return <Text fontSize="$3" color="$soft">{t('Sign in to see your account.')}</Text>
   }
 
   return (
@@ -187,16 +193,16 @@ function Account() {
         </YStack>
         <YStack gap="$1" flex={1} minW={0}>
           <Text fontSize="$4" color="$ink">{identity.name}</Text>
-          {identity.email ? <Text fontSize="$2" color="$soft">{identity.email}</Text> : null}
+          {identity.email ? <Text fontSize="$2" color="$soft"><bdi dir="ltr">{identity.email}</bdi></Text> : null}
         </YStack>
       </XStack>
 
       <Separator />
 
       <YStack gap="$2">
-        <Text fontSize="$2" color="$soft">Organizations</Text>
+        <Text fontSize="$2" color="$soft">{t('Organizations')}</Text>
         {organizations.length === 0 ? (
-          <Text fontSize="$3" color="$soft">You are not a member of an organization.</Text>
+          <Text fontSize="$3" color="$soft">{t('You are not a member of an organization.')}</Text>
         ) : (
           organizations.map((o) => {
             const here = o.name === currentOrgId
@@ -215,7 +221,7 @@ function Account() {
       <Separator />
 
       <XStack>
-        <Button size="sm" onClick={() => logout()}>Sign out</Button>
+        <Button size="sm" onClick={() => logout()}>{t('Sign out')}</Button>
       </XStack>
     </YStack>
   )
@@ -234,11 +240,12 @@ function useTarget() {
  * the payment host, so adding funds and a card both open it.
  */
 function Billing() {
+  const { t } = useI18n()
   const { isAuthenticated } = useIam()
-  const t = useTarget()
+  const target = useTarget()
   const { tier } = useTier(isAuthenticated, org())
   const sub = useSubscription(isAuthenticated, org())
-  if (!isAuthenticated) return <Text fontSize="$3" color="$soft">Sign in to see billing.</Text>
+  if (!isAuthenticated) return <Text fontSize="$3" color="$soft">{t('Sign in to see billing.')}</Text>
   // WHAT THE CUSTOMER BOUGHT, by its family: `Max` with `20x` beside it.
   const plan = tier ? label(tier.plan, tier.tier.name) ?? { name: 'Free', tag: '' } : null
   return (
@@ -247,24 +254,23 @@ function Billing() {
         <YStack gap="$1" data-slot="billing-plan">
           <Title label={plan} size="$5" />
           <Text fontSize="$2" color="$soft">
-            {sub ? renewal(sub) : tier?.plan ? 'Your plan.' : 'No paid plan. Usage is paid from credits.'}
+            {sub ? renewal(sub, t) : tier?.plan ? t('Your plan.') : t('No paid plan. Usage is paid from credits.')}
           </Text>
         </YStack>
       ) : (
-        <Text fontSize="$3" color="$soft">Reading your plan…</Text>
+        <Text fontSize="$3" color="$soft">{t('Reading your plan…')}</Text>
       )}
-      <Credits target={t} admin={administers(bearer(), org())} add={payPage()} />
+      <Credits target={target} admin={administers(bearer(), org())} add={payPage()} />
       <Separator />
       <YStack gap="$2">
-        <Text fontSize="$2" color="$soft">Payment</Text>
+        <Text fontSize="$2" color="$soft">{t('Payment')}</Text>
         <Text fontSize="$3" color="$soft">
-          A card is entered on the payment host and nowhere else, so this is the one
-          control here that opens another surface.
+          {t('A card is entered on the payment host and nowhere else, so this is the one control here that opens another surface.')}
         </Text>
         <XStack>
           <Box render={<a href={payPage()} target="_blank" rel="noreferrer" />} {...tap}>
             <XStack items="center" gap="$2" py="$2">
-              <Text fontSize="$3" color="$ink">Manage plan, payment method and invoices</Text>
+              <Text fontSize="$3" color="$ink">{t('Manage plan, payment method and invoices')}</Text>
               <ExternalLink size={13} aria-hidden />
             </XStack>
           </Box>
@@ -282,14 +288,15 @@ function Billing() {
  * over time (@hanzo/usage), because money is their meter.
  */
 function Usage() {
+  const { t } = useI18n()
   const { accessToken, isAuthenticated } = useIam()
-  const t = useTarget()
+  const target = useTarget()
   const read = useLimits(isAuthenticated, org())
 
   if (!isAuthenticated || !accessToken) {
-    return <Text fontSize="$3" color="$soft">Sign in to see your usage.</Text>
+    return <Text fontSize="$3" color="$soft">{t('Sign in to see your usage.')}</Text>
   }
-  const plan = <Plan target={t} onPlans={() => window.location.assign(site('/pricing'))} onBilling={() => showSettings('billing')} />
+  const plan = <Plan target={target} onPlans={() => window.location.assign(site('/pricing'))} onBilling={() => showSettings('billing')} />
   if (!spendShown(read)) return plan
   // The address is read HERE rather than at import: the panel sends the bearer
   // with every read, and a credentialed read to an absolute address from a page
@@ -298,13 +305,14 @@ function Usage() {
   return (
     <YStack gap="$6">
       {plan}
-      <UsagePanel baseUrl={api()} token={accessToken} upgrade={payPage()} title="Spend" />
+      <UsagePanel baseUrl={api()} token={accessToken} upgrade={payPage()} title={t('Spend')} />
     </YStack>
   )
 }
 
-const HISTORICAL_PERSONAS = [
-  { id: 'architect', name: 'Software Architect', role: 'Full-stack & systems design' },
+/** `words`: the name is authored English, drawn through `t`; the rest are people's names, drawn as they are. */
+const HISTORICAL_PERSONAS: { id: string; name: string; role: string; words?: true }[] = [
+  { id: 'architect', name: phrase('Software Architect'), role: 'Full-stack & systems design', words: true },
   { id: 'satoshi', name: 'Satoshi Nakamoto', role: 'Distributed cryptography & consensus' },
   { id: 'turing', name: 'Alan Turing', role: 'Algorithmic logic & formal verification' },
   { id: 'ada', name: 'Ada Lovelace', role: 'Computational precision & analysis' },
@@ -312,6 +320,7 @@ const HISTORICAL_PERSONAS = [
 ]
 
 function AgentSettings() {
+  const { t } = useI18n()
   const [instructions, setInstructions] = useState(() => {
     if (typeof window === 'undefined') return ''
     return localStorage.getItem('hanzo.agent.instructions') || 'You are an autonomous AI software engineer at Hanzo. Think step-by-step and write robust code.'
@@ -337,12 +346,12 @@ function AgentSettings() {
   return (
     <YStack gap="$4" maxW={480}>
       <Text fontSize="$3" color="$soft">
-        Nothing is bound to this surface yet — when you bind a personal agent, its persona, tools and memory live here rather than in a shared team.
+        {t('Nothing is bound to this surface yet — when you bind a personal agent, its persona, tools and memory live here rather than in a shared team.')}
       </Text>
       <YStack gap="$1.5">
-        <Text fontSize="$3" fontWeight="600" color="$ink">Persona & Historical Character</Text>
+        <Text fontSize="$3" fontWeight="600" color="$ink">{t('Persona & Historical Character')}</Text>
         <Text fontSize="$2" color="$soft">
-          Pick an intellectual archetype for agent reasoning and tone.
+          {t('Pick an intellectual archetype for agent reasoning and tone.')}
         </Text>
         <XStack flexWrap="wrap" gap="$2" pt="$1">
           {HISTORICAL_PERSONAS.map((p) => {
@@ -360,7 +369,7 @@ function AgentSettings() {
                 px={12}
               >
                 <Text fontSize="$2" fontWeight={active ? '600' : '400'} color={active ? '$ink' : '$soft'}>
-                  {p.name}
+                  {p.words ? t(p.name) : p.name}
                 </Text>
               </Box>
             )
@@ -371,9 +380,9 @@ function AgentSettings() {
       <Separator />
 
       <YStack gap="$1.5">
-        <Text fontSize="$3" fontWeight="600" color="$ink">System Prompt Instructions</Text>
+        <Text fontSize="$3" fontWeight="600" color="$ink">{t('System Prompt Instructions')}</Text>
         <Text fontSize="$2" color="$soft">
-          Custom system directions prepended to all coding and research runs.
+          {t('Custom system directions prepended to all coding and research runs.')}
         </Text>
         <Text
           render={<textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={4} />}
@@ -392,7 +401,7 @@ function AgentSettings() {
       <Separator />
 
       <YStack gap="$1.5">
-        <Text fontSize="$3" fontWeight="600" color="$ink">Autonomy & Permissions</Text>
+        <Text fontSize="$3" fontWeight="600" color="$ink">{t('Autonomy & Permissions')}</Text>
         <XStack gap="$2">
           <Box
             render={<button type="button" />}
@@ -404,8 +413,8 @@ function AgentSettings() {
             bg={autonomy === 'autonomous' ? 'var(--edge, var(--white-14))' : 'transparent'}
             borderColor={autonomy === 'autonomous' ? 'var(--borderColor, var(--white-22))' : 'var(--white-08)'}
           >
-            <Text fontSize="$2" fontWeight="600" color="$ink">Autonomous</Text>
-            <Text fontSize="$1" color="$soft">Executes tools & writes code without interrupting.</Text>
+            <Text fontSize="$2" fontWeight="600" color="$ink">{t('Autonomous')}</Text>
+            <Text fontSize="$1" color="$soft">{t('Executes tools & writes code without interrupting.')}</Text>
           </Box>
           <Box
             render={<button type="button" />}
@@ -417,15 +426,15 @@ function AgentSettings() {
             bg={autonomy === 'supervised' ? 'var(--edge, var(--white-14))' : 'transparent'}
             borderColor={autonomy === 'supervised' ? 'var(--borderColor, var(--white-22))' : 'var(--white-08)'}
           >
-            <Text fontSize="$2" fontWeight="600" color="$ink">Supervised</Text>
-            <Text fontSize="$1" color="$soft">Requests confirmation before file writes and commands.</Text>
+            <Text fontSize="$2" fontWeight="600" color="$ink">{t('Supervised')}</Text>
+            <Text fontSize="$1" color="$soft">{t('Requests confirmation before file writes and commands.')}</Text>
           </Box>
         </XStack>
       </YStack>
 
       <XStack self="flex-start" pt="$2">
         <Button size="sm" onClick={save}>
-          {saved ? 'Saved' : 'Save agent preferences'}
+          {t(saved ? 'Saved' : 'Save agent preferences')}
         </Button>
       </XStack>
     </YStack>
@@ -446,19 +455,20 @@ function AgentSettings() {
  * and the run is where it belongs.
  */
 function Capabilities() {
+  const { t } = useI18n()
   return (
     <YStack gap="$3" maxW={480}>
       <Text fontSize="$3" color="$soft">
-        What models and agent swarms are granted access to during tasks.
+        {t('What models and agent swarms are granted access to during tasks.')}
       </Text>
       <YStack gap="$2" pt="$1">
         {[
-          { title: 'Filesystem (Read / Write)', desc: 'Create, modify, and delete workspace files in the target repository.' },
-          { title: 'Shell & Terminal Exec', desc: 'Execute build, test, and shell commands in isolated sandbox VMs.' },
-          { title: 'Live Web & Search', desc: 'Query internet search APIs and fetch web documentation.' },
-          { title: 'MCP Protocol Server', desc: 'Expose local and remote tools via Model Context Protocol at /mcp.' },
+          { id: 'files', title: t('Filesystem (Read / Write)'), desc: t('Create, modify, and delete workspace files in the target repository.') },
+          { id: 'shell', title: t('Shell & Terminal Exec'), desc: t('Execute build, test, and shell commands in isolated sandbox VMs.') },
+          { id: 'web', title: t('Live Web & Search'), desc: t('Query internet search APIs and fetch web documentation.') },
+          { id: 'mcp', title: t('MCP Protocol Server'), desc: t('Expose local and remote tools via Model Context Protocol at /mcp.') },
         ].map((cap) => (
-          <YStack key={cap.title} gap="$0.5" p="$2.5" rounded="$3" borderWidth={1} borderColor="$borderColor">
+          <YStack key={cap.id} gap="$0.5" p="$2.5" rounded="$3" borderWidth={1} borderColor="$borderColor">
             <Text fontSize="$3" fontWeight="600" color="$ink">{cap.title}</Text>
             <Text fontSize="$2" color="$soft">{cap.desc}</Text>
           </YStack>
@@ -469,6 +479,7 @@ function Capabilities() {
 }
 
 function MemorySettings() {
+  const { t } = useI18n()
   const [cleared, setCleared] = useState(false)
 
   const clearMemory = () => {
@@ -480,19 +491,19 @@ function MemorySettings() {
   return (
     <YStack gap="$3" maxW={480}>
       <Text fontSize="$3" color="$soft">
-        Semantic memory and conversation recall across sessions.
+        {t('Semantic memory and conversation recall across sessions.')}
       </Text>
       {/* Described, not measured — the badge here read "Active (pgvector)" for
           an index nothing had asked about, and named the store it is kept in,
           which is the estate talking to itself. The button below is the one
           thing on this pane that acts, and it acts on this browser. */}
       <YStack gap="$0.5" p="$2.5" rounded="$3" borderWidth={1} borderColor="$borderColor">
-        <Text fontSize="$3" fontWeight="600" color="$ink">Semantic Vector Index</Text>
-        <Text fontSize="$2" color="$soft">Automatically indexes past workspace sessions into vector memory.</Text>
+        <Text fontSize="$3" fontWeight="600" color="$ink">{t('Semantic Vector Index')}</Text>
+        <Text fontSize="$2" color="$soft">{t('Automatically indexes past workspace sessions into vector memory.')}</Text>
       </YStack>
       <XStack self="flex-start" pt="$2">
         <Button size="sm" variant="outline" onClick={clearMemory}>
-          {cleared ? 'Memory cleared' : 'Clear local memory cache'}
+          {t(cleared ? 'Memory cleared' : 'Clear local memory cache')}
         </Button>
       </XStack>
     </YStack>

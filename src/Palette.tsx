@@ -29,6 +29,8 @@
 // types, and a read the palette closes on is aborted.
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { isolate } from '@hanzo/i18n'
+import { useI18n } from '@hanzo/i18n/react'
 import {
   BookOpen,
   Bot,
@@ -71,8 +73,9 @@ import { tidy } from './lib/title'
 import { KEYS, legal, out, pages } from './help'
 import { site } from './where'
 import { find, type Group, type Hit } from './seek'
+import { english, type Say } from './say'
 
-/** A row: what it is called, its glyph, where it lives, and what pressing it does. */
+/** A row: what it is called (in the reader's words), its glyph, where it lives, and what pressing it does. */
 export interface Action extends Hit {
   icon?: ReactNode
   shortcut?: ShortcutKeys
@@ -105,37 +108,39 @@ const rows = (groups: { links: { id: string; label: string; icon?: ReactNode; on
  * Every place the reader can be taken: `top` is what an empty field lists, the
  * products and the places of the app; `deep` is what only a query reaches.
  * Without a host (hanzo.team's frame) the builder's registries are not there,
- * and the products and the site's pages are.
+ * and the products and the site's pages are. The rows this module authors are
+ * named through `t`; a registry's rows keep the words its package wrote.
  */
-export function places(host: Host | undefined, go: (address: string) => void): { top: Action[]; deep: Action[] } {
+export function places(host: Host | undefined, go: (address: string) => void, t: Say = english): { top: Action[]; deep: Action[] } {
   const builder = (p: string) => go(app(p))
   const top: Action[] = [
-    { id: 'chat', label: 'Chat', icon: <MessageSquare {...ICON} />, run: () => go(talk()) },
+    { id: 'chat', label: t('Chat'), icon: <MessageSquare {...ICON} />, run: () => go(talk()) },
     { id: 'dev', label: 'Dev', icon: <Code2 {...ICON} />, run: () => go(app('')) },
     { id: 'studio', label: 'Studio', icon: <WandSparkles {...ICON} />, run: () => go(studio('')) },
     { id: 'tabs', label: 'Tabs', icon: <SquareTerminal {...ICON} />, run: () => go(TERMINALS) },
     ...(host ? [{ id: 'team', label: 'Team', icon: <Users {...ICON} />, keywords: ['workspace'], run: () => out(WORKSPACE) }] : []),
     ...(host ? rows(nav(host, builder).map((g) => ({ links: g.links.filter((l) => l.id !== NEW) })), '', 'dev') : []),
-    { id: 'settings', label: 'Settings', icon: <Settings {...ICON} />, shortcut: ['Mod', ','], run: () => go(settings()) },
+    { id: 'settings', label: t('Settings'), icon: <Settings {...ICON} />, shortcut: ['Mod', ','], run: () => go(settings()) },
     // The site's own pages, outside the app: the browser loads them.
-    { id: 'referral', label: 'Referral', icon: <Gift {...ICON} />, keywords: ['invite', 'share'], run: () => window.location.assign(site('/referral')) },
-    { id: 'beta', label: 'Beta status', icon: <FlaskConical {...ICON} />, keywords: ['waitlist'], run: () => window.location.assign(site('/beta/status')) },
+    { id: 'referral', label: t('Referral'), icon: <Gift {...ICON} />, keywords: ['invite', 'share'], run: () => window.location.assign(site('/referral')) },
+    { id: 'beta', label: t('Beta status'), icon: <FlaskConical {...ICON} />, keywords: ['waitlist'], run: () => window.location.assign(site('/beta/status')) },
     ...pages()
       .filter((p) => p.key === 'help')
-      .map((p) => ({ id: `help-${p.key}`, label: p.label, icon: <CircleHelp {...ICON} />, keywords: ['support', 'docs'], run: () => out(p.href) })),
+      .map((p) => ({ id: `help-${p.key}`, label: t(p.label), icon: <CircleHelp {...ICON} />, keywords: ['support', 'docs'], run: () => out(p.href) })),
   ]
+  const help = t('Help')
   const deep: Action[] = [
     ...(host
       ? [
-          ...rows(sections(host, builder).map((g) => ({ links: g.links.filter((l) => paged(l.id)) })), 'Settings', 'settings'),
-          ...rows(tabs(host, builder), 'Customize', 'customize'),
-          ...rows(library(host, builder).slice(1), 'Library', 'library'),
+          ...rows(sections(host, builder).map((g) => ({ links: g.links.filter((l) => paged(l.id)) })), t('Settings'), 'settings'),
+          ...rows(tabs(host, builder), t('Customize'), 'customize'),
+          ...rows(library(host, builder).slice(1), t('Library'), 'library'),
           ...rows(made(host, (p) => go(studio(p))), 'Studio', 'studio').filter((a) => a.id !== `studio-${NEW}`),
         ]
       : []),
     ...[...pages(), ...legal()]
       .filter((p) => p.key !== 'help')
-      .map((p) => ({ id: `help-${p.key}`, label: p.label, where: 'Help', keywords: ['Help'], run: () => out(p.href) })),
+      .map((p) => ({ id: `help-${p.key}`, label: t(p.label), where: help, keywords: [help, 'Help'], run: () => out(p.href) })),
   ]
   return { top, deep }
 }
@@ -161,26 +166,26 @@ function tune(go: (address: string) => void) {
   }, 0)
 }
 
-/** The palette's actions; a host that cannot do one (no theme to change, no org to pick) is not offered it. */
-export function actions(host: Host | undefined, go: (address: string) => void, signOut: () => void, keys: () => void): Action[] {
+/** The palette's actions, named through `t`; a host that cannot do one (no theme to change, no org to pick) is not offered it. */
+export function actions(host: Host | undefined, go: (address: string) => void, signOut: () => void, keys: () => void, t: Say = english): Action[] {
   const upload = host ? library(host, (p) => go(app(p)))[0]?.links.find((l) => l.id === 'upload') : undefined
   const list: (Action | false | undefined)[] = [
-    { id: 'new-chat', label: 'New chat', icon: <SquarePen {...ICON} />, run: () => (empty(), go(talk())) },
-    { id: 'new-task', label: 'New Dev task', icon: <Code2 {...ICON} />, keywords: ['run'], run: () => go(app('')) },
-    { id: 'new-creation', label: 'New Studio creation', icon: <WandSparkles {...ICON} />, keywords: ['image', 'video'], run: () => go(studio('')) },
-    { id: 'new-scheduled', label: 'New scheduled task', icon: <Clock {...ICON} />, keywords: ['automation'], run: () => go(app(written({ kind: 'automation', id: 'new' }))) },
-    !!upload && { id: 'upload', label: 'Upload', icon: upload.icon, keywords: ['file', 'library'], run: () => upload.onPress?.() },
-    { id: 'model', label: 'Switch model', icon: <Sparkles {...ICON} />, keywords: ['model'], run: () => tune(go) },
+    { id: 'new-chat', label: t('New chat'), icon: <SquarePen {...ICON} />, run: () => (empty(), go(talk())) },
+    { id: 'new-task', label: t('New Dev task'), icon: <Code2 {...ICON} />, keywords: ['run'], run: () => go(app('')) },
+    { id: 'new-creation', label: t('New Studio creation'), icon: <WandSparkles {...ICON} />, keywords: ['image', 'video'], run: () => go(studio('')) },
+    { id: 'new-scheduled', label: t('New scheduled task'), icon: <Clock {...ICON} />, keywords: ['automation'], run: () => go(app(written({ kind: 'automation', id: 'new' }))) },
+    !!upload && { id: 'upload', label: t('Upload'), icon: upload.icon, keywords: ['file', 'library'], run: () => upload.onPress?.() },
+    { id: 'model', label: t('Switch model'), icon: <Sparkles {...ICON} />, keywords: ['model'], run: () => tune(go) },
     !!host?.chooseTheme && {
       id: 'theme',
-      label: 'Toggle theme',
+      label: t('Toggle theme'),
       icon: <SunMoon {...ICON} />,
       keywords: ['dark', 'light', 'appearance'],
       run: () => host.chooseTheme?.(document.documentElement.classList.contains('dark') ? 'light' : 'dark'),
     },
-    !!host && { id: 'org', label: 'Switch organization', icon: <Building2 {...ICON} />, keywords: ['org', 'team', 'workspace'], run: choose },
-    { id: 'keys', label: 'Keyboard shortcuts', icon: <Keyboard {...ICON} />, stay: true, run: keys },
-    { id: 'logout', label: 'Log out', icon: <LogOut {...ICON} />, keywords: ['sign out'], run: signOut },
+    !!host && { id: 'org', label: t('Switch organization'), icon: <Building2 {...ICON} />, keywords: ['org', 'team', 'workspace'], run: choose },
+    { id: 'keys', label: t('Keyboard shortcuts'), icon: <Keyboard {...ICON} />, stay: true, run: keys },
+    { id: 'logout', label: t('Log out'), icon: <LogOut {...ICON} data-i18n-mirror />, keywords: ['sign out'], run: signOut },
   ]
   return list.filter((a): a is Action => !!a)
 }
@@ -251,6 +256,7 @@ export function Palette({
   /** The builder's host: its registries, its runs, its theme and organization. */
   host?: Host
 }) {
+  const { t, dir } = useI18n()
   const [query, setQuery] = useState('')
   const [keys, setKeys] = useState(false)
   const { threads } = useThreadList()
@@ -263,29 +269,30 @@ export function Palette({
   const { open: opened } = useBetas()
 
   const groups = useMemo<CommandMenuGroup[]>(() => {
-    const { top, deep } = places(host, go)
+    const { top, deep } = places(host, go, t)
     const swap = (a: Action) => frame.find((b) => b.id === a.id) ?? a
     // The apps in beta this reader may open, each where it lives (the rail's More).
     const granted: Action[] = BETAS.filter((b) => b.href && opened(b.id)).map((b) => ({
       id: `beta-${b.id}`,
       label: b.name,
       icon: <Sparkles {...ICON} />,
-      where: 'Beta',
+      where: t('Beta'),
       keywords: ['beta', b.line],
       run: () => out(b.href as string),
     }))
     const here = [...top.map(swap), ...frame.filter((b) => !top.some((a) => a.id === b.id)), ...granted]
-    const doing = actions(host, go, () => void signOut(), () => (setQuery(''), setKeys(true)))
-    const chats: Action[] = threads.map((t) => ({
-      id: `chat-${t.id}`,
-      label: tidy(t.title),
-      at: t.updatedAt,
+    const doing = actions(host, go, () => void signOut(), () => (setQuery(''), setKeys(true)), t)
+    const untitled = t('Untitled')
+    const chats: Action[] = threads.map((c) => ({
+      id: `chat-${c.id}`,
+      label: tidy(c.title, 80, untitled),
+      at: c.updatedAt,
       icon: <MessageCircle {...ICON} />,
-      run: () => (openThread(t.id), go(talk(t.id))),
+      run: () => (openThread(c.id), go(talk(c.id))),
     }))
     const tasks: Action[] = (runs?.value ?? []).map((s) => ({
       id: `run-${s.id}`,
-      label: tidy(s.title, 80, 'Untitled run'),
+      label: tidy(s.title, 80, t('Untitled run')),
       at: s.updatedAt || s.createdAt,
       keywords: [s.status ?? ''],
       icon: <Code2 {...ICON} />,
@@ -294,39 +301,41 @@ export function Palette({
     const mine: Group<Action>[] =
       mode === 'dev'
         ? [
-            { id: 'runs', label: 'Dev tasks', items: tasks },
-            { id: 'chats', label: 'Chats', items: chats },
+            { id: 'runs', label: t('Dev tasks'), items: tasks },
+            { id: 'chats', label: t('Chats'), items: chats },
           ]
         : [
-            { id: 'chats', label: 'Chats', items: chats },
-            { id: 'runs', label: 'Dev tasks', items: tasks },
+            { id: 'chats', label: t('Chats'), items: chats },
+            { id: 'runs', label: t('Dev tasks'), items: tasks },
           ]
     const shown = find<Action>(
       query,
       [...chats, ...tasks],
       [
-        { id: 'actions', label: 'Actions', items: doing },
-        { id: 'go', label: 'Go to', items: here },
+        { id: 'actions', label: t('Actions'), items: doing },
+        { id: 'go', label: t('Go to'), items: here },
       ],
       [
-        { id: 'go', label: 'Go to', items: [...here, ...deep] },
-        { id: 'actions', label: 'Actions', items: doing },
+        { id: 'go', label: t('Go to'), items: [...here, ...deep] },
+        { id: 'actions', label: t('Actions'), items: doing },
         ...mine,
-        { id: 'projects', label: 'Projects', items: repos.map((p) => ({ ...p, id: `project-${p.id}`, icon: <FolderGit2 {...ICON} />, run: () => go(app(p.id)) })) },
+        { id: 'projects', label: t('Projects'), items: repos.map((p) => ({ ...p, id: `project-${p.id}`, icon: <FolderGit2 {...ICON} />, run: () => go(app(p.id)) })) },
         {
           id: 'agents',
-          label: 'Agents',
+          label: t('Agents'),
           items: ordered(agents).map((one) => {
             const name = called(one.name)
             return { id: `agent-${one.id || one.name}`, label: name, icon: <Bot {...ICON} />, run: () => (withAgents([name]), go(talk())) }
           }),
         },
-        { id: 'skills', label: 'Skills', items: known.map((s) => ({ ...s, id: `skill-${s.id}`, icon: <BookOpen {...ICON} />, run: () => go(app(SKILLS)) })) },
-        { id: 'connectors', label: 'Connectors', items: plugged.map((c) => ({ ...c, id: `connector-${c.id}`, icon: <Plug {...ICON} />, run: () => go(app(CONNECTORS)) })) },
+        { id: 'skills', label: t('Skills'), items: known.map((s) => ({ ...s, id: `skill-${s.id}`, icon: <BookOpen {...ICON} />, run: () => go(app(SKILLS)) })) },
+        { id: 'connectors', label: t('Connectors'), items: plugged.map((c) => ({ ...c, id: `connector-${c.id}`, icon: <Plug {...ICON} />, run: () => go(app(CONNECTORS)) })) },
       ],
     )
     return shown.map((g) => ({
       ...g,
+      // Recent is seek.ts's own group, its name written there with phrase().
+      label: g.id === 'recent' ? t(g.label) : g.label,
       items: g.items.map((a) => ({
         id: a.id,
         label: a.label,
@@ -341,11 +350,19 @@ export function Palette({
         },
       })),
     }))
-  }, [query, threads, agents, repos, known, plugged, frame, go, onClose, signOut, mode, runs, host, opened])
+  }, [query, threads, agents, repos, known, plugged, frame, go, onClose, signOut, mode, runs, host, opened, t])
 
   const apple = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent)
+  // A key's spelling keeps its writing order in right-to-left prose (`contextual` is plain text, so Unicode's isolate, not <bdi>).
+  const spelled = (spelling: string) => (dir === 'rtl' ? isolate(spelling) : spelling)
   const listed: CommandMenuGroup[] = keys
-    ? [{ id: 'keys', label: 'Keyboard shortcuts', items: KEYS.map((k) => ({ id: `key-${k.does}`, label: k.does, contextual: apple ? k.mac : k.pc, onSelect: () => setKeys(false) })) }]
+    ? [
+        {
+          id: 'keys',
+          label: t('Keyboard shortcuts'),
+          items: KEYS.map((k) => ({ id: `key-${k.does}`, label: t(k.does), contextual: spelled(apple ? k.mac : k.pc), onSelect: () => setKeys(false) })),
+        },
+      ]
     : groups
 
   return (
@@ -367,15 +384,15 @@ export function Palette({
         $max-md={{ width: '100vw', maxW: '100vw', height: '100dvh', maxH: '100dvh', mt: 0, mb: 0, rounded: 0, borderWidth: 0 }}
       >
         <DialogTitle position="absolute" width={1} height={1} overflow="hidden" opacity={0}>
-          Search
+          {t('Search')}
         </DialogTitle>
         <CommandMenu
           groups={listed}
           query={query}
           onQueryChange={setQuery}
-          placeholder="Search or jump to…"
-          label="Search"
-          empty={keys ? 'No such key.' : `Nothing matches “${query.trim()}”.`}
+          placeholder={t('Search or jump to…')}
+          label={t('Search')}
+          empty={keys ? t('No such key.') : t('Nothing matches “{query}”.', { query: query.trim() })}
           onBack={keys ? () => setKeys(false) : undefined}
           onClose={onClose}
         />

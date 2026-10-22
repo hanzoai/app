@@ -41,7 +41,12 @@
 // registry that cannot be reached says so rather than claiming the list is
 // empty. Nothing stands in for an answer: no row is drawn that the registry did
 // not send, and none is marked Connected that it did not mark.
+//
+// ITS WORDS GO THROUGH `t`; a row's name, publisher, category and description
+// are the catalogue's and the registry's, drawn as they are.
 
+import { phrase } from '@hanzo/i18n'
+import { useI18n } from '@hanzo/i18n/react'
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowUpRight, Check, Plus, Search, X } from 'lucide-react'
 import {
@@ -74,8 +79,8 @@ import { site } from './where'
 export type Tab = 'apps' | 'channels'
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'apps', label: 'Works with' },
-  { id: 'channels', label: 'Channels' },
+  { id: 'apps', label: phrase('Works with') },
+  { id: 'channels', label: phrase('Channels') },
 ]
 
 /** The org-plane catalogue: every provider the platform can connect an account to, with THIS org's connection and whether the deployment can open one. */
@@ -97,6 +102,14 @@ interface Row {
   /** A channel: the connected account's label, as the provider reported it. */
   account?: string
 }
+
+/**
+ * Under a channel's name, what the registry knows, in the reader's order of
+ * interest: the account connected, else whether a connection can be opened here
+ * at all, its category when one can.
+ */
+const byline = (row: Row, t: (source: string) => string): string =>
+  row.connected ? row.account || t('Connected') : row.available ? row.publisher : t('Needs app credentials')
 
 /**
  * The channels a reader reaches for first, in the order they were asked for.
@@ -142,9 +155,8 @@ function channelsOf(j: unknown): Row[] {
       return {
         id: String(p.id),
         name: String(p.name ?? title(String(p.id))),
-        // What the registry knows, in the reader's order of interest: who is
-        // connected, else whether a connection can be opened here at all.
-        publisher: p.connected ? account || 'Connected' : p.available ? String(p.category ?? '') : 'Needs app credentials',
+        // The registry's category; the card says the rest (`byline`).
+        publisher: String(p.category ?? ''),
         description: String(p.description ?? ''),
         kind: 'native' as const,
         connected: Boolean(p.connected),
@@ -177,6 +189,7 @@ export function Directory({
   /** The tab the directory opens on. A door that leads to channels opens on them. */
   tab?: Tab
 }) {
+  const { t } = useI18n()
   const [tab, setTab] = useState<Tab>(first)
   useEffect(() => {
     if (open) setTab(first)
@@ -188,10 +201,10 @@ export function Directory({
         <XStack items="center" justify="space-between" p="$4" gap="$2">
           <DialogTitle>
             <Text fontSize="$5" fontWeight="500" color="$ink">
-              Catalog
+              {t('Catalog')}
             </Text>
           </DialogTitle>
-          <Box render={<button type="button" onClick={onClose} aria-label="Close catalog" />} {...tap}>
+          <Box render={<button type="button" onClick={onClose} aria-label={t('Close catalog')} />} {...tap}>
             <X size={16} aria-hidden />
           </Box>
         </XStack>
@@ -199,20 +212,20 @@ export function Directory({
         <XStack width="100%" items="stretch" flexWrap="wrap">
           <YStack
             width="100%"
-            $sm={{ width: 200, borderRightWidth: 1 }}
+            $sm={{ width: 200, borderInlineEndWidth: 1 }}
             borderColor="$borderColor"
             p="$3"
             gap="$1"
           >
-            {TABS.map((t) => (
+            {TABS.map((one) => (
               <Box
-                key={t.id}
-                render={<button type="button" onClick={() => setTab(t.id)} aria-current={t.id === tab ? 'true' : undefined} />}
+                key={one.id}
+                render={<button type="button" onClick={() => setTab(one.id)} aria-current={one.id === tab ? 'true' : undefined} />}
                 {...tap}
               >
                 <XStack px="$2" py="$2" width="100%">
-                  <Text fontSize="$3" color={t.id === tab ? '$ink' : '$soft'}>
-                    {t.label}
+                  <Text fontSize="$3" color={one.id === tab ? '$ink' : '$soft'}>
+                    {t(one.label)}
                   </Text>
                 </XStack>
               </Box>
@@ -233,6 +246,7 @@ export function Directory({
  * why it is exported and takes the tab as a prop.
  */
 export function Catalog({ tab }: { tab: Tab }) {
+  const { t } = useI18n()
   const { isAuthenticated, accessToken } = useIam()
   const [query, setQuery] = useState('')
   // null until the list is read: unknown is never drawn as empty.
@@ -241,7 +255,7 @@ export function Catalog({ tab }: { tab: Tab }) {
   // Bumped when a card changed a connection, or a failed read is asked again,
   // so the registry is read again and the card shows what it now holds.
   const [turn, setTurn] = useState(0)
-  const label = TABS.find((t) => t.id === tab)?.label ?? tab
+  const search = t(tab === 'channels' ? 'Search channels' : 'Search works with')
   const signed = isAuthenticated && Boolean(accessToken)
 
   useEffect(() => {
@@ -320,8 +334,8 @@ export function Catalog({ tab }: { tab: Tab }) {
           <Input
             value={query}
             onChangeText={setQuery}
-            placeholder={`Search ${label.toLowerCase()}`}
-            aria-label={`Search ${label.toLowerCase()}`}
+            placeholder={search}
+            aria-label={search}
             flex={1}
           />
         </XStack>
@@ -329,26 +343,26 @@ export function Catalog({ tab }: { tab: Tab }) {
 
       {tab === 'channels' && !signed ? (
         quiet(
-          'Sign in to see the channels your organization can connect.',
+          t('Sign in to see the channels your organization can connect.'),
           <Action render="button" onPress={() => enter()} $touchable={{ minH: 44, minW: 44 }}>
-            Sign in
+            {t('Sign in')}
           </Action>,
         )
       ) : wrong ? (
         quiet(
-          say(wrong, 'the channels'),
+          say(wrong, t('the channels'), 'read', t),
           <Action render="button" onPress={() => setTurn((n) => n + 1)} $touchable={{ minH: 44, minW: 44 }}>
-            Try again
+            {t('Try again')}
           </Action>,
         )
       ) : rows === null ? (
-        quiet(`Loading ${label.toLowerCase()}…`)
+        quiet(t(tab === 'channels' ? 'Loading channels…' : 'Loading works with…'))
       ) : shown.length > 0 ? (
         <>
           <Text fontSize="$3" color="$soft">
-            {shown.length} {shown.length === 1 ? 'result' : 'results'}
+            {shown.length === 1 ? t('1 result') : t('{n} results', { n: shown.length })}
           </Text>
-          <YStack maxH={380} overflowY="auto" overflowX="hidden" pr="$1" width="100%">
+          <YStack maxH={380} overflowY="auto" overflowX="hidden" paddingInlineEnd="$1" width="100%">
             <Grid columns={tab === 'channels' ? { min: 168, max: 4 } : { min: 240, max: 2 }} gap={12}>
               {shown.map((r) =>
                 tab === 'channels' ? (
@@ -361,13 +375,14 @@ export function Catalog({ tab }: { tab: Tab }) {
           </YStack>
         </>
       ) : (
-        quiet(query ? `Nothing matches “${query}”.` : tab === 'channels' ? 'No channel can be connected here yet.' : 'Nothing is listed yet.')
+        quiet(query ? t('Nothing matches “{query}”.', { query }) : t(tab === 'channels' ? 'No channel can be connected here yet.' : 'Nothing is listed yet.'))
       )}
     </YStack>
   )
 }
 
 function RowCard({ row, tab }: { row: Row; tab: Tab }) {
+  const { t } = useI18n()
   const { isAuthenticated } = useIam()
 
   /** Hand a channel to the gateway's OAuth and let it say what happened. */
@@ -418,14 +433,14 @@ function RowCard({ row, tab }: { row: Row; tab: Tab }) {
           <XStack items="center" gap="$1" px="$2" py="$1" rounded="$2" bg="$hover">
             <Check size={12} color={GOOD} aria-hidden />
             <Text fontSize="$1" color={GOOD} fontWeight="600">
-              Connected
+              {t('Connected')}
             </Text>
           </XStack>
         ) : tab === 'channels' ? (
           <Box
             render="button"
             onClick={connect}
-            aria-label={`Connect ${row.name}`}
+            aria-label={t('Connect {name}', { name: row.name })}
             px="$2"
             py="$1"
             rounded="$2"
@@ -436,7 +451,7 @@ function RowCard({ row, tab }: { row: Row; tab: Tab }) {
             cursor="pointer"
           >
             <Text fontSize="$1" color="$color" fontWeight="600">
-              Connect
+              {t('Connect')}
             </Text>
           </Box>
         ) : (
@@ -446,7 +461,7 @@ function RowCard({ row, tab }: { row: Row; tab: Tab }) {
              every Apps row by that name to prove it points at a page this site
              really serves. */
           <Box
-            render={<a href={href} target={tab === 'apps' ? undefined : '_blank'} rel="noreferrer" aria-label={`Open ${row.name}`} />}
+            render={<a href={href} target={tab === 'apps' ? undefined : '_blank'} rel="noreferrer" aria-label={t('Open {name}', { name: row.name })} />}
             {...tap}
           >
             <XStack
@@ -461,7 +476,7 @@ function RowCard({ row, tab }: { row: Row; tab: Tab }) {
               hoverStyle={{ bg: '$hover' }}
             >
               <Text fontSize="$1" color="$color" fontWeight="600">
-                {tab === 'apps' ? 'Docs' : 'Install'}
+                {t(tab === 'apps' ? 'Docs' : 'Install')}
               </Text>
               <ArrowUpRight size={11} aria-hidden />
             </XStack>
@@ -478,7 +493,7 @@ function RowCard({ row, tab }: { row: Row; tab: Tab }) {
           and none of the four serves one to put in its place. */}
       <XStack items="center" pt="$1">
         <Text fontFamily="$mono" fontVariant={['tabular-nums']} fontSize="$1" color="$soft">
-          {row.kind}
+          {row.kind === 'MCP' ? 'MCP' : t('native')}
         </Text>
       </XStack>
     </YStack>
@@ -497,6 +512,7 @@ function RowCard({ row, tab }: { row: Row; tab: Tab }) {
  * read, never what the press assumed.
  */
 function Channel({ row, onChange }: { row: Row; onChange: () => void }) {
+  const { t } = useI18n()
   const { isAuthenticated, accessToken } = useIam()
   const [busy, setBusy] = useState(false)
   const [wrong, setWrong] = useState<unknown>(null)
@@ -525,11 +541,12 @@ function Channel({ row, onChange }: { row: Row; onChange: () => void }) {
     }
   }
 
-  const action = (label: string, verb: 'connect' | 'disconnect', icon?: React.ReactNode) => (
+  /** A verb's button: its word, and its name with the channel's (`named`). */
+  const action = (label: string, named: string, verb: 'connect' | 'disconnect', icon?: React.ReactNode) => (
     <Box
       render="button"
       onClick={() => void post(verb)}
-      aria-label={`${label} ${row.name}`}
+      aria-label={named}
       aria-disabled={busy}
       px="$3"
       py="$1.5"
@@ -560,10 +577,10 @@ function Channel({ row, onChange }: { row: Row; onChange: () => void }) {
       bg="$raised"
     >
       {row.connected ? (
-        <XStack self="flex-start" items="center" gap="$1" aria-label="Connected">
+        <XStack self="flex-start" items="center" gap="$1" aria-label={t('Connected')}>
           <Box width={6} height={6} rounded={3} bg="$ink" />
           <Text fontSize="$1" color="$soft">
-            Connected
+            {t('Connected')}
           </Text>
         </XStack>
       ) : null}
@@ -573,22 +590,22 @@ function Channel({ row, onChange }: { row: Row; onChange: () => void }) {
           {row.name}
         </Text>
         <Text fontSize="$1" color="$soft" text="center" numberOfLines={1}>
-          {row.publisher}
+          {byline(row, t)}
         </Text>
       </YStack>
       <XStack gap="$1.5" items="center" justify="center" flexWrap="wrap">
         {row.connected ? (
           <>
-            {action('Disconnect', 'disconnect')}
-            {row.available ? action('Add', 'connect', <Plus size={12} aria-hidden />) : null}
+            {action(t('Disconnect'), t('Disconnect {name}', { name: row.name }), 'disconnect')}
+            {row.available ? action(t('Add'), t('Add {name}', { name: row.name }), 'connect', <Plus size={12} aria-hidden />) : null}
           </>
         ) : row.available ? (
-          action('Connect', 'connect')
+          action(t('Connect'), t('Connect {name}', { name: row.name }), 'connect')
         ) : null}
       </XStack>
       {wrong ? (
         <Text fontSize="$1" color="$soft" text="center">
-          {say(wrong, row.name)}
+          {say(wrong, row.name, 'read', t)}
         </Text>
       ) : null}
     </YStack>

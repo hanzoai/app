@@ -22,6 +22,7 @@
 // I do not know how far", which is the state a run is in most of the time.
 // Wrapping it would mean passing 0 for unknown — the exact lie above.
 
+import { useI18n } from '@hanzo/i18n/react'
 import type { ReactNode } from 'react'
 import type { Session, SessionDetail } from '@hanzo/ai'
 import { Text, XStack, YStack } from '@hanzo/ui'
@@ -91,6 +92,7 @@ export function Bar({
   /** Draw the phase and the percentage under the track. */
   label?: boolean
 }): ReactNode {
+  const { t } = useI18n()
   const p = progressOf(run)
   if (!p) return null
 
@@ -106,7 +108,8 @@ export function Bar({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={p.pct}
-      aria-label={said || 'Progress'}
+      // The phase and activity are the run's own words.
+      aria-label={said || t('Progress')}
     >
       <XStack
         height={4}
@@ -132,7 +135,7 @@ export function Bar({
           {known ? (
             // The tilde is the estimate. A derived number printed like a
             // reported one is a claim the run never made.
-            <Text fontSize="$1" color="$soft">
+            <Text fontSize="$1" color="$soft" data-i18n-ltr>
               {p.estimated ? '~' : ''}
               {Math.round(p.pct as number)}%
             </Text>

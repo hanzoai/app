@@ -30,6 +30,8 @@
 // `start` already writes, and this file gains a verb rather than a store.
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { phrase } from '@hanzo/i18n'
+import { useI18n } from '@hanzo/i18n/react'
 import { useRooms } from './host'
 import { Check, Plus, Search, UserPlus } from 'lucide-react'
 import { Box, Text, XStack, YStack } from '@hanzo/ui'
@@ -88,16 +90,17 @@ interface Entry {
 type Kind = 'person' | 'agent' | 'preset'
 
 const TABS: { id: Kind | 'all'; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'person', label: 'People' },
-  { id: 'agent', label: 'Agents' },
-  { id: 'preset', label: 'Presets' },
+  { id: 'all', label: phrase('All') },
+  { id: 'person', label: phrase('People') },
+  { id: 'agent', label: phrase('Agents') },
+  { id: 'preset', label: phrase('Presets') },
 ]
 
 /** A–Z, or who you spoke to last. Two orders, and both are answerable. */
 type Order = 'name' | 'recent'
 
 export function Contacts() {
+  const { t } = useI18n()
   const hydrated = useHydrated()
   const { isAuthenticated } = useIam()
   const { currentOrgId } = useOrganizations()
@@ -107,17 +110,18 @@ export function Contacts() {
   // and waits. Announcing "sign in" before hydration tells a signed-in reader
   // they are signed out for a frame.
   if (!hydrated) return <Alone>&nbsp;</Alone>
-  if (!signedIn) return <Alone>Sign in to see who is in your organization.</Alone>
-  if (!currentOrgId) return <Alone>This account is not in an organization yet.</Alone>
+  if (!signedIn) return <Alone>{t('Sign in to see who is in your organization.')}</Alone>
+  if (!currentOrgId) return <Alone>{t('This account is not in an organization yet.')}</Alone>
   return <Roster owner={currentOrgId} />
 }
 
 /** The room's one heading, for every state that has nothing to list. */
 function Alone({ children }: { children: React.ReactNode }) {
+  const { t } = useI18n()
   return (
     <YStack flex={1} items="center" justify="center" p="$6" gap="$3">
       <Text render="h1" fontSize="$4" fontWeight="600" color="$ink">
-        Contacts
+        {t('Contacts')}
       </Text>
       <Text fontSize="$3" color="$soft" maxW={420} text="center">
         {children}
@@ -142,6 +146,7 @@ function Note({ children }: { children: string }) {
  * conditionally — the same reason Home splits its own.
  */
 function Roster({ owner }: { owner: string }) {
+  const { t } = useI18n()
   const ai = useAi()
   const { router } = useRooms()
   const { people, loading: reading, error: unread } = usePeople({ owner, service: false })
@@ -218,12 +223,12 @@ function Roster({ owner }: { owner: string }) {
         kind: 'preset',
         name: one.id,
         label: one.title || one.id,
-        note: 'Not installed',
+        note: t('Not installed'),
         at: 0,
       })
     }
     return rows
-  }, [people, agents, presets, threads])
+  }, [people, agents, presets, threads, t])
 
   const shown = useMemo(() => {
     const q = look.trim().toLowerCase()
@@ -302,13 +307,13 @@ function Roster({ owner }: { owner: string }) {
         borderColor="$borderColor"
       >
         <Text render="h1" flex={1} fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1}>
-          Contacts
+          {t('Contacts')}
         </Text>
         <Control onPress={() => setInviting(true)} icon={<UserPlus size={13} aria-hidden />}>
-          Invite
+          {t('Invite')}
         </Control>
         <Control onPress={() => setHiring(true)} icon={<Plus size={13} aria-hidden />}>
-          New agent
+          {t('New agent')}
         </Control>
       </XStack>
 
@@ -334,7 +339,7 @@ function Roster({ owner }: { owner: string }) {
         >
           <Search size={13} aria-hidden />
           <Text
-            render={<input value={look} onChange={(e) => setLook(e.target.value)} placeholder="Search" aria-label="Search contacts" />}
+            render={<input value={look} onChange={(e) => setLook(e.target.value)} placeholder={t('Search')} aria-label={t('Search contacts')} />}
             flex={1}
             minW={0}
             bg="transparent"
@@ -348,7 +353,7 @@ function Roster({ owner }: { owner: string }) {
         </XStack>
         {TABS.map((one) => (
           <Pill key={one.id} on={tab === one.id} onPress={() => setTab(one.id)}>
-            {one.label}
+            {t(one.label)}
           </Pill>
         ))}
         {/* WHICH KIND and IN WHAT ORDER are two questions, and the pills that
@@ -359,30 +364,30 @@ function Roster({ owner }: { owner: string }) {
             conversation that named them, which is the only activity the thread
             store records about a contact. */}
         <Pill on={order === 'name'} onPress={() => setOrder('name')}>
-          A–Z
+          {t('A–Z')}
         </Pill>
         <Pill on={order === 'recent'} onPress={() => setOrder('recent')}>
-          Recent
+          {t('Recent')}
         </Pill>
       </XStack>
 
-      {unread ? <Note>{say(unread, 'your organization')}</Note> : null}
-      {ungathered ? <Note>{say(ungathered, "this org's agents")}</Note> : null}
-      {unlisted ? <Note>{say(unlisted, 'the agent presets')}</Note> : null}
+      {unread ? <Note>{say(unread, t('your organization'), 'read', t)}</Note> : null}
+      {ungathered ? <Note>{say(ungathered, t("this org's agents"), 'read', t)}</Note> : null}
+      {unlisted ? <Note>{say(unlisted, t('the agent presets'), 'read', t)}</Note> : null}
       {wrong ? <Note>{wrong}</Note> : null}
 
       <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden">
         {waiting && shown.length === 0 ? (
-          <Note>Reading your directory.</Note>
+          <Note>{t('Reading your directory.')}</Note>
         ) : shown.length === 0 ? (
           <Note>
             {look.trim()
-              ? `Nobody here matches “${look.trim()}”.`
+              ? t('Nobody here matches “{query}”.', { query: look.trim() })
               : tab === 'agent'
-                ? 'No agents yet. New agent writes one.'
+                ? t('No agents yet. New agent writes one.')
                 : tab === 'preset'
-                  ? 'Every preset this deployment publishes is installed.'
-                  : 'Nobody else in this organization yet. Invite sends the link.'}
+                  ? t('Every preset this deployment publishes is installed.')
+                  : t('Nobody else in this organization yet. Invite sends the link.')}
           </Note>
         ) : (
           shown.map((one) => (
@@ -415,11 +420,11 @@ function Roster({ owner }: { owner: string }) {
           borderColor="$borderColor"
         >
           <Text flex={1} fontSize="$2" color="$soft" numberOfLines={1}>
-            {picked.length === 1 ? '1 selected' : `${picked.length} selected`}
+            {picked.length === 1 ? t('1 selected') : t('{n} selected', { n: picked.length })}
           </Text>
-          <Control onPress={() => setPicked([])}>Clear</Control>
+          <Control onPress={() => setPicked([])}>{t('Clear')}</Control>
           <Control onPress={() => void enter()} strong>
-            {busy === 'room' ? 'Opening…' : 'Start conversation'}
+            {t(busy === 'room' ? 'Opening…' : 'Start conversation')}
           </Control>
         </XStack>
       ) : null}
@@ -442,6 +447,7 @@ function Row({
   busy: boolean
   onPress: () => void
 }) {
+  const { t } = useI18n()
   return (
     <Box
       render="button"
@@ -458,20 +464,20 @@ function Row({
     >
       <XStack gap="$3" items="center" p="$3">
         <Face src={one.avatar} emoji={one.emoji} name={one.name} size={32} />
-        {/* A `<button>` centres its text; a row reads left. */}
+        {/* A `<button>` centres its text; a row reads from its start. */}
         <YStack flex={1} minW={0}>
-          <Text fontSize="$2" color="$ink" numberOfLines={1} text="left">
+          <Text fontSize="$2" color="$ink" numberOfLines={1} text="start">
             {one.label}
           </Text>
           {one.note ? (
-            <Text fontSize="$1" color="$soft" numberOfLines={1} text="left">
+            <Text fontSize="$1" color="$soft" numberOfLines={1} text="start">
               {one.note}
             </Text>
           ) : null}
         </YStack>
         {one.kind === 'preset' ? (
           <Text fontSize="$2" color="$soft">
-            {busy ? 'Installing…' : 'Install'}
+            {t(busy ? 'Installing…' : 'Install')}
           </Text>
         ) : on ? (
           <Check size={14} aria-hidden />
@@ -559,6 +565,7 @@ function Pill({
  * claiming to have sent one.
  */
 function Invite({ owner, onClose }: { owner: string; onClose: () => void }) {
+  const { t } = useI18n()
   const [email, setEmail] = useState('')
   const [link, setLink] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -602,7 +609,7 @@ function Invite({ owner, onClose }: { owner: string; onClose: () => void }) {
     >
       <YStack
         role="dialog"
-        aria-label="Invite"
+        aria-label={t('Invite')}
         width="100%"
         maxW={440}
         gap="$3"
@@ -613,18 +620,18 @@ function Invite({ owner, onClose }: { owner: string; onClose: () => void }) {
         bg="$background"
       >
         <Text fontSize="$5" fontWeight="600" color="$ink">
-          Invite
+          {t('Invite')}
         </Text>
         {link ? (
           <>
             <Text fontSize="$2" color="$soft">
-              This link joins {owner}. It redeems once.
+              {t('This link joins {owner}. It redeems once.', { owner })}
             </Text>
             <XStack items="center" gap="$2">
-              <Text flex={1} fontSize="$2" color="$ink" numberOfLines={1}>
+              <Text data-i18n-ltr flex={1} fontSize="$2" color="$ink" numberOfLines={1}>
                 {link}
               </Text>
-              <Take text={link} says="the invitation link" label="Copy" />
+              <Take text={link} says={t('the invitation link')} label={t('Copy')} />
             </XStack>
           </>
         ) : (
@@ -637,8 +644,8 @@ function Invite({ owner, onClose }: { owner: string; onClose: () => void }) {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') void make()
                   }}
-                  placeholder="Their email — or leave it open to anyone with the link"
-                  aria-label="Email"
+                  placeholder={t('Their email — or leave it open to anyone with the link')}
+                  aria-label={t('Email')}
                   autoFocus
                 />
               }
@@ -661,10 +668,10 @@ function Invite({ owner, onClose }: { owner: string; onClose: () => void }) {
           </>
         )}
         <XStack justify="flex-end" gap="$2">
-          <Control onPress={onClose}>{link ? 'Done' : 'Cancel'}</Control>
+          <Control onPress={onClose}>{t(link ? 'Done' : 'Cancel')}</Control>
           {link ? null : (
             <Control onPress={() => void make()} strong>
-              {busy ? 'Making…' : 'Make a link'}
+              {t(busy ? 'Making…' : 'Make a link')}
             </Control>
           )}
         </XStack>

@@ -1,8 +1,9 @@
 'use client'
 
 // A phone's bar, which has neither rail nor sidebar to move the app: the
-// drawer's button at the left, Chat | Dev in the middle, and New at the right
-// (the owner's iPhone reference; LLM.md "The app is `App`").
+// drawer's button at the start, Chat | Dev in the middle, and New at the end
+// (the owner's iPhone reference; LLM.md "The app is `App`"). Right to left the
+// row turns with the page, and the drawer's mark is mirrored.
 //
 //   (≡)        ( Chat | Dev )        (✎)
 //
@@ -40,13 +41,12 @@ const SEGMENT = 73
 /** The glass the three are cut from. */
 const GLASS = { ...pane(), borderColor: 'var(--border-strong)', borderRadius: 9999 } as const
 
-/** A round glass button named for what it does. */
+/** A round glass button named for what it does (`label`, already in the reader's language). */
 function Round({ label, onPress, children, ...rest }: { label: string; onPress?: () => void; children: ReactNode; [attribute: `data-${string}` | `aria-${string}`]: unknown }) {
-  const { t } = useI18n();
   return (
     <XStack
       render="button"
-      aria-label={t(label)}
+      aria-label={label}
       onPress={onPress}
       {...GLASS}
       width={ROUND}
@@ -64,10 +64,10 @@ function Round({ label, onPress, children, ...rest }: { label: string; onPress?:
   )
 }
 
-/** The drawer's mark: two strokes, the lower one shorter, 19×11 as the reference draws it. */
+/** The drawer's mark: two strokes, the lower one shorter and flush with the start, 19×11 as the reference draws it. */
 function Lines() {
   return (
-    <svg width={19} height={11} viewBox="0 0 19 11" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
+    <svg width={19} height={11} viewBox="0 0 19 11" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden data-i18n-mirror>
       <path d="M1 1h17M1 10h10.7" />
     </svg>
   )
@@ -112,27 +112,27 @@ export function Top({
   onChat: () => void
   onDev: () => void
 }) {
-  const { t } = useI18n();
+  const { t } = useI18n()
   const made = mode === 'chat' ? null : (places ?? nav(host, (p) => host.go(p))).flatMap((g) => g.links).find((l) => l.id === NEW)
   const fresh =
     mode === 'chat'
       ? {
-          label: 'New chat',
+          label: t('New chat'),
           onPress: () => {
             empty()
             go(talk())
           },
         }
-      : { label: made?.label ?? 'New', onPress: made?.onPress }
+      : { label: made?.label ?? t('New'), onPress: made?.onPress }
   return (
     <XStack data-slot="app-bar" height={`calc(${LINE}px + var(--safe-top))`} pt="var(--safe-top)" px="$4.5" items="center" justify="space-between" shrink={0} $md={{ display: 'none' }}>
-      <Round label={t("Open sidebar")} data-slot="bar-menu" onPress={onMenu}>
+      <Round label={t('Open sidebar')} data-slot="bar-menu" onPress={onMenu}>
         <Lines />
       </Round>
       <XStack data-slot="bar-mode" {...GLASS} height={LINE} p="$1" items="center">
-        <ToggleGroup type="single" aria-label={t("App")} value={mode === 'chat' || mode === 'dev' ? mode : ''} disableDeactivation onValueChange={(v) => (v === 'chat' ? onChat() : v === 'dev' ? onDev() : undefined)}>
-          <Side value="chat">{t("Chat")}</Side>
-          <Side value="dev">{t("Dev")}</Side>
+        <ToggleGroup type="single" aria-label={t('App')} value={mode === 'chat' || mode === 'dev' ? mode : ''} disableDeactivation onValueChange={(v) => (v === 'chat' ? onChat() : v === 'dev' ? onDev() : undefined)}>
+          <Side value="chat">{t('Chat')}</Side>
+          <Side value="dev">Dev</Side>
         </ToggleGroup>
       </XStack>
       <Round label={fresh.label} data-slot="bar-new" onPress={fresh.onPress}>

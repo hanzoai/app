@@ -1,7 +1,7 @@
 'use client'
 
 // The app's sidebar, beside the rail on the window's floor (App.tsx): the
-// mode's name with the bell and the search at its right, New, Dev's places in
+// mode's name with the bell and the search at its end, New, Dev's places in
 // Dev, the reader's Recents (Pinned first), and the first-run cards. Which
 // product it lists is the rail's to say; the account is at the rail's foot, or
 // on a phone at the foot of its menu (Drawer.tsx), where this column is the menu.
@@ -19,10 +19,15 @@
 // (Customize's tabs, the Library's kinds), never Dev's beside them. Settings is
 // the site's pages at /settings, with a column of their own.
 //
-// Its width is the edge's in the gutter to its right: dragged, keyed or
+// Its width is the edge's in the gutter at its end: dragged, keyed or
 // double-clicked back (@hanzo/build's `Grip`), kept per browser. Pulled in past
-// its floor it shuts (`onShut`), as the sidebar's toggle shuts it.
+// its floor it shuts (`onShut`), as the sidebar's toggle shuts it. Right to left
+// the column stands at the window's right, so the grip is on its left edge.
+//
+// Its words go through `t`; Dev's places and the places' rows are
+// @hanzo/build's own labels, drawn as the package names them.
 
+import { phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { Text, XStack, YStack } from '@hanzo/gui'
 import { ArrowLeft, Bell, Search, SquarePen } from 'lucide-react'
@@ -35,7 +40,7 @@ import { Made } from './Me'
 import { Recents } from './Recents'
 import { raised, type Raised } from './Rail'
 import { Setup } from './Setup'
-import { ago, type Recent } from './recent'
+import { ago, UNTITLED_RUN, type Recent } from './recent'
 import { empty } from './open'
 import { useSpan } from './span'
 import { talk, type Place } from './lib/host'
@@ -68,26 +73,27 @@ const ROW = { rounded: '$4', minH: 31, py: 0, px: '$2', $touchable: { minH: 44 }
 const RECENT = 6
 
 /** What a place that takes the sidebar is called at its head. */
-const TITLE: Record<Raised, string> = { library: 'Library', scheduled: 'Scheduled tasks', customize: 'Customize' }
+const TITLE: Record<Raised, string> = { library: phrase('Library'), scheduled: phrase('Scheduled tasks'), customize: phrase('Customize') }
 
 /** A header mark: a 16px glyph in a 32px target, a thumb's 44 on a touch screen. */
 const HEAD = { width: 32, height: 32, rounded: '$3', $touchable: { width: 44, height: 44 } } as const
 
 function Activity({ host }: { host: Host }) {
-  const { t } = useI18n();
+  const { t } = useI18n()
   const store = useSessions(host)
   const latest = [...store.value].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)).slice(0, RECENT)
   const items: NonNullable<DropdownMenuProps['items']> = [
-    { type: 'label', key: 'head', label: 'Activity' },
+    { type: 'label', key: 'head', label: t('Activity') },
     ...(latest.length
       ? latest.map((s) => ({
           key: s.id,
-          label: tidy(s.title, 56, 'Untitled run'),
-          description: [s.status, ago(s.updatedAt || s.createdAt)].filter(Boolean).join(' · '),
+          label: tidy(s.title, 56, t(UNTITLED_RUN)),
+          // The run's state is the service's word; when it moved is ours.
+          description: [s.status, ago(s.updatedAt || s.createdAt, new Date(), t)].filter(Boolean).join(' · '),
           icon: <StatusDot status={DOTS[s.status as keyof typeof DOTS] ?? 'idle'} />,
           onSelect: () => host.go(s.id),
         }))
-      : [{ key: 'none', label: 'Nothing new', disabled: true, onSelect: () => {} }]),
+      : [{ key: 'none', label: t('Nothing new'), disabled: true, onSelect: () => {} }]),
   ]
   return (
     <DropdownMenu
@@ -95,8 +101,8 @@ function Activity({ host }: { host: Host }) {
       trigger={
         <XStack
           render="button"
-          aria-label={t("Activity")}
-          {...({ title: 'Activity' } as object)}
+          aria-label={t('Activity')}
+          {...({ title: t('Activity') } as object)}
           {...HEAD}
           items="center"
           justify="center"
@@ -147,7 +153,7 @@ export function Column({
   /** The mode's places, where they are not Dev's (Studio's `nav`). */
   places?: { id: string; label: string; links: RailLink[] }[]
 }) {
-  const { t } = useI18n();
+  const { t, dir } = useI18n()
   // The desktop sidebar and a phone's drawer can both be in the page: each names its own group labels.
   const uid = useId()
   const span = useSpan(SPAN, WIDTH, FLOOR, CEIL)
@@ -198,21 +204,21 @@ export function Column({
         gap="$0"
       >
         {at ? (
-          <XStack data-slot="app-head" items="center" gap="$1" pl={2} pr={2} height={52} shrink={0} minW={0}>
-            <SidebarIconButton label={t("Back")} data-slot="place-back" onPress={onBack} {...HEAD}>
-              <ArrowLeft size={16} aria-hidden />
+          <XStack data-slot="app-head" items="center" gap="$1" paddingInlineStart={2} paddingInlineEnd={2} height={52} shrink={0} minW={0}>
+            <SidebarIconButton label={t('Back')} data-slot="place-back" onPress={onBack} {...HEAD}>
+              <ArrowLeft size={16} aria-hidden data-i18n-mirror />
             </SidebarIconButton>
             <Text flex={1} minW={0} fontSize={18} lineHeight={24} fontWeight="600" color="$ink" numberOfLines={1} data-slot="place-name">
-              {TITLE[at]}
+              {t(TITLE[at])}
             </Text>
           </XStack>
         ) : (
-          <XStack data-slot="app-head" items="center" gap="$1" pl="$2" pr={2} height={52} shrink={0} minW={0}>
+          <XStack data-slot="app-head" items="center" gap="$1" paddingInlineStart="$2" paddingInlineEnd={2} height={52} shrink={0} minW={0}>
             <Text flex={1} minW={0} fontSize={18} lineHeight={24} fontWeight="600" color="$ink" numberOfLines={1}>
               {wordmark(mode)}
             </Text>
             <Activity host={host} />
-            <SidebarIconButton label={t("Search")} onPress={onSeek} aria-haspopup="dialog" {...HEAD}>
+            <SidebarIconButton label={t('Search')} onPress={onSeek} aria-haspopup="dialog" {...HEAD}>
               <Search size={16} aria-hidden />
             </SidebarIconButton>
           </XStack>
@@ -222,7 +228,7 @@ export function Column({
             <YStack role="listitem">
               {/* Current while the pane holds a new conversation, and never lit: the reference lights the conversation open, not New. */}
               <SidebarItem data-slot="app-new" {...ROW} active={!thread} bg="transparent" hoverStyle={{ bg: '$hover' }} icon={<SquarePen size={16} aria-hidden />} onPress={create} {...keys(create)}>
-                <Text fontSize="$3" color="$ink">{t("New chat")}</Text>
+                <Text fontSize="$3" color="$ink">{t('New chat')}</Text>
               </SidebarItem>
             </YStack>
           </YStack>
@@ -232,11 +238,11 @@ export function Column({
               <YStack key={g.id} pt={i ? '$2' : 0}>
                 {/* The same quiet label Recents wears, so the sidebar reads as one list of headed parts. */}
                 {i && g.label ? (
-                  <Text id={`${uid}-${g.id}`} pl="$2" pb={2} fontSize="$3" color="$soft">
+                  <Text id={`${uid}-${g.id}`} paddingInlineStart="$2" pb={2} fontSize="$3" color="$soft">
                     {g.label}
                   </Text>
                 ) : null}
-                <YStack role="list" aria-labelledby={i && g.label ? `${uid}-${g.id}` : undefined} aria-label={i && g.label ? undefined : g.label || (at ? TITLE[at] : g.id)} gap={1}>
+                <YStack role="list" aria-labelledby={i && g.label ? `${uid}-${g.id}` : undefined} aria-label={i && g.label ? undefined : g.label || (at ? t(TITLE[at]) : g.id)} gap={1}>
                   {g.links.map((link) => (
                     <YStack key={link.id} role="listitem">
                       <SidebarItem
@@ -269,9 +275,10 @@ export function Column({
         {foot}
       </Sidebar>
       {drawer ? null : (
-        // In the gutter between the sidebar and the pane, the side panel's handle on this edge.
+        // In the gutter between the sidebar and the pane, the side panel's handle on this edge:
+        // the column is pinned to the start, the window's left, or its right read right to left.
         <Gutter
-          side="left"
+          side={dir === 'rtl' ? 'right' : 'left'}
           span={span.span}
           floor={FLOOR}
           ceil={CEIL}
@@ -279,7 +286,7 @@ export function Column({
           onSpan={span.move}
           onKeep={span.keep}
           onShut={onShut}
-          label={t("Resize sidebar")}
+          label={t('Resize sidebar')}
         />
       )}
     </YStack>

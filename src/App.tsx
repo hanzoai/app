@@ -31,8 +31,9 @@
 // with several picks one. No plan is asked for here: that is the workspace's,
 // on its own host (hanzo.team) and behind its front door.
 //
-// THE SIDEBAR'S TOGGLE IS AT THE WINDOW'S TOP-LEFT. In a browser tab it leads
-// the rail. A host that is a window of its own (`bar`) has no browser around
+// THE SIDEBAR'S TOGGLE IS AT THE WINDOW'S TOP-START (top-left; top-right read
+// right to left, where the rail and the sidebar stand at the right and the pane
+// is inset from the start by logical sides). In a browser tab it leads the rail. A host that is a window of its own (`bar`) has no browser around
 // it, so the app draws the window's bar: the toggle, then Back and Forward
 // through the host's router, clear of the window's own controls, and the bar
 // drags the window. Shut, the sidebar leaves the rail alone at the edge; the
@@ -59,6 +60,7 @@
 // THE PLANS' OWN ADDRESS LEAVES for the pay site in its place (dev.tsx `leave`),
 // so the builder's own plans are never drawn.
 
+import { useI18n } from '@hanzo/i18n/react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { AiProvider } from '@hanzo/ai/react'
@@ -125,6 +127,7 @@ export function App({ bar }: { bar?: Bar } = {}) {
 
 /** The window itself, drawn once the organization is settled. */
 function Window({ bar }: { bar?: Bar }) {
+  const { t } = useI18n()
   const drawer = useDrawer()
   const { close: shut, depart, exit } = drawer
   // On a phone the window stands in the visual viewport, so the keyboard never covers the composer (view.ts).
@@ -304,19 +307,20 @@ function Window({ bar }: { bar?: Bar }) {
           $max-md={{ position: 'fixed', t: TOP, l: 0, r: 0, height: HEIGHT, ...({ overflow: 'clip' } as object) }}
         >
           {bar ? (
+            // The inset is the window's own controls', which the host's shell paints at the window's left whatever the page's direction.
             <XStack data-slot="title-bar" height={BAR} shrink={0} items="center" gap={2} pl={(bar.inset ?? 0) + 6} pr="$2" {...bar.drag}>
               {/* From a tablet up the toggle shuts the sidebar; on a phone it opens the drawer. */}
               <XStack $max-md={{ display: 'none' }}>
                 <Toggle open={!closed} onPress={flip} />
               </XStack>
               <XStack $md={{ display: 'none' }}>
-                <Toggle open={drawer.state === 'open'} onPress={drawer.open} label="Open sidebar" />
+                <Toggle open={drawer.state === 'open'} onPress={drawer.open} label={t('Open sidebar')} />
               </XStack>
-              <Mark label="Back" data-slot="back" onPress={() => router.back()}>
-                <ArrowLeft size={18} aria-hidden />
+              <Mark label={t('Back')} data-slot="back" onPress={() => router.back()}>
+                <ArrowLeft size={18} aria-hidden data-i18n-mirror />
               </Mark>
-              <Mark label="Forward" data-slot="forward" onPress={() => router.forward()}>
-                <ArrowRight size={18} aria-hidden />
+              <Mark label={t('Forward')} data-slot="forward" onPress={() => router.forward()}>
+                <ArrowRight size={18} aria-hidden data-i18n-mirror />
               </Mark>
               <XStack flex={1} self="stretch" {...bar.drag} />
             </XStack>
@@ -334,7 +338,7 @@ function Window({ bar }: { bar?: Bar }) {
             flex={1}
             minW={0}
             minH={0}
-            pr="var(--pane-gap)"
+            paddingInlineEnd="var(--pane-gap)"
             pb="var(--pane-gap)"
             pt={bar ? 0 : 'var(--pane-gap)'}
             // A phone's frame is full-bleed on the floor, which follows the theme,
@@ -351,7 +355,7 @@ function Window({ bar }: { bar?: Bar }) {
                 <Column host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} onSeek={seek} onBack={back} places={sidebar} />
               </YStack>
             )}
-            <YStack data-slot="stage" flex={1} minW={0} minH={0} ml="var(--pane-gap)" $max-md={{ ml: 0, pb: FOOT }}>
+            <YStack data-slot="stage" flex={1} minW={0} minH={0} marginInlineStart="var(--pane-gap)" $max-md={{ marginInlineStart: 0, pb: FOOT }}>
               {/* A phone has no rail and no sidebar: its bar opens them as a drawer and switches Chat and Dev. */}
               {bar ? null : <Top host={host} mode={mode} places={sidebar} go={move} onMenu={drawer.open} onChat={toChat} onDev={toDev} />}
               <XStack data-slot="panes" flex={1} minW={0} minH={0}>

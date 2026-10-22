@@ -1,5 +1,10 @@
 // The Recents list as data: each mode's rows, the views a menu offers, and the
-// list a view makes of them. No React, so a spec reads it as it is.
+// list a view makes of them. No React, so a spec reads it as it is. Every label
+// and heading is authored English written through `phrase`, so Recents.tsx draws
+// it through `t`; a heading that is a project's name is data and drawn as is.
+
+import { phrase } from '@hanzo/i18n'
+import { english, type Say } from './say'
 
 export type Mode = 'chat' | 'dev'
 
@@ -35,18 +40,18 @@ export const PLAIN: View = { status: 'all', since: 'any', group: 'none', sort: '
 export type Option<T> = { id: T; label: string }
 
 const STATUSES: Option<Status>[] = [
-  { id: 'all', label: 'All' },
-  { id: 'running', label: 'Running' },
-  { id: 'paused', label: 'Paused' },
-  { id: 'done', label: 'Done' },
-  { id: 'error', label: 'Failed' },
-  { id: 'stopped', label: 'Stopped' },
+  { id: 'all', label: phrase('All') },
+  { id: 'running', label: phrase('Running') },
+  { id: 'paused', label: phrase('Paused') },
+  { id: 'done', label: phrase('Done') },
+  { id: 'error', label: phrase('Failed') },
+  { id: 'stopped', label: phrase('Stopped') },
 ]
 export const SINCE: Option<Since>[] = [
-  { id: 'any', label: 'Any time' },
-  { id: 'day', label: 'Today' },
-  { id: 'week', label: 'Past 7 days' },
-  { id: 'month', label: 'Past 30 days' },
+  { id: 'any', label: phrase('Any time') },
+  { id: 'day', label: phrase('Today') },
+  { id: 'week', label: phrase('Past 7 days') },
+  { id: 'month', label: phrase('Past 30 days') },
 ]
 
 /** What each mode's menu offers, section by section, as Claude's Recents menu does. */
@@ -54,30 +59,30 @@ export const MENUS: Record<Mode, { status: Option<Status>[]; group: Option<Group
   // A chat's status is whether it is archived: the store lists the two apart.
   chat: {
     status: [
-      { id: 'all', label: 'Active' },
-      { id: 'archived', label: 'Archived' },
+      { id: 'all', label: phrase('Active') },
+      { id: 'archived', label: phrase('Archived') },
     ],
     group: [
-      { id: 'date', label: 'Date' },
-      { id: 'none', label: 'None' },
+      { id: 'date', label: phrase('Date') },
+      { id: 'none', label: phrase('None') },
     ],
     sort: [
-      { id: 'activity', label: 'Activity' },
-      { id: 'title', label: 'Title' },
+      { id: 'activity', label: phrase('Activity') },
+      { id: 'title', label: phrase('Title') },
     ],
   },
   dev: {
     status: STATUSES,
     group: [
-      { id: 'date', label: 'Date' },
-      { id: 'state', label: 'State' },
-      { id: 'project', label: 'Project' },
-      { id: 'none', label: 'None' },
+      { id: 'date', label: phrase('Date') },
+      { id: 'state', label: phrase('State') },
+      { id: 'project', label: phrase('Project') },
+      { id: 'none', label: phrase('None') },
     ],
     sort: [
-      { id: 'activity', label: 'Activity' },
-      { id: 'created', label: 'Created' },
-      { id: 'title', label: 'Title' },
+      { id: 'activity', label: phrase('Activity') },
+      { id: 'created', label: phrase('Created') },
+      { id: 'title', label: phrase('Title') },
     ],
   },
 }
@@ -100,7 +105,7 @@ export function chats(threads: { id: string; title?: string; updatedAt?: string;
   return threads.map((t) => ({
     kind: 'chat',
     id: t.id,
-    title: t.title || 'Untitled',
+    title: t.title || UNTITLED,
     at: t.updatedAt ?? '',
     began: t.updatedAt ?? '',
     ...(t.archived ? { status: 'archived' } : {}),
@@ -113,7 +118,7 @@ export function runs(sessions: { id: string; title: string; status: string; proj
   return sessions.map((r) => ({
     kind: 'dev',
     id: r.id,
-    title: r.title || 'Untitled run',
+    title: r.title || UNTITLED_RUN,
     at: r.updatedAt || r.createdAt,
     began: r.createdAt,
     status: r.status,
@@ -123,10 +128,10 @@ export function runs(sessions: { id: string; title: string; status: string; proj
 
 const DAY = 86_400_000
 const SPAN: Record<Since, number> = { any: Infinity, day: DAY, week: 7 * DAY, month: 30 * DAY }
-const STATE: Record<string, string> = { running: 'Running', paused: 'Paused', done: 'Done', error: 'Failed', stopped: 'Stopped' }
+const STATE: Record<string, string> = { running: phrase('Running'), paused: phrase('Paused'), done: phrase('Done'), error: phrase('Failed'), stopped: phrase('Stopped') }
 
 /** The date headings, in the order they read. */
-const DAYS = ['Today', 'Yesterday', 'Past 7 days', 'Past 30 days', 'Older']
+const DAYS = [phrase('Today'), phrase('Yesterday'), phrase('Past 7 days'), phrase('Past 30 days'), phrase('Older')]
 
 /** Which date heading an instant falls under, counted in the reader's own days. */
 function day(at: string, now: Date): string {
@@ -162,9 +167,9 @@ export function arrange(rows: Recent[], view: View, now = new Date()): { title: 
       case 'date':
         return day(view.sort === 'created' ? r.began : r.at, now)
       case 'state':
-        return STATE[r.status ?? ''] ?? 'Other'
+        return STATE[r.status ?? ''] ?? phrase('Other')
       case 'project':
-        return r.project || 'No project'
+        return r.project || UNFILED
       default:
         return ''
     }
@@ -183,24 +188,32 @@ export function arrange(rows: Recent[], view: View, now = new Date()): { title: 
 }
 
 /** The heading pinned rows read under, first in every view. */
-export const PINNED = 'Pinned'
+export const PINNED = phrase('Pinned')
+
+/** The heading of runs with no project, in a list grouped by project, where every other heading is a project's name. */
+export const UNFILED = phrase('No project')
+
+/** What a conversation and a run with no title are called. */
+export const UNTITLED = phrase('Untitled')
+export const UNTITLED_RUN = phrase('Untitled run')
 
 
 /**
  * How long ago a row was last active, as a list reads it at a glance: `now`,
- * `12m`, `3h`, `2d`, `5w`, `4mo`, `2y`. '' for an instant that is not one.
+ * `12m`, `3h`, `2d`, `5w`, `4mo`, `2y`, in the reader's language through `t`.
+ * '' for an instant that is not one.
  */
-export function ago(at: string, now = new Date()): string {
-  const t = new Date(at).getTime()
-  if (Number.isNaN(t)) return ''
-  const m = Math.max(0, Math.floor((now.getTime() - t) / 60_000))
-  if (m < 1) return 'now'
-  if (m < 60) return `${m}m`
+export function ago(at: string, now = new Date(), t: Say = english): string {
+  const then = new Date(at).getTime()
+  if (Number.isNaN(then)) return ''
+  const m = Math.max(0, Math.floor((now.getTime() - then) / 60_000))
+  if (m < 1) return t('now')
+  if (m < 60) return t('{n}m', { n: m })
   const h = Math.floor(m / 60)
-  if (h < 24) return `${h}h`
+  if (h < 24) return t('{n}h', { n: h })
   const d = Math.floor(h / 24)
-  if (d < 7) return `${d}d`
-  if (d < 30) return `${Math.floor(d / 7)}w`
-  if (d < 365) return `${Math.floor(d / 30)}mo`
-  return `${Math.floor(d / 365)}y`
+  if (d < 7) return t('{n}d', { n: d })
+  if (d < 30) return t('{n}w', { n: Math.floor(d / 7) })
+  if (d < 365) return t('{n}mo', { n: Math.floor(d / 30) })
+  return t('{n}y', { n: Math.floor(d / 365) })
 }

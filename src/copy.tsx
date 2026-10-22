@@ -8,6 +8,7 @@
 // twice — a control that confirms for 1400ms in one pane and 800ms in another
 // reads as two different controls doing two different things.
 
+import { useI18n } from '@hanzo/i18n/react'
 import { useEffect, useState } from 'react'
 import { Check, Copy } from 'lucide-react'
 import { Box, Text, XStack } from '@hanzo/ui'
@@ -29,22 +30,23 @@ import { Box, Text, XStack } from '@hanzo/ui'
  */
 export function Take({
   text,
-  says = 'this',
+  says,
   label,
 }: {
   /** What lands on the clipboard. */
   text: string
-  /** What it is, for the reader who hears the control rather than sees it. */
+  /** What it is, in the reader's language, for the reader who hears the control rather than sees it: "Copy {says}"; absent, "Copy this". */
   says?: string
-  /** A word beside the glyph, where the control sits among named ones. */
+  /** A word beside the glyph (in the reader's language), where the control sits among named ones. */
   label?: string
 }) {
+  const { t } = useI18n()
   const [took, setTook] = useState(false)
 
   useEffect(() => {
     if (!took) return
-    const t = setTimeout(() => setTook(false), 1400)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setTook(false), 1400)
+    return () => clearTimeout(timer)
   }, [took])
 
   return (
@@ -53,7 +55,7 @@ export function Take({
       onClick={() => {
         void navigator.clipboard?.writeText(text).then(() => setTook(true)).catch(() => {})
       }}
-      aria-label={took ? 'Copied' : `Copy ${says}`}
+      aria-label={took ? t('Copied') : says ? t('Copy {what}', { what: says }) : t('Copy this')}
       borderWidth={0}
       bg="transparent"
       p="$1"
@@ -66,7 +68,7 @@ export function Take({
         {took ? <Check size={13} aria-hidden /> : <Copy size={13} aria-hidden />}
         {label ? (
           <Text fontSize="$2" color="$ink">
-            {took ? 'Copied' : label}
+            {took ? t('Copied') : label}
           </Text>
         ) : null}
       </XStack>

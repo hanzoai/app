@@ -14,6 +14,7 @@
 // - Clean cancellation and state management
 // - Text normalization (strips code fences, markdown syntax so speech sounds natural)
 
+import { useI18n } from '@hanzo/i18n/react'
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { Volume2, Square } from 'lucide-react'
 import { View, XStack } from '@hanzo/gui'
@@ -269,11 +270,15 @@ export function SpeakButton({
   agentName?: string
   compact?: boolean
 }) {
+  const { t } = useI18n()
   const { speaking, refusal, toggle } = useAgentSpeech(agentName)
   const voice = voiceOf(agentName)
   // A browser voice standing in for a refused platform sounds like success;
-  // the label is the one place that says otherwise.
+  // the label is the one place that says otherwise (@hanzo/voice's sentence).
   const stood = refusal ? ` ${refused(refusal)}` : ''
+  // Who speaks, and in which voice (a speech-service id, drawn as it is).
+  const listen = agentName ? t('Listen to {name} ({voice})', { name: agentName, voice }) : t('Listen to agent ({voice})', { voice })
+  const listenIn = agentName ? t("Listen in {name}'s voice ({voice})", { name: agentName, voice }) : t("Listen in agent's voice ({voice})", { voice })
 
   // An @hanzo/ui Button: ghost at rest, the quiet pressed ground while it
   // speaks. The word for speaking is the one status here, so it alone takes
@@ -285,21 +290,21 @@ export function SpeakButton({
       size={compact ? 'icon-sm' : 'sm'}
       color={speaking ? GOOD : '$soft'}
       onClick={() => toggle(text, agentName)}
-      aria-label={(speaking ? 'Stop speaking' : `Listen to ${agentName || 'agent'} (${voice})`) + stood}
+      aria-label={(speaking ? t('Stop speaking') : listen) + stood}
       aria-pressed={speaking}
       data-refusal={refusal ? refusal.service : undefined}
-      title={(speaking ? 'Stop speaking' : `Listen in ${agentName || 'agent'}'s voice (${voice})`) + stood}
+      title={(speaking ? t('Stop speaking') : listenIn) + stood}
     >
       {speaking ? (
         <>
           <AudioWave active={true} color={GOOD} />
-          {!compact && 'Speaking…'}
+          {!compact && t('Speaking…')}
           <Square size={10} fill="currentColor" />
         </>
       ) : (
         <>
           <Volume2 size={13} />
-          {!compact && 'Listen'}
+          {!compact && t('Listen')}
         </>
       )}
     </Button>

@@ -71,7 +71,28 @@ repository or a site from any surface.
   through `t()`, a name or address as a `{name}` argument, never concatenated.
   The host mounts `I18nProvider`; with none, `t` returns the English, so a host
   or a test without one reads English. A string the package's catalogs lack
-  renders English until the next catalog run in `hanzoai/i18n`.
+  renders English until the next catalog run in `hanzoai/i18n`. Needs
+  @hanzo/i18n ≥ 0.4.0 (`phrase`, `pieces`, `t` with an element argument).
+  - The catalog is extracted from the syntax tree, so the first argument of
+    `t()` is a literal (or a ternary of literals); copy written as data is
+    `phrase('Library')` where it is written and `t(row.label)` where it is drawn.
+    The function is always named `t`: a `say(…)` alias is invisible to the
+    extractor.
+  - A component's own `label`/`title` props arrive translated; it never calls
+    `t` on a prop.
+  - A plain module that words a sentence takes `t: Say = english` last
+    (`src/say.ts`): `say(e, t('this board'), 'read', t)`, `ago(at, now, t)`,
+    `paused(…, t)`, `renewal(sub, t)`, `quote(plan, interval, t)`, `join(names, t)`.
+    A cache holds the answer, never the sentence (tools.ts).
+  - Products keep their names in every language: Dev, Studio, Tabs, Team,
+    Hanzo Dev, `brand()`, `wordmark()`. Data, names, model ids, plan names and
+    the server's words are drawn as they come.
+  - Right to left: sides are logical gui props (`marginInlineStart`,
+    `paddingInlineEnd`, `insetInlineEnd`, `borderInlineStartWidth`, `text="start"`);
+    what a kit or a package sets physically (@hanzo/ui `Grip`/@hanzo/build
+    `Gutter` `side`, a menu's `placement`, Sidebar's `borderRightWidth`) is chosen
+    by `useI18n().dir`. An arrow along the line wears `data-i18n-mirror`; a key,
+    count or id outside a sentence `data-i18n-ltr` or `<bdi dir="ltr">`.
 - The look is `@hanzo/appearance`'s. The host mounts `<Look />` once at its
   root, inside `IamProvider`: it applies the person's layers for the org in
   scope on every page and syncs them with IAM when signed in (`useLook`). The

@@ -16,23 +16,36 @@
  * the server answers, and a refusal comes back as the server's own sentence.
  */
 
+import { phrase } from '@hanzo/i18n'
+import { english, type Say } from '../say'
 import { scope } from './session'
 import { api } from './api'
 import { list } from './list'
 
-/** A refusal, with the status it came under and the server's words. */
+/**
+ * A refusal, with the status it came under and the server's words. One this
+ * module words itself keeps its English source and arguments (`source`,
+ * `values`), so `say` can put it in the reader's language; the server's words
+ * have none and are shown as they came.
+ */
 export class Refusal extends Error {
   constructor(
     readonly status: number,
     message: string,
+    readonly source?: string,
+    readonly values?: Readonly<Record<string, string | number>>,
   ) {
     super(message)
   }
 }
 
+/** A refusal this module words: its English filled in as the message, the source kept for `say`. */
+const worded = (status: number, source: string, values?: Readonly<Record<string, string | number>>): Refusal =>
+  new Refusal(status, english(source, values), source, values)
+
 /** IAM's code for "not yours to do", said as a sentence. */
 const UNAUTHORIZED = /^auth:Unauthorized operation$|^forbidden$/i
-const NOT_YOURS = 'Your role in this organization does not allow this.'
+const NOT_YOURS = phrase('Your role in this organization does not allow this.')
 
 /** One request as the signed-in reader, in the organization this browser works in. */
 async function ask<T>(path: string, init: { method?: string; json?: unknown } = {}): Promise<T> {
@@ -51,19 +64,29 @@ async function ask<T>(path: string, init: { method?: string; json?: unknown } = 
     // An empty or HTML body carries nothing worth showing.
   }
   const said = (body ?? {}) as { detail?: string; msg?: string; error?: string; message?: string; status?: unknown }
-  if (res.status === 401) throw new Refusal(401, 'Your session expired. Sign in again.')
+  if (res.status === 401) throw worded(401, phrase('Your session expired. Sign in again.'))
   if (!res.ok || said.status === 'error') {
     const words = said.detail || said.msg || said.error || said.message || ''
     const status = res.ok ? 400 : res.status
-    throw new Refusal(status, UNAUTHORIZED.test(words) || (status === 403 && !words) ? NOT_YOURS : words || `The server answered ${res.status}.`)
+    if (UNAUTHORIZED.test(words) || (status === 403 && !words)) throw worded(status, NOT_YOURS)
+    throw words ? new Refusal(status, words) : worded(status, phrase('The server answered {status}.'), { status: res.status })
   }
   return body as T
 }
 
 const enc = encodeURIComponent
 
-/** The words of any failure, for a toast or a line under a control. */
-export const say = (e: unknown): string => (e instanceof Error && e.message ? e.message : 'That did not go through.')
+/**
+ * The words of any failure, for a toast or a line under a control: a refusal
+ * this module worded in the reader's language (a room passes its `t`), the
+ * server's words as they came, else a plain line.
+ */
+export const say = (e: unknown, t: Say = english): string =>
+  e instanceof Refusal && e.source
+    ? t(e.source, e.values)
+    : e instanceof Error && e.message
+      ? e.message
+      : t('That did not go through.')
 
 // ── the organization ────────────────────────────────────────────────────────
 
@@ -90,7 +113,7 @@ export const deleteOrg = (org: string): Promise<unknown> =>
  */
 export const createOrg = async (name: string): Promise<string> => {
   const made = await ask<{ org?: string }>('/v1/account/orgs', { method: 'POST', json: { name } })
-  if (!made?.org) throw new Refusal(502, 'The organization was not created. Try again.')
+  if (!made?.org) throw worded(502, phrase('The organization was not created. Try again.'))
   return made.org
 }
 
@@ -189,7 +212,7 @@ export async function keys(): Promise<ApiKey[]> {
 /** Creates a new key beside the ones held, and answers it with its value — once. */
 export async function createKey(input: { name?: string; type: KeyType }): Promise<ApiKey> {
   const made = await ask<ApiKey>('/v1/account/keys', { method: 'POST', json: input })
-  if (!made?.key) throw new Refusal(502, 'IAM answered without a key.')
+  if (!made?.key) throw worded(502, phrase('IAM answered without a key.'))
   return made
 }
 

@@ -11,6 +11,7 @@
 // lasts; nothing here decides who may.
 
 import { useEffect, useState } from 'react'
+import { useI18n } from '@hanzo/i18n/react'
 import { Text, XStack } from '@hanzo/gui'
 import { Button } from '@hanzo/ui'
 import { useHydrated } from './lib/hydrated'
@@ -26,6 +27,7 @@ const BANNER = 'calc(var(--z-modal) + 30)' as `var(--${string})`
  * token is.
  */
 export function SupportBanner() {
+  const { t } = useI18n()
   const hydrated = useHydrated()
   const [org, setOrg] = useState<string | null>(null)
   const [who, setWho] = useState('')
@@ -47,7 +49,7 @@ export function SupportBanner() {
   return (
     <XStack
       role="status"
-      aria-label="Support mode"
+      aria-label={t('Support mode')}
       position="fixed"
       t={52}
       l="50%"
@@ -59,17 +61,19 @@ export function SupportBanner() {
       gap={12}
       flexWrap="wrap"
       pt={6}
-      pr={8}
+      paddingInlineEnd={8}
       pb={6}
-      pl={16}
+      paddingInlineStart={16}
       rounded={999}
       bg="var(--foreground)"
     >
       <Text fontSize="$2" color="var(--background)">
-        Support mode: you are in <strong>{org}</strong>{who ? ` as ${who}` : ''}. IAM records it under your name.
+        {who
+          ? t('Support mode: you are in {org} as {who}. IAM records it under your name.', { org: <strong>{org}</strong>, who })
+          : t('Support mode: you are in {org}. IAM records it under your name.', { org: <strong>{org}</strong> })}
       </Text>
       <Button size="sm" onClick={leave} disabled={busy}>
-        {busy ? 'Leaving' : 'Leave'}
+        {t(busy ? 'Leaving' : 'Leave')}
       </Button>
     </XStack>
   )

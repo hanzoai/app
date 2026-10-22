@@ -24,6 +24,7 @@
 // given a sandbox is reported instead of drawn as success.
 
 import { useCallback, useEffect, useState } from 'react'
+import { useI18n } from '@hanzo/i18n/react'
 import { Text, XStack, YStack } from '@hanzo/ui'
 import { Composer } from '@hanzo/ui/chat'
 import { useOpen } from './open'
@@ -53,6 +54,7 @@ const SOFT = '$soft'
 const SANDBOX = ''
 
 export function Start() {
+  const { t } = useI18n()
   const { openSession } = useOpen()
   const [prompt, setPrompt] = useState('')
   const [repo, setRepo] = useState('')
@@ -95,11 +97,11 @@ export function Start() {
       // reader where it narrates itself, which is the view this pane replaces.
       openSession(run.sessionId)
     } catch (e) {
-      setErr(e instanceof CodingRefusal ? e.message : 'Could not start the run')
+      setErr(e instanceof CodingRefusal ? e.message : t('Could not start the run'))
     } finally {
       setBusy(false)
     }
-  }, [prompt, repo, tool, where, busy, openSession])
+  }, [prompt, repo, tool, where, busy, openSession, t])
 
   return (
     <YStack width="100%" gap="$2">
@@ -108,13 +110,13 @@ export function Start() {
         onChange={setPrompt}
         onSend={() => void send()}
         busy={busy}
-        placeholder="Describe what to build…"
-        label="Describe what to build"
+        placeholder={t('Describe what to build…')}
+        label={t('Describe what to build')}
       />
 
       <XStack gap="$2" items="center" flexWrap="wrap">
         <Text
-          render={<select value={tool} onChange={(e) => setTool(e.currentTarget.value)} aria-label="Agent Harness" />}
+          render={<select value={tool} onChange={(e) => setTool(e.currentTarget.value)} aria-label={t('Agent Harness')} />}
           {...FIELD}
           px={8}
         >
@@ -128,7 +130,7 @@ export function Start() {
             takes the org's default when it is empty, and demanding one here
             would put a field in front of a run that does not need it. */}
         <Text
-          render={<input value={repo} onChange={(e) => setRepo(e.currentTarget.value)} placeholder="owner/repo (optional)" aria-label="Repository" />}
+          render={<input data-i18n-ltr="" value={repo} onChange={(e) => setRepo(e.currentTarget.value)} placeholder={t('owner/repo (optional)')} aria-label={t('Repository')} />}
           {...FIELD}
           flex={1}
           minW={160}
@@ -141,11 +143,11 @@ export function Start() {
             one option is a control that cannot be used. */}
         {targets.length > 0 ? (
           <Text
-            render={<select value={where} onChange={(e) => setWhere(e.currentTarget.value)} aria-label="Where to run" />}
+            render={<select value={where} onChange={(e) => setWhere(e.currentTarget.value)} aria-label={t('Where to run')} />}
             {...FIELD}
             px={8}
           >
-            <option value={SANDBOX}>Sandbox</option>
+            <option value={SANDBOX}>{t('Sandbox')}</option>
             {targets.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.label || t.host || t.id}
@@ -162,9 +164,7 @@ export function Start() {
         </Text>
       ) : (
         <Text fontSize="$2" color={SOFT}>
-          {targets.length > 0 && where !== SANDBOX
-            ? 'Runs on your machine.'
-            : 'Runs in an isolated sandbox with Free AI / Enso.'}
+          {t(targets.length > 0 && where !== SANDBOX ? 'Runs on your machine.' : 'Runs in an isolated sandbox with Free AI / Enso.')}
         </Text>
       )}
     </YStack>

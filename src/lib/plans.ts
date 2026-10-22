@@ -35,6 +35,7 @@ import { where } from "../where";
 import { api } from "./api";
 import { org } from "./session";
 import { billing, checkoutUrl, dollars, money, payUrl } from "./pay";
+import { english, type Say } from "../say";
 
 /** A row exactly as GET /v1/billing/plans returns it. */
 export interface BillingPlan {
@@ -270,14 +271,14 @@ export function charge(plan: SubscriptionPlan, interval: Interval): number | nul
 }
 
 /**
- * A term's price as a button quotes it — "$20/month", "$200/year" — or null.
+ * A term's price as a button quotes it — "$20/month", "$200/year" — through `t`, or null.
  * A year is quoted as the total where the catalog states one, and otherwise as
  * the monthly figure the catalog does state, never as a total derived here.
  */
-export function quote(plan: SubscriptionPlan, interval: Interval): string | null {
-  if (interval === "month") return plan.priceMonthly ? `${money(plan.priceMonthly)}/month` : null;
-  if (plan.annualTotal) return `${money(plan.annualTotal)}/year`;
-  return plan.priceAnnual ? `${money(plan.priceAnnual)}/month, billed yearly` : null;
+export function quote(plan: SubscriptionPlan, interval: Interval, t: Say = english): string | null {
+  if (interval === "month") return plan.priceMonthly ? t("{price}/month", { price: money(plan.priceMonthly) }) : null;
+  if (plan.annualTotal) return t("{price}/year", { price: money(plan.annualTotal) });
+  return plan.priceAnnual ? t("{price}/month, billed yearly", { price: money(plan.priceAnnual) }) : null;
 }
 
 /** What a year saves against twelve months, as a whole percent: 1 − year ÷ (12 × month). Null where it saves nothing. */

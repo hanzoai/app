@@ -14,6 +14,8 @@
 // it are this surface's, for the same reason: a home decides what it starts.
 
 import { dev } from './lib/host'
+import { phrase } from '@hanzo/i18n'
+import { useI18n } from '@hanzo/i18n/react'
 import { useEffect, useMemo, useState } from 'react'
 import { AtSign, Blocks, Bot, Code2, FolderGit2, Hash, MessageSquare, Plus, UserPlus } from 'lucide-react'
 import { useAgents, usePeople, useSessions, useThreads } from '@hanzo/ai/react'
@@ -40,10 +42,10 @@ import { BAD } from './lib/mix'
 
 /** What a question can start here. Four, in the order they escalate. */
 const MODES = [
-  { id: 'chat', label: 'Chat', asks: 'Ask anything' },
-  { id: 'dev', label: 'Dev', asks: 'Describe what to build' },
-  { id: 'news', label: 'News', asks: 'What happened?' },
-  { id: 'research', label: 'Research', asks: 'What should we dig into?' },
+  { id: 'chat', label: phrase('Chat'), asks: phrase('Ask anything') },
+  { id: 'dev', label: phrase('Dev'), asks: phrase('Describe what to build') },
+  { id: 'news', label: phrase('News'), asks: phrase('What happened?') },
+  { id: 'research', label: phrase('Research'), asks: phrase('What should we dig into?') },
 ] as const
 
 export type Mode = (typeof MODES)[number]['id']
@@ -79,6 +81,7 @@ export interface HomeProps {
  * own key.
  */
 export function Home({ ask }: HomeProps) {
+  const { t } = useI18n()
   const [mode, setMode] = useState<Mode>('chat')
   const [draft, setDraft] = useState('')
   const [picked, setPicked] = useState<string[]>([])
@@ -131,7 +134,7 @@ export function Home({ ask }: HomeProps) {
           text="center"
           $sm={{ fontSize: '$9' }}
         >
-          What are we building?
+          {t('What are we building?')}
         </Text>
 
         <XStack justify="center" gap="$1" flexWrap="wrap">
@@ -153,7 +156,7 @@ export function Home({ ask }: HomeProps) {
                 fontWeight="500"
                 color={mode === one.id ? INK : SOFT}
               >
-                {one.label}
+                {t(one.label)}
               </Text>
             </Box>
           ))}
@@ -163,8 +166,8 @@ export function Home({ ask }: HomeProps) {
           value={draft}
           onChange={setDraft}
           onSend={send}
-          placeholder={here.asks}
-          label={here.asks}
+          placeholder={t(here.asks)}
+          label={t(here.asks)}
           rows={2}
           maxHeight={240}
         >
@@ -187,7 +190,7 @@ export function Home({ ask }: HomeProps) {
                     bg={on ? CHOSEN : 'transparent'}
                     hoverStyle={{ bg: '$hover' }}
                   >
-                    <Text fontSize="$2" color={on ? INK : SOFT}>
+                    <Text data-i18n-ltr fontSize="$2" color={on ? INK : SOFT}>
                       @{s}
                     </Text>
                   </Box>
@@ -242,17 +245,18 @@ function Open({
   rooms: ReturnType<typeof useTeamRooms>
   back: () => void
 }) {
+  const { t } = useI18n()
   const { isAuthenticated, isLoading } = useIam()
   const found = rooms.rooms?.find((one) => one.space === at.space && one.id === at.id)
   if (found) return <Talk key={teamKey(found)} room={found} />
   const reading = isLoading || (isAuthenticated && rooms.rooms === null && !rooms.wrong)
   const line = reading
-    ? 'Reading the channel.'
+    ? t('Reading the channel.')
     : !isAuthenticated
-      ? 'Sign in to read this channel.'
+      ? t('Sign in to read this channel.')
       : rooms.wrong
-        ? say(rooms.wrong, 'this channel')
-        : 'That channel is not here.'
+        ? say(rooms.wrong, t('this channel'), 'read', t)
+        : t('That channel is not here.')
   return (
     <YStack flex={1} items="center" justify="center" p="$6" gap="$3">
       <Text fontSize="$3" color={SOFT}>
@@ -261,7 +265,7 @@ function Open({
       {reading ? null : (
         <Box render="button" onClick={back} {...tap}>
           <Text fontSize="$2" fontWeight="500" color={INK}>
-            Back to home
+            {t('Back to home')}
           </Text>
         </Box>
       )}
@@ -284,6 +288,7 @@ function Open({
  * leaves it unsaid. The row the platform answers with is opened at once.
  */
 function Rooms({ rooms, wrong, open }: ReturnType<typeof useTeamRooms>) {
+  const { t } = useI18n()
   const { openRoom } = useOpen()
   const me = useMe()
   const [naming, setNaming] = useState(false)
@@ -302,18 +307,18 @@ function Rooms({ rooms, wrong, open }: ReturnType<typeof useTeamRooms>) {
       setNaming(false)
       openRoom(teamKey(made))
     } catch (e) {
-      setRefused(plainly(e, 'this channel'))
+      setRefused(plainly(e, t('this channel'), t))
     } finally {
       setOpening(false)
     }
   }
 
   return (
-    <Card kind="rooms" icon={<Hash size={14} aria-hidden />} title="Channels">
+    <Card kind="rooms" icon={<Hash size={14} aria-hidden />} title={t('Channels')}>
       {rooms === null ? (
-        <Waiting wrong={wrong} subject="your channels" />
+        <Waiting wrong={wrong} subject={t('your channels')} />
       ) : rooms.length === 0 ? (
-        <Quiet>No channels yet.</Quiet>
+        <Quiet>{t('No channels yet.')}</Quiet>
       ) : (
         <YStack gap="$1">
           {rooms.slice(0, 6).map((one) => (
@@ -322,7 +327,7 @@ function Rooms({ rooms, wrong, open }: ReturnType<typeof useTeamRooms>) {
               icon={one.direct ? <AtSign size={12} aria-hidden /> : <Hash size={12} aria-hidden />}
               onPress={() => openRoom(teamKey(one))}
             >
-              {one.name || 'Direct message'}
+              {one.name || t('Direct message')}
             </Row>
           ))}
         </YStack>
@@ -339,8 +344,8 @@ function Rooms({ rooms, wrong, open }: ReturnType<typeof useTeamRooms>) {
                     if (e.key === 'Enter') void make()
                     if (e.key === 'Escape') setNaming(false)
                   }}
-                  placeholder="Name"
-                  aria-label="Channel name"
+                  placeholder={t('Name')}
+                  aria-label={t('Channel name')}
                   autoFocus
                 />
               }
@@ -368,7 +373,7 @@ function Rooms({ rooms, wrong, open }: ReturnType<typeof useTeamRooms>) {
               hoverStyle={{ bg: '$hover' }}
             >
               <Text fontSize="$2" fontWeight="500" color={INK}>
-                Open it
+                {t('Open it')}
               </Text>
             </Box>
           </XStack>
@@ -380,7 +385,7 @@ function Rooms({ rooms, wrong, open }: ReturnType<typeof useTeamRooms>) {
         </YStack>
       ) : (
         <Row icon={<Plus size={12} aria-hidden />} onPress={() => setNaming(true)}>
-          New room
+          {t('New room')}
         </Row>
       )}
     </Card>
@@ -434,24 +439,26 @@ function useRead<T>(
  * The session is asked FIRST, because that is the state that never resolves.
  */
 function Waiting({ wrong, subject }: { wrong?: unknown; subject: string }) {
+  const { t } = useI18n()
   const { isAuthenticated } = useIam()
   const signedIn = isAuthenticated || hasSession()
-  if (!signedIn) return <Quiet>Sign in to see {subject}.</Quiet>
-  if (wrong) return <Quiet>{say(wrong, subject)}</Quiet>
-  return <Quiet>Reading.</Quiet>
+  if (!signedIn) return <Quiet>{t('Sign in to see {subject}.', { subject })}</Quiet>
+  if (wrong) return <Quiet>{say(wrong, subject, 'read', t)}</Quiet>
+  return <Quiet>{t('Reading.')}</Quiet>
 }
 
 const useProjects = () => useRead(projects)
 const useApps = () => useRead(apps)
 
 function Projects() {
+  const { t } = useI18n()
   const { held, wrong } = useProjects()
   return (
-    <Card kind="projects" icon={<FolderGit2 size={14} aria-hidden />} title="Projects">
+    <Card kind="projects" icon={<FolderGit2 size={14} aria-hidden />} title={t('Projects')}>
       {held === null ? (
-        <Waiting wrong={wrong} subject="your projects" />
+        <Waiting wrong={wrong} subject={t('your projects')} />
       ) : held.length === 0 ? (
-        <Quiet>Nothing deployed yet.</Quiet>
+        <Quiet>{t('Nothing deployed yet.')}</Quiet>
       ) : (
         <YStack gap="$1">
           {/* Linked only where it is SERVING. This site publishes no
@@ -463,25 +470,26 @@ function Projects() {
           ))}
         </YStack>
       )}
-      <Go href={dev()}>Ship one</Go>
+      <Go href={dev()}>{t('Ship one')}</Go>
     </Card>
   )
 }
 
 function Chats() {
+  const { t } = useI18n()
   const { threads, loading } = useThreads()
   const { open } = useOpen()
   return (
-    <Card kind="chats" icon={<MessageSquare size={14} aria-hidden />} title="Chats">
+    <Card kind="chats" icon={<MessageSquare size={14} aria-hidden />} title={t('Chats')}>
       {loading && threads.length === 0 ? (
-        <Waiting subject="your chats" />
+        <Waiting subject={t('your chats')} />
       ) : threads.length === 0 ? (
-        <Quiet>No chats yet.</Quiet>
+        <Quiet>{t('No chats yet.')}</Quiet>
       ) : (
         <YStack gap="$1">
-          {threads.slice(0, 3).map((t) => (
-            <Row key={t.id} onPress={() => open(t.id)}>
-              {t.title || 'Untitled'}
+          {threads.slice(0, 3).map((one) => (
+            <Row key={one.id} onPress={() => open(one.id)}>
+              {one.title || t('Untitled')}
             </Row>
           ))}
         </YStack>
@@ -499,6 +507,7 @@ function Chats() {
  * today.
  */
 function Next({ onConnect }: { onConnect: () => void }) {
+  const { t } = useI18n()
   const { sessions } = useSessions({ limit: 100 })
   const { agents } = useAgents()
   const { held } = useProjects()
@@ -512,21 +521,21 @@ function Next({ onConnect }: { onConnect: () => void }) {
   const rows = useMemo(() => {
     const out: { key: string; say: string; href?: string; press?: boolean }[] = []
     const failed = safeSessions.filter((s) => s && s.status === 'error').length
-    if (failed) out.push({ key: 'failed', say: `${failed} failed`, href: '/work' })
-    if (safeAgents.length === 0) out.push({ key: 'agent', say: 'Hire your first agent', href: '/work' })
-    if (held?.length === 0) out.push({ key: 'ship', say: 'Ship your first project', href: dev() })
+    if (failed) out.push({ key: 'failed', say: t('{n} failed', { n: failed }), href: '/work' })
+    if (safeAgents.length === 0) out.push({ key: 'agent', say: t('Hire your first agent'), href: '/work' })
+    if (held?.length === 0) out.push({ key: 'ship', say: t('Ship your first project'), href: dev() })
     if (connected && Array.isArray(connected) && !connected.some((a) => a?.connected))
-      out.push({ key: 'connect', say: 'Connect an app', press: true })
+      out.push({ key: 'connect', say: t('Connect an app'), press: true })
     return out
-  }, [safeSessions, safeAgents, held, connected])
+  }, [safeSessions, safeAgents, held, connected, t])
 
   return (
-    <Card kind="next" icon={<Bot size={14} aria-hidden />} title="Next">
+    <Card kind="next" icon={<Bot size={14} aria-hidden />} title={t('Next')}>
       {running.length ? (
         <YStack gap="$2">
           {running.slice(0, 2).map((s) => (
             <YStack key={s.id} gap="$1">
-              <Row href="/work">{s.title || s.agent || 'Run'}</Row>
+              <Row href="/work">{s.title || s.agent || t('Run')}</Row>
               <Bar run={s} label={false} />
             </YStack>
           ))}
@@ -534,7 +543,7 @@ function Next({ onConnect }: { onConnect: () => void }) {
       ) : null}
 
       {rows.length === 0 && running.length === 0 ? (
-        <Quiet>Nothing needs you.</Quiet>
+        <Quiet>{t('Nothing needs you.')}</Quiet>
       ) : (
         <YStack gap="$1">
           {rows.slice(0, 3).map((r) => (
@@ -557,14 +566,15 @@ function Next({ onConnect }: { onConnect: () => void }) {
  * Directory, which is where connecting actually happens.
  */
 function Apps({ onConnect }: { onConnect: () => void }) {
+  const { t } = useI18n()
   const { held, wrong } = useApps()
   const on = held?.filter((a) => a.connected) ?? []
   return (
-    <Card kind="apps" icon={<Blocks size={14} aria-hidden />} title="Apps">
+    <Card kind="apps" icon={<Blocks size={14} aria-hidden />} title={t('Apps')}>
       {held === null ? (
-        <Waiting wrong={wrong} subject="connected apps" />
+        <Waiting wrong={wrong} subject={t('connected apps')} />
       ) : on.length === 0 ? (
-        <Quiet>Nothing connected.</Quiet>
+        <Quiet>{t('Nothing connected.')}</Quiet>
       ) : (
         <YStack gap="$1">
           {on.slice(0, 3).map((a) => (
@@ -572,7 +582,7 @@ function Apps({ onConnect }: { onConnect: () => void }) {
           ))}
         </YStack>
       )}
-      <Go onPress={onConnect}>Connect</Go>
+      <Go onPress={onConnect}>{t('Connect')}</Go>
     </Card>
   )
 }
@@ -591,15 +601,16 @@ function Apps({ onConnect }: { onConnect: () => void }) {
  * hydration was going to perform anyway.
  */
 function Team() {
+  const { t } = useI18n()
   const hydrated = useHydrated()
   const { currentOrgId } = useOrganizations()
   if (!hydrated || !currentOrgId) {
     return (
-      <Card kind="team" icon={<UserPlus size={14} aria-hidden />} title="Team">
+      <Card kind="team" icon={<UserPlus size={14} aria-hidden />} title={t('Team')}>
         {/* No org is not a read in flight. Hydration settles in a frame; a
             visitor without one is in this branch for as long as they stay. */}
-        <Waiting subject="your team" />
-        <Go href={invite()}>Invite</Go>
+        <Waiting subject={t('your team')} />
+        <Go href={invite()}>{t('Invite')}</Go>
       </Card>
     )
   }
@@ -609,26 +620,28 @@ function Team() {
 /** The org's people. Split out because `usePeople` needs an owner and a hook
  *  cannot be called conditionally. */
 function Mates({ owner }: { owner: string }) {
+  const { t } = useI18n()
   const { people, loading } = usePeople({ owner, service: false })
   return (
-    <Card kind="team" icon={<UserPlus size={14} aria-hidden />} title="Team">
+    <Card kind="team" icon={<UserPlus size={14} aria-hidden />} title={t('Team')}>
       {loading && people.length === 0 ? (
-        <Waiting subject="your team" />
+        <Waiting subject={t('your team')} />
       ) : people.length < 2 ? (
-        <Quiet>Just you.</Quiet>
+        <Quiet>{t('Just you.')}</Quiet>
       ) : (
-        <Quiet>{people.length} people</Quiet>
+        <Quiet>{t('{n} people', { n: people.length })}</Quiet>
       )}
-      <Go href={invite()}>Invite</Go>
+      <Go href={invite()}>{t('Invite')}</Go>
     </Card>
   )
 }
 
 function Build() {
+  const { t } = useI18n()
   return (
-    <Card kind="build" icon={<Code2 size={14} aria-hidden />} title="Build">
-      <Quiet>Hanzo Dev writes it, runs it, ships it.</Quiet>
-      <Go href={dev()}>Open Dev</Go>
+    <Card kind="build" icon={<Code2 size={14} aria-hidden />} title={t('Build')}>
+      <Quiet>{t('Hanzo Dev writes it, runs it, ships it.')}</Quiet>
+      <Go href={dev()}>{t('Open Dev')}</Go>
     </Card>
   )
 }

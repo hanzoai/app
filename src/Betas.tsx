@@ -17,10 +17,12 @@
 // cannot leak an unfinished app.
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import { phrase } from '@hanzo/i18n'
+import { useI18n } from '@hanzo/i18n/react'
 import { useIam } from '@hanzo/iam/react'
 import { Button, Dialog, DialogContent, DialogTitle, Text, XStack, YStack } from '@hanzo/ui'
 import { api } from './lib/api'
-import { BETAS, GROUPS, opens, type Beta } from './lib/betas'
+import { BETAS, GROUPS, opens, type Beta, type Group } from './lib/betas'
 import { bearer, scope, superAdmin } from './lib/session'
 
 /** What the cloud said for one token: the switches in force and what was asked for. */
@@ -30,6 +32,16 @@ interface Said {
 }
 
 const NONE: Said = { flags: {}, asked: [] }
+
+/** A group's heading as the list draws it: authored English, drawn through `t`. */
+const HEADING: Record<Group, string> = {
+  Business: phrase('Business'),
+  Data: phrase('Data'),
+  Agents: phrase('Agents'),
+  'Build & run': phrase('Build & run'),
+  Security: phrase('Security'),
+  Creative: phrase('Creative'),
+}
 
 /** One read per token, shared by every caller on the page. */
 let held: { token: string; said: Said; at: number } | null = null
@@ -77,6 +89,7 @@ export function useBetas(): {
   /** The cloud has answered for this reader. */
   ready: boolean
 } {
+  const { t } = useI18n()
   const { accessToken } = useIam()
   const [sudo, setSudo] = useState(false)
   const [local, setLocal] = useState(false)
@@ -99,14 +112,14 @@ export function useBetas(): {
         headers: { 'content-type': 'application/json', ...scope() },
         body: JSON.stringify({ betas: ids }),
       })
-      if (!r.ok) throw new Error(r.status === 401 ? 'Sign in to ask for access.' : `The request was not taken (${r.status}).`)
+      if (!r.ok) throw new Error(r.status === 401 ? t('Sign in to ask for access.') : t('The request was not taken ({status}).', { status: r.status }))
       const record = (await r.json()) as { betas?: string[] }
       if (held && held.token === token) {
         held = { ...held, said: { ...held.said, asked: record.betas ?? [...held.said.asked, ...ids] } }
         tell()
       }
     },
-    [token],
+    [token, t],
   )
   return { open, asked, request, ready: Boolean(token) && now?.token === token }
 }
@@ -124,24 +137,25 @@ function here(): boolean {
 
 /** One app's action: Open where it may, Requested once asked, else Request access. */
 function Ask({ beta, go }: { beta: Beta; go?: (href: string) => void }) {
+  const { t } = useI18n()
   const { open, asked, request } = useBetas()
   const [busy, setBusy] = useState(false)
   const [wrong, setWrong] = useState<string | null>(null)
   if (open(beta.id)) {
     return beta.href && go ? (
       <Button size="sm" rounded={999} onPress={() => go(beta.href as string)} data-slot="beta-open">
-        Open
+        {t('Open')}
       </Button>
     ) : (
       <Text fontSize="$2" color="$color11" data-slot="beta-on">
-        You’re in
+        {t('You’re in')}
       </Text>
     )
   }
   if (asked(beta.id)) {
     return (
       <Text fontSize="$2" color="$color11" data-slot="beta-requested">
-        Requested
+        {t('Requested')}
       </Text>
     )
   }
@@ -161,7 +175,7 @@ function Ask({ beta, go }: { beta: Beta; go?: (href: string) => void }) {
             .finally(() => setBusy(false))
         }}
       >
-        {busy ? 'Requesting…' : 'Request access'}
+        {t(busy ? 'Requesting…' : 'Request access')}
       </Button>
       {wrong ? (
         <Text fontSize="$1" color="$red10">
@@ -174,12 +188,13 @@ function Ask({ beta, go }: { beta: Beta; go?: (href: string) => void }) {
 
 /** Every app in beta, by group, each with its action. */
 export function BetasList({ go }: { go?: (href: string) => void }) {
+  const { t } = useI18n()
   return (
     <YStack gap="$4" data-slot="betas">
       {GROUPS.map((group) => (
         <YStack key={group} gap="$2">
           <Text fontSize="$1" color="$color10" textTransform="uppercase" letterSpacing={0.6}>
-            {group}
+            {t(HEADING[group])}
           </Text>
           {BETAS.filter((b) => b.group === group).map((b) => (
             <XStack key={b.id} items="center" gap="$3" data-beta={b.id}>
@@ -188,7 +203,7 @@ export function BetasList({ go }: { go?: (href: string) => void }) {
                   {b.name}
                 </Text>
                 <Text fontSize="$2" color="$color11">
-                  {b.line}
+                  {t(b.line)}
                 </Text>
               </YStack>
               <Ask beta={b} go={go} />
@@ -202,14 +217,15 @@ export function BetasList({ go }: { go?: (href: string) => void }) {
 
 /** The Betas list in a dialog, from the rail's More. */
 export function BetasDialog({ open, onOpenChange, go }: { open: boolean; onOpenChange: (open: boolean) => void; go?: (href: string) => void }) {
+  const { t } = useI18n()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent maxW={520} rounded="$6" gap="$3">
-        <DialogTitle>Betas</DialogTitle>
+        <DialogTitle>{t('Betas')}</DialogTitle>
         <Text fontSize="$2" color="$color11">
-          Apps we have not opened to everyone yet. Ask for the ones you want and we will let you in.
+          {t('Apps we have not opened to everyone yet. Ask for the ones you want and we will let you in.')}
         </Text>
-        <YStack maxH="60vh" overflowY="auto" overflowX="hidden" pr="$2">
+        <YStack maxH="60vh" overflowY="auto" overflowX="hidden" paddingInlineEnd="$2">
           <BetasList go={go} />
         </YStack>
       </DialogContent>

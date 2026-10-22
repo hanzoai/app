@@ -24,7 +24,9 @@
 // The panes that are not yet built say so in one sentence rather than pretending
 // to a screen. An honest empty pane is a smaller lie than an invented one.
 
+import { phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
+import type { Say } from './say'
 import { app, dev } from './lib/host'
 import { ArrowLeft, ArrowUpRight } from 'lucide-react'
 import { Text } from '@hanzo/ui'
@@ -34,7 +36,10 @@ import { site } from './where'
 
 export type Row = {
   id: string
+  /** Authored English, drawn through `t` (`named`), unless `product` says it is a name. */
   label: string
+  /** The label is a product's name (Hanzo Dev, Base), drawn as it is in every language. */
+  product?: true
   /**
    * Where the row GOES, for one that leaves this list for the page that owns it.
    *
@@ -43,52 +48,55 @@ export type Row = {
    * this states the destination and `onPick` performs it.
    */
   href?: string
-  /** One sentence, for a pane we have not built a screen for yet. */
+  /** One sentence, for a pane we have not built a screen for yet: authored English, drawn through `t`. */
   note?: string
 }
+
+/** A row's name as the reader sees it. */
+export const named = (r: Row, t: Say): string => (r.product ? r.label : t(r.label))
 
 type Group = { label: string; rows: Row[] }
 
 const GROUPS: Group[] = [
   {
-    label: 'Settings',
+    label: phrase('Settings'),
     rows: [
-      { id: 'general', label: 'General' },
-      { id: 'account', label: 'Account' },
-      { id: 'billing', label: 'Billing' },
-      { id: 'usage', label: 'Usage' },
-      { id: 'capabilities', label: 'Capabilities', note: 'What a model may reach for on your behalf.' },
-      { id: 'privacy', label: 'Privacy', href: site('/legal/privacy') },
-      { id: 'dev', label: 'Hanzo Dev', href: dev() },
-      { id: 'browser', label: 'Hanzo Browser', href: site('/extension') },
+      { id: 'general', label: phrase('General') },
+      { id: 'account', label: phrase('Account') },
+      { id: 'billing', label: phrase('Billing') },
+      { id: 'usage', label: phrase('Usage') },
+      { id: 'capabilities', label: phrase('Capabilities'), note: phrase('What a model may reach for on your behalf.') },
+      { id: 'privacy', label: phrase('Privacy'), href: site('/legal/privacy') },
+      { id: 'dev', label: 'Hanzo Dev', product: true, href: dev() },
+      { id: 'browser', label: 'Hanzo Browser', product: true, href: site('/extension') },
     ],
   },
   {
-    label: 'Preferences',
+    label: phrase('Preferences'),
     rows: [
       // DEFAULT MODEL, and the word matters beside Platform's Models: this row
       // chooses which one answers, that one says which ones are served.
-      { id: 'model', label: 'Default model' },
+      { id: 'model', label: phrase('Default model') },
       {
         id: 'agent',
-        label: 'Personal agent',
-        note:
-          'The agent that answers as you — its capabilities, its modes, and what it is allowed ' +
-          'to do on your behalf. Nothing is bound to this surface yet, so there is nothing here ' +
-          'to change; it is listed because this is where it will live.',
+        label: phrase('Personal agent'),
+        // One literal, so the catalog extractor reads it whole.
+        note: phrase(
+          'The agent that answers as you — its capabilities, its modes, and what it is allowed to do on your behalf. Nothing is bound to this surface yet, so there is nothing here to change; it is listed because this is where it will live.',
+        ),
       },
     ],
   },
   // Plugins and skills are what an agent brings to a run, and Customize is
   // their one home: these rows lead there rather than drawing a second list.
   {
-    label: 'Customize',
+    label: phrase('Customize'),
     rows: [
-      { id: 'apps', label: 'Apps' },
-      { id: 'channels', label: 'Channels' },
-      { id: 'plugins', label: 'Plugins', href: site(app('-/customize/plugins')) },
-      { id: 'skills', label: 'Skills', href: site(app('-/customize')) },
-      { id: 'memory', label: 'Memory', note: 'Nothing is remembered between conversations yet.' },
+      { id: 'apps', label: phrase('Apps') },
+      { id: 'channels', label: phrase('Channels') },
+      { id: 'plugins', label: phrase('Plugins'), href: site(app('-/customize/plugins')) },
+      { id: 'skills', label: phrase('Skills'), href: site(app('-/customize')) },
+      { id: 'memory', label: phrase('Memory'), note: phrase('Nothing is remembered between conversations yet.') },
     ],
   },
   /**
@@ -101,13 +109,13 @@ const GROUPS: Group[] = [
    * screen would be worse than one that leaves.
    */
   {
-    label: 'Platform',
+    label: phrase('Platform'),
     rows: [
-      { id: 'models', label: 'Models' },
-      { id: 'base', label: 'Base', href: site('/base') },
-      { id: 'functions', label: 'Functions', href: site('/functions') },
-      { id: 'realtime', label: 'Realtime', href: site('/realtime') },
-      { id: 'keys', label: 'API keys', href: 'https://platform.hanzo.ai/api-keys' },
+      { id: 'models', label: phrase('Models') },
+      { id: 'base', label: 'Base', product: true, href: site('/base') },
+      { id: 'functions', label: 'Functions', product: true, href: site('/functions') },
+      { id: 'realtime', label: 'Realtime', product: true, href: site('/realtime') },
+      { id: 'keys', label: phrase('API keys'), href: 'https://platform.hanzo.ai/api-keys' },
     ],
   },
 ]
@@ -145,21 +153,23 @@ export function SettingsList({
 }) {
   const { t } = useI18n();
   const q = filter.trim().toLowerCase()
+  // A row is found by the name the reader sees, or by its English one.
   const groups = q
-    ? GROUPS.map((g) => ({ ...g, rows: g.rows.filter((r) => r.label.toLowerCase().includes(q)) })).filter(
+    ? GROUPS.map((g) => ({ ...g, rows: g.rows.filter((r) => [named(r, t), r.label].some((l) => l.toLowerCase().includes(q))) })).filter(
         (g) => g.rows.length > 0,
       )
     : GROUPS
 
   return (
     <>
-      <SidebarItem icon={<ArrowLeft size={15} aria-hidden />} onPress={onBack}>{t("Workspace")}</SidebarItem>
+      <SidebarItem icon={<ArrowLeft size={15} aria-hidden data-i18n-mirror />} onPress={onBack}>{t("Workspace")}</SidebarItem>
       {q && groups.length === 0 ? (
-        <Text px="$3" py="$2" fontSize="$2" color="$quiet">{t("No matches for “")}{filter.trim()}”.
+        <Text px="$3" py="$2" fontSize="$2" color="$quiet">
+          {t('No matches for “{query}”.', { query: filter.trim() })}
         </Text>
       ) : null}
       {groups.map((g) => (
-        <SidebarSection key={g.label} label={g.label}>
+        <SidebarSection key={g.label} label={t(g.label)}>
           {g.rows.map((r) => (
             <SidebarItem
               key={r.id}
@@ -171,7 +181,7 @@ export function SettingsList({
               aria-current={r.id === active ? 'true' : undefined}
               onPress={() => onPick(r)}
             >
-              {r.label}
+              {named(r, t)}
             </SidebarItem>
           ))}
         </SidebarSection>

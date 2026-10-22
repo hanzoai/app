@@ -10,6 +10,7 @@
 // record says.
 
 import { useEffect, useState } from 'react'
+import { useI18n } from '@hanzo/i18n/react'
 import { SizableText, Text, XStack, YStack } from '@hanzo/gui'
 import { Sparkles, X } from 'lucide-react'
 import { firstRun } from '@hanzo/ui/onboarding'
@@ -22,6 +23,7 @@ import { brand, site } from './where'
 const LATER = 'hanzo.onboarding.later'
 
 export function Setup() {
+  const { t } = useI18n()
   const [later, setLater] = useKept(LATER, false)
   const [owed, setOwed] = useState(false)
   useEffect(() => {
@@ -34,11 +36,11 @@ export function Setup() {
   }, [later])
   if (later || !owed) return null
   return (
-    <XStack data-slot="setup" role="region" aria-label={`Set up ${brand()}`} items="center" gap="$2.5" px="$3" py="$2.5" rounded="$4" borderWidth={1} borderColor="$borderColor" bg="$edge">
+    <XStack data-slot="setup" role="region" aria-label={t('Set up {brand}', { brand: brand() })} items="center" gap="$2.5" px="$3" py="$2.5" rounded="$4" borderWidth={1} borderColor="$borderColor" bg="$edge">
       <Sparkles size={16} aria-hidden />
       <YStack flex={1} minW={0} gap="$0.5">
         <SizableText size="$2" color="$ink" numberOfLines={1}>
-          Finish setting up {brand()}
+          {t('Finish setting up {brand}', { brand: brand() })}
         </SizableText>
         <Text
           render={<a href={site(`/onboarding?next=${encodeURIComponent('/')}`)} />}
@@ -47,10 +49,10 @@ export function Setup() {
           textDecorationLine="underline"
           self="flex-start"
         >
-          Set up
+          {t('Set up')}
         </Text>
       </YStack>
-      <XStack render="button" aria-label="Not now" onPress={() => setLater(true)} p="$1" rounded={999} hoverStyle={{ bg: '$hover' }}>
+      <XStack render="button" aria-label={t('Not now')} onPress={() => setLater(true)} p="$1" rounded={999} hoverStyle={{ bg: '$hover' }}>
         <X size={14} aria-hidden />
       </XStack>
     </XStack>
