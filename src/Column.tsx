@@ -21,6 +21,7 @@
 // double-clicked back (@hanzo/build's `Grip`), kept per browser. Pulled in past
 // its floor it shuts (`onShut`), as the sidebar's toggle shuts it.
 
+import { useI18n } from '@hanzo/i18n/react'
 import { Text, XStack, YStack } from '@hanzo/gui'
 import { ArrowLeft, Bell, Search, Settings2, SquarePen } from 'lucide-react'
 import { DOTS, Gutter, library, NEW, own, path as written, sections, tabs, useScheduled, useSessions, type Host } from '@hanzo/build'
@@ -83,6 +84,7 @@ const TITLE: Record<Spot, string> = { library: 'Library', scheduled: 'Scheduled 
 const HEAD = { width: 32, height: 32, rounded: '$3' } as const
 
 function Activity({ host }: { host: Host }) {
+  const { t } = useI18n();
   const store = useSessions(host)
   const latest = [...store.value].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)).slice(0, RECENT)
   const items: NonNullable<DropdownMenuProps['items']> = [
@@ -105,7 +107,7 @@ function Activity({ host }: { host: Host }) {
       trigger={
         <XStack
           render="button"
-          aria-label="Activity"
+          aria-label={t("Activity")}
           {...({ title: 'Activity' } as object)}
           {...HEAD}
           items="center"
@@ -154,6 +156,7 @@ export function Column({
   /** The mode's places, where they are not Dev's (Studio's `nav`). */
   places?: { id: string; label: string; links: RailLink[] }[]
 }) {
+  const { t } = useI18n();
   // The desktop sidebar and a phone's drawer can both be in the page: each names its own group labels.
   const uid = useId()
   const span = useSpan(SPAN, WIDTH, FLOOR, CEIL)
@@ -206,7 +209,7 @@ export function Column({
       >
         {at ? (
           <XStack data-slot="app-head" items="center" gap="$1" pl={2} pr={2} height={52} shrink={0} minW={0}>
-            <SidebarIconButton label="Back" data-slot="place-back" onPress={onBack} {...HEAD}>
+            <SidebarIconButton label={t("Back")} data-slot="place-back" onPress={onBack} {...HEAD}>
               <ArrowLeft size={16} aria-hidden />
             </SidebarIconButton>
             <Text flex={1} minW={0} fontSize={18} lineHeight={24} fontWeight="600" color="$ink" numberOfLines={1} data-slot="place-name">
@@ -219,7 +222,7 @@ export function Column({
               {wordmark(mode)}
             </Text>
             <Activity host={host} />
-            <SidebarIconButton label="Search" onPress={onSeek} aria-haspopup="dialog" {...HEAD}>
+            <SidebarIconButton label={t("Search")} onPress={onSeek} aria-haspopup="dialog" {...HEAD}>
               <Search size={16} aria-hidden />
             </SidebarIconButton>
           </XStack>
@@ -229,9 +232,7 @@ export function Column({
             <YStack role="listitem">
               {/* Current while the pane holds a new conversation, and never lit: the reference lights the conversation open, not New. */}
               <SidebarItem data-slot="app-new" {...ROW} active={!thread} bg="transparent" hoverStyle={{ bg: '$hover' }} icon={<SquarePen size={16} aria-hidden />} onPress={create} {...keys(create)}>
-                <Text fontSize="$3" color="$ink">
-                  New chat
-                </Text>
+                <Text fontSize="$3" color="$ink">{t("New chat")}</Text>
               </SidebarItem>
             </YStack>
           </YStack>
@@ -287,7 +288,7 @@ export function Column({
           onSpan={span.move}
           onKeep={span.keep}
           onShut={onShut}
-          label="Resize sidebar"
+          label={t("Resize sidebar")}
         />
       )}
     </YStack>

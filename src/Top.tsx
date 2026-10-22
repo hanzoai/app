@@ -17,6 +17,7 @@
 // mode's own New row (@hanzo/build's and @hanzo/studio's `nav`, `NEW`), so the
 // bar names it as the sidebar does.
 
+import { useI18n } from '@hanzo/i18n/react'
 import { SquarePen } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Text, XStack } from '@hanzo/gui'
@@ -41,10 +42,11 @@ const GLASS = { ...pane(), borderColor: 'var(--border-strong)', borderRadius: 99
 
 /** A round glass button named for what it does. */
 function Round({ label, onPress, children, ...rest }: { label: string; onPress?: () => void; children: ReactNode; [attribute: `data-${string}` | `aria-${string}`]: unknown }) {
+  const { t } = useI18n();
   return (
     <XStack
       render="button"
-      aria-label={label}
+      aria-label={t(label)}
       onPress={onPress}
       {...GLASS}
       width={ROUND}
@@ -110,6 +112,7 @@ export function Top({
   onChat: () => void
   onDev: () => void
 }) {
+  const { t } = useI18n();
   const made = mode === 'chat' ? null : (places ?? nav(host, (p) => host.go(p))).flatMap((g) => g.links).find((l) => l.id === NEW)
   const fresh =
     mode === 'chat'
@@ -123,13 +126,13 @@ export function Top({
       : { label: made?.label ?? 'New', onPress: made?.onPress }
   return (
     <XStack data-slot="app-bar" height={`calc(${LINE}px + var(--safe-top))`} pt="var(--safe-top)" px="$4.5" items="center" justify="space-between" shrink={0} $md={{ display: 'none' }}>
-      <Round label="Open sidebar" data-slot="bar-menu" onPress={onMenu}>
+      <Round label={t("Open sidebar")} data-slot="bar-menu" onPress={onMenu}>
         <Lines />
       </Round>
       <XStack data-slot="bar-mode" {...GLASS} height={LINE} p="$1" items="center">
-        <ToggleGroup type="single" aria-label="App" value={mode === 'chat' || mode === 'dev' ? mode : ''} disableDeactivation onValueChange={(v) => (v === 'chat' ? onChat() : v === 'dev' ? onDev() : undefined)}>
-          <Side value="chat">Chat</Side>
-          <Side value="dev">Dev</Side>
+        <ToggleGroup type="single" aria-label={t("App")} value={mode === 'chat' || mode === 'dev' ? mode : ''} disableDeactivation onValueChange={(v) => (v === 'chat' ? onChat() : v === 'dev' ? onDev() : undefined)}>
+          <Side value="chat">{t("Chat")}</Side>
+          <Side value="dev">{t("Dev")}</Side>
         </ToggleGroup>
       </XStack>
       <Round label={fresh.label} data-slot="bar-new" onPress={fresh.onPress}>

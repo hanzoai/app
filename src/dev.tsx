@@ -47,7 +47,7 @@ import { showSettings, useOpen } from './open'
 const LINKS: Host['links'] = {
   github: app('-/sync'),
   customize: app('-/customize'),
-  settings: app('-/settings'),
+  settings: '/settings',
   home: '/',
 }
 
@@ -88,14 +88,17 @@ export function useDevHost(): Host {
   const look = useLook()
   const { settings } = useOpen()
 
-  // The builder names every Settings section the rooms' pane does that it has;
-  // one it does not have opens Settings itself.
+  // Settings is top-level /settings; organization settings are at /settings/organization.
   useEffect(() => {
     if (!settings) return
     showSettings(null)
-    const asked = route(`-/settings/${settings}`)
-    go(app(path(asked.kind === 'settings' ? asked : { kind: 'settings', section: 'general' })))
-  }, [settings])
+    const s = settings.toLowerCase()
+    if (s.includes('member')) router.push('/settings/organization/members')
+    else if (s.includes('billing')) router.push('/settings/organization/billing')
+    else if (s.includes('usage')) router.push('/settings/organization/usage')
+    else if (s.includes('org')) router.push('/settings/organization')
+    else router.push('/settings')
+  }, [settings, router])
 
   // The token's claims change only when the token does: a sign-in, a refresh.
   const memberships = useMemo(() => orgs(), [accessToken]) // eslint-disable-line react-hooks/exhaustive-deps

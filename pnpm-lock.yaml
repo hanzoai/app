@@ -133,6 +133,9 @@ importers:
       '@hanzo/gui':
         specifier: 8.3.5
         version: 8.3.5(react-dom@19.2.8(react@19.2.8))(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(react@19.2.8)
+      '@hanzo/i18n':
+        specifier: file:vendor/i18n
+        version: file:vendor/i18n(react@19.2.8)
       '@hanzo/iam':
         specifier: 'catalog:'
         version: 0.21.35(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -664,6 +667,11 @@ packages:
     hasBin: true
     peerDependencies:
       react: '>=19.2.8'
+
+  '@hanzo/i18n@file:vendor/i18n':
+    resolution: {directory: vendor/i18n, type: directory}
+    peerDependencies:
+      react: '>=18'
 
   '@hanzo/iam@0.21.35':
     resolution: {integrity: sha512-PJUBXZ42Sj7B7IxuxO7R5TbyNXMW7WOVG4B2PZ+EAvL2NbJT1Cs3VmmyIGObZXWeotO5e6SN9YAl6jq1bzrs0w==}
@@ -3907,6 +3915,10 @@ snapshots:
     transitivePeerDependencies:
       - react-dom
       - react-native
+
+  '@hanzo/i18n@file:vendor/i18n(react@19.2.8)':
+    dependencies:
+      react: 19.2.8
 
   '@hanzo/iam@0.21.35(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:

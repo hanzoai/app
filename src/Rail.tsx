@@ -29,6 +29,7 @@
 // drawer is too narrow for every mark, so Library, Scheduled tasks and
 // Customize lead More there.
 
+import { useI18n } from '@hanzo/i18n/react'
 import { Clock, Code2, Ellipsis, FlaskConical, Library, MessageSquare, PanelLeft, Puzzle, Sparkles, SquareTerminal, Users, WandSparkles } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { XStack, YStack } from '@hanzo/gui'
@@ -81,10 +82,11 @@ export function Mark({
   children: ReactNode
   [attribute: `data-${string}` | `aria-${string}`]: unknown
 }) {
+  const { t } = useI18n();
   return (
     <XStack
       render="button"
-      aria-label={label}
+      aria-label={t(label)}
       {...({ title: label } as object)}
       aria-current={on ? 'page' : undefined}
       onPress={onPress}
@@ -152,6 +154,7 @@ export function Rail({
   /** Work in another organization. */
   onOrg: (org: string) => void
 }) {
+  const { t } = useI18n();
   const here = mode === 'dev' ? spot(at) : null
   const to = (p: string) => () => go(app(p))
   // The products on hosts of their own, behind More; on a phone the raised places lead it.
@@ -184,7 +187,7 @@ export function Rail({
     <Stack
       data-slot="rail"
       render="nav"
-      aria-label="Products"
+      aria-label={t("Products")}
       {...(flat ? { pt: '$2', mt: '$2', borderTopWidth: 1, borderColor: '$borderColor', gap: '$1' } : { width: RAIL, flex: 1, pt: '$2', pb: '$2', gap: 8 })}
       shrink={0}
       items="center"
@@ -194,27 +197,27 @@ export function Rail({
           <Toggle open={open} onPress={toggle} />
         </YStack>
       ) : null}
-      <Mark label="Chat" on={mode === 'chat'} onPress={onChat} data-slot="rail-chat">
+      <Mark label={t("Chat")} on={mode === 'chat'} onPress={onChat} data-slot="rail-chat">
         <MessageSquare size={18} aria-hidden />
       </Mark>
-      <Mark label="Dev" on={mode === 'dev' && !here} onPress={onDev} data-slot="rail-dev">
+      <Mark label={t("Dev")} on={mode === 'dev' && !here} onPress={onDev} data-slot="rail-dev">
         <Code2 size={18} aria-hidden />
       </Mark>
-      <Mark label="Studio" on={mode === 'studio'} onPress={onStudio} data-slot="rail-studio">
+      <Mark label={t("Studio")} on={mode === 'studio'} onPress={onStudio} data-slot="rail-studio">
         <WandSparkles size={18} aria-hidden />
       </Mark>
-      <Mark label="Tabs" on={mode === 'tabs'} onPress={onTabs} data-slot="rail-tabs">
+      <Mark label={t("Tabs")} on={mode === 'tabs'} onPress={onTabs} data-slot="rail-tabs">
         <SquareTerminal size={18} aria-hidden />
       </Mark>
       {flat ? null : (
         <>
-          <Mark label="Library" on={here === 'library'} onPress={to(RAISED.library)} data-slot="rail-library">
+          <Mark label={t("Library")} on={here === 'library'} onPress={to(RAISED.library)} data-slot="rail-library">
             <Library size={18} aria-hidden />
           </Mark>
-          <Mark label="Scheduled tasks" on={here === 'scheduled'} onPress={to(RAISED.scheduled)} data-slot="rail-scheduled">
+          <Mark label={t("Scheduled tasks")} on={here === 'scheduled'} onPress={to(RAISED.scheduled)} data-slot="rail-scheduled">
             <Clock size={18} aria-hidden />
           </Mark>
-          <Mark label="Customize" on={here === 'customize'} onPress={to(RAISED.customize)} data-slot="rail-customize">
+          <Mark label={t("Customize")} on={here === 'customize'} onPress={to(RAISED.customize)} data-slot="rail-customize">
             <Puzzle size={18} aria-hidden />
           </Mark>
         </>
@@ -227,7 +230,7 @@ export function Rail({
           trigger={
             <XStack
               render="button"
-              aria-label="More"
+              aria-label={t("More")}
               {...({ title: 'More' } as object)}
               data-slot="rail-more"
               width={MARK}
