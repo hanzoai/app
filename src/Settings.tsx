@@ -24,6 +24,7 @@
 // The panes that are not yet built say so in one sentence rather than pretending
 // to a screen. An honest empty pane is a smaller lie than an invented one.
 
+import { useI18n } from '@hanzo/i18n/react'
 import { app, dev } from './lib/host'
 import { ArrowLeft, ArrowUpRight } from 'lucide-react'
 import { Text } from '@hanzo/ui'
@@ -142,6 +143,7 @@ export function SettingsList({
   /** Back to the rooms. */
   onBack: () => void
 }) {
+  const { t } = useI18n();
   const q = filter.trim().toLowerCase()
   const groups = q
     ? GROUPS.map((g) => ({ ...g, rows: g.rows.filter((r) => r.label.toLowerCase().includes(q)) })).filter(
@@ -151,12 +153,9 @@ export function SettingsList({
 
   return (
     <>
-      <SidebarItem icon={<ArrowLeft size={15} aria-hidden />} onPress={onBack}>
-        Workspace
-      </SidebarItem>
+      <SidebarItem icon={<ArrowLeft size={15} aria-hidden />} onPress={onBack}>{t("Workspace")}</SidebarItem>
       {q && groups.length === 0 ? (
-        <Text px="$3" py="$2" fontSize="$2" color="$quiet">
-          No matches for “{filter.trim()}”.
+        <Text px="$3" py="$2" fontSize="$2" color="$quiet">{t("No matches for “")}{filter.trim()}”.
         </Text>
       ) : null}
       {groups.map((g) => (

@@ -119,7 +119,7 @@ export function places(host: Host | undefined, go: (address: string) => void): {
     { id: 'tabs', label: 'Tabs', icon: <SquareTerminal {...ICON} />, run: () => go(TERMINALS) },
     ...(host ? [{ id: 'team', label: 'Team', icon: <Users {...ICON} />, keywords: ['workspace'], run: () => out(WORKSPACE) }] : []),
     ...(host ? rows(nav(host, builder).map((g) => ({ links: g.links.filter((l) => l.id !== NEW) })), '', 'dev') : []),
-    { id: 'settings', label: 'Settings', icon: <Settings {...ICON} />, shortcut: ['Mod', ','], run: () => go(app(SETTINGS)) },
+    { id: 'settings', label: 'Settings', icon: <Settings {...ICON} />, shortcut: ['Mod', ','], run: () => go('/settings') },
     // The site's own pages, outside the app: the browser loads them.
     { id: 'referral', label: 'Referral', icon: <Gift {...ICON} />, keywords: ['invite', 'share'], run: () => window.location.assign(site('/referral')) },
     { id: 'beta', label: 'Beta status', icon: <FlaskConical {...ICON} />, keywords: ['waitlist'], run: () => window.location.assign(site('/beta/status')) },

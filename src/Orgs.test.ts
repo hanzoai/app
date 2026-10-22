@@ -35,7 +35,8 @@ vi.mock('@hanzo/ui/product/Filters', () => ({
     createElement('div', null, createElement('input', { placeholder }), actions),
 }))
 vi.mock('@hanzo/build/plan', () => ({ label: () => null, said: () => '' }))
-vi.mock('lucide-react', () => ({ Check: () => null, Minus: () => null, Plus: () => null, X: () => null }))
+vi.mock('@hanzogui/shell', () => ({ HanzoWordmark: () => null }))
+vi.mock('lucide-react', () => ({ Check: () => null, LogOut: () => null, Minus: () => null, Plus: () => null, X: () => null }))
 vi.mock('@hanzo/iam/react', () => ({ useIam: () => state.iam }))
 vi.mock('./waiting', () => ({ Waiting: () => null }))
 vi.mock('./lib/destination', () => ({ LOGIN: '/login', enter: () => {} }))
@@ -43,6 +44,7 @@ vi.mock('./lib/ai', () => ({ useAi: () => ({ client: null }) }))
 vi.mock('./lib/hostname', () => ({ useHost: () => state.host }))
 vi.mock('./lib/hydrated', () => ({ useHydrated: () => true }))
 vi.mock('./lib/api', () => ({ api: () => 'https://api.hanzo.ai' }))
+vi.mock('./lib/signout', () => ({ useSignOut: () => () => {} }))
 vi.mock('./lib/tier', () => ({
   useTier: () => ({ tier: state.tier, wrong: null, reload: () => {} }),
   usePersonal: () => state.personal,
@@ -54,6 +56,7 @@ vi.mock('./lib/session', () => ({
   assumed: () => null,
   bearer: () => 't',
   hasSession: () => true,
+  named: () => null,
   org: () => state.org,
   orgs: () => state.orgs,
   pick: () => {},

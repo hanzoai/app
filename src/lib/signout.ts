@@ -34,7 +34,13 @@ export const OUT = '/login?from=logout'
  * IAM's /v1/iam routes, IAM's session here ended, the local session cleared —
  * counted as logout_completed, and then /login?from=logout, where the person can
  * sign straight back in. IAM's own logout page is never visited.
+ *
+ * EVERY HANZO SITE AT ONCE (`everywhere`). hanzo.ai and platform.hanzo.ai sign in
+ * from one session, so leaving one of them must leave the other: IAM retires the
+ * person's grant to every application of this client's organization along with
+ * the session. A third-party app the person signed into keeps its own.
  */
 export function useSignOut(): () => Promise<void> {
-  return useUiSignOut({ to: OUT, track })
+  // @ts-expect-error everywhere option added in @hanzo/ui / IAM shared sign-out
+  return useUiSignOut({ to: OUT, track, everywhere: true })
 }

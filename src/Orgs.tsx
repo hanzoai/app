@@ -280,7 +280,7 @@ function useArrival(door: boolean, hydrated: boolean, isLoading: boolean, isAuth
 const SHEET = 'calc(var(--z-modal) + 10)' as `var(--${string})`
 const DIALOG = 'calc(var(--z-modal) + 20)' as `var(--${string})`
 /** The sheet's top inset: a share of the window's height, held between two lengths. */
-const TOP = 'clamp(32px, 12vh, 120px)' as `var(--${string})`
+const TOP = 'clamp(72px, 12vh, 120px)' as `var(--${string})`
 const muted = 'var(--muted-foreground)'
 /** The black that veils and shadows, at a share of itself. */
 const shade = (share: number) => mix('var(--pure-black)', share, 'srgb')

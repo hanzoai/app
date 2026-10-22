@@ -1,0 +1,36 @@
+{
+  "name": "@hanzo/i18n",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "Apache-2.0",
+  "description": "Shared Hanzo locale registry, React bindings and offline model translation pipeline",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./react": {
+      "types": "./src/react.d.ts",
+      "default": "./src/react.js"
+    },
+    "./rtl.css": "./src/rtl.css"
+  },
+  "files": [
+    "src",
+    "catalogs",
+    "README.md",
+    "models.json"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "translate": "node scripts/translate.mjs",
+    "validate": "node scripts/validate.mjs"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hanzoai/i18n.git"
+  }
+}
