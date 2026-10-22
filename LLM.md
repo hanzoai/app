@@ -197,7 +197,7 @@ the one conversation the pane holds).
   by cursor, each row stepped into through `support()` (IAM `assume`, audited).
   An organization's mark is its IAM row alone: Hanzo's H is `admin/hanzo`'s
   `avatar`, never drawn here for a brand.
-- `Chrome` (root export) is the one bar over a focused page: the chooser and
+- `Chrome` (the `@hanzo/rooms/Chrome` subpath, never the root: plain Node cannot load the UI packages it pulls in) is the one bar over a focused page: the chooser and
   every gate screen (`Orgs.tsx` `Page`, once someone is signed in; "Signing you
   in" stands alone), and the host's own focused pages (the way in, the way to
   pay, a beta application), none of which draws a bar of its own. Sticky, 60px
