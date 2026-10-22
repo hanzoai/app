@@ -177,8 +177,8 @@ function Window({ bar }: { bar?: Bar }) {
   const run = where !== null && route(where).kind === 'run'
   const asked = at.mode === 'chat' ? at.thread : null
   const { thread, settings: wanted } = useOpen()
-  // A row of the account menu asks for Settings: the drawer goes away even when
-  // the address does not move (the reader was on that page already).
+  // A row of the account menu asks for Settings: the drawer goes away as the
+  // router leaves for the page (dev.tsx).
   useEffect(() => {
     if (wanted) shut()
   }, [wanted, shut])
