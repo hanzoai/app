@@ -211,6 +211,13 @@ const str = (v: unknown): string => (typeof v === 'string' ? v : '')
 const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
 
 /** `/v1/projects`: a project by its slug, found by its name, slug and repository. */
+/**
+ * The builder as a frame without it holds it (hanzo.team's Shell): nobody signed
+ * in to it, so `useSessions` reads no runs. The hook reads `api`, `token`, `org`
+ * and `person` off whatever it is handed, and handed nothing it throws.
+ */
+const NOBODY = { api: '', token: () => null, org: null, person: null } as unknown as Host
+
 const projects = (body: unknown): Hit[] =>
   (Array.isArray(body) ? body : list(obj(body).data))
     .map(obj)
@@ -256,7 +263,7 @@ export function Palette({
   const known = useRead('/v1/tool/skills?activated=true', skills)
   const plugged = useRead('/v1/tool/mcp/servers', connectors)
   const signOut = useSignOut()
-  const runs = useSessions(host ?? null)
+  const runs = useSessions(host ?? NOBODY)
   const { open: opened } = useBetas()
 
   const groups = useMemo<CommandMenuGroup[]>(() => {

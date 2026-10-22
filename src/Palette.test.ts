@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 // The palette's places and actions against the registries they are derived
 // from. The registries are @hanzo/build's and @hanzo/studio's, drawn here as
 // the shape they hand a sidebar: rows that move the app through `go`.
-const { empty } = vi.hoisted(() => ({ empty: vi.fn() }))
+const { empty, asked } = vi.hoisted(() => ({ empty: vi.fn(), asked: [] as unknown[] }))
 
 vi.mock('@hanzo/ai/react', () => ({ useAi: () => ({}) }))
 vi.mock('@hanzo/ui', () => ({ Dialog: () => null, DialogContent: () => null, DialogTitle: () => null }))
@@ -17,7 +17,8 @@ vi.mock('@hanzo/build', async () => {
   return {
     NEW: 'new',
     path,
-    useSessions: () => null,
+    // As @hanzo/build's reads it: the host's api, token, org and person, at once.
+    useSessions: (h: { api: string; person: unknown }) => (asked.push(h), h.api, Boolean(h.person), { value: [] }),
     nav: (_: unknown, go: Go) => [
       { id: 'work', label: 'Work', links: [link(go, 'new', 'New run', ''), link(go, 'projects', 'Projects', path({ kind: 'screen', screen: 'projects' }))] },
       { id: 'run', label: 'Run', links: [settings(go, 'machines', 'Machines')] },
@@ -40,8 +41,10 @@ vi.mock('./lib/signout', () => ({ useSignOut: () => () => {} }))
 vi.mock('./lib/session', () => ({ choose: () => {} }))
 vi.mock('./Betas', () => ({ useBetas: () => ({ open: () => false }) }))
 
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { path } from '@hanzo/build/route'
-import { actions, places } from './Palette'
+import { actions, Palette, places } from './Palette'
 import { app, talk } from './lib/host'
 import type { Host } from '@hanzo/build'
 
@@ -107,5 +110,16 @@ describe('Actions', () => {
     expect(ids(host)).toEqual(['new-chat', 'new-task', 'new-creation', 'new-scheduled', 'upload', 'model', 'org', 'keys', 'logout'])
     expect(ids({ ...host, chooseTheme: () => {} } as Host)).toContain('theme')
     expect(ids()).not.toContain('upload')
+  })
+})
+
+describe('The palette', () => {
+  test('opens in a frame that holds no builder, asking for no runs', () => {
+    // hanzo.team's Shell mounts it with no host: it draws, and the runs it asks
+    // for are nobody's rather than a read of a host that is not there.
+    asked.length = 0
+    expect(() => renderToStaticMarkup(createElement(Palette, { onClose: () => {}, go: () => {} }))).not.toThrow()
+    expect(asked).toHaveLength(1)
+    expect(asked[0]).toMatchObject({ api: '', person: null })
   })
 })
