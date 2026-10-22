@@ -18,10 +18,10 @@
 //
 // SETTINGS IS THE SITE'S, never Dev's: one tree at /settings, the host's own
 // pages (lib/host.ts `settings`). A builder section the builder moves to
-// (`go`), a link it opens (`open`) and a pane that asks for Settings
-// (`showSettings`, open.ts: the account menu's rows, Chat's "See usage") all
-// reach that page through the host's router (`visit`). The rooms' shell draws
-// its own Settings pane; the app has none.
+// (`go`) and a link it opens (`open`) reach that page through the host's router
+// (`visit`); a pane that asks for Settings (`showSettings`, open.ts) is App's to
+// answer, where the phone's menu is. The rooms' shell draws its own Settings
+// pane; the app has none.
 //
 // THE PLANS ARE THE PAY SITE'S. Every way the app reaches the plans — the
 // account menu's View all plans and its plan's Upgrade, Billing's Adjust plan,
@@ -31,7 +31,7 @@
 // (App.tsx). A page load, at once, not a move inside the app: the pay site is
 // where a plan is bought.
 
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useLook, useRooms } from './host'
 import { useIam } from '@hanzo/iam/react'
 import { useSignOut } from './lib/signout'
@@ -43,7 +43,6 @@ import { CAST } from './agents'
 import { app, place, settings, visit } from './lib/host'
 import { link } from './lib/tags'
 import { payUrl } from './lib/pay'
-import { showSettings, useOpen } from './open'
 
 /** Where the builder links out: every one of them an address of this site. */
 const LINKS: Host['links'] = {
@@ -88,14 +87,6 @@ export function useDevHost(): Host {
   const { router, path: pathname } = useRooms()
   const here = path(route(at(pathname)))
   const look = useLook()
-  const { settings: asked } = useOpen()
-
-  // A pane asked for Settings: its page, through the router.
-  useEffect(() => {
-    if (!asked) return
-    showSettings(null)
-    router.push(settings(asked))
-  }, [asked, router])
 
   // The token's claims change only when the token does: a sign-in, a refresh.
   const memberships = useMemo(() => orgs(), [accessToken]) // eslint-disable-line react-hooks/exhaustive-deps

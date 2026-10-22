@@ -25,9 +25,13 @@ const { OPEN } = await import('./slide')
 
 const host = { api: '', token: null, org: 'hanzo', person: { name: 'Bob Ross' }, signOut: () => {} } as unknown as Parameters<typeof Foot>[0]['host']
 
+/** The drawer the window last drew, for the moves App makes through it. */
+let drawer: ReturnType<typeof useDrawer>
+
 /** The window as App draws it: the pane with the bar's menu button in it, and the menu's layer while it is out. */
 function Window({ onChat }: { onChat: () => void }) {
   const d = useDrawer()
+  drawer = d
   return createElement(
     'div',
     { ref: d.window, 'data-slot': 'window' },
@@ -130,6 +134,29 @@ describe('the phone drawer', () => {
     act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
     expect($('[role="dialog"]')!.getAttribute('data-state')).toBe('open')
     elsewhere.remove()
+  })
+
+  test('a move made from it takes its entry, and one that did not move pops it', () => {
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => {})
+    open()
+    const asked: boolean[] = []
+    act(() => drawer.depart((replace) => void asked.push(replace)))
+    expect(asked).toEqual([true])
+    expect(back, 'the address stayed: the entry is popped').toHaveBeenCalledTimes(1)
+    expect($('[role="dialog"]')!.getAttribute('data-state')).toBe('closing')
+  })
+
+  test('a page the router draws outside the app takes its entry and pops nothing, for the address moves later', () => {
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => {})
+    open()
+    const asked: boolean[] = []
+    act(() => drawer.exit((replace) => void asked.push(replace)))
+    expect(asked, 'the page replaces the menu’s entry').toEqual([true])
+    expect(back).not.toHaveBeenCalled()
+    expect($('[role="dialog"]')!.getAttribute('data-state')).toBe('closing')
+    // Shut, there is no entry to take: the page is pushed.
+    act(() => drawer.exit((replace) => void asked.push(replace)))
+    expect(asked).toEqual([true, false])
   })
 
   test('Back closes it, and the entry it popped is not popped again', () => {
