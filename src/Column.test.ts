@@ -51,12 +51,10 @@ vi.mock('@hanzo/build', () => {
   return {
     DOTS: {},
     Gutter: () => null,
-    path: () => '-/settings/notifications',
     route,
     useSessions: () => ({ value: [], loading: false, error: null, reload: () => {} }),
     NEW: 'new',
     own: () => [group('work', 'Work', ['New run', 'Projects', 'Issues', 'Templates'])],
-    sections: () => [group('Settings', '', ['General', 'Account']), group('Organization', 'Organization', ['Members'])],
     tabs: () => [group('customize', '', ['Agents', 'Skills', 'Connectors', 'Plugins'])],
     library: () => [group('library-do', '', ['Upload']), group('library-kinds', '', ['All', 'Images', 'Documents'])],
     useScheduled: () => [group('scheduled-do', '', ['New task']), group('scheduled-tasks', 'Tasks', ['Morning brief'])],
@@ -103,7 +101,8 @@ describe('the rail', () => {
     expect(library).toMatch(/aria-label="Library" aria-current="page"/)
     expect(library).not.toMatch(/aria-label="Dev" aria-current="page"/)
     expect(rail('dev', undefined, '-/customize')).toMatch(/aria-label="Customize" aria-current="page"/)
-    expect(rail('dev', undefined, '-/settings')).not.toMatch(/aria-label="Dev" aria-current="page"/)
+    // Machines, which the builder files under its Settings, is Dev's own place: Settings is the site's, at /settings.
+    expect(rail('dev', undefined, '-/settings/machines')).toMatch(/aria-label="Dev" aria-current="page"/)
   })
 
   test('the mode the reader is in is the one lit', () => {
@@ -218,12 +217,10 @@ describe('the sidebar', () => {
     expect(html).not.toContain(TABS)
   })
 
-  test('Settings and Customize take the sidebar: Back, the name, their own rows, and nothing of Dev’s', () => {
-    const settings = column('dev', '-/settings')
-    expect(at(settings, 'aria-label="Back"')).toBeLessThan(at(settings, '>Settings<'))
-    expect(at(settings, 'General')).toBeLessThan(at(settings, 'Members'))
-    for (const word of ['New run', 'data-slot="recents"', 'aria-label="Search"']) expect(settings).not.toContain(word)
+  test('a place the rail holds takes the sidebar: Back, the name, its own rows, and nothing of Dev’s', () => {
     const customize = column('dev', '-/customize')
+    expect(at(customize, 'aria-label="Back"')).toBeLessThan(at(customize, '>Customize<'))
+    for (const word of ['New run', 'data-slot="recents"', 'aria-label="Search"']) expect(customize).not.toContain(word)
     expect(at(customize, '>Customize<')).toBeLessThan(at(customize, 'Agents'))
     expect(at(customize, 'Agents')).toBeLessThan(at(customize, 'Skills'))
     const library = column('dev', '-/artifacts')
@@ -234,6 +231,19 @@ describe('the sidebar', () => {
     expect(at(scheduled, '>Scheduled tasks<')).toBeLessThan(at(scheduled, 'New task'))
     expect(at(scheduled, 'New task')).toBeLessThan(at(scheduled, 'Morning brief'))
     expect(scheduled).not.toContain('New run')
+  })
+
+  test('Settings takes no sidebar: it is the site’s pages, and a builder place filed under it is Dev’s', () => {
+    const machines = column('dev', '-/settings/machines')
+    expect(machines).not.toContain('>Settings<')
+    expect(machines).not.toContain('aria-label="Back"')
+    expect(at(machines, 'New run')).toBeLessThan(at(machines, 'data-slot="recents"'))
+  })
+
+  test('the bell lists the runs and leaves for no Settings page', () => {
+    const html = column('chat')
+    expect(html).toContain('Nothing new')
+    expect(html).not.toContain('Notification settings')
   })
 
   test('the search is the palette, in every mode: the sidebar holds no field of its own', () => {

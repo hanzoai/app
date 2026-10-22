@@ -10,6 +10,7 @@ import { iam } from './lib/api'
 import { pick } from './lib/session'
 import { Text, View, XStack, YStack, type GuiElement } from '@hanzo/gui'
 import { site } from './where'
+import { settings } from './lib/host'
 
 /** design's smallest rung (`--text-floor`, 10px), below gui's `$1`; gui's font size takes a rung or a number. */
 const FLOOR = 10
@@ -221,7 +222,7 @@ export function OrgSwitcherDropdown({
       </Button>
 
       <Button asChild {...LINK}>
-        <a href={site("/settings/organization")}>
+        <a href={site(settings("organization"))}>
           <Settings size={14} />
           Organization settings
         </a>

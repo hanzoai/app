@@ -10,13 +10,14 @@
 // content beside it is the panel, inset by the gutter.
 //
 // The bell is the org's run activity (@hanzo/build `useSessions`): the runs
-// that moved last, each one press from its page, and Notifications in Settings.
+// that moved last, each one press from its page.
 // The search opens the palette (Palette.tsx; ⌘K / Ctrl+K from anywhere).
 //
 // Dev's places are @hanzo/build's `own`: New run, Projects, Issues, Templates.
-// A place the rail holds (Library, Scheduled tasks, Customize) and Settings
-// each take the sidebar instead (Rail.tsx `spot`): Back, the place's name, and
-// its own rows (Settings' sections, Customize's tabs), never Dev's beside them.
+// A place the rail holds (Library, Scheduled tasks, Customize) takes the sidebar
+// instead (Rail.tsx `raised`): Back, the place's name, and its own rows
+// (Customize's tabs, the Library's kinds), never Dev's beside them. Settings is
+// the site's pages at /settings, with a column of their own.
 //
 // Its width is the edge's in the gutter to its right: dragged, keyed or
 // double-clicked back (@hanzo/build's `Grip`), kept per browser. Pulled in past
@@ -24,15 +25,15 @@
 
 import { useI18n } from '@hanzo/i18n/react'
 import { Text, XStack, YStack } from '@hanzo/gui'
-import { ArrowLeft, Bell, Search, Settings2, SquarePen } from 'lucide-react'
-import { DOTS, Gutter, library, NEW, own, path as written, sections, tabs, useScheduled, useSessions, type Host } from '@hanzo/build'
+import { ArrowLeft, Bell, Search, SquarePen } from 'lucide-react'
+import { DOTS, Gutter, library, NEW, own, tabs, useScheduled, useSessions, type Host } from '@hanzo/build'
 import { tidy } from './lib/title'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { Sidebar, SidebarIconButton, SidebarItem, StatusDot, type RailLink } from '@hanzo/ui/chat'
 import { useId, type ReactNode } from 'react'
 import { Made } from './Me'
 import { Recents } from './Recents'
-import { spot, type Spot } from './Rail'
+import { raised, type Raised } from './Rail'
 import { Setup } from './Setup'
 import { ago, type Recent } from './recent'
 import { empty } from './open'
@@ -67,7 +68,7 @@ const ROW = { rounded: '$4', minH: 31, py: 0, px: '$2', $touchable: { minH: 44 }
 const RECENT = 6
 
 /** What a place that takes the sidebar is called at its head. */
-const TITLE: Record<Spot, string> = { library: 'Library', scheduled: 'Scheduled tasks', customize: 'Customize', settings: 'Settings' }
+const TITLE: Record<Raised, string> = { library: 'Library', scheduled: 'Scheduled tasks', customize: 'Customize' }
 
 /** A header mark: a 16px glyph in a 32px target, a thumb's 44 on a touch screen. */
 const HEAD = { width: 32, height: 32, rounded: '$3', $touchable: { width: 44, height: 44 } } as const
@@ -87,8 +88,6 @@ function Activity({ host }: { host: Host }) {
           onSelect: () => host.go(s.id),
         }))
       : [{ key: 'none', label: 'Nothing new', disabled: true, onSelect: () => {} }]),
-    { type: 'separator', key: 'line' },
-    { key: 'settings', label: 'Notification settings', icon: <Settings2 size={16} aria-hidden />, onSelect: () => host.go(written({ kind: 'settings', section: 'notifications' })) },
   ]
   return (
     <DropdownMenu
@@ -154,20 +153,18 @@ export function Column({
   const span = useSpan(SPAN, WIDTH, FLOOR, CEIL)
 
   const dev = (p: string) => host.go(p)
-  const at = mode === 'dev' ? spot(host.path) : null
+  const at = mode === 'dev' ? raised(host.path) : null
   // Each place the rail holds lists its own rows: Library its kinds and Upload, Scheduled tasks its tasks and New task.
   const scheduled = useScheduled(host, dev, at === 'scheduled')
   const groups =
     places ??
-    (at === 'settings'
-      ? sections(host, dev)
-      : at === 'customize'
-        ? tabs(host, dev)
-        : at === 'library'
-          ? library(host, dev)
-          : at === 'scheduled'
-            ? scheduled
-            : own(host, dev))
+    (at === 'customize'
+      ? tabs(host, dev)
+      : at === 'library'
+        ? library(host, dev)
+        : at === 'scheduled'
+          ? scheduled
+          : own(host, dev))
   const open = (row: Recent) => (row.kind === 'chat' ? go(talk(row.id)) : dev(row.id))
   // Chat's New; Dev's is the first of its places.
   const create = () => {

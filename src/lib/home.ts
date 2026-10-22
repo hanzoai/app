@@ -14,6 +14,7 @@
 
 import type { AiClient } from '@hanzo/ai'
 import { site } from '../where'
+import { settings } from './host'
 
 /** A site the org has deployed. */
 export interface Project {
@@ -54,7 +55,7 @@ export interface App {
  * other page of this app is, and the three doors that offer it (the empty
  * room's tile, the Create menu, the sidebar's row) all read this one line.
  */
-export const invite = (): string => site('/settings/organization/members')
+export const invite = (): string => site(settings('members'))
 
 /** The org's projects, newest first. */
 export async function projects(client: AiClient, signal?: AbortSignal): Promise<Project[]> {

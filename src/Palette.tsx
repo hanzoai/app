@@ -5,14 +5,15 @@
 //
 // An empty field lists Recent (the reader's chats and Dev tasks, newest first,
 // each with its kind's icon), Actions, and Go to: the products, the places of
-// the app and the apps in beta the reader may open. A query searches all of it, deeper places too (Settings' sections,
+// the app and the apps in beta the reader may open. A query searches all of it, deeper places too (Settings' pages,
 // Customize's tabs, the Library's kinds, Studio's places, Help), and the
 // reader's chats, Dev tasks, projects, agents, skills and connectors by name;
 // each group keeps its best five and the group with the best answer leads
 // (seek.ts `find`). A row opens where it lives; an action runs.
 //
 // GO TO IS DERIVED, never listed here: the places are @hanzo/build's own
-// registries (`nav` for Dev's places, `sections` for Settings, `tabs` for
+// registries (`nav` for Dev's places, `sections` for Settings — the sections
+// with a page at /settings (lib/host.ts `paged`), each opened there — `tabs` for
 // Customize, `library` for the Library's kinds), @hanzo/studio's `nav`, and
 // help.ts's pages, lib/betas.ts's granted apps: the same lists the sidebars and
 // menus draw. A page added to
@@ -63,7 +64,7 @@ import { empty, openThread, withAgents } from './open'
 import { useThreadList } from './thread'
 import { useSignOut } from './lib/signout'
 import { choose } from './lib/session'
-import { app, studio, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
+import { app, paged, settings, studio, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
 import { BETAS } from './lib/betas'
 import { useBetas } from './Betas'
 import { tidy } from './lib/title'
@@ -84,16 +85,12 @@ export interface Action extends Hit {
 
 const ICON = { size: 16, 'aria-hidden': true } as const
 
-/** The builder's Settings, its first section. */
-const SETTINGS = written({ kind: 'settings', section: 'general' })
 const SKILLS = written({ kind: 'customize', tab: 'skills' })
 const CONNECTORS = written({ kind: 'customize', tab: 'connectors' })
 
-/** The words a Settings section is also asked for by: the account menu's names for two of them, and the obvious ones. */
+/** The words a Settings page is also asked for by: the account menu's names for General, and the obvious ones. */
 const ALSO: Record<string, string[]> = {
-  general: ['personalization', 'appearance', 'theme'],
-  account: ['profile'],
-  privacy: ['security'],
+  general: ['personalization', 'appearance', 'theme', 'profile', 'account'],
   billing: ['plans', 'subscription'],
   members: ['organization', 'team'],
 }
@@ -119,7 +116,7 @@ export function places(host: Host | undefined, go: (address: string) => void): {
     { id: 'tabs', label: 'Tabs', icon: <SquareTerminal {...ICON} />, run: () => go(TERMINALS) },
     ...(host ? [{ id: 'team', label: 'Team', icon: <Users {...ICON} />, keywords: ['workspace'], run: () => out(WORKSPACE) }] : []),
     ...(host ? rows(nav(host, builder).map((g) => ({ links: g.links.filter((l) => l.id !== NEW) })), '', 'dev') : []),
-    { id: 'settings', label: 'Settings', icon: <Settings {...ICON} />, shortcut: ['Mod', ','], run: () => go('/settings') },
+    { id: 'settings', label: 'Settings', icon: <Settings {...ICON} />, shortcut: ['Mod', ','], run: () => go(settings()) },
     // The site's own pages, outside the app: the browser loads them.
     { id: 'referral', label: 'Referral', icon: <Gift {...ICON} />, keywords: ['invite', 'share'], run: () => window.location.assign(site('/referral')) },
     { id: 'beta', label: 'Beta status', icon: <FlaskConical {...ICON} />, keywords: ['waitlist'], run: () => window.location.assign(site('/beta/status')) },
@@ -130,7 +127,7 @@ export function places(host: Host | undefined, go: (address: string) => void): {
   const deep: Action[] = [
     ...(host
       ? [
-          ...rows(sections(host, builder), 'Settings', 'settings'),
+          ...rows(sections(host, builder).map((g) => ({ links: g.links.filter((l) => paged(l.id)) })), 'Settings', 'settings'),
           ...rows(tabs(host, builder), 'Customize', 'customize'),
           ...rows(library(host, builder).slice(1), 'Library', 'library'),
           ...rows(made(host, (p) => go(studio(p))), 'Studio', 'studio').filter((a) => a.id !== `studio-${NEW}`),
@@ -140,8 +137,7 @@ export function places(host: Host | undefined, go: (address: string) => void): {
       .filter((p) => p.key !== 'help')
       .map((p) => ({ id: `help-${p.key}`, label: p.label, where: 'Help', keywords: ['Help'], run: () => out(p.href) })),
   ]
-  // A place two registries hold (Machines is Dev's and a Settings section) is listed once, as Dev's.
-  return { top, deep: deep.filter((a) => !top.some((t) => t.id === a.id.replace(/^settings-/, 'dev-'))) }
+  return { top, deep }
 }
 
 /** The composer's model menu, opened as a press would: a page without a composer opens New chat's. */

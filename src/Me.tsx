@@ -9,8 +9,8 @@
 // the person's place on the beta waitlist (the site's /beta/status); then
 // Help ›, the site's own pages and the keyboard shortcuts (⌘/ / Ctrl+/ from
 // anywhere); and Log out. Every row opens a real destination: Settings'
-// sections through `showSettings` (open.ts), which the app answers with the
-// builder's Settings (dev.tsx) and the shell with its own pane; the plans on the
+// pages through `showSettings` (open.ts), which the app answers with the
+// site's Settings at /settings (dev.tsx) and the shell with its own pane; the plans on the
 // pay site (`leave`); the site's pages through `site()`, so hanzo.team names
 // hanzo.ai (help.ts).
 //
@@ -80,7 +80,7 @@ import { createOrg, say } from './lib/org'
 import type { Tier } from './lib/tier'
 import { list } from './lib/list'
 import { choose, org as current, orgs, pick, renew, scope, superAdmin } from './lib/session'
-import { ENTRY } from './lib/host'
+import { ENTRY, settings } from './lib/host'
 import { leave } from './dev'
 import { payUrl } from './lib/pay'
 import { asked, KEYS, legal, out, pages } from './help'
@@ -88,8 +88,6 @@ import { showSettings } from './open'
 import { site, where } from './where'
 import { BAD } from './lib/mix'
 
-/** Where an organization's own settings live: a page of the site (`site()`), not of the app. */
-const ORG_SETTINGS = '/settings/organization'
 /** An organization this tab created, until the token carries it. */
 const MADE = 'hanzo:org:made'
 
@@ -391,7 +389,7 @@ export function Me({
                 <DropdownMenuItem onSelect={() => setCreating(true)}>
                   <Line icon={<Plus size={16} aria-hidden />}>{t("Create organization")}</Line>
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => out(site(ORG_SETTINGS))}>
+                <DropdownMenuItem onSelect={() => out(site(settings('organization')))}>
                   <Line icon={<Settings size={16} aria-hidden />}>{t("Organization settings")}</Line>
                 </DropdownMenuItem>
                 {/* On hanzo.team the reader is already in the team, and a team is founded through its setup. */}

@@ -1,5 +1,6 @@
-import { describe, expect, test } from 'vitest'
-import { app, CHAT, DEV, dev, page, place, studio, talk } from './host'
+import { describe, expect, test, vi } from 'vitest'
+import { SECTIONS } from '@hanzo/build/route'
+import { app, CHAT, DEV, dev, page, paged, place, SETTINGS, settings, studio, talk, visit } from './host'
 import { configure } from '../where'
 
 const RUN = `sess_${'0123456789abcdef'.repeat(2)}`
@@ -31,7 +32,6 @@ describe('the app is two roots of paths', () => {
     expect(app('-/settings/environments')).toBe('/dev/environments')
     expect(app('-/customize')).toBe('/dev/customize')
     expect(app('-/customize/connectors')).toBe('/dev/customize/connectors')
-    expect(app('-/settings/usage')).toBe('/dev/settings/usage')
     expect(app('-/plans')).toBe('/dev/plans')
     expect(app('../../etc'), 'what is not an address is New').toBe(DEV)
   })
@@ -45,6 +45,42 @@ describe('the app is two roots of paths', () => {
       expect(place(app(at)), at || 'New').toEqual({ mode: 'dev', at })
     expect(place('/dev/elsewhere'), 'a path under /dev that names nothing is New').toEqual({ mode: 'dev', at: '' })
     expect(place('/dev/codebase'), 'the retired Codebase is New').toEqual({ mode: 'dev', at: '' })
+  })
+
+  test('Settings is one tree at /settings, the host\'s own pages, and no builder section is written under /dev', () => {
+    expect(settings()).toBe(SETTINGS)
+    expect(settings('general')).toBe('/settings')
+    expect(settings('organization')).toBe('/settings/organization')
+    expect(settings('members')).toBe('/settings/organization/members')
+    expect(settings('billing')).toBe('/settings/organization/billing')
+    expect(settings('usage')).toBe('/settings/organization/usage')
+    expect(settings('keys')).toBe('/settings/organization/keys')
+    for (const none of ['account', 'privacy', 'memory', 'notifications', 'integrations', 'toString', '__proto__']) {
+      expect(paged(none), none).toBe(false)
+      expect(settings(none), `${none} has no page of its own: General`).toBe(SETTINGS)
+    }
+    expect(app('-/settings')).toBe('/settings')
+    expect(app('-/settings/usage')).toBe('/settings/organization/usage')
+    expect(app('-/settings/members')).toBe('/settings/organization/members')
+    expect(app('-/settings/notifications')).toBe('/settings')
+    for (const s of SECTIONS) expect(app(`-/settings/${s}`), s).not.toMatch(/^\/dev\/settings/)
+    for (const p of [settings(), settings('usage'), settings('organization')]) expect(place(p), `${p} is no place in the app`).toBeNull()
+  })
+
+  test('a move reaches an address of the app by its history, and any other page through the router', () => {
+    const pushState = vi.fn()
+    const replaceState = vi.fn()
+    vi.stubGlobal('window', { location: { pathname: '/chat', search: '' }, history: { pushState, replaceState } })
+    const router = { push: vi.fn(), replace: vi.fn() }
+    visit(router, app('-/projects'))
+    expect(pushState).toHaveBeenCalledWith(null, '', '/dev/projects')
+    visit(router, app('-/settings/billing'))
+    expect(router.push).toHaveBeenCalledWith('/settings/organization/billing')
+    visit(router, settings(), true)
+    expect(router.replace).toHaveBeenCalledWith('/settings')
+    expect(pushState).toHaveBeenCalledTimes(1)
+    expect(replaceState).not.toHaveBeenCalled()
+    vi.unstubAllGlobals()
   })
 
   test('what is not the app is no place', () => {
