@@ -1,4 +1,9 @@
+// @vitest-environment happy-dom
+// A DOM, so a real I18nProvider runs its effect and loads a catalog; the markup
+// tests below render with no provider at all and read English.
 import { cloneElement, createElement, isValidElement, type ReactElement, type ReactNode } from 'react'
+import { act } from 'react'
+import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
@@ -36,6 +41,8 @@ vi.mock('./lib/signout', () => ({ useSignOut: () => async () => {} }))
 vi.mock('./where', () => ({ brand: () => 'Hanzo AI' }))
 
 const { Chrome } = await import('./Chrome')
+const { I18nProvider } = await import('@hanzo/i18n/react')
+const { default: fr } = await import('@hanzo/i18n/catalogs/fr-FR.json')
 
 const drawn = (back?: ReactNode) => renderToStaticMarkup(createElement(Chrome, { back }))
 
@@ -87,5 +94,16 @@ describe('the focused pages\' bar', () => {
     const html = drawn(createElement('button', null, 'Back'))
     expect(html.indexOf('>Back<')).toBeGreaterThan(html.indexOf('>Hanzo AI<'))
     expect(html.indexOf('>Back<')).toBeLessThan(html.indexOf('>Bob Ross<'))
+  })
+
+  test('under a provider in French, the ways out read in French', async () => {
+    expect(fr['Log out']).not.toBe('Log out')
+    const at = document.createElement('div')
+    const root = createRoot(at)
+    await act(async () => root.render(createElement(I18nProvider, { userId: 'bob', initialLocale: 'fr-FR' }, createElement(Chrome))))
+    await vi.waitFor(() => expect(at.innerHTML.match(new RegExp(`>${fr['Log out']}<`, 'g'))).toHaveLength(2))
+    expect(at.innerHTML).toContain(`aria-label="${fr['Account']}"`)
+    expect(at.innerHTML).not.toContain('>Log out<')
+    await act(async () => root.unmount())
   })
 })

@@ -24,6 +24,9 @@ catalogs:
     '@hanzo/event':
       specifier: 0.3.56
       version: 0.3.56
+    '@hanzo/i18n':
+      specifier: 0.2.0
+      version: 0.2.0
     '@hanzo/iam':
       specifier: 0.21.35
       version: 0.21.35
@@ -60,6 +63,9 @@ catalogs:
     '@types/react-dom':
       specifier: 19.2.7
       version: 19.2.7
+    happy-dom:
+      specifier: 20.14.6
+      version: 20.14.6
     lucide-react:
       specifier: 1.42.0
       version: 1.42.0
@@ -134,8 +140,8 @@ importers:
         specifier: 8.3.5
         version: 8.3.5(react-dom@19.2.8(react@19.2.8))(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(react@19.2.8)
       '@hanzo/i18n':
-        specifier: file:vendor/i18n
-        version: file:vendor/i18n(react@19.2.8)
+        specifier: 'catalog:'
+        version: 0.2.0(react@19.2.8)
       '@hanzo/iam':
         specifier: 'catalog:'
         version: 0.21.35(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -181,6 +187,9 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.2.7(@types/react@19.2.18)
+      happy-dom:
+        specifier: 'catalog:'
+        version: 20.14.6
       lucide-react:
         specifier: 'catalog:'
         version: 1.42.0(react@19.2.8)
@@ -198,7 +207,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: 'catalog:'
-        version: 4.1.11(@types/node@26.5.0)(vite@8.3.2(@types/node@26.5.0)(terser@5.51.2))
+        version: 4.1.11(@types/node@26.5.0)(happy-dom@20.14.6)(vite@8.3.2(@types/node@26.5.0)(terser@5.51.2))
 
 packages:
 
@@ -668,10 +677,13 @@ packages:
     peerDependencies:
       react: '>=19.2.8'
 
-  '@hanzo/i18n@file:vendor/i18n':
-    resolution: {directory: vendor/i18n, type: directory}
+  '@hanzo/i18n@0.2.0':
+    resolution: {integrity: sha512-nRuJcDTErmCuaJi58FHbHrw6iECP3j4paYOsg026Ls3pCnM9Y/F5RLxA/t+s3Hdi4fyn2/XYdpwiHf6hxwXWgw==}
     peerDependencies:
       react: '>=18'
+    peerDependenciesMeta:
+      react:
+        optional: true
 
   '@hanzo/iam@0.21.35':
     resolution: {integrity: sha512-PJUBXZ42Sj7B7IxuxO7R5TbyNXMW7WOVG4B2PZ+EAvL2NbJT1Cs3VmmyIGObZXWeotO5e6SN9YAl6jq1bzrs0w==}
@@ -1845,6 +1857,12 @@ packages:
   '@types/react@19.2.18':
     resolution: {integrity: sha512-AnzbBERsrLKtk2XSfTbYRLjQPdy116Sty4q+T+Bp3IC4l6jNBvreVPAHmpq9qhXQM7CXZPjLVmGMw9sy+hxQ3w==}
 
+  '@types/whatwg-mimetype@3.0.2':
+    resolution: {integrity: sha512-c2AKvDT8ToxLIOUlN51gTiHXflsfIFisS4pO7pDPoKouJCESkhZnEy623gwP9laCy5lnLDAw1vAzu2vM2YLOrA==}
+
+  '@types/ws@8.18.2':
+    resolution: {integrity: sha512-67MQl+fpWKVTT1NYdnmo3U4sc/xPo/zQBncVnI74qmQa0z/b+1g6iYqNmGCPbxO+zz2aklb08a0oHfegiVd0/w==}
+
   '@types/yargs-parser@21.0.3':
     resolution: {integrity: sha512-I4q9QU9MQv4oEOz4tAHJtNz1cwuLxn2F3xcc2iV5WdqLPpUnj30aUuxt1mAxYTG+oe8CZMV/+6rU4S4gRDzqtQ==}
 
@@ -2086,6 +2104,10 @@ packages:
   buffer-from@1.1.2:
     resolution: {integrity: sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ==}
 
+  buffer-image-size@0.6.4:
+    resolution: {integrity: sha512-nEh+kZOPY1w+gcCMobZ6ETUp9WfibndnosbpwB1iJk/8Gt5ZF2bhS6+B6bPYz424KtwsR6Rflc3tCz1/ghX2dQ==}
+    engines: {node: '>=4.0'}
+
   camelcase@6.3.0:
     resolution: {integrity: sha512-Gmy6FhYlCY7uOElZUSbxo2UCDH8owEk996gkbrpsgGtrJLM3J7jGxl9Ic7Qwwj4ivOE5AWZWRMecDdF7hqGjFA==}
     engines: {node: '>=10'}
@@ -2242,6 +2264,10 @@ packages:
     resolution: {integrity: sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw==}
     engines: {node: '>=0.12'}
 
+  entities@7.0.1:
+    resolution: {integrity: sha512-TWrgLOFUQTH994YUyl1yT4uyavY5nNB5muff+RtWaqNVCAK408b5ZnnbNAUEWLTCpum9w6arT70i1XdQ4UeOPA==}
+    engines: {node: '>=0.12'}
+
   error-stack-parser@2.1.4:
     resolution: {integrity: sha512-Sk5V6wVazPhq5MhpO+AUxJn5x7XSXGl1R93Vn7i+zS15KDVxQijejNCrz8340/2bgLBjR9GtEG8ZVKONDjcqGQ==}
 
@@ -2352,6 +2378,10 @@ packages:
 
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
+
+  happy-dom@20.14.6:
+    resolution: {integrity: sha512-5DDsf4QmEIlRL6NkCv/fxSjYHHkZceL/IaYQdJc2h3G7DRTEai++VTjbfL0LB9geW2VrA3+vrjF3Efx+OTtX0Q==}
+    engines: {node: '>=20.0.0'}
 
   has-flag@4.0.0:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
@@ -3246,6 +3276,10 @@ packages:
   whatwg-fetch@3.6.20:
     resolution: {integrity: sha512-EqhiFU6daOA8kpjOWTL0olhVOF3i7OrFzSYiGsEMB8GcXS+RrzauAERX65xMeNWVqxA6HXH2m69Z9LaKKdisfg==}
 
+  whatwg-mimetype@3.0.0:
+    resolution: {integrity: sha512-nt+N2dzIutVRxARx1nghPKGv1xHikU7HKdfafKkLNLindmPU/ch3U31NOCGGA/dmPcmb1VlofO0vnKAcsm0o/Q==}
+    engines: {node: '>=12'}
+
   whatwg-url@5.0.0:
     resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==}
 
@@ -3269,6 +3303,18 @@ packages:
     peerDependencies:
       bufferutil: ^4.0.1
       utf-8-validate: ^5.0.2
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
+  ws@8.22.0:
+    resolution: {integrity: sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
     peerDependenciesMeta:
       bufferutil:
         optional: true
@@ -3916,8 +3962,8 @@ snapshots:
       - react-dom
       - react-native
 
-  '@hanzo/i18n@file:vendor/i18n(react@19.2.8)':
-    dependencies:
+  '@hanzo/i18n@0.2.0(react@19.2.8)':
+    optionalDependencies:
       react: 19.2.8
 
   '@hanzo/iam@0.21.35(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
@@ -5585,6 +5631,12 @@ snapshots:
     dependencies:
       csstype: 3.2.3
 
+  '@types/whatwg-mimetype@3.0.2': {}
+
+  '@types/ws@8.18.2':
+    dependencies:
+      '@types/node': 26.6.4
+
   '@types/yargs-parser@21.0.3': {}
 
   '@types/yargs@17.0.35':
@@ -5775,6 +5827,10 @@ snapshots:
 
   buffer-from@1.1.2: {}
 
+  buffer-image-size@0.6.4:
+    dependencies:
+      '@types/node': 26.6.4
+
   camelcase@6.3.0: {}
 
   caniuse-lite@1.0.30001814: {}
@@ -5927,6 +5983,8 @@ snapshots:
 
   entities@4.5.0: {}
 
+  entities@7.0.1: {}
+
   error-stack-parser@2.1.4:
     dependencies:
       stackframe: 1.3.4
@@ -6020,6 +6078,19 @@ snapshots:
   get-caller-file@2.0.5: {}
 
   graceful-fs@4.2.11: {}
+
+  happy-dom@20.14.6:
+    dependencies:
+      '@types/node': 26.6.4
+      '@types/whatwg-mimetype': 3.0.2
+      '@types/ws': 8.18.2
+      buffer-image-size: 0.6.4
+      entities: 7.0.1
+      whatwg-mimetype: 3.0.0
+      ws: 8.22.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   has-flag@4.0.0: {}
 
@@ -6954,7 +7025,7 @@ snapshots:
       fsevents: 2.3.3
       terser: 5.51.2
 
-  vitest@4.1.11(@types/node@26.5.0)(vite@8.3.2(@types/node@26.5.0)(terser@5.51.2)):
+  vitest@4.1.11(@types/node@26.5.0)(happy-dom@20.14.6)(vite@8.3.2(@types/node@26.5.0)(terser@5.51.2)):
     dependencies:
       '@vitest/expect': 4.1.11
       '@vitest/mocker': 4.1.11(vite@8.3.2(@types/node@26.5.0)(terser@5.51.2))
@@ -6978,6 +7049,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 26.5.0
+      happy-dom: 20.14.6
     transitivePeerDependencies:
       - msw
 
@@ -6988,6 +7060,8 @@ snapshots:
   webidl-conversions@3.0.1: {}
 
   whatwg-fetch@3.6.20: {}
+
+  whatwg-mimetype@3.0.0: {}
 
   whatwg-url@5.0.0:
     dependencies:
@@ -7010,6 +7084,8 @@ snapshots:
       strip-ansi: 6.0.1
 
   ws@7.5.13: {}
+
+  ws@8.22.0: {}
 
   y18n@5.0.8: {}
 

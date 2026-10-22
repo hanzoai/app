@@ -66,6 +66,12 @@ repository or a site from any surface.
   after the module evaluates. Read at call time (`get route()`, `invite()`,
   `dev()`, `signUp()`).
 - The session is IAM's (`@hanzo/iam/react`; the host mounts `IamProvider`).
+- Copy is `@hanzo/i18n`'s, from npm, one source: nothing is vendored here. A
+  room takes `useI18n` from `@hanzo/i18n/react` and passes authored English
+  through `t()`, a name or address as a `{name}` argument, never concatenated.
+  The host mounts `I18nProvider`; with none, `t` returns the English, so a host
+  or a test without one reads English. A string the package's catalogs lack
+  renders English until the next catalog run in `hanzoai/i18n`.
 - The look is `@hanzo/appearance`'s. The host mounts `<Look />` once at its
   root, inside `IamProvider`: it applies the person's layers for the org in
   scope on every page and syncs them with IAM when signed in (`useLook`). The
@@ -84,7 +90,7 @@ repository or a site from any surface.
   and the account at the foot. Tabs is drawn in the app at /tabs (Terminals.tsx:
   @hanzo/tabs `Workspace` and `useFleet` with the reader's bearer, the pane
   edge to edge, no sidebar); nothing on the rail leaves for tabs.hanzo.ai.
-  @hanzo/tabs is taken from its git commit (hanzo-apps/tabs, pinned in the
+  @hanzo/tabs is taken from its git commit (hanzo-inc/tabs, pinned in the
   catalog) until it publishes to npm. The rail moves
   the app, and Shell's sidebar wears the product's name alone; the one Chat |
   Dev switch is a phone's bar, which has no rail. Dev's own places (New run,
@@ -197,7 +203,9 @@ the one conversation the pane holds).
   by cursor, each row stepped into through `support()` (IAM `assume`, audited).
   An organization's mark is its IAM row alone: Hanzo's H is `admin/hanzo`'s
   `avatar`, never drawn here for a brand.
-- `Chrome` (root export) is the one bar over a focused page: the chooser and
+- `Chrome` is the one bar over a focused page, imported from the
+  `@hanzo/rooms/Chrome` subpath and never the root: the root loads in plain
+  Node, and the UI packages Chrome pulls in do not. It stands over the chooser and
   every gate screen (`Orgs.tsx` `Page`, once someone is signed in; "Signing you
   in" stands alone), and the host's own focused pages (the way in, the way to
   pay, a beta application), none of which draws a bar of its own. Sticky, 60px
@@ -208,7 +216,7 @@ the one conversation the pane holds).
   sign-in comes back to the page, as hanzo.ai's /join does) and Log out
   (lib/signout, the account menu's). Under gui's `md` the account folds into its
   face, a menu of the address and the same two ways out. Signed out, the brand
-  alone. It reads the session from `IamProvider`.
+  alone. It reads the session from `IamProvider` and its copy through `t()`.
 - `src/team.gen.ts` — the core team's persona files as strings, generated from
   `@hanzo/personas` by `scripts/team.mjs`, so no host needs an asset loader:
   every member the package publishes, in the crew's order (`ORDER`, then any
@@ -264,7 +272,9 @@ the same address on hanzo.ai.
 `pnpm build` = team strings → `tsc` → `scripts/specifiers.mjs` (every relative
 import fully specified, so Node's ESM loader resolves dist outside a bundler).
 Gates: `pnpm typecheck`, `pnpm lint:design` (ratchet in
-`hanzo-design.allow.json`), `pnpm build`. Publish: bump `version`, push main;
+`hanzo-design.allow.json`), `pnpm test`, `pnpm build`, then the root imported
+in plain Node (`node --input-type=module -e "await import('./dist/index.js')"`).
+Publish: bump `version`, push main;
 `.github/workflows/publish.yml` publishes what npm does not serve.
 
 ## Plan usage

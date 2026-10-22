@@ -12,5 +12,3 @@ export { configure, where, site, brand } from './where'
 export type { Addresses } from './where'
 export { Rooms, Look, useRooms, useLook, useOrg } from './host'
 export type { Router, Link, RoomsProps } from './host'
-// The bar over a focused page (the chooser, the way in, the way to pay): one for every host.
-export { Chrome } from './Chrome'

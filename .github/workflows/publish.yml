@@ -66,6 +66,9 @@ jobs:
           pnpm build
           test -s dist/index.js
           test -s dist/index.d.ts
+          # The root names what a host passes and must load in plain Node: a page's
+          # unit specs and tools read it there, with no bundler.
+          node --input-type=module -e "await import('./dist/index.js')"
 
       - name: Read the npm token from KMS
         if: steps.ahead.outputs.release == 'true'

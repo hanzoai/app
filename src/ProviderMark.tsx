@@ -178,7 +178,8 @@ const MARKS: Record<string, string> = {
     // disc (zoo-disc.svg): top green, bottom-left red, bottom-right blue, whose
     // pairwise overlaps are the secondaries the full disc shows. The enclosing
     // ring stays `currentColor` — it is the frame, not one of the three, and a
-    // fourth hue there would read as a fourth petal.
+    // fourth hue there would read as a fourth petal. Under `ink` the petals'
+    // strokes come off (`INKED`) and they take the group's `currentColor`.
     '<defs><clipPath id="zoo-cut"><circle cx="12" cy="12" r="11.5"></circle></clipPath></defs><g clip-path="url(#zoo-cut)" fill="none" stroke="currentColor"><circle cx="12.203" cy="6.27" r="9.509" stroke-width="1.341" stroke="#00A652"></circle><circle cx="6.189" cy="15.454" r="9.509" stroke-width="1.341" stroke="#ED1C24"></circle><circle cx="17.486" cy="15.454" r="9.509" stroke-width="1.341" stroke="#2E3192"></circle><circle cx="12" cy="12" r="10.769" stroke-width="1.463"></circle></g>',
 
   // THE CHANNELS, keyed by the registry's provider id. These are the brands'
@@ -242,6 +243,9 @@ const OF: Record<string, string> = {
   'z-ai': 'zai',
   zen: 'zoo',
 }
+
+/** A body's own stroke hues: under `ink` they come off, so it draws in the page's ink. */
+const INKED = / stroke="#[0-9A-Fa-f]{6}"/g
 
 /**
  * The mark's NAME, resolved through the alias table — not its body. The body
@@ -401,7 +405,7 @@ export function ProviderMark({
         // drawn one alike. A lab with no hue inherits the page's ink, which is
         // the whole point.
         color={ink ? undefined : HUE[mark]}
-        dangerouslySetInnerHTML={{ __html: MARKS[mark] }}
+        dangerouslySetInnerHTML={{ __html: ink ? MARKS[mark].replace(INKED, '') : MARKS[mark] }}
       />
     </View>
   )
