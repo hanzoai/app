@@ -12,3 +12,5 @@ test:
       pnpm build
       test -s dist/index.js
       test -s dist/index.d.ts
+      # The root loads in plain Node, as publish.yml checks before it ships.
+      node --input-type=module -e "await import('./dist/index.js')"
