@@ -4,7 +4,7 @@
  * The bar over a focused page: the organization chooser, the way in, the way to
  * pay, a beta application. One bar for all of them, so none draws its own.
  *
- * The brand at the start (`HanzoLockup`: the mark and `brand()`), going to this
+ * The brand at the start (`HanzoWordmark`: `brand()` in words, as the site's own bar sets it), going to this
  * host's root; then the host's `back`, where the page has a step to go back to.
  * At the end, once someone is signed in, who it is: the face, the name and the
  * address, with Use another account and Log out. Signed out, nothing but the
@@ -22,7 +22,7 @@ import { useI18n } from '@hanzo/i18n/react'
 import { useIam } from '@hanzo/iam/react'
 import { Text, View, XStack, YStack } from '@hanzo/gui'
 import { Avatar, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@hanzo/ui'
-import { HanzoLockup } from '@hanzogui/shell'
+import { HanzoWordmark } from '@hanzogui/shell'
 import { rememberDestination } from './lib/destination'
 import { named } from './lib/session'
 import { useSignOut } from './lib/signout'
@@ -75,7 +75,7 @@ export function Chrome({ back }: { back?: ReactNode }) {
         color="var(--foreground)"
         textDecorationLine="none"
       >
-        <HanzoLockup label={brand()} size={22} />
+        <HanzoWordmark label={brand()} size={22} />
       </Text>
       {back}
       <View flex={1} />
