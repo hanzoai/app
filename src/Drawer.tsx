@@ -31,7 +31,9 @@
 // back to what opened it as it shuts; Escape closes it, unless a menu or dialog
 // it opened holds the focus; Back closes it, because opening it pushed an entry
 // of the same address that Back pops. A move made from inside it takes that
-// entry's place (`depart`), so the history holds the move and never the menu.
+// entry's place (`depart`), so the history holds the move and never the menu;
+// so does a page the host's router draws outside the app (`exit`: Settings),
+// whose address moves only after the press returns.
 // Its list's scroll stays its own (Recents' `overscrollBehavior`), and the pane,
 // never unmounted, keeps its own.
 
@@ -51,6 +53,12 @@ export interface Drawer {
   close: () => void
   /** Moves the app from the menu: the move replaces the menu's history entry, and the menu goes. */
   depart: (move: Move) => void
+  /**
+   * Leaves the app from the menu for a page the host's router draws: the page
+   * takes the menu's history entry, and the menu goes. Nothing is popped, for
+   * the router moves the address after this returns.
+   */
+  exit: (move: Move) => void
   /** The address moved under the menu, by a way that was not `depart`: the menu goes, and its entry stays behind the move. */
   drop: () => void
   /** The window: everything in it but the menu is inert while the menu is out. */
@@ -141,6 +149,16 @@ export function useDrawer(): Drawer {
       move(replace)
       // Nothing moved (the reader was there already): the menu's entry is popped instead.
       if (replace && window.location.href === before) window.history.back()
+      home()
+    },
+    [home],
+  )
+
+  const exit = useCallback(
+    (move: Move) => {
+      const replace = marked.current
+      marked.current = false
+      move(replace)
       home()
     },
     [home],
@@ -304,6 +322,7 @@ export function useDrawer(): Drawer {
     open,
     close,
     depart,
+    exit,
     drop,
     window: useCallback((node: unknown) => {
       win.current = element(node)

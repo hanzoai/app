@@ -109,11 +109,14 @@ repository or a site from any surface.
   `/settings/organization[/members|billing|usage|keys]`; a section with no page
   of its own (the builder's Account, Privacy, Memory, Notifications…) opens
   General. Every way in reaches it through the host's router (`visit`): the
-  account menu's rows (`showSettings`, dev.tsx), ⌘, / Ctrl+, (App.tsx), the
-  palette, and a builder section the builder moves to (`app()` writes the page,
-  never `/dev/settings`). Machines and Environments, which the builder files
-  under its Settings, stay Dev's places at /dev/machines and /dev/environments,
-  with Dev's sidebar.
+  account menu's rows and Chat's See usage (`showSettings`, answered in
+  App.tsx), ⌘, / Ctrl+,, the palette, and a builder section the builder moves
+  to (`app()` writes the page, never `/dev/settings`). From a phone's menu the
+  page takes the menu's history entry (Drawer.tsx `exit`): `depart` pops the
+  entry when the address has not moved, and the router moves it only after the
+  press returns, so popping there sent the reader back to the app. Machines
+  and Environments, which the builder files under its Settings, stay Dev's
+  places at /dev/machines and /dev/environments, with Dev's sidebar.
 - Skills, connectors, plugins and agents have one home, Dev's Customize: Shell's
   Customize row and Settings' Plugins and Skills rows lead there (`app()`), and
   Directory lists only Works with and Channels. A list is the registry's answer
@@ -310,7 +313,7 @@ over the composer says `paused()`: the plan by name and when it comes back, then
 two ways — Continue with credits (writes `setCreditsAfterAllowance(true)` and
 asks the last question again) where the org holds credit, else Add credits; and
 the upgrade — plus See usage, which opens the shell's Settings → Usage, or the
-site's /settings/organization/usage (`useDevHost` answers `showSettings` there). A switch goes
+site's /settings/organization/usage (App answers `showSettings` there). A switch goes
 through the chip's pick. The model picker marks a paused model "Paused" (its
 class `limited`, or a `paused` entry naming it) and still picks it, and a
 refusal is said in the thread in the server's words. The pure half (`label`,
@@ -551,7 +554,7 @@ reference captures; outer window, inner panel):
   plan, Agency plan, else Upgrade plan; the pay site, `leave`);
   Personalization (Settings → General), Profile (Settings → General), Settings
   (⌘, / Ctrl+,); Help ›; Log out. Settings' rows go through `showSettings`,
-  which App answers with the site's page at /settings (dev.tsx, `settings`)
+  which App answers with the site's page at /settings (`settings`)
   and the shell with its pane. Help › (help.ts, every address through `site()`): Help center
   (/support), Privacy center (/legal), Release notes (hanzoai/cli releases, as
   the site's nav), Download apps (/download), Keyboard shortcuts, then Terms of

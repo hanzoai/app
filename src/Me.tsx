@@ -10,7 +10,7 @@
 // Help ›, the site's own pages and the keyboard shortcuts (⌘/ / Ctrl+/ from
 // anywhere); and Log out. Every row opens a real destination: Settings'
 // pages through `showSettings` (open.ts), which the app answers with the
-// site's Settings at /settings (dev.tsx) and the shell with its own pane; the plans on the
+// site's Settings at /settings (App.tsx) and the shell with its own pane; the plans on the
 // pay site (`leave`); the site's pages through `site()`, so hanzo.team names
 // hanzo.ai (help.ts).
 //

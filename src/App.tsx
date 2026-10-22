@@ -74,7 +74,7 @@ import { useRooms } from './host'
 import { useKept } from './kept'
 import { Mark, raised, Rail, Toggle } from './Rail'
 import { Foot, Layer, Lift, RAISED, useDrawer } from './Drawer'
-import { empty, openThread, useOpen } from './open'
+import { empty, openThread, showSettings, useOpen } from './open'
 import { Paned } from './Shell'
 import { Palette } from './Palette'
 import { summons } from './seek'
@@ -126,7 +126,7 @@ export function App({ bar }: { bar?: Bar } = {}) {
 /** The window itself, drawn once the organization is settled. */
 function Window({ bar }: { bar?: Bar }) {
   const drawer = useDrawer()
-  const { close: shut, depart } = drawer
+  const { close: shut, depart, exit } = drawer
   // On a phone the window stands in the visual viewport, so the keyboard never covers the composer (view.ts).
   const view = useView()
   const hold = drawer.window
@@ -143,13 +143,14 @@ function Window({ bar }: { bar?: Bar }) {
   const [finding, setFinding] = useState(false)
   const found = useCallback(() => setFinding(false), [])
   const dev = useDevHost()
-  // The builder's moves put the drawer away, in its place in the history.
+  // The builder's moves put the drawer away, in its place in the history; one to
+  // a page outside the app (Settings) leaves it through the router.
   const host = useMemo<typeof dev>(
     () => ({
       ...dev,
-      go: (to, how) => depart((replace) => dev.go(to, replace ? { ...how, replace } : how)),
+      go: (to, how) => (place(app(to)) ? depart : exit)((replace) => dev.go(to, replace ? { ...how, replace } : how)),
     }),
-    [dev, depart],
+    [dev, depart, exit],
   )
   const { client } = useAi()
   const { router, path } = useRooms()
@@ -177,11 +178,6 @@ function Window({ bar }: { bar?: Bar }) {
   const run = where !== null && route(where).kind === 'run'
   const asked = at.mode === 'chat' ? at.thread : null
   const { thread, settings: wanted } = useOpen()
-  // A row of the account menu asks for Settings: the drawer goes away as the
-  // router leaves for the page (dev.tsx).
-  useEffect(() => {
-    if (wanted) shut()
-  }, [wanted, shut])
   const plans = where !== null && isPlans(where)
   useEffect(() => {
     if (plans) leave('app')
@@ -223,8 +219,22 @@ function Window({ bar }: { bar?: Bar }) {
     if (!inPlace) away.current = `${window.location.pathname}${window.location.search}`
   }, [inPlace, here])
 
-  /** A move: the drawer away, the address in its place; a page that is not the app's (Settings) through the router. */
-  const move = useCallback((address: string) => depart((replace) => visit(router, address, replace)), [depart, router])
+  /**
+   * A move: the drawer away, the address in its place. One of the app's moves
+   * the app; any other page of the site (Settings) is the router's, and leaves it.
+   */
+  const move = useCallback(
+    (address: string) => (place(address.split(/[?#]/)[0]) ? depart : exit)((replace) => visit(router, address, replace)),
+    [depart, exit, router],
+  )
+
+  // A pane asks for Settings — the account menu's rows, Chat's See usage: its
+  // page (lib/host `settings`), through the router, the drawer away.
+  useEffect(() => {
+    if (!wanted) return
+    showSettings(null)
+    move(settings(wanted))
+  }, [wanted, move])
 
   // The app's keys.
   useEffect(() => {
