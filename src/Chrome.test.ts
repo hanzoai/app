@@ -33,7 +33,7 @@ vi.mock('@hanzo/ui', () => ({
   DropdownMenuSeparator: () => null,
   DropdownMenuTrigger: pass,
 }))
-vi.mock('@hanzogui/shell', () => ({ HanzoLockup: ({ label }: { label: string }) => createElement('span', null, label) }))
+vi.mock('@hanzogui/shell', () => ({ HanzoWordmark: ({ label }: { label: string }) => createElement('span', null, label) }))
 vi.mock('@hanzo/iam/react', () => ({ useIam: () => state.iam }))
 vi.mock('./lib/session', () => ({ named: () => state.named }))
 vi.mock('./lib/destination', () => ({ rememberDestination: () => {} }))
