@@ -18,6 +18,7 @@
  */
 
 import type { ReactNode } from 'react'
+import { useI18n } from '@hanzo/i18n/react'
 import { useIam } from '@hanzo/iam/react'
 import { Text, View, XStack, YStack } from '@hanzo/gui'
 import { Avatar, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@hanzo/ui'
@@ -33,6 +34,7 @@ const HEIGHT = 60
 const NOTCH = 'env(safe-area-inset-top)' as `var(--${string})`
 
 export function Chrome({ back }: { back?: ReactNode }) {
+  const { t } = useI18n()
   const { user, isAuthenticated } = useIam()
   const signOut = useSignOut()
   const claimed = named()
@@ -66,7 +68,7 @@ export function Chrome({ back }: { back?: ReactNode }) {
       borderColor="var(--border)"
     >
       <Text
-        render={<a href="/" aria-label={`${brand()} home`} />}
+        render={<a href="/" aria-label={t('{brandName} home', { brandName: brand() })} />}
         display="flex"
         items="center"
         shrink={0}
@@ -79,7 +81,7 @@ export function Chrome({ back }: { back?: ReactNode }) {
       <View flex={1} />
       {signed ? (
         <>
-          <XStack render="section" aria-label="Account" items="center" gap={12} minW={0} $max-md={{ display: 'none' }}>
+          <XStack render="section" aria-label={t('Account')} items="center" gap={12} minW={0} $max-md={{ display: 'none' }}>
             <Avatar src={avatar || null} name={who} alt="" />
             <YStack minW={0} gap={2}>
               <Text fontSize="$3" fontWeight="500" color="$ink" numberOfLines={1}>
@@ -92,10 +94,10 @@ export function Chrome({ back }: { back?: ReactNode }) {
               ) : null}
             </YStack>
             <Button variant="ghost" size="sm" onClick={other}>
-              Use another account
+              {t('Use another account')}
             </Button>
             <Button variant="ghost" size="sm" onClick={out}>
-              Log out
+              {t('Log out')}
             </Button>
           </XStack>
           <View display="none" $max-md={{ display: 'flex' }}>
@@ -103,7 +105,7 @@ export function Chrome({ back }: { back?: ReactNode }) {
               <DropdownMenuTrigger asChild>
                 <XStack
                   render="button"
-                  aria-label={`Account: ${who}`}
+                  aria-label={t('Account: {name}', { name: who })}
                   width={40}
                   height={40}
                   rounded={999}
@@ -118,7 +120,7 @@ export function Chrome({ back }: { back?: ReactNode }) {
                   <Avatar src={avatar || null} name={who} alt="" />
                 </XStack>
               </DropdownMenuTrigger>
-              <DropdownMenuContent minW={240} maxW="calc(100vw - 16px)" aria-labelledby={undefined} aria-label="Account">
+              <DropdownMenuContent minW={240} maxW="calc(100vw - 16px)" aria-labelledby={undefined} aria-label={t('Account')}>
                 <DropdownMenuLabel>
                   <YStack minW={0} gap={2}>
                     <Text fontSize="$3" fontWeight="500" color="$ink" numberOfLines={1}>
@@ -134,12 +136,12 @@ export function Chrome({ back }: { back?: ReactNode }) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={other}>
                   <Text fontSize="$3" color="$ink">
-                    Use another account
+                    {t('Use another account')}
                   </Text>
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={out}>
                   <Text fontSize="$3" color="$ink">
-                    Log out
+                    {t('Log out')}
                   </Text>
                 </DropdownMenuItem>
               </DropdownMenuContent>
