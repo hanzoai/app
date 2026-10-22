@@ -16,9 +16,11 @@ const { part, menu } = vi.hoisted(() => {
     'aria-current'?: string
     'data-slot'?: string
     role?: string
+    /** A sidebar row's: lit, as @hanzo/ui's SidebarItem marks it. */
+    active?: boolean
   }
-  const part = ({ children, render, icon, label, 'aria-label': named, 'aria-current': current, 'data-slot': slot, role }: Part) => {
-    const attrs = { 'data-slot': slot, 'aria-label': label ?? named, 'aria-current': current, role }
+  const part = ({ children, render, icon, label, 'aria-label': named, 'aria-current': current, 'data-slot': slot, role, active }: Part) => {
+    const attrs = { 'data-slot': slot, 'aria-label': label ?? named, 'aria-current': current ?? (active ? 'page' : undefined), role }
     const kids = [icon, children].filter((k) => k != null)
     if (isValidElement(render)) return cloneElement(render, attrs, ...kids)
     return createElement(typeof render === 'string' ? render : 'div', attrs, ...kids)
@@ -137,10 +139,56 @@ describe('the rail', () => {
     const html = rail('studio')
     expect(html).not.toContain('data-item="team"')
     expect(html).not.toContain('aria-label="More"')
-    const flat = renderToStaticMarkup(createElement(Rail, { host, mode: 'studio', at: null, open: true, flat: true, onChat: noop, onDev: noop, onStudio: noop, onTabs: noop, go: noop, onOrg: noop }))
-    expect(flat).toContain('data-item="library"')
-    expect(flat).not.toContain('data-item="team"')
-    expect(flat).not.toContain('data-item="raised"')
+    const rows = renderToStaticMarkup(createElement(Rail, { host, mode: 'studio', at: null, open: true, rows: true, onChat: noop, onDev: noop, onStudio: noop, onTabs: noop, go: noop, onOrg: noop }))
+    expect(rows).toContain('data-item="library"')
+    expect(rows).not.toContain('data-item="team"')
+    expect(rows).not.toContain('data-item="raised"')
+  })
+})
+
+describe('a phone’s menu', () => {
+  const rows = (mode: Place['mode'], where: string | null = null) =>
+    renderToStaticMarkup(createElement(Rail, { host, mode, at: where, open: true, rows: true, onChat: noop, onDev: noop, onStudio: noop, onTabs: noop, go: noop, onOrg: noop }))
+
+  test('lists the places as rows: Studio, Tabs, then More, which the rail’s own places lead', () => {
+    const html = rows('chat')
+    expect(html).toContain('data-slot="places"')
+    expect(at(html, 'data-slot="place-studio"')).toBeLessThan(at(html, 'data-slot="place-tabs"'))
+    expect(at(html, 'data-slot="place-tabs"')).toBeLessThan(at(html, 'data-slot="place-more"'))
+    const more = ['library', 'scheduled', 'customize', 'team', 'beta-crm', 'betas'].map((k) => at(html, `data-item="${k}"`))
+    expect(more).toEqual([...more].sort((a, b) => a - b))
+  })
+
+  test('holds neither Chat nor Dev, which are the bar’s, nor the account, which is the foot’s', () => {
+    const html = rows('chat')
+    for (const slot of ['rail-chat', 'rail-dev', 'me']) expect(html).not.toContain(`data-slot="${slot}"`)
+  })
+
+  test('lights the place the reader is in', () => {
+    expect(rows('studio')).toMatch(/data-slot="place-studio" aria-current="page"/)
+    expect(rows('tabs')).toMatch(/data-slot="place-tabs" aria-current="page"/)
+    expect(rows('chat')).not.toContain('aria-current="page"')
+  })
+
+  test('in the drawer the column holds its own rows, then the places, then Recents, and the foot last', () => {
+    const html = renderToStaticMarkup(
+      createElement(Column, {
+        host,
+        mode: 'chat',
+        thread: null,
+        go: noop,
+        onShut: noop,
+        onBack: noop,
+        drawer: true,
+        rail: createElement('nav', { 'data-slot': 'places' }),
+        foot: createElement('div', { 'data-slot': 'drawer-foot' }),
+      }),
+    )
+    expect(at(html, 'Hanzo AI')).toBeLessThan(at(html, 'aria-label="Search"'))
+    expect(at(html, 'New chat')).toBeLessThan(at(html, 'data-slot="places"'))
+    expect(at(html, 'data-slot="places"')).toBeLessThan(at(html, 'data-slot="recents"'))
+    expect(at(html, 'data-slot="recents"')).toBeLessThan(at(html, 'data-slot="drawer-foot"'))
+    expect(html, 'the drawer’s column is not a floating card').not.toContain('radius-composer')
   })
 })
 

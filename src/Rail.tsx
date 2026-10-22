@@ -24,17 +24,19 @@
 //
 // The sidebar's toggle leads it (`toggle`) where the host has no bar of its own:
 // a browser tab. A host that is a window draws the toggle in its bar beside Back
-// and Forward (App.tsx `bar`), and its rail starts with Chat. On a phone the
-// rail lies along the foot of the drawer (`flat`), the account at its end; the
-// drawer is too narrow for every mark, so Library, Scheduled tasks and
-// Customize lead More there.
+// and Forward (App.tsx `bar`), and its rail starts with Chat. A phone has no
+// rail: its menu (Drawer.tsx) lists the places as rows (`rows`) under the mode's
+// own — Studio, Tabs, then More, which Library, Scheduled tasks and Customize
+// lead there. Chat and Dev are the phone's bar's (Top.tsx), and the account is
+// the menu's foot.
 
 import { useI18n } from '@hanzo/i18n/react'
 import { Clock, Code2, Ellipsis, FlaskConical, Library, MessageSquare, PanelLeft, Puzzle, Sparkles, SquareTerminal, Users, WandSparkles } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
-import { XStack, YStack } from '@hanzo/gui'
+import { Text, XStack, YStack } from '@hanzo/gui'
 import { route, type Host } from '@hanzo/build'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
+import { SidebarItem } from '@hanzo/ui/chat'
 import { BetasDialog, useBetas } from './Betas'
 import { out } from './help'
 import { BETAS } from './lib/betas'
@@ -111,6 +113,45 @@ export function Mark({
   )
 }
 
+/** A place as a phone's menu lists it: a row on the sidebar's pitch, a thumb's 44 on a touch screen, lit where the reader is. */
+function Row({
+  label,
+  on = false,
+  onPress,
+  icon,
+  ...rest
+}: {
+  label: string
+  on?: boolean
+  onPress?: () => void
+  icon: ReactNode
+  [attribute: `data-${string}` | `aria-${string}`]: unknown
+}) {
+  const { t } = useI18n()
+  return (
+    <SidebarItem
+      rounded="$4"
+      minH={31}
+      py={0}
+      px="$2"
+      $touchable={{ minH: 44 }}
+      active={on}
+      icon={icon}
+      onPress={onPress}
+      onKeyDown={(e: { key?: string; preventDefault?: () => void }) => {
+        if (!onPress || (e.key !== 'Enter' && e.key !== ' ')) return
+        e.preventDefault?.()
+        onPress()
+      }}
+      {...rest}
+    >
+      <Text fontSize="$3" color={on ? '$ink' : '$quiet'}>
+        {t(label)}
+      </Text>
+    </SidebarItem>
+  )
+}
+
 /** The sidebar's toggle: the same mark wherever a host draws it. */
 export function Toggle({ open, onPress, label }: { open: boolean; onPress: () => void; label?: string }) {
   return (
@@ -126,7 +167,7 @@ export function Rail({
   at,
   open,
   toggle,
-  flat = false,
+  rows = false,
   onChat,
   onDev,
   onStudio,
@@ -142,8 +183,8 @@ export function Rail({
   open: boolean
   /** Lead with the sidebar's toggle; absent where the host's bar holds it. */
   toggle?: () => void
-  /** Laid along the foot of the phone's drawer rather than down the window's edge. */
-  flat?: boolean
+  /** Listed as rows in a phone's menu rather than marks down the window's edge. */
+  rows?: boolean
   /** To Chat, Dev and Studio, each where the reader left it. */
   onChat: () => void
   onDev: () => void
@@ -165,33 +206,41 @@ export function Rail({
   // The apps in beta this reader may open, each where it lives.
   const granted = BETAS.filter((b) => b.href && opened(b.id))
   const rest: NonNullable<DropdownMenuProps['items']> = [
-    ...(flat
+    ...(rows
       ? [
-          { key: 'library', label: 'Library', icon: <Library size={16} aria-hidden />, onSelect: to(RAISED.library) },
-          { key: 'scheduled', label: 'Scheduled tasks', icon: <Clock size={16} aria-hidden />, onSelect: to(RAISED.scheduled) },
-          { key: 'customize', label: 'Customize', icon: <Puzzle size={16} aria-hidden />, onSelect: to(RAISED.customize) },
+          { key: 'library', label: t('Library'), icon: <Library size={16} aria-hidden />, onSelect: to(RAISED.library) },
+          { key: 'scheduled', label: t('Scheduled tasks'), icon: <Clock size={16} aria-hidden />, onSelect: to(RAISED.scheduled) },
+          { key: 'customize', label: t('Customize'), icon: <Puzzle size={16} aria-hidden />, onSelect: to(RAISED.customize) },
           ...(team ? [{ type: 'separator' as const, key: 'raised' }] : []),
         ]
       : []),
     ...(team
       ? [
-          { key: 'team', label: 'Team', icon: <Users size={16} aria-hidden />, onSelect: () => out(WORKSPACE) },
+          { key: 'team', label: t('Team'), icon: <Users size={16} aria-hidden />, onSelect: () => out(WORKSPACE) },
           ...granted.map((b) => ({ key: `beta-${b.id}`, label: b.name, icon: <Sparkles size={16} aria-hidden />, onSelect: () => out(b.href as string) })),
           { type: 'separator' as const, key: 'betas-rule' },
-          { key: 'betas', label: 'Betas', icon: <FlaskConical size={16} aria-hidden />, onSelect: () => setBetas(true) },
+          { key: 'betas', label: t('Betas'), icon: <FlaskConical size={16} aria-hidden />, onSelect: () => setBetas(true) },
         ]
       : []),
   ]
-  const Stack = flat ? XStack : YStack
+  const betasDialog = <BetasDialog open={betas} onOpenChange={setBetas} go={out} />
+  if (rows)
+    return (
+      <YStack data-slot="places" render="nav" aria-label={t('Products')} role="list" gap={2} pt="$2" shrink={0}>
+        <YStack role="listitem">
+          <Row label="Studio" on={mode === 'studio'} onPress={onStudio} data-slot="place-studio" icon={<WandSparkles size={16} aria-hidden />} />
+        </YStack>
+        <YStack role="listitem">
+          <Row label="Tabs" on={mode === 'tabs'} onPress={onTabs} data-slot="place-tabs" icon={<SquareTerminal size={16} aria-hidden />} />
+        </YStack>
+        <YStack role="listitem">
+          <DropdownMenu placement="bottom-start" minWidth={220} trigger={<Row label="More" data-slot="place-more" aria-haspopup="menu" icon={<Ellipsis size={16} aria-hidden />} />} items={rest} />
+        </YStack>
+        {betasDialog}
+      </YStack>
+    )
   return (
-    <Stack
-      data-slot="rail"
-      render="nav"
-      aria-label={t("Products")}
-      {...(flat ? { pt: '$2', mt: '$2', borderTopWidth: 1, borderColor: '$borderColor', gap: '$1' } : { width: RAIL, flex: 1, pt: '$2', pb: '$2', gap: 8 })}
-      shrink={0}
-      items="center"
-    >
+    <YStack data-slot="rail" render="nav" aria-label={t('Products')} width={RAIL} flex={1} pt="$2" pb="$2" gap={8} shrink={0} items="center">
       {toggle ? (
         <YStack pb={8}>
           <Toggle open={open} onPress={toggle} />
@@ -209,23 +258,19 @@ export function Rail({
       <Mark label={t("Tabs")} on={mode === 'tabs'} onPress={onTabs} data-slot="rail-tabs">
         <SquareTerminal size={18} aria-hidden />
       </Mark>
-      {flat ? null : (
-        <>
-          <Mark label={t("Library")} on={here === 'library'} onPress={to(RAISED.library)} data-slot="rail-library">
-            <Library size={18} aria-hidden />
-          </Mark>
-          <Mark label={t("Scheduled tasks")} on={here === 'scheduled'} onPress={to(RAISED.scheduled)} data-slot="rail-scheduled">
-            <Clock size={18} aria-hidden />
-          </Mark>
-          <Mark label={t("Customize")} on={here === 'customize'} onPress={to(RAISED.customize)} data-slot="rail-customize">
-            <Puzzle size={18} aria-hidden />
-          </Mark>
-        </>
-      )}
-      <BetasDialog open={betas} onOpenChange={setBetas} go={out} />
+      <Mark label={t("Library")} on={here === 'library'} onPress={to(RAISED.library)} data-slot="rail-library">
+        <Library size={18} aria-hidden />
+      </Mark>
+      <Mark label={t("Scheduled tasks")} on={here === 'scheduled'} onPress={to(RAISED.scheduled)} data-slot="rail-scheduled">
+        <Clock size={18} aria-hidden />
+      </Mark>
+      <Mark label={t("Customize")} on={here === 'customize'} onPress={to(RAISED.customize)} data-slot="rail-customize">
+        <Puzzle size={18} aria-hidden />
+      </Mark>
+      {betasDialog}
       {rest.length ? (
         <DropdownMenu
-          placement={flat ? 'top-start' : 'right-start'}
+          placement="right-start"
           minWidth={220}
           trigger={
             <XStack
@@ -252,7 +297,7 @@ export function Rail({
         />
       ) : null}
       <YStack flex={1} />
-      <Me host={host} narrow above={flat} onOrg={onOrg} />
-    </Stack>
+      <Me host={host} narrow onOrg={onOrg} />
+    </YStack>
   )
 }

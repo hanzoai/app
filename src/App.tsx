@@ -47,7 +47,9 @@
 // nothing fills it. So Dev's pane is cut on its own and the tabs are Chat's.
 //
 // EVERY MOVE PUTS THE DRAWER AWAY, the one to where the reader already is
-// included.
+// included. A phone's drawer (Drawer.tsx) is the menu behind the pane, the pane
+// sliding toward the end side over it; a move made from it takes its place in
+// the history (`depart`), so Back never reopens it.
 //
 // STUDIO LOADS WITH ITS MODE. Its module (and three.js behind a 3D tab) is
 // fetched the first time the reader stands in Studio; its places are a few
@@ -71,6 +73,7 @@ import { Orgs } from './Orgs'
 import { useRooms } from './host'
 import { useKept } from './kept'
 import { Mark, Rail, spot, Toggle } from './Rail'
+import { Foot, Layer, Lift, RAISED, useDrawer } from './Drawer'
 import { empty, openThread, useOpen } from './open'
 import { Paned } from './Shell'
 import { Palette } from './Palette'
@@ -103,20 +106,6 @@ export interface Bar {
 /** The bar's height, px: the reference window's title bar. */
 const BAR = 40
 
-/**
- * The dim under the phone's drawer: design's scrim at two fifths, so the page
- * still reads through the drawer's glass. gui carries a `color-mix()` to the
- * page unchanged; its types only name custom properties.
- */
-const DIM = 'color-mix(in srgb, var(--surface-scrim) 40%, transparent)' as `var(--${string})`
-
-/** The phone's drawer stands the gutter off each edge, or the device's inset where that is wider. */
-const INSET = {
-  top: 'max(var(--pane-gap), var(--safe-top))',
-  bottom: 'max(var(--pane-gap), var(--safe-bottom))',
-  left: 'max(var(--pane-gap), var(--safe-left))',
-} as const
-
 /** Where each mode was last, so the rail goes back to it. */
 const last = { chat: '', dev: '', studio: '', tabs: '' }
 
@@ -139,26 +128,31 @@ export function App({ bar }: { bar?: Bar } = {}) {
 
 /** The window itself, drawn once the organization is settled. */
 function Window({ bar }: { bar?: Bar }) {
-  const [drawer, setDrawer] = useState(false)
+  const drawer = useDrawer()
+  const { close: shut, depart } = drawer
   // On a phone the window stands in the visual viewport, so the keyboard never covers the composer (view.ts).
   const view = useView()
-  const shut = useCallback(() => setDrawer(false), [])
+  const hold = drawer.window
+  const windowRef = useCallback(
+    (node: unknown) => {
+      view(node)
+      hold(node)
+    },
+    [view, hold],
+  )
   // The sidebar shut, kept per browser under the key the builder's rail kept it under.
   const [closed, setClosed] = useKept('hanzo.build.rail', false)
   // The palette is open (the sidebar's search; ⌘K toggles it).
   const [finding, setFinding] = useState(false)
   const found = useCallback(() => setFinding(false), [])
   const dev = useDevHost()
-  // The builder's moves put the drawer away first.
+  // The builder's moves put the drawer away, in its place in the history.
   const host = useMemo<typeof dev>(
     () => ({
       ...dev,
-      go: (to, how) => {
-        shut()
-        dev.go(to, how)
-      },
+      go: (to, how) => depart((replace) => dev.go(to, replace ? { ...how, replace } : how)),
     }),
-    [dev, shut],
+    [dev, depart],
   )
   const { client } = useAi()
   const { router, path } = useRooms()
@@ -174,16 +168,13 @@ function Window({ bar }: { bar?: Bar }) {
       ...host,
       name: 'Hanzo Studio',
       path: made,
-      go: (to, how) => {
-        shut()
-        go(studio(to), how?.replace)
-      },
+      go: (to, how) => depart((replace) => go(studio(to), replace || how?.replace)),
       chooseOrg: (next) => {
         pick(next)
         window.location.assign(studio(''))
       },
     }),
-    [host, made, shut],
+    [host, made, depart],
   )
   // A run floats two panes of its own, so the pane it stands in is not cut.
   const run = where !== null && route(where).kind === 'run'
@@ -192,8 +183,8 @@ function Window({ bar }: { bar?: Bar }) {
   // A row of the account menu asks for Settings: the drawer goes away even when
   // the address does not move (the reader was on that page already).
   useEffect(() => {
-    if (settings) setDrawer(false)
-  }, [settings])
+    if (settings) shut()
+  }, [settings, shut])
   const plans = where !== null && isPlans(where)
   useEffect(() => {
     if (plans) leave('app')
@@ -221,10 +212,12 @@ function Window({ bar }: { bar?: Bar }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, thread])
 
+  // The address moved under the drawer: it goes, and the history keeps the move.
+  const drop = drawer.drop
   useEffect(() => {
     last[mode] = `${window.location.pathname}${window.location.search}`
-    setDrawer(false)
-  }, [mode, here])
+    drop()
+  }, [mode, here, drop])
   // Where the reader was before a place that takes the sidebar (Library, Scheduled
   // tasks, Customize, Settings): its Back returns there, Chat or Dev alike.
   const away = useRef('')
@@ -233,14 +226,8 @@ function Window({ bar }: { bar?: Bar }) {
     if (!inPlace) away.current = `${window.location.pathname}${window.location.search}`
   }, [inPlace, here])
 
-  /** A move of the app's own: the drawer away, then the address. */
-  const move = useCallback(
-    (address: string) => {
-      shut()
-      go(address)
-    },
-    [shut],
-  )
+  /** A move of the app's own: the drawer away, the address in its place. */
+  const move = useCallback((address: string) => depart((replace) => go(address, replace)), [depart])
 
   // The app's keys.
   useEffect(() => {
@@ -274,6 +261,11 @@ function Window({ bar }: { bar?: Bar }) {
   const toDev = () => move(last.dev || app(''))
   const toStudio = () => move(last.studio || studio(''))
   const toTabs = () => move(TERMINALS)
+  /** The drawer's New chat. */
+  const fresh = () => {
+    empty()
+    move(talk())
+  }
   // Another organization: picked, and the app opened in it at the mode's New.
   const org = (o: string) => {
     pick(o)
@@ -293,14 +285,16 @@ function Window({ bar }: { bar?: Bar }) {
         <PrefsProvider>
         {/* The floor runs under the bar where there is one, so the window is one ground. */}
         <YStack
-          ref={view}
+          ref={windowRef}
           data-slot="window"
           {...(bar ? floor : null)}
           flex={1}
           minW={0}
           height="100dvh"
           overflow="hidden"
-          $max-md={{ position: 'fixed', t: TOP, l: 0, r: 0, height: HEIGHT }}
+          // Clipped, not hidden, on a phone: the drawer slides the pane past the window's edge, and a
+          // hidden overflow is still a scroller that a `scrollIntoView` inside the pane would move.
+          $max-md={{ position: 'fixed', t: TOP, l: 0, r: 0, height: HEIGHT, ...({ overflow: 'clip' } as object) }}
         >
           {bar ? (
             <XStack data-slot="title-bar" height={BAR} shrink={0} items="center" gap={2} pl={(bar.inset ?? 0) + 6} pr="$2" {...bar.drag}>
@@ -309,7 +303,7 @@ function Window({ bar }: { bar?: Bar }) {
                 <Toggle open={!closed} onPress={flip} />
               </XStack>
               <XStack $md={{ display: 'none' }}>
-                <Toggle open={drawer} onPress={() => setDrawer(true)} label="Open sidebar" />
+                <Toggle open={drawer.state === 'open'} onPress={drawer.open} label="Open sidebar" />
               </XStack>
               <Mark label="Back" data-slot="back" onPress={() => router.back()}>
                 <ArrowLeft size={18} aria-hidden />
@@ -321,10 +315,15 @@ function Window({ bar }: { bar?: Bar }) {
             </XStack>
           ) : null}
           <XStack
+            ref={drawer.pane}
             data-room=""
             data-app={mode}
             data-slot="frame"
             {...(bar ? null : floor)}
+            // While a phone's drawer is out the pane is raised over it, sliding toward the end side.
+            {...(drawer.slide ? RAISED : null)}
+            // inline-style: the slide, a transform with no logical form whose sign and distance the drawer writes on the element itself, a drag every frame (Drawer.tsx).
+            style={drawer.slide ?? undefined}
             flex={1}
             minW={0}
             minH={0}
@@ -335,6 +334,7 @@ function Window({ bar }: { bar?: Bar }) {
             // so the top of the page the browser's bar tints from does too.
             $max-md={{ p: 0 }}
           >
+            {drawer.slide ? <Lift /> : null}
             <YStack height="100%" $max-md={{ display: 'none' }}>
               <Rail host={host} mode={mode} at={where} open={!closed} toggle={bar ? undefined : flip} onChat={toChat} onDev={toDev} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />
             </YStack>
@@ -346,7 +346,7 @@ function Window({ bar }: { bar?: Bar }) {
             )}
             <YStack data-slot="stage" flex={1} minW={0} minH={0} ml="var(--pane-gap)" $max-md={{ ml: 0, pb: FOOT }}>
               {/* A phone has no rail and no sidebar: its bar opens them as a drawer and switches Chat and Dev. */}
-              {bar ? null : <Top host={host} mode={mode} places={sidebar} go={move} onMenu={() => setDrawer(true)} onChat={toChat} onDev={toDev} />}
+              {bar ? null : <Top host={host} mode={mode} places={sidebar} go={move} onMenu={drawer.open} onChat={toChat} onDev={toDev} />}
               <XStack data-slot="panes" flex={1} minW={0} minH={0}>
                 {mode === 'chat' ? (
                   <Paned framed>
@@ -374,49 +374,25 @@ function Window({ bar }: { bar?: Bar }) {
               </XStack>
             </YStack>
           </XStack>
-          {drawer ? (
-            <>
-              <YStack
-                render="button"
-                aria-label="Close sidebar"
-                onPress={() => setDrawer(false)}
-                bg={DIM}
-                position="absolute"
-                t={0}
-                r={0}
-                b={0}
-                l={0}
-                z="var(--z-overlay)"
-                $md={{ display: 'none' }}
+          {drawer.state === 'shut' ? null : (
+            // A phone's sidebar is the menu behind the pane: the same column on the floor, the
+            // places as rows under its own, the account and New chat at its foot.
+            <Layer drawer={drawer} top={bar ? BAR : 0}>
+              <Column
+                host={host}
+                mode={mode}
+                thread={thread}
+                go={move}
+                onShut={shut}
+                onSeek={seek}
+                onBack={back}
+                drawer
+                places={sidebar}
+                rail={<Rail host={host} mode={mode} at={where} open rows onChat={toChat} onDev={toDev} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />}
+                foot={<Foot host={host} onChat={fresh} onOrg={org} />}
               />
-              {/* A phone's sidebar is a drawer: the same column, floating in from
-                  the left with the gutter round it, clear of the notch and the
-                  home indicator, the rail laid along its foot. */}
-              <YStack
-                data-slot="drawer"
-                position="absolute"
-                t={INSET.top}
-                b={INSET.bottom}
-                l={INSET.left}
-                width="min(320px, calc(100% - 2 * var(--pane-gap) - 48px))"
-                z="var(--z-modal)"
-                $md={{ display: 'none' }}
-              >
-                <Column
-                  host={host}
-                  mode={mode}
-                  thread={thread}
-                  go={move}
-                  onShut={shut}
-                  onSeek={seek}
-                  onBack={back}
-                  drawer
-                  places={sidebar}
-                  foot={<Rail host={host} mode={mode} at={where} open flat onChat={toChat} onDev={toDev} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />}
-                />
-              </YStack>
-            </>
-          ) : null}
+            </Layer>
+          )}
           {finding ? <Palette go={move} onClose={found} mode={mode} host={host} /> : null}
         </YStack>
         </PrefsProvider>
