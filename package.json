@@ -61,6 +61,7 @@
     "@hanzo/composer": ">=0.2.0",
     "@hanzo/event": ">=0.3.56",
     "@hanzo/gui": "^8.3.5",
+    "@hanzo/i18n": ">=0.2.0",
     "@hanzo/iam": ">=0.21.35",
     "@hanzo/logo": ">=1.0.26",
     "@hanzo/studio": ">=0.1.0",
@@ -71,8 +72,7 @@
     "@hanzogui/shell": "^8.3.20",
     "lucide-react": ">=1.42.0",
     "react": ">=19.2.8",
-    "react-dom": ">=19.2.8",
-    "@hanzo/i18n": ">=0.1.0"
+    "react-dom": ">=19.2.8"
   },
   "devDependencies": {
     "@hanzo/ai": "catalog:",
@@ -82,6 +82,7 @@
     "@hanzo/design": "catalog:",
     "@hanzo/event": "catalog:",
     "@hanzo/gui": "catalog:",
+    "@hanzo/i18n": "catalog:",
     "@hanzo/iam": "catalog:",
     "@hanzo/logo": "catalog:",
     "@hanzo/studio": "catalog:",
@@ -97,13 +98,13 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "happy-dom": "catalog:",
     "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-native-web": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:",
-    "@hanzo/i18n": "file:vendor/i18n"
+    "vitest": "catalog:"
   },
   "repository": {
     "type": "git",
