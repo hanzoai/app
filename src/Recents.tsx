@@ -177,8 +177,8 @@ function List({
         minH={31}
         px="$2"
         pr={t || r.kind === 'dev' ? '$7' : '$2'}
-        // A conversation's ⋯ is a thumb wide on a touch screen and always there: the title stops short of it.
-        {...(t ? { $touchable: { pr: 52 } } : null)}
+        // A thumb's 44 on a touch screen; a conversation's ⋯ is a thumb wide there and always there: the title stops short of it.
+        $touchable={t ? { minH: 44, pr: 52 } : { minH: 44 }}
         onKeyDown={(e: { key?: string; preventDefault?: () => void }) => {
           if (e.key !== 'Enter' && e.key !== ' ') return
           e.preventDefault?.()
@@ -301,7 +301,8 @@ function List({
 
   return (
     <YStack data-slot="recents" flex={1} minH={0}>
-      <ScrollView flex={1} showsVerticalScrollIndicator={false}>
+      {/* Its end is its own: a scroll that reaches it does not move the page behind (a phone's menu). */}
+      <ScrollView flex={1} showsVerticalScrollIndicator={false} {...({ overscrollBehavior: 'contain' } as object)}>
         {error ? <Note>{error.message}</Note> : null}
         <YStack role="list" aria-labelledby={label} gap={1}>
           {pinned ? (

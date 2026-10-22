@@ -245,8 +245,8 @@ export function Me({
   /** The rail's: the face alone, the menu opening beside it. */
   narrow?: boolean
   /**
-   * The menu opens above the face, not beside it: the rail laid along a phone
-   * drawer's foot. That copy leaves ⌘/ to the rail's own, so one press opens one dialog.
+   * The menu opens above the face, not beside it: the foot of a phone's menu
+   * (Drawer.tsx). That copy leaves ⌘/ to the rail's own, so one press opens one dialog.
    */
   above?: boolean
   /** Work in another organization: picked, then the app opened in it. */
@@ -330,6 +330,8 @@ export function Me({
             {...({ title: who } as object)}
             width={narrow ? 36 : '100%'}
             minH={narrow ? 36 : 48}
+            // A thumb's 44 on a touch screen.
+            $touchable={narrow ? { width: 44, minH: 44 } : undefined}
             px={narrow ? 0 : '$2'}
             gap="$2.5"
             rounded={narrow ? 999 : '$5'}

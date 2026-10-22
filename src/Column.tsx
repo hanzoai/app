@@ -3,7 +3,8 @@
 // The app's sidebar, beside the rail on the window's floor (App.tsx): the
 // mode's name with the bell and the search at its right, New, Dev's places in
 // Dev, the reader's Recents (Pinned first), and the first-run cards. Which
-// product it lists is the rail's to say; the account is at the rail's foot.
+// product it lists is the rail's to say; the account is at the rail's foot, or
+// on a phone at the foot of its menu (Drawer.tsx), where this column is the menu.
 //
 // It is the window, not a panel: no fill, no edge, the floor's own ground. The
 // content beside it is the panel, inset by the gutter.
@@ -36,24 +37,12 @@ import { Setup } from './Setup'
 import { ago, type Recent } from './recent'
 import { empty } from './open'
 import { useSpan } from './span'
-import { pane } from './ground'
 import { talk, type Place } from './lib/host'
 import { brand, wordmark } from './where'
 
 /** The sidebar fills the column. Its `width` is typed in px alone, though its frame takes any gui size — the type is
  *  @hanzo/ui's to widen. */
 const FILL = { width: '100%' } as object
-
-/**
- * The phone's drawer floats over the page under the browser's own glass bar, so
- * it is cut like that bar: the composer's corner, the strong hairline, the lit
- * top edge and the floating drop. Its fill and blur stay the pane's.
- */
-const FLOAT = {
-  borderRadius: 'var(--radius-composer)',
-  borderColor: 'var(--border-strong)',
-  boxShadow: 'var(--edge-highlight), var(--shadow-floating)',
-} as const
 
 /** The sidebar's width, px: its default, and the two a drag holds it between. */
 const WIDTH = 240
@@ -71,8 +60,8 @@ const keys = (press: () => void) => ({
   },
 })
 
-/** A row of the sidebar: a pill on a 31px pitch, lit where the reader is. */
-const ROW = { rounded: '$4', minH: 31, py: 0, px: '$2' } as const
+/** A row of the sidebar: a pill on a 31px pitch, a thumb's 44 on a touch screen, lit where the reader is. */
+const ROW = { rounded: '$4', minH: 31, py: 0, px: '$2', $touchable: { minH: 44 } } as const
 
 /** The run activity behind the bell: the runs that moved last, newest first. */
 const RECENT = 6
@@ -80,8 +69,8 @@ const RECENT = 6
 /** What a place that takes the sidebar is called at its head. */
 const TITLE: Record<Spot, string> = { library: 'Library', scheduled: 'Scheduled tasks', customize: 'Customize', settings: 'Settings' }
 
-/** A header mark: a 16px glyph in a 32px target. */
-const HEAD = { width: 32, height: 32, rounded: '$3' } as const
+/** A header mark: a 16px glyph in a 32px target, a thumb's 44 on a touch screen. */
+const HEAD = { width: 32, height: 32, rounded: '$3', $touchable: { width: 44, height: 44 } } as const
 
 function Activity({ host }: { host: Host }) {
   const { t } = useI18n();
@@ -134,6 +123,7 @@ export function Column({
   onSeek,
   onBack,
   drawer = false,
+  rail,
   foot,
   places,
 }: {
@@ -149,9 +139,11 @@ export function Column({
   onSeek?: () => void
   /** Leaves a place that took the sidebar, for where the reader was before it. */
   onBack: () => void
-  /** Drawn in the phone's drawer: no edge, cut as a floating pane. */
+  /** Drawn in the phone's drawer (Drawer.tsx): on the floor behind the pane, no edge, no handle. */
   drawer?: boolean
-  /** What stands at its foot: the drawer's rail, laid flat. */
+  /** What stands under the mode's own rows: the drawer's places, the rail's as rows. */
+  rail?: ReactNode
+  /** What stands at its foot: the drawer's account and New chat. */
   foot?: ReactNode
   /** The mode's places, where they are not Dev's (Studio's `nav`). */
   places?: { id: string; label: string; links: RailLink[] }[]
@@ -200,7 +192,8 @@ export function Column({
         data-slot="app-rail"
         role="navigation"
         aria-label={brand()}
-        {...(drawer ? { ...pane(), ...FLOAT } : { bg: 'transparent', borderWidth: 0 })}
+        bg="transparent"
+        borderWidth={0}
         {...FILL}
         px="$2"
         pt={drawer ? '$2' : 0}
@@ -268,6 +261,7 @@ export function Column({
             ))}
           </YStack>
         )}
+        {rail}
         {mode === 'studio' || mode === 'tabs' || at ? null : <Recents host={host} mode={mode} thread={thread} onOpen={open} onNew={create} />}
         {at ? null : (
           <YStack gap="$2" pt="$2" shrink={0}>

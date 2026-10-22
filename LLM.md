@@ -544,7 +544,7 @@ reference captures; outer window, inner panel):
   the site's nav), Download apps (/download), Keyboard shortcuts, then Terms of
   Service (/legal/terms) and Privacy Policy (/legal/privacy). Keyboard
   shortcuts is a dialog over help.ts `KEYS`, the one list of the app's keys;
-  ⌘/ / Ctrl+/ opens it from anywhere (the drawer's copy of the rail, `above`,
+  ⌘/ / Ctrl+/ opens it from anywhere (the phone menu's copy at its foot, `above`,
   leaves the key to the rail's own). Report a bug is not drawn: the one intake,
   `POST /v1/help/tickets` (cloud apps/help), answers 503 "help center not
   configured" until the Help model is installed in the public help org.
@@ -558,12 +558,32 @@ reference captures; outer window, inner panel):
   24px line, headings 28/24/20.
 - A phone has neither rail nor sidebar (under gui's `md`): its bar (Top.tsx,
   the owner's iPhone reference) is three glass pieces on one 48px line under
-  the device's top inset — a 44px circle that opens the sidebar as a drawer, the
-  rail laid along the drawer's foot (`flat`); the 158×48 pill Chat | Dev, which
+  the device's top inset — a 44px circle that opens the sidebar as a drawer
+  (below); the 158×48 pill Chat | Dev, which
   moves the app as the rail does (neither lit in Studio); and a 44px circle for
   the mode's New (New chat, else the mode's `nav` `NEW` row). Glass is `pane()`
   cut round with a `--border-strong` edge, so the solid fallback and both themes
   are design's.
+- A phone's drawer (Drawer.tsx, the ChatGPT iOS app's shape): the menu stands
+  BEHIND on the floor (`--pane-floor`) and the pane slides toward the END side
+  over it, raised — `Lift` fills it with `--pane-solid` under its content, a step
+  brighter than the floor in both themes, start corners rounded
+  (`--radius-composer`), edge and drop (`RAISED`) — leaving `STRIP` (64px) of it
+  in sight (slide.ts `OPEN`). The menu is the column: head, the mode's rows, the
+  places as rows (Rail `rows`: Studio, Tabs, More led by Library, Scheduled tasks
+  and Customize; Chat and Dev are the bar's), Pinned and Recents, and the foot
+  (`Foot`): the account's face (`Me` `above`) and the accent New chat pill
+  (`--accent`). It is a modal dialog: everything else in the window `inert`,
+  focus in on open and back to the opener on shut, Escape closes unless a menu it
+  opened holds the focus, a tap on the strip or a pull toward the start closes
+  it, and opening pushes a same-address history entry that Back pops; a move
+  made from it replaces that entry (`depart`), so Back never reopens it. The
+  slide is a transform written on the pane (`--drawer-way`, `--drawer-at`, no
+  React commit while a finger drags); its sign is read off the pane's
+  `direction` as it opens, so `dir="rtl"` slides left, and everything else is a
+  logical inset. Reduced motion: no transition, shut at once. The phone window
+  is `overflow: clip`: a hidden overflow would let a `scrollIntoView` inside the
+  slid pane scroll the window sideways (measured: 314px).
 - A phone's window stands in the VISUAL viewport (view.ts `useView`), so the
   keyboard never covers the composer: `window.visualViewport` resize and scroll,
   once a frame, write `--view-top`, `--view-height` and `--keyboard` on the
