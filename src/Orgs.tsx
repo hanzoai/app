@@ -53,7 +53,8 @@ import { createOrg, say } from './lib/org'
 import { countSignup } from './lib/intent'
 import { BAD, mix } from './lib/mix'
 import { useRooms } from './host'
-import { brand, site, where } from './where'
+import { Chrome } from './Chrome'
+import { site, where } from './where'
 
 /** A template to set up once the organization is live. */
 const SETUP = 'hanzo:org:template'
@@ -296,22 +297,19 @@ const FIELD = {
   color: 'var(--foreground)',
 } as const
 
-/** The sheet every screen stands on: the whole viewport, scrolling, its column centred. */
+/**
+ * The sheet every screen stands on: the whole viewport, scrolling, its column
+ * centred, under the focused pages' one bar (`Chrome`) once someone is signed
+ * in. "Signing you in" stands alone.
+ */
 function Page({ label, children }: { label: string; children: ReactNode }) {
+  const { isAuthenticated } = useIam()
   return (
-    <YStack
-      position="fixed"
-      inset={0}
-      z={SHEET}
-      overflowY="auto"
-      bg="var(--background)"
-      pt={TOP}
-      px={20}
-      pb={48}
-      role="region"
-      aria-label={label}
-    >
-      {children}
+    <YStack position="fixed" inset={0} z={SHEET} overflowY="auto" bg="var(--background)" role="region" aria-label={label}>
+      {isAuthenticated ? <Chrome /> : null}
+      <YStack pt={TOP} px={20} pb={48}>
+        {children}
+      </YStack>
     </YStack>
   )
 }
@@ -379,14 +377,6 @@ function Step({ at, of }: { at: number; of: number }) {
   )
 }
 
-function Brand() {
-  return (
-    <Text fontSize="$6" fontWeight="500" mb={28} color="var(--foreground)">
-      {brand()}
-    </Text>
-  )
-}
-
 /** The free rung's name in the billing catalog. */
 const FREE_TIER = 'free'
 
@@ -425,7 +415,6 @@ function Create() {
   return (
     <Page label="Organizations">
       <Column>
-        <Brand />
         <XStack items="flex-start" justify="space-between" gap={16} flexWrap="wrap">
           <YStack>
             <Text render="h1" fontSize="$10" fontWeight="500" letterSpacing={-0.32} color="var(--text-primary)">
@@ -950,14 +939,15 @@ function Pick({
     <Page label="Choose an organization">
       <Column>
         <XStack items="flex-start" justify="space-between" gap={12}>
-          <Brand />
+          <YStack flex={1} minW={0}>
+            <Heading title="Choose an organization" lede={<>Everything you open — chats, agents, credit — is this one&apos;s.</>} />
+          </YStack>
           {onClose ? (
-            <Button variant="ghost" size="icon-sm" mt={-6} mr={-8} onClick={onClose} aria-label="Close">
+            <Button variant="ghost" size="icon-sm" mr={-8} onClick={onClose} aria-label="Close">
               <X size={16} aria-hidden />
             </Button>
           ) : null}
         </XStack>
-        <Heading title="Choose an organization" lede={<>Everything you open — chats, agents, credit — is this one&apos;s.</>} />
         <Rule />
         {/* Enter opens the first organization the search leaves. */}
         <XStack
@@ -1259,7 +1249,6 @@ function Subscribe({
   return (
     <Page label="Subscribe">
       <Column>
-        <Brand />
         <Heading
           title={org}
           lead={22.5}
@@ -1394,7 +1383,6 @@ function Start({
   return (
     <Page label="Create your team">
       <Column>
-        <Brand />
         {step === 'name' ? (
           <YStack render="form" {...{ onSubmit: create }}>
             <Step at={1} of={3} />
@@ -1549,7 +1537,6 @@ function Plan({
   return (
     <Page label="Choose your plan">
       <Column>
-        <Brand />
         {setup ? <Step at={3} of={3} /> : null}
         <Heading
           title={org}
