@@ -226,15 +226,17 @@ export function Rail({
   const betasDialog = <BetasDialog open={betas} onOpenChange={setBetas} go={out} />
   if (rows)
     return (
-      <YStack data-slot="places" render="nav" aria-label={t('Products')} role="list" gap={2} pt="$2" shrink={0}>
-        <YStack role="listitem">
-          <Row label="Studio" on={mode === 'studio'} onPress={onStudio} data-slot="place-studio" icon={<WandSparkles size={16} aria-hidden />} />
-        </YStack>
-        <YStack role="listitem">
-          <Row label="Tabs" on={mode === 'tabs'} onPress={onTabs} data-slot="place-tabs" icon={<SquareTerminal size={16} aria-hidden />} />
-        </YStack>
-        <YStack role="listitem">
-          <DropdownMenu placement="bottom-start" minWidth={220} trigger={<Row label="More" data-slot="place-more" aria-haspopup="menu" icon={<Ellipsis size={16} aria-hidden />} />} items={rest} />
+      <YStack data-slot="places" render="nav" aria-label={t('Products')} pt="$2" shrink={0}>
+        <YStack role="list" gap={2}>
+          <YStack role="listitem">
+            <Row label="Studio" on={mode === 'studio'} onPress={onStudio} data-slot="place-studio" icon={<WandSparkles size={16} aria-hidden />} />
+          </YStack>
+          <YStack role="listitem">
+            <Row label="Tabs" on={mode === 'tabs'} onPress={onTabs} data-slot="place-tabs" icon={<SquareTerminal size={16} aria-hidden />} />
+          </YStack>
+          <YStack role="listitem">
+            <DropdownMenu placement="bottom-start" minWidth={220} trigger={<Row label="More" data-slot="place-more" aria-haspopup="menu" icon={<Ellipsis size={16} aria-hidden />} />} items={rest} />
+          </YStack>
         </YStack>
         {betasDialog}
       </YStack>

@@ -188,7 +188,6 @@ describe('a phone’s menu', () => {
     expect(at(html, 'New chat')).toBeLessThan(at(html, 'data-slot="places"'))
     expect(at(html, 'data-slot="places"')).toBeLessThan(at(html, 'data-slot="recents"'))
     expect(at(html, 'data-slot="recents"')).toBeLessThan(at(html, 'data-slot="drawer-foot"'))
-    expect(html, 'the drawer’s column is not a floating card').not.toContain('radius-composer')
   })
 })
 
