@@ -9,6 +9,8 @@
  * slug shown is the slug IAM makes of the same name.
  */
 
+import { english, type Say } from '../say'
+
 /** The longest organization name IAM takes. */
 export const LONGEST = 55
 
@@ -35,12 +37,13 @@ export function slugify(name: string): string {
  * Why IAM would not take `slug` as an organization's name, or null when it
  * would. A name onboarding keeps exactly as typed: IAM's shape with single inner
  * hyphens, since onboarding folds a double one. The names IAM holds for the
- * platform are IAM's to refuse, in its own words.
+ * platform are IAM's to refuse, in its own words. Said in the reader's language
+ * through the room's `t`.
  */
-export function refusal(slug: string): string | null {
-  if (slug.length < 2) return 'Use at least 2 letters or numbers.'
-  if (slug.length > LONGEST) return `Use at most ${LONGEST} characters.`
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return 'Use lowercase letters, digits and single hyphens between them.'
+export function refusal(slug: string, t: Say = english): string | null {
+  if (slug.length < 2) return t('Use at least 2 letters or numbers.')
+  if (slug.length > LONGEST) return t('Use at most {n} characters.', { n: LONGEST })
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return t('Use lowercase letters, digits and single hyphens between them.')
   return null
 }
 

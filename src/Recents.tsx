@@ -8,6 +8,7 @@
 // menu (thread.tsx `ConversationMenu`): pinned ones list first, under Pinned,
 // and Chat's Status shows the archived ones apart.
 
+import { useI18n } from '@hanzo/i18n/react'
 import { useEffect, useId, useMemo, useRef, type ReactNode } from 'react'
 import { ScrollView, SizableText, XStack, YStack } from '@hanzo/gui'
 import { ListFilter } from 'lucide-react'
@@ -16,11 +17,12 @@ import { DOTS, route, useSessions, type Host } from '@hanzo/build'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { SidebarItem, StatusDot } from '@hanzo/ui/chat'
 import { useKept } from './kept'
-import { arrange, chats, MENUS, PINNED, PLAIN, runs, SINCE, viewOf, type Mode, type Option, type Recent, type View } from './recent'
+import { arrange, chats, MENUS, PINNED, PLAIN, runs, SINCE, UNFILED, UNTITLED, UNTITLED_RUN, viewOf, type Mode, type Option, type Recent, type View } from './recent'
+import type { Say } from './say'
 import { ConversationMenu, ThreadRow, useThreadList } from './thread'
 
-/** The menu's items: each section a heading and its options, the one in force checked. */
-function items(mode: Mode, view: View, set: (v: View) => void): NonNullable<DropdownMenuProps['items']> {
+/** The menu's items: each section a heading and its options (recent.ts's phrases, drawn through `t`), the one in force checked. */
+function items(mode: Mode, view: View, set: (v: View) => void, t: Say): NonNullable<DropdownMenuProps['items']> {
   const m = MENUS[mode]
   const section = <K extends keyof View>(key: K, label: string, options: Option<View[K]>[]): NonNullable<DropdownMenuProps['items']> =>
     options.length
@@ -28,14 +30,14 @@ function items(mode: Mode, view: View, set: (v: View) => void): NonNullable<Drop
           { type: 'label', key: `${key}-label`, label },
           ...options.map((o) => ({
             key: `${key}-${String(o.id)}`,
-            label: o.label,
+            label: t(o.label),
             selected: view[key] === o.id,
             closeOnSelect: false,
             onSelect: () => set({ ...view, [key]: o.id }),
           })),
         ]
       : []
-  const parts = [section('status', 'Status', m.status), section('since', 'Last activity', SINCE), section('group', 'Group by', m.group), section('sort', 'Sort by', m.sort)].filter(
+  const parts = [section('status', t('Status'), m.status), section('since', t('Last activity'), SINCE), section('group', t('Group by'), m.group), section('sort', t('Sort by'), m.sort)].filter(
     (p) => p.length,
   )
   return parts.flatMap((p, i) => (i ? [{ type: 'separator' as const, key: `sep-${i}` }, ...p] : p))
@@ -161,24 +163,29 @@ function List({
   /** Moves the pane to a new conversation: where it goes when the one it holds is deleted. */
   onNew?: () => void
 }) {
+  const { t } = useI18n()
   const label = useId()
   const groups = arrange(rows, view)
+  // A heading is authored (recent.ts's phrases), save a project's name in a list grouped by project.
+  const head = (title: string) => (view.group === 'project' && title !== UNFILED && title !== PINNED ? title : t(title))
+  // A row's title is the reader's; only the name a row without one is given is ours.
+  const named = (title: string) => (title === UNTITLED || title === UNTITLED_RUN ? t(title) : title)
   const narrowed = view.status !== PLAIN.status || view.since !== PLAIN.since
   const running = mode === 'dev' ? rows.filter((r) => r.status === 'running').length : 0
   // A row is its title alone, as the reference draws it: a conversation's ⋯
   // shows on hover and focus, a run's state is a dot at its end.
   const row = (r: Recent) => {
-    const t = threads?.get(r.id)
+    const one = threads?.get(r.id)
     const item = (
       <SidebarItem
         data-kind={r.kind}
         active={open(r)}
         rounded="$4"
         minH={31}
-        px="$2"
-        pr={t || r.kind === 'dev' ? '$7' : '$2'}
+        paddingInlineStart="$2"
+        paddingInlineEnd={one || r.kind === 'dev' ? '$7' : '$2'}
         // A thumb's 44 on a touch screen; a conversation's ⋯ is a thumb wide there and always there: the title stops short of it.
-        $touchable={t ? { minH: 44, pr: 52 } : { minH: 44 }}
+        $touchable={one ? { minH: 44, paddingInlineEnd: 52 } : { minH: 44 }}
         onKeyDown={(e: { key?: string; preventDefault?: () => void }) => {
           if (e.key !== 'Enter' && e.key !== ' ') return
           e.preventDefault?.()
@@ -187,13 +194,13 @@ function List({
         onPress={() => onOpen(r)}
       >
         <SizableText size="$3" color={open(r) ? '$ink' : '$quiet'} numberOfLines={1} display="block">
-          {r.title}
+          {named(r.title)}
         </SizableText>
       </SidebarItem>
     )
-    if (t)
+    if (one)
       return (
-        <ThreadRow key={r.id} t={t} active={open(r)}>
+        <ThreadRow key={r.id} t={one} active={open(r)}>
           {item}
         </ThreadRow>
       )
@@ -201,7 +208,7 @@ function List({
       <YStack role="listitem" key={r.id} position="relative">
         {item}
         {r.kind === 'dev' ? (
-          <XStack position="absolute" r="$2.5" t={0} b={0} items="center" pointerEvents="none">
+          <XStack position="absolute" insetInlineEnd="$2.5" t={0} b={0} items="center" pointerEvents="none">
             <StatusDot status={DOTS[r.status as keyof typeof DOTS] ?? 'idle'} />
           </XStack>
         ) : null}
@@ -216,7 +223,7 @@ function List({
       trigger={
         <XStack
           render="button"
-          aria-label="Recents view"
+          aria-label={t('Recents view')}
           width={26}
           height={26}
           rounded="$2"
@@ -233,20 +240,20 @@ function List({
           <ListFilter size={14} aria-hidden />
         </XStack>
       }
-      items={items(mode, view, keep)}
+      items={items(mode, view, keep, t)}
     />
   )
   /** A section's heading: the reference's quiet 14px label, the Recents one carrying the count and the menu. */
   const heading = (title: string, id?: string, lead = false) => (
-    <XStack group items="center" justify="space-between" height={31} pl="$2" pr="$1" mt="$3" shrink={0}>
+    <XStack group items="center" justify="space-between" height={31} paddingInlineStart="$2" paddingInlineEnd="$1" mt="$3" shrink={0}>
       <XStack items="center" gap="$2">
         <SizableText id={id} size="$3" color="$soft">
           {title}
         </SizableText>
         {lead && running ? (
           // A count where there is one to keep an eye on: the runs still working.
-          <XStack aria-label={`${running} running`} minW={18} height={18} px="$1.5" rounded={999} items="center" justify="center" bg="$edge" borderWidth={1} borderColor="$borderColor">
-            <SizableText size="$1" fontWeight="600" color="$ink" aria-hidden>
+          <XStack aria-label={t('{n} running', { n: running })} minW={18} height={18} px="$1.5" rounded={999} items="center" justify="center" bg="$edge" borderWidth={1} borderColor="$borderColor">
+            <SizableText size="$1" fontWeight="600" color="$ink" aria-hidden data-i18n-ltr>
               {String(running)}
             </SizableText>
           </XStack>
@@ -259,13 +266,13 @@ function List({
   const loose = groups.filter((g) => g.title !== PINNED)
   const pinned = groups.find((g) => g.title === PINNED)
   const note = reading ? (
-    <Note>{mode === 'chat' ? 'Reading your chats…' : 'Reading your runs…'}</Note>
+    <Note>{t(mode === 'chat' ? 'Reading your chats…' : 'Reading your runs…')}</Note>
   ) : error ? null : view.status === 'archived' ? (
-    <Note>No archived chats.</Note>
+    <Note>{t('No archived chats.')}</Note>
   ) : narrowed ? (
-    <Note>Nothing in this view.</Note>
+    <Note>{t('Nothing in this view.')}</Note>
   ) : (
-    <Note>{mode === 'chat' ? 'No chats yet.' : 'No runs yet.'}</Note>
+    <Note>{t(mode === 'chat' ? 'No chats yet.' : 'No runs yet.')}</Note>
   )
   // Each list of conversations holds its own menu (thread.tsx): the view menu
   // in the Recents heading between them is a menu of its own, never inside one.
@@ -283,14 +290,14 @@ function List({
         g.title ? (
           <YStack key={g.title} gap={1} pt="$1">
             <SizableText size="$1" color="$soft" px="$2" pb="$1">
-              {g.title}
+              {head(g.title)}
             </SizableText>
-            <YStack role="list" aria-label={g.title} gap={1}>
+            <YStack role="list" aria-label={head(g.title)} gap={1}>
               {g.rows.map(row)}
             </YStack>
           </YStack>
         ) : (
-          <YStack key="all" role="list" aria-label="All" gap={1}>
+          <YStack key="all" role="list" aria-label={t('All')} gap={1}>
             {g.rows.map(row)}
           </YStack>
         ),
@@ -307,16 +314,16 @@ function List({
         <YStack role="list" aria-labelledby={label} gap={1}>
           {pinned ? (
             <YStack role="listitem" gap={1}>
-              {heading(PINNED)}
+              {heading(t(PINNED))}
               {menus(
-                <YStack role="list" aria-label={PINNED} gap={1}>
+                <YStack role="list" aria-label={t(PINNED)} gap={1}>
                   {pinned.rows.map(row)}
                 </YStack>,
               )}
             </YStack>
           ) : null}
           <YStack role="listitem" gap={1}>
-            {heading('Recents', label, true)}
+            {heading(t('Recents'), label, true)}
             {loose.length ? menus(rest) : rest}
           </YStack>
         </YStack>

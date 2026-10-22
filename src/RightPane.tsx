@@ -18,6 +18,7 @@
 // it stands in (`Beside` in `Shell.tsx`).
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useI18n } from '@hanzo/i18n/react'
 import { FileCode, Globe, Image as ImageMark, Paperclip, Plus } from 'lucide-react'
 import {
   Box,
@@ -40,6 +41,7 @@ import { list } from './lib/list'
 import { localOf, take, type Held } from './pane'
 import { useProviders, useSkills } from './tools'
 import { activate, startDevice } from './connect'
+import type { Say } from './say'
 
 /** A conversation's panel before anyone has arranged it. */
 export const SEED: Tabs = { tabs: [], at: null }
@@ -78,12 +80,12 @@ const pictures = (m: ChatMessage): string[] =>
     : []
 
 /** What the assistant made: fenced blocks and pictures, in the order they were said. */
-function outputs(said: ChatMessage[]): Mark[] {
+function outputs(said: ChatMessage[], t: Say): Mark[] {
   const out: Mark[] = []
   said.forEach((m, turn) => {
     if (m.role !== 'assistant') return
     artifacts(words(m)).forEach((a, n) => out.push({ id: `o${turn}.${n}`, name: a.name, kind: 'code', body: a.body, mime: a.mime }))
-    pictures(m).forEach((href, i) => out.push({ id: `oi${turn}.${i}`, name: 'Generated image', kind: 'image', href }))
+    pictures(m).forEach((href, i) => out.push({ id: `oi${turn}.${i}`, name: t('Generated image'), kind: 'image', href }))
   })
   return out
 }
@@ -93,11 +95,11 @@ function outputs(said: ChatMessage[]): Mark[] {
  * files sent fenced under their names (`compose` in `lib/attach`), and files
  * held for the next message.
  */
-function sources(said: ChatMessage[], held: Held[]): Mark[] {
+function sources(said: ChatMessage[], held: Held[], t: Say): Mark[] {
   const out: Mark[] = []
   said.forEach((m, turn) => {
     if (m.role !== 'user') return
-    pictures(m).forEach((href, i) => out.push({ id: `s${turn}.${i}`, name: 'Attached image', kind: 'image', href }))
+    pictures(m).forEach((href, i) => out.push({ id: `s${turn}.${i}`, name: t('Attached image'), kind: 'image', href }))
     const read = told(words(m))
     for (const f of read.carried?.attached ?? []) {
       out.push({ id: `sw${turn}.${f.id}`, name: f.name, kind: f.type.startsWith('image/') ? 'image' : 'file', file: f.id, mime: f.type })
@@ -179,17 +181,18 @@ const Note = ({ children }: { children: ReactNode }) => (
  * right edge of the window, where a submenu has no room to open.
  */
 function Add({ at }: { at: string }) {
+  const { t } = useI18n()
   const ai = useAi()
   return (
     <DropdownMenu placement="bottom-end" maxHeight={420}>
       <DropdownMenuTrigger asChild>
-        <Box render="button" aria-label="Add to this conversation" p="$1" rounded="$2" hoverStyle={{ bg: '$hover' }}>
+        <Box render="button" aria-label={t('Add to this conversation')} p="$1" rounded="$2" hoverStyle={{ bg: '$hover' }}>
           <Plus size={16} aria-hidden />
         </Box>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => take(at, { api: ai, org: org() })}>
-          <Word>Attach files</Word>
+          <Word>{t('Attach files')}</Word>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <Skills />
@@ -205,20 +208,21 @@ function Add({ at }: { at: string }) {
  * with `aria-checked`, so the state is read as well as seen.
  */
 function Skills() {
+  const { t } = useI18n()
   const { rows, trouble } = useSkills()
   const [busy, setBusy] = useState<string | null>(null)
   const [on, setOn] = useState<Set<string> | null>(null)
 
   if (trouble) return <Note>{trouble}</Note>
-  if (rows === null) return <Note>Reading skills.</Note>
-  if (rows.length === 0) return <Note>No skills on this account yet.</Note>
+  if (rows === null) return <Note>{t('Reading skills.')}</Note>
+  if (rows.length === 0) return <Note>{t('No skills on this account yet.')}</Note>
 
   // The server's set once it has answered, and the list's own flag until then.
   const isOn = (n: string, was: boolean) => (on ? on.has(n) : was)
 
   return (
     <>
-      <Note>Skills</Note>
+      <Note>{t('Skills')}</Note>
       {rows.map((s) => {
         const lit = isOn(s.name, s.activated)
         return (
@@ -246,31 +250,32 @@ function Skills() {
 
 /** What this account could connect, narrowed to the device flow, the one intake this menu can finish. */
 function Services() {
+  const { t } = useI18n()
   const { rows, trouble } = useProviders()
   const [step, setStep] = useState<string | null>(null)
 
   if (trouble) return <Note>{trouble}</Note>
-  if (rows === null) return <Note>Reading.</Note>
+  if (rows === null) return <Note>{t('Reading.')}</Note>
 
   const can = rows.filter((p) => p.methods.includes('device'))
-  if (can.length === 0) return <Note>Nothing to connect from here yet.</Note>
+  if (can.length === 0) return <Note>{t('Nothing to connect from here yet.')}</Note>
 
   return (
     <>
-      <Note>{step ?? 'Connect'}</Note>
+      <Note>{step ?? t('Connect')}</Note>
       {can.map((p) => (
         <DropdownMenuItem
           key={p.id}
           onSelect={(e?: Event) => e?.preventDefault()}
           onClick={() => {
-            setStep(`Starting ${p.name}…`)
+            setStep(t('Starting {name}…', { name: p.name }))
             void startDevice(p.id)
               .then((begun) => {
                 // The code is the reader's to type at the provider's page.
-                setStep(`Enter ${begun.userCode} at ${titleOf(begun.verifyUrl)}`)
+                setStep(t('Enter {code} at {site}', { code: begun.userCode, site: titleOf(begun.verifyUrl) }))
                 window.open(begun.verifyUrl, '_blank', 'noopener,noreferrer')
               })
-              .catch((e: unknown) => setStep(String((e as Error)?.message ?? 'Could not start')))
+              .catch((e: unknown) => setStep(String((e as Error)?.message ?? t('Could not start'))))
           }}
         >
           <Word>{p.name}</Word>
@@ -287,9 +292,10 @@ function Services() {
  * a tab beside the conversation.
  */
 export function useSections({ at, said, held, deck, onCreate }: { at: string; said: ChatMessage[]; held: Held[]; deck: Deck; onCreate: () => void }): Section[] {
+  const { t } = useI18n()
   const ai = useAi()
-  const made = useMemo(() => outputs(said), [said])
-  const took = useMemo(() => sources(said, held), [said, held])
+  const made = useMemo(() => outputs(said, t), [said, t])
+  const took = useMemo(() => sources(said, held, t), [said, held, t])
   const done = useMemo(() => lookups(said), [said])
   return useMemo(() => {
     const row = (m: Mark): Entry => {
@@ -298,13 +304,13 @@ export function useSections({ at, said, held, deck, onCreate }: { at: string; sa
     }
     const asked = done.map((call) => {
       const m: Mark = { id: call.id, name: call.name, kind: 'file', body: [call.asked, call.got ?? ''].filter(Boolean).join('\n\n'), mime: 'text/plain' }
-      return { ...row(m), title: call.name === 'web_search' || call.name === 'search' ? 'Web search' : call.name, icon: <Globe size={15} aria-hidden />, detail: call.asked }
+      return { ...row(m), title: call.name === 'web_search' || call.name === 'search' ? t('Web search') : call.name, icon: <Globe size={15} aria-hidden />, detail: call.asked }
     })
     return [
-      { id: 'outputs', title: 'Outputs', lead: { title: 'Create file or site', run: onCreate }, entries: made.map(row) },
-      { id: 'sources', title: 'Sources', action: <Add at={at} />, empty: 'Nothing yet', entries: [...asked, ...took.map(row)] },
+      { id: 'outputs', title: t('Outputs'), lead: { title: t('Create file or site'), run: onCreate }, entries: made.map(row) },
+      { id: 'sources', title: t('Sources'), action: <Add at={at} />, empty: t('Nothing yet'), entries: [...asked, ...took.map(row)] },
     ]
-  }, [at, made, took, done, deck, ai, onCreate])
+  }, [at, made, took, done, deck, ai, onCreate, t])
 }
 
 /**
@@ -312,6 +318,8 @@ export function useSections({ at, said, held, deck, onCreate }: { at: string; sa
  * every row with a live address. Read once a conversation; nothing on a refusal.
  */
 export function useSites(): { title: string; url: string }[] {
+  const { t } = useI18n()
+  const site = t('Site')
   const [rows, setRows] = useState<{ title: string; url: string }[]>([])
   useEffect(() => {
     const stop = new AbortController()
@@ -320,10 +328,10 @@ export function useSites(): { title: string; url: string }[] {
       .then((body: unknown) => {
         if (stop.signal.aborted) return
         const all = list<{ name?: string; slug?: string; liveUrl?: string }>(Array.isArray(body) ? body : (body as { data?: unknown } | null)?.data)
-        setRows(all.filter((p) => typeof p.liveUrl === 'string' && (p.liveUrl as string).startsWith('https://')).map((p) => ({ title: p.name || p.slug || 'Site', url: p.liveUrl as string })))
+        setRows(all.filter((p) => typeof p.liveUrl === 'string' && (p.liveUrl as string).startsWith('https://')).map((p) => ({ title: p.name || p.slug || site, url: p.liveUrl as string })))
       })
       .catch(() => {})
     return () => stop.abort()
-  }, [])
+  }, [site])
   return rows
 }

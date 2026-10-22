@@ -11,23 +11,28 @@
 // do not reply: a conversation belongs to the member who started it.
 
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { DEFAULT_LOCALE } from '@hanzo/i18n'
+import { useI18n } from '@hanzo/i18n/react'
 import { Check, Link2, Upload } from 'lucide-react'
 import { Box, Button, Dialog, DialogContent, DialogTitle, Text, XStack, YStack } from '@hanzo/ui'
 import { hold, heldToken, link, Refused, shares, type ShareRow, type Viewer } from './lib/share'
+import type { Say } from './say'
 import { BAD } from './lib/mix'
 
 /** How long "Link copied" stays. The same 1400 ms `Take` confirms for. */
 const CONFIRM = 1400
 
-/** A date as the panel says it: "Sep 29, 2026". */
-const day = (iso: string): string => {
+/** A date as the panel says it: "Sep 29, 2026", in the reader's language once one is chosen. */
+const day = (iso: string, locale: string): string => {
   const d = new Date(iso)
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(locale === DEFAULT_LOCALE ? undefined : locale, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-const said = (e: unknown): string => (e instanceof Refused || e instanceof Error ? e.message : 'That did not work. Try again.')
+/** The store's own words where it gave some, else ours. */
+const said = (e: unknown, t: Say): string => (e instanceof Refused || e instanceof Error ? e.message : t('That did not work. Try again.'))
 
 export function Share({ thread }: { thread: string }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const button = useRef<HTMLElement | null>(null)
   const close = useCallback(() => {
@@ -42,7 +47,7 @@ export function Share({ thread }: { thread: string }) {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label="Share this conversation"
+        aria-label={t('Share this conversation')}
         data-slot="share"
         display="flex"
         flexDirection="row"
@@ -59,7 +64,7 @@ export function Share({ thread }: { thread: string }) {
       >
         <Upload size={16} aria-hidden />
         <Text fontSize="$3" color="$ink">
-          Share
+          {t('Share')}
         </Text>
       </Box>
       {open ? <Panel thread={thread} onClose={close} /> : null}
@@ -69,6 +74,7 @@ export function Share({ thread }: { thread: string }) {
 
 /** The header's panel: hung under its button, shut by Escape or a press outside, focus starting inside. */
 function Panel({ thread, onClose }: { thread: string; onClose: () => void }) {
+  const { t } = useI18n()
   const heading = useId()
   const box = useRef<HTMLDivElement | null>(null)
 
@@ -95,7 +101,7 @@ function Panel({ thread, onClose }: { thread: string; onClose: () => void }) {
       role="dialog"
       aria-labelledby={heading}
       position="absolute"
-      r={0}
+      insetInlineEnd={0}
       t="100%"
       mt="$2"
       z="var(--z-dropdown)"
@@ -114,7 +120,7 @@ function Panel({ thread, onClose }: { thread: string; onClose: () => void }) {
         note={`${heading}-said`}
         title={
           <Text id={heading} render="h2" fontSize="$4" fontWeight="600" color="$ink">
-            Share this chat
+            {t('Share this chat')}
           </Text>
         }
       />
@@ -137,11 +143,12 @@ export function ShareDialog({
   onOpenChange: (open: boolean) => void
   onCloseAutoFocus?: (e: Event) => void
 }) {
+  const { t } = useI18n()
   const note = useId()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent maxW={400} rounded="$6" gap="$3" onCloseAutoFocus={onCloseAutoFocus}>
-        {thread ? <Sharing thread={thread} note={note} title={<DialogTitle>Share this chat</DialogTitle>} /> : null}
+        {thread ? <Sharing thread={thread} note={note} title={<DialogTitle>{t('Share this chat')}</DialogTitle>} /> : null}
       </DialogContent>
     </Dialog>
   )
@@ -149,6 +156,7 @@ export function ShareDialog({
 
 /** What a link to one conversation is, who opened each, and the controls over them. */
 function Sharing({ thread, title, note }: { thread: string; title: ReactNode; note: string }) {
+  const { t, locale } = useI18n()
   const [live, setLive] = useState<ShareRow[] | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [wrong, setWrong] = useState<string | null>(null)
@@ -162,7 +170,7 @@ function Sharing({ thread, title, note }: { thread: string; title: ReactNode; no
       .catch((e) => {
         if (!on) return
         setLive([])
-        setWrong(said(e))
+        setWrong(said(e, t))
       })
     return () => {
       on = false
@@ -171,8 +179,8 @@ function Sharing({ thread, title, note }: { thread: string; title: ReactNode; no
 
   useEffect(() => {
     if (!copied) return
-    const t = setTimeout(() => setCopied(false), CONFIRM)
-    return () => clearTimeout(t)
+    const shown = setTimeout(() => setCopied(false), CONFIRM)
+    return () => clearTimeout(shown)
   }, [copied])
 
   const copy = async () => {
@@ -189,7 +197,7 @@ function Sharing({ thread, title, note }: { thread: string; title: ReactNode; no
       await navigator.clipboard.writeText(link(got.token))
       setCopied(true)
     } catch (e) {
-      setWrong(e instanceof DOMException ? 'The browser would not copy. Select the link and copy it by hand.' : said(e))
+      setWrong(e instanceof DOMException ? t('The browser would not copy. Select the link and copy it by hand.') : said(e, t))
     } finally {
       setBusy(null)
     }
@@ -202,7 +210,7 @@ function Sharing({ thread, title, note }: { thread: string; title: ReactNode; no
       await shares.unview(thread, row.id, viewer.id)
       setLive((rows) => (rows ?? []).map((r) => (r.id === row.id ? { ...r, viewers: r.viewers.filter((v) => v.id !== viewer.id) } : r)))
     } catch (e) {
-      setWrong(said(e))
+      setWrong(said(e, t))
     } finally {
       setBusy(null)
     }
@@ -216,7 +224,7 @@ function Sharing({ thread, title, note }: { thread: string; title: ReactNode; no
       if (heldToken(thread, live ?? [])?.id === id) hold(thread, null)
       setLive((rows) => (rows ?? []).filter((r) => r.id !== id))
     } catch (e) {
-      setWrong(said(e))
+      setWrong(said(e, t))
     } finally {
       setBusy(null)
     }
@@ -226,8 +234,7 @@ function Sharing({ thread, title, note }: { thread: string; title: ReactNode; no
     <>
       {title}
       <Text fontSize="$2" color="$soft" lineHeight="$3">
-        People who open the link signed in can read this chat as it is now, and you see who they are below. They
-        cannot reply, and messages you send later are not shared.
+        {t('People who open the link signed in can read this chat as it is now, and you see who they are below. They cannot reply, and messages you send later are not shared.')}
       </Text>
 
       <XStack items="center" gap="$2">
@@ -235,49 +242,51 @@ function Sharing({ thread, title, note }: { thread: string; title: ReactNode; no
           <XStack items="center" gap="$1.5">
             {copied ? <Check size={14} aria-hidden /> : <Link2 size={14} aria-hidden />}
             <Text fontSize="$2" color="inherit">
-              {copied ? 'Link copied' : busy === 'copy' ? 'Making a link…' : 'Copy link'}
+              {copied ? t('Link copied') : busy === 'copy' ? t('Making a link…') : t('Copy link')}
             </Text>
           </XStack>
         </Button>
         <Text fontSize="$1" color="$soft">
-          Read only
+          {t('Read only')}
         </Text>
       </XStack>
       <Text id={note} aria-live="polite" fontSize="$1" color="$soft" minH={16}>
-        {copied ? 'The link is on your clipboard.' : ''}
+        {copied ? t('The link is on your clipboard.') : ''}
       </Text>
 
       <YStack gap="$2">
         <Text fontSize="$1" color="$soft" textTransform="uppercase">
-          Who has access
+          {t('Who has access')}
         </Text>
         <XStack items="center" justify="space-between">
           <Text fontSize="$2" color="$ink">
-            You
+            {t('You')}
           </Text>
           <Text fontSize="$1" color="$soft">
-            Owner
+            {t('Owner')}
           </Text>
         </XStack>
         {live === null ? (
           <Text fontSize="$2" color="$soft">
-            Reading links.
+            {t('Reading links.')}
           </Text>
         ) : live.length === 0 ? (
           <Text fontSize="$2" color="$soft">
-            No links yet. Copy link makes one.
+            {t('No links yet. Copy link makes one.')}
           </Text>
         ) : (
-          <YStack render="ul" gap="$2" m={0} p={0} aria-label="Live links">
-            {live.map((row) => (
+          <YStack render="ul" gap="$2" m={0} p={0} aria-label={t('Live links')}>
+            {live.map((row) => {
+              const made = day(row.createdAt, locale)
+              return (
               <YStack render="li" key={row.id} gap="$1.5">
                 <XStack items="center" justify="space-between" gap="$2">
                   <YStack minW={0}>
                     <Text fontSize="$2" color="$ink" numberOfLines={1}>
-                      Link
+                      {t('Link')}
                     </Text>
                     <Text fontSize="$1" color="$soft">
-                      Read only{day(row.createdAt) ? ` · made ${day(row.createdAt)}` : ''}
+                      {made ? t('Read only · made {date}', { date: made }) : t('Read only')}
                     </Text>
                   </YStack>
                   <Button
@@ -285,37 +294,38 @@ function Sharing({ thread, title, note }: { thread: string; title: ReactNode; no
                     variant="outline"
                     onClick={() => void revoke(row.id)}
                     disabled={busy !== null}
-                    aria-label={`Revoke the link made ${day(row.createdAt) || 'earlier'}`}
+                    aria-label={made ? t('Revoke the link made {date}', { date: made }) : t('Revoke the link made earlier')}
                   >
-                    {busy === row.id ? 'Revoking…' : 'Revoke'}
+                    {t(busy === row.id ? 'Revoking…' : 'Revoke')}
                   </Button>
                 </XStack>
                 {(row.viewers ?? []).length === 0 ? (
-                  <Text fontSize="$1" color="$soft" pl="$3">
-                    Nobody has opened it yet.
+                  <Text fontSize="$1" color="$soft" paddingInlineStart="$3">
+                    {t('Nobody has opened it yet.')}
                   </Text>
                 ) : (
-                  <YStack render="ul" gap="$1" m={0} pl="$3" aria-label="Opened by">
+                  <YStack render="ul" gap="$1" m={0} paddingInlineStart="$3" aria-label={t('Opened by')}>
                     {row.viewers.map((v) => (
                       <XStack render="li" key={v.id} items="center" justify="space-between" gap="$2">
                         <Text fontSize="$2" color="$ink" numberOfLines={1}>
-                          {v.name || 'Someone signed in'}
+                          {v.name || t('Someone signed in')}
                         </Text>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => void unview(row, v)}
                           disabled={busy !== null}
-                          aria-label={`Remove ${v.name || 'this reader'}`}
+                          aria-label={v.name ? t('Remove {name}', { name: v.name }) : t('Remove this reader')}
                         >
-                          {busy === v.id ? 'Removing…' : 'Remove'}
+                          {t(busy === v.id ? 'Removing…' : 'Remove')}
                         </Button>
                       </XStack>
                     ))}
                   </YStack>
                 )}
               </YStack>
-            ))}
+              )
+            })}
           </YStack>
         )}
       </YStack>

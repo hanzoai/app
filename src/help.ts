@@ -2,10 +2,11 @@
 // draws both, its shortcuts dialog renders KEYS, and a spec reads them as they
 // are. No React, so a spec reads it as it is.
 
+import { phrase } from '@hanzo/i18n'
 import { said } from './chord'
 import { site } from './where'
 
-/** One Help row that leaves for a page. */
+/** One Help row that leaves for a page. Its label is authored English, drawn through `t`. */
 export interface Page {
   key: string
   label: string
@@ -21,19 +22,19 @@ const RELEASES = 'https://github.com/hanzoai/cli/releases'
  * page that leads to the help center, the docs, status and a person.
  */
 export const pages = (): Page[] => [
-  { key: 'help', label: 'Help center', href: site('/support') },
-  { key: 'center', label: 'Privacy center', href: site('/legal') },
-  { key: 'releases', label: 'Release notes', href: RELEASES },
-  { key: 'download', label: 'Download apps', href: site('/download') },
+  { key: 'help', label: phrase('Help center'), href: site('/support') },
+  { key: 'center', label: phrase('Privacy center'), href: site('/legal') },
+  { key: 'releases', label: phrase('Release notes'), href: RELEASES },
+  { key: 'download', label: phrase('Download apps'), href: site('/download') },
 ]
 
 /** The agreements under the Help menu's rule. */
 export const legal = (): Page[] => [
-  { key: 'terms', label: 'Terms of Service', href: site('/legal/terms') },
-  { key: 'privacy', label: 'Privacy Policy', href: site('/legal/privacy') },
+  { key: 'terms', label: phrase('Terms of Service'), href: site('/legal/terms') },
+  { key: 'privacy', label: phrase('Privacy Policy'), href: site('/legal/privacy') },
 ]
 
-/** One of the app's keys: what it does, and how a Mac and every other platform spell it. */
+/** One of the app's keys: what it does (authored English, drawn through `t`), and how a Mac and every other platform spell it. */
 export interface Key {
   does: string
   mac: string
@@ -47,17 +48,17 @@ export interface Key {
  * (the conversation's chords, spelled by `said` so the two cannot drift).
  */
 export const KEYS: Key[] = [
-  { does: 'Search chats', mac: '⌘K', pc: 'Ctrl+K' },
-  { does: 'Settings', mac: '⌘,', pc: 'Ctrl+,' },
-  { does: 'Keyboard shortcuts', mac: '⌘/', pc: 'Ctrl+/' },
-  { does: 'Side panel', mac: '⌘.', pc: 'Ctrl+.' },
-  { does: 'Attach files', mac: '⌘U', pc: 'Ctrl+U' },
-  { does: 'Send', mac: 'Enter', pc: 'Enter' },
-  { does: 'New line', mac: '⇧Enter', pc: 'Shift+Enter' },
-  { does: 'Rename chat', mac: said('rename', true), pc: said('rename', false) },
-  { does: 'Pin or unpin chat', mac: said('pin', true), pc: said('pin', false) },
-  { does: 'Back', mac: '⌘[', pc: 'Alt+←' },
-  { does: 'Forward', mac: '⌘]', pc: 'Alt+→' },
+  { does: phrase('Search chats'), mac: '⌘K', pc: 'Ctrl+K' },
+  { does: phrase('Settings'), mac: '⌘,', pc: 'Ctrl+,' },
+  { does: phrase('Keyboard shortcuts'), mac: '⌘/', pc: 'Ctrl+/' },
+  { does: phrase('Side panel'), mac: '⌘.', pc: 'Ctrl+.' },
+  { does: phrase('Attach files'), mac: '⌘U', pc: 'Ctrl+U' },
+  { does: phrase('Send'), mac: 'Enter', pc: 'Enter' },
+  { does: phrase('New line'), mac: '⇧Enter', pc: 'Shift+Enter' },
+  { does: phrase('Rename chat'), mac: said('rename', true), pc: said('rename', false) },
+  { does: phrase('Pin or unpin chat'), mac: said('pin', true), pc: said('pin', false) },
+  { does: phrase('Back'), mac: '⌘[', pc: 'Alt+←' },
+  { does: phrase('Forward'), mac: '⌘]', pc: 'Alt+→' },
 ]
 
 /** The part of a keydown `asked` reads. */

@@ -23,12 +23,17 @@
 // organization for a team, offered as "Create a team" for a personal one); and
 // All organizations for a SuperAdmin, which opens the chooser (Orgs.tsx).
 //
+// Its words go through `t`; names, plans, addresses and keys are drawn as they
+// are, a key isolated left to right so its `+` and `,` keep their places in a
+// right-to-left menu, which opens toward the content from the rail's side.
+//
 // IAM is the source of every fact here: names and roles from the token's `orgs`
 // claim, display names and which org is personal from `GET /v1/iam/organizations`,
 // the plan from billing and the limits. An organization is created by the same
 // `POST /v1/account/orgs` the no-organization gate uses (Orgs.tsx); the next load
 // mints a token that carries it.
 
+import { phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { SizableText, XStack, YStack } from '@hanzo/gui'
@@ -112,8 +117,12 @@ export interface Org {
   role: string
 }
 
-/** A role as a person reads it: `owner` → Owner. */
-const said = (role: string): string => (role ? role.charAt(0).toUpperCase() + role.slice(1) : '')
+/** IAM's roles as a person reads them, through `t`. */
+const ROLES: Record<string, string> = { owner: phrase('Owner'), admin: phrase('Admin'), member: phrase('Member') }
+
+/** A role as a person reads it: `owner` → Owner; one IAM names that these do not, capitalised as it comes. */
+const said = (role: string, t: (source: string) => string): string =>
+  ROLES[role] ? t(ROLES[role]) : role ? role.charAt(0).toUpperCase() + role.slice(1) : ''
 
 /** The first letters of a name, at most two: Antje Worring → AW. */
 export const initials = (name: string): string =>
@@ -228,7 +237,7 @@ const Mark = ({ org }: { org: Org }) => (
  * plan, Free included, is one to move up from.
  */
 export const upgrade = (family: string | null | undefined): string =>
-  family === 'Enterprise' ? 'Enterprise plan' : family === 'Agency' ? 'Agency plan' : 'Upgrade plan'
+  family === 'Enterprise' ? phrase('Enterprise plan') : family === 'Agency' ? phrase('Agency plan') : phrase('Upgrade plan')
 
 /** The keys a row prints, in this platform's spelling. */
 const mac = (): boolean => typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
@@ -250,7 +259,8 @@ export function Me({
   /** Work in another organization: picked, then the app opened in it. */
   onOrg: (org: string) => void
 }) {
-  const { t } = useI18n();
+  const { t, dir } = useI18n()
+  const rtl = dir === 'rtl'
   const [open, setOpen] = useState(false)
   const [account, setAccount] = useState(false)
   const [help, setHelp] = useState(false)
@@ -275,8 +285,10 @@ export function Me({
   const teamPlan = team ? (team.name === current ? plan : teamOther) : ''
   const ownPlan = personal ? (personal.name === current ? plan : other) : ''
   // Where the reader works, and on what: "hanzo · Enterprise", "Personal · Pro".
-  const working = [here ? (here.personal ? 'Personal' : here.display) : current, plan].filter(Boolean).join(' · ')
+  const working = [here ? (here.personal ? t('Personal') : here.display) : current, plan].filter(Boolean).join(' · ')
   // A personal plan is bought for the personal organization, beside any business one.
+  // The plans row's name (a phrase of `upgrade`'s).
+  const plans = upgrade(read.value?.label?.name)
   const getPro = () => personal && window.location.assign(payUrl('/cart', { plan: 'pro', org: personal.name, returnUrl: window.location.href }))
   const apple = mac()
 
@@ -312,7 +324,8 @@ export function Me({
           setAccount(false)
           setHelp(false)
         }}
-        placement={narrow && !above ? 'right-end' : above ? 'top-end' : 'top-start'}
+        // Toward the content from the rail, and aligned as the row's own edge is: mirrored right to left.
+        placement={narrow && !above ? (rtl ? 'left-end' : 'right-end') : above !== rtl ? 'top-end' : 'top-start'}
         // Clear of the rail's mark (or the row) it opens from, and flush with its foot.
         offset={8}
       >
@@ -324,7 +337,7 @@ export function Me({
             render="button"
             data-slot="me"
             // The name the gates and a screen reader know it by: who, and in which organization.
-            aria-label={`Account: ${[who, current].filter(Boolean).join(' · ')}`}
+            aria-label={t('Account: {name}', { name: [who, current].filter(Boolean).join(' · ') })}
             {...({ title: who } as object)}
             width={narrow ? 36 : '100%'}
             minH={narrow ? 36 : 48}
@@ -343,11 +356,11 @@ export function Me({
             {narrow ? null : (
               <>
                 <YStack flex={1} minW={0}>
-                  <SizableText size="$3" fontWeight="600" color="$ink" numberOfLines={1} text="left">
+                  <SizableText size="$3" fontWeight="600" color="$ink" numberOfLines={1} text="start">
                     {who}
                   </SizableText>
                   {working ? (
-                    <SizableText size="$1" color="$soft" numberOfLines={1} text="left">
+                    <SizableText size="$1" color="$soft" numberOfLines={1} text="start">
                       {working}
                     </SizableText>
                   ) : null}
@@ -357,7 +370,7 @@ export function Me({
             )}
           </XStack>
         </DropdownMenuTrigger>
-        <DropdownMenuContent minW={260} maxW="calc(100vw - 16px)" aria-labelledby={undefined} aria-label={t("Account")} onCloseAutoFocus={back}>
+        <DropdownMenuContent minW={260} maxW="calc(100vw - 16px)" aria-labelledby={undefined} aria-label={t('Account')} onCloseAutoFocus={back}>
           <DropdownMenuSub open={account} onOpenChange={setAccount}>
             <DropdownMenuSubTrigger minH={48} gap="$2.5">
               <Face host={host} size={28} />
@@ -374,37 +387,37 @@ export function Me({
               <DropdownMenuSubContent minW={260} maxW="calc(100vw - 16px)" pointerEvents="auto">
                 <Meter read={read} onPlans={() => leave('here')} onBilling={() => (setOpen(false), showSettings('billing'))} />
                 <DropdownMenuSeparator />
-                <DropdownMenuLabel>{t("Organizations")}</DropdownMenuLabel>
+                <DropdownMenuLabel>{t('Organizations')}</DropdownMenuLabel>
                 {all.map((o) => (
                   <DropdownMenuItem key={o.name} onSelect={() => o.name !== current && onOrg(o.name)}>
                     <Line
                       icon={<Mark org={o} />}
-                      sub={[o.personal ? 'Personal' : said(o.role), planFor(o)].filter(Boolean).join(' · ')}
-                      trail={o.name === current ? <Check size={16} aria-label={t("Current")} /> : null}
+                      sub={[o.personal ? t('Personal') : said(o.role, t), planFor(o)].filter(Boolean).join(' · ')}
+                      trail={o.name === current ? <Check size={16} aria-label={t('Current')} /> : null}
                     >
                       {o.display}
                     </Line>
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuItem onSelect={() => setCreating(true)}>
-                  <Line icon={<Plus size={16} aria-hidden />}>{t("Create organization")}</Line>
+                  <Line icon={<Plus size={16} aria-hidden />}>{t('Create organization')}</Line>
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => out(site(settings('organization')))}>
-                  <Line icon={<Settings size={16} aria-hidden />}>{t("Organization settings")}</Line>
+                  <Line icon={<Settings size={16} aria-hidden />}>{t('Organization settings')}</Line>
                 </DropdownMenuItem>
                 {/* On hanzo.team the reader is already in the team, and a team is founded through its setup. */}
                 {where().team ? null : here && !here.personal ? (
                   <DropdownMenuItem onSelect={() => out(`${ENTRY}&org=${encodeURIComponent(here.name)}`)}>
-                    <Line icon={<Users size={16} aria-hidden />} trail={<ArrowUpRight size={14} aria-hidden opacity={0.6} />}>{t("Open in Hanzo Team")}</Line>
+                    <Line icon={<Users size={16} aria-hidden />} trail={<ArrowUpRight size={14} aria-hidden opacity={0.6} />}>{t('Open in Hanzo Team')}</Line>
                   </DropdownMenuItem>
                 ) : (
                   <DropdownMenuItem onSelect={() => setCreating(true)}>
-                    <Line icon={<Users size={16} aria-hidden />}>{t("Create a team")}</Line>
+                    <Line icon={<Users size={16} aria-hidden />}>{t('Create a team')}</Line>
                   </DropdownMenuItem>
                 )}
                 {superAdmin() ? (
                   <DropdownMenuItem onSelect={choose}>
-                    <Line icon={<Building2 size={16} aria-hidden />}>{t("All organizations")}</Line>
+                    <Line icon={<Building2 size={16} aria-hidden />}>{t('All organizations')}</Line>
                   </DropdownMenuItem>
                 ) : null}
               </DropdownMenuSubContent>
@@ -413,8 +426,8 @@ export function Me({
           {/* The organization and the person's own account, each with its plan: pressing one works in it. */}
           {team ? (
             <DropdownMenuItem data-slot="me-team" onSelect={() => team.name !== current && onOrg(team.name)}>
-              <Line icon={<Mark org={team} />} trail={team.name === current ? <Check size={16} aria-label={t("Current")} /> : null}>
-                {`${team.display} · ${teamPlan || 'No plan'}`}
+              <Line icon={<Mark org={team} />} trail={team.name === current ? <Check size={16} aria-label={t('Current')} /> : null}>
+                {t('{org} · {plan}', { org: team.display, plan: teamPlan || t('No plan') })}
               </Line>
             </DropdownMenuItem>
           ) : null}
@@ -425,52 +438,52 @@ export function Me({
               actionsVisibility="always"
               actions={
                 ownPlan ? undefined : (
-                  <Button size="xs" variant="outline" onPress={getPro}>{t("Get Pro")}</Button>
+                  <Button size="xs" variant="outline" onPress={getPro}>{t('Get Pro')}</Button>
                 )
               }
             >
-              <Line icon={<CircleUserRound size={16} aria-hidden />} trail={personal.name === current ? <Check size={16} aria-label={t("Current")} /> : null}>
-                {`Personal · ${ownPlan || 'No plan'}`}
+              <Line icon={<CircleUserRound size={16} aria-hidden />} trail={personal.name === current ? <Check size={16} aria-label={t('Current')} /> : null}>
+                {t('Personal · {plan}', { plan: ownPlan || t('No plan') })}
               </Line>
             </DropdownMenuItem>
           ) : null}
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => leave('here')}>
-            <Line icon={<Sparkles size={16} aria-hidden />}>{upgrade(read.value?.label?.name)}</Line>
+            <Line icon={<Sparkles size={16} aria-hidden />}>{t(plans)}</Line>
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => showSettings('general')}>
-            <Line icon={<Palette size={16} aria-hidden />}>{t("Personalization")}</Line>
+            <Line icon={<Palette size={16} aria-hidden />}>{t('Personalization')}</Line>
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => showSettings('account')}>
-            <Line icon={<CircleUserRound size={16} aria-hidden />}>{t("Profile")}</Line>
+            <Line icon={<CircleUserRound size={16} aria-hidden />}>{t('Profile')}</Line>
           </DropdownMenuItem>
           <DropdownMenuItem aria-keyshortcuts="Control+, Meta+," onSelect={() => showSettings('general')}>
-            <Line icon={<Settings size={16} aria-hidden />} trail={<DropdownMenuShortcut aria-hidden>{apple ? '⌘,' : 'Ctrl+,'}</DropdownMenuShortcut>}>{t("Settings")}</Line>
+            <Line icon={<Settings size={16} aria-hidden />} trail={<DropdownMenuShortcut aria-hidden><bdi dir="ltr">{apple ? '⌘,' : 'Ctrl+,'}</bdi></DropdownMenuShortcut>}>{t('Settings')}</Line>
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => window.location.assign(site('/beta/status'))}>
-            <Line icon={<FlaskConical size={16} aria-hidden />}>{t("Beta")}</Line>
+            <Line icon={<FlaskConical size={16} aria-hidden />}>{t('Beta')}</Line>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuSub open={help} onOpenChange={setHelp}>
             <DropdownMenuSubTrigger>
-              <Line icon={<LifeBuoy size={16} aria-hidden />}>{t("Help")}</Line>
+              <Line icon={<LifeBuoy size={16} aria-hidden />}>{t('Help')}</Line>
             </DropdownMenuSubTrigger>
             {help ? (
               <DropdownMenuSubContent minW={240} maxW="calc(100vw - 16px)" pointerEvents="auto">
                 {pages().map((p) => (
                   <DropdownMenuItem key={p.key} onSelect={() => out(p.href)}>
                     <Line icon={ICONS[p.key]} trail={p.key === 'help' ? <ArrowUpRight size={14} aria-hidden opacity={0.6} /> : null}>
-                      {p.label}
+                      {t(p.label)}
                     </Line>
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuItem aria-keyshortcuts="Control+/ Meta+/" onSelect={() => setKeys(true)}>
-                  <Line icon={<Keyboard size={16} aria-hidden />} trail={<DropdownMenuShortcut aria-hidden>{apple ? '⌘/' : 'Ctrl+/'}</DropdownMenuShortcut>}>{t("Keyboard shortcuts")}</Line>
+                  <Line icon={<Keyboard size={16} aria-hidden />} trail={<DropdownMenuShortcut aria-hidden><bdi dir="ltr">{apple ? '⌘/' : 'Ctrl+/'}</bdi></DropdownMenuShortcut>}>{t('Keyboard shortcuts')}</Line>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {legal().map((p) => (
                   <DropdownMenuItem key={p.key} onSelect={() => out(p.href)}>
-                    <Line icon={ICONS[p.key]}>{p.label}</Line>
+                    <Line icon={ICONS[p.key]}>{t(p.label)}</Line>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuSubContent>
@@ -478,7 +491,7 @@ export function Me({
           </DropdownMenuSub>
           {host.signOut ? (
             <DropdownMenuItem onSelect={() => host.signOut?.()}>
-              <Line icon={<LogOut size={16} aria-hidden />}>{t("Log out")}</Line>
+              <Line icon={<LogOut size={16} aria-hidden data-i18n-mirror />}>{t('Log out')}</Line>
             </DropdownMenuItem>
           ) : null}
         </DropdownMenuContent>
@@ -491,18 +504,20 @@ export function Me({
 
 /** The app's keys (help.ts `KEYS`), one row each, spelled for this platform. */
 function Shortcuts({ open, onOpenChange, apple }: { open: boolean; onOpenChange: (open: boolean) => void; apple: boolean }) {
-  const { t } = useI18n();
+  const { t } = useI18n()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent maxW={440} rounded="$6" gap="$3">
-        <DialogTitle>{t("Keyboard shortcuts")}</DialogTitle>
+        <DialogTitle>{t('Keyboard shortcuts')}</DialogTitle>
         <YStack gap="$1">
           {KEYS.map((k) => (
             <XStack key={k.does} items="center" justify="space-between" gap="$3" minH={32}>
               <SizableText size="$2" color="$ink">
-                {k.does}
+                {t(k.does)}
               </SizableText>
-              <Kbd>{apple ? k.mac : k.pc}</Kbd>
+              <Kbd>
+                <bdi dir="ltr">{apple ? k.mac : k.pc}</bdi>
+              </Kbd>
             </XStack>
           ))}
         </YStack>
@@ -518,7 +533,7 @@ function Shortcuts({ open, onOpenChange, apple }: { open: boolean; onOpenChange:
  * it yet.
  */
 function Create({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const { t } = useI18n();
+  const { t } = useI18n()
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [refused, setRefused] = useState('')
@@ -530,7 +545,7 @@ function Create({ open, onOpenChange }: { open: boolean; onOpenChange: (open: bo
   }, [open])
   const submit = async () => {
     const words = name.trim()
-    if (!words) return setRefused('Give it a name.')
+    if (!words) return setRefused(t('Give it a name.'))
     if (busy) return
     setBusy(true)
     setRefused('')
@@ -545,21 +560,21 @@ function Create({ open, onOpenChange }: { open: boolean; onOpenChange: (open: bo
       renew()
       window.location.assign('/')
     } catch (e) {
-      setRefused(say(e))
+      setRefused(say(e, t))
       setBusy(false)
     }
   }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent maxW={440} rounded="$6" gap="$3">
-        <DialogTitle>{t("Create organization")}</DialogTitle>
-        <SizableText size="$2" color="$soft">{t("You own it. Agents, credits and members belong to it, and you switch to it from this menu.")}</SizableText>
+        <DialogTitle>{t('Create organization')}</DialogTitle>
+        <SizableText size="$2" color="$soft">{t('You own it. Agents, credits and members belong to it, and you switch to it from this menu.')}</SizableText>
         <Input
           autoFocus
           value={name}
           onChangeText={setName}
-          aria-label={t("Organization name")}
-          placeholder={t("Acme")}
+          aria-label={t('Organization name')}
+          placeholder={t('Acme')}
           maxLength={80}
           onKeyDown={(e: { key?: string }) => {
             if (e.key === 'Enter') void submit()
@@ -571,9 +586,9 @@ function Create({ open, onOpenChange }: { open: boolean; onOpenChange: (open: bo
           </SizableText>
         ) : null}
         <XStack gap="$2" justify="flex-end">
-          <Button size="sm" variant="outline" rounded={999} onPress={() => onOpenChange(false)}>{t("Cancel")}</Button>
+          <Button size="sm" variant="outline" rounded={999} onPress={() => onOpenChange(false)}>{t('Cancel')}</Button>
           <Button size="sm" rounded={999} disabled={busy || !name.trim()} onPress={() => void submit()}>
-            {busy ? 'Creating…' : 'Create'}
+            {t(busy ? 'Creating…' : 'Create')}
           </Button>
         </XStack>
       </DialogContent>
@@ -586,7 +601,7 @@ function Create({ open, onOpenChange }: { open: boolean; onOpenChange: (open: bo
  * carries it (the app is already in it), and a plain line while it does not.
  */
 export function Made() {
-  const { t } = useI18n();
+  const { t } = useI18n()
   const [made, setMade] = useState<{ org: string; name: string } | null>(null)
   useEffect(() => {
     try {
@@ -615,9 +630,9 @@ export function Made() {
   return (
     <XStack data-slot="made" role="status" items="flex-start" gap="$2" px="$3" py="$2.5" rounded="$5" borderWidth={1} borderColor="$borderColor" bg="$edge">
       <SizableText flex={1} minW={0} size="$1" color="$ink">
-        {`${made.name} was created, and your sign-in does not include it yet, so you are still in this organization. It appears here once IAM adds you to it.`}
+        {t('{name} was created, and your sign-in does not include it yet, so you are still in this organization. It appears here once IAM adds you to it.', { name: made.name })}
       </SizableText>
-      <XStack render="button" aria-label={t("Dismiss")} onPress={dismiss} p="$1" rounded={999} hoverStyle={{ bg: '$hover' }}>
+      <XStack render="button" aria-label={t('Dismiss')} onPress={dismiss} p="$1" rounded={999} hoverStyle={{ bg: '$hover' }}>
         <X size={13} aria-hidden />
       </XStack>
     </XStack>

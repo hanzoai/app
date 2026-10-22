@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo } from 'react'
+import { useI18n } from '@hanzo/i18n/react'
 import { Check, ChevronDown, Plus, Settings } from 'lucide-react'
 import { HanzoMark } from '@hanzogui/shell'
 import { useOrganizations } from '@hanzo/iam/react'
@@ -14,7 +15,7 @@ import { settings } from './lib/host'
 
 /** design's smallest rung (`--text-floor`, 10px), below gui's `$1`; gui's font size takes a rung or a number. */
 const FLOOR = 10
-/** A row at the foot of the menu that leaves for another page: a ghost Button, label to the left. */
+/** A row at the foot of the menu that leaves for another page: a ghost Button, label at the start. */
 const LINK = { variant: 'ghost', size: 'sm', width: '100%', justify: 'flex-start' } as const
 
 export interface OrganizationItem {
@@ -40,11 +41,13 @@ export function OrgSwitcherDropdown({
   onClose: () => void
   activeOrgId: string
   onSelect: (orgId: string) => void
+  /** The trigger's edge it lines up with: 'left' its start, 'right' its end (the inline start and end in a right-to-left page). */
   align?: 'left' | 'right'
-  /** Which way it opens: below the trigger, above it, or to the right (rail). */
+  /** Which way it opens: below the trigger, above it, or beside it toward the inline end (rail). */
   side?: 'below' | 'above' | 'rail'
   triggerRef?: React.RefObject<GuiElement | null>
 }) {
+  const { t } = useI18n()
   const { organizations: iamOrgs, switchOrg } = useOrganizations() || {}
   const { organizations: accountOrgs, switchOrganization } = useAccount() || {}
   const menuRef = useRef<GuiElement>(null)
@@ -113,12 +116,14 @@ export function OrgSwitcherDropdown({
   if (!open) return null
 
   // Where it opens. The offset rides a margin, so each edge is a plain length gui can take.
+  // The sides are logical, so a right-to-left page mirrors it.
+  const edge = align === 'left' ? ({ insetInlineStart: 0 } as const) : ({ insetInlineEnd: 0 } as const)
   const position =
     side === 'rail'
-      ? ({ l: '100%', ml: 10, t: -4 } as const)
+      ? ({ insetInlineStart: '100%', marginInlineStart: 10, t: -4 } as const)
       : side === 'above'
-      ? ({ b: '100%', mb: 6, ...(align === 'left' ? { l: 0 } : { r: 0 }) } as const)
-      : ({ t: '100%', mt: 6, ...(align === 'left' ? { l: 0 } : { r: 0 }) } as const)
+      ? ({ b: '100%', mb: 6, ...edge } as const)
+      : ({ t: '100%', mt: 6, ...edge } as const)
 
   return (
     <YStack
@@ -137,12 +142,12 @@ export function OrgSwitcherDropdown({
       gap={2}
     >
       <Text pt={6} px={10} pb={4} fontSize="$1" fontWeight="600" color="$faint" textTransform="uppercase" letterSpacing={0.6}>
-        Workspaces
+        {t('Workspaces')}
       </Text>
 
       {orgs.length === 0 ? (
         <Text pt={6} px={10} pb={10} fontSize="$2" color="$faint">
-          No workspaces on this account yet.
+          {t('No workspaces on this account yet.')}
         </Text>
       ) : null}
 
@@ -217,14 +222,14 @@ export function OrgSwitcherDropdown({
       <Button asChild {...LINK}>
         <a href={iam()} target="_blank" rel="noreferrer">
           <Plus size={14} />
-          Create Organization
+          {t('Create Organization')}
         </a>
       </Button>
 
       <Button asChild {...LINK}>
         <a href={site(settings("organization"))}>
           <Settings size={14} />
-          Organization settings
+          {t('Organization settings')}
         </a>
       </Button>
     </YStack>
@@ -242,6 +247,7 @@ export function OrgSwitcherDropdown({
  * IAM answered, which is also the id a press would have switched to.
  */
 export function TopOrgSelector() {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const buttonRef = useRef<GuiElement>(null)
   const { currentOrg, currentOrgId } = useOrganizations()
@@ -262,9 +268,9 @@ export function TopOrgSelector() {
         variant={open ? 'secondary' : 'default'}
         onClick={() => setOpen((v) => !v)}
         gap={6}
-        pl={6}
-        pr={8}
-        aria-label="Switch organization"
+        paddingInlineStart={6}
+        paddingInlineEnd={8}
+        aria-label={t('Switch organization')}
       >
         {/* The disc behind the mark is neutral. A brand colour here is the ORG's
             to supply — `face` is its own logo when IAM holds one — and a fixed

@@ -15,6 +15,7 @@
 
 import { type ReactNode, useEffect, useState } from 'react'
 import { Text, Tooltip, TooltipContent, TooltipTrigger, View, XStack } from '@hanzo/ui'
+import { english, type Say } from './say'
 import { member } from './team'
 
 interface Role {
@@ -102,8 +103,8 @@ export const roleOf = (name: string | undefined): Role | undefined => CAST[name?
 export const speaksOf = (name: string | undefined): string | undefined => member(name)?.instructions
 
 /** Names as a sentence lists them: "Feynman", "Feynman & Einstein", "Feynman, Einstein & Vi". */
-export const join = (names: string[]): string =>
-  names.length < 2 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`
+export const join = (names: string[], t: Say = english): string =>
+  names.length < 2 ? (names[0] ?? '') : t('{names} & {last}', { names: names.slice(0, -1).join(', '), last: names[names.length - 1] })
 
 /**
  * The room's system turn.

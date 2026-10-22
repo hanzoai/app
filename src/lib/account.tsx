@@ -4,6 +4,8 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { useIam, useIamIdentity, useIamToken, useOrganizations } from '@hanzo/iam/react';
 import type { User as IamUser, Organization as IamOrg } from '@hanzo/iam';
+import { useI18n } from '@hanzo/i18n/react';
+import type { Say } from '../say';
 import { api } from './api';
 
 export interface OrganizationMember {
@@ -163,11 +165,11 @@ function fields(patch: Partial<User>): Record<string, string> {
 
 /** What IAM said went wrong. A refused image names its own limit, and that
  *  sentence is the useful half of the answer. */
-function reason(said: { msg?: string } | null, status: number): string {
-  return said?.msg || `Could not save (${status}).`;
+function reason(said: { msg?: string } | null, status: number, t: Say): string {
+  return said?.msg || t('Could not save ({status}).', { status });
 }
 
-async function store(token: string, patch: Partial<User>): Promise<void> {
+async function store(token: string, patch: Partial<User>, t: Say): Promise<void> {
   const body = fields(patch);
   // Nothing IAM stores changed, so there is nothing to ask it.
   if (Object.keys(body).length === 0) return;
@@ -184,11 +186,12 @@ async function store(token: string, patch: Partial<User>): Promise<void> {
     body: JSON.stringify(body),
   });
   const said = await res.json().catch(() => null);
-  if (!res.ok || said?.status === 'error') throw new Error(reason(said, res.status));
+  if (!res.ok || said?.status === 'error') throw new Error(reason(said, res.status, t));
 }
 
 export const AccountProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user: iamUser, isLoading: authLoading } = useIam();
+  const { t } = useI18n();
   const { token } = useIamToken();
   const { organizations: iamOrgs, roles, currentOrgId, switchOrg, isLoading: orgsLoading } = useOrganizations();
 
@@ -262,10 +265,10 @@ export const AccountProvider: React.FC<{ children: ReactNode }> = ({ children })
     setUserOverrides((prev) => ({ ...prev, ...userData }));
     if (!iamUser || !token) {
       setUserOverrides(before);
-      throw new Error('Sign in to change your profile.');
+      throw new Error(t('Sign in to change your profile.'));
     }
     try {
-      await store(token, userData);
+      await store(token, userData, t);
     } catch (e) {
       setUserOverrides(before);
       throw e;

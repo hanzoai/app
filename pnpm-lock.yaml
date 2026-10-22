@@ -25,8 +25,8 @@ catalogs:
       specifier: 0.3.56
       version: 0.3.56
     '@hanzo/i18n':
-      specifier: 0.2.0
-      version: 0.2.0
+      specifier: 0.4.0
+      version: 0.4.0
     '@hanzo/iam':
       specifier: 0.21.35
       version: 0.21.35
@@ -141,7 +141,7 @@ importers:
         version: 8.3.5(react-dom@19.2.8(react@19.2.8))(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(react@19.2.8)
       '@hanzo/i18n':
         specifier: 'catalog:'
-        version: 0.2.0(react@19.2.8)
+        version: 0.4.0(react@19.2.8)
       '@hanzo/iam':
         specifier: 'catalog:'
         version: 0.21.35(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -677,8 +677,8 @@ packages:
     peerDependencies:
       react: '>=19.2.8'
 
-  '@hanzo/i18n@0.2.0':
-    resolution: {integrity: sha512-nRuJcDTErmCuaJi58FHbHrw6iECP3j4paYOsg026Ls3pCnM9Y/F5RLxA/t+s3Hdi4fyn2/XYdpwiHf6hxwXWgw==}
+  '@hanzo/i18n@0.4.0':
+    resolution: {integrity: sha512-NMG+UTRvH3Gef+W8cSFrXpOLrQbe55lDoUbnUcxOt5o/KrgJ9mpo/nMzxm6GlZrDirSEiB5ky/+ZRtMuBVlnfw==}
     peerDependencies:
       react: '>=18'
     peerDependenciesMeta:
@@ -3962,7 +3962,7 @@ snapshots:
       - react-dom
       - react-native
 
-  '@hanzo/i18n@0.2.0(react@19.2.8)':
+  '@hanzo/i18n@0.4.0(react@19.2.8)':
     optionalDependencies:
       react: 19.2.8
 

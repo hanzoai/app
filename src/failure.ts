@@ -13,6 +13,7 @@
 
 import { refusalOf, type Refusal } from '@hanzo/ui/product/limits'
 import { told } from './lib/reach'
+import { english, type Say } from './say'
 
 /**
  * THE STATUS, WHERE THE FAILURE CARRIES ONE.
@@ -61,21 +62,22 @@ export const refused = (error: unknown): boolean => {
 /**
  * A sentence about `subject` — "your drive", "this board" — naming what a
  * reader can do next. Never the caught text: an error written for an operator
- * is not an answer for a reader.
+ * is not an answer for a reader. A room passes its `t`, and the subject through
+ * it (`say(e, t('this board'), 'read', t)`), so the whole sentence is the reader's.
  */
-export function say(error: unknown, subject: string, act: 'read' | 'save' = 'read'): string {
+export function say(error: unknown, subject: string, act: 'read' | 'save' = 'read', t: Say = english): string {
   const text = error instanceof Error ? error.message : String(error ?? '')
   const code = status(error)
   // VERB FIRST, so the subject's number never has to agree with anything. Said
   // subject-first, "your projects is not answering" is what a plural name gets,
   // and every caller then has to remember to phrase its subject singular.
   if (code === 502 || code === 503 || code === 504 || absent(text))
-    return `Could not reach ${subject}. Nothing has been lost — try again shortly.`
+    return t('Could not reach {subject}. Nothing has been lost — try again shortly.', { subject })
   if (code === 401 || code === 403 || barred(text))
     return act === 'save'
-      ? `This account cannot change ${subject}.`
-      : `This account cannot open ${subject}.`
-  return act === 'save' ? `Could not save ${subject}.` : `Could not read ${subject}.`
+      ? t('This account cannot change {subject}.', { subject })
+      : t('This account cannot open {subject}.', { subject })
+  return act === 'save' ? t('Could not save {subject}.', { subject }) : t('Could not read {subject}.', { subject })
 }
 
 /**
@@ -89,9 +91,9 @@ export function say(error: unknown, subject: string, act: 'read' | 'save' = 'rea
  * there, or one that refused the account, is the estate talking to itself; that
  * half is replaced.
  */
-export function plainly(error: unknown, subject: string): string {
+export function plainly(error: unknown, subject: string, t: Say = english): string {
   const text = error instanceof Error ? error.message : String(error ?? '')
-  return absent(text) || barred(text) ? say(error, subject) : told(error) ?? text
+  return absent(text) || barred(text) ? say(error, subject, 'read', t) : told(error) ?? text
 }
 
 /**

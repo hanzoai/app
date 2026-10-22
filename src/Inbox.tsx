@@ -33,6 +33,7 @@
 // is drawn only where there is a room id to address.
 
 import { useCallback, useMemo, useRef, useState } from 'react'
+import { useI18n } from '@hanzo/i18n/react'
 import { useInbox } from '@hanzo/ai/react'
 import { ChannelHeader } from '@hanzo/ui/agents'
 import { Composer } from '@hanzo/ui/chat'
@@ -91,7 +92,7 @@ function Sender({ channel, size = 36 }: { channel: string; size?: number }) {
   return (
     <YStack width={size} height={size} shrink={0} position="relative">
       <Face size={size} />
-      <YStack position="absolute" b={-2} r={-2}>
+      <YStack position="absolute" b={-2} insetInlineEnd={-2}>
         <Network channel={channel} size={Math.round(size * 0.46)} />
       </YStack>
     </YStack>
@@ -100,6 +101,7 @@ function Sender({ channel, size = 36 }: { channel: string; size?: number }) {
 
 /** Where a network is connected. Opens My Channels modal. */
 function Connect() {
+  const { t } = useI18n()
   const [modalOpen, setModalOpen] = useState(false)
   return (
     <>
@@ -117,7 +119,7 @@ function Connect() {
         <XStack items="center" gap="$1.5">
           <Plus size={13} aria-hidden />
           <Text fontSize="$2" color="$ink">
-            Connect an app
+            {t('Connect an app')}
           </Text>
         </XStack>
       </Box>
@@ -130,13 +132,14 @@ function Connect() {
 }
 
 function Empty({ children, offer }: { children: string; offer?: boolean }) {
+  const { t } = useI18n()
   return (
     <YStack flex={1} items="center" justify="center" p="$6" gap="$3">
       {/* THE ROOM'S ONE HEADING. Every state of a room owes a reader exactly one
           h1, and the empty states are the ones that shipped none — a crawler and
           a screen reader both land here first. It names the room, not the state. */}
       <Text render="h1" fontSize="$4" fontWeight="600" color="$ink">
-        Inbox
+        {t('Inbox')}
       </Text>
       <Text fontSize="$3" color="$soft" text="center" maxW={420}>
         {children}
@@ -156,6 +159,7 @@ function Arrivals({
   open: string | null
   onPick: (key: string) => void
 }) {
+  const { t } = useI18n()
   return (
     <YStack flex={1} minH={0}>
       <XStack
@@ -168,7 +172,7 @@ function Arrivals({
         borderColor="$borderColor"
       >
         <Text flex={1} fontSize="$3" fontWeight="600" color="$ink">
-          Inbox
+          {t('Inbox')}
         </Text>
         <Connect />
       </XStack>
@@ -194,18 +198,18 @@ function Arrivals({
             <XStack gap="$3" items="center" p="$3">
               <Sender channel={one.channel} />
               {/* A gui Stack has no textAlign, and a `<button>` centres its text:
-                  `alignItems` sets the lines at the left, and the title, which is
-                  as wide as the row, says `left` itself. */}
+                  `alignItems` sets the lines at the start, and the title, which is
+                  as wide as the row, says `start` itself. */}
               <YStack flex={1} minW={0} gap="$1" items="flex-start">
                 <XStack width="100%" items="baseline" gap="$2">
-                  <Text fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1} flex={1} text="left">
+                  <Text fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1} flex={1} text="start">
                     {one.title}
                   </Text>
                   {/* A room nobody has spoken in has no time to show, and 1970
                       is not a time. Silence is the honest answer. */}
                   {one.lastAt ? (
                     <Text fontSize="$1" color="$soft">
-                      {stamp(one.lastAt / 1000)}
+                      <bdi>{stamp(one.lastAt / 1000)}</bdi>
                     </Text>
                   ) : null}
                 </XStack>
@@ -233,6 +237,7 @@ function Reading({
   room: ReturnType<typeof useInbox>['rooms'][number]
   reload: () => void
 }) {
+  const { t } = useI18n()
   const { client } = useAi()
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
@@ -269,11 +274,11 @@ function Reading({
       setDraft('')
       reload()
     } catch (e) {
-      setFailed(plainly(e, 'this conversation'))
+      setFailed(plainly(e, t('this conversation'), t))
     } finally {
       setSending(false)
     }
-  }, [client, draft, sending, room.channel, room.roomId, reload])
+  }, [client, draft, sending, room.channel, room.roomId, reload, t])
 
   return (
     <YStack flex={1} minH={0}>
@@ -306,7 +311,7 @@ function Reading({
                     {speaker(room.channel, message.sender)}
                   </Text>
                   <Text fontSize="$1" color="$soft">
-                    {when(message.createdAt)}
+                    <bdi>{when(message.createdAt)}</bdi>
                   </Text>
                 </XStack>
                 <Text fontSize="$3" color="$ink">
@@ -329,8 +334,8 @@ function Reading({
               onChange={setDraft}
               onSend={() => void send()}
               busy={sending}
-              placeholder={`Reply on ${of(room.channel).name}`}
-              label={`Reply on ${of(room.channel).name}`}
+              placeholder={t('Reply on {network}', { network: of(room.channel).name })}
+              label={t('Reply on {network}', { network: of(room.channel).name })}
             />
             {failed ? (
               <Text fontSize="$2" color={BAD}>
@@ -340,7 +345,7 @@ function Reading({
           </>
         ) : (
           <Text fontSize="$2" color="$soft">
-            This message names no room to answer in.
+            {t('This message names no room to answer in.')}
           </Text>
         )}
       </YStack>
@@ -355,30 +360,33 @@ function InboxGrip({
   span: number
   onSpan: (n: number) => void
 }) {
+  const { t, dir } = useI18n()
+  // The list stands at the start: under right to left a pull toward the start widens it.
+  const way = dir === 'rtl' ? -1 : 1
   const held = useRef(0)
   return (
     <Box
       render="div"
       role="separator"
       aria-orientation="vertical"
-      aria-label="Resize inbox channel list"
+      aria-label={t('Resize inbox channel list')}
       aria-valuenow={span}
       tabIndex={0}
       position="absolute"
       t={0}
       b={0}
-      r={-3}
+      insetInlineEnd={-3}
       width={6}
       z={10}
       cursor="col-resize"
       hoverStyle={{ bg: '$borderColor' }}
       onPointerDown={(e: React.PointerEvent<HTMLDivElement>) => {
         e.currentTarget.setPointerCapture(e.pointerId)
-        held.current = e.clientX - span
+        held.current = e.clientX * way - span
       }}
       onPointerMove={(e: React.PointerEvent<HTMLDivElement>) => {
         if (!e.currentTarget.hasPointerCapture(e.pointerId)) return
-        const want = e.clientX - held.current
+        const want = e.clientX * way - held.current
         const clamped = Math.min(540, Math.max(220, want))
         onSpan(clamped)
       }}
@@ -392,6 +400,7 @@ function InboxGrip({
 }
 
 function ReadingInbox() {
+  const { t } = useI18n()
   const { room, openRoom } = useOpen()
   const { conversations, loading, reload } = useConversations()
   const [listSpan, setListSpan] = useState<number>(() => {
@@ -406,13 +415,12 @@ function ReadingInbox() {
 
   const open = useMemo(() => conversationOf(conversations, room), [conversations, room])
 
-  if (loading && conversations.length === 0) return <Empty>Reading your messages.</Empty>
+  if (loading && conversations.length === 0) return <Empty>{t('Reading your messages.')}</Empty>
 
   if (conversations.length === 0) {
     return (
       <Empty offer>
-        Nothing has arrived yet. Connect an app and the messages it carries land
-        here — mail, chat, and the networks your work already happens on.
+        {t('Nothing has arrived yet. Connect an app and the messages it carries land here — mail, chat, and the networks your work already happens on.')}
       </Empty>
     )
   }
@@ -425,7 +433,7 @@ function ReadingInbox() {
           reading is actually done in. */}
       <YStack
         display={open ? 'none' : 'flex'}
-        $md={{ display: 'flex', width: listSpan, shrink: 0, borderRightWidth: 1 }}
+        $md={{ display: 'flex', width: listSpan, shrink: 0, borderInlineEndWidth: 1 }}
         flex={1}
         minH={0}
         borderColor="$borderColor"
@@ -442,7 +450,7 @@ function ReadingInbox() {
         </YStack>
       ) : (
         <YStack display="none" $md={{ display: 'flex' }} flex={1} minW={0}>
-          <Empty>Pick a conversation to read it.</Empty>
+          <Empty>{t('Pick a conversation to read it.')}</Empty>
         </YStack>
       )}
     </XStack>

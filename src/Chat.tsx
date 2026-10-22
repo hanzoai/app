@@ -29,7 +29,10 @@
 // pre-emptively refuses on the gateway's behalf.
 
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { isolate, phrase } from "@hanzo/i18n";
+import { useI18n } from "@hanzo/i18n/react";
 import { billed, detail, familyOf, planRequired, plainly, refused } from "./failure";
+import { english, type Say } from "./say";
 import { Prose } from "./Prose";
 import {
   useAgent,
@@ -37,7 +40,7 @@ import {
   useChat,
   type ChatMessage,
 } from "@hanzo/ai/react";
-import { ASK, Chat as ChatSurface, Failure, Parts, words, type Said } from "@hanzo/ui/chat";
+import { Chat as ChatSurface, Failure, Parts, words, type Said } from "@hanzo/ui/chat";
 import { carriedIn, carrying, compose, partsOf, said as told, weigh } from "./lib/attach";
 import { download, dropped, fileOf, pct, readable, refOf, retrieve, type Api, type FileRef, type WorkFile } from "./lib/files";
 import { channel, drop, hold, landed, localOf, spend, take, usePane, useWorkFile, type Held, type Via } from "./pane";
@@ -336,13 +339,14 @@ export function refusalOf(error: Error): { wallet: boolean; visitor: boolean; pr
 
 /** What the server said about a failure, folded under its plain line. */
 function Why({ text }: { text: string }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   if (!text) return null;
   return (
     <YStack gap="$1">
       <XStack render="button" aria-expanded={open} onPress={() => setOpen((v) => !v)} cursor="pointer">
         <Text fontSize="$2" color="$soft">
-          {open ? "Hide details" : "Details"}
+          {t(open ? "Hide details" : "Details")}
         </Text>
       </XStack>
       {open ? (
@@ -371,10 +375,13 @@ const THOUGHT = 320;
  */
 const READ_WAIT = 45_000;
 
-/** Files named the way a sentence lists them. */
-function names(list: readonly { name: string }[]): string {
+/** Files named the way a sentence lists them: in the reader's words through `t`, in English for the model. */
+function names(list: readonly { name: string }[], t: Say = english): string {
   const all = list.map((f) => f.name);
-  return all.length <= 2 ? all.join(" and ") : `${all.slice(0, 2).join(", ")} and ${all.length - 2} more`;
+  if (all.length < 2) return all[0] ?? "";
+  return all.length === 2
+    ? t("{first} and {second}", { first: all[0]!, second: all[1]! })
+    : t("{first}, {second} and {more} more", { first: all[0]!, second: all[1]!, more: all.length - 2 });
 }
 
 /** Why the files had no passages to give, from what the index last said of each. */
@@ -398,26 +405,36 @@ function partly(list: readonly WorkFile[]): string | undefined {
   return parts.length ? parts.join("; ") : undefined;
 }
 
-/** How far a file has got, in a word or two. */
-function progress(state: Held["state"], sent: number, f: WorkFile | undefined): string {
-  if (state === "uploading") return `${Math.floor(sent * 100)}%`;
-  if (state === "queued") return "queued";
+/** How far a file has got, in a word or two, in the reader's words. */
+function progress(state: Held["state"], sent: number, f: WorkFile | undefined, t: Say): string {
+  if (state === "uploading") return t("{percent}%", { percent: Math.floor(sent * 100) });
+  if (state === "queued") return t("queued");
   if (state === "indexing") {
-    const word = f?.stage ? STAGE[f.stage] : "indexing";
+    const word = f?.stage ? t(STAGE[f.stage]) : t("indexing");
     const at = f ? pct(f) : undefined;
-    return at === undefined ? word : `${word} ${at}%`;
+    return at === undefined ? word : t("{stage} {percent}%", { stage: word, percent: at });
   }
-  if (state === "ready" && f?.clipped) return "ready, in part";
-  return state;
+  if (state === "ready" && f?.clipped) return t("ready, in part");
+  return t(STATE[state]);
 }
 
 /** What each stage of a file's ingest is doing, in a word. */
 const STAGE: Record<NonNullable<WorkFile["stage"]>, string> = {
-  extract: "reading",
-  toc: "contents",
-  passages: "passages",
-  graph: "linking",
-  embed: "vectors",
+  extract: phrase("reading"),
+  toc: phrase("contents"),
+  passages: phrase("passages"),
+  graph: phrase("linking"),
+  embed: phrase("vectors"),
+};
+
+/** A file's state where `progress` names it by the index's own word. */
+const STATE: Record<Held["state"], string> = {
+  uploading: phrase("uploading"),
+  queued: phrase("queued"),
+  indexing: phrase("indexing"),
+  ready: phrase("ready"),
+  stored: phrase("stored"),
+  failed: phrase("failed"),
 };
 
 /** How a file is drawn: a picture, a PDF's tile, or a chip. Read off its type, else its name, since a store may answer with neither. */
@@ -513,18 +530,23 @@ function Chip({
   /** Keeps it in the reader's Library. */
   onSave?: () => Promise<unknown>;
 }) {
+  const { t, dir } = useI18n();
   const kind = kindOf(name, type);
   const bad = state === "failed";
   const why = state === "failed" || state === "stored" ? file?.error : file?.note;
   // A picture the browser cannot draw (HEIC, a lapsed signature) falls back to its glyph.
   const [broken, setBroken] = useState("");
-  const word = state === "ready" ? (file?.clipped ? "in part" : "") : progress(state, sent, file);
-  const meta = [kind === "pdf" ? "PDF" : "", size > 0 ? weigh(size) : "", word].filter(Boolean).join(" \u00b7 ");
+  const word = state === "ready" ? (file?.clipped ? t("in part") : "") : progress(state, sent, file, t);
+  // Each part keeps its own order in right-to-left text: a size or a percent is not reordered with the words around it.
+  const meta = [kind === "pdf" ? "PDF" : "", size > 0 ? weigh(size) : "", word]
+    .filter(Boolean)
+    .map((part) => (dir === "rtl" ? isolate(part) : part))
+    .join(" \u00b7 ");
   const remove = (
     <>
       {onSave ? <Keep name={name} onSave={onSave} /> : null}
       {onRemove ? (
-        <Box render="button" aria-label={`Remove ${name}`} onClick={onRemove} p="$1" rounded="$10" shrink={0} hoverStyle={{ bg: "$hover" }}>
+        <Box render="button" aria-label={t("Remove {name}", { name })} onClick={onRemove} p="$1" rounded="$10" shrink={0} hoverStyle={{ bg: "$hover" }}>
           <X size={12} aria-hidden />
         </Box>
       ) : null}
@@ -541,8 +563,8 @@ function Chip({
 
   if (kind === "file")
     return (
-      <XStack {...marks} self="center" items="center" gap="$1" pr={onRemove ? "$1" : "$2.5"} rounded="$10" borderWidth={1} borderColor="$borderColor" maxW={320}>
-        <XStack render="button" aria-label={`Open ${name}`} onClick={onOpen} items="center" gap="$1.5" pl="$2.5" py="$1" minW={0} cursor="pointer">
+      <XStack {...marks} self="center" items="center" gap="$1" paddingInlineEnd={onRemove ? "$1" : "$2.5"} rounded="$10" borderWidth={1} borderColor="$borderColor" maxW={320}>
+        <XStack render="button" aria-label={t("Open {name}", { name })} onClick={onOpen} items="center" gap="$1.5" paddingInlineStart="$2.5" py="$1" minW={0} cursor="pointer">
           <Paperclip size={12} aria-hidden color="var(--muted-foreground)" />
           <Text fontSize="$2" color="$ink" numberOfLines={1}>
             {name}
@@ -560,8 +582,8 @@ function Chip({
   const drawn = kind === "image" && picture && broken !== picture;
   const Glyph = kind === "pdf" ? FileText : ImageMark;
   return (
-    <XStack {...marks} items="center" gap="$1" p="$1" pr={onRemove ? "$1" : "$2.5"} rounded="$4" borderWidth={1} borderColor="$borderColor" maxW={280}>
-      <XStack render="button" aria-label={`Open ${name}`} onClick={onOpen} items="center" gap="$2" minW={0} cursor="pointer">
+    <XStack {...marks} items="center" gap="$1" p="$1" paddingInlineEnd={onRemove ? "$1" : "$2.5"} rounded="$4" borderWidth={1} borderColor="$borderColor" maxW={280}>
+      <XStack render="button" aria-label={t("Open {name}", { name })} onClick={onOpen} items="center" gap="$2" minW={0} cursor="pointer">
         <YStack
           data-slot="file-thumb"
           width={THUMB}
@@ -594,13 +616,13 @@ function Chip({
             </>
           )}
         </YStack>
-        {/* `text` because a button centres what it holds; a name and its size read from the left. */}
+        {/* `text` because a button centres what it holds; a name and its size read from the line's start. */}
         <YStack minW={0} gap="$0.5">
-          <Text fontSize="$2" color="$ink" numberOfLines={1} text="left">
+          <Text fontSize="$2" color="$ink" numberOfLines={1} text="start">
             {name}
           </Text>
           {meta ? (
-            <Text fontSize="$1" color={bad ? BAD : "$soft"} numberOfLines={1} text="left">
+            <Text fontSize="$1" color={bad ? BAD : "$soft"} numberOfLines={1} text="start">
               {meta}
             </Text>
           ) : null}
@@ -616,9 +638,10 @@ function Chip({
  * keeps the file in their Library and says so; a refusal is its title.
  */
 function Keep({ name, onSave }: { name: string; onSave: () => Promise<unknown> }) {
+  const { t } = useI18n();
   const [state, setState] = useState<"" | "saving" | "saved">("");
   const [wrong, setWrong] = useState("");
-  const label = state === "saved" ? `${name} is in your Library` : wrong || `Save ${name} to Library`;
+  const label = state === "saved" ? t("{name} is in your Library", { name }) : wrong || t("Save {name} to Library", { name });
   return (
     <Box
       render="button"
@@ -635,7 +658,7 @@ function Keep({ name, onSave }: { name: string; onSave: () => Promise<unknown> }
           () => setState("saved"),
           (e: unknown) => {
             setState("");
-            setWrong((e as Error)?.message || `${name} was not saved.`);
+            setWrong((e as Error)?.message || t("{name} was not saved.", { name }));
           },
         );
       }}
@@ -700,11 +723,12 @@ function Carried({
   onOpen: (m: Mark) => void;
   onSave?: (url: string, id: string, f: FileRef) => Promise<unknown>;
 }) {
+  const { t } = useI18n();
   return (
     <YStack gap="$2" data-slot="turn-files">
       {text ? <Prose text={text} /> : null}
       {attached.length ? (
-        <XStack gap="$1.5" flexWrap="wrap" role="list" aria-label="Files in this message">
+        <XStack gap="$1.5" flexWrap="wrap" role="list" aria-label={t("Files in this message")}>
           {attached.map((f) => (
             <TurnChip key={f.id} f={f} onOpen={onOpen} onSave={onSave ? (url, id) => onSave(url, id, f) : undefined} />
           ))}
@@ -712,7 +736,7 @@ function Carried({
       ) : null}
       {reused.length ? (
         <Text fontSize="$1" color="$soft">
-          Read again: {reused.map((f) => `${f.name} (${weigh(f.size)})`).join(", ")}
+          {t("Read again: {files}", { files: reused.map((f) => `${f.name} (${weigh(f.size)})`).join(", ") })}
         </Text>
       ) : null}
     </YStack>
@@ -724,11 +748,12 @@ function Carried({
  * which makes the question run itself (Schedule.tsx).
  */
 function Plan({ onPress }: { onPress: () => void }) {
+  const { t } = useI18n();
   return (
     <XStack justify="flex-end" data-slot="plan">
       <XStack
         render="button"
-        aria-label="Schedule this"
+        aria-label={t("Schedule this")}
         onPress={onPress}
         items="center"
         gap="$1"
@@ -742,7 +767,7 @@ function Plan({ onPress }: { onPress: () => void }) {
       >
         <Clock size={12} aria-hidden />
         <Text fontSize="$1" color="$ink">
-          Schedule this
+          {t("Schedule this")}
         </Text>
       </XStack>
     </XStack>
@@ -787,6 +812,7 @@ function Thread({
   // THE MODEL AND THE EFFORT are the one choice Chat and Dev share
   // (@hanzo/build `useMind`): the catalog from `GET /v1/models` and what the
   // reader kept, changed from the composer's chip or from Settings.
+  const { t } = useI18n();
   const target = useMemo(() => ({ api: api(), token: bearer, org: org() }), [anonymous]); // eslint-disable-line react-hooks/exhaustive-deps
   // THE PLAN decides what the chip may offer: Free answers from the free lane
   // alone, so it opens there and lists the rest as upgrades (@hanzo/build).
@@ -1003,7 +1029,7 @@ function Thread({
   const held = paidPlan(limits);
   const pause = notice && (notice.fallback || notice.refused) ? notice : null;
   // The banner's words and ways: the plan by name, when it comes back, and the two ways on.
-  const banner = pause ? paused(pause, limits?.plan ?? "", (id) => nameOf(id, listed)) : null;
+  const banner = pause ? paused(pause, limits?.plan ?? "", (id) => nameOf(id, listed), Date.now(), t) : null;
   // EVERY MODEL IS CHOSEN, never asked for: one the plan does not cover still
   // picks, and the gateway answers it with the policy's refusal or from Enso,
   // which the room then shows. A turn the gateway refuses `plan_required`
@@ -1063,7 +1089,7 @@ function Thread({
       // that carried files or a plugin's words is renamed to the words alone.
       const first = chat.messages.find((m) => m.role === "user");
       const read = first ? told(words(first.content as Said)) : null;
-      if (read?.carried) void ai.threads.update(kept, { title: read.text.trim().slice(0, 80) || "Files" }).catch(() => {});
+      if (read?.carried) void ai.threads.update(kept, { title: read.text.trim().slice(0, 80) || t("Files") }).catch(() => {});
     }
   }, [kept, open, reopen]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1339,11 +1365,11 @@ function Thread({
           const q = [...turns.current].reverse().find((m) => m.role === "user");
           if (q) speak(words(q.content as Said), failures[q.id] ? q.id : undefined);
         })
-        .catch((e: unknown) => setActWrong(e instanceof Error ? e.message : "Credits could not be turned on."));
+        .catch((e: unknown) => setActWrong(e instanceof Error ? e.message : t("Credits could not be turned on.")));
     },
     // `mind.pick` is rebuilt each render; the handler follows it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [reread, speak, failures, mind.model, listed],
+    [reread, speak, failures, mind.model, listed, t],
   );
 
   // A TURN THAT NEVER SPEAKS IS STOPPED. A stream that stays open with nothing
@@ -1490,7 +1516,7 @@ function Thread({
     setDraft("");
     setPrepWrong(null);
     void (async () => {
-      setPreparing("Preparing");
+      setPreparing(t("Preparing"));
       try {
         // The files held for this message, as bytes, for a plugin that reads them (PDF).
         const bytes = await Promise.all(
@@ -1520,7 +1546,7 @@ function Thread({
     setDraft("");
     void (async () => {
       try {
-        if (holding.some((h) => !h.file)) setPreparing(`Uploading ${names(holding)}`);
+        if (holding.some((h) => !h.file)) setPreparing(t("Uploading {files}", { files: names(holding, t) }));
         const landedFiles = (await Promise.all(holding.map(landed))).filter((f): f is WorkFile => !!f);
         spend(at);
         const attached = landedFiles.map(refOf);
@@ -1531,7 +1557,7 @@ function Thread({
           else setDraft(text);
           return;
         }
-        setPreparing(`Reading ${names(all)}`);
+        setPreparing(t("Reading {files}", { files: names(all, t) }));
         const now = await readable(ai, landedFiles, READ_WAIT);
         let grounds = null;
         let why: string | undefined;
@@ -1589,25 +1615,25 @@ function Thread({
     const resign = !bill && !!wrong && (refused(wrong) || /audience not allowed|invalid access token/i.test(wrong.message));
     const lift = free ? planRequired(wrong) : null;
     const said = !failed
-      ? "No answer came back for this question."
+      ? t("No answer came back for this question.")
       : failed.stalled
-        ? `${nameOf(model, listed)} sent nothing for ${STALL / 60_000} minutes, so the turn was stopped.`
+        ? t("{model} sent nothing for {minutes} minutes, so the turn was stopped.", { model: nameOf(model, listed), minutes: STALL / 60_000 })
         : failed.empty
-          ? `${nameOf(model, listed)} answered with nothing.`
+          ? t("{model} answered with nothing.", { model: nameOf(model, listed) })
           : bill
-            ? banner?.message ?? notice?.message ?? (bill.message || plainly(wrong, "this conversation"))
+            ? banner?.message ?? notice?.message ?? (bill.message || plainly(wrong, t("this conversation"), t))
             : resign
-            ? anonymous
+            ? t(anonymous
               ? "Sign in to ask this."
-              : "Your session needs to be refreshed. Sign in to reconnect."
+              : "Your session needs to be refreshed. Sign in to reconnect.")
             : how?.provider
-              ? `${familyOf(model) || nameOf(model, listed)} is unavailable right now.`
-              : plainly(wrong, "this conversation");
+              ? t("{model} is unavailable right now.", { model: familyOf(model) || nameOf(model, listed) })
+              : plainly(wrong, t("this conversation"), t);
     return (
-      <Failure onRetry={resign || lift || bill?.code === "free_plan_cap" ? undefined : () => speak(text, question.id)}>
+      <Failure retryLabel={t("Try again")} onRetry={resign || lift || bill?.code === "free_plan_cap" ? undefined : () => speak(text, question.id)}>
         <YStack gap="$2">
           <Text fontSize="$3" color="$ink">
-            {whom.length ? `No answer from ${join(whom)}. ` : ""}
+            {whom.length ? `${t("No answer from {names}.", { names: join(whom, t) })} ` : ""}
             {said}
           </Text>
           {how?.provider && wrong ? <Why text={detail(wrong)} /> : null}
@@ -1624,20 +1650,20 @@ function Thread({
                     enter(LOGIN);
                   }}
                 >
-                  Sign in
+                  {t("Sign in")}
                 </Button>
               ) : lift ? (
                 <Button size="sm" variant="outline" onClick={() => setAsk({ ...lift, model: nameOf(model, listed) })}>
-                  Upgrade
+                  {t("Upgrade")}
                 </Button>
               ) : how?.visitor ? (
                 <Button size="sm" variant="outline" onClick={() => enter()}>
-                  Sign in to keep going
+                  {t("Sign in to keep going")}
                 </Button>
               ) : (
                 <Anchor href={checkoutUrl()}>
                   <Button size="sm" variant="outline">
-                    Add credit
+                    {t("Add credit")}
                   </Button>
                 </Anchor>
               )}
@@ -1660,7 +1686,7 @@ function Thread({
     suggested: sites,
     onAsk: (page: { url: string; title: string; selection?: string }) => {
       const quote = page.selection ? `\n> ${page.selection.trim().split("\n").join("\n> ")}` : "";
-      setDraft((was) => `${was ? `${was}\n\n` : ""}About ${page.title} (${page.url}):${quote}\n`);
+      setDraft((was) => `${was ? `${was}\n\n` : ""}${t("About {title} ({url}):", { title: page.title, url: page.url })}${quote}\n`);
     },
     onCapture: (file: File) => void hold(at, [file], via),
     onDev: (page: { url: string }) => {
@@ -1691,7 +1717,7 @@ function Thread({
       case "schedule":
         void book(target, a, "chat").then(
           (made) => go(app(devPath({ kind: "automation", id: made.id }))),
-          (e: unknown) => setPrepWrong(e instanceof Error && e.message ? e.message : "The scheduled task could not be made."),
+          (e: unknown) => setPrepWrong(e instanceof Error && e.message ? e.message : t("The scheduled task could not be made.")),
         );
         return;
     }
@@ -1715,8 +1741,10 @@ function Thread({
       busy: chat.streaming,
       // Files alone are a message: what is held goes with an empty draft too.
       ready: Boolean(draft.trim() || files.length),
-      // `label` keeps the accessible name constant; the placeholder is the composer's own.
-      label: ASK,
+      // `label` keeps the accessible name constant; the placeholder is the composer's own
+      // (the defaults @hanzo/ui and @hanzo/build each call ASK), said here so both are the reader's.
+      label: t("Ask anything"),
+      placeholder: t("Type / for skills"),
       // A phone's pill is the tall one: the field across the top, the controls under it.
       narrow: !media.sm,
       // In the app's frame the composer floats on the pane as a pane of its own.
@@ -1747,7 +1775,7 @@ function Thread({
               </Text>
             ) : null}
             {files.length ? (
-              <XStack gap="$1.5" flexWrap="wrap" role="list" aria-label="Attached files" data-slot="composer-attached">
+              <XStack gap="$1.5" flexWrap="wrap" role="list" aria-label={t("Attached files")} data-slot="composer-attached">
                 {files.map((one) => (
                   <HeldChip
                     key={one.id}
@@ -1782,9 +1810,9 @@ function Thread({
                   ? worded(talk.refusal)
                   : talk.reply
                     ? `Hanzo: ${talk.reply}`
-                    : talk.state === "listening"
+                    : t(talk.state === "listening"
                       ? "Listening — speak, and Hanzo answers aloud."
-                      : "Connecting…"}
+                      : "Connecting…")}
               </Text>
             ) : null}
           </>
@@ -1902,7 +1930,7 @@ function Thread({
           <XStack items="center" gap="$2" px="$4" py="$2.5" rounded="$10" bg="$background" borderWidth={1} borderColor="$borderColor">
             <Paperclip size={15} aria-hidden />
             <Text fontSize="$4" color="$ink">
-              Drop files to attach
+              {t("Drop files to attach")}
             </Text>
           </XStack>
         </YStack>
@@ -1916,8 +1944,8 @@ function Thread({
         items="center"
         justify="space-between"
         gap="$3"
-        pl="$4"
-        pr="$2"
+        paddingInlineStart="$4"
+        paddingInlineEnd="$2"
         shrink={0}
       >
         <XStack items="center" gap="$2" minW={0} flex={1}>
@@ -1940,7 +1968,7 @@ function Thread({
             // controls off it, and a phone shows faces without names.
             <XStack
               role="list"
-              aria-label="Agents in this chat"
+              aria-label={t("Agents in this chat")}
               items="center"
               gap="$1.5"
               minW={0}
@@ -1954,8 +1982,8 @@ function Thread({
                   role="listitem"
                   items="center"
                   gap="$1.5"
-                  pl="$1"
-                  pr="$0.5"
+                  paddingInlineStart="$1"
+                  paddingInlineEnd="$0.5"
                   py="$0.5"
                   rounded={999}
                   borderWidth={1}
@@ -1974,8 +2002,8 @@ function Thread({
                   <Box
                     render="button"
                     onClick={() => openAgent(name)}
-                    aria-label={`Remove ${name} from this chat`}
-                    title={`Remove ${name}`}
+                    aria-label={t("Remove {name} from this chat", { name })}
+                    title={t("Remove {name}", { name })}
                     width={24}
                     height={24}
                     rounded={999}
@@ -2000,7 +2028,7 @@ function Thread({
               </XStack>
             </ConversationMenu>
           ) : null}
-          <Summary sections={sections} onOpen={() => setPanel(true)} />
+          <Summary sections={sections} onOpen={() => setPanel(true)} label={t("Summary")} />
           {/* THE TABS' OWN CONTROL, at the header's end while they are shut;
               open, the strip beside the conversation holds it. Its mark is
               never the sidebar's: that toggle is the window's, at its top-left. */}
@@ -2012,10 +2040,10 @@ function Thread({
           On a phone the panel is a sheet over the room instead. */}
       {wide && aside !== null ? (
         <Beside>
-          <Panel side={deck} kinds={NONE} onHide={() => setPanel(false)} label="Tabs" {...browsing} />
+          <Panel side={deck} kinds={NONE} onHide={() => setPanel(false)} label={t("Tabs")} {...browsing} />
         </Beside>
       ) : null}
-      {!wide && panel ? <Panel side={deck} kinds={NONE} sheet onHide={() => setPanel(false)} label="Tabs" {...browsing} /> : null}
+      {!wide && panel ? <Panel side={deck} kinds={NONE} sheet onHide={() => setPanel(false)} label={t("Tabs")} {...browsing} /> : null}
 
       <ChatSurface
         {...chat}
@@ -2076,11 +2104,18 @@ function Thread({
           if (turn.role === "assistant" && !said && chat.streaming && (room.length || thought)) {
             const q = [...shown].reverse().find((one) => one.role === "user");
             const whom = room.length ? addressed(words(q?.content as Said), room) : [];
-            const doing = thought ? "thinking" : "answering";
             return (
               <YStack gap="$1" data-slot="thinking">
                 <Text fontSize="$2" color="$soft">
-                  {whom.length ? `${join(whom)} ${whom.length > 1 ? "are" : "is"} ${doing}…` : "Thinking…"}
+                  {whom.length
+                    ? whom.length > 1
+                      ? thought
+                        ? t("{names} are thinking…", { names: join(whom, t) })
+                        : t("{names} are answering…", { names: join(whom, t) })
+                      : thought
+                        ? t("{names} is thinking…", { names: join(whom, t) })
+                        : t("{names} is answering…", { names: join(whom, t) })
+                    : t("Thinking…")}
                 </Text>
                 {thought ? (
                   <Text fontSize="$2" color="$soft" opacity={0.72} data-slot="thought">
@@ -2123,7 +2158,7 @@ function Thread({
                 ))}
                 {silent.length ? (
                   <Text fontSize="$2" color="$soft">
-                    No answer from {join(silent)} in this reply.
+                    {t("No answer from {names} in this reply.", { names: join(silent, t) })}
                   </Text>
                 ) : null}
                 {byline(turn.id)}
@@ -2166,7 +2201,7 @@ function Thread({
               {room.length > 1 ? (
                 <XStack items="center" justify="center" mb="$4">
                   {room.map((name, i) => (
-                    <Box key={name} ml={i ? -16 : 0} rounded={40} borderWidth={2} borderColor="$background" z={room.length - i}>
+                    <Box key={name} marginInlineStart={i ? -16 : 0} rounded={40} borderWidth={2} borderColor="$background" z={room.length - i}>
                       <Face src={faces[name]?.avatar} emoji={faces[name]?.emoji} name={name} size={72} />
                     </Box>
                   ))}
@@ -2205,7 +2240,7 @@ function Thread({
                 text="center"
                 mb="$1"
               >
-                {join(room) || heading || (firstName ? `What’s up, ${firstName}?` : "What’s up?")}
+                {join(room, t) || heading || (firstName ? t("What’s up, {name}?", { name: firstName }) : t("What’s up?"))}
               </Text>
 
               {/* WHAT THE AGENT ROW SAYS ABOUT ITSELF, and only that. The

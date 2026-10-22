@@ -31,6 +31,8 @@
 import { dev } from './lib/host'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useIam } from '@hanzo/iam/react'
+import { phrase } from '@hanzo/i18n'
+import { useI18n } from '@hanzo/i18n/react'
 import { Text, View, XStack, YStack } from '@hanzo/gui'
 import { Avatar, Button, Tag } from '@hanzo/ui'
 import { SearchInput } from '@hanzo/ui/product/Filters'
@@ -50,6 +52,7 @@ import { checkoutUrl, money } from './lib/pay'
 import { cartUrl, charge, priced, usePlan, usePlans, type Interval, type SubscriptionPlan } from './lib/plans'
 import { createInvitation, inviteLink, setOrganizationProfile } from './lib/invite'
 import { createOrg, say } from './lib/org'
+import { english, type Say } from './say'
 import { countSignup } from './lib/intent'
 import { BAD, mix } from './lib/mix'
 import { useRooms } from './host'
@@ -370,9 +373,10 @@ function Forward({ to }: { to: string }) {
 
 /** Which step of the setup this is, of how many. */
 function Step({ at, of }: { at: number; of: number }) {
+  const { t } = useI18n()
   return (
     <Text render="p" mb={10} fontSize="$2" fontFamily="$mono" color="$soft">
-      Step {at} of {of}
+      {t('Step {at} of {of}', { at, of })}
     </Text>
   )
 }
@@ -400,46 +404,48 @@ function outage(wrong: unknown): boolean {
  * `?q=` included.
  */
 function SignIn({ to }: { to?: string }) {
+  const { t } = useI18n()
   useEffect(() => enter(to), [to])
   return (
-    <Page label="Sign in">
-      <Waiting title="Signing you in" lede="One moment." />
+    <Page label={t('Sign in')}>
+      <Waiting title={t('Signing you in')} lede={t('One moment.')} />
     </Page>
   )
 }
 
 /** No organization yet: the one thing to do. */
 function Create() {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const [details, setDetails] = useState(false)
   return (
-    <Page label="Organizations">
+    <Page label={t('Organizations')}>
       <Column>
         <XStack items="flex-start" justify="space-between" gap={16} flexWrap="wrap">
           <YStack>
             <Text render="h1" fontSize="$10" fontWeight="500" letterSpacing={-0.32} color="var(--text-primary)">
-              Organizations
+              {t('Organizations')}
             </Text>
             <Text render="p" mt={6} fontSize="$4" color={muted}>
-              You do not belong to one yet.
+              {t('You do not belong to one yet.')}
             </Text>
           </YStack>
           <Button variant="primary" size="lg" onClick={() => setOpen(true)}>
             <Plus size={16} aria-hidden />
-            New organization
+            {t('New organization')}
           </Button>
         </XStack>
         <Rule />
         <YStack items="center" py={28}>
           <Text render="p" fontSize="$6" fontWeight="500" color="var(--foreground)" text="center">
-            No organizations yet
+            {t('No organizations yet')}
           </Text>
           <Button variant="linkMuted" size="sm" mt={8} onClick={() => setDetails((d) => !d)}>
-            {details ? '- Details' : '+ Details'}
+            {t(details ? '- Details' : '+ Details')}
           </Button>
           {details ? (
             <Text render="p" mt={12} maxW={440} fontSize="$4" color={muted} lineHeight={23.25} text="center">
-              An organization owns every agent, credit and member. Create one and you are its owner.
+              {t('An organization owns every agent, credit and member. Create one and you are its owner.')}
             </Text>
           ) : null}
         </YStack>
@@ -452,6 +458,7 @@ function Create() {
 
 /** Name it, pick what it runs and its plan: a paid plan goes to checkout, Free goes straight in. */
 function CreateDialog({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n()
   const team = usePlan('team')
   // The personal ladder, Free first. hanzo.team offers no personal organization:
   // every room there runs on a paid plan.
@@ -465,7 +472,6 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
   // A team organization runs on the per-seat Team plan; a personal one on the
   // rung chosen below, Free unless another is. Checkout sets the seats and the term.
   const { plan, price } = kind === 'org' ? team : personal
-  const seat = plan?.pricePerUser ? ' / seat' : ''
   const paid = (plan?.priceMonthly ?? 0) > 0
   // A row on the landing carries its template in the address, across sign-in.
   const [template, setTemplate] = useState(() => {
@@ -480,7 +486,7 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
     fetch(`${api()}/v1/templates`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { data?: Template[] } | null) => {
-        if (Array.isArray(d?.data)) setTemplates(d.data.filter((t) => t?.slug))
+        if (Array.isArray(d?.data)) setTemplates(d.data.filter((row) => row?.slug))
       })
       .catch(() => {})
   }, [])
@@ -497,7 +503,7 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
     e.preventDefault()
     if (!plan || busy) return
     if (kind === 'org' && !name.trim()) {
-      setRefused('Give it a name.')
+      setRefused(t('Give it a name.'))
       return
     }
     setBusy(true)
@@ -509,7 +515,7 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
         body: JSON.stringify(kind === 'org' ? { name: name.trim() } : { personal: true }),
       })
       if (!r.ok) {
-        let why = `Could not create it (${r.status}).`
+        let why = t('Could not create it ({status}).', { status: r.status })
         try {
           const body = (await r.json()) as { detail?: string; error?: string; message?: string }
           why = body.detail || body.error || body.message || why
@@ -540,7 +546,7 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
       if (paid) window.location.assign(checkout(plan))
       else window.location.reload()
     } catch (err) {
-      setRefused(err instanceof Error ? err.message : 'Could not create it.')
+      setRefused(err instanceof Error ? err.message : t('Could not create it.'))
       setBusy(false)
     }
   }
@@ -549,7 +555,7 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
     <YStack
       role="dialog"
       aria-modal
-      aria-label="Create an organization"
+      aria-label={t('Create an organization')}
       position="fixed"
       inset={0}
       z={DIALOG}
@@ -576,26 +582,26 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
         <XStack items="flex-start" justify="space-between" gap={12}>
           <YStack shrink={1} minW="auto">
             <Text render="h2" fontSize="$8" fontWeight="500" color="var(--text-primary)">
-              Create an organization
+              {t('Create an organization')}
             </Text>
             <Text render="p" mt={8} fontSize="$4" color={muted} lineHeight={22.5}>
-              You are its owner. Agents, credits and members all hang off it; you can switch between organizations from the rail.
+              {t('You are its owner. Agents, credits and members all hang off it; you can switch between organizations from the rail.')}
             </Text>
           </YStack>
-          <Button type="button" variant="ghost" size="icon-sm" mr={-8} onClick={onClose} aria-label="Close">
+          <Button type="button" variant="ghost" size="icon-sm" marginInlineEnd={-8} onClick={onClose} aria-label={t('Close')}>
             <X size={16} aria-hidden />
           </Button>
         </XStack>
 
         <View render="fieldset" display="block" borderWidth={0} p={0} m={0} mt={22}>
           <Text render="legend" display="block" fontSize="$4" fontWeight="500" mb={10} color="var(--foreground)">
-            Plan
+            {t('Plan')}
           </Text>
           <View display="grid" gridTemplateColumns="repeat(auto-fit, minmax(220px, 1fr))" gap={10}>
             {(
               [
-                ['org', 'Organization', 'A team. Invite members, share agents and credit.', team],
-                ['personal', 'Personal', 'Just you. Named after your account.', personal],
+                ['org', phrase('Organization'), phrase('A team. Invite members, share agents and credit.'), team],
+                ['personal', phrase('Personal'), phrase('Just you. Named after your account.'), personal],
               ] as const
             ).filter(([k]) => alone || k === 'org').map(([k, label, hint, offer]) => (
               <XStack
@@ -613,15 +619,20 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
                 <input type="radio" name="kind" value={k} checked={kind === k} onChange={() => setKind(k)} />
                 <YStack shrink={1}>
                   <Text fontSize="$4" fontWeight="500" color="var(--foreground)">
-                    {label}
+                    {t(label)}
                     {offer.plan ? (
                       <Text color={muted} fontWeight="400">
-                        {' '}— {offer.plan.priceMonthly ? `${offer.price}${offer.plan.pricePerUser ? ' / seat' : ''} / month` : offer.plan.name}
+                        {' '}—{' '}
+                        {offer.plan.priceMonthly
+                          ? offer.plan.pricePerUser
+                            ? t('{price} / seat / month', { price: offer.price })
+                            : t('{price} / month', { price: offer.price })
+                          : offer.plan.name}
                       </Text>
                     ) : null}
                   </Text>
                   <Text fontSize="$3" color={muted} mt={2}>
-                    {hint}
+                    {t(hint)}
                   </Text>
                 </YStack>
               </XStack>
@@ -632,7 +643,7 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
         {kind === 'personal' && ladder.length > 1 ? (
           <View render="fieldset" display="block" borderWidth={0} p={0} m={0} mt={20}>
             <Text render="legend" display="block" fontSize="$4" fontWeight="500" mb={10} color="var(--foreground)">
-              Personal plan
+              {t('Personal plan')}
             </Text>
             <View display="grid" gap={8}>
               {ladder.map((p) => (
@@ -653,8 +664,8 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
                     {p.name}
                   </Text>
                   {p.priceMonthly ? (
-                    <Text ml="auto" fontSize="$3" color={muted}>
-                      {priced(p).price} / month
+                    <Text marginInlineStart="auto" fontSize="$3" color={muted}>
+                      {t('{price} / month', { price: priced(p).price })}
                     </Text>
                   ) : null}
                 </XStack>
@@ -666,11 +677,11 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
         {kind === 'org' ? (
           <View render="label" display="block" mt={20}>
             <Text display="block" fontSize="$4" fontWeight="500" mb={8} color="var(--foreground)">
-              Name
+              {t('Name')}
             </Text>
             <Text render={<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme" autoFocus />} {...FIELD} />
             <Text display="block" fontSize="$3" color={muted} mt={8}>
-              What the rail and every invoice call it.
+              {t('What the rail and every invoice call it.')}
             </Text>
           </View>
         ) : null}
@@ -678,38 +689,38 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
         {templates.length > 0 ? (
           <View render="label" display="block" mt={20}>
             <Text display="block" fontSize="$4" fontWeight="500" mb={8} color="var(--foreground)">
-              Template
+              {t('Template')}
             </Text>
             <Text
               render={<select value={template} onChange={(e) => setTemplate(e.target.value)} />}
               {...FIELD}
             >
-              <option value="">None — start empty</option>
-              {templates.map((t) => (
-                <option key={t.slug} value={t.slug}>
-                  {t.title || t.name || t.slug}
-                  {t.category ? ` · ${t.category}` : ''}
+              <option value="">{t('None — start empty')}</option>
+              {templates.map((row) => (
+                <option key={row.slug} value={row.slug}>
+                  {row.title || row.name || row.slug}
+                  {row.category ? ` · ${row.category}` : ''}
                 </option>
               ))}
             </Text>
             <Text display="block" fontSize="$3" color={muted} mt={8}>
-              What it runs, set up as soon as the organization opens. Choose none to start empty.
+              {t('What it runs, set up as soon as the organization opens. Choose none to start empty.')}
             </Text>
           </View>
         ) : null}
 
         {plan && !paid ? (
           <Text render="p" mt={22} fontSize="$4" color={muted} lineHeight={23.25}>
-            A personal organization starts on {plan.name} and opens as soon as it is made. Choose a paid plan above to go to checkout instead.
+            {t('A personal organization starts on {plan} and opens as soon as it is made. Choose a paid plan above to go to checkout instead.', { plan: plan.name })}
           </Text>
         ) : plan ? (
           <Text render="p" mt={22} fontSize="$4" color={muted} lineHeight={23.25}>
             {plan.pricePerUser
-              ? `A team organization runs on ${plan.name} at ${price} per seat a month, at least ${Number(plan.limits?.minSeats ?? 1)} seats.`
-              : `A personal organization runs on ${plan.name} at ${price} a month.`}{' '}
-            Nothing in it works until that plan is live, so creating one takes you straight to checkout, where you choose the seats and the term.
-            {' '}Each plan includes session and daily usage limits; usage never draws your credit balance.{' '}
-            Payment is on the provider&apos;s hosted page.
+              ? t('A team organization runs on {plan} at {price} per seat a month, at least {seats} seats.', { plan: plan.name, price, seats: Number(plan.limits?.minSeats ?? 1) })
+              : t('A personal organization runs on {plan} at {price} a month.', { plan: plan.name, price })}{' '}
+            {t('Nothing in it works until that plan is live, so creating one takes you straight to checkout, where you choose the seats and the term.')}{' '}
+            {t('Each plan includes session and daily usage limits; usage never draws your credit balance.')}{' '}
+            {t("Payment is on the provider's hosted page.")}
           </Text>
         ) : null}
 
@@ -722,17 +733,23 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
         {/* A Button's label never wraps, and the paid one is wider than a phone's column: the row wraps, and this label is a Text that does. */}
         <XStack justify="flex-end" gap={10} mt={24} flexWrap="wrap">
           <Button type="button" size="lg" onClick={onClose}>
-            Cancel
+            {t('Cancel')}
           </Button>
           <Button type="submit" variant="primary" size="lg" shrink={1} py="$2" disabled={!plan || busy}>
             <Text fontFamily="$body" fontSize="$3" color="inherit" text="center">
-              {busy ? 'Creating…' : paid ? `Create and subscribe — ${price}${seat} / month` : 'Create'}
+              {busy
+                ? t('Creating…')
+                : paid
+                  ? plan?.pricePerUser
+                    ? t('Create and subscribe — {price} / seat / month', { price })
+                    : t('Create and subscribe — {price} / month', { price })
+                  : t('Create')}
             </Text>
           </Button>
         </XStack>
         <Rule mt={18} mb={8} />
-        <Text render="p" text="right" fontSize="$2" color={muted} fontFamily="$mono">
-          Esc to close
+        <Text render="p" text="end" fontSize="$2" color={muted} fontFamily="$mono">
+          {t('Esc to close')}
         </Text>
       </YStack>
     </YStack>
@@ -765,7 +782,7 @@ interface Listing {
  * `cursor` continues it. IAM decides the scope from the bearer, so this asks the
  * same thing for everyone.
  */
-async function listing(q: string, cursor: string, limit: number, signal?: AbortSignal): Promise<Listing> {
+async function listing(q: string, cursor: string, limit: number, signal?: AbortSignal, t: Say = english): Promise<Listing> {
   const query = new URLSearchParams({ limit: String(limit) })
   if (q.trim()) query.set('q', q.trim())
   if (cursor) query.set('cursor', cursor)
@@ -773,7 +790,7 @@ async function listing(q: string, cursor: string, limit: number, signal?: AbortS
     headers: { Authorization: `Bearer ${bearer() ?? ''}` },
     signal,
   })
-  if (!res.ok) throw new Error(`IAM answered ${res.status}.`)
+  if (!res.ok) throw new Error(t('IAM answered {status}.', { status: res.status }))
   return (await res.json()) as Listing
 }
 
@@ -814,8 +831,12 @@ function useBilled(members: string[]): Record<string, string> {
   return plans
 }
 
-/** A role as a person reads it: `owner` → Owner. */
-const said = (role: string): string => (role ? role.charAt(0).toUpperCase() + role.slice(1) : '')
+/** The roles IAM signs into the token, as a person reads them. */
+const ROLES: Record<string, string> = { owner: phrase('Owner'), admin: phrase('Admin'), member: phrase('Member') }
+
+/** A role as a person reads it: `owner` → Owner; one IAM adds later is shown as it signs it, capitalised. */
+const said = (role: string, t: Say): string =>
+  ROLES[role] ? t(ROLES[role]) : role ? role.charAt(0).toUpperCase() + role.slice(1) : ''
 
 /** One organization as a row draws it. */
 interface Shown {
@@ -844,6 +865,7 @@ function Mark({ org }: { org: Shown }) {
 
 /** One organization: its mark, its name and slug, the reader's role and its plan; the current one checked. */
 function Choice({ org, current = false, note, disabled, onPress }: { org: Shown; current?: boolean; note?: string; disabled?: boolean; onPress: () => void }) {
+  const { t } = useI18n()
   return (
     <View render="li" display="block">
       <XStack
@@ -865,14 +887,14 @@ function Choice({ org, current = false, note, disabled, onPress }: { org: Shown;
       >
         <Mark org={org} />
         <YStack flex={1} minW={0} gap={4}>
-          <Text fontSize="$4" fontWeight="500" color="$ink" numberOfLines={1} text="left">
+          <Text fontSize="$4" fontWeight="500" color="$ink" numberOfLines={1} text="start">
             {org.display}
           </Text>
           <XStack items="center" gap={6} flexWrap="wrap">
-            <Text fontSize="$2" fontFamily="$mono" color="$soft" numberOfLines={1}>
+            <Text fontSize="$2" fontFamily="$mono" color="$soft" numberOfLines={1} {...{ 'data-i18n-ltr': '' }}>
               {org.name}
             </Text>
-            {org.role ? <Tag variant="outline">{said(org.role)}</Tag> : null}
+            {org.role ? <Tag variant="outline">{said(org.role, t)}</Tag> : null}
             {org.plan ? <Tag>{org.plan}</Tag> : null}
             {note ? (
               <Text fontSize="$2" color="$soft">
@@ -881,7 +903,7 @@ function Choice({ org, current = false, note, disabled, onPress }: { org: Shown;
             ) : null}
           </XStack>
         </YStack>
-        {current ? <Check size={16} aria-label="Current" /> : null}
+        {current ? <Check size={16} aria-label={t('Current')} /> : null}
       </XStack>
     </View>
   )
@@ -913,6 +935,7 @@ function Pick({
   // decides what is drawn: IAM answers anyone else's list with their own
   // organizations and refuses them the step in.
   const sudo = superAdmin()
+  const { t } = useI18n()
   const [q, setQ] = useState('')
   const [founding, setFounding] = useState(false)
   const marks = useMarks(members)
@@ -936,14 +959,14 @@ function Pick({
   }, [onClose, founding])
 
   return (
-    <Page label="Choose an organization">
+    <Page label={t('Choose an organization')}>
       <Column>
         <XStack items="flex-start" justify="space-between" gap={12}>
           <YStack flex={1} minW={0}>
-            <Heading title="Choose an organization" lede={<>Everything you open — chats, agents, credit — is this one&apos;s.</>} />
+            <Heading title={t('Choose an organization')} lede={t("Everything you open — chats, agents, credit — is this one's.")} />
           </YStack>
           {onClose ? (
-            <Button variant="ghost" size="icon-sm" mr={-8} onClick={onClose} aria-label="Close">
+            <Button variant="ghost" size="icon-sm" marginInlineEnd={-8} onClick={onClose} aria-label={t('Close')}>
               <X size={16} aria-hidden />
             </Button>
           ) : null}
@@ -963,25 +986,25 @@ function Pick({
             name="organizations"
             value={q}
             onChange={setQ}
-            placeholder={sudo ? 'Search every organization' : 'Find an organization'}
+            placeholder={t(sudo ? 'Search every organization' : 'Find an organization')}
             actions={
               sudo ? null : (
                 <Button type="button" onClick={() => setFounding(true)}>
                   <Plus size={16} aria-hidden />
-                  New organization
+                  {t('New organization')}
                 </Button>
               )
             }
           />
         </XStack>
-        <YStack render="ul" aria-label="Your organizations" m={0} p={0} mt={14} gap={8}>
+        <YStack render="ul" aria-label={t('Your organizations')} m={0} p={0} mt={14} gap={8}>
           {shown.map((o) => (
             <Choice key={o.name} org={o} current={o.name === current} onPress={() => onPick(o.name)} />
           ))}
         </YStack>
         {shown.length === 0 ? (
           <Text render="p" mt={14} fontSize="$3" color="$soft">
-            None of yours matches “{q.trim()}”.
+            {t('None of yours matches “{query}”.', { query: q.trim() })}
           </Text>
         ) : null}
         {sudo ? <Everyone q={q} skip={members} /> : null}
@@ -1000,6 +1023,7 @@ function Pick({
  * that organization's audit log. Nobody is made a member of anything.
  */
 function Everyone({ q, skip }: { q: string; skip: string[] }) {
+  const { t } = useI18n()
   const [rows, setRows] = useState<Listed[]>([])
   const [cursor, setCursor] = useState('')
   const [loading, setLoading] = useState(false)
@@ -1014,7 +1038,7 @@ function Everyone({ q, skip }: { q: string; skip: string[] }) {
     setLoading(true)
     setRefused(null)
     try {
-      const next = await listing(query, from, 20)
+      const next = await listing(query, from, 20, undefined, t)
       if (mine !== asked.current) return
       setRows((had) => {
         // IAM's cursor is a position, so an org created mid-walk can shift a row
@@ -1024,11 +1048,11 @@ function Everyone({ q, skip }: { q: string; skip: string[] }) {
       })
       setCursor(next.cursor ?? '')
     } catch (e) {
-      if (mine === asked.current) setRefused(e instanceof Error ? e.message : 'The list did not load.')
+      if (mine === asked.current) setRefused(e instanceof Error ? e.message : t('The list did not load.'))
     } finally {
       if (mine === asked.current) setLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     const id = setTimeout(() => void load(q, ''), 250)
@@ -1039,26 +1063,26 @@ function Everyone({ q, skip }: { q: string; skip: string[] }) {
     setStepping(org)
     setRefused(null)
     support(org).catch((e: unknown) => {
-      setRefused(e instanceof Error ? e.message : 'IAM did not step in.')
+      setRefused(e instanceof Error ? e.message : t('IAM did not step in.'))
       setStepping(null)
     })
   }
 
   const others = rows.filter((o) => !skip.includes(o.name))
   return (
-    <YStack render="section" aria-label="All organizations" mt={36}>
+    <YStack render="section" aria-label={t('All organizations')} mt={36}>
       <Text render="h2" fontSize="$6" fontWeight="500" color="$ink">
-        All organizations
+        {t('All organizations')}
       </Text>
       <Text render="p" mt={4} fontSize="$3" color="$soft" lineHeight={21}>
-        Support mode. Step into any organization to see it as it does; IAM records every step under your name.
+        {t('Support mode. Step into any organization to see it as it does; IAM records every step under your name.')}
       </Text>
-      <YStack render="ul" aria-label="Every organization" m={0} p={0} mt={14} gap={8}>
+      <YStack render="ul" aria-label={t('Every organization')} m={0} p={0} mt={14} gap={8}>
         {others.map((o) => (
           <Choice
             key={o.name}
             org={{ name: o.name, display: o.displayName || o.name, mark: o }}
-            note={stepping === o.name ? 'Stepping in…' : undefined}
+            note={stepping === o.name ? t('Stepping in…') : undefined}
             disabled={stepping !== null}
             onPress={() => enter(o.name)}
           />
@@ -1066,7 +1090,7 @@ function Everyone({ q, skip }: { q: string; skip: string[] }) {
       </YStack>
       {!loading && others.length === 0 && !refused ? (
         <Text render="p" mt={8} fontSize="$3" color="$soft">
-          No organization matches.
+          {t('No organization matches.')}
         </Text>
       ) : null}
       {refused ? (
@@ -1076,7 +1100,7 @@ function Everyone({ q, skip }: { q: string; skip: string[] }) {
       ) : null}
       {cursor ? (
         <Button self="flex-start" mt={10} onClick={() => void load(q, cursor)} disabled={loading}>
-          {loading ? 'Loading…' : 'More'}
+          {t(loading ? 'Loading…' : 'More')}
         </Button>
       ) : null}
     </YStack>
@@ -1103,10 +1127,11 @@ function Everyone({ q, skip }: { q: string; skip: string[] }) {
  */
 function Found({ onClose }: { onClose: () => void }) {
   const { sdk } = useIam()
+  const { t } = useI18n()
   const [name, setName] = useState('')
   const [typed, setTyped] = useState<string | null>(null)
   const slug = typed ?? slugify(name)
-  const wrong = slug ? refusal(slug) : null
+  const wrong = slug ? refusal(slug, t) : null
   const [busy, setBusy] = useState(false)
   const [refused, setRefused] = useState<string | null>(null)
 
@@ -1122,7 +1147,7 @@ function Found({ onClose }: { onClose: () => void }) {
     e.preventDefault()
     const display = name.trim()
     if (busy) return
-    if (!display) return setRefused('Give it a name.')
+    if (!display) return setRefused(t('Give it a name.'))
     if (wrong) return setRefused(wrong)
     setBusy(true)
     setRefused(null)
@@ -1133,13 +1158,13 @@ function Found({ onClose }: { onClose: () => void }) {
       await sdk.refreshAccessToken().catch(() => null)
       if (!named) {
         await setOrganizationProfile('admin', made, { displayName: display }).catch((err: unknown) => {
-          throw new Error(`${made} is made, and it is still called ${made}: ${say(err)}`)
+          throw new Error(t('{org} is made, and it is still called {org}: {reason}', { org: made, reason: say(err, t) }))
         })
       }
       pick(made)
       window.location.reload()
     } catch (err) {
-      setRefused(say(err))
+      setRefused(say(err, t))
       setBusy(false)
     }
   }
@@ -1148,7 +1173,7 @@ function Found({ onClose }: { onClose: () => void }) {
     <YStack
       role="dialog"
       aria-modal
-      aria-label="New organization"
+      aria-label={t('New organization')}
       position="fixed"
       inset={0}
       z={DIALOG}
@@ -1177,29 +1202,30 @@ function Found({ onClose }: { onClose: () => void }) {
         <XStack items="flex-start" justify="space-between" gap={12}>
           <YStack shrink={1} minW="auto">
             <Text render="h2" fontSize="$8" fontWeight="500" color="$ink">
-              New organization
+              {t('New organization')}
             </Text>
             <Text render="p" mt={6} fontSize="$3" color="$soft" lineHeight={21}>
-              You own it. Its agents, credit and members are its own.
+              {t('You own it. Its agents, credit and members are its own.')}
             </Text>
           </YStack>
-          <Button type="button" variant="ghost" size="icon-sm" mr={-8} onClick={onClose} aria-label="Close">
+          <Button type="button" variant="ghost" size="icon-sm" marginInlineEnd={-8} onClick={onClose} aria-label={t('Close')}>
             <X size={16} aria-hidden />
           </Button>
         </XStack>
         <View render="label" display="block" mt={20}>
           <Text display="block" fontSize="$4" fontWeight="500" mb={8} color="$ink">
-            Name
+            {t('Name')}
           </Text>
           <Text render={<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme" maxLength={100} autoFocus />} {...FIELD} />
         </View>
         <View render="label" display="block" mt={16}>
           <Text display="block" fontSize="$4" fontWeight="500" mb={8} color="$ink">
-            Slug
+            {t('Slug')}
           </Text>
           <Text
             render={
               <input
+                data-i18n-ltr=""
                 value={slug}
                 onChange={(e) => setTyped(e.target.value)}
                 placeholder="acme"
@@ -1213,7 +1239,7 @@ function Found({ onClose }: { onClose: () => void }) {
             fontFamily="$mono"
           />
           <Text display="block" fontSize="$3" color={slug && wrong ? BAD : '$soft'} mt={8}>
-            {slug && wrong ? wrong : 'How every request names it: lowercase letters, digits and hyphens. It does not change.'}
+            {slug && wrong ? wrong : t('How every request names it: lowercase letters, digits and hyphens. It does not change.')}
           </Text>
         </View>
         {refused ? (
@@ -1223,10 +1249,10 @@ function Found({ onClose }: { onClose: () => void }) {
         ) : null}
         <XStack justify="flex-end" gap={10} mt={22} flexWrap="wrap">
           <Button type="button" onClick={onClose}>
-            Cancel
+            {t('Cancel')}
           </Button>
           <Button type="submit" variant="primary" disabled={busy || !name.trim() || Boolean(wrong)}>
-            {busy ? 'Creating…' : 'Create and open'}
+            {t(busy ? 'Creating…' : 'Create and open')}
           </Button>
         </XStack>
       </YStack>
@@ -1244,26 +1270,32 @@ function Subscribe({
   members: string[]
   onSwitch: () => void
 }) {
+  const { t } = useI18n()
   const { plan, price } = usePlan('team')
-  const seat = plan?.pricePerUser ? ' / seat' : ''
   return (
-    <Page label="Subscribe">
+    <Page label={t('Subscribe')}>
       <Column>
         <Heading
           title={org}
           lead={22.5}
-          lede={plan ? `This organization runs on the ${plan.name} plan at ${price}${seat} / month, and nothing in it works until that plan is live.` : 'Its plan is not live yet.'}
+          lede={
+            !plan
+              ? t('Its plan is not live yet.')
+              : plan.pricePerUser
+                ? t('This organization runs on the {plan} plan at {price} / seat / month, and nothing in it works until that plan is live.', { plan: plan.name, price })
+                : t('This organization runs on the {plan} plan at {price} / month, and nothing in it works until that plan is live.', { plan: plan.name, price })
+          }
         />
         <Rule />
         <XStack gap={10} flexWrap="wrap">
           {plan ? (
             <Button asChild variant="primary" size="lg">
-              <a href={checkout(plan)}>{`Subscribe — ${price}${seat} / month`}</a>
+              <a href={checkout(plan)}>{plan.pricePerUser ? t('Subscribe — {price} / seat / month', { price }) : t('Subscribe — {price} / month', { price })}</a>
             </Button>
           ) : null}
           {members.length > 1 ? (
             <Button size="lg" onClick={onSwitch}>
-              Switch organization
+              {t('Switch organization')}
             </Button>
           ) : null}
         </XStack>
@@ -1300,6 +1332,7 @@ function Start({
   onSwitch?: () => void
 }) {
   const { sdk } = useIam()
+  const { t } = useI18n()
   const [step, setStep] = useState<'name' | 'invite' | 'plan'>(founded ? 'invite' : 'name')
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
@@ -1311,7 +1344,7 @@ function Start({
     e.preventDefault()
     if (busy) return
     if (!name.trim()) {
-      setRefused('Give it a name.')
+      setRefused(t('Give it a name.'))
       return
     }
     setBusy(true)
@@ -1323,7 +1356,7 @@ function Start({
         body: JSON.stringify({ name: name.trim() }),
       })
       if (!r.ok) {
-        let why = `Could not create it (${r.status}).`
+        let why = t('Could not create it ({status}).', { status: r.status })
         try {
           const body = (await r.json()) as { detail?: string; error?: string; message?: string }
           why = body.detail || body.error || body.message || why
@@ -1336,7 +1369,7 @@ function Start({
       }
       const made = (await r.json()) as { org?: string }
       if (!made?.org) {
-        setRefused('The organization was made but its name did not come back. Reload to find it.')
+        setRefused(t('The organization was made but its name did not come back. Reload to find it.'))
         setBusy(false)
         return
       }
@@ -1350,7 +1383,7 @@ function Start({
       setBusy(false)
       setStep('invite')
     } catch (err) {
-      setRefused(err instanceof Error ? err.message : 'Could not create it.')
+      setRefused(err instanceof Error ? err.message : t('Could not create it.'))
       setBusy(false)
     }
   }
@@ -1365,12 +1398,12 @@ function Start({
     setBusy(true)
     const out = await Promise.all(
       list.map(async (email) => {
-        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { email, refused: 'Not an email address.' }
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { email, refused: t('Not an email address.') }
         try {
           const made = await createInvitation(founded, email)
           return { email, link: inviteLink(made.owner || founded, made.code) }
         } catch (err) {
-          return { email, refused: err instanceof Error ? err.message : 'Could not invite.' }
+          return { email, refused: err instanceof Error ? err.message : t('Could not invite.') }
         }
       }),
     )
@@ -1381,20 +1414,20 @@ function Start({
   if (step === 'plan' && founded) return <Plan org={founded} members={[founded]} seats={1 + sent.filter((s) => s.link).length} setup />
 
   return (
-    <Page label="Create your team">
+    <Page label={t('Create your team')}>
       <Column>
         {step === 'name' ? (
           <YStack render="form" {...{ onSubmit: create }}>
             <Step at={1} of={3} />
-            <Heading title="Create your team" lede="A team owns its agents, credit and members. You are its owner." />
+            <Heading title={t('Create your team')} lede={t('A team owns its agents, credit and members. You are its owner.')} />
             <Rule />
             <View render="label" display="block">
               <Text display="block" fontSize="$4" fontWeight="500" mb={8} color="$ink">
-                Team name
+                {t('Team name')}
               </Text>
               <Text render={<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme" autoFocus />} {...FIELD} />
               <Text display="block" fontSize="$3" color="$soft" mt={8}>
-                What the rail and every invoice call it.
+                {t('What the rail and every invoice call it.')}
               </Text>
             </View>
             {refused ? (
@@ -1404,80 +1437,91 @@ function Start({
             ) : null}
             <XStack gap={10} flexWrap="wrap" mt={24}>
               <Button type="submit" variant="primary" size="lg" disabled={busy}>
-                {busy ? 'Creating…' : 'Continue'}
+                {t(busy ? 'Creating…' : 'Continue')}
               </Button>
               {members.length > 1 && onSwitch ? (
                 <Button type="button" size="lg" onClick={onSwitch}>
-                  Switch organization
+                  {t('Switch organization')}
                 </Button>
               ) : null}
             </XStack>
             <Rule />
             <Text render="p" fontSize="$3" color="$soft">
-              Just you? Hanzo Chat is free for personal use at{' '}
-              <Text render={<a href={site('/chat')} />} color="$ink" textDecorationLine="underline">
-                hanzo.ai/chat
-              </Text>
-              .
+              {t('Just you? Hanzo Chat is free for personal use at {link}.', {
+                link: (
+                  <Text render={<a href={site('/chat')} />} color="$ink" textDecorationLine="underline">
+                    hanzo.ai/chat
+                  </Text>
+                ),
+              })}
             </Text>
           </YStack>
         ) : (
           <YStack render="form" {...{ onSubmit: invite }}>
             <Step at={2} of={3} />
             <Heading
-              title="Invite your teammates"
-              lede="Each address gets its own single-use link to join. You can skip this and invite people later."
+              title={t('Invite your teammates')}
+              lede={t('Each address gets its own single-use link to join. You can skip this and invite people later.')}
             />
             <Rule />
             <View render="label" display="block">
               <Text display="block" fontSize="$4" fontWeight="500" mb={8} color="$ink">
-                Email addresses
+                {t('Email addresses')}
               </Text>
               <Text
-                render={<textarea value={emails} onChange={(e) => setEmails(e.target.value)} placeholder="ada@acme.com, alan@acme.com" rows={3} />}
+                render={<textarea data-i18n-ltr="" value={emails} onChange={(e) => setEmails(e.target.value)} placeholder="ada@acme.com, alan@acme.com" rows={3} />}
                 {...FIELD}
               />
               <Text display="block" fontSize="$3" color="$soft" mt={8}>
-                Separate them with commas, spaces or new lines.
+                {t('Separate them with commas, spaces or new lines.')}
               </Text>
             </View>
             {sent.length ? (
-              <YStack render="ul" gap={8} m={0} p={0} mt={18} aria-label="Invitations">
-                {sent.map((s) => (
-                  <YStack render="li" key={s.email}>
-                    <Text fontSize="$3" color="$soft" wordWrap="break-word">
-                      <Text fontWeight="500" color="$ink">
-                        {s.email}
-                      </Text>{' '}
-                      {s.link ? (
-                        <>
-                          invited. Their link:{' '}
-                          <Text render={<a href={s.link} />} color="$ink" textDecorationLine="underline">
-                            {s.link}
-                          </Text>
-                        </>
-                      ) : (
-                        <Text role="alert" color={BAD}>
-                          {s.refused}
-                        </Text>
-                      )}
+              <YStack render="ul" gap={8} m={0} p={0} mt={18} aria-label={t('Invitations')}>
+                {sent.map((s) => {
+                  const email = (
+                    <Text fontWeight="500" color="$ink">
+                      {s.email}
                     </Text>
-                  </YStack>
-                ))}
+                  )
+                  return (
+                    <YStack render="li" key={s.email}>
+                      <Text fontSize="$3" color="$soft" wordWrap="break-word">
+                        {s.link ? (
+                          t('{email} invited. Their link: {link}', {
+                            email,
+                            link: (
+                              <Text render={<a href={s.link} />} color="$ink" textDecorationLine="underline">
+                                {s.link}
+                              </Text>
+                            ),
+                          })
+                        ) : (
+                          <>
+                            {email}{' '}
+                            <Text role="alert" color={BAD}>
+                              {s.refused}
+                            </Text>
+                          </>
+                        )}
+                      </Text>
+                    </YStack>
+                  )
+                })}
               </YStack>
             ) : null}
             <XStack gap={10} flexWrap="wrap" mt={24}>
               {sent.length ? (
                 <Button type="button" variant="primary" size="lg" onClick={() => setStep('plan')}>
-                  Continue
+                  {t('Continue')}
                 </Button>
               ) : (
                 <>
                   <Button type="submit" variant="primary" size="lg" disabled={busy}>
-                    {busy ? 'Inviting…' : emails.trim() ? 'Invite and continue' : 'Continue'}
+                    {busy ? t('Inviting…') : emails.trim() ? t('Invite and continue') : t('Continue')}
                   </Button>
                   <Button type="button" size="lg" onClick={() => setStep('plan')}>
-                    Skip for now
+                    {t('Skip for now')}
                   </Button>
                 </>
               )}
@@ -1520,6 +1564,7 @@ function Plan({
   /** Part of creating the team, so it is its third step. */
   setup?: boolean
 }) {
+  const { t } = useI18n()
   const { plan } = usePlan('team')
   const floor = Math.max(1, Number(plan?.limits?.minSeats ?? 1))
   // The count asked for, held above the floor: the floor arrives with the live
@@ -1531,11 +1576,25 @@ function Plan({
   const yearly = plan ? charge(plan, 'year') : null
   const each = term === 'year' && yearly ? yearly : monthly
   const terms: [Interval, string, string][] = [
-    ['month', 'Monthly', `${money(monthly)} / seat / month`],
-    ...(yearly ? [['year', 'Annual', `${money(yearly)} / seat, billed once a year`] as [Interval, string, string]] : []),
+    ['month', t('Monthly'), t('{price} / seat / month', { price: money(monthly) })],
+    ...(yearly ? [['year', t('Annual'), t('{price} / seat, billed once a year', { price: money(yearly) })] as [Interval, string, string]] : []),
   ]
+  // What the seats come to, bold inside the sentence that adds them up.
+  const total = (
+    <Text fontWeight="500" color="$ink">
+      {term === 'year' ? t('{amount} a year', { amount: money(seats * each) }) : t('{amount} a month', { amount: money(seats * each) })}
+    </Text>
+  )
+  const sum =
+    term === 'year'
+      ? seats === 1
+        ? t('1 seat at {price} a year is {total}.', { price: money(each), total })
+        : t('{seats} seats at {price} a year is {total}.', { seats, price: money(each), total })
+      : seats === 1
+        ? t('1 seat at {price} a month is {total}.', { price: money(each), total })
+        : t('{seats} seats at {price} a month is {total}.', { seats, price: money(each), total })
   return (
-    <Page label="Choose your plan">
+    <Page label={t('Choose your plan')}>
       <Column>
         {setup ? <Step at={3} of={3} /> : null}
         <Heading
@@ -1543,16 +1602,16 @@ function Plan({
           lead={22.5}
           lede={
             outage
-              ? 'Billing could not be read just now, so this team cannot open yet. That is ours to fix.'
+              ? t('Billing could not be read just now, so this team cannot open yet. That is ours to fix.')
               : plan
-                ? `A team runs on the ${plan.name} plan, and nothing in it works until that plan is live.`
-                : 'Its plan is not live yet.'
+                ? t('A team runs on the {plan} plan, and nothing in it works until that plan is live.', { plan: plan.name })
+                : t('Its plan is not live yet.')
           }
         />
         {outage && onRetry ? (
           <XStack mt={16}>
             <Button size="lg" onClick={onRetry}>
-              Try again
+              {t('Try again')}
             </Button>
           </XStack>
         ) : null}
@@ -1561,16 +1620,16 @@ function Plan({
           <>
             <View render="fieldset" display="block" borderWidth={0} p={0} m={0}>
               <Text render="legend" display="block" p={0} fontSize="$4" fontWeight="500" mb={10} color="$ink">
-                Seats
+                {t('Seats')}
               </Text>
               <XStack items="center" gap={10}>
-                <Button type="button" size="icon" aria-label="One seat fewer" disabled={seats <= floor} onClick={() => setSeats(Math.max(floor, seats - 1))}>
+                <Button type="button" size="icon" aria-label={t('One seat fewer')} disabled={seats <= floor} onClick={() => setSeats(Math.max(floor, seats - 1))}>
                   <Minus size={16} aria-hidden />
                 </Button>
                 <Text
                   render={
                     <input
-                      aria-label="Seats"
+                      aria-label={t('Seats')}
                       type="number"
                       inputMode="numeric"
                       min={floor}
@@ -1586,18 +1645,20 @@ function Plan({
                   rounded="$3"
                   text="center"
                 />
-                <Button type="button" size="icon" aria-label="One seat more" onClick={() => setSeats(seats + 1)}>
+                <Button type="button" size="icon" aria-label={t('One seat more')} onClick={() => setSeats(seats + 1)}>
                   <Plus size={16} aria-hidden />
                 </Button>
               </XStack>
               <Text display="block" fontSize="$3" color="$soft" mt={8}>
-                At least {floor} {floor === 1 ? 'seat' : 'seats'}. Each person in the team takes one.
+                {floor === 1
+                  ? t('At least 1 seat. Each person in the team takes one.')
+                  : t('At least {seats} seats. Each person in the team takes one.', { seats: floor })}
               </Text>
             </View>
 
             <View render="fieldset" display="block" borderWidth={0} p={0} m={0} mt={24}>
               <Text render="legend" display="block" p={0} fontSize="$4" fontWeight="500" mb={10} color="$ink">
-                Billing
+                {t('Billing')}
               </Text>
               <View display="grid" gridTemplateColumns="repeat(auto-fit, minmax(220px, 1fr))" gap={10}>
                 {terms.map(([value, label, price]) => (
@@ -1628,11 +1689,7 @@ function Plan({
             </View>
 
             <Text render="p" mt={22} fontSize="$4" color="$soft" lineHeight={23.25}>
-              {seats} {seats === 1 ? 'seat' : 'seats'} at {money(each)} a {term} is{' '}
-              <Text fontWeight="500" color="$ink">
-                {money(seats * each)} a {term}
-              </Text>
-              . Payment is on the provider&apos;s hosted page.
+              {sum} {t("Payment is on the provider's hosted page.")}
             </Text>
           </>
         ) : null}
@@ -1640,12 +1697,12 @@ function Plan({
         <XStack gap={10} flexWrap="wrap" mt={24}>
           {plan ? (
             <Button asChild variant="primary" size="lg">
-              <a href={cartUrl(plan.id, seats, term, org, home())}>Continue to checkout</a>
+              <a href={cartUrl(plan.id, seats, term, org, home())}>{t('Continue to checkout')}</a>
             </Button>
           ) : null}
           {members.length > 1 && onSwitch ? (
             <Button size="lg" onClick={onSwitch}>
-              Switch organization
+              {t('Switch organization')}
             </Button>
           ) : null}
         </XStack>

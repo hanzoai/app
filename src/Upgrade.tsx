@@ -9,6 +9,8 @@
 // is handed none. A refusal's ask is read by `planRequired` in `failure.ts`.
 
 import { useEffect, useState } from 'react'
+import { phrase } from '@hanzo/i18n'
+import { useI18n } from '@hanzo/i18n/react'
 import { Gauge, Sparkles, Users, Workflow, X, type LucideIcon } from 'lucide-react'
 import { Anchor, Box, Dialog, DialogContent, DialogTitle, Text, ToggleGroup, ToggleGroupItem, XStack, YStack } from '@hanzo/ui'
 import { track } from './lib/tags'
@@ -33,12 +35,12 @@ export function useFree(signedIn: boolean): boolean {
 }
 
 // What the first paid personal plan adds to Free, in the words of the plan
-// catalog (@hanzo/plans subscription.json, the `dev` plan's features).
+// catalog (@hanzo/plans subscription.json, the `dev` plan's features), drawn through `t`.
 const ROWS: readonly (readonly [LucideIcon, string])[] = [
-  [Gauge, 'Usage included on every model'],
-  [Sparkles, 'Every model, including Enso Ultra and Kai'],
-  [Users, 'Hanzo Team: chat, meetings, calendar and contacts'],
-  [Workflow, 'Automations, with daily runs included'],
+  [Gauge, phrase('Usage included on every model')],
+  [Sparkles, phrase('Every model, including Enso Ultra and Kai')],
+  [Users, phrase('Hanzo Team: chat, meetings, calendar and contacts')],
+  [Workflow, phrase('Automations, with daily runs included')],
 ]
 
 /** The page checkout returns to: this one, query and all. */
@@ -49,6 +51,7 @@ function here(): string | undefined {
 }
 
 export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void }) {
+  const { t } = useI18n()
   const { plan } = usePlan('personal')
   const [cycle, setCycle] = useState<Interval>('month')
   const shown = ask !== null && plan !== null
@@ -66,11 +69,12 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
 
   const save = saving(plan)
   const interval: Interval = save === null ? 'month' : cycle
-  const label = `Upgrade to ${plan.name} for ${quote(plan, interval)}`
+  const label = t('Upgrade to {plan} for {price}', { plan: plan.name, price: quote(plan, interval, t) ?? '' })
   const href = term(ask?.href ?? planCheckoutUrl(plan, here()), interval)
   const buy = () => {
     const items = [{ item_id: plan.id, item_name: plan.name }]
-    track('plan_clicked', { plan: plan.id, interval, cta: label, items })
+    // The funnel reads the English, whatever language the reader chose.
+    track('plan_clicked', { plan: plan.id, interval, cta: `Upgrade to ${plan.name} for ${quote(plan, interval)}`, items })
     track('checkout_started', { currency: 'USD', value: charge(plan, interval), items, interval })
   }
 
@@ -88,11 +92,11 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
       >
         <Box
           render="button"
-          aria-label="Close"
+          aria-label={t('Close')}
           onClick={onClose}
           position="absolute"
           t="$4"
-          r="$4"
+          insetInlineEnd="$4"
           p="$1.5"
           rounded="$2"
           bg="transparent"
@@ -109,9 +113,9 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
           lineHeight="$9"
           fontWeight="400"
           color="$ink"
-          pr="$6"
+          paddingInlineEnd="$6"
         >
-          {ask?.model ? `Use ${ask.model} with Hanzo ${plan.name}` : `Upgrade to Hanzo ${plan.name}`}
+          {ask?.model ? t('Use {model} with Hanzo {plan}', { model: ask.model, plan: plan.name }) : t('Upgrade to Hanzo {plan}', { plan: plan.name })}
         </DialogTitle>
 
         <YStack render="ul" gap="$3.5" m={0} p={0}>
@@ -119,7 +123,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
             <XStack key={line} render="li" items="center" gap="$3">
               <Icon size={18} aria-hidden color="var(--soft, var(--muted-foreground))" />
               <Text fontSize="$4" color="$ink">
-                {line}
+                {t(line)}
               </Text>
             </XStack>
           ))}
@@ -133,14 +137,14 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
               if (v === 'month' || v === 'year') setCycle(v)
             }}
             disableDeactivation
-            aria-label="Billing term"
+            aria-label={t('Billing term')}
             // The group forwards gui props to its frame; @hanzo/ui's ToggleGroup type does not name them.
             {...({ width: '100%', p: 4, rounded: 9999, bg: 'var(--surface-2)' } as object)}
           >
             {(
               [
-                ['month', 'Monthly'],
-                ['year', `Yearly · Save ${save}%`],
+                ['month', t('Monthly')],
+                ['year', t('Yearly · Save {percent}%', { percent: save })],
               ] as const
             ).map(([value, name]) => (
               <ToggleGroupItem key={value} value={value} variant="outline" flex={1} rounded="$10" borderColor="transparent">
@@ -170,11 +174,11 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
           </Anchor>
           <XStack justify="center" gap="$5">
             <Anchor href={site("/pricing")} fontSize="$3" color="$soft" hoverStyle={{ color: '$ink' }}>
-              See all plans
+              {t('See all plans')}
             </Anchor>
             <Box render="button" onClick={onClose} bg="transparent" borderWidth={0} p={0} cursor="pointer">
               <Text fontSize="$3" color="$soft" hoverStyle={{ color: '$ink' }}>
-                Not now
+                {t('Not now')}
               </Text>
             </Box>
           </XStack>

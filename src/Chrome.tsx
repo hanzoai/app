@@ -34,7 +34,7 @@ const HEIGHT = 60
 const NOTCH = 'env(safe-area-inset-top)' as `var(--${string})`
 
 export function Chrome({ back }: { back?: ReactNode }) {
-  const { t } = useI18n()
+  const { t, dir } = useI18n()
   const { user, isAuthenticated } = useIam()
   const signOut = useSignOut()
   const claimed = named()
@@ -68,7 +68,7 @@ export function Chrome({ back }: { back?: ReactNode }) {
       borderColor="var(--border)"
     >
       <Text
-        render={<a href="/" aria-label={t('{brandName} home', { brandName: brand() })} />}
+        render={<a href="/" aria-label={t('{brand} home', { brand: brand() })} />}
         display="flex"
         items="center"
         shrink={0}
@@ -101,7 +101,8 @@ export function Chrome({ back }: { back?: ReactNode }) {
             </Button>
           </XStack>
           <View display="none" $max-md={{ display: 'flex' }}>
-            <DropdownMenu placement="bottom-end" offset={8}>
+            {/* Under the face, flush with the bar's end edge. */}
+            <DropdownMenu placement={dir === 'rtl' ? 'bottom-start' : 'bottom-end'} offset={8}>
               <DropdownMenuTrigger asChild>
                 <XStack
                   render="button"

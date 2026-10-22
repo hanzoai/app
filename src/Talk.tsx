@@ -19,6 +19,8 @@
 // accept is on screen for longer than one round trip.
 
 import { useRef, useState } from 'react'
+import { isolate } from '@hanzo/i18n'
+import { useI18n } from '@hanzo/i18n/react'
 import { ChannelHeader } from '@hanzo/ui/agents'
 import { Composer } from '@hanzo/ui/chat'
 import { Box, Text, XStack, YStack } from '@hanzo/ui'
@@ -27,6 +29,7 @@ import { useIam } from '@hanzo/iam/react'
 import { Face } from './cast'
 import { SpeakButton } from './speech'
 import { say } from './failure'
+import type { Say } from './say'
 import { useOpen } from './open'
 import { Beside } from './Shell'
 import { memberOf, useMe, useRoster, type Member } from './roster'
@@ -49,14 +52,15 @@ function when(ms: number): string {
  * an empty header. The sigil is how a client DRAWS a room and is not stored, so
  * it is added here and only where there is a name to put it on.
  */
-const titleOf = (room: TeamRoom): string =>
-  room.name ? `#${room.name}` : room.direct ? 'Direct message' : 'Channel'
+const titleOf = (room: TeamRoom, t: Say): string =>
+  room.name ? `#${room.name}` : room.direct ? t('Direct message') : t('Channel')
 
 /** Adds `@name ` to a draft, after a space where the draft needs one. */
 const mention = (draft: string, name: string): string =>
   `${draft && !/\s$/.test(draft) ? `${draft} ` : draft}@${name} `
 
 export function Talk({ room }: { room: TeamRoom }) {
+  const { t, dir } = useI18n()
   const { messages, failed, send } = useRoomMessages(room.id, room.space)
   const { members, wrong } = useRoster()
   const me = useMe()
@@ -67,6 +71,7 @@ export function Talk({ room }: { room: TeamRoom }) {
   const minted = useRef(0)
 
   const agents = (members ?? []).filter((one) => one.agent)
+  const title = titleOf(room, t)
   const mine = me ? memberOf(members, me) : undefined
 
   const speak = async () => {
@@ -80,7 +85,7 @@ export function Talk({ room }: { room: TeamRoom }) {
       await send(text)
     } catch (e) {
       setDraft(text)
-      setRefused(say(e, 'this channel', 'save'))
+      setRefused(say(e, t('this channel'), 'save', t))
     } finally {
       setPending((held) => held.filter((one) => one.key !== key))
     }
@@ -90,7 +95,8 @@ export function Talk({ room }: { room: TeamRoom }) {
 
   return (
     <YStack flex={1} minH={0}>
-      <ChannelHeader name={titleOf(room)}>
+      {/* A channel's name keeps its own order, its sigil with it, in a right-to-left page. */}
+      <ChannelHeader name={dir === 'rtl' ? isolate(title) : title}>
         {room.topic ? (
           <Text fontSize="$2" color="$soft" numberOfLines={1}>
             {room.topic}
@@ -98,10 +104,10 @@ export function Talk({ room }: { room: TeamRoom }) {
         ) : null}
         <Box
           render="button"
-          aria-label={aside === 'roster' ? 'Hide directory & roster' : 'Show directory & roster'}
+          aria-label={t(aside === 'roster' ? 'Hide directory & roster' : 'Show directory & roster')}
           aria-pressed={aside === 'roster'}
           onClick={() => showAside(aside === 'roster' ? null : 'roster')}
-          ml="auto"
+          marginInlineStart="auto"
           p="$2"
           rounded="$3"
           hoverStyle={{ bg: '$hover' }}
@@ -117,15 +123,15 @@ export function Talk({ room }: { room: TeamRoom }) {
             report an outage as an empty conversation. */}
         {failed ? (
           <Text fontSize="$3" color="$soft">
-            {say(failed, 'this channel')}
+            {say(failed, t('this channel'), 'read', t)}
           </Text>
         ) : messages === null ? (
           <Text fontSize="$3" color="$soft">
-            Reading the room.
+            {t('Reading the room.')}
           </Text>
         ) : messages.length === 0 && pending.length === 0 ? (
           <Text fontSize="$3" color="$soft">
-            Nothing has been said here yet.
+            {t('Nothing has been said here yet.')}
           </Text>
         ) : (
           messages.map((one) => (
@@ -142,7 +148,7 @@ export function Talk({ room }: { room: TeamRoom }) {
         {pending
           .filter((one) => !messages?.some((said) => said.author === me && said.text === one.text))
           .map((one) => (
-            <Line key={`pending-${one.key}`} member={mine} fallback="You" text={one.text} soft />
+            <Line key={`pending-${one.key}`} member={mine} fallback={t('You')} text={one.text} soft />
           ))}
       </YStack>
 
@@ -151,9 +157,9 @@ export function Talk({ room }: { room: TeamRoom }) {
           value={draft}
           onChange={setDraft}
           onSend={() => void speak()}
-          placeholder={`Message ${titleOf(room)}`}
-          label={`Message ${titleOf(room)}`}
-          hint={agents.length ? 'Mention an agent with @name and it answers.' : undefined}
+          placeholder={t('Message {room}', { room: title })}
+          label={t('Message {room}', { room: title })}
+          hint={agents.length ? t('Mention an agent with @name and it answers.') : undefined}
         >
           {agents.length ? (
             <XStack gap="$1" flexWrap="wrap" shrink={1} minW={0}>
@@ -161,14 +167,14 @@ export function Talk({ room }: { room: TeamRoom }) {
                 <Box
                   key={one.id}
                   render="button"
-                  aria-label={`Mention ${one.name}`}
+                  aria-label={t('Mention {name}', { name: one.name })}
                   onClick={() => name(one.name)}
                   px="$2"
                   py="$1"
                   rounded="$10"
                   hoverStyle={{ bg: '$hover' }}
                 >
-                  <Text fontSize="$2" color="$soft">
+                  <Text data-i18n-ltr fontSize="$2" color="$soft">
                     @{one.name}
                   </Text>
                 </Box>
@@ -207,6 +213,7 @@ function Line({
   text: string
   soft?: boolean
 }) {
+  const { t } = useI18n()
   const ink = soft ? '$soft' : '$ink'
   return (
     <XStack gap="$3" items="flex-start">
@@ -219,13 +226,13 @@ function Line({
           {member?.agent ? (
             <Box px="$1.5" py="$0.5" rounded="$2" bg="$hover">
               <Text fontSize="$1" color="$soft" fontWeight="600">
-                Agent
+                {t('Agent')}
               </Text>
             </Box>
           ) : null}
           {stamp ? (
             <Text fontSize="$1" color="$soft">
-              {stamp}
+              <bdi>{stamp}</bdi>
             </Text>
           ) : null}
         </XStack>
@@ -255,15 +262,16 @@ function Roster({
   wrong: unknown
   onMention: (name: string) => void
 }) {
+  const { t } = useI18n()
   const { isAuthenticated } = useIam()
   const line = !isAuthenticated
-    ? 'Sign in to see who is here.'
+    ? t('Sign in to see who is here.')
     : wrong
-      ? say(wrong, "this org's roster")
+      ? say(wrong, t("this org's roster"), 'read', t)
       : members === null
-        ? 'Reading the roster.'
+        ? t('Reading the roster.')
         : members.length < 2
-          ? 'Just you.'
+          ? t('Just you.')
           : null
   return (
     <YStack>
@@ -276,7 +284,7 @@ function Roster({
         borderColor="$borderColor"
       >
         <Text fontSize="$3" fontWeight="600" color="$ink">
-          Roster
+          {t('Roster')}
         </Text>
       </XStack>
       {line ? (
@@ -290,7 +298,7 @@ function Roster({
               key={one.id}
               render={one.agent ? 'button' : 'div'}
               onClick={one.agent ? () => onMention(one.name) : undefined}
-              aria-label={one.agent ? `Mention ${one.name}` : undefined}
+              aria-label={one.agent ? t('Mention {name}', { name: one.name }) : undefined}
               width="100%"
               minW={0}
               items="flex-start"
@@ -301,13 +309,13 @@ function Roster({
             >
               <XStack items="center" gap="$2" width="100%">
                 <Face src={one.avatar} name={one.name} size={24} person />
-                {/* A `<button>` centres its text; the name reads left like its neighbours. */}
-                <Text fontSize="$2" color="$ink" numberOfLines={1} flex={1} minW={0} text="left">
+                {/* A `<button>` centres its text; the name reads from its start like its neighbours. */}
+                <Text fontSize="$2" color="$ink" numberOfLines={1} flex={1} minW={0} text="start">
                   {one.name}
                 </Text>
                 {one.agent ? (
                   <Text fontSize="$1" color="$soft">
-                    agent
+                    {t('agent')}
                   </Text>
                 ) : null}
               </XStack>

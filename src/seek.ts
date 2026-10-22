@@ -2,6 +2,7 @@
 // in what order, under which heading, and which key press opens it. No React,
 // so a spec reads them as they are.
 
+import { phrase } from '@hanzo/i18n'
 import type { Press } from './chord'
 
 /** A row the palette can list. */
@@ -84,7 +85,8 @@ export function rank<T extends Hit>(rows: T[], query: string, cap = CAP): T[] {
 export function find<T extends Hit>(query: string, recent: T[], idle: Group<T>[], all: Group<T>[]): Group<T>[] {
   if (!query.trim()) {
     const newest = [...recent].sort((a, b) => (b.at ?? '').localeCompare(a.at ?? '')).slice(0, RECENT)
-    return [{ id: 'recent', label: 'Recent', items: newest }, ...idle].filter((g) => g.items.length)
+    // Authored English, drawn through `t` where the palette draws it.
+    return [{ id: 'recent', label: phrase('Recent'), items: newest }, ...idle].filter((g) => g.items.length)
   }
   return all
     .map((g) => ({ ...g, items: rank(g.items, query) }))

@@ -26,8 +26,13 @@
 // conversation, so switching channels must not re-ask — the cache below is
 // keyed by path and holds the in-flight promise, so two menus opening at once
 // make one request and a second open makes none.
+//
+// WHAT IS HELD IS THE ANSWER, NOT THE SENTENCE: a refusal is put into words
+// (`say`, through the reader's `t`) where it is drawn, so the held answer is
+// the same in every language.
 
-import { useEffect, useState } from 'react'
+import { useI18n } from '@hanzo/i18n/react'
+import { useEffect, useMemo, useState } from 'react'
 import { useIam } from '@hanzo/iam/react'
 import { say } from './failure'
 import { api } from './lib/api'
@@ -69,21 +74,24 @@ export interface Ask<T> {
 
 const READING: Ask<never> = { rows: null, trouble: null }
 
+/** A read's answer: the rows, or what it failed with. */
+type Got<T> = { rows: T[] } | { failed: unknown }
+
 /** Answers held for this document, keyed by path. The promise is cached, not
  *  just the result, so concurrent askers share one request. */
-const held = new Map<string, Promise<Ask<unknown>>>()
+const held = new Map<string, Promise<Got<unknown>>>()
 
 /** The token these answers were fetched for. Signing in or out drops them,
  *  because a list read as one account is not the next account's list. */
 let asWho: string | null = null
 
-function fetchOnce<T>(path: string, token: string, shape: (body: unknown) => T[]): Promise<Ask<T>> {
+function fetchOnce<T>(path: string, token: string, shape: (body: unknown) => T[]): Promise<Got<T>> {
   if (asWho !== token) {
     held.clear()
     asWho = token
   }
   const already = held.get(path)
-  if (already) return already as Promise<Ask<T>>
+  if (already) return already as Promise<Got<T>>
 
   const going = fetch(`${api()}${path}`, { headers: scope() })
     .then(async (r) => {
@@ -91,23 +99,18 @@ function fetchOnce<T>(path: string, token: string, shape: (body: unknown) => T[]
         // The status is the fact; `say` turns it into the reader's sentence.
         throw Object.assign(new Error(`${r.status}`), { status: r.status })
       }
-      return { rows: shape(await r.json()), trouble: null }
+      return { rows: shape(await r.json()) }
     })
     .catch((e: unknown) => {
       // A FAILED READ IS NOT CACHED. Holding it would mean a reader who signed
       // in, or whose network came back, keeps meeting the same stale refusal
       // until they reload the whole document.
       held.delete(path)
-      return { rows: null, trouble: say(e, 'this account’s tools') }
+      return { failed: e }
     })
 
-  held.set(path, going as Promise<Ask<unknown>>)
-  return going as Promise<Ask<T>>
-}
-
-const OUT: Ask<never> = {
-  rows: null,
-  trouble: 'Sign in to see what your agents can reach for.',
+  held.set(path, going as Promise<Got<unknown>>)
+  return going as Promise<Got<T>>
 }
 
 /**
@@ -126,9 +129,10 @@ const OUT: Ask<never> = {
  * same thing with no extra render and no window where the two disagree.
  */
 function useList<T>(path: string, shape: (body: unknown) => T[]): Ask<T> {
+  const { t } = useI18n()
   const { isAuthenticated, accessToken } = useIam()
   const asking = `${path}|${accessToken ?? ''}`
-  const [held, setHeld] = useState<{ asked: string; answer: Ask<T> } | null>(null)
+  const [held, setHeld] = useState<{ asked: string; answer: Got<T> } | null>(null)
 
   useEffect(() => {
     if (!isAuthenticated || !accessToken) return
@@ -144,8 +148,13 @@ function useList<T>(path: string, shape: (body: unknown) => T[]): Ask<T> {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asking, isAuthenticated, accessToken, path])
 
-  if (!isAuthenticated || !accessToken) return OUT
-  return held?.asked === asking ? held.answer : READING
+  const out = !isAuthenticated || !accessToken
+  const got = held?.asked === asking ? held.answer : null
+  return useMemo<Ask<T>>(() => {
+    if (out) return { rows: null, trouble: t('Sign in to see what your agents can reach for.') }
+    if (!got) return READING
+    return 'rows' in got ? { rows: got.rows, trouble: null } : { rows: null, trouble: say(got.failed, t('this account’s tools'), 'read', t) }
+  }, [out, got, t])
 }
 
 const asSkills = (body: unknown): Skill[] => {
