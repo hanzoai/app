@@ -1,13 +1,13 @@
-# @hanzo/rooms
+# @hanzo/app
 
 The Hanzo workspace — Home, Chat, Inbox, Contacts, Meet, Cal, Drive, Board,
 Work, Bots and the frame that holds them — as one package that every surface
 imports.
 
 ```tsx
-import { configure, Rooms } from '@hanzo/rooms'
-import { Room } from '@hanzo/rooms/Room'
-import { CalScheduler } from '@hanzo/rooms/CalScheduler'
+import { configure, Rooms } from '@hanzo/app'
+import { Room } from '@hanzo/app/Room'
+import { CalScheduler } from '@hanzo/app/CalScheduler'
 
 configure({ site: '', home: '/home', signUp: '/signup' })
 

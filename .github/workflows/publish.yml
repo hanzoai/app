@@ -1,5 +1,5 @@
-# Publishes @hanzo/rooms to npm when package.json names a version npm does not
-# serve yet. hanzo.ai and hanzo.team take the rooms from npm.
+# Publishes @hanzo/app to npm when package.json names a version npm does not
+# serve yet. hanzo.ai and hanzo.team take the app from npm.
 #
 # The question is asked of the registry, not of the diff: a version strictly
 # greater than npm's `latest` is a release, anything else is not, so re-running
