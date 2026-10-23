@@ -1,5 +1,5 @@
-# Hanzo CI/CD. A package, not an image: the gate is the typecheck and the
-# build the publish runs, and npm is where it ships (.github/workflows/publish.yml).
+# Hanzo CI/CD. Packages, not images: the gate is each package's typecheck, design
+# lint, tests and build, and npm is where they ship (.github/workflows/publish.yml).
 test:
   - name: build
     run: |
@@ -10,7 +10,9 @@ test:
       pnpm lint:design
       pnpm test
       pnpm build
-      test -s dist/index.js
-      test -s dist/index.d.ts
-      # The root loads in plain Node, as publish.yml checks before it ships.
-      node --input-type=module -e "await import('./dist/index.js')"
+      # Each package's root loads in plain Node, as publish.yml checks before it ships.
+      for dir in pkg/*/; do
+        test -s "${dir}dist/index.js"
+        test -s "${dir}dist/index.d.ts"
+        (cd "$dir" && node --input-type=module -e "await import('./dist/index.js')")
+      done

@@ -1,0 +1,122 @@
+{
+  "name": "@hanzo/app",
+  "version": "0.2.2",
+  "description": "Hanzo's app: the shell and its apps (Home, Chat, Inbox, Contacts, Meet, Calendar, Drive, Board, Work, Bots), once, for every Hanzo surface.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.js",
+      "default": "./dist/*.js"
+    },
+    "./lib/*": {
+      "types": "./dist/lib/*.d.ts",
+      "import": "./dist/lib/*.js",
+      "default": "./dist/lib/*.js"
+    },
+    "./bots/*": {
+      "types": "./dist/bots/*.d.ts",
+      "import": "./dist/bots/*.js",
+      "default": "./dist/bots/*.js"
+    },
+    "./assets/*": "./assets/*"
+  },
+  "files": [
+    "dist",
+    "assets",
+    "LICENSE-APACHE",
+    "LICENSE-MIT"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "gen": "node scripts/team.mjs",
+    "build": "rm -rf dist && node scripts/team.mjs && tsc -p tsconfig.build.json && node scripts/specifiers.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepack": "pnpm run build",
+    "lint:design": "hanzo-design-lint src"
+  },
+  "license": "Apache-2.0 OR MIT",
+  "dependencies": {
+    "@hanzo/personas": "catalog:",
+    "marked": "catalog:",
+    "simple-icons": "catalog:"
+  },
+  "peerDependencies": {
+    "@hanzo/ai": ">=0.6.23",
+    "@hanzo/appearance": ">=0.2.6",
+    "@hanzo/build": ">=0.2.81",
+    "@hanzo/composer": ">=0.2.0",
+    "@hanzo/event": ">=0.3.56",
+    "@hanzo/gui": "^8.3.5",
+    "@hanzo/i18n": ">=0.4.0",
+    "@hanzo/iam": ">=0.21.35",
+    "@hanzo/logo": ">=1.0.26",
+    "@hanzo/studio": ">=0.1.0",
+    "@hanzo/tabs": ">=0.1.8",
+    "@hanzo/ui": ">=8.29.0",
+    "@hanzo/usage": ">=0.1.18",
+    "@hanzo/voice": ">=0.1.16",
+    "@hanzogui/shell": "^8.3.20",
+    "lucide-react": ">=1.42.0",
+    "react": ">=19.2.8",
+    "react-dom": ">=19.2.8"
+  },
+  "devDependencies": {
+    "@hanzo/ai": "catalog:",
+    "@hanzo/appearance": "catalog:",
+    "@hanzo/build": "catalog:",
+    "@hanzo/composer": "catalog:",
+    "@hanzo/design": "catalog:",
+    "@hanzo/event": "catalog:",
+    "@hanzo/gui": "catalog:",
+    "@hanzo/i18n": "catalog:",
+    "@hanzo/iam": "catalog:",
+    "@hanzo/logo": "catalog:",
+    "@hanzo/studio": "catalog:",
+    "@hanzo/tabs": "catalog:",
+    "@hanzo/ui": "catalog:",
+    "@hanzo/usage": "catalog:",
+    "@hanzo/voice": "catalog:",
+    "@hanzogui/config": "catalog:",
+    "@hanzogui/core": "catalog:",
+    "@hanzogui/lucide-icons-2": "catalog:",
+    "@hanzogui/shell": "catalog:",
+    "@hanzogui/web": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "happy-dom": "catalog:",
+    "lucide-react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-native-web": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hanzoai/app.git",
+    "directory": "pkg/app"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "peerDependenciesMeta": {
+    "@hanzo/tabs": {
+      "optional": true
+    }
+  }
+}
