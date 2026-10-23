@@ -1,7 +1,7 @@
 {
-  "name": "@hanzo/rooms",
-  "version": "0.1.103",
-  "description": "The workspace rooms \u2014 Home, Chat, Inbox, Contacts, Meet, Cal, Drive, Board, Work, Bots \u2014 and the frame that holds them, once, for every Hanzo surface.",
+  "name": "@hanzo/app",
+  "version": "0.2.0",
+  "description": "Hanzo's app: the shell and its apps (Home, Chat, Inbox, Contacts, Meet, Calendar, Drive, Board, Work, Bots), once, for every Hanzo surface.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -108,7 +108,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hanzoai/rooms.git"
+    "url": "git+https://github.com/hanzoai/app.git"
   },
   "packageManager": "pnpm@11.24.0",
   "engines": {

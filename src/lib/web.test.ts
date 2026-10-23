@@ -344,9 +344,9 @@ describe('researched', () => {
     'https://en.wikipedia.org/wiki/Magic_Johnson',
     'https://en.wikipedia.org/wiki/United_States_Secret_Service',
     'https://www.theverge.com/23812/how-to-reset-your-iphone',
-    'https://github.com/hanzoai/rooms/blob/main/src/lib/auth.ts',
+    'https://github.com/hanzoai/app/blob/main/src/lib/auth.ts',
     'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    'https://github.com/hanzoai/rooms/commit/e38d74e0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6',
+    'https://github.com/hanzoai/app/commit/e38d74e0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6',
   ])('an ordinary page is read: %s', async (url) => {
     const g = gateway([sse([said('ok')])])
     await read(await ask(g, turn(`Summarize ${url}`)))

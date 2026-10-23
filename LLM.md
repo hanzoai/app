@@ -1,9 +1,9 @@
-# @hanzo/rooms
+# @hanzo/app
 
 The workspace rooms — Home, Chat, Inbox, Contacts, Meet, Cal, Drive, Board,
 Work, Bots, Settings — and the frame that holds them (Room, Shell,
 Orgs), once, for every surface. hanzo.ai and hanzo.team import them; neither
-keeps a copy. Repo `github.com/hanzoai/rooms`, npm `@hanzo/rooms`.
+keeps a copy. Repo `github.com/hanzoai/app`, npm `@hanzo/app`.
 
 ## Why its own package and its own repo
 
@@ -22,7 +22,7 @@ Two halves, because two kinds of caller read them.
 
 ```ts
 // Once, at module scope, in a module the host's root imports (pure: where.ts).
-import { configure } from '@hanzo/rooms'
+import { configure } from '@hanzo/app'
 configure({ site: '', home: '/home', signUp: '/signup', api, iam, key, plans })
 // A host whose IAM session is not in localStorage names its store (Hanzo
 // Desktop: its keychain); lib/session reads the token, expiry and claims there.
@@ -203,13 +203,13 @@ the one conversation the pane holds).
 ## Layout
 
 - `src/*.tsx` — the rooms, as `components/workspace/*` was in hanzo.ai; each is
-  a subpath (`@hanzo/rooms/CalScheduler`).
+  a subpath (`@hanzo/app/CalScheduler`).
 - `src/bots/*` — the Bots room.
 - `src/lib/*` — the workspace's infrastructure, one copy for every host:
   `session`, `destination`, `api`, `ai` (useAi), `account`, `tier`, `limits`,
   `plans`, `pay` (the pay site and money, apart from the plan catalogue), `share`, `coding`, `todo`, `durable`, `tags`, `host` (estate routing and the app's addresses),
   `mix`, `hydrated` … Apps import these from the package
-  (`@hanzo/rooms/lib/session`) and keep no copy.
+  (`@hanzo/app/lib/session`) and keep no copy.
 - `lib/session` `orgs()` is every org of the token's `orgs` claim its claims
   open, hanzoai/authz `Claims.opens` (cloud scopes every request by it): never a
   brand's directory (`DIRECTORIES`: hanzo-id, lux-id, zoo-id, pars-id, authz
@@ -239,7 +239,7 @@ the one conversation the pane holds).
   An organization's mark is its IAM row alone: Hanzo's H is `admin/hanzo`'s
   `avatar`, never drawn here for a brand.
 - `Chrome` is the one bar over a focused page, imported from the
-  `@hanzo/rooms/Chrome` subpath and never the root: the root loads in plain
+  `@hanzo/app/Chrome` subpath and never the root: the root loads in plain
   Node, and the UI packages Chrome pulls in do not. It stands over the chooser and
   every gate screen (`Orgs.tsx` `Page`, once someone is signed in; "Signing you
   in" stands alone), and the host's own focused pages (the way in, the way to
@@ -266,7 +266,7 @@ the one conversation the pane holds).
   avatars (`assets/bots`) and the personas roster (`assets/personas`, written
   by `scripts/team.mjs` at build and ignored by git: `index.json` lists every
   figure, `<slug>.md` is a figure's PERSONA.md where one is written). A host
-  serves the directory at its root: it copies `@hanzo/rooms/assets` into
+  serves the directory at its root: it copies `@hanzo/app/assets` into
   `public/` on `prebuild`/`predev` and keeps no copy in git.
 
 ## The app's addresses
@@ -515,7 +515,7 @@ catalog files under Enso or Zen (`house`).
 
 ## The app is `App`
 
-`@hanzo/rooms/App` is the web app as the whole window: the rail, the sidebar,
+`@hanzo/app/App` is the web app as the whole window: the rail, the sidebar,
 Chat and Dev, moved by the path (`place`) and written back with `go`. A host
 mounts IamProvider and `<Rooms>` with its router and `path`, and draws `App`
 for a signed-in reader; the signed-out page is the host's. hanzo.ai's `/` and
@@ -697,7 +697,7 @@ field; a phone's is a sheet the size of the screen, rows 44 high.
 ## What each app still owns
 
 hanzo.ai: its marketing site, the gate in front of `App` (`_web.tsx`), the plan snapshot,
-`lib/models` (the catalogue; naming comes from `@hanzo/rooms/lib/models`).
+`lib/models` (the catalogue; naming comes from `@hanzo/app/lib/models`).
 hanzo.team: its landing, sign-up, sign-in gate, the `/agents` page, and its own
 `lib/host` (BRAND, BOOKING), `lib/auth/client` (its sign-in flow) and
 `lib/analytics/tags` (its GA4/Pixel boot).
