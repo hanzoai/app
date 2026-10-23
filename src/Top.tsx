@@ -113,7 +113,7 @@ export function Top({
   onDev: () => void
 }) {
   const { t } = useI18n()
-  const made = mode === 'chat' ? null : (places ?? nav(host, (p) => host.go(p))).flatMap((g) => g.links).find((l) => l.id === NEW)
+  const made = mode === 'chat' ? null : (places ?? nav(host, (p) => host.go(p), t)).flatMap((g) => g.links).find((l) => l.id === NEW)
   const fresh =
     mode === 'chat'
       ? {

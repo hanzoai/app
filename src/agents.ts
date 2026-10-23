@@ -21,12 +21,13 @@ export const MEMOJI = 'memoji style 3D emoji portrait, head and shoulders, cente
  * The default agents an org adds in one press (Customize › Agents, @hanzo/build
  * `hire`): the core team, each as its persona writes it, then QA, Ops and
  * Support. An org starts with none of them and loads none until it adds them.
+ * Browse lists them under Team, by the name each goes by.
  */
 export const CAST: NonNullable<Host['cast']> = [
-  ...TEAM.map((one) => ({ name: one.id, description: `${one.name} — ${one.role}`, model: one.model, instructions: one.instructions, avatar: `/agents/${one.id}.png` })),
-  { name: 'qa', description: 'QA — Automated Testing & Verification', model: 'enso-auto', instructions: '' },
-  { name: 'ops', description: 'Ops — Site Reliability & Cloud Infrastructure', model: 'enso-auto', instructions: '' },
-  { name: 'support', description: 'Support — Customer Support & Triage Specialist', model: 'enso-auto', instructions: '' },
+  ...TEAM.map((one) => ({ name: one.id, title: one.name, category: 'Team', description: `${one.name} — ${one.role}`, model: one.model, instructions: one.instructions, avatar: `/agents/${one.id}.png` })),
+  { name: 'qa', title: 'QA', category: 'Team', description: 'QA — Automated Testing & Verification', model: 'enso-auto', instructions: '' },
+  { name: 'ops', title: 'Ops', category: 'Team', description: 'Ops — Site Reliability & Cloud Infrastructure', model: 'enso-auto', instructions: '' },
+  { name: 'support', title: 'Support', category: 'Team', description: 'Support — Customer Support & Triage Specialist', model: 'enso-auto', instructions: '' },
 ]
 
 const RANK = new Map(TEAM.map((one, i) => [one.id, i]))

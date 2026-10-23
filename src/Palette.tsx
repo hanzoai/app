@@ -119,7 +119,7 @@ export function places(host: Host | undefined, go: (address: string) => void, t:
     { id: 'studio', label: 'Studio', icon: <WandSparkles {...ICON} />, run: () => go(studio('')) },
     { id: 'tabs', label: 'Tabs', icon: <SquareTerminal {...ICON} />, run: () => go(TERMINALS) },
     ...(host ? [{ id: 'team', label: 'Team', icon: <Users {...ICON} />, keywords: ['workspace'], run: () => out(WORKSPACE) }] : []),
-    ...(host ? rows(nav(host, builder).map((g) => ({ links: g.links.filter((l) => l.id !== NEW) })), '', 'dev') : []),
+    ...(host ? rows(nav(host, builder, t).map((g) => ({ links: g.links.filter((l) => l.id !== NEW) })), '', 'dev') : []),
     { id: 'settings', label: t('Settings'), icon: <Settings {...ICON} />, shortcut: ['Mod', ','], run: () => go(settings()) },
     // The site's own pages, outside the app: the browser loads them.
     { id: 'referral', label: t('Referral'), icon: <Gift {...ICON} />, keywords: ['invite', 'share'], run: () => window.location.assign(site('/referral')) },
@@ -132,9 +132,9 @@ export function places(host: Host | undefined, go: (address: string) => void, t:
   const deep: Action[] = [
     ...(host
       ? [
-          ...rows(sections(host, builder).map((g) => ({ links: g.links.filter((l) => paged(l.id)) })), t('Settings'), 'settings'),
-          ...rows(tabs(host, builder), t('Customize'), 'customize'),
-          ...rows(library(host, builder).slice(1), t('Library'), 'library'),
+          ...rows(sections(host, builder, t).map((g) => ({ links: g.links.filter((l) => paged(l.id)) })), t('Settings'), 'settings'),
+          ...rows(tabs(host, builder, t), t('Customize'), 'customize'),
+          ...rows(library(host, builder, t).slice(1), t('Library'), 'library'),
           ...rows(made(host, (p) => go(studio(p))), 'Studio', 'studio').filter((a) => a.id !== `studio-${NEW}`),
         ]
       : []),
@@ -168,7 +168,7 @@ function tune(go: (address: string) => void) {
 
 /** The palette's actions, named through `t`; a host that cannot do one (no theme to change, no org to pick) is not offered it. */
 export function actions(host: Host | undefined, go: (address: string) => void, signOut: () => void, keys: () => void, t: Say = english): Action[] {
-  const upload = host ? library(host, (p) => go(app(p)))[0]?.links.find((l) => l.id === 'upload') : undefined
+  const upload = host ? library(host, (p) => go(app(p)), t)[0]?.links.find((l) => l.id === 'upload') : undefined
   const list: (Action | false | undefined)[] = [
     { id: 'new-chat', label: t('New chat'), icon: <SquarePen {...ICON} />, run: () => (empty(), go(talk())) },
     { id: 'new-task', label: t('New Dev task'), icon: <Code2 {...ICON} />, keywords: ['run'], run: () => go(app('')) },
