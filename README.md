@@ -1,23 +1,10 @@
-# @hanzo/app
+# hanzoai/app
 
-The Hanzo workspace — Home, Chat, Inbox, Contacts, Meet, Cal, Drive, Board,
-Work, Bots and the frame that holds them — as one package that every surface
-imports.
+Hanzo's app SDK, one package per directory under `pkg/`:
 
-```tsx
-import { configure, Rooms } from '@hanzo/app'
-import { Room } from '@hanzo/app/Room'
-import { CalScheduler } from '@hanzo/app/CalScheduler'
+- `pkg/app` — **@hanzo/app**, the shell and the first-party apps every Hanzo
+  host draws (hanzo.ai, hanzo.team, Hanzo Desktop).
 
-configure({ site: '', home: '/home', signUp: '/signup' })
-
-<Rooms router={router} path={pathname} route={route} Link={Link}>
-  <Room mode="cal"><CalScheduler /></Room>
-</Rooms>
-```
-
-`configure()` names the host's addresses (where its own pages live, the
-gateway and IAM, the plan catalogue to paint first). `<Rooms>` carries what
-moves: the router, the path, the route and the link component. The rooms
-import nothing from a host, and their look comes from `@hanzo/appearance` and
-`@hanzo/design` through `@hanzo/ui`.
+`pnpm install`, then `pnpm typecheck`, `pnpm lint:design`, `pnpm test` and
+`pnpm build` run over every package. A package ships to npm when its
+`package.json` names a version npm does not serve (`.github/workflows/publish.yml`).

@@ -202,6 +202,8 @@ the one conversation the pane holds).
 
 ## Layout
 
+Paths below are under `pkg/app`.
+
 - `src/*.tsx` — the rooms, as `components/workspace/*` was in hanzo.ai; each is
   a subpath (`@hanzo/app/CalScheduler`).
 - `src/bots/*` — the Bots room.
@@ -306,13 +308,16 @@ the same address on hanzo.ai.
 
 ## Build and ship
 
-`pnpm build` = team strings → `tsc` → `scripts/specifiers.mjs` (every relative
-import fully specified, so Node's ESM loader resolves dist outside a bundler).
-Gates: `pnpm typecheck`, `pnpm lint:design` (ratchet in
-`hanzo-design.allow.json`), `pnpm test`, `pnpm build`, then the root imported
-in plain Node (`node --input-type=module -e "await import('./dist/index.js')"`).
-Publish: bump `version`, push main;
-`.github/workflows/publish.yml` publishes what npm does not serve.
+The repository is a pnpm workspace of the packages it publishes, each under
+`pkg/`: `pkg/app` is @hanzo/app. Commands run at the root over every package
+(`pnpm -r`). In a package, `pnpm build` = team strings → `tsc` →
+`scripts/specifiers.mjs` (every relative import fully specified, so Node's ESM
+loader resolves dist outside a bundler). Gates: `pnpm typecheck`,
+`pnpm lint:design` (ratchet in each package's `hanzo-design.allow.json`),
+`pnpm test`, `pnpm build`, then each package's root imported in plain Node
+(`node --input-type=module -e "await import('./dist/index.js')"`). Publish: bump
+a package's `version`, push main; `.github/workflows/publish.yml` publishes each
+package whose version npm does not serve, the contract before the app.
 
 ## Plan usage
 

@@ -1,5 +1,7 @@
-# Publishes @hanzo/app to npm when package.json names a version npm does not
-# serve yet. hanzo.ai and hanzo.team take the app from npm.
+# Publishes each package this repository holds — @hanzo/mod (pkg/mod) and
+# @hanzo/app (pkg/app), in that order, because the app depends on the contract —
+# when its package.json names a version npm does not serve yet. hanzo.ai,
+# hanzo.team, pay and Hanzo Desktop take them from npm.
 #
 # The question is asked of the registry, not of the diff: a version strictly
 # greater than npm's `latest` is a release, anything else is not, so re-running
@@ -22,29 +24,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Is this version ahead of npm?
+      - name: Which packages are ahead of npm?
         id: ahead
         run: |
           set -euo pipefail
-          NAME=$(jq -r .name package.json)
-          NEW=$(jq -r .version package.json)
-          # The version itself first: the full packument lags a fresh publish by
-          # minutes (it 404s), and reading that as "never published" re-publishes
-          # into a 403. The abbreviated document is what installs read.
-          if curl -sf -o /dev/null "https://registry.npmjs.org/${NAME}/${NEW}"; then
-            echo "release=false" >> "$GITHUB_OUTPUT"
-            echo "$NAME $NEW is already on npm; nothing to publish"
-            exit 0
-          fi
-          OLD=$(curl -sf -H 'Accept: application/vnd.npm.install-v1+json' "https://registry.npmjs.org/${NAME}" | jq -r '."dist-tags".latest // "0.0.0"' || echo 0.0.0)
-          TOP=$(printf '%s\n%s\n' "$OLD" "$NEW" | sort -V | tail -1)
-          if [ "$OLD" != "$NEW" ] && [ "$TOP" = "$NEW" ]; then
-            echo "release=true" >> "$GITHUB_OUTPUT"
-            echo "$NAME $OLD -> $NEW"
-          else
-            echo "release=false" >> "$GITHUB_OUTPUT"
-            echo "$NAME $NEW is not ahead of npm ($OLD); nothing to publish"
-          fi
+          ahead=""
+          # The order is the dependency order: the contract before the app.
+          for dir in pkg/mod pkg/app; do
+            [ -f "$dir/package.json" ] || continue
+            NAME=$(jq -r .name "$dir/package.json")
+            NEW=$(jq -r .version "$dir/package.json")
+            # The version itself first: the full packument lags a fresh publish by
+            # minutes (it 404s), and reading that as "never published" re-publishes
+            # into a 403. The abbreviated document is what installs read.
+            if curl -sf -o /dev/null "https://registry.npmjs.org/${NAME}/${NEW}"; then
+              echo "$NAME $NEW is already on npm"
+              continue
+            fi
+            OLD=$(curl -sf -H 'Accept: application/vnd.npm.install-v1+json' "https://registry.npmjs.org/${NAME}" | jq -r '."dist-tags".latest // "0.0.0"' || echo 0.0.0)
+            TOP=$(printf '%s\n%s\n' "$OLD" "$NEW" | sort -V | tail -1)
+            if [ "$OLD" != "$NEW" ] && [ "$TOP" = "$NEW" ]; then
+              echo "$NAME $OLD -> $NEW"
+              ahead="$ahead $dir"
+            else
+              echo "$NAME $NEW is not ahead of npm ($OLD)"
+            fi
+          done
+          echo "dirs=${ahead# }" >> "$GITHUB_OUTPUT"
+          if [ -n "$ahead" ]; then echo "release=true" >> "$GITHUB_OUTPUT"; else echo "release=false" >> "$GITHUB_OUTPUT"; fi
 
       - uses: pnpm/action-setup@v4
         if: steps.ahead.outputs.release == 'true'
@@ -55,7 +62,7 @@ jobs:
           node-version: 24
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Test and build the library
+      - name: Test and build the packages
         if: steps.ahead.outputs.release == 'true'
         run: |
           set -euo pipefail
@@ -64,11 +71,13 @@ jobs:
           pnpm lint:design
           pnpm test
           pnpm build
-          test -s dist/index.js
-          test -s dist/index.d.ts
-          # The root names what a host passes and must load in plain Node: a page's
-          # unit specs and tools read it there, with no bundler.
-          node --input-type=module -e "await import('./dist/index.js')"
+          # Each package's root names what a host passes and must load in plain
+          # Node: a page's unit specs and tools read it there, with no bundler.
+          for dir in pkg/*/; do
+            test -s "${dir}dist/index.js"
+            test -s "${dir}dist/index.d.ts"
+            (cd "$dir" && node --input-type=module -e "await import('./dist/index.js')")
+          done
 
       - name: Read the npm token from KMS
         if: steps.ahead.outputs.release == 'true'
@@ -101,4 +110,9 @@ jobs:
         if: steps.ahead.outputs.release == 'true'
         env:
           NODE_AUTH_TOKEN: ${{ steps.npm.outputs.token }}
-        run: pnpm publish --access public --no-git-checks
+          DIRS: ${{ steps.ahead.outputs.dirs }}
+        run: |
+          set -euo pipefail
+          for dir in $DIRS; do
+            (cd "$dir" && pnpm publish --access public --no-git-checks)
+          done

@@ -1,3 +1,7 @@
+# The packages this repository publishes, each from its own directory.
+packages:
+  - pkg/*
+
 # What may run its own install script, asked once.
 allowBuilds:
   esbuild: true
