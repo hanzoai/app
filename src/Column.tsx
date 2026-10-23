@@ -165,12 +165,12 @@ export function Column({
   const groups =
     places ??
     (at === 'customize'
-      ? tabs(host, dev)
+      ? tabs(host, dev, t)
       : at === 'library'
-        ? library(host, dev)
+        ? library(host, dev, t)
         : at === 'scheduled'
           ? scheduled
-          : own(host, dev))
+          : own(host, dev, t))
   const open = (row: Recent) => (row.kind === 'chat' ? go(talk(row.id)) : dev(row.id))
   // Chat's New; Dev's is the first of its places.
   const create = () => {
