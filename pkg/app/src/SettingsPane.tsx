@@ -10,6 +10,7 @@ import { ArrowUpRight, ExternalLink } from 'lucide-react'
 import {
   Box,
   Button,
+  Input,
   Separator,
   Text,
   XStack,
@@ -320,15 +321,13 @@ function Referrals() {
         </Text>
         {!applied ? (
           <XStack gap="$2">
-            <Box flex={1} p="$2" rounded="$2" bg="$hover" borderWidth={1} borderColor="$borderColor">
-              <input
-                type="text"
-                placeholder={t('Desired vanity code (e.g. your project)')}
-                value={vanity}
-                onChange={(e) => setVanity(e.target.value)}
-                style={{ background: 'transparent', border: 'none', outline: 'none', color: 'inherit', width: '100%', fontSize: '13px' }}
-              />
-            </Box>
+            <Input
+              flex={1}
+              size="sm"
+              placeholder={t('Desired vanity code (e.g. your project)')}
+              value={vanity}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVanity(e.target.value)}
+            />
             <Button size="sm" onClick={() => { if (vanity.trim()) setApplied(true) }}>
               {t('Apply for Partner')}
             </Button>
