@@ -67,8 +67,8 @@ afterEach(() => {
 })
 
 describe('the account menu', () => {
-  test('reads top to bottom: the account, the organization with its plan, Upgrade plan, Personalization, Profile, Settings, Beta, Help and Log out', () => {
-    expect(menu().map((r) => r.label)).toEqual(['Ada', 'acme · No plan', 'Upgrade plan', 'Personalization', 'Profile', 'Settings', 'Beta', 'Help', 'Log out'])
+  test('reads top to bottom: the account, the organization with its plan, Upgrade plan, Personalization, Profile, Settings, Beta, Language, Help and Log out', () => {
+    expect(menu().map((r) => r.label)).toEqual(['Ada', 'acme · No plan', 'Upgrade plan', 'Personalization', 'Profile', 'Settings', 'Beta', 'Language', 'Help', 'Log out'])
   })
 
   test("Beta opens the person's place on the waitlist, a page of the site", () => {

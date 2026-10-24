@@ -33,7 +33,7 @@
 // `POST /v1/account/orgs` the no-organization gate uses (Orgs.tsx); the next load
 // mints a token that carries it.
 
-import { phrase } from '@hanzo/i18n'
+import { phrase, locales } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { SizableText, XStack, YStack } from '@hanzo/gui'
@@ -50,6 +50,7 @@ import {
   FlaskConical,
   Info,
   Keyboard,
+  Languages,
   LifeBuoy,
   LogOut,
   MessagesSquare,
@@ -201,12 +202,14 @@ export function Face({ host, size = 28 }: { host: Who; size?: number }) {
 }
 
 /** A row's face: its icon in a 16px well, its words, and what trails them. */
-function Line({ icon, children, sub, trail }: { icon: ReactNode; children: string; sub?: string; trail?: ReactNode }) {
+function Line({ icon, children, sub, trail }: { icon?: ReactNode; children: string; sub?: string; trail?: ReactNode }) {
   return (
     <>
-      <XStack width={16} height={16} items="center" justify="center" shrink={0}>
-        {icon}
-      </XStack>
+      {icon !== undefined ? (
+        <XStack width={16} height={16} items="center" justify="center" shrink={0}>
+          {icon}
+        </XStack>
+      ) : null}
       <YStack flex={1} minW={0}>
         <SizableText size="$2" color="$ink" numberOfLines={1}>
           {children}
@@ -263,10 +266,11 @@ export function Me({
   /** Work in another organization: picked, then the app opened in it. */
   onOrg: (org: string) => void
 }) {
-  const { t, dir } = useI18n()
+  const { t, dir, locale, setLocale } = useI18n()
   const rtl = dir === 'rtl'
   const [open, setOpen] = useState(false)
   const [account, setAccount] = useState(false)
+  const [lang, setLang] = useState(false)
   const [help, setHelp] = useState(false)
   const [creating, setCreating] = useState(false)
   const [keys, setKeys] = useState(false)
@@ -328,6 +332,7 @@ export function Me({
           setOpen(next)
           if (next) return
           setAccount(false)
+          setLang(false)
           setHelp(false)
         }}
         // Toward the content from the rail, and aligned as the row's own edge is: mirrored right to left.
@@ -487,6 +492,27 @@ export function Me({
             <Line icon={<FlaskConical size={16} aria-hidden />}>{t('Beta')}</Line>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
+          <DropdownMenuSub open={lang} onOpenChange={setLang}>
+            <DropdownMenuSubTrigger>
+              <Line icon={<Languages size={16} aria-hidden />}>{t('Language')}</Line>
+            </DropdownMenuSubTrigger>
+            {lang ? (
+              <DropdownMenuSubContent minW={220} maxW="calc(100vw - 16px)" pointerEvents="auto">
+                {locales
+                  .filter((l) => !l.review || l.code === locale)
+                  .map((l) => (
+                    <DropdownMenuItem key={l.code} onSelect={() => void setLocale(l.code)}>
+                      <Line
+                        sub={l.englishName !== l.name ? l.englishName : undefined}
+                        trail={l.code === locale ? <Check size={16} aria-label={t('Current')} /> : null}
+                      >
+                        {l.name}
+                      </Line>
+                    </DropdownMenuItem>
+                  ))}
+              </DropdownMenuSubContent>
+            ) : null}
+          </DropdownMenuSub>
           <DropdownMenuSub open={help} onOpenChange={setHelp}>
             <DropdownMenuSubTrigger>
               <Line icon={<LifeBuoy size={16} aria-hidden />}>{t('Help')}</Line>
