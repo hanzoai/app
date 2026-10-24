@@ -289,7 +289,8 @@ export function Me({
   // A personal plan is bought for the personal organization, beside any business one.
   // The plans row's name (a phrase of `upgrade`'s).
   const plans = upgrade(read.value?.label?.name)
-  const getPro = () => personal && window.location.assign(payUrl('/cart', { plan: 'pro', org: personal.name, returnUrl: window.location.href }))
+  const isFree = !read.value?.label?.name || read.value?.label?.name?.toLowerCase() === 'free'
+  const getPro = () => (personal ? window.location.assign(payUrl('/cart', { plan: 'pro', org: personal.name, returnUrl: window.location.href })) : window.location.assign(payUrl('/cart', { plan: 'pro', returnUrl: window.location.href })))
   const apple = mac()
 
   useEffect(() => {
@@ -365,6 +366,23 @@ export function Me({
                     </SizableText>
                   ) : null}
                 </YStack>
+                {isFree ? (
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    data-slot="me-upgrade"
+                    px="$2"
+                    py="$0.5"
+                    rounded="$3"
+                    onPress={(e) => {
+                      e?.stopPropagation?.()
+                      getPro()
+                    }}
+                    cursor="pointer"
+                  >
+                    {t('Upgrade')}
+                  </Button>
+                ) : null}
                 <ChevronsUpDown size={14} aria-hidden opacity={0.6} />
               </>
             )}

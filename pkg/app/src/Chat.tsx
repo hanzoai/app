@@ -64,7 +64,7 @@ import { useHydrated } from "./lib/hydrated";
 import { base, served } from "./lib/ai";
 import { onServed, type Served as Heard } from "./lib/served";
 import { refused as worded, speech, useDictation, useTalk, useVoice } from "@hanzo/voice";
-import { Check, Clock, FileText, Image as ImageMark, Library as LibraryMark, Paperclip, X } from "lucide-react";
+import { Check, Clock, FileText, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, X } from "lucide-react";
 import { FREE } from "./lib/ai";
 import { openThread, useOpen } from "./open";
 import { Beside, Framed } from "./Shell";
@@ -2019,7 +2019,27 @@ function Thread({
           ) : null}
         </XStack>
 
-        <XStack data-slot="conversation-controls" items="center" gap={2} shrink={0}>
+        <XStack data-slot="conversation-controls" items="center" gap={4} shrink={0}>
+          {free ? (
+            <Button
+              size="xs"
+              variant="outline"
+              data-slot="header-upgrade"
+              gap="$1.5"
+              px="$2.5"
+              py="$1"
+              rounded="$4"
+              cursor="pointer"
+              hoverStyle={{ bg: 'var(--white-10)' }}
+              onPress={() => setAsk({})}
+              aria-label={t("Upgrade")}
+            >
+              <Sparkles size={13} color="var(--primary)" aria-hidden />
+              <Text fontSize="$1" fontWeight="600" color="$ink">
+                {t("Upgrade")}
+              </Text>
+            </Button>
+          ) : null}
           {open ? <Share thread={open} /> : null}
           {mine ? (
             <ConversationMenu threads={alone} active={open} onSchedule={anonymous ? undefined : () => setPlan(lastAsked())}>
