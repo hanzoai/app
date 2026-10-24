@@ -68,6 +68,7 @@ import {
   Calendar,
   LayoutGrid,
   ArrowUpLeft,
+  Sparkles,
 } from "lucide-react";
 import {
   AiProvider,
@@ -120,6 +121,8 @@ import { mark } from "./lib/mark";
 import { useOpen } from "./open";
 import { useSpan } from "./span";
 import { pane } from "./ground";
+import { useFree } from "./Upgrade";
+import { payUrl } from "./lib/pay";
 
 /** The new-agent row's fields: an outlined box in the room's own ink. */
 const FIELD = {
@@ -567,6 +570,7 @@ function Chats({
   const { isAuthenticated, user } = useIam();
   const { user: account } = useAccount();
   const signedIn = isAuthenticated || Boolean(user) || Boolean(account) || hasSession();
+  const free = useFree(signedIn);
 
   const mergedThreads = useMemo(() => {
     const list: Array<{ id: string; title: string; updatedAt: any; kind?: "call" | "group"; thread?: Thread }> = threads.map((t) => ({
@@ -898,6 +902,7 @@ function Team({
   const { isAuthenticated, user } = useIam();
   const { user: account } = useAccount();
   const signedIn = isAuthenticated || Boolean(user) || Boolean(account) || hasSession();
+  const free = useFree(signedIn);
 
   const [starred] = useStarred();
 
@@ -2169,6 +2174,7 @@ function Frame({
 
   const { user: account } = useAccount();
   const signedIn = isAuthenticated || Boolean(user) || Boolean(account) || hasSession();
+  const free = useFree(signedIn);
   const logout = useSignOut();
   const face = account?.avatar ?? user?.avatar;
   // The account menu's reading of this host: who, in which organization, and how they leave.
@@ -2600,6 +2606,37 @@ function Frame({
               >
                 <Text fontSize="$1" fontWeight="600" color="$ink">
                   {t("Sign in")}
+                </Text>
+              </XStack>
+            </Box>
+          ) : null}
+
+          {settled && signedIn && free ? (
+            <Box
+              {...TAP}
+              render="button"
+              onClick={() => window.location.assign(payUrl("/cart", { plan: "pro", returnUrl: window.location.href }))}
+              display="flex"
+              items="center"
+              justify="center"
+              cursor="pointer"
+              aria-label={t("Upgrade")}
+              data-slot="bar-upgrade"
+            >
+              <XStack
+                items="center"
+                justify="center"
+                height={CONTROL}
+                px="$2.5"
+                rounded="$2"
+                borderWidth={1}
+                borderColor="$borderColor"
+                gap="$1.5"
+                hoverStyle={{ bg: "$hover" }}
+              >
+                <Sparkles size={13} aria-hidden color="var(--primary)" />
+                <Text fontSize="$1" fontWeight="600" color="$ink">
+                  {t("Upgrade")}
                 </Text>
               </XStack>
             </Box>
