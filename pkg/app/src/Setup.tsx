@@ -435,6 +435,21 @@ export function Setup() {
                     {t('Save')}
                   </Text>
                 </Box>
+                <Box
+                  render="button"
+                  onClick={() => {
+                    setShowWalletInput(false)
+                    setLater(true)
+                  }}
+                  px="$2"
+                  py="$1"
+                  rounded="$3"
+                  bg="transparent"
+                  hoverStyle={{ bg: '$hover' }}
+                  cursor="pointer"
+                >
+                  <Text fontSize="$1" color="$soft">{t('Skip')}</Text>
+                </Box>
               </XStack>
             ) : (
               <XStack gap="$1.5" items="center" pt="$1" flexWrap="wrap">
@@ -465,6 +480,18 @@ export function Setup() {
                   cursor="pointer"
                 >
                   <Text fontSize="$1" color="$ink">{t('Enter address')}</Text>
+                </Box>
+                <Box
+                  render="button"
+                  onClick={() => setLater(true)}
+                  px="$2"
+                  py="$1"
+                  rounded="$3"
+                  bg="transparent"
+                  hoverStyle={{ bg: '$hover' }}
+                  cursor="pointer"
+                >
+                  <Text fontSize="$1" color="$soft">{t('Skip')}</Text>
                 </Box>
               </XStack>
             )}
