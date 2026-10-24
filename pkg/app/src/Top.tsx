@@ -39,7 +39,13 @@ const LINE = 48
 const SEGMENT = 73
 
 /** The glass the three are cut from. */
-const GLASS = { ...pane(), borderColor: 'var(--border-strong)', borderRadius: 9999 } as const
+const GLASS = {
+  ...pane(),
+  borderColor: 'var(--border-strong)',
+  borderRadius: 9999,
+  boxShadow: 'inset 0 1px 1px 0 var(--white-15), var(--shadow-sheet-1)',
+  backdropFilter: 'blur(24px) saturate(190%) contrast(102%)',
+} as const
 
 /** A round glass button named for what it does (`label`, already in the reader's language). */
 function Round({
@@ -71,7 +77,7 @@ function Round({
       cursor="pointer"
       opacity={opacity}
       pointerEvents={pointerEvents}
-      pressStyle={{ bg: '$raised' }}
+      pressStyle={{ bg: '$raised', scale: 0.96 }}
       focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
       {...rest}
     >
