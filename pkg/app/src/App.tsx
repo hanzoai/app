@@ -62,14 +62,15 @@
 
 import { useI18n } from '@hanzo/i18n/react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight, RefreshCw } from 'lucide-react'
 import { AiProvider } from '@hanzo/ai/react'
 import { XStack, YStack } from '@hanzo/gui'
-import { Builder, HostProvider, PrefsProvider, route, type Host } from '@hanzo/build'
+import { Builder, HostProvider, PrefsProvider, route, tabs, type Host } from '@hanzo/build'
 import { nav as places } from '@hanzo/studio'
 import { useAi } from './lib/ai'
 import { Chat } from './Chat'
 import { Column } from './Column'
+import { Learning } from './Learning'
 import { isPlans, leave, useDevHost } from './dev'
 import { Orgs } from './Orgs'
 import { useRooms } from './host'
@@ -144,6 +145,7 @@ function Window({ bar }: { bar?: Bar }) {
   const [closed, setClosed] = useKept('hanzo.build.rail', false)
   // The palette is open (the sidebar's search; ⌘K toggles it).
   const [finding, setFinding] = useState(false)
+  const [learning, setLearning] = useState(false)
   const found = useCallback(() => setFinding(false), [])
   const dev = useDevHost()
   // The builder's moves put the drawer away, in its place in the history; one to
@@ -281,7 +283,11 @@ function Window({ bar }: { bar?: Bar }) {
     pick(o)
     window.location.assign(mode === 'dev' ? app('') : mode === 'studio' ? studio('') : mode === 'tabs' ? TERMINALS : talk())
   }
-  const sidebar = mode === 'studio' ? places(maker, (p) => maker.go(p)) : undefined
+  const sidebar = mode === 'studio' ? places(maker, (p) => maker.go(p)) : mode === 'dev' && raised(where) === 'customize'
+    ? tabs(host, (p) => host.go(p), t).map((group) => ({ ...group, links: [...group.links, {
+      id: 'learning', label: t('Learning'), active: learning, icon: <RefreshCw size={16} aria-hidden />,
+      onPress: () => { shut(); setLearning(true) },
+    }] })) : undefined
   const flip = () => setClosed(!closed)
   const seek = () => {
     shut()
@@ -405,6 +411,7 @@ function Window({ bar }: { bar?: Bar }) {
             </Layer>
           )}
           {finding ? <Palette go={move} onClose={found} mode={mode} host={host} /> : null}
+          {learning ? <Learning open onClose={() => setLearning(false)} /> : null}
         </YStack>
         </PrefsProvider>
       </HostProvider>
