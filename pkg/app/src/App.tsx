@@ -338,6 +338,7 @@ function Window({ bar }: { bar?: Bar }) {
             flex={1}
             minW={0}
             minH={0}
+            paddingInlineStart={closed || mode === 'tabs' ? 'var(--pane-gap)' : 0}
             paddingInlineEnd="var(--pane-gap)"
             pb="var(--pane-gap)"
             pt={bar ? 0 : 'var(--pane-gap)'}
