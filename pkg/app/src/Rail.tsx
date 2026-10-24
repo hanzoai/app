@@ -35,7 +35,7 @@
 // the menu's foot.
 
 import { useI18n } from '@hanzo/i18n/react'
-import { Clock, Code2, Ellipsis, FlaskConical, Library, MessageSquare, PanelLeft, Puzzle, Sparkles, SquareTerminal, Users, WandSparkles } from 'lucide-react'
+import { Clock, Code2, Compass, Ellipsis, FlaskConical, Library, MessageSquare, PanelLeft, Puzzle, Sparkles, SquareTerminal, Users, WandSparkles } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Text, XStack, YStack } from '@hanzo/gui'
 import { route, type Host } from '@hanzo/build'
@@ -223,6 +223,7 @@ export function Rail({
           ...granted.map((b) => ({ key: `beta-${b.id}`, label: b.name, icon: <Sparkles size={16} aria-hidden />, onSelect: () => out(b.href as string) })),
           { type: 'separator' as const, key: 'betas-rule' },
           { key: 'betas', label: t('Betas'), icon: <FlaskConical size={16} aria-hidden />, onSelect: () => setBetas(true) },
+          { key: 'market', label: t('Explore on hanzo.market'), icon: <Compass size={16} aria-hidden />, onSelect: () => out('https://hanzo.market') },
         ]
       : []),
   ]

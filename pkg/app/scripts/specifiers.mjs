@@ -6,10 +6,10 @@
 // specifier in dist becomes the file tsc actually wrote: `./x.js`, or
 // `./x/index.js` for a directory.
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const DIST = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist')
+const DIST = process.argv[2] ? resolve(process.argv[2]) : join(dirname(fileURLToPath(import.meta.url)), '..', 'dist')
 const walk = (d) => readdirSync(d).flatMap((f) => (statSync(join(d, f)).isDirectory() ? walk(join(d, f)) : [join(d, f)]))
 const SPEC = /((?:from|import)\s*\(?\s*)(['"])(\.{1,2}\/[^'"]+)\2/g
 

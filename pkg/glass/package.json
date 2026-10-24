@@ -15,7 +15,7 @@
   },
   "license": "Apache-2.0 OR MIT",
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && node ../app/scripts/specifiers.mjs ./dist",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

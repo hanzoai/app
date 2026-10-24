@@ -48,7 +48,7 @@
 import { phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowUpRight, Check, Plus, Search, X } from 'lucide-react'
+import { ArrowUpRight, Check, Compass, Plus, Search, X } from 'lucide-react'
 import {
   Box,
   Dialog,
