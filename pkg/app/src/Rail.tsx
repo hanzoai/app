@@ -48,7 +48,7 @@ import { Me } from './Me'
 import { app, WORKSPACE, type Place } from './lib/host'
 
 /** The rail's width, px. */
-export const RAIL = 48
+export const RAIL = 44
 
 /** A mark, px: a 36px square on a 44px pitch. */
 const MARK = 36
@@ -239,9 +239,9 @@ export function Rail({
       </YStack>
     )
   return (
-    <YStack data-slot="rail" render="nav" aria-label={t('Products')} width={RAIL} flex={1} pt="$2" pb="$2" gap={8} shrink={0} items="center">
+    <YStack data-slot="rail" render="nav" aria-label={t('Products')} width={RAIL} flex={1} pt={4} pb={4} gap={4} shrink={0} items="center">
       {toggle ? (
-        <YStack pb={8}>
+        <YStack pb={4}>
           <Toggle open={open} onPress={toggle} />
         </YStack>
       ) : null}
