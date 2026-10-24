@@ -101,6 +101,7 @@ describe('Setup 1-2-3 in-app onboarding', () => {
     expect(html).toContain('3. Connect Wallet')
     expect(html).toContain('Connect Wallet')
     expect(html).toContain('Enter address')
+    expect(html).toContain('Skip')
   })
 
   test('shows completion state when all 3 are finished', () => {
