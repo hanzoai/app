@@ -1947,6 +1947,7 @@ function Thread({
         paddingInlineStart="$4"
         paddingInlineEnd="$2"
         shrink={0}
+        $max-md={!mine && !room.length ? { display: 'none' } : undefined}
       >
         <XStack items="center" gap="$2" minW={0} flex={1}>
           {mine ? (
@@ -2048,11 +2049,15 @@ function Thread({
               </XStack>
             </ConversationMenu>
           ) : null}
-          <Summary sections={sections} onOpen={() => setPanel(true)} label={t("Summary")} />
+          <XStack $max-md={{ display: 'none' }}>
+            <Summary sections={sections} onOpen={() => setPanel(true)} label={t("Summary")} />
+          </XStack>
           {/* THE TABS' OWN CONTROL, at the header's end while they are shut;
               open, the strip beside the conversation holds it. Its mark is
               never the sidebar's: that toggle is the window's, at its top-left. */}
-          <PanelToggle open={panel} onToggle={() => setPanel(!panel)} />
+          <XStack $max-md={{ display: 'none' }}>
+            <PanelToggle open={panel} onToggle={() => setPanel(!panel)} />
+          </XStack>
         </XStack>
       </XStack>
 

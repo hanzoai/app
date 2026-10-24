@@ -42,7 +42,21 @@ const SEGMENT = 73
 const GLASS = { ...pane(), borderColor: 'var(--border-strong)', borderRadius: 9999 } as const
 
 /** A round glass button named for what it does (`label`, already in the reader's language). */
-function Round({ label, onPress, children, ...rest }: { label: string; onPress?: () => void; children: ReactNode; [attribute: `data-${string}` | `aria-${string}`]: unknown }) {
+function Round({
+  label,
+  onPress,
+  opacity,
+  pointerEvents,
+  children,
+  ...rest
+}: {
+  label: string
+  onPress?: () => void
+  opacity?: number
+  pointerEvents?: 'none' | 'auto'
+  children: ReactNode
+  [attribute: `data-${string}` | `aria-${string}`]: unknown
+}) {
   return (
     <XStack
       render="button"
@@ -55,6 +69,8 @@ function Round({ label, onPress, children, ...rest }: { label: string; onPress?:
       justify="center"
       shrink={0}
       cursor="pointer"
+      opacity={opacity}
+      pointerEvents={pointerEvents}
       pressStyle={{ bg: '$raised' }}
       focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
       {...rest}
@@ -67,7 +83,7 @@ function Round({ label, onPress, children, ...rest }: { label: string; onPress?:
 /** The drawer's mark: two strokes, the lower one shorter and flush with the start, 19×11 as the reference draws it. */
 function Lines() {
   return (
-    <svg width={19} height={11} viewBox="0 0 19 11" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden data-i18n-mirror>
+    <svg width={19} height={11} viewBox="0 0 19 11" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden data-i18n-mirror style={{ display: 'block' }}>
       <path d="M1 1h17M1 10h10.7" />
     </svg>
   )
@@ -97,6 +113,7 @@ export function Top({
   host,
   mode,
   places,
+  open = false,
   go,
   onMenu,
   onChat,
@@ -106,6 +123,8 @@ export function Top({
   mode: Place['mode']
   /** The mode's places, where they are not Dev's (Studio's `nav`). */
   places?: { id: string; links: RailLink[] }[]
+  /** The drawer is open: hide the pane's open button so it does not peek through the strip. */
+  open?: boolean
   /** Moves the app, the drawer away first. */
   go: (address: string) => void
   onMenu: () => void
@@ -126,7 +145,7 @@ export function Top({
       : { label: made?.label ?? t('New'), onPress: made?.onPress }
   return (
     <XStack data-slot="app-bar" height={`calc(${LINE}px + var(--safe-top))`} pt="var(--safe-top)" px="$4.5" items="center" justify="space-between" shrink={0} $md={{ display: 'none' }}>
-      <Round label={t('Open sidebar')} data-slot="bar-menu" onPress={onMenu}>
+      <Round label={t('Open sidebar')} data-slot="bar-menu" onPress={onMenu} opacity={open ? 0 : 1} pointerEvents={open ? 'none' : 'auto'}>
         <Lines />
       </Round>
       <XStack data-slot="bar-mode" {...GLASS} height={LINE} p="$1" items="center">
@@ -136,7 +155,7 @@ export function Top({
         </ToggleGroup>
       </XStack>
       <Round label={fresh.label} data-slot="bar-new" onPress={fresh.onPress}>
-        <SquarePen size={20} aria-hidden />
+        <SquarePen size={20} aria-hidden style={{ display: 'block' }} />
       </Round>
     </XStack>
   )

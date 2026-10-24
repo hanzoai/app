@@ -230,7 +230,20 @@ export function Column({
           <YStack role="list" gap={2} shrink={0}>
             <YStack role="listitem">
               {/* Current while the pane holds a new conversation, and never lit: the reference lights the conversation open, not New. */}
-              <SidebarItem data-slot="app-new" {...ROW} active={!thread} bg="transparent" hoverStyle={{ bg: '$hover' }} icon={<SquarePen size={16} aria-hidden />} onPress={create} {...keys(create)}>
+              <SidebarItem
+                data-slot="app-new"
+                {...ROW}
+                active={!thread}
+                bg="transparent"
+                hoverStyle={{ bg: '$hover' }}
+                icon={
+                  <XStack width={20} height={20} items="center" justify="center" shrink={0}>
+                    <SquarePen size={16} aria-hidden />
+                  </XStack>
+                }
+                onPress={create}
+                {...keys(create)}
+              >
                 <Text fontSize="$3" color="$ink">{t('New chat')}</Text>
               </SidebarItem>
             </YStack>
@@ -252,7 +265,17 @@ export function Column({
                         {...ROW}
                         {...(link.id === NEW ? { 'data-slot': 'app-new' } : {})}
                         active={link.active}
-                        icon={link.id === NEW ? <SquarePen size={16} aria-hidden /> : link.icon}
+                        icon={
+                          link.id === NEW ? (
+                            <XStack width={20} height={20} items="center" justify="center" shrink={0}>
+                              <SquarePen size={16} aria-hidden />
+                            </XStack>
+                          ) : link.icon ? (
+                            <XStack width={20} height={20} items="center" justify="center" shrink={0}>
+                              {link.icon}
+                            </XStack>
+                          ) : null
+                        }
                         onPress={link.onPress}
                         {...keys(() => link.onPress?.())}
                       >
@@ -281,7 +304,11 @@ export function Column({
               <SidebarItem
                 {...ROW}
                 data-slot="column-upgrade"
-                icon={<Sparkles size={16} aria-hidden color="var(--primary)" />}
+                icon={
+                  <XStack width={20} height={20} items="center" justify="center" shrink={0}>
+                    <Sparkles size={16} aria-hidden color="var(--primary)" />
+                  </XStack>
+                }
                 onPress={() => window.location.assign(payUrl('/cart', { plan: 'pro', returnUrl: window.location.href }))}
                 {...keys(() => window.location.assign(payUrl('/cart', { plan: 'pro', returnUrl: window.location.href })))}
               >

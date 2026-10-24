@@ -357,7 +357,7 @@ function Window({ bar }: { bar?: Bar }) {
             )}
             <YStack data-slot="stage" flex={1} minW={0} minH={0} marginInlineStart={closed || mode === 'tabs' ? 0 : 'var(--pane-gap)'} $max-md={{ marginInlineStart: 0, pb: FOOT }}>
               {/* A phone has no rail and no sidebar: its bar opens them as a drawer and switches Chat and Dev. */}
-              {bar ? null : <Top host={host} mode={mode} places={sidebar} go={move} onMenu={drawer.open} onChat={toChat} onDev={toDev} />}
+              {bar ? null : <Top host={host} mode={mode} places={sidebar} open={drawer.state !== 'shut'} go={move} onMenu={drawer.open} onChat={toChat} onDev={toDev} />}
               <XStack data-slot="panes" flex={1} minW={0} minH={0}>
                 {mode === 'chat' ? (
                   <Paned framed>

@@ -132,7 +132,13 @@ function Row({
       px="$2"
       $touchable={{ minH: 44 }}
       active={on}
-      icon={icon}
+      icon={
+        icon ? (
+          <XStack width={20} height={20} items="center" justify="center" shrink={0}>
+            {icon}
+          </XStack>
+        ) : null
+      }
       onPress={onPress}
       onKeyDown={(e: { key?: string; preventDefault?: () => void }) => {
         if (!onPress || (e.key !== 'Enter' && e.key !== ' ')) return
