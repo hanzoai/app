@@ -4,7 +4,7 @@
 // Runs INSIDE the app as a compact card in the sidebar column and as an interactive
 // popup modal dialog. Never a full-screen redirect away from the user's workspace.
 //
-//   1. GitHub:  Sync repositories, PRs, and team codebase context
+//   1. GitHub:  Sync repositories, PRs, and team repository context
 //   2. Slack:   Route notifications, agent conversations, and bot alerts
 //   3. Wallet:  Web3 multi-chain wallet (MetaMask/EVM/Base/Solana) for credits & payouts
 
@@ -309,7 +309,7 @@ export function Setup() {
               ) : null}
             </XStack>
             <Text fontSize="$1" color="$soft">
-              {t('Sync repositories, PRs, and team codebase context.')}
+              {t('Sync repositories, PRs, and team repository context.')}
             </Text>
             <XStack gap="$1.5" items="center" pt="$1">
               <Box
