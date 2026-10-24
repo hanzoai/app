@@ -83,7 +83,7 @@ function Round({
 /** The drawer's mark: two strokes, the lower one shorter and flush with the start, 19×11 as the reference draws it. */
 function Lines() {
   return (
-    <svg width={19} height={11} viewBox="0 0 19 11" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden data-i18n-mirror style={{ display: 'block' }}>
+    <svg width={19} height={11} viewBox="0 0 19 11" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden data-i18n-mirror>
       <path d="M1 1h17M1 10h10.7" />
     </svg>
   )
@@ -155,7 +155,7 @@ export function Top({
         </ToggleGroup>
       </XStack>
       <Round label={fresh.label} data-slot="bar-new" onPress={fresh.onPress}>
-        <SquarePen size={20} aria-hidden style={{ display: 'block' }} />
+        <SquarePen size={20} aria-hidden />
       </Round>
     </XStack>
   )

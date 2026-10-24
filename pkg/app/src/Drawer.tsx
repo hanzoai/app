@@ -409,7 +409,7 @@ export function Layer({ drawer, top = 0, children }: { drawer: Drawer; top?: num
           b={0}
           insetInlineEnd={0}
           z="var(--z-panel)"
-          bg="rgba(0, 0, 0, 0.45)"
+          bg="var(--surface-overlay)"
           backdropFilter="blur(2px)"
           borderInlineStartWidth={1}
           borderColor="var(--edge, var(--white-10))"
@@ -447,7 +447,7 @@ export function Foot({ host, onChat, onOrg }: { host: Who; onChat: () => void; o
         pressStyle={{ bg: 'var(--accent-hover)' }}
         focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
       >
-        <SquarePen size={18} color="var(--accent-foreground)" aria-hidden style={{ display: 'block' }} />
+        <SquarePen size={18} color="var(--accent-foreground)" aria-hidden />
         <Text fontSize="$4" fontWeight="600" color="var(--accent-foreground)">
           {t('Chat')}
         </Text>
