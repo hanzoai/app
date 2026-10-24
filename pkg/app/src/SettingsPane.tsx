@@ -69,6 +69,7 @@ function Pane({ id, note }: { id: string; note?: string }) {
   if (id === 'general') return <Look />
   if (id === 'account') return <Account />
   if (id === 'billing') return <Billing />
+  if (id === 'referrals') return <Referrals />
   if (id === 'usage') return <Usage />
   if (id === 'model') return <Model />
   if (id === 'models') return <Served />
@@ -223,6 +224,129 @@ function Account() {
       <XStack>
         <Button size="sm" onClick={() => logout()}>{t('Sign out')}</Button>
       </XStack>
+    </YStack>
+  )
+}
+
+/** Referrals & Rewards — customer referral program and affiliate partner portal. */
+function Referrals() {
+  const { t } = useI18n()
+  const identity = useIamIdentity()
+  const { isAuthenticated } = useIam()
+  const [copied, setCopied] = useState(false)
+  const [vanity, setVanity] = useState('')
+  const [applied, setApplied] = useState(false)
+
+  if (!isAuthenticated || !identity) {
+    return <Text fontSize="$3" color="$soft">{t('Sign in to view your referral program.')}</Text>
+  }
+
+  const handle = identity.name ? identity.name.toLowerCase().replace(/\s+/g, '-') : (identity.email ? identity.email.split('@')[0] : 'user')
+  const referralUrl = `https://hanzo.ai/?ref=${encodeURIComponent(handle)}`
+
+  const copy = () => {
+    navigator.clipboard.writeText(referralUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const tweet = () => {
+    const text = 'Deploy AI agents, sites, and apps on @HanzoAI. Get $20 in free cloud compute credits:'
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(referralUrl)}`, '_blank', 'noopener,noreferrer')
+  }
+
+  const linkedin = () => {
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(referralUrl)}`, '_blank', 'noopener,noreferrer')
+  }
+
+  const telegram = () => {
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(referralUrl)}&text=${encodeURIComponent('Get $20 free Hanzo cloud compute credits:')}`, '_blank', 'noopener,noreferrer')
+  }
+
+  const whatsapp = () => {
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent('Deploy with Hanzo — get $20 in free cloud credits: ' + referralUrl)}`, '_blank', 'noopener,noreferrer')
+  }
+
+  return (
+    <YStack gap="$5" maxW={640}>
+      <YStack gap="$1.5">
+        <XStack items="center" gap="$2">
+          <Text fontSize="$4" fontWeight="600" color="$ink">{t('Give $20, Get 20%')}</Text>
+        </XStack>
+        <Text fontSize="$3" color="$soft">
+          {t('Invite developers, creators, and colleagues to Hanzo. They get $20 in free cloud compute credits, and you earn 20% recurring revenue share on their compute spend for 12 months.')}
+        </Text>
+      </YStack>
+
+      <YStack gap="$2" p="$3" rounded="$3" borderWidth={1} borderColor="$borderColor">
+        <Text fontSize="$2" fontWeight="600" color="$ink">{t('Your Personal Referral Link')}</Text>
+        <XStack items="center" gap="$2">
+          <Box flex={1} p="$2" rounded="$2" bg="$hover" borderWidth={1} borderColor="$borderColor">
+            <Text fontSize="$2" color="$ink" fontFamily="$mono" numberOfLines={1}>{referralUrl}</Text>
+          </Box>
+          <Button size="sm" onClick={copy}>
+            {copied ? t('Copied!') : t('Copy Link')}
+          </Button>
+        </XStack>
+
+        <XStack items="center" justify="space-between" pt="$2" flexWrap="wrap" gap="$2">
+          <Text fontSize="$1" color="$soft">{t('1-Click Social Share:')}</Text>
+          <XStack gap="$2" flexWrap="wrap">
+            <Button size="sm" variant="outline" onClick={tweet}>𝕏 (Twitter)</Button>
+            <Button size="sm" variant="outline" onClick={linkedin}>LinkedIn</Button>
+            <Button size="sm" variant="outline" onClick={telegram}>Telegram</Button>
+            <Button size="sm" variant="outline" onClick={whatsapp}>WhatsApp</Button>
+          </XStack>
+        </XStack>
+      </YStack>
+
+      <Separator />
+
+      <YStack gap="$2">
+        <Text fontSize="$3" fontWeight="600" color="$ink">{t('Referral Rules & Offer Details')}</Text>
+        <YStack gap="$1">
+          <Text fontSize="$2" color="$soft">• {t('30-day attribution window: First click binds to user identity upon registration.')}</Text>
+          <Text fontSize="$2" color="$soft">• {t('20% recurring margin share: Calculated against net platform margin (safe from wholesale token dilution).')}</Text>
+          <Text fontSize="$2" color="$soft">• {t('Payout options: Platform credits, direct wire/ACH, or on-chain EVM wallet settlement.')}</Text>
+        </YStack>
+      </YStack>
+
+      <Separator />
+
+      <YStack gap="$3">
+        <Text fontSize="$3" fontWeight="600" color="$ink">{t('Official Affiliate & Creator Program')}</Text>
+        <Text fontSize="$2" color="$soft">
+          {t('Building an open-source project, template, or dev community? Apply for official affiliate status for custom vanity links (hanzo.ai/?aff=code) and elevated commission tiers.')}
+        </Text>
+        {!applied ? (
+          <XStack gap="$2">
+            <Box flex={1} p="$2" rounded="$2" bg="$hover" borderWidth={1} borderColor="$borderColor">
+              <input
+                type="text"
+                placeholder={t('Desired vanity code (e.g. your project)')}
+                value={vanity}
+                onChange={(e) => setVanity(e.target.value)}
+                style={{ background: 'transparent', border: 'none', outline: 'none', color: 'inherit', width: '100%', fontSize: '13px' }}
+              />
+            </Box>
+            <Button size="sm" onClick={() => { if (vanity.trim()) setApplied(true) }}>
+              {t('Apply for Partner')}
+            </Button>
+          </XStack>
+        ) : (
+          <Box p="$3" rounded="$2" bg="$hover">
+            <Text fontSize="$2" color="$ink">{t('Application submitted for review. Manage payouts and advanced settings in platform.hanzo.ai/dashboard/settings/referrals')}</Text>
+          </Box>
+        )}
+        <XStack pt="$1">
+          <Box render={<a href="https://platform.hanzo.ai/dashboard/settings/referrals" target="_blank" rel="noreferrer" />} {...tap}>
+            <XStack items="center" gap="$1.5">
+              <Text fontSize="$2" color="$ink">{t('Open Full Referrals & Affiliate Portal')}</Text>
+              <ArrowUpRight size={13} aria-hidden />
+            </XStack>
+          </Box>
+        </XStack>
+      </YStack>
     </YStack>
   )
 }

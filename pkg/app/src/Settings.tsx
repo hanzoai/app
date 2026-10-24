@@ -64,6 +64,7 @@ const GROUPS: Group[] = [
       { id: 'general', label: phrase('General') },
       { id: 'account', label: phrase('Account') },
       { id: 'billing', label: phrase('Billing') },
+      { id: 'referrals', label: phrase('Referrals & Rewards') },
       { id: 'usage', label: phrase('Usage') },
       { id: 'capabilities', label: phrase('Capabilities'), note: phrase('What a model may reach for on your behalf.') },
       { id: 'privacy', label: phrase('Privacy'), href: site('/legal/privacy') },
