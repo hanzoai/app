@@ -17,6 +17,7 @@
 // cannot leak an unfinished app.
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import { ArrowUpRight, Compass } from 'lucide-react'
 import { phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { useIam } from '@hanzo/iam/react'
@@ -228,6 +229,23 @@ export function BetasDialog({ open, onOpenChange, go }: { open: boolean; onOpenC
         <YStack maxH="60vh" overflowY="auto" overflowX="hidden" paddingInlineEnd="$2">
           <BetasList go={go} />
         </YStack>
+        <XStack items="center" justify="space-between" pt="$3" borderTopWidth={1} borderColor="$borderColor" flexWrap="wrap" gap="$2">
+          <Text fontSize="$2" color="$color11">
+            {t('Looking for community plugins and MCP tools?')}
+          </Text>
+          <Button
+            size="sm"
+            variant="outline"
+            rounded={999}
+            onPress={() => window.open('https://hanzo.market', '_blank', 'noopener,noreferrer')}
+          >
+            <XStack items="center" gap="$1.5">
+              <Compass size={14} aria-hidden />
+              <Text fontSize="$2">{t('Explore on hanzo.market')}</Text>
+              <ArrowUpRight size={13} aria-hidden />
+            </XStack>
+          </Button>
+        </XStack>
       </DialogContent>
     </Dialog>
   )

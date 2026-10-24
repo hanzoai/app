@@ -328,7 +328,7 @@ export function Catalog({ tab }: { tab: Tab }) {
 
   return (
     <YStack gap="$4">
-      <XStack items="center" gap="$2" flexWrap="wrap">
+      <XStack items="center" justify="space-between" gap="$2" flexWrap="wrap">
         <XStack items="center" gap="$2" flex={1} minW={180}>
           <Search size={14} aria-hidden />
           <Input
@@ -339,6 +339,17 @@ export function Catalog({ tab }: { tab: Tab }) {
             flex={1}
           />
         </XStack>
+        <Action
+          render="button"
+          onPress={() => window.open('https://hanzo.market', '_blank', 'noopener,noreferrer')}
+          $touchable={{ minH: 36 }}
+        >
+          <XStack items="center" gap="$1.5">
+            <Compass size={14} aria-hidden />
+            <Text fontSize="$2" fontWeight="500">{t('Explore on hanzo.market')}</Text>
+            <ArrowUpRight size={13} aria-hidden />
+          </XStack>
+        </Action>
       </XStack>
 
       {tab === 'channels' && !signed ? (

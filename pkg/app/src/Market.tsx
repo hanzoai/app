@@ -18,7 +18,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { say } from './failure'
-import { Check, Search } from 'lucide-react'
+import { ArrowUpRight, Check, Compass, Search } from 'lucide-react'
 import type { McpListing, McpServer } from '@hanzo/ai'
 import { Box, Text, XStack, YStack } from '@hanzo/ui'
 import { useIam } from '@hanzo/iam/react'
@@ -254,27 +254,47 @@ export function Market({ scope }: { scope: 'all' | 'installed' }) {
           Browse agents that bring your tools into {brand()}.
         </Text>
 
-        <XStack
-          mt="$2"
-          width={420}
-          maxW="100%"
-          height={36}
-          items="center"
-          gap="$2"
-          px="$3"
-          rounded="$3"
-          borderWidth={1}
-          borderColor="$borderColor"
-        >
-          <Search size={14} aria-hidden />
-          <Text
-            render={<input value={ask} onChange={(e) => setAsk(e.target.value)} placeholder="Search agents" />}
-            flex={1}
-            bg="transparent"
-            borderWidth={0}
-            outlineStyle="none"
-            color="inherit"
-          />
+        <XStack items="center" justify="space-between" flexWrap="wrap" gap="$2" mt="$2">
+          <XStack
+            width={420}
+            maxW="100%"
+            height={36}
+            items="center"
+            gap="$2"
+            px="$3"
+            rounded="$3"
+            borderWidth={1}
+            borderColor="$borderColor"
+          >
+            <Search size={14} aria-hidden />
+            <Text
+              render={<input value={ask} onChange={(e) => setAsk(e.target.value)} placeholder="Search agents" />}
+              flex={1}
+              bg="transparent"
+              borderWidth={0}
+              outlineStyle="none"
+              color="inherit"
+            />
+          </XStack>
+          <XStack
+            render="button"
+            onPress={() => window.open('https://hanzo.market', '_blank', 'noopener,noreferrer')}
+            height={36}
+            px="$3"
+            rounded="$3"
+            borderWidth={1}
+            borderColor="$borderColor"
+            items="center"
+            gap="$1.5"
+            cursor="pointer"
+            hoverStyle={{ bg: '$hover' }}
+          >
+            <Compass size={14} aria-hidden />
+            <Text fontSize="$2" fontWeight="500" color="$ink">
+              Explore on hanzo.market
+            </Text>
+            <ArrowUpRight size={13} aria-hidden color="$soft" />
+          </XStack>
         </XStack>
       </YStack>
 
