@@ -338,7 +338,6 @@ function Window({ bar }: { bar?: Bar }) {
             flex={1}
             minW={0}
             minH={0}
-            paddingInlineStart={closed || mode === 'tabs' ? 'var(--pane-gap)' : 0}
             paddingInlineEnd="var(--pane-gap)"
             pb="var(--pane-gap)"
             pt={bar ? 0 : 'var(--pane-gap)'}
@@ -356,7 +355,7 @@ function Window({ bar }: { bar?: Bar }) {
                 <Column host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} onSeek={seek} onBack={back} places={sidebar} />
               </YStack>
             )}
-            <YStack data-slot="stage" flex={1} minW={0} minH={0} marginInlineStart="var(--pane-gap)" $max-md={{ marginInlineStart: 0, pb: FOOT }}>
+            <YStack data-slot="stage" flex={1} minW={0} minH={0} marginInlineStart={closed || mode === 'tabs' ? 0 : 'var(--pane-gap)'} $max-md={{ marginInlineStart: 0, pb: FOOT }}>
               {/* A phone has no rail and no sidebar: its bar opens them as a drawer and switches Chat and Dev. */}
               {bar ? null : <Top host={host} mode={mode} places={sidebar} go={move} onMenu={drawer.open} onChat={toChat} onDev={toDev} />}
               <XStack data-slot="panes" flex={1} minW={0} minH={0}>
