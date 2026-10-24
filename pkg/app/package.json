@@ -50,6 +50,8 @@
   },
   "license": "Apache-2.0 OR MIT",
   "dependencies": {
+    "@hanzo/glass": "workspace:*",
+    "@hanzo/mod": "workspace:*",
     "@hanzo/personas": "catalog:",
     "marked": "catalog:",
     "simple-icons": "catalog:"

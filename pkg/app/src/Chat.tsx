@@ -65,7 +65,7 @@ import { base, served } from "./lib/ai";
 import { onServed, type Served as Heard } from "./lib/served";
 import { refused as worded, speech, useDictation, useTalk, useVoice } from "@hanzo/voice";
 import { Check, Clock, FileText, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, X } from "lucide-react";
-import { FREE } from "./lib/ai";
+import { FREE, ENSO } from "./lib/ai";
 import { openThread, useOpen } from "./open";
 import { Beside, Framed } from "./Shell";
 import { SEED, look, useSections, useSites, type Mark } from "./RightPane";
@@ -115,6 +115,8 @@ import { enter, LOGIN } from './lib/destination';
 import { first } from './lib/first';
 import { BAD } from "./lib/mix";
 import { brand } from './where'
+import { ThinkingEffort, type EffortLevel } from './ThinkingEffort'
+import { useChatPreferences } from './lib/chatPreferences'
 
 // NO REASONING PANEL HERE. Every assistant turn opened a "Thinking" disclosure
 // listing seven steps — "Planning CSS extraction for chat styles", "Designing
@@ -820,6 +822,7 @@ function Thread({
   const { limits, notice, reload: reread } = useLimits(!anonymous, org(), (id) => nameOf(id, catalog.current));
   const mind = useMind(target, anonymous ? "free" : limits?.plan);
   catalog.current = mind.models;
+  const [chatPrefs] = useChatPreferences();
   const ai = useAi();
   // In the app's frame the composer floats on the pane as a pane of its own.
   const framed = useContext(Framed);
@@ -1007,8 +1010,19 @@ function Thread({
   // A SPEECH MODEL NEVER ANSWERS A CHAT TURN. The catalog lists the
   // transcriber and the voice beside the chat models; one that names its
   // outputs and names no text (`chats`) is neither offered nor fallen back to.
+  const isHouseModel = (m: Model) => {
+    const id = (m.id || '').toLowerCase();
+    const family = (m.family || '').toLowerCase();
+    return id.startsWith('enso') || id.startsWith('zen') || id.startsWith('kai') ||
+           family.startsWith('enso') || family.startsWith('zen') || family.startsWith('kai') ||
+           m.class === 'ours';
+  };
   const listed = mind.models;
-  const models = useMemo(() => listed.filter(chats), [listed]);
+  const filteredListed = useMemo(() => {
+    if (chatPrefs.allowThirdPartyModels) return listed;
+    return listed.filter((m) => isHouseModel(m) || m.id === ENSO || m.id === FREE);
+  }, [listed, chatPrefs.allowThirdPartyModels]);
+  const models = useMemo(() => filteredListed.filter(chats), [filteredListed]);
   // EVERY MODEL THE GATEWAY LISTS is offered here, through the one picker, and
   // read from the catalog's own fields (`parseModels`): its class, its family.
   // A premium model is picked for THIS conversation and never remembered as
@@ -1053,7 +1067,7 @@ function Thread({
     // before the model is asked and asks without them, so a question about the
     // world, in any language, is answered from what the web says now and streams.
     params: {
-      reasoning_effort: mind.effort,
+      reasoning_effort: mind.effort || 'auto',
       ...(!anonymous && house(rowOf(model)?.family) ? { tools: WEB } : {}),
     },
     ...(open ? { thread: open } : {}),
@@ -2294,7 +2308,29 @@ function Thread({
         // The transcript reads at the same measure. `Thread` defaults to 768
         // itself; handing it the column here is what lets Width reach it.
         column={{ maxW: MEASURE }}
-        composer={prompt({ ...composing, field: mention.field }, mention.state)}
+        composer={(() => {
+          const basePrompt = prompt(
+            {
+              ...composing,
+              mind: chatPrefs.showModelSelector ? mind : null,
+              field: mention.field,
+            },
+            mention.state
+          );
+          return {
+            ...basePrompt,
+            send: (
+              <XStack items="center" gap="$1.5" shrink={0}>
+                <ThinkingEffort
+                  effort={(mind.effort as EffortLevel) || 'auto'}
+                  onChange={(eff) => mind.pace(eff as any)}
+                  disabled={chat.streaming || talk.open}
+                />
+                {basePrompt.send}
+              </XStack>
+            ),
+          };
+        })()}
       />
       <AgentMaker />
       {carry.dialog}

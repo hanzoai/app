@@ -6,7 +6,9 @@
 import { useMemo, useState } from 'react'
 import { phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
-import { ArrowUpRight, ExternalLink } from 'lucide-react'
+import { ArrowUpRight, Check, ExternalLink, Lock, Sparkles } from 'lucide-react'
+import { useChatPreferences } from './lib/chatPreferences'
+import { EFFORT_STEPS } from './ThinkingEffort'
 import {
   Box,
   Button,
@@ -96,15 +98,141 @@ function Model() {
   const models = useMemo(() => parseModels(served).filter((m) => m.class !== 'premium'), [served])
   // The one choice Chat and Dev share (@hanzo/build): changed here, changed in both composers.
   const [choice, choose] = useChoice()
+  const [chatPrefs, setChatPrefs] = useChatPreferences()
+  const { isAuthenticated } = useIam()
+  const { tier } = useTier(isAuthenticated, org())
+  const paid = Boolean(tier?.plan && tier.plan !== 'free')
 
   return (
-    <YStack gap="$3" maxW={420}>
-      <Text fontSize="$3" color="$soft">
-        {t('Used for new chats and new runs. An agent with its own model keeps that choice. Premium models are picked per conversation in the composer.')}
-      </Text>
-      <XStack self="flex-start">
-        <ModelPicker models={models} scope="chat" value={choice.model} onChange={(id) => choose({ model: id })} size="sm" />
-      </XStack>
+    <YStack gap="$5" maxW={540}>
+      {/* Default Model */}
+      <YStack gap="$2">
+        <Text fontSize="$4" fontWeight="600" color="$ink">
+          {t('Default model')}
+        </Text>
+        <Text fontSize="$2" color="$soft">
+          {t('Used for new chats and runs. An agent with its own model keeps that choice.')}
+        </Text>
+        <XStack self="flex-start" pt="$1">
+          <ModelPicker models={models} scope="chat" value={choice.model} onChange={(id) => choose({ model: id })} size="sm" />
+        </XStack>
+      </YStack>
+
+      <Separator />
+
+      {/* Reasoning Effort */}
+      <YStack gap="$2">
+        <Text fontSize="$4" fontWeight="600" color="$ink">
+          {t('Default reasoning effort')}
+        </Text>
+        <Text fontSize="$2" color="$soft">
+          {t('Sets how deeply models think before answering. Defaults to Auto across all plans.')}
+        </Text>
+        <XStack gap="$2" pt="$1" flexWrap="wrap">
+          {EFFORT_STEPS.map((step) => {
+            const active = (choice.effort || 'auto') === step.id
+            return (
+              <Box
+                render={<button type="button" />}
+                key={step.id}
+                {...tap}
+                onClick={() => choose({ effort: step.id as any })}
+                {...CHOICE}
+                bg={active ? 'var(--edge, var(--white-14))' : 'transparent'}
+                borderColor={active ? 'var(--borderColor, var(--white-22))' : 'var(--white-08)'}
+                py={6}
+                px={12}
+              >
+                <XStack items="center" gap="$1.5">
+                  <Text fontSize="$2" fontWeight={active ? '600' : '400'} color={active ? '$ink' : '$soft'}>
+                    {step.label}
+                  </Text>
+                  {active ? <Check size={12} color="var(--primary)" aria-hidden /> : null}
+                </XStack>
+              </Box>
+            )
+          })}
+        </XStack>
+      </YStack>
+
+      <Separator />
+
+      {/* Advanced Paid Plan Controls */}
+      <YStack gap="$3">
+        <XStack items="center" justify="space-between">
+          <YStack gap="$0.5">
+            <XStack items="center" gap="$1.5">
+              <Text fontSize="$4" fontWeight="600" color="$ink">
+                {t('Advanced composer controls')}
+              </Text>
+              {!paid ? (
+                <XStack items="center" gap="$1" px="$2" py="$0.5" rounded={9999} bg="var(--edge, var(--white-10))">
+                  <Lock size={11} color="$soft" aria-hidden />
+                  <Text fontSize="$1" fontWeight="600" color="$soft">
+                    {t('Paid plan')}
+                  </Text>
+                </XStack>
+              ) : null}
+            </XStack>
+            <Text fontSize="$2" color="$soft">
+              {t('Customize composer controls and third-party model access.')}
+            </Text>
+          </YStack>
+        </XStack>
+
+        {/* Toggle 1: Show model selector in composer */}
+        <YStack p="$3" rounded="$3" borderWidth={1} borderColor="$borderColor" gap="$2">
+          <XStack items="center" justify="space-between">
+            <YStack flex={1} pr="$2">
+              <Text fontSize="$3" fontWeight="600" color="$ink">
+                {t('Show model selector in composer')}
+              </Text>
+              <Text fontSize="$2" color="$soft">
+                {t('By default, chat composers simplify controls to reasoning effort only. Enable this to pick models on the fly in the composer.')}
+              </Text>
+            </YStack>
+            <Button
+              size="sm"
+              variant={chatPrefs.showModelSelector ? 'default' : 'outline'}
+              disabled={!paid}
+              onClick={() => paid && setChatPrefs({ showModelSelector: !chatPrefs.showModelSelector })}
+            >
+              {chatPrefs.showModelSelector ? t('Enabled') : t('Disabled')}
+            </Button>
+          </XStack>
+        </YStack>
+
+        {/* Toggle 2: Enable third-party models */}
+        <YStack p="$3" rounded="$3" borderWidth={1} borderColor="$borderColor" gap="$2">
+          <XStack items="center" justify="space-between">
+            <YStack flex={1} pr="$2">
+              <Text fontSize="$3" fontWeight="600" color="$ink">
+                {t('Enable third-party models')}
+              </Text>
+              <Text fontSize="$2" color="$soft">
+                {t('Third-party models (OpenAI, Anthropic, Google, DeepSeek) are billed from your pre-paid credit topup. First-party models (Enso, Zen, Kai) are covered by your plan.')}
+              </Text>
+            </YStack>
+            <Button
+              size="sm"
+              variant={chatPrefs.allowThirdPartyModels ? 'default' : 'outline'}
+              disabled={!paid}
+              onClick={() => paid && setChatPrefs({ allowThirdPartyModels: !chatPrefs.allowThirdPartyModels })}
+            >
+              {chatPrefs.allowThirdPartyModels ? t('Enabled') : t('Disabled')}
+            </Button>
+          </XStack>
+        </YStack>
+
+        {!paid ? (
+          <XStack pt="$1">
+            <Button size="sm" variant="outline" onClick={() => window.location.assign(site('/pricing'))}>
+              <Sparkles size={14} color="var(--primary)" aria-hidden />
+              {t('Upgrade to unlock advanced model controls')}
+            </Button>
+          </XStack>
+        ) : null}
+      </YStack>
     </YStack>
   )
 }

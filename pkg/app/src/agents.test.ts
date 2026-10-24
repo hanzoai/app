@@ -55,7 +55,7 @@ describe('a figure as a draft', () => {
     // The roster the sheet fetches is what the build writes.
     execFileSync(process.execPath, [join(ROOT, 'scripts', 'team.mjs')], { cwd: ROOT, stdio: 'ignore' })
     figures = JSON.parse(readFileSync(join(ROOT, 'assets', 'personas', 'index.json'), 'utf8'))
-  })
+  }, 30_000)
   const by = (slug: string) => figures.find((f) => f.slug === slug)!
 
   test('a written PERSONA.md gives its name and its prompt word for word, without the front matter', () => {

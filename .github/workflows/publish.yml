@@ -29,8 +29,8 @@ jobs:
         run: |
           set -euo pipefail
           ahead=""
-          # The order is the dependency order: the contract before the app.
-          for dir in pkg/mod pkg/app; do
+          # The order is the dependency order: glass & mod before the app.
+          for dir in pkg/glass pkg/mod pkg/app; do
             [ -f "$dir/package.json" ] || continue
             NAME=$(jq -r .name "$dir/package.json")
             NEW=$(jq -r .version "$dir/package.json")
