@@ -6,10 +6,10 @@ test:
       set -e
       corepack enable
       pnpm install --frozen-lockfile
+      pnpm build
       pnpm typecheck
       pnpm lint:design
       pnpm test
-      pnpm build
       # Each package's root loads in plain Node, as publish.yml checks before it ships.
       for dir in pkg/*/; do
         test -s "${dir}dist/index.js"
