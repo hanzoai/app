@@ -39,6 +39,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { SizableText, XStack, YStack } from '@hanzo/gui'
 import {
   ArrowUpRight,
+  BookOpen,
   Building2,
   Check,
   ChevronsUpDown,
@@ -51,6 +52,7 @@ import {
   Keyboard,
   LifeBuoy,
   LogOut,
+  MessagesSquare,
   Palette,
   Plus,
   ScrollText,
@@ -102,6 +104,8 @@ export type Who = Pick<Host, 'api' | 'token' | 'org' | 'person' | 'signOut'>
 /** Each Help page's icon, by its key in help.ts. */
 const ICONS: Record<string, ReactNode> = {
   help: <CircleHelp size={16} aria-hidden />,
+  docs: <BookOpen size={16} aria-hidden />,
+  contact: <MessagesSquare size={16} aria-hidden />,
   center: <ShieldCheck size={16} aria-hidden />,
   releases: <ScrollText size={16} aria-hidden />,
   download: <Download size={16} aria-hidden />,
@@ -284,12 +288,13 @@ export function Me({
   const plan = spoken(read.value?.label ?? null)
   const teamPlan = team ? (team.name === current ? plan : teamOther) : ''
   const ownPlan = personal ? (personal.name === current ? plan : other) : ''
-  // Where the reader works, and on what: "hanzo · Enterprise", "Personal · Pro".
-  const working = [here ? (here.personal ? t('Personal') : here.display) : current, plan].filter(Boolean).join(' · ')
+  const isFree = !read.value?.label?.name || read.value?.label?.name?.toLowerCase() === 'free'
+  const planName = plan || (isFree ? t('Free') : '')
+  // Where the reader works, and on what: "hanzo - Enterprise", "Personal - Pro", "Personal - Free".
+  const working = [here ? (here.personal ? t('Personal') : here.display) : current, planName].filter(Boolean).join(' - ')
   // A personal plan is bought for the personal organization, beside any business one.
   // The plans row's name (a phrase of `upgrade`'s).
   const plans = upgrade(read.value?.label?.name)
-  const isFree = !read.value?.label?.name || read.value?.label?.name?.toLowerCase() === 'free'
   const getPro = () => (personal ? window.location.assign(payUrl('/cart', { plan: 'pro', org: personal.name, returnUrl: window.location.href })) : window.location.assign(payUrl('/cart', { plan: 'pro', returnUrl: window.location.href })))
   const apple = mac()
 
@@ -410,7 +415,7 @@ export function Me({
                   <DropdownMenuItem key={o.name} onSelect={() => o.name !== current && onOrg(o.name)}>
                     <Line
                       icon={<Mark org={o} />}
-                      sub={[o.personal ? t('Personal') : said(o.role, t), planFor(o)].filter(Boolean).join(' · ')}
+                      sub={[o.personal ? t('Personal') : said(o.role, t), planFor(o) || (isFree && o.personal ? t('Free') : '')].filter(Boolean).join(' - ')}
                       trail={o.name === current ? <Check size={16} aria-label={t('Current')} /> : null}
                     >
                       {o.display}

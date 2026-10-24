@@ -30,7 +30,7 @@
 import { phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { Text, XStack, YStack } from '@hanzo/gui'
-import { ArrowLeft, Bell, Search, SquarePen } from 'lucide-react'
+import { ArrowLeft, Bell, Search, Sparkles, SquarePen } from 'lucide-react'
 import { DOTS, Gutter, library, NEW, own, tabs, useScheduled, useSessions, type Host } from '@hanzo/build'
 import { tidy } from './lib/title'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
@@ -43,7 +43,9 @@ import { Setup } from './Setup'
 import { ago, UNTITLED_RUN, type Recent } from './recent'
 import { empty } from './open'
 import { useSpan } from './span'
+import { useFree } from './Upgrade'
 import { talk, type Place } from './lib/host'
+import { payUrl } from './lib/pay'
 import { brand, wordmark } from './where'
 
 /** The sidebar fills the column. Its `width` is typed in px alone, though its frame takes any gui size — the type is
@@ -154,6 +156,7 @@ export function Column({
   places?: { id: string; label: string; links: RailLink[] }[]
 }) {
   const { t, dir } = useI18n()
+  const free = useFree(Boolean(host.token?.()))
   // The desktop sidebar and a phone's drawer can both be in the page: each names its own group labels.
   const uid = useId()
   const span = useSpan(SPAN, WIDTH, FLOOR, CEIL)
@@ -272,6 +275,21 @@ export function Column({
             <Setup />
           </YStack>
         )}
+        {free ? (
+          <YStack role="list" gap={2} shrink={0} pt="$2">
+            <YStack role="listitem">
+              <SidebarItem
+                {...ROW}
+                data-slot="column-upgrade"
+                icon={<Sparkles size={16} aria-hidden color="var(--primary)" />}
+                onPress={() => window.location.assign(payUrl('/cart', { plan: 'pro', returnUrl: window.location.href }))}
+                {...keys(() => window.location.assign(payUrl('/cart', { plan: 'pro', returnUrl: window.location.href })))}
+              >
+                <Text fontSize="$3" color="$ink">{t('Upgrade to Pro')}</Text>
+              </SidebarItem>
+            </YStack>
+          </YStack>
+        ) : null}
         {foot}
       </Sidebar>
       {drawer ? null : (

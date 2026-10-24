@@ -2395,6 +2395,17 @@ function Frame({
       {settled ? (
         signedIn ? (
           <>
+            {free ? (
+              <SidebarItem
+                icon={<Sparkles size={15} aria-hidden color="var(--primary)" />}
+                onPress={() => {
+                  window.location.assign(payUrl("/cart", { plan: "pro", returnUrl: window.location.href }));
+                  dismiss();
+                }}
+              >
+                {t("Upgrade to Pro")}
+              </SidebarItem>
+            ) : null}
             <SidebarItem
               icon={<UserPlus size={15} aria-hidden />}
               onPress={() => window.open(invite(), "_blank", "noopener")}

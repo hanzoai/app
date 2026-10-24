@@ -119,6 +119,16 @@ const GROUPS: Group[] = [
       { id: 'keys', label: phrase('API keys'), href: 'https://platform.hanzo.ai/api-keys' },
     ],
   },
+  {
+    label: phrase('Help & Support'),
+    rows: [
+      { id: 'docs', label: phrase('Documentation'), href: 'https://docs.hanzo.ai' },
+      { id: 'support', label: phrase('Help center'), href: site('/support') },
+      { id: 'contact', label: phrase('Contact us'), href: site('/contact') },
+      { id: 'status', label: phrase('Status'), href: 'https://status.hanzo.ai' },
+      { id: 'releases', label: phrase('Release notes'), href: 'https://github.com/hanzoai/cli/releases' },
+    ],
+  },
 ]
 
 /** Every row, flat — what the pane looks a chosen id up in. */

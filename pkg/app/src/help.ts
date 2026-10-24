@@ -23,6 +23,8 @@ const RELEASES = 'https://github.com/hanzoai/cli/releases'
  */
 export const pages = (): Page[] => [
   { key: 'help', label: phrase('Help center'), href: site('/support') },
+  { key: 'docs', label: phrase('Documentation'), href: 'https://docs.hanzo.ai' },
+  { key: 'contact', label: phrase('Contact us'), href: site('/contact') },
   { key: 'center', label: phrase('Privacy center'), href: site('/legal') },
   { key: 'releases', label: phrase('Release notes'), href: RELEASES },
   { key: 'download', label: phrase('Download apps'), href: site('/download') },

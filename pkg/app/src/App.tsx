@@ -340,7 +340,7 @@ function Window({ bar }: { bar?: Bar }) {
             minH={0}
             paddingInlineEnd="var(--pane-gap)"
             pb="var(--pane-gap)"
-            pt={bar ? 0 : 'var(--pane-gap)'}
+            pt={0}
             // A phone's frame is full-bleed on the floor, which follows the theme,
             // so the top of the page the browser's bar tints from does too.
             $max-md={{ p: 0 }}

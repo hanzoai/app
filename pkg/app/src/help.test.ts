@@ -13,8 +13,8 @@ describe('the Help menu', () => {
   // legal, legal/[slug], download) or the release notes its own nav links to.
   test('names the real pages, in order', () => {
     configure({ site: '' })
-    expect(hrefs()).toEqual(['/support', '/legal', 'https://github.com/hanzoai/cli/releases', '/download', '/legal/terms', '/legal/privacy'])
-    expect([...pages(), ...legal()].map((p) => p.label)).toEqual(['Help center', 'Privacy center', 'Release notes', 'Download apps', 'Terms of Service', 'Privacy Policy'])
+    expect(hrefs()).toEqual(['/support', 'https://docs.hanzo.ai', '/contact', '/legal', 'https://github.com/hanzoai/cli/releases', '/download', '/legal/terms', '/legal/privacy'])
+    expect([...pages(), ...legal()].map((p) => p.label)).toEqual(['Help center', 'Documentation', 'Contact us', 'Privacy center', 'Release notes', 'Download apps', 'Terms of Service', 'Privacy Policy'])
   })
 
   test("on hanzo.team every address is hanzo.ai's, read when the menu is drawn", () => {
@@ -22,7 +22,7 @@ describe('the Help menu', () => {
     for (const href of hrefs()) {
       const url = new URL(href)
       expect(url.protocol, href).toBe('https:')
-      expect(['hanzo.ai', 'github.com'], href).toContain(url.host)
+      expect(['hanzo.ai', 'docs.hanzo.ai', 'github.com'], href).toContain(url.host)
     }
   })
 })
