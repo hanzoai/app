@@ -162,7 +162,7 @@ export interface Project {
 }
 
 export const projects = (c: Client, signal?: AbortSignal) =>
-  c.http.json<Project[]>({ path: '/v1/projects', signal })
+  c.http.json<Project[]>({ path: '/v1/project', signal })
 
 /** A secret's NAME and where it lives. The value never leaves KMS. */
 export interface Secret {

@@ -59,7 +59,7 @@ export const invite = (): string => site(settings('members'))
 
 /** The org's projects, newest first. */
 export async function projects(client: AiClient, signal?: AbortSignal): Promise<Project[]> {
-  const rows = await client.http.json<Project[]>({ path: '/v1/projects', signal })
+  const rows = await client.http.json<Project[]>({ path: '/v1/project', signal })
   if (!Array.isArray(rows)) return []
   return [...rows].sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
 }

@@ -229,7 +229,7 @@ export async function projects(
         .catch(() => null),
       client.http
         .json<{ id: string; name: string }[]>({
-          path: '/v1/projects',
+          path: '/v1/project',
           signal,
         })
         .catch(() => null),
