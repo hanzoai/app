@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { View, XStack } from '@hanzo/ui'
 
 function getWindow() {
   if (typeof window === 'undefined') return null
@@ -167,17 +168,17 @@ export function WindowControls() {
 
   if (!isDesktop) return null
 
-  const handleMinimize = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
+  const handleMinimize = (e: { preventDefault?: () => void; stopPropagation?: () => void }) => {
+    e.preventDefault?.()
+    e.stopPropagation?.()
     const win = getWindow()
     if (win?.minimize) win.minimize().catch(() => invokeTauri('plugin:window|minimize'))
     else invokeTauri('plugin:window|minimize')
   }
 
-  const handleToggleMaximize = async (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
+  const handleToggleMaximize = async (e: { preventDefault?: () => void; stopPropagation?: () => void }) => {
+    e.preventDefault?.()
+    e.stopPropagation?.()
     const win = getWindow()
     if (win?.toggleMaximize) {
       await win.toggleMaximize().catch(() => invokeTauri('plugin:window|toggle_maximize'))
@@ -193,87 +194,72 @@ export function WindowControls() {
     else document.documentElement.removeAttribute('data-maximized')
   }
 
-  const handleClose = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
+  const handleClose = (e: { preventDefault?: () => void; stopPropagation?: () => void }) => {
+    e.preventDefault?.()
+    e.stopPropagation?.()
     const win = getWindow()
     if (win?.close) win.close().catch(() => invokeTauri('plugin:window|close'))
     else invokeTauri('plugin:window|close')
   }
 
   return (
-    <div
+    <XStack
       data-slot="window-controls"
       data-tauri-drag-region="false"
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '4px',
+      items="center"
+      gap={4}
+      shrink={0}
+      $platform-web={{
         marginInlineStart: 'auto',
         userSelect: 'none',
-        flexShrink: 0,
-        zIndex: 50,
+        zIndex: 'var(--z-dropdown)',
       }}
     >
-      <button
-        type="button"
+      <View
+        render={<button type="button" />}
         data-tauri-drag-region="false"
         onClick={handleMinimize}
-        onMouseDown={(e) => e.stopPropagation()}
+        onMouseDown={(e: { stopPropagation?: () => void }) => e.stopPropagation?.()}
         aria-label="Minimize"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '28px',
-          height: '28px',
+        width={28}
+        height={28}
+        rounded={6}
+        items="center"
+        justify="center"
+        bg="transparent"
+        borderWidth={0}
+        cursor="pointer"
+        hoverStyle={{ bg: 'var(--white-08)' }}
+        $platform-web={{
+          color: 'var(--muted-foreground)',
           borderRadius: '6px',
-          background: 'transparent',
-          border: 'none',
-          color: 'var(--muted-foreground, #888)',
-          cursor: 'pointer',
           transition: 'all 0.15s ease',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'
-          e.currentTarget.style.color = '#fff'
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'transparent'
-          e.currentTarget.style.color = 'var(--muted-foreground, #888)'
         }}
       >
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
           <line x1="2" y1="6" x2="10" y2="6" strokeLinecap="round" />
         </svg>
-      </button>
+      </View>
 
-      <button
-        type="button"
+      <View
+        render={<button type="button" />}
         data-tauri-drag-region="false"
         onClick={handleToggleMaximize}
-        onMouseDown={(e) => e.stopPropagation()}
+        onMouseDown={(e: { stopPropagation?: () => void }) => e.stopPropagation?.()}
         aria-label={isMaximized ? 'Restore' : 'Maximize'}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '28px',
-          height: '28px',
+        width={28}
+        height={28}
+        rounded={6}
+        items="center"
+        justify="center"
+        bg="transparent"
+        borderWidth={0}
+        cursor="pointer"
+        hoverStyle={{ bg: 'var(--white-08)' }}
+        $platform-web={{
+          color: 'var(--muted-foreground)',
           borderRadius: '6px',
-          background: 'transparent',
-          border: 'none',
-          color: 'var(--muted-foreground, #888)',
-          cursor: 'pointer',
           transition: 'all 0.15s ease',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'
-          e.currentTarget.style.color = '#fff'
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'transparent'
-          e.currentTarget.style.color = 'var(--muted-foreground, #888)'
         }}
       >
         {isMaximized ? (
@@ -286,41 +272,34 @@ export function WindowControls() {
             <rect x="2" y="2" width="8" height="8" rx="1.5" />
           </svg>
         )}
-      </button>
+      </View>
 
-      <button
-        type="button"
+      <View
+        render={<button type="button" />}
         data-tauri-drag-region="false"
         onClick={handleClose}
-        onMouseDown={(e) => e.stopPropagation()}
+        onMouseDown={(e: { stopPropagation?: () => void }) => e.stopPropagation?.()}
         aria-label="Close"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '28px',
-          height: '28px',
+        width={28}
+        height={28}
+        rounded={6}
+        items="center"
+        justify="center"
+        bg="transparent"
+        borderWidth={0}
+        cursor="pointer"
+        hoverStyle={{ bg: 'var(--state-error)' }}
+        $platform-web={{
+          color: 'var(--muted-foreground)',
           borderRadius: '6px',
-          background: 'transparent',
-          border: 'none',
-          color: 'var(--muted-foreground, #888)',
-          cursor: 'pointer',
           transition: 'all 0.15s ease',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.85)'
-          e.currentTarget.style.color = '#fff'
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'transparent'
-          e.currentTarget.style.color = 'var(--muted-foreground, #888)'
         }}
       >
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
           <line x1="2.5" y1="2.5" x2="9.5" y2="9.5" strokeLinecap="round" />
           <line x1="9.5" y1="2.5" x2="2.5" y2="9.5" strokeLinecap="round" />
         </svg>
-      </button>
-    </div>
+      </View>
+    </XStack>
   )
 }
