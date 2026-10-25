@@ -60,6 +60,7 @@ vi.mock('./ProviderMark', () => ({
 
 vi.mock('./lib/api', () => ({
   api: () => 'https://api.hanzo.ai',
+  CLIENT: 'hanzo-app',
 }))
 
 vi.mock('./lib/session', () => ({

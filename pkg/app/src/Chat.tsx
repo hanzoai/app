@@ -824,6 +824,15 @@ function Thread({
   const mind = useMind(target, anonymous ? "free" : limits?.plan);
   catalog.current = mind.models;
   const [chatPrefs, setChatPrefs] = useChatPreferences();
+  useEffect(() => {
+    const eff = chatPrefs.effort || "high";
+    if (eff === "low" || eff === "medium" || eff === "high") {
+      mind.pace(eff);
+    } else if (eff === "xhigh" || eff === "max") {
+      mind.pace("high");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatPrefs.effort]);
   const ai = useAi();
   // In the app's frame the composer floats on the pane as a pane of its own.
   const framed = useContext(Framed);

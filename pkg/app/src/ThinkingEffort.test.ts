@@ -52,9 +52,16 @@ describe('thinking effort', () => {
     }
   })
 
-  test('locks popover and card width across every slider position', () => {
+  test('displays the selected effort level in the pill button and locks popover width across every slider position', () => {
+    const defaultHtml = renderToStaticMarkup(createElement(ThinkingEffort, { onChange: () => {} }))
+    expect(defaultHtml).toContain('data-slot="thinking-effort-pill" role="button"><span>High</span>')
+    expect(defaultHtml).not.toContain('>Thinking effort<')
+    expect(defaultHtml).not.toContain('>Thinking<')
+
     for (const step of EFFORT_STEPS) {
       const html = renderToStaticMarkup(createElement(ThinkingEffort, { effort: step.id, onChange: () => {} }))
+      expect(html).toContain(`data-slot="thinking-effort-pill" role="button"><span>${step.label}</span>`)
+      expect(html).not.toContain('>Thinking effort<')
       expect(html).toContain('data-width="260" data-min-w="260" data-max-w="260"')
       expect(html).toContain('data-slot="thinking-effort-card" role="dialog" data-width="100%" data-min-w="234" data-max-w="234"')
       expect(html).toContain('data-min-h="32"')

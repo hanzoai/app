@@ -15,7 +15,7 @@ export interface ChatPreferences {
 
 const STORAGE_KEY = 'hanzo.chat.preferences'
 const EVENT_NAME = 'hanzo:chat:preferences'
-const EFFORT_SCHEMA_VERSION = 2
+const EFFORT_SCHEMA_VERSION = 3
 
 const DEFAULT_PREFERENCES: ChatPreferences = {
   showModelSelector: false,

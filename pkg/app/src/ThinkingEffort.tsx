@@ -32,7 +32,7 @@ export interface ThinkingEffortProps {
 
 /**
  * Native iOS widget-style Thinking effort selector matching standard Safari mobile symmetry:
- * - Subtle pill button: "Thinking effort ⌄"
+ * - Subtle pill button showing only the active effort level ("High ⌄")
  * - Segmented slider popover with discrete stop dots and smooth active fill
  * - Default level: "high" across all plans
  */
@@ -110,7 +110,7 @@ export function ThinkingEffort({ effort = DEFAULT_EFFORT, onChange, disabled = f
           }}
         >
           <Text fontSize="$2" fontWeight="500" color="$ink">
-            {t('Thinking effort')}
+            {t(current.label)}
           </Text>
           <ChevronDown size={12} color="var(--soft, var(--muted-foreground))" aria-hidden />
         </XStack>

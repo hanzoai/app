@@ -15,11 +15,14 @@ import { useIam } from '@hanzo/iam/react'
 import { Check, Maximize2, Sparkles, X } from 'lucide-react'
 import { ProviderMark } from './ProviderMark'
 import { useKept } from './kept'
-import { api } from './lib/api'
+import { api, CLIENT } from './lib/api'
+import { answers } from './lib/host'
 import { scope } from './lib/session'
 import { enter } from './lib/destination'
 import { brand } from './where'
 import { GOOD } from './lib/mix'
+
+const here = (): boolean => typeof window !== 'undefined' && answers(window.location.hostname)
 
 const LATER_KEY = 'hanzo.onboarding.later'
 const GITHUB_KEY = 'hanzo.onboarding.github'
@@ -45,7 +48,7 @@ function SlackMark({ size = 18 }: { size?: number }) {
 
 export function Setup() {
   const { t } = useI18n()
-  const { isAuthenticated, accessToken } = useIam()
+  const { isAuthenticated, accessToken, sdk } = useIam()
   const [later, setLater] = useKept(LATER_KEY, false)
   const [step, setStep] = useKept(STEP_KEY, 1)
 
@@ -60,7 +63,7 @@ export function Setup() {
 
   const signed = isAuthenticated && Boolean(accessToken)
 
-  // Sync with remote integrations & connectors when authenticated or returning from OAuth tab/popup
+  // Sync with remote integrations, connectors & linked IAM accounts when authenticated or returning from OAuth tab/popup
   useEffect(() => {
     if (!signed) return
     let live = true
@@ -73,7 +76,10 @@ export function Setup() {
       fetch(`${api()}/v1/integrations/connectors`, { headers: auth })
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null),
-    ]).then(([integrationsData, connectorsData]) => {
+      fetch(`${api()}/v1/iam/linked-accounts`, { headers: auth })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null),
+    ]).then(([integrationsData, connectorsData, linkedData]) => {
       if (!live) return
       const providers = Array.isArray(integrationsData?.providers)
         ? (integrationsData.providers as Record<string, unknown>[])
@@ -81,8 +87,11 @@ export function Setup() {
       const connectors = Array.isArray(connectorsData?.connectors)
         ? (connectorsData.connectors as Record<string, unknown>[])
         : null
+      const linkedAccounts = Array.isArray(linkedData?.data)
+        ? (linkedData.data as Record<string, unknown>[])
+        : null
 
-      if (!providers && !connectors) return
+      if (!providers && !connectors && !linkedAccounts) return
 
       const connectedSet = new Set<string>()
       if (providers) {
@@ -95,6 +104,11 @@ export function Setup() {
           connectedSet.add(String(c.provider))
         }
       }
+      if (linkedAccounts) {
+        for (const l of linkedAccounts) {
+          if (l.provider) connectedSet.add(String(l.provider).toLowerCase())
+        }
+      }
 
       const hasGithub = connectedSet.has('github') || connectedSet.has('github-copilot')
       const hasSlack = connectedSet.has('slack')
@@ -104,15 +118,9 @@ export function Setup() {
         connectedSet.has('google-drive') ||
         connectedSet.has('google-calendar')
 
-      if (providers) {
-        setGithubDone(hasGithub)
-        setSlackDone(hasSlack)
-        setGoogleDone(hasGoogle)
-      } else {
-        if (hasGithub) setGithubDone(true)
-        if (hasSlack) setSlackDone(true)
-        if (hasGoogle) setGoogleDone(true)
-      }
+      if (hasGithub) setGithubDone(true)
+      if (hasSlack) setSlackDone(true)
+      if (hasGoogle) setGoogleDone(true)
     })
 
     return () => {
@@ -148,6 +156,64 @@ export function Setup() {
 
   if (later && !modalOpen) return null
 
+  const openOAuthPopup = (authorizeUrl: string, provider: 'github' | 'slack' | 'google') => {
+    const popup = window.open(authorizeUrl, `hanzo-oauth-${provider}`, 'width=600,height=700')
+    if (!popup) {
+      window.open(authorizeUrl, '_blank', 'noopener,noreferrer')
+    } else {
+      const timer = window.setInterval(() => {
+        if (popup.closed) {
+          window.clearInterval(timer)
+          setSyncTurn((n) => n + 1)
+        }
+      }, 1000)
+    }
+  }
+
+  const connectGoogleViaIam = async (onDone: () => void): Promise<string | 'done' | null> => {
+    try {
+      const linkOrigin = here() && typeof window !== 'undefined' ? window.location.origin : api()
+      const returnUri = typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : 'https://hanzo.ai/auth/callback'
+      const linkRes = await fetch(`${linkOrigin}/v1/iam/link`, {
+        method: 'POST',
+        headers: { ...scope(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: 'provider-google',
+          clientId: CLIENT,
+          returnUri,
+        }),
+      }).catch(() => null)
+
+      if (linkRes?.ok) {
+        const linkJson = (await linkRes.json().catch(() => null)) as {
+          status?: string
+          msg?: string
+          data?: unknown
+        } | null
+        if (linkJson?.status === 'ok' && typeof linkJson.data === 'string' && linkJson.data) {
+          return linkJson.data
+        }
+        if (linkJson?.msg && linkJson.msg.toLowerCase().includes('already connected')) {
+          onDone()
+          return 'done'
+        }
+      }
+
+      if (sdk && typeof sdk.getSigninUrl === 'function') {
+        const signinHref = await sdk.getSigninUrl({ additionalParams: { provider: 'provider-google' } })
+        const url = new URL(signinHref)
+        if (here() && typeof window !== 'undefined') {
+          url.protocol = window.location.protocol
+          url.host = window.location.host
+        }
+        return url.href
+      }
+    } catch {
+      // fall through
+    }
+    return null
+  }
+
   const connectOAuthProvider = async (
     provider: 'github' | 'slack' | 'google',
     label: string,
@@ -160,6 +226,14 @@ export function Setup() {
     setBusy(provider)
     setErrorMsg(null)
     try {
+      if (provider === 'google') {
+        const iamResult = await connectGoogleViaIam(onDone)
+        if (iamResult === 'done') return
+        if (iamResult) {
+          openOAuthPopup(iamResult, 'google')
+          return
+        }
+      }
       const res = await fetch(`${api()}/v1/integrations/${provider}/connect`, {
         method: 'POST',
         headers: { ...scope(), 'Content-Type': 'application/json' },
@@ -183,17 +257,7 @@ export function Setup() {
       }
       const j = (await res.json()) as { authorizeUrl?: string; connected?: boolean }
       if (j.authorizeUrl) {
-        const popup = window.open(j.authorizeUrl, `hanzo-oauth-${provider}`, 'width=600,height=700')
-        if (!popup) {
-          window.open(j.authorizeUrl, '_blank', 'noopener,noreferrer')
-        } else {
-          const timer = window.setInterval(() => {
-            if (popup.closed) {
-              window.clearInterval(timer)
-              setSyncTurn((n) => n + 1)
-            }
-          }, 1000)
-        }
+        openOAuthPopup(j.authorizeUrl, provider)
       } else if (j.connected) {
         onDone()
       }
