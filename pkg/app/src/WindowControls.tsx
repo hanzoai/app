@@ -43,11 +43,51 @@ function invokeTauri(cmd: string, args: Record<string, unknown> = {}) {
   return Promise.resolve()
 }
 
+const INTERACTIVE_SELECTOR = [
+  'button',
+  'input',
+  'select',
+  'textarea',
+  'label',
+  'summary',
+  '[role="button"]',
+  '[role="link"]',
+  '[role="menuitem"]',
+  '[role="menuitemcheckbox"]',
+  '[role="menuitemradio"]',
+  '[role="tab"]',
+  '[role="checkbox"]',
+  '[role="radio"]',
+  '[role="switch"]',
+  '[role="option"]',
+  '[role="combobox"]',
+  '[aria-haspopup]',
+  '[contenteditable="true"]',
+  '[tabindex]:not([tabindex="-1"])',
+  '[data-tauri-drag-region="false"]',
+  '[data-slot="window-controls"]',
+].join(', ')
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null
+  if (!el || typeof el.closest !== 'function') return false
+  if (el.closest(INTERACTIVE_SELECTOR)) return true
+  if (el.closest('a:not([data-tauri-drag-region])')) return true
+  return false
+}
+
+let lastReactMouseDown = 0
+
 export function dragWindow(e: React.MouseEvent) {
   if (e.button !== 0) return
-  const target = e.target as HTMLElement
-  if (target.closest('button, input, select, textarea, [data-tauri-drag-region="false"]')) return
-  if (target.closest('a:not([data-tauri-drag-region])')) return
+  if (isInteractiveTarget(e.target)) return
+
+  lastReactMouseDown = Date.now()
+  e.preventDefault?.()
+  e.stopPropagation?.()
+
+  // Let double-clicks be handled by toggleWindowMaximize instead of starting a drag
+  if (e.detail && e.detail > 1) return
 
   const win = getWindow()
   if (win?.startDragging) {
@@ -60,9 +100,23 @@ export function dragWindow(e: React.MouseEvent) {
 }
 
 export function toggleWindowMaximize(e: React.MouseEvent) {
-  const target = e.target as HTMLElement
-  if (target.closest('button, input, select, textarea, [data-tauri-drag-region="false"]')) return
-  if (target.closest('a:not([data-tauri-drag-region])')) return
+  if (isInteractiveTarget(e.target)) return
+  e.preventDefault?.()
+  e.stopPropagation?.()
+
+  // When Tauri's built-in drag.js handles double-click on [data-tauri-drag-region],
+  // it calls stopImmediatePropagation() on the mousedown event and invokes
+  // plugin:window|internal_toggle_maximize before the browser fires dblclick.
+  // Skip the duplicate toggle when React did not receive the preceding mousedown.
+  const el = e.target as HTMLElement | null
+  if (
+    e.type === 'dblclick' &&
+    Date.now() - lastReactMouseDown > 500 &&
+    typeof el?.closest === 'function' &&
+    el.closest('[data-tauri-drag-region]')
+  ) {
+    return
+  }
 
   const win = getWindow()
   if (win?.toggleMaximize) {
@@ -90,19 +144,25 @@ export function WindowControls() {
 
     document.documentElement.setAttribute('data-desktop', 'true')
 
-    const win = getWindow()
-    const checkMax = win?.isMaximized
-      ? win.isMaximized()
-      : invokeTauri('plugin:window|is_maximized')
+    const syncMaximized = () => {
+      const win = getWindow()
+      const checkMax = win?.isMaximized
+        ? win.isMaximized()
+        : invokeTauri('plugin:window|is_maximized')
 
-    Promise.resolve(checkMax)
-      .then((val) => {
-        const max = Boolean(val)
-        setIsMaximized(max)
-        if (max) document.documentElement.setAttribute('data-maximized', 'true')
-        else document.documentElement.removeAttribute('data-maximized')
-      })
-      .catch(() => {})
+      Promise.resolve(checkMax)
+        .then((val) => {
+          const max = Boolean(val)
+          setIsMaximized(max)
+          if (max) document.documentElement.setAttribute('data-maximized', 'true')
+          else document.documentElement.removeAttribute('data-maximized')
+        })
+        .catch(() => {})
+    }
+
+    syncMaximized()
+    window.addEventListener('resize', syncMaximized)
+    return () => window.removeEventListener('resize', syncMaximized)
   }, [])
 
   if (!isDesktop) return null

@@ -27,6 +27,7 @@ import { rememberDestination } from './lib/destination'
 import { named } from './lib/session'
 import { useSignOut } from './lib/signout'
 import { brand } from './where'
+import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowControls'
 
 /** The bar's height under the notch: hanzo.ai's masthead's. */
 const HEIGHT = 60
@@ -53,6 +54,9 @@ export function Chrome({ back }: { back?: ReactNode }) {
     <XStack
       render="header"
       data-slot="masthead"
+      data-tauri-drag-region="deep"
+      onMouseDown={dragWindow}
+      onDoubleClick={toggleWindowMaximize}
       position="sticky"
       t={0}
       z="var(--z-header)"
@@ -68,17 +72,29 @@ export function Chrome({ back }: { back?: ReactNode }) {
       borderColor="var(--border)"
     >
       <Text
-        render={<a href="/" aria-label={t('{brand} home', { brand: brand() })} />}
+        render={
+          <a
+            href="/"
+            aria-label={t('{brand} home', { brand: brand() })}
+            data-tauri-drag-region="deep"
+            onClick={(e) => {
+              if (typeof document !== 'undefined' && document.documentElement.getAttribute('data-desktop') === 'true') {
+                e.preventDefault()
+              }
+            }}
+          />
+        }
         display="flex"
         items="center"
         shrink={0}
         color="var(--foreground)"
         textDecorationLine="none"
+        data-tauri-drag-region="deep"
       >
-        <HanzoWordmark label={brand()} size={22} />
+        <HanzoWordmark label={brand()} size={22} data-tauri-drag-region="deep" />
       </Text>
       {back}
-      <View flex={1} />
+      <View flex={1} data-tauri-drag-region="deep" />
       {signed ? (
         <>
           <XStack render="section" aria-label={t('Account')} items="center" gap={12} minW={0} $max-md={{ display: 'none' }}>
@@ -150,6 +166,7 @@ export function Chrome({ back }: { back?: ReactNode }) {
           </View>
         </>
       ) : null}
+      <WindowControls />
     </XStack>
   )
 }

@@ -93,23 +93,22 @@ describe('Setup 1-2-3 in-app onboarding', () => {
     expect(html).toContain('Connect Slack')
   })
 
-  test('advances to Step 3 (Wallet) when GitHub and Slack are connected', () => {
+  test('advances to Step 3 (Google Workspace) when GitHub and Slack are connected', () => {
     store.set('hanzo.onboarding.github', true)
     store.set('hanzo.onboarding.slack', true)
     store.set('hanzo.onboarding.step', 3)
     const html = renderToStaticMarkup(createElement(Setup))
-    expect(html).toContain('3. Connect Wallet')
-    expect(html).toContain('Connect Wallet')
-    expect(html).toContain('Enter address')
+    expect(html).toContain('3. Connect Google')
+    expect(html).toContain('Connect Google')
     expect(html).toContain('Skip')
   })
 
   test('shows completion state when all 3 are finished', () => {
     store.set('hanzo.onboarding.github', true)
     store.set('hanzo.onboarding.slack', true)
-    store.set('hanzo.onboarding.wallet', true)
+    store.set('hanzo.onboarding.google', true)
     const html = renderToStaticMarkup(createElement(Setup))
-    expect(html).toContain('GitHub, Slack &amp; Wallet connected')
+    expect(html).toContain('GitHub, Slack &amp; Google connected')
     expect(html).toContain('Done')
   })
 

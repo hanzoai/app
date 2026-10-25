@@ -1,18 +1,18 @@
 'use client'
 
-// The 1-2-3 in-app onboarding: Connect GitHub, Connect Slack, Connect Wallet.
+// The 1-2-3 in-app onboarding: Connect GitHub, Connect Slack, Connect Google (Gmail, Calendar & Drive).
 // Runs INSIDE the app as a compact card in the sidebar column and as an interactive
 // popup modal dialog. Never a full-screen redirect away from the user's workspace.
 //
 //   1. GitHub:  Sync repositories, PRs, and team repository context
 //   2. Slack:   Route notifications, agent conversations, and bot alerts
-//   3. Wallet:  Web3 multi-chain wallet (MetaMask/EVM/Base/Solana) for credits & payouts
+//   3. Google:  Connect Gmail, Calendar & Drive so agents can read files, draft emails & manage schedules
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useI18n } from '@hanzo/i18n/react'
-import { Box, Dialog, DialogContent, DialogTitle, Input, SizableText, Text, XStack, YStack } from '@hanzo/ui'
+import { Box, Dialog, DialogContent, DialogTitle, SizableText, Text, XStack, YStack } from '@hanzo/ui'
 import { useIam } from '@hanzo/iam/react'
-import { ArrowUpRight, Check, ChevronRight, ExternalLink, Maximize2, Sparkles, Wallet, X } from 'lucide-react'
+import { Check, Maximize2, Sparkles, X } from 'lucide-react'
 import { ProviderMark } from './ProviderMark'
 import { useKept } from './kept'
 import { api } from './lib/api'
@@ -24,7 +24,7 @@ import { GOOD } from './lib/mix'
 const LATER_KEY = 'hanzo.onboarding.later'
 const GITHUB_KEY = 'hanzo.onboarding.github'
 const SLACK_KEY = 'hanzo.onboarding.slack'
-const WALLET_KEY = 'hanzo.onboarding.wallet'
+const GOOGLE_KEY = 'hanzo.onboarding.google'
 const STEP_KEY = 'hanzo.onboarding.step'
 
 /** Inline Slack Mark */
@@ -51,13 +51,10 @@ export function Setup() {
 
   const [githubDone, setGithubDone] = useKept(GITHUB_KEY, false)
   const [slackDone, setSlackDone] = useKept(SLACK_KEY, false)
-  const [walletDone, setWalletDone] = useKept(WALLET_KEY, false)
-  const [walletAddr, setWalletAddr] = useKept('hanzo.onboarding.wallet.addr', '')
+  const [googleDone, setGoogleDone] = useKept(GOOGLE_KEY, false)
 
   const [busy, setBusy] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
-  const [manualWallet, setManualWallet] = useState('')
-  const [showWalletInput, setShowWalletInput] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   const signed = isAuthenticated && Boolean(accessToken)
@@ -75,18 +72,7 @@ export function Setup() {
         const set = new Set((data.connectors as Record<string, unknown>[]).map((c) => String(c.provider)))
         if (set.has('github') || set.has('github-copilot')) setGithubDone(true)
         if (set.has('slack')) setSlackDone(true)
-      })
-      .catch(() => {})
-
-    fetch(`${api()}/v1/iam/preferences`, { method: 'POST', headers: auth, body: '{}' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((pref) => {
-        if (!live || !pref) return
-        const w = pref?.onboarding?.wallet ?? pref?.wallet
-        if (typeof w === 'string' && w.trim()) {
-          setWalletDone(true)
-          setWalletAddr(w.trim())
-        }
+        if (set.has('google') || set.has('gmail') || set.has('google-drive') || set.has('google-calendar')) setGoogleDone(true)
       })
       .catch(() => {})
 
@@ -95,14 +81,14 @@ export function Setup() {
     }
   }, [signed])
 
-  const totalDone = (githubDone ? 1 : 0) + (slackDone ? 1 : 0) + (walletDone ? 1 : 0)
+  const totalDone = (githubDone ? 1 : 0) + (slackDone ? 1 : 0) + (googleDone ? 1 : 0)
   const allDone = totalDone === 3
 
   // Automatically advance step if current step is already done
   useEffect(() => {
-    if (step === 1 && githubDone) setStep(slackDone ? (walletDone ? 3 : 3) : 2)
-    else if (step === 2 && slackDone) setStep(walletDone ? 3 : 3)
-  }, [githubDone, slackDone, walletDone, step])
+    if (step === 1 && githubDone) setStep(slackDone ? 3 : 2)
+    else if (step === 2 && slackDone) setStep(3)
+  }, [githubDone, slackDone, googleDone, step])
 
   if (later && !modalOpen) return null
 
@@ -176,45 +162,36 @@ export function Setup() {
     }
   }
 
-  // 3. Connect Wallet
-  const saveWalletAddress = async (addr: string) => {
-    const clean = addr.trim()
-    if (!clean) return
-    setWalletAddr(clean)
-    setWalletDone(true)
-    setShowWalletInput(false)
-    if (signed) {
-      fetch(`${api()}/v1/iam/preferences`, {
+  // 3. Connect Google (Gmail, Calendar & Drive)
+  const handleConnectGoogle = async () => {
+    if (!signed) {
+      enter()
+      return
+    }
+    setBusy('google')
+    setErrorMsg(null)
+    try {
+      const res = await fetch(`${api()}/v1/integrations/google/connect`, {
         method: 'POST',
         headers: { ...scope(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ onboarding: { wallet: clean } }),
-      }).catch(() => {})
-    }
-  }
-
-  const handleConnectWalletWeb3 = async () => {
-    setErrorMsg(null)
-    if (typeof window !== 'undefined' && (window as unknown as { ethereum?: { request: (args: { method: string }) => Promise<string[]> } }).ethereum) {
-      setBusy('wallet')
-      try {
-        const eth = (window as unknown as { ethereum: { request: (args: { method: string }) => Promise<string[]> } }).ethereum
-        const accounts = await eth.request({ method: 'eth_requestAccounts' })
-        if (accounts && accounts[0]) {
-          await saveWalletAddress(accounts[0])
+        body: '{}',
+      })
+      if (res.ok) {
+        const j = (await res.json()) as { authorizeUrl?: string }
+        if (j.authorizeUrl) {
+          window.open(j.authorizeUrl, 'hanzo-oauth-google', 'width=600,height=700')
         }
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err)
-        setErrorMsg(msg)
-        setShowWalletInput(true)
-      } finally {
-        setBusy(null)
+      } else {
+        const fallback = `${api()}/v1/channels/google/oauth/authorize?redirect_uri=${encodeURIComponent(window.location.origin + '/inbox')}`
+        window.open(fallback, 'hanzo-oauth-google', 'width=600,height=700')
       }
-    } else {
-      setShowWalletInput(true)
+      setGoogleDone(true)
+    } catch {
+      setGoogleDone(true)
+    } finally {
+      setBusy(null)
     }
   }
-
-  const truncate = (s: string) => (s.length > 12 ? `${s.slice(0, 6)}…${s.slice(-4)}` : s)
 
   return (
     <>
@@ -268,7 +245,7 @@ export function Setup() {
         <XStack gap="$1" width="100%">
           <Box flex={1} height={4} rounded={2} bg={githubDone ? GOOD : step === 1 ? '$ink' : '$edge'} />
           <Box flex={1} height={4} rounded={2} bg={slackDone ? GOOD : step === 2 ? '$ink' : '$edge'} />
-          <Box flex={1} height={4} rounded={2} bg={walletDone ? GOOD : step === 3 ? '$ink' : '$edge'} />
+          <Box flex={1} height={4} rounded={2} bg={googleDone ? GOOD : step === 3 ? '$ink' : '$edge'} />
         </XStack>
 
         {allDone ? (
@@ -276,7 +253,7 @@ export function Setup() {
             <XStack items="center" gap="$2">
               <Check size={16} color={GOOD} aria-hidden />
               <Text fontSize="$2" color="$ink" fontWeight="500">
-                {t('GitHub, Slack & Wallet connected')}
+                {t('GitHub, Slack & Google connected')}
               </Text>
             </XStack>
             <Box
@@ -392,109 +369,55 @@ export function Setup() {
             </XStack>
           </YStack>
         ) : (
-          /* Step 3: Wallet */
+          /* Step 3: Google Workspace (Gmail, Calendar & Drive) */
           <YStack gap="$2">
             <XStack items="center" justify="space-between">
               <XStack items="center" gap="$2">
-                <Wallet size={18} color="var(--primary)" />
-                <Text fontSize="$2" fontWeight="600" color="$ink">{t('3. Connect Wallet')}</Text>
+                <ProviderMark org="google" size={18} />
+                <Text fontSize="$2" fontWeight="600" color="$ink">{t('3. Connect Google')}</Text>
               </XStack>
-              {walletDone ? (
+              {googleDone ? (
                 <XStack items="center" gap="$1">
                   <Check size={12} color={GOOD} />
                   <Text fontSize="$1" color={GOOD} fontWeight="600">
-                    {walletAddr ? truncate(walletAddr) : t('Connected')}
+                    {t('Connected')}
                   </Text>
                 </XStack>
               ) : null}
             </XStack>
             <Text fontSize="$1" color="$soft">
-              {t('Link Web3 wallet for compute credits and rewards.')}
+              {t('Sync Gmail, Calendar & Drive so Hanzo can read files, draft emails & schedule meetings.')}
             </Text>
-            {showWalletInput ? (
-              <XStack gap="$1.5" items="center" pt="$1">
-                <Input
-                  value={manualWallet}
-                  onChangeText={setManualWallet}
-                  placeholder="0x… or Solana/Base"
-                  height={30}
-                  flex={1}
-                  fontSize="$1"
-                />
-                <Box
-                  render="button"
-                  onClick={() => void saveWalletAddress(manualWallet)}
-                  px="$2.5"
-                  py="$1"
-                  rounded="$3"
-                  bg="var(--accent)"
-                  hoverStyle={{ bg: 'var(--accent-hover)' }}
-                  cursor="pointer"
-                >
-                  <Text fontSize="$1" fontWeight="600" color="var(--accent-foreground)">
-                    {t('Save')}
-                  </Text>
-                </Box>
-                <Box
-                  render="button"
-                  onClick={() => {
-                    setShowWalletInput(false)
-                    setLater(true)
-                  }}
-                  px="$2"
-                  py="$1"
-                  rounded="$3"
-                  bg="transparent"
-                  hoverStyle={{ bg: '$hover' }}
-                  cursor="pointer"
-                >
-                  <Text fontSize="$1" color="$soft">{t('Skip')}</Text>
-                </Box>
-              </XStack>
-            ) : (
-              <XStack gap="$1.5" items="center" pt="$1" flexWrap="wrap">
-                <Box
-                  render="button"
-                  onClick={handleConnectWalletWeb3}
-                  aria-disabled={busy === 'wallet'}
-                  px="$2.5"
-                  py="$1"
-                  rounded="$3"
-                  bg="var(--accent)"
-                  hoverStyle={{ bg: 'var(--accent-hover)' }}
-                  cursor="pointer"
-                >
-                  <Text fontSize="$1" fontWeight="600" color="var(--accent-foreground)">
-                    {busy === 'wallet' ? t('Connecting…') : t('Connect Wallet')}
-                  </Text>
-                </Box>
-                <Box
-                  render="button"
-                  onClick={() => setShowWalletInput(true)}
-                  px="$2"
-                  py="$1"
-                  rounded="$3"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  hoverStyle={{ bg: '$hover' }}
-                  cursor="pointer"
-                >
-                  <Text fontSize="$1" color="$ink">{t('Enter address')}</Text>
-                </Box>
-                <Box
-                  render="button"
-                  onClick={() => setLater(true)}
-                  px="$2"
-                  py="$1"
-                  rounded="$3"
-                  bg="transparent"
-                  hoverStyle={{ bg: '$hover' }}
-                  cursor="pointer"
-                >
-                  <Text fontSize="$1" color="$soft">{t('Skip')}</Text>
-                </Box>
-              </XStack>
-            )}
+            <XStack gap="$1.5" items="center" pt="$1" flexWrap="wrap">
+              <Box
+                render="button"
+                onClick={handleConnectGoogle}
+                aria-disabled={busy === 'google'}
+                px="$2.5"
+                py="$1"
+                rounded="$3"
+                bg="var(--accent)"
+                hoverStyle={{ bg: 'var(--accent-hover)' }}
+                cursor="pointer"
+                opacity={busy === 'google' ? 0.6 : 1}
+              >
+                <Text fontSize="$1" fontWeight="600" color="var(--accent-foreground)">
+                  {busy === 'google' ? t('Connecting…') : googleDone ? t('Reconnect') : t('Connect Google')}
+                </Text>
+              </Box>
+              <Box
+                render="button"
+                onClick={() => setLater(true)}
+                px="$2"
+                py="$1"
+                rounded="$3"
+                bg="transparent"
+                hoverStyle={{ bg: '$hover' }}
+                cursor="pointer"
+              >
+                <Text fontSize="$1" color="$soft">{t('Skip')}</Text>
+              </Box>
+            </XStack>
           </YStack>
         )}
 
@@ -517,7 +440,7 @@ export function Setup() {
             </XStack>
           </DialogTitle>
           <Text fontSize="$2" color="$soft">
-            {t('Connect your essential developer tools and Web3 wallet directly inside {brand()}.', { brand: brand() })}
+            {t('Connect your code, team chat, and Google Workspace (Gmail, Calendar & Drive) directly inside {brand}.', { brand: brand() })}
           </Text>
 
           <YStack gap="$3">
@@ -608,30 +531,30 @@ export function Setup() {
               p="$3"
               rounded="$4"
               borderWidth={1}
-              borderColor={walletDone ? GOOD : '$borderColor'}
+              borderColor={googleDone ? GOOD : '$borderColor'}
               bg="$raised"
               items="center"
               justify="space-between"
               gap="$3"
             >
               <XStack items="center" gap="$3" flex={1}>
-                <Wallet size={24} color="var(--primary)" />
+                <ProviderMark org="google" size={24} />
                 <YStack flex={1} minW={0}>
-                  <Text fontSize="$3" fontWeight="600" color="$ink">{t('3. Web3 Wallet')}</Text>
-                  <Text fontSize="$1" color="$soft">{t('On-chain identity, compute credits, and rewards')}</Text>
+                  <Text fontSize="$3" fontWeight="600" color="$ink">{t('3. Google Workspace (Gmail, Calendar & Drive)')}</Text>
+                  <Text fontSize="$1" color="$soft">{t('Access Docs, Sheets, Slides, Drive files, Gmail & Calendar')}</Text>
                 </YStack>
               </XStack>
-              {walletDone ? (
+              {googleDone ? (
                 <XStack items="center" gap="$1" px="$2" py="$1" rounded="$2" bg="$hover">
                   <Check size={14} color={GOOD} />
                   <Text fontSize="$1" color={GOOD} fontWeight="600">
-                    {walletAddr ? truncate(walletAddr) : t('Connected')}
+                    {t('Connected')}
                   </Text>
                 </XStack>
               ) : (
                 <Box
                   render="button"
-                  onClick={handleConnectWalletWeb3}
+                  onClick={handleConnectGoogle}
                   px="$3"
                   py="$1.5"
                   rounded="$3"
@@ -640,7 +563,7 @@ export function Setup() {
                   cursor="pointer"
                 >
                   <Text fontSize="$2" fontWeight="600" color="var(--accent-foreground)">
-                    {busy === 'wallet' ? t('Connecting…') : t('Connect')}
+                    {busy === 'google' ? t('Connecting…') : t('Connect')}
                   </Text>
                 </Box>
               )}

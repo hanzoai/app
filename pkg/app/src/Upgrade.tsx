@@ -16,7 +16,8 @@ import { Anchor, Box, Dialog, DialogContent, DialogTitle, Text, ToggleGroup, Tog
 import { track } from './lib/tags'
 import { org } from './lib/session'
 import { useTier } from './lib/tier'
-import { charge, planCheckoutUrl, quote, saving, term, usePlan, type Interval } from './lib/plans'
+import { charge, quote, saving, term, usePlan, type Interval } from './lib/plans'
+import { payUrl } from './lib/pay'
 import { site } from './where'
 
 /** What the reader reached for: a model by its name, and the checkout a refusal named. */
@@ -69,8 +70,8 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
 
   const save = saving(plan)
   const interval: Interval = save === null ? 'month' : cycle
-  const label = t('Upgrade to {plan} for {price}', { plan: plan.name, price: quote(plan, interval, t) ?? '' })
-  const href = term(ask?.href ?? planCheckoutUrl(plan, here()), interval)
+  const label = t('Choose your plan — Pro, Max & Team')
+  const href = term(ask?.href ?? payUrl('/cart', { org: org(), returnUrl: here() }), interval)
   const buy = () => {
     const items = [{ item_id: plan.id, item_name: plan.name }]
     // The funnel reads the English, whatever language the reader chose.

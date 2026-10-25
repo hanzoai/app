@@ -299,7 +299,7 @@ export function Me({
   // A personal plan is bought for the personal organization, beside any business one.
   // The plans row's name (a phrase of `upgrade`'s).
   const plans = upgrade(read.value?.label?.name)
-  const getPro = () => (personal ? window.location.assign(payUrl('/cart', { plan: 'pro', org: personal.name, returnUrl: window.location.href })) : window.location.assign(payUrl('/cart', { plan: 'pro', returnUrl: window.location.href })))
+  const getPro = () => (personal ? window.location.assign(payUrl('/cart', { org: personal.name, returnUrl: window.location.href })) : window.location.assign(payUrl('/cart', { returnUrl: window.location.href })))
   const apple = mac()
 
   useEffect(() => {

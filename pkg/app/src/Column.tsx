@@ -221,7 +221,7 @@ export function Column({
             onMouseDown={dragWindow}
             onDoubleClick={toggleWindowMaximize}
           >
-            <SidebarIconButton label={t('Back')} data-slot="place-back" onPress={onBack} {...HEAD}>
+            <SidebarIconButton label={t('Back')} data-slot="place-back" data-tauri-drag-region="false" onPress={onBack} {...HEAD}>
               <ArrowLeft size={16} aria-hidden data-i18n-mirror />
             </SidebarIconButton>
             <Text flex={1} minW={0} fontSize={18} lineHeight={24} fontWeight="600" color="$ink" numberOfLines={1} data-slot="place-name">
@@ -246,7 +246,7 @@ export function Column({
               {wordmark(mode)}
             </Text>
             <Activity host={host} />
-            <SidebarIconButton label={t('Search')} onPress={onSeek} aria-haspopup="dialog" {...HEAD}>
+            <SidebarIconButton label={t('Search')} data-tauri-drag-region="false" onPress={onSeek} aria-haspopup="dialog" {...HEAD}>
               <Search size={16} aria-hidden />
             </SidebarIconButton>
           </XStack>
@@ -334,10 +334,10 @@ export function Column({
                     <Sparkles size={16} aria-hidden color="var(--primary)" />
                   </XStack>
                 }
-                onPress={() => window.location.assign(payUrl('/cart', { plan: 'pro', returnUrl: window.location.href }))}
-                {...keys(() => window.location.assign(payUrl('/cart', { plan: 'pro', returnUrl: window.location.href })))}
+                onPress={() => window.location.assign(payUrl('/cart', { returnUrl: window.location.href }))}
+                {...keys(() => window.location.assign(payUrl('/cart', { returnUrl: window.location.href })))}
               >
-                <Text fontSize="$3" color="$ink">{t('Upgrade to Pro')}</Text>
+                <Text fontSize="$3" color="$ink">{t('Upgrade plan')}</Text>
               </SidebarItem>
             </YStack>
           </YStack>

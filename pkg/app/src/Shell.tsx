@@ -159,6 +159,7 @@ import { tidy } from "./lib/title";
 import { summons } from "./seek";
 import { called } from "./team";
 import { checkoutUrl } from './lib/pay';
+import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowControls';
 
 /** Tabs: the terminals, at their own host. */
 const TABS = "https://tabs.hanzo.ai/app";
@@ -2399,11 +2400,11 @@ function Frame({
               <SidebarItem
                 icon={<Sparkles size={15} aria-hidden color="var(--primary)" />}
                 onPress={() => {
-                  window.location.assign(payUrl("/cart", { plan: "pro", returnUrl: window.location.href }));
+                  window.location.assign(payUrl("/cart", { returnUrl: window.location.href }));
                   dismiss();
                 }}
               >
-                {t("Upgrade to Pro")}
+                {t("Upgrade plan")}
               </SidebarItem>
             ) : null}
             <SidebarItem
@@ -2489,6 +2490,9 @@ function Frame({
         <XStack
           render="header"
           data-slot="bar"
+          data-tauri-drag-region="deep"
+          onMouseDown={dragWindow}
+          onDoubleClick={toggleWindowMaximize}
           gridArea="bar"
           {...sheet(0)}
           height={44}
@@ -2544,7 +2548,7 @@ function Frame({
             ) : null}
           </XStack>
 
-        <XStack flex={1} justify="center">
+        <XStack flex={1} justify="center" data-tauri-drag-region="deep">
           <YStack width={440} maxW="100%" position="relative">
             {/* ONE ELEMENT, ONE HEIGHT. This was a row of one height nested in
                 a button of another, and the two disagreed — the button measured
@@ -2626,7 +2630,7 @@ function Frame({
             <Box
               {...TAP}
               render="button"
-              onClick={() => window.location.assign(payUrl("/cart", { plan: "pro", returnUrl: window.location.href }))}
+              onClick={() => window.location.assign(payUrl("/cart", { returnUrl: window.location.href }))}
               display="flex"
               items="center"
               justify="center"
@@ -2673,6 +2677,8 @@ function Frame({
               <PanelRight size={16} aria-hidden data-i18n-mirror="" />
             </SidebarIconButton>
           </XStack>
+
+          <WindowControls />
         </XStack>
       </XStack>
       {/* THE PAGE UNDER A SHEET THAT LIFTED — a phone only; on a laptop the

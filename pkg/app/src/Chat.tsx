@@ -110,7 +110,7 @@ import {
   type PromptOptions,
 } from "@hanzo/build";
 import type { ModelCatalogEntry as Model } from "@hanzo/ui/models/catalog";
-import { checkoutUrl } from './lib/pay';
+import { checkoutUrl, payUrl } from './lib/pay';
 import { Upgrade, useFree, type Ask } from './Upgrade';
 import { enter, LOGIN } from './lib/destination';
 import { first } from './lib/first';
@@ -2038,7 +2038,7 @@ function Thread({
           ) : null}
         </XStack>
 
-        <XStack data-slot="conversation-controls" items="center" gap={4} shrink={0}>
+        <XStack data-slot="conversation-controls" data-tauri-drag-region="false" items="center" gap={4} shrink={0}>
           {free ? (
             <Button
               size="xs"
@@ -2050,7 +2050,7 @@ function Thread({
               rounded="$4"
               cursor="pointer"
               hoverStyle={{ bg: 'var(--white-10)' }}
-              onPress={() => setAsk({})}
+              onPress={() => window.location.assign(payUrl('/cart', { org: org(), returnUrl: window.location.href }))}
               aria-label={t("Upgrade")}
             >
               <Sparkles size={13} color="var(--primary)" aria-hidden />

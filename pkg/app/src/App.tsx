@@ -345,8 +345,6 @@ function Window({ bar }: { bar?: Bar }) {
               <XStack
                 flex={1}
                 self="stretch"
-                onMouseDown={dragWindow}
-                onDoubleClick={toggleWindowMaximize}
                 {...bar.drag}
               />
               {bar.controls !== undefined ? (

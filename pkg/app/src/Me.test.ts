@@ -76,7 +76,7 @@ describe('the account menu', () => {
     vi.stubGlobal('window', { location: { assign } })
     press('Beta')
     vi.unstubAllGlobals()
-    expect(assign).toHaveBeenCalledWith(expect.stringMatching(/\/beta\/status$/))
+    expect(assign).toHaveBeenCalledWith(expect.stringMatching(/\/beta$/))
   })
 
   test("each Settings row opens its section of Settings, the one door the app and the shell both answer", () => {

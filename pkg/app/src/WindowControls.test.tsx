@@ -49,6 +49,15 @@ describe('WindowControls', () => {
     const btnTarget = { closest: (sel: string) => sel.includes('button') ? {} : null }
     dragWindow({ button: 0, target: btnTarget } as unknown as React.MouseEvent)
     expect(invoke).not.toHaveBeenCalled()
+
+    // role="button" target (e.g. SidebarIconButton)
+    const roleBtnTarget = { closest: (sel: string) => sel.includes('[role="button"]') ? {} : null }
+    dragWindow({ button: 0, target: roleBtnTarget } as unknown as React.MouseEvent)
+    expect(invoke).not.toHaveBeenCalled()
+
+    // Second click of a double-click (detail === 2) does not start a drag
+    dragWindow({ button: 0, detail: 2, target: { closest: () => null } } as unknown as React.MouseEvent)
+    expect(invoke).not.toHaveBeenCalled()
   })
 
   test('toggleWindowMaximize calls toggle_maximize in desktop environment', () => {
