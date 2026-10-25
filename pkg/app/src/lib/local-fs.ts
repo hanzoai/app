@@ -172,6 +172,44 @@ export async function pickLocalFolder(): Promise<LocalWorkspace | null> {
   return null
 }
 
+/** Open native dialog to pick a local file to view or edit */
+export async function pickLocalFile(): Promise<string | null> {
+  if (isTauri()) {
+    try {
+      const selected = await tauriInvoke<string | null>('local_workspace_open_file_dialog')
+      if (selected && typeof selected === 'string') {
+        return selected
+      }
+    } catch (e) {
+      console.warn('local_workspace_open_file_dialog failed:', e)
+    }
+  }
+  return null
+}
+
+/** Clone a remote repository to local machine and register as a workspace */
+export async function cloneRemoteRepo(repo: string, targetDir?: string): Promise<LocalWorkspace> {
+  if (isTauri()) {
+    const res = await tauriInvoke<{ name: string; path: string }>('local_workspace_clone_repo', {
+      repo,
+      targetDir,
+    })
+    return addLocalWorkspace(res.path, res.name)
+  }
+  throw new Error('Cloning remote repositories locally requires Hanzo Desktop')
+}
+
+/** Import an existing local file into the active workspace directory */
+export async function importLocalFile(sourcePath: string, targetDir: string): Promise<LocalEntry> {
+  if (isTauri()) {
+    return await tauriInvoke<LocalEntry>('local_workspace_import_file', {
+      sourcePath,
+      targetDir,
+    })
+  }
+  throw new Error('Importing files requires Hanzo Desktop')
+}
+
 /** List entries in a local directory */
 export async function listLocalEntries(dirPath: string): Promise<LocalEntry[]> {
   if (isTauri()) {

@@ -17,6 +17,7 @@ import {
   FileText,
   FileVideo,
   Folder,
+  FolderGit2,
   FolderInput,
   FolderPlus,
   HardDrive,
@@ -43,12 +44,15 @@ import { Badge, Contents, Hits } from './Contents'
 import { Editor } from './Editor'
 import {
   addLocalWorkspace,
+  cloneRemoteRepo,
   createLocalDir,
   createLocalFile,
   deleteLocalPath,
   getActiveWorkspace,
   getLocalWorkspaces,
+  importLocalFile,
   listLocalEntries,
+  pickLocalFile,
   pickLocalFolder,
   removeLocalWorkspace,
   setActiveWorkspace,
@@ -257,7 +261,7 @@ export function Drive() {
   // Below md the side column is a drawer over the files, opened from the bar.
   const [menu, setMenu] = useState(false)
   const [itemMenuKey, setItemMenuKey] = useState<string | null>(null)
-  const [naming, setNaming] = useState<{ kind: 'folder' | 'rename' | 'file'; key?: string; value: string } | null>(null)
+  const [naming, setNaming] = useState<{ kind: 'folder' | 'rename' | 'file' | 'clone'; key?: string; value: string } | null>(null)
   const [projects, setProjects] = useState<Project[] | null>(null)
 
   const [localWorkspaces, setLocalWorkspaces] = useState<LocalWorkspace[]>(getLocalWorkspaces)
@@ -554,10 +558,58 @@ export function Drive() {
             setEditingFile({ path: filePath, name: clean })
           })
           .catch((e) => setFailed(blame(e)))
+        return
       }
+      if (!client || !activeBucket) return
+      void run(`Creating ${clean}`, () => putBytes(client, activeBucket, `${prefix}${clean}`, new Blob([''])))
+      setNaming(null)
     },
-    [navSection, activeWs, localPrefix, loadLocalEntries],
+    [client, activeBucket, prefix, run, navSection, activeWs, localPrefix, loadLocalEntries],
   )
+
+  const handleCloneRepo = useCallback(
+    (repoUrl: string) => {
+      const clean = repoUrl.trim()
+      if (!clean) return
+      setNaming(null)
+      void run(`Cloning ${clean}`, async () => {
+        const ws = await cloneRemoteRepo(clean)
+        setNavSection('local')
+        setActiveWorkspace(ws)
+        setLocalPrefix('')
+        loadLocalEntries()
+      })
+    },
+    [run, loadLocalEntries],
+  )
+
+  const handleOpenLocalFile = useCallback(async () => {
+    try {
+      const selected = await pickLocalFile()
+      if (selected) {
+        const fileName = selected.split(/[/\\]/).pop() || 'file'
+        setEditingFile({ path: selected, name: fileName })
+      }
+    } catch (e) {
+      setFailed(blame(e))
+    }
+  }, [])
+
+  const handleImportLocalFile = useCallback(async () => {
+    if (!activeWs) return
+    try {
+      const selected = await pickLocalFile()
+      if (selected) {
+        const targetDir = localPrefix
+          ? `${activeWs.path}/${localPrefix}`.replace(/\/+/g, '/')
+          : activeWs.path
+        await importLocalFile(selected, targetDir)
+        loadLocalEntries()
+      }
+    } catch (e) {
+      setFailed(blame(e))
+    }
+  }, [activeWs, localPrefix, loadLocalEntries])
 
   const handleRename = useCallback(
     (entry: Entry, to: string) => {
@@ -913,9 +965,53 @@ export function Drive() {
                         <FolderInput size={14} />
                         Open local folder…
                       </Button>
+                      <Button
+                        {...ITEM}
+                        onClick={() => {
+                          setNewMenuOpen(false)
+                          setMenu(false)
+                          void handleOpenLocalFile()
+                        }}
+                      >
+                        <FileText size={14} />
+                        Open local file…
+                      </Button>
+                      <Button
+                        {...ITEM}
+                        onClick={() => {
+                          setNewMenuOpen(false)
+                          setMenu(false)
+                          void handleImportLocalFile()
+                        }}
+                      >
+                        <Upload size={14} />
+                        Import local file…
+                      </Button>
+                      <Button
+                        {...ITEM}
+                        onClick={() => {
+                          setNewMenuOpen(false)
+                          setMenu(false)
+                          setNaming({ kind: 'clone', value: '' })
+                        }}
+                      >
+                        <FolderGit2 size={14} />
+                        Clone remote repo…
+                      </Button>
                     </>
                   ) : (
                     <>
+                      <Button
+                        {...ITEM}
+                        onClick={() => {
+                          setNewMenuOpen(false)
+                          setMenu(false)
+                          setNaming({ kind: 'file', value: '' })
+                        }}
+                      >
+                        <FilePlus size={14} />
+                        New file
+                      </Button>
                       <Button
                         {...ITEM}
                         onClick={() => {
@@ -949,6 +1045,18 @@ export function Drive() {
                       >
                         <FolderInput size={14} />
                         Folder upload
+                      </Button>
+                      <View height={1} bg="$borderColor" my={4} />
+                      <Button
+                        {...ITEM}
+                        onClick={() => {
+                          setNewMenuOpen(false)
+                          setMenu(false)
+                          setNaming({ kind: 'clone', value: '' })
+                        }}
+                      >
+                        <FolderGit2 size={14} />
+                        Clone remote repo…
                       </Button>
                     </>
                   )}
@@ -1210,6 +1318,8 @@ export function Drive() {
             >
               {naming.kind === 'file' ? (
                 <FileCode size={16} color="var(--primary)" />
+              ) : naming.kind === 'clone' ? (
+                <FolderGit2 size={16} color="var(--primary)" />
               ) : (
                 <Folder size={16} color="var(--foreground)" />
               )}
@@ -1223,11 +1333,24 @@ export function Drive() {
                       if (e.key === 'Escape') setNaming(null)
                       if (e.key === 'Enter') {
                         if (naming.kind === 'file') handleCreateFile(naming.value)
+                        else if (naming.kind === 'clone') handleCloneRepo(naming.value)
                         else handleCreateFolder(naming.value)
                       }
                     }}
-                    placeholder={naming.kind === 'file' ? 'File name (e.g. index.ts)' : 'Folder name'}
-                    aria-label={naming.kind === 'file' ? 'File name' : 'Folder name'}
+                    placeholder={
+                      naming.kind === 'file'
+                        ? 'File name (e.g. index.ts)'
+                        : naming.kind === 'clone'
+                        ? 'owner/repo or Git URL (e.g. hanzoai/desktop)'
+                        : 'Folder name'
+                    }
+                    aria-label={
+                      naming.kind === 'file'
+                        ? 'File name'
+                        : naming.kind === 'clone'
+                        ? 'Clone remote repository'
+                        : 'Folder name'
+                    }
                   />
                 }
                 {...BARE}
@@ -1237,10 +1360,11 @@ export function Drive() {
                 size="sm"
                 onClick={() => {
                   if (naming.kind === 'file') handleCreateFile(naming.value)
+                  else if (naming.kind === 'clone') handleCloneRepo(naming.value)
                   else handleCreateFolder(naming.value)
                 }}
               >
-                Create
+                {naming.kind === 'clone' ? 'Clone' : 'Create'}
               </Button>
               <Button variant="ghost" size="sm" color="$soft" onClick={() => setNaming(null)}>
                 Cancel
@@ -1296,19 +1420,28 @@ export function Drive() {
                     Open a local folder on your computer to browse, create, edit, and save files directly in Hanzo Desktop.
                   </Text>
                 </YStack>
-                <Button
-                  onClick={() => {
-                    void pickLocalFolder().then((ws) => {
-                      if (ws) {
-                        setNavSection('local')
-                        setLocalPrefix('')
-                      }
-                    })
-                  }}
-                >
-                  <FolderPlus size={16} />
-                  Open Local Folder…
-                </Button>
+                <XStack items="center" gap="$2">
+                  <Button
+                    onClick={() => {
+                      void pickLocalFolder().then((ws) => {
+                        if (ws) {
+                          setNavSection('local')
+                          setLocalPrefix('')
+                        }
+                      })
+                    }}
+                  >
+                    <FolderPlus size={16} />
+                    Open Local Folder…
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setNaming({ kind: 'clone', value: '' })}
+                  >
+                    <FolderGit2 size={16} />
+                    Clone Remote Repo…
+                  </Button>
+                </XStack>
               </YStack>
             ) : (
               <YStack gap="$2">
@@ -1332,6 +1465,22 @@ export function Drive() {
                     >
                       <FolderPlus size={13} />
                       New folder
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void handleImportLocalFile()}
+                    >
+                      <Upload size={13} />
+                      Import file
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setNaming({ kind: 'clone', value: '' })}
+                    >
+                      <FolderGit2 size={13} />
+                      Clone repo
                     </Button>
                   </XStack>
                 </XStack>
