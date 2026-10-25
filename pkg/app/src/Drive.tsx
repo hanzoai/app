@@ -993,7 +993,7 @@ export function Drive() {
             {navSection === 'local' || localWorkspaces.length > 0 ? (
               <YStack gap="$1" pl="$2" borderLeftWidth={1} borderColor="$borderColor" ml="$3">
                 <Text fontSize={11} fontWeight="600" color="$faint" letterSpacing={0.5} mb={2}>
-                  WORKSPACES
+                  Workspaces
                 </Text>
                 {localWorkspaces.map((ws) => {
                   const isCur = navSection === 'local' && activeWs?.id === ws.id
@@ -1345,10 +1345,10 @@ export function Drive() {
                     borderBottomWidth={1}
                     borderColor="$borderColor"
                   >
-                    <Text {...HEAD}>NAME</Text>
-                    <Text {...HEAD}>TYPE</Text>
-                    <Text {...HEAD}>UPDATED</Text>
-                    <Text {...HEAD}>SIZE</Text>
+                    <Text {...HEAD}>Name</Text>
+                    <Text {...HEAD}>Type</Text>
+                    <Text {...HEAD}>Updated</Text>
+                    <Text {...HEAD}>Size</Text>
                     <View />
                   </View>
 

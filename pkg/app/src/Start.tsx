@@ -184,6 +184,7 @@ export function Start() {
             flex={1}
             minW={160}
             px={10}
+            // inline-style: flex alignment for where path text
             style={{ display: 'flex', alignItems: 'center', opacity: 0.8 }}
           >
             {where.slice(6)}

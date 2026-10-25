@@ -192,6 +192,7 @@ export function Editor({ filePath, fileName, onClose, onAskInChat }: EditorProps
             bg="$panel"
             borderRightWidth={1}
             borderColor="$borderColor"
+            // inline-style: user-select is needed to prevent selection of line numbers
             style={{ userSelect: 'none' }}
             overflow="hidden"
             items="flex-end"
@@ -217,13 +218,14 @@ export function Editor({ filePath, fileName, onClose, onAskInChat }: EditorProps
             autoCapitalize="off"
             autoComplete="off"
             autoCorrect="off"
+            // inline-style: raw textarea styling for code editing
             style={{
               flex: 1,
               height: '100%',
               backgroundColor: 'transparent',
               color: 'var(--foreground)',
               fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-              fontSize: '13px',
+              fontSize: 'var(--text-sm)',
               lineHeight: '20px',
               padding: '12px 16px',
               border: 'none',
