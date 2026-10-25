@@ -9,7 +9,10 @@ test:
       pnpm build
       pnpm typecheck
       pnpm lint:design
-      pnpm test
+      for dir in pkg/*/; do
+        [ -f "${dir}package.json" ] || continue
+        (cd "$dir" && npx vitest run)
+      done
       # Each package's root loads in plain Node, as publish.yml checks before it ships.
       for dir in pkg/*/; do
         test -s "${dir}dist/index.js"
