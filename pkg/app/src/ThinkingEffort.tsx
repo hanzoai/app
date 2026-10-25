@@ -120,7 +120,10 @@ export function ThinkingEffort({ effort = DEFAULT_EFFORT, onChange, disabled = f
         solid
         align="end"
         p="$3"
-        width={240}
+        width={260}
+        minW={260}
+        maxW={260}
+        items="stretch"
         rounded="$4"
         bg="var(--pane-fill, var(--surface-card))"
         borderWidth={1}
@@ -128,7 +131,16 @@ export function ThinkingEffort({ effort = DEFAULT_EFFORT, onChange, disabled = f
         boxShadow="var(--shadow-sheet-1)"
         backdropFilter="var(--pane-blur, blur(24px) saturate(190%))"
       >
-        <YStack gap="$3" data-slot="thinking-effort-card" role="dialog" aria-label={t('Thinking effort')}>
+        <YStack
+          gap="$3"
+          width="100%"
+          minW={234}
+          maxW={234}
+          self="stretch"
+          data-slot="thinking-effort-card"
+          role="dialog"
+          aria-label={t('Thinking effort')}
+        >
           {/* Header */}
           <XStack
             items="center"
@@ -227,10 +239,12 @@ export function ThinkingEffort({ effort = DEFAULT_EFFORT, onChange, disabled = f
             />
           </Box>
 
-          {/* Descriptive Note */}
-          <Text fontSize="$1" color="$soft" text="center" px="$1">
-            {t(current.note)}
-          </Text>
+          {/* Descriptive Note — fixed minH and full width so popover never changes size across steps */}
+          <XStack width="100%" minH={32} items="center" justify="center" px="$1">
+            <Text fontSize="$1" color="$soft" text="center">
+              {t(current.note)}
+            </Text>
+          </XStack>
         </YStack>
       </PopoverContent>
     </Popover>

@@ -2362,6 +2362,8 @@ function Thread({
                     setChatPrefs({ effort: eff })
                     if (eff === 'low' || eff === 'medium' || eff === 'high') {
                       mind.pace(eff)
+                    } else if (eff === 'xhigh' || eff === 'max') {
+                      mind.pace('high')
                     }
                   }}
                   disabled={chat.streaming || talk.open}

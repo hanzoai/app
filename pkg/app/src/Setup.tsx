@@ -56,28 +56,83 @@ export function Setup() {
   const [busy, setBusy] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [syncTurn, setSyncTurn] = useState(0)
 
   const signed = isAuthenticated && Boolean(accessToken)
 
-  // Sync with remote connectors when authenticated
+  // Sync with remote integrations & connectors when authenticated or returning from OAuth tab/popup
   useEffect(() => {
     if (!signed) return
     let live = true
     const auth = scope()
 
-    fetch(`${api()}/v1/integrations/connectors`, { headers: auth })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!live || !data?.connectors) return
-        const set = new Set((data.connectors as Record<string, unknown>[]).map((c) => String(c.provider)))
-        if (set.has('github') || set.has('github-copilot')) setGithubDone(true)
-        if (set.has('slack')) setSlackDone(true)
-        if (set.has('google') || set.has('gmail') || set.has('google-drive') || set.has('google-calendar')) setGoogleDone(true)
-      })
-      .catch(() => {})
+    Promise.all([
+      fetch(`${api()}/v1/integrations`, { headers: auth })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null),
+      fetch(`${api()}/v1/integrations/connectors`, { headers: auth })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null),
+    ]).then(([integrationsData, connectorsData]) => {
+      if (!live) return
+      const providers = Array.isArray(integrationsData?.providers)
+        ? (integrationsData.providers as Record<string, unknown>[])
+        : null
+      const connectors = Array.isArray(connectorsData?.connectors)
+        ? (connectorsData.connectors as Record<string, unknown>[])
+        : null
+
+      if (!providers && !connectors) return
+
+      const connectedSet = new Set<string>()
+      if (providers) {
+        for (const p of providers) {
+          if (p.connected) connectedSet.add(String(p.id))
+        }
+      }
+      if (connectors) {
+        for (const c of connectors) {
+          connectedSet.add(String(c.provider))
+        }
+      }
+
+      const hasGithub = connectedSet.has('github') || connectedSet.has('github-copilot')
+      const hasSlack = connectedSet.has('slack')
+      const hasGoogle =
+        connectedSet.has('google') ||
+        connectedSet.has('gmail') ||
+        connectedSet.has('google-drive') ||
+        connectedSet.has('google-calendar')
+
+      if (providers) {
+        setGithubDone(hasGithub)
+        setSlackDone(hasSlack)
+        setGoogleDone(hasGoogle)
+      } else {
+        if (hasGithub) setGithubDone(true)
+        if (hasSlack) setSlackDone(true)
+        if (hasGoogle) setGoogleDone(true)
+      }
+    })
 
     return () => {
       live = false
+    }
+  }, [signed, syncTurn])
+
+  useEffect(() => {
+    if (!signed) return
+    const onReturn = () => {
+      if (document.visibilityState === 'visible') {
+        setSyncTurn((n) => n + 1)
+      }
+    }
+    const onFocus = () => setSyncTurn((n) => n + 1)
+    document.addEventListener('visibilitychange', onReturn)
+    window.addEventListener('focus', onFocus)
+    return () => {
+      document.removeEventListener('visibilitychange', onReturn)
+      window.removeEventListener('focus', onFocus)
     }
   }, [signed])
 
@@ -87,111 +142,87 @@ export function Setup() {
   // Automatically advance step if current step is already done
   useEffect(() => {
     if (step === 1 && githubDone) setStep(slackDone ? 3 : 2)
-    else if (step === 2 && slackDone) setStep(3)
+    else if (step === 2 && slackDone) setStep(googleDone ? 1 : 3)
+    else if (step === 3 && googleDone && (!githubDone || !slackDone)) setStep(!githubDone ? 1 : 2)
   }, [githubDone, slackDone, googleDone, step])
 
   if (later && !modalOpen) return null
 
-  // 1. Connect GitHub
-  const handleConnectGithub = async () => {
+  const connectOAuthProvider = async (
+    provider: 'github' | 'slack' | 'google',
+    label: string,
+    onDone: () => void,
+  ) => {
     if (!signed) {
       enter()
       return
     }
-    setBusy('github')
+    setBusy(provider)
     setErrorMsg(null)
     try {
-      const res = await fetch(`${api()}/v1/integrations/github/connect`, {
+      const res = await fetch(`${api()}/v1/integrations/${provider}/connect`, {
         method: 'POST',
         headers: { ...scope(), 'Content-Type': 'application/json' },
         body: '{}',
       })
-      if (res.ok) {
-        const j = (await res.json()) as { authorizeUrl?: string }
-        if (j.authorizeUrl) {
-          window.open(j.authorizeUrl, 'hanzo-oauth-github', 'width=600,height=700')
+      if (!res.ok) {
+        let detail = ''
+        try {
+          const errJson = (await res.json()) as { error?: string | { message?: string }; message?: string }
+          detail =
+            (typeof errJson?.error === 'string' ? errJson.error : errJson?.error?.message) ||
+            errJson?.message ||
+            ''
+        } catch {
+          // ignore
         }
-      } else {
-        // Fallback: open OAuth authorize channel
-        const fallback = `${api()}/v1/channels/github/oauth/authorize?redirect_uri=${encodeURIComponent(window.location.origin + '/inbox')}`
-        window.open(fallback, 'hanzo-oauth-github', 'width=600,height=700')
+        setErrorMsg(
+          detail || t('Could not connect {provider} right now. Please try again.', { provider: label }),
+        )
+        return
       }
-      setGithubDone(true)
-      setStep(slackDone ? 3 : 2)
+      const j = (await res.json()) as { authorizeUrl?: string; connected?: boolean }
+      if (j.authorizeUrl) {
+        const popup = window.open(j.authorizeUrl, `hanzo-oauth-${provider}`, 'width=600,height=700')
+        if (!popup) {
+          window.open(j.authorizeUrl, '_blank', 'noopener,noreferrer')
+        } else {
+          const timer = window.setInterval(() => {
+            if (popup.closed) {
+              window.clearInterval(timer)
+              setSyncTurn((n) => n + 1)
+            }
+          }, 1000)
+        }
+      } else if (j.connected) {
+        onDone()
+      }
     } catch {
-      // Local/mock fallback: set connected and advance
-      setGithubDone(true)
-      setStep(slackDone ? 3 : 2)
+      setErrorMsg(t('Could not connect {provider} right now. Please try again.', { provider: label }))
     } finally {
       setBusy(null)
     }
   }
+
+  // 1. Connect GitHub
+  const handleConnectGithub = () =>
+    connectOAuthProvider('github', 'GitHub', () => {
+      setGithubDone(true)
+      setStep(slackDone ? 3 : 2)
+    })
 
   // 2. Connect Slack
-  const handleConnectSlack = async () => {
-    if (!signed) {
-      enter()
-      return
-    }
-    setBusy('slack')
-    setErrorMsg(null)
-    try {
-      const res = await fetch(`${api()}/v1/integrations/slack/connect`, {
-        method: 'POST',
-        headers: { ...scope(), 'Content-Type': 'application/json' },
-        body: '{}',
-      })
-      if (res.ok) {
-        const j = (await res.json()) as { authorizeUrl?: string }
-        if (j.authorizeUrl) {
-          window.open(j.authorizeUrl, 'hanzo-oauth-slack', 'width=600,height=700')
-        }
-      } else {
-        // Fallback: open OAuth channel
-        const fallback = `${api()}/v1/channels/slack/oauth/authorize?redirect_uri=${encodeURIComponent(window.location.origin + '/inbox')}`
-        window.open(fallback, 'hanzo-oauth-slack', 'width=600,height=700')
-      }
+  const handleConnectSlack = () =>
+    connectOAuthProvider('slack', 'Slack', () => {
       setSlackDone(true)
       setStep(3)
-    } catch {
-      // Local/mock fallback: set connected and advance
-      setSlackDone(true)
-      setStep(3)
-    } finally {
-      setBusy(null)
-    }
-  }
+    })
 
   // 3. Connect Google (Gmail, Calendar & Drive)
-  const handleConnectGoogle = async () => {
-    if (!signed) {
-      enter()
-      return
-    }
-    setBusy('google')
-    setErrorMsg(null)
-    try {
-      const res = await fetch(`${api()}/v1/integrations/google/connect`, {
-        method: 'POST',
-        headers: { ...scope(), 'Content-Type': 'application/json' },
-        body: '{}',
-      })
-      if (res.ok) {
-        const j = (await res.json()) as { authorizeUrl?: string }
-        if (j.authorizeUrl) {
-          window.open(j.authorizeUrl, 'hanzo-oauth-google', 'width=600,height=700')
-        }
-      } else {
-        const fallback = `${api()}/v1/channels/google/oauth/authorize?redirect_uri=${encodeURIComponent(window.location.origin + '/inbox')}`
-        window.open(fallback, 'hanzo-oauth-google', 'width=600,height=700')
-      }
+  const handleConnectGoogle = () =>
+    connectOAuthProvider('google', 'Google', () => {
       setGoogleDone(true)
-    } catch {
-      setGoogleDone(true)
-    } finally {
-      setBusy(null)
-    }
-  }
+    })
 
   return (
     <>
@@ -206,16 +237,17 @@ export function Setup() {
         borderColor="$borderColor"
         bg="$raised"
         width="100%"
+        overflow="hidden"
       >
         {/* Header with Step Dots & Controls */}
-        <XStack items="center" justify="space-between">
-          <XStack items="center" gap="$1.5">
+        <XStack items="center" justify="space-between" gap="$1.5" minW={0}>
+          <XStack items="center" gap="$1.5" minW={0} flex={1}>
             <Sparkles size={15} color="var(--primary)" aria-hidden />
-            <SizableText size="$2" fontWeight="600" color="$ink">
+            <SizableText size="$2" fontWeight="600" color="$ink" numberOfLines={1}>
               {allDone ? t('Onboarding complete') : t('Quick setup ({n}/3)', { n: totalDone })}
             </SizableText>
           </XStack>
-          <XStack items="center" gap="$1">
+          <XStack items="center" gap="$1" shrink={0}>
             <Box
               render="button"
               aria-label={t('Expand onboarding popup')}
@@ -272,15 +304,15 @@ export function Setup() {
           </YStack>
         ) : step === 1 ? (
           /* Step 1: GitHub */
-          <YStack gap="$2">
-            <XStack items="center" justify="space-between">
-              <XStack items="center" gap="$2">
+          <YStack gap="$2" minW={0}>
+            <XStack items="center" justify="space-between" gap="$1.5" flexWrap="wrap" minW={0}>
+              <XStack items="center" gap="$2" minW={0} flex={1}>
                 <ProviderMark org="github" size={18} />
-                <Text fontSize="$2" fontWeight="600" color="$ink">{t('1. Connect GitHub')}</Text>
+                <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>{t('1. Connect GitHub')}</Text>
               </XStack>
               {githubDone ? (
-                <XStack items="center" gap="$1">
-                  <Check size={12} color={GOOD} />
+                <XStack items="center" gap="$1" shrink={0}>
+                  <Check size={12} color={GOOD} aria-hidden />
                   <Text fontSize="$1" color={GOOD} fontWeight="600">{t('Connected')}</Text>
                 </XStack>
               ) : null}
@@ -288,7 +320,7 @@ export function Setup() {
             <Text fontSize="$1" color="$soft">
               {t('Sync repositories, PRs, and team repository context.')}
             </Text>
-            <XStack gap="$1.5" items="center" pt="$1">
+            <XStack gap="$1.5" items="center" pt="$1" flexWrap="wrap">
               <Box
                 render="button"
                 onClick={handleConnectGithub}
@@ -321,15 +353,15 @@ export function Setup() {
           </YStack>
         ) : step === 2 ? (
           /* Step 2: Slack */
-          <YStack gap="$2">
-            <XStack items="center" justify="space-between">
-              <XStack items="center" gap="$2">
+          <YStack gap="$2" minW={0}>
+            <XStack items="center" justify="space-between" gap="$1.5" flexWrap="wrap" minW={0}>
+              <XStack items="center" gap="$2" minW={0} flex={1}>
                 <SlackMark size={18} />
-                <Text fontSize="$2" fontWeight="600" color="$ink">{t('2. Connect Slack')}</Text>
+                <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>{t('2. Connect Slack')}</Text>
               </XStack>
               {slackDone ? (
-                <XStack items="center" gap="$1">
-                  <Check size={12} color={GOOD} />
+                <XStack items="center" gap="$1" shrink={0}>
+                  <Check size={12} color={GOOD} aria-hidden />
                   <Text fontSize="$1" color={GOOD} fontWeight="600">{t('Connected')}</Text>
                 </XStack>
               ) : null}
@@ -337,7 +369,7 @@ export function Setup() {
             <Text fontSize="$1" color="$soft">
               {t('Route agent notifications and chat in team channels.')}
             </Text>
-            <XStack gap="$1.5" items="center" pt="$1">
+            <XStack gap="$1.5" items="center" pt="$1" flexWrap="wrap">
               <Box
                 render="button"
                 onClick={handleConnectSlack}
@@ -370,15 +402,15 @@ export function Setup() {
           </YStack>
         ) : (
           /* Step 3: Google Workspace (Gmail, Calendar & Drive) */
-          <YStack gap="$2">
-            <XStack items="center" justify="space-between">
-              <XStack items="center" gap="$2">
+          <YStack gap="$2" minW={0}>
+            <XStack items="center" justify="space-between" gap="$1.5" flexWrap="wrap" minW={0}>
+              <XStack items="center" gap="$2" minW={0} flex={1}>
                 <ProviderMark org="google" size={18} />
-                <Text fontSize="$2" fontWeight="600" color="$ink">{t('3. Connect Google')}</Text>
+                <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>{t('3. Connect Google')}</Text>
               </XStack>
               {googleDone ? (
-                <XStack items="center" gap="$1">
-                  <Check size={12} color={GOOD} />
+                <XStack items="center" gap="$1" shrink={0}>
+                  <Check size={12} color={GOOD} aria-hidden />
                   <Text fontSize="$1" color={GOOD} fontWeight="600">
                     {t('Connected')}
                   </Text>

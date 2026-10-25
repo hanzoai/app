@@ -10,15 +10,18 @@ export interface ChatPreferences {
   showModelSelector: boolean
   allowThirdPartyModels: boolean
   effort: EffortLevel
+  effortVersion?: number
 }
 
 const STORAGE_KEY = 'hanzo.chat.preferences'
 const EVENT_NAME = 'hanzo:chat:preferences'
+const EFFORT_SCHEMA_VERSION = 2
 
 const DEFAULT_PREFERENCES: ChatPreferences = {
   showModelSelector: false,
   allowThirdPartyModels: false,
   effort: DEFAULT_EFFORT,
+  effortVersion: EFFORT_SCHEMA_VERSION,
 }
 
 function validEffort(v: unknown): EffortLevel {
@@ -31,10 +34,13 @@ export function getChatPreferences(): ChatPreferences {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return DEFAULT_PREFERENCES
     const parsed = JSON.parse(raw) as Partial<ChatPreferences>
+    const migratedEffort =
+      parsed.effortVersion === EFFORT_SCHEMA_VERSION ? validEffort(parsed.effort) : DEFAULT_EFFORT
     return {
       showModelSelector: Boolean(parsed.showModelSelector),
       allowThirdPartyModels: Boolean(parsed.allowThirdPartyModels),
-      effort: validEffort(parsed.effort),
+      effort: migratedEffort,
+      effortVersion: EFFORT_SCHEMA_VERSION,
     }
   } catch {
     return DEFAULT_PREFERENCES
@@ -43,7 +49,7 @@ export function getChatPreferences(): ChatPreferences {
 
 export function setChatPreferences(patch: Partial<ChatPreferences>): ChatPreferences {
   const current = getChatPreferences()
-  const next: ChatPreferences = { ...current, ...patch }
+  const next: ChatPreferences = { ...current, ...patch, effortVersion: EFFORT_SCHEMA_VERSION }
   if (typeof window !== 'undefined') {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))

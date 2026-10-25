@@ -1,5 +1,5 @@
-import { api } from './lib/api'
-import { scope } from './lib/session'
+import { api } from './api'
+import { scope } from './session'
 
 export interface LearningStudy {
   id: string

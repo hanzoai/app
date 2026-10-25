@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { learningAnalyze, learningCompare, learningCreate, learningRead } from './learning'
 
-vi.mock('./lib/api', () => ({ api: () => 'https://api.test' }))
-vi.mock('./lib/session', () => ({ scope: () => ({ Authorization: 'Bearer test-session', 'X-Org-Id': 'acme' }) }))
+vi.mock('./api', () => ({ api: () => 'https://api.test' }))
+vi.mock('./session', () => ({ scope: () => ({ Authorization: 'Bearer test-session', 'X-Org-Id': 'acme' }) }))
 
 afterEach(() => vi.unstubAllGlobals())
 

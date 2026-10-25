@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Button, Dialog, DialogContent, DialogTitle, Input, Text, XStack, YStack } from '@hanzo/ui'
 import { say } from './failure'
 import { org } from './lib/session'
-import { learningAnalyze, learningCompare, learningCreate, learningRead, type LearningAnalysis, type LearningComparison, type LearningPart, type LearningProposal, type LearningRows } from './learning'
+import { learningAnalyze, learningCompare, learningCreate, learningRead, type LearningAnalysis, type LearningComparison, type LearningPart, type LearningProposal, type LearningRows } from './lib/learning'
+export * from './lib/learning'
 
 type Answers = { [K in LearningPart]?: { rows?: LearningRows[K]; error?: unknown } }
 
