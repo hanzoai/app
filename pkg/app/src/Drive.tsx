@@ -13,12 +13,14 @@ import {
   FileAudio,
   FileCode,
   FileImage,
+  FilePlus,
   FileText,
   FileVideo,
   Folder,
   FolderInput,
   FolderPlus,
   HardDrive,
+  Laptop,
   ListTree,
   MessageSquare,
   LayoutGrid,
@@ -38,6 +40,22 @@ import { attach, channel } from './pane'
 import { useRooms } from './host'
 import { org } from './lib/session'
 import { Badge, Contents, Hits } from './Contents'
+import { Editor } from './Editor'
+import {
+  addLocalWorkspace,
+  createLocalDir,
+  createLocalFile,
+  deleteLocalPath,
+  getActiveWorkspace,
+  getLocalWorkspaces,
+  listLocalEntries,
+  pickLocalFolder,
+  removeLocalWorkspace,
+  setActiveWorkspace,
+  subscribeLocalFs,
+  type LocalEntry,
+  type LocalWorkspace,
+} from './lib/local-fs'
 import { weigh as size } from './lib/attach'
 import {
   dropped,
@@ -206,7 +224,7 @@ const VEIL = mix('var(--background)', 90, 'srgb')
 // The sections the store can actually answer. `shared`, `starred` and `trash`
 // were drawn too, and the object store has no such concept — three doors onto
 // the same listing, which is worse than three fewer doors.
-type NavSection = 'my-drive' | 'recent'
+type NavSection = 'my-drive' | 'recent' | 'local'
 type ViewMode = 'list' | 'grid' | 'details'
 
 export function Drive() {
@@ -239,8 +257,40 @@ export function Drive() {
   // Below md the side column is a drawer over the files, opened from the bar.
   const [menu, setMenu] = useState(false)
   const [itemMenuKey, setItemMenuKey] = useState<string | null>(null)
-  const [naming, setNaming] = useState<{ kind: 'folder' | 'rename'; key?: string; value: string } | null>(null)
+  const [naming, setNaming] = useState<{ kind: 'folder' | 'rename' | 'file'; key?: string; value: string } | null>(null)
   const [projects, setProjects] = useState<Project[] | null>(null)
+
+  const [localWorkspaces, setLocalWorkspaces] = useState<LocalWorkspace[]>(getLocalWorkspaces)
+  const [activeWs, setActiveWs] = useState<LocalWorkspace | null>(getActiveWorkspace)
+  const [localEntries, setLocalEntries] = useState<LocalEntry[] | null>(null)
+  const [localPrefix, setLocalPrefix] = useState<string>('')
+  const [editingFile, setEditingFile] = useState<{ path: string; name: string } | null>(null)
+
+  useEffect(() => {
+    return subscribeLocalFs(() => {
+      setLocalWorkspaces(getLocalWorkspaces())
+      setActiveWs(getActiveWorkspace())
+    })
+  }, [])
+
+  const loadLocalEntries = useCallback(() => {
+    if (!activeWs) {
+      setLocalEntries(null)
+      return
+    }
+    const targetDir = localPrefix
+      ? `${activeWs.path}/${localPrefix}`.replace(/\/+/g, '/')
+      : activeWs.path
+    listLocalEntries(targetDir)
+      .then((items) => setLocalEntries(items))
+      .catch((e) => setFailed(blame(e)))
+  }, [activeWs, localPrefix])
+
+  useEffect(() => {
+    if (navSection === 'local') {
+      loadLocalEntries()
+    }
+  }, [navSection, loadLocalEntries, reload])
   // What the drive actually holds, measured. There is no quota route, so there
   // is no quota drawn: a number nobody publishes would be a number invented.
   const [usage, setUsage] = useState<{ bytes: number; files: number; capped: boolean } | null>(null)
@@ -467,11 +517,46 @@ export function Drive() {
   const handleCreateFolder = useCallback(
     (folderName: string) => {
       const clean = folderName.trim().replace(/^\/+|\/+$/g, '')
-      if (!clean || !client || !activeBucket) return
+      if (!clean) return
+      if (navSection === 'local') {
+        if (!activeWs) return
+        const targetDir = localPrefix
+          ? `${activeWs.path}/${localPrefix}`.replace(/\/+/g, '/')
+          : activeWs.path
+        createLocalDir(targetDir, clean)
+          .then(() => {
+            setNaming(null)
+            loadLocalEntries()
+          })
+          .catch((e) => setFailed(blame(e)))
+        return
+      }
+      if (!client || !activeBucket) return
       void run(`Creating ${clean}`, () => putBytes(client, activeBucket, `${prefix}${clean}/`, new Blob([])))
       setNaming(null)
     },
-    [client, activeBucket, prefix, run],
+    [client, activeBucket, prefix, run, navSection, activeWs, localPrefix, loadLocalEntries],
+  )
+
+  const handleCreateFile = useCallback(
+    (fileName: string) => {
+      const clean = fileName.trim().replace(/^\/+|\/+$/g, '')
+      if (!clean) return
+      if (navSection === 'local') {
+        if (!activeWs) return
+        const targetDir = localPrefix
+          ? `${activeWs.path}/${localPrefix}`.replace(/\/+/g, '/')
+          : activeWs.path
+        createLocalFile(targetDir, clean)
+          .then((filePath) => {
+            setNaming(null)
+            loadLocalEntries()
+            setEditingFile({ path: filePath, name: clean })
+          })
+          .catch((e) => setFailed(blame(e)))
+      }
+    },
+    [navSection, activeWs, localPrefix, loadLocalEntries],
   )
 
   const handleRename = useCallback(
@@ -787,40 +872,86 @@ export function Drive() {
                   p={6}
                   gap={2}
                 >
-                  <Button
-                    {...ITEM}
-                    onClick={() => {
-                      setNewMenuOpen(false)
-                      setMenu(false)
-                      setNaming({ kind: 'folder', value: '' })
-                    }}
-                  >
-                    <FolderPlus size={14} />
-                    New folder
-                  </Button>
-                  <View height={1} bg="$borderColor" my={4} />
-                  <Button
-                    {...ITEM}
-                    onClick={() => {
-                      setNewMenuOpen(false)
-                      setMenu(false)
-                      fileInputRef.current?.click()
-                    }}
-                  >
-                    <Upload size={14} />
-                    File upload
-                  </Button>
-                  <Button
-                    {...ITEM}
-                    onClick={() => {
-                      setNewMenuOpen(false)
-                      setMenu(false)
-                      folderInputRef.current?.click()
-                    }}
-                  >
-                    <FolderInput size={14} />
-                    Folder upload
-                  </Button>
+                  {navSection === 'local' ? (
+                    <>
+                      <Button
+                        {...ITEM}
+                        onClick={() => {
+                          setNewMenuOpen(false)
+                          setMenu(false)
+                          setNaming({ kind: 'file', value: '' })
+                        }}
+                      >
+                        <FilePlus size={14} />
+                        New file
+                      </Button>
+                      <Button
+                        {...ITEM}
+                        onClick={() => {
+                          setNewMenuOpen(false)
+                          setMenu(false)
+                          setNaming({ kind: 'folder', value: '' })
+                        }}
+                      >
+                        <FolderPlus size={14} />
+                        New folder
+                      </Button>
+                      <View height={1} bg="$borderColor" my={4} />
+                      <Button
+                        {...ITEM}
+                        onClick={() => {
+                          setNewMenuOpen(false)
+                          setMenu(false)
+                          void pickLocalFolder().then((ws) => {
+                            if (ws) {
+                              setNavSection('local')
+                              setLocalPrefix('')
+                            }
+                          })
+                        }}
+                      >
+                        <FolderInput size={14} />
+                        Open local folder…
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        {...ITEM}
+                        onClick={() => {
+                          setNewMenuOpen(false)
+                          setMenu(false)
+                          setNaming({ kind: 'folder', value: '' })
+                        }}
+                      >
+                        <FolderPlus size={14} />
+                        New folder
+                      </Button>
+                      <View height={1} bg="$borderColor" my={4} />
+                      <Button
+                        {...ITEM}
+                        onClick={() => {
+                          setNewMenuOpen(false)
+                          setMenu(false)
+                          fileInputRef.current?.click()
+                        }}
+                      >
+                        <Upload size={14} />
+                        File upload
+                      </Button>
+                      <Button
+                        {...ITEM}
+                        onClick={() => {
+                          setNewMenuOpen(false)
+                          setMenu(false)
+                          folderInputRef.current?.click()
+                        }}
+                      >
+                        <FolderInput size={14} />
+                        Folder upload
+                      </Button>
+                    </>
+                  )}
                 </YStack>
               ) : null}
             </View>
@@ -829,6 +960,7 @@ export function Drive() {
             <YStack gap="$1">
               {[
                 { id: 'my-drive', label: 'My Drive', icon: HardDrive },
+                { id: 'local', label: 'Local Folders', icon: Laptop },
                 { id: 'recent', label: 'Recent', icon: Clock },
               ].map((item) => {
                 const isActive = navSection === item.id && !bucket && !prefix
@@ -856,6 +988,74 @@ export function Drive() {
                 )
               })}
             </YStack>
+
+            {/* Local Workspaces Sub-list when Local Folders is active or has folders */}
+            {navSection === 'local' || localWorkspaces.length > 0 ? (
+              <YStack gap="$1" pl="$2" borderLeftWidth={1} borderColor="$borderColor" ml="$3">
+                <Text fontSize={11} fontWeight="600" color="$faint" letterSpacing={0.5} mb={2}>
+                  WORKSPACES
+                </Text>
+                {localWorkspaces.map((ws) => {
+                  const isCur = navSection === 'local' && activeWs?.id === ws.id
+                  return (
+                    <XStack
+                      key={ws.id}
+                      items="center"
+                      justify="space-between"
+                      px="$2"
+                      py="$1"
+                      rounded={6}
+                      bg={isCur ? '$hover' : 'transparent'}
+                      hoverStyle={{ bg: '$hover' }}
+                      cursor="pointer"
+                      onPress={() => {
+                        setActiveWorkspace(ws)
+                        setNavSection('local')
+                        setLocalPrefix('')
+                      }}
+                    >
+                      <XStack items="center" gap="$2" minW={0} flex={1}>
+                        <Folder size={13} color={isCur ? 'var(--primary)' : 'var(--muted-foreground)'} />
+                        <Text fontSize="$2" fontWeight={isCur ? '600' : '400'} color={isCur ? '$ink' : '$soft'} numberOfLines={1}>
+                          {ws.name}
+                        </Text>
+                      </XStack>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeLocalWorkspace(ws.id)
+                        }}
+                        title="Remove"
+                      >
+                        <Trash2 size={11} color="var(--muted-foreground)" />
+                      </Button>
+                    </XStack>
+                  )
+                })}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  justify="flex-start"
+                  gap={6}
+                  px={8}
+                  py={4}
+                  color="$soft"
+                  onClick={() => {
+                    void pickLocalFolder().then((ws) => {
+                      if (ws) {
+                        setNavSection('local')
+                        setLocalPrefix('')
+                      }
+                    })
+                  }}
+                >
+                  <Plus size={13} />
+                  <Text fontSize="$1" color="$soft">Open folder…</Text>
+                </Button>
+              </YStack>
+            ) : null}
 
             {/* Storage Progress Section */}
             <YStack gap="$2" mt="$2" px="$2">
@@ -893,8 +1093,42 @@ export function Drive() {
 
         {/* Main Content Area */}
         <YStack flex={1} minH={0} px="$6" py="$5" overflowY="auto" overflowX="hidden" gap="$5">
-          {/* Breadcrumb / Location Bar when inside a bucket or folder */}
-          {bucket || prefix ? (
+          {/* Breadcrumb / Location Bar */}
+          {navSection === 'local' && activeWs ? (
+            <XStack items="center" gap="$2" pb="$2" borderBottomWidth={1} borderColor="$borderColor">
+              <Button
+                {...CRUMB}
+                color="$soft"
+                onClick={() => {
+                  setLocalPrefix('')
+                }}
+              >
+                Local Folders
+              </Button>
+              <ChevronRight size={13} color="var(--muted-foreground)" />
+              <Button
+                {...CRUMB}
+                color={!localPrefix ? '$ink' : '$soft'}
+                onClick={() => setLocalPrefix('')}
+              >
+                {activeWs.name}
+              </Button>
+              {localPrefix
+                ? localPrefix.split('/').map((c, i, arr) => (
+                    <React.Fragment key={`${i}-${c}`}>
+                      <ChevronRight size={13} color="var(--muted-foreground)" />
+                      <Button
+                        {...CRUMB}
+                        color={i === arr.length - 1 ? '$ink' : '$soft'}
+                        onClick={() => setLocalPrefix(arr.slice(0, i + 1).join('/'))}
+                      >
+                        {c}
+                      </Button>
+                    </React.Fragment>
+                  ))
+                : null}
+            </XStack>
+          ) : bucket || prefix ? (
             <XStack items="center" gap="$2" pb="$2" borderBottomWidth={1} borderColor="$borderColor">
               <Button
                 {...CRUMB}
@@ -929,10 +1163,14 @@ export function Drive() {
           <XStack items="center" justify="space-between">
             <YStack gap="$1">
               <Text render="h1" fontSize={26} fontWeight="700" color="$ink">
-                Drive
+                {navSection === 'local' ? (activeWs ? activeWs.name : 'Local Folders') : 'Drive'}
               </Text>
               <Text fontSize={13} color="$soft">
-                Secure. Private. Built for builders.
+                {navSection === 'local'
+                  ? activeWs
+                    ? activeWs.path
+                    : 'Edit local files, add files & folders, and code locally.'
+                  : 'Secure. Private. Built for builders.'}
               </Text>
             </YStack>
 
@@ -959,7 +1197,7 @@ export function Drive() {
             </XStack>
           </XStack>
 
-          {/* New folder creation inline prompt */}
+          {/* New folder/file creation inline prompt */}
           {naming ? (
             <XStack
               items="center"
@@ -970,7 +1208,11 @@ export function Drive() {
               borderColor="var(--border-control)"
               bg="$panel"
             >
-              <Folder size={16} color="var(--foreground)" />
+              {naming.kind === 'file' ? (
+                <FileCode size={16} color="var(--primary)" />
+              ) : (
+                <Folder size={16} color="var(--foreground)" />
+              )}
               <Text
                 render={
                   <input
@@ -979,21 +1221,47 @@ export function Drive() {
                     onChange={(e) => setNaming({ ...naming, value: e.target.value })}
                     onKeyDown={(e) => {
                       if (e.key === 'Escape') setNaming(null)
-                      if (e.key === 'Enter') handleCreateFolder(naming.value)
+                      if (e.key === 'Enter') {
+                        if (naming.kind === 'file') handleCreateFile(naming.value)
+                        else handleCreateFolder(naming.value)
+                      }
                     }}
-                    placeholder="Folder name"
-                    aria-label="Folder name"
+                    placeholder={naming.kind === 'file' ? 'File name (e.g. index.ts)' : 'Folder name'}
+                    aria-label={naming.kind === 'file' ? 'File name' : 'Folder name'}
                   />
                 }
                 {...BARE}
               />
-              <Button variant="primary" size="sm" onClick={() => handleCreateFolder(naming.value)}>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  if (naming.kind === 'file') handleCreateFile(naming.value)
+                  else handleCreateFolder(naming.value)
+                }}
+              >
                 Create
               </Button>
               <Button variant="ghost" size="sm" color="$soft" onClick={() => setNaming(null)}>
                 Cancel
               </Button>
             </XStack>
+          ) : null}
+
+          {/* Active File Editor Overlay */}
+          {editingFile ? (
+            <Editor
+              filePath={editingFile.path}
+              fileName={editingFile.name}
+              onClose={() => {
+                setEditingFile(null)
+                loadLocalEntries()
+              }}
+              onAskInChat={() => {
+                setEditingFile(null)
+                router.push('/chat')
+              }}
+            />
           ) : null}
 
           {/* Busy notification */}
@@ -1004,8 +1272,190 @@ export function Drive() {
           {/* What the files say about the search, passage by passage. */}
           {hits && hits.length ? <Hits hits={hits} onOpen={(p) => showContents(p.file.id, p.section.id)} /> : null}
 
-          {/* If we are inside a Bucket/Folder, show its files & folders */}
-          {bucket || prefix ? (
+          {/* Main content branching: Local Folders vs S3 Bucket vs Root */}
+          {navSection === 'local' ? (
+            !activeWs ? (
+              <YStack
+                py={60}
+                px={24}
+                items="center"
+                justify="center"
+                gap="$4"
+                borderWidth={1}
+                borderStyle="dashed"
+                borderColor="$borderColor"
+                rounded={12}
+                bg="$panel"
+              >
+                <Laptop size={40} color="var(--primary)" />
+                <YStack items="center" gap="$1" maxW={460}>
+                  <Text fontSize={18} fontWeight="600" color="$ink" text="center">
+                    No local folder opened
+                  </Text>
+                  <Text fontSize={13} color="$soft" text="center">
+                    Open a local folder on your computer to browse, create, edit, and save files directly in Hanzo Desktop.
+                  </Text>
+                </YStack>
+                <Button
+                  onClick={() => {
+                    void pickLocalFolder().then((ws) => {
+                      if (ws) {
+                        setNavSection('local')
+                        setLocalPrefix('')
+                      }
+                    })
+                  }}
+                >
+                  <FolderPlus size={16} />
+                  Open Local Folder…
+                </Button>
+              </YStack>
+            ) : (
+              <YStack gap="$2">
+                <XStack items="center" justify="space-between" pb="$1">
+                  <Text fontSize={12} fontWeight="600" color="$soft">
+                    {localPrefix ? `Folder: ${localPrefix}` : 'Root Files & Directories'}
+                  </Text>
+                  <XStack items="center" gap="$2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setNaming({ kind: 'file', value: '' })}
+                    >
+                      <FilePlus size={13} />
+                      New file
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setNaming({ kind: 'folder', value: '' })}
+                    >
+                      <FolderPlus size={13} />
+                      New folder
+                    </Button>
+                  </XStack>
+                </XStack>
+                <YStack borderWidth={1} borderColor="$borderColor" rounded={8} overflowX="auto" overflowY="hidden">
+                  <View
+                    display="grid"
+                    gridTemplateColumns={FILES}
+                    minW="min-content"
+                    px={16}
+                    py={10}
+                    borderBottomWidth={1}
+                    borderColor="$borderColor"
+                  >
+                    <Text {...HEAD}>NAME</Text>
+                    <Text {...HEAD}>TYPE</Text>
+                    <Text {...HEAD}>UPDATED</Text>
+                    <Text {...HEAD}>SIZE</Text>
+                    <View />
+                  </View>
+
+                  {!localEntries || localEntries.length === 0 ? (
+                    <Text py={36} px={16} text="center" fontSize="$2" color="$faint">
+                      Empty folder
+                    </Text>
+                  ) : (
+                    localEntries.map((e) => {
+                      const ext = e.name.split('.').pop() || ''
+                      return (
+                        <View
+                          key={e.path}
+                          display="grid"
+                          gridTemplateColumns={FILES}
+                          minW="min-content"
+                          px={16}
+                          py={11}
+                          items="center"
+                          cursor="pointer"
+                          borderBottomWidth={1}
+                          borderColor="$borderColor"
+                          transition="100ms"
+                          hoverStyle={{ bg: '$hover' }}
+                          onClick={() => {
+                            if (e.isDir) {
+                              setLocalPrefix(localPrefix ? `${localPrefix}/${e.name}` : e.name)
+                            } else {
+                              setEditingFile({ path: e.path, name: e.name })
+                            }
+                          }}
+                        >
+                          <XStack items="center" gap="$3" minW={0} pr="$2">
+                            {e.isDir ? (
+                              <Folder size={16} color="var(--foreground)" />
+                            ) : (
+                              <FileCode size={16} color="var(--muted-foreground)" />
+                            )}
+                            <Text {...NAME}>{e.name}</Text>
+                          </XStack>
+
+                          <Text fontSize="$2" color="$soft" numberOfLines={1}>
+                            {e.isDir ? 'Folder' : ext.toUpperCase() || 'File'}
+                          </Text>
+
+                          <Text {...CELL}>
+                            {e.lastModified ? when(e.lastModified) : '—'}
+                          </Text>
+
+                          <Text {...CELL}>
+                            {e.isDir ? '—' : weigh(e.size)}
+                          </Text>
+
+                          <View position="relative" onClick={(evt) => evt.stopPropagation()}>
+                            <More
+                              onPress={(evt) => {
+                                evt.stopPropagation()
+                                setItemMenuKey(itemMenuKey === e.path ? null : e.path)
+                              }}
+                            />
+                            {itemMenuKey === e.path ? (
+                              <YStack
+                                position="absolute"
+                                r={0}
+                                t="100%"
+                                z="var(--z-dropdown)"
+                                width={160}
+                                bg="var(--popover)"
+                                borderWidth={1}
+                                borderColor="$borderColor"
+                                rounded={8}
+                                boxShadow="var(--shadow-lg)"
+                                p={4}
+                                gap={2}
+                              >
+                                {!e.isDir ? (
+                                  <Pick
+                                    icon={FileCode}
+                                    label="Edit file"
+                                    onPress={() => {
+                                      setItemMenuKey(null)
+                                      setEditingFile({ path: e.path, name: e.name })
+                                    }}
+                                  />
+                                ) : null}
+                                <Pick
+                                  icon={Trash2}
+                                  label="Delete"
+                                  tone={BAD}
+                                  onPress={() => {
+                                    setItemMenuKey(null)
+                                    deleteLocalPath(e.path)
+                                      .then(() => loadLocalEntries())
+                                      .catch((err) => setFailed(blame(err)))
+                                  }}
+                                />
+                              </YStack>
+                            ) : null}
+                          </View>
+                        </View>
+                      )
+                    })
+                  )}
+                </YStack>
+              </YStack>
+            )
+          ) : bucket || prefix ? (
             <YStack gap="$2">
               <YStack borderWidth={1} borderColor="$borderColor" rounded={8} overflowX="auto" overflowY="hidden">
                 {/* Table Header */}
