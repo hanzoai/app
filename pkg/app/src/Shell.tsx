@@ -754,7 +754,7 @@ function Projects({
     let live = true;
     setWrong(null);
     client.http
-      .json<{ id: string; name: string; slug?: string }[]>({ path: "/v1/projects" })
+      .json<{ id: string; name: string; slug?: string }[]>({ path: "/v1/project" })
       .then((found) => live && setRows(Array.isArray(found) ? found : []))
       .catch((e: unknown) => {
         if (!live) return;

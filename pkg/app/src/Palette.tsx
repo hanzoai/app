@@ -23,7 +23,7 @@
 // here as the reader types: the conversations store (hanzoai/agent) answers its
 // whole list and searches nothing, titles or words, so a title is all there is
 // to find a chat by. The chats are the sidebar's last read (thread.tsx
-// `useThreadList`), drawn at once; the projects (`/v1/projects`), the active
+// `useThreadList`), drawn at once; the projects (`/v1/project`), the active
 // skills (`/v1/tool/skills?activated=true`), the connectors
 // (`/v1/tool/mcp/servers`) and the agents (crew.tsx) arrive while the reader
 // types, and a read the palette closes on is aborted.
@@ -211,7 +211,7 @@ const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object'
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')
 const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
 
-/** `/v1/projects`: a project by its slug, found by its name, slug and repository. */
+/** `/v1/project`: a project by its slug, found by its name, slug and repository. */
 /**
  * The builder as a frame without it holds it (hanzo.team's Shell): nobody signed
  * in to it, so `useSessions` reads no runs. The hook reads `api`, `token`, `org`
@@ -261,7 +261,7 @@ export function Palette({
   const [keys, setKeys] = useState(false)
   const { threads } = useThreadList()
   const { agents } = useCrew()
-  const repos = useRead('/v1/projects', projects)
+  const repos = useRead('/v1/project', projects)
   const known = useRead('/v1/tool/skills?activated=true', skills)
   const plugged = useRead('/v1/tool/mcp/servers', connectors)
   const signOut = useSignOut()

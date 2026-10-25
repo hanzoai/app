@@ -73,7 +73,7 @@ interface Entry {
 
 type Client = NonNullable<ReturnType<typeof useAi>['client']>
 
-/** A project as `/v1/projects` answers it — the fields this pane reads. */
+/** A project as `/v1/project` answers it — the fields this pane reads. */
 interface Project {
   id: string
   name?: string
@@ -255,13 +255,13 @@ export function Drive() {
   const folderInputRef = useRef<HTMLInputElement | null>(null)
   const dragCounter = useRef(0)
 
-  // PROJECTS are the org's own, from the platform. `/v1/projects` answers every
+  // PROJECTS are the org's own, from the platform. `/v1/project` answers every
   // project this org owns; nothing stands in for it when it answers nothing.
   useEffect(() => {
     if (!ready || !client) return
     let live = true
     client.http
-      .json<Project[]>({ path: '/v1/projects' })
+      .json<Project[]>({ path: '/v1/project' })
       .then((ps) => live && setProjects(Array.isArray(ps) ? ps : []))
       .catch(() => live && setProjects([]))
     return () => {

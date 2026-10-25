@@ -192,7 +192,7 @@ export function Orgs({
     }
     if (!slug) return
     client.http
-      .json<{ id?: string }>({ method: 'POST', path: '/v1/projects/fork', body: { slug } })
+      .json<{ id?: string }>({ method: 'POST', path: '/v1/project/fork', body: { slug } })
       .then((made) => {
         if (made?.id) window.location.assign(dev())
       })

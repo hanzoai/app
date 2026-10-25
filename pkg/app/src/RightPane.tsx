@@ -314,7 +314,7 @@ export function useSections({ at, said, held, deck, onCreate }: { at: string; sa
 }
 
 /**
- * The organization's sites, as an empty tab suggests them: `GET /v1/projects`,
+ * The organization's sites, as an empty tab suggests them: `GET /v1/project`,
  * every row with a live address. Read once a conversation; nothing on a refusal.
  */
 export function useSites(): { title: string; url: string }[] {
@@ -323,7 +323,7 @@ export function useSites(): { title: string; url: string }[] {
   const [rows, setRows] = useState<{ title: string; url: string }[]>([])
   useEffect(() => {
     const stop = new AbortController()
-    fetch(`${api()}/v1/projects`, { headers: scope(), signal: stop.signal })
+    fetch(`${api()}/v1/project`, { headers: scope(), signal: stop.signal })
       .then((r) => (r.ok ? r.json() : null))
       .then((body: unknown) => {
         if (stop.signal.aborted) return
