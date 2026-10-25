@@ -73,6 +73,7 @@ import { Share } from "./Share";
 import { ConversationMenu, ThreadMore, useThreadList } from "./thread";
 import { Schedule } from "./Schedule";
 import { keepFile, useAttach, useKeep } from "./keep";
+import { dragWindow, toggleWindowMaximize } from "./WindowControls";
 import {
   artifacts,
   lead,
@@ -1961,6 +1962,9 @@ function Thread({
         paddingInlineStart="$4"
         paddingInlineEnd="$2"
         shrink={0}
+        data-tauri-drag-region="deep"
+        onMouseDown={dragWindow}
+        onDoubleClick={toggleWindowMaximize}
         $max-md={!mine && !room.length ? { display: 'none' } : undefined}
       >
         <XStack items="center" gap="$2" minW={0} flex={1}>

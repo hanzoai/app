@@ -86,6 +86,7 @@ import { pick } from './lib/session'
 import { app, go, place, settings, studio, talk, TERMINALS, visit, type Place } from './lib/host'
 import { Top } from './Top'
 import { FOOT, HEIGHT, TOP, useView } from './view'
+import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowControls'
 
 /** Studio, fetched the first time the reader stands in it. */
 const Studio = lazy(() => import('@hanzo/studio').then((m) => ({ default: m.Studio })))
@@ -104,6 +105,7 @@ const HOME: Place = { mode: 'chat', thread: null }
 export interface Bar {
   inset?: number
   drag?: Record<string, unknown>
+  controls?: React.ReactNode
 }
 
 /** The bar's height, px: the reference window's title bar. */
@@ -306,15 +308,27 @@ function Window({ bar }: { bar?: Bar }) {
           {...(bar ? floor : null)}
           flex={1}
           minW={0}
-          height="100dvh"
+          height={bar ? '100%' : '100dvh'}
           overflow="hidden"
+          rounded={bar ? '$3' : undefined}
           // Clipped, not hidden, on a phone: the drawer slides the pane past the window's edge, and a
           // hidden overflow is still a scroller that a `scrollIntoView` inside the pane would move.
           $max-md={{ position: 'fixed', t: TOP, l: 0, r: 0, height: HEIGHT, ...({ overflow: 'clip' } as object) }}
         >
           {bar ? (
             // The inset is the window's own controls', which the host's shell paints at the window's left whatever the page's direction.
-            <XStack data-slot="title-bar" height={BAR} shrink={0} items="center" gap={2} pl={(bar.inset ?? 0) + 6} pr="$2" {...bar.drag}>
+            <XStack
+              data-slot="title-bar"
+              height={BAR}
+              shrink={0}
+              items="center"
+              gap={2}
+              pl={(bar.inset ?? 0) + 6}
+              pr="$2"
+              onMouseDown={dragWindow}
+              onDoubleClick={toggleWindowMaximize}
+              {...bar.drag}
+            >
               {/* From a tablet up the toggle shuts the sidebar; on a phone it opens the drawer. */}
               <XStack $max-md={{ display: 'none' }}>
                 <Toggle open={!closed} onPress={flip} />
@@ -328,7 +342,18 @@ function Window({ bar }: { bar?: Bar }) {
               <Mark label={t('Forward')} data-slot="forward" onPress={() => router.forward()}>
                 <ArrowRight size={18} aria-hidden data-i18n-mirror />
               </Mark>
-              <XStack flex={1} self="stretch" {...bar.drag} />
+              <XStack
+                flex={1}
+                self="stretch"
+                onMouseDown={dragWindow}
+                onDoubleClick={toggleWindowMaximize}
+                {...bar.drag}
+              />
+              {bar.controls !== undefined ? (
+                bar.controls
+              ) : !bar.inset ? (
+                <WindowControls />
+              ) : null}
             </XStack>
           ) : null}
           <XStack

@@ -47,6 +47,7 @@ import { useFree } from './Upgrade'
 import { talk, type Place } from './lib/host'
 import { payUrl } from './lib/pay'
 import { brand, wordmark } from './where'
+import { dragWindow, toggleWindowMaximize } from './WindowControls'
 
 /** The sidebar fills the column. Its `width` is typed in px alone, though its frame takes any gui size — the type is
  *  @hanzo/ui's to widen. */
@@ -207,7 +208,19 @@ export function Column({
         gap="$0"
       >
         {at ? (
-          <XStack data-slot="app-head" items="center" gap="$1" paddingInlineStart={2} paddingInlineEnd={2} height={52} shrink={0} minW={0}>
+          <XStack
+            data-slot="app-head"
+            items="center"
+            gap="$1"
+            paddingInlineStart={2}
+            paddingInlineEnd={2}
+            height={52}
+            shrink={0}
+            minW={0}
+            data-tauri-drag-region="deep"
+            onMouseDown={dragWindow}
+            onDoubleClick={toggleWindowMaximize}
+          >
             <SidebarIconButton label={t('Back')} data-slot="place-back" onPress={onBack} {...HEAD}>
               <ArrowLeft size={16} aria-hidden data-i18n-mirror />
             </SidebarIconButton>
@@ -216,7 +229,19 @@ export function Column({
             </Text>
           </XStack>
         ) : (
-          <XStack data-slot="app-head" items="center" gap="$1" paddingInlineStart="$2" paddingInlineEnd={2} height={52} shrink={0} minW={0}>
+          <XStack
+            data-slot="app-head"
+            items="center"
+            gap="$1"
+            paddingInlineStart="$2"
+            paddingInlineEnd={2}
+            height={52}
+            shrink={0}
+            minW={0}
+            data-tauri-drag-region="deep"
+            onMouseDown={dragWindow}
+            onDoubleClick={toggleWindowMaximize}
+          >
             <Text flex={1} minW={0} fontSize={18} lineHeight={24} fontWeight="600" color="$ink" numberOfLines={1}>
               {wordmark(mode)}
             </Text>
