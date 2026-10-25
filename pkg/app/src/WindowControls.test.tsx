@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowControls'
 
+vi.mock('@hanzo/ui', () => ({ View: 'div', XStack: 'div' }))
+
 describe('WindowControls', () => {
   beforeEach(() => {
     vi.restoreAllMocks()

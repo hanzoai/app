@@ -6,7 +6,7 @@ export interface LearningStudy {
   project: string
   title: string
   question: string
-  improvement?: { baseline: string; target: string }
+  improvement?: { baseline: string; target: string; min_questions: number; require_intervals: boolean; metrics: { category: string; metric: string; direction: string; min_gain: number; max_regression: number }[] }
 }
 
 export interface LearningReview {
@@ -57,15 +57,27 @@ export interface LearningProposal {
 
 /** Creating a study arms deterministic evaluation; it starts no model or rollout. */
 export async function learningCreate(proposal: LearningProposal, id: string): Promise<void> {
+  const headers = { 'Content-Type': 'application/json', ...scope() }
+  const policy = { baseline: proposal.baseline, target: proposal.target, min_questions: proposal.minQuestions,
+    require_intervals: false, metrics: [{ category: proposal.category, metric: proposal.metric, direction: proposal.direction, min_gain: proposal.minGain, max_regression: 0 }] }
   const r = await fetch(`${api()}/v1/research/studies`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...scope() },
-    body: JSON.stringify({ studies: [{ id, title: proposal.title, question: proposal.question,
-      improvement: { baseline: proposal.baseline, target: proposal.target, min_questions: proposal.minQuestions,
-        require_intervals: false, metrics: [{ category: proposal.category, metric: proposal.metric, direction: proposal.direction, min_gain: proposal.minGain, max_regression: 0 }] },
-    }] }),
+    headers,
+    body: JSON.stringify({ studies: [{ id, title: proposal.title, question: proposal.question, improvement: policy }] }),
   })
   if (!r.ok) throw Object.assign(new Error(`${r.status}`), { status: r.status })
+  // Older cloud versions accept unknown JSON fields. Verify that the policy
+  // actually persisted before telling the person automatic review is armed.
+  const check = await fetch(`${api()}/v1/research/studies`, { headers })
+  if (!check.ok) throw Object.assign(new Error(`${check.status}`), { status: check.status })
+  const body = await check.json() as { data?: LearningStudy[] }
+  const saved = body.data?.find((study) => study.id === id)?.improvement
+  const metric = saved?.metrics?.[0]
+  if (!saved || saved.baseline !== policy.baseline || saved.target !== policy.target ||
+    saved.min_questions !== policy.min_questions || saved.require_intervals !== policy.require_intervals ||
+    saved.metrics.length !== 1 || !metric || Object.entries(policy.metrics[0]).some(([key, value]) => metric[key as keyof typeof metric] !== value)) {
+    throw Object.assign(new Error('Cloud has not enabled automatic study review'), { status: 503 })
+  }
 }
 
 export interface LearningAnalysis {
