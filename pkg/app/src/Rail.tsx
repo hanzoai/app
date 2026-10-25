@@ -222,7 +222,7 @@ export function Rail({
           { key: 'team', label: 'Team', icon: <Users size={16} aria-hidden />, onSelect: () => out(WORKSPACE) },
           ...granted.map((b) => ({ key: `beta-${b.id}`, label: b.name, icon: <Sparkles size={16} aria-hidden />, onSelect: () => out(b.href as string) })),
           { type: 'separator' as const, key: 'betas-rule' },
-          { key: 'betas', label: t('Betas'), icon: <FlaskConical size={16} aria-hidden />, onSelect: () => setBetas(true) },
+          { key: 'betas', label: t('Betas'), icon: <FlaskConical size={16} aria-hidden />, onSelect: () => window.location.assign('/beta') },
           { key: 'market', label: t('Explore on hanzo.market'), icon: <Compass size={16} aria-hidden />, onSelect: () => out('https://hanzo.market') },
         ]
       : []),
@@ -272,6 +272,9 @@ export function Rail({
       </Mark>
       <Mark label={t('Customize')} on={here === 'customize'} onPress={to(RAISED.customize)} data-slot="rail-customize">
         <Puzzle size={18} aria-hidden />
+      </Mark>
+      <Mark label={t('Betas')} on={false} onPress={() => window.location.assign('/beta')} data-slot="rail-betas">
+        <FlaskConical size={18} aria-hidden />
       </Mark>
       {betasDialog}
       {rest.length ? (

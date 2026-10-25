@@ -488,7 +488,7 @@ export function Me({
           <DropdownMenuItem aria-keyshortcuts="Control+, Meta+," onSelect={() => showSettings('general')}>
             <Line icon={<Settings size={16} aria-hidden />} trail={<DropdownMenuShortcut aria-hidden><bdi dir="ltr">{apple ? '⌘,' : 'Ctrl+,'}</bdi></DropdownMenuShortcut>}>{t('Settings')}</Line>
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => window.location.assign(site('/beta/status'))}>
+          <DropdownMenuItem onSelect={() => window.location.assign(site('/beta'))}>
             <Line icon={<FlaskConical size={16} aria-hidden />}>{t('Beta')}</Line>
           </DropdownMenuItem>
           <DropdownMenuSeparator />

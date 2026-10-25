@@ -50,7 +50,7 @@ export const BETAS: readonly Beta[] = [
   { id: 'sign', name: 'Sign', line: phrase('Send a PDF, get it signed, keep the record'), group: 'Business', href: 'https://esign.hanzo.ai' },
   { id: 'company', name: 'Company', line: phrase('Formation, documents and filings'), group: 'Business', href: `${PLATFORM}/company` },
   { id: 'cms', name: 'CMS', line: phrase('Pages, posts, media and navigation'), group: 'Business', href: 'https://cms.hanzo.ai/admin' },
-  { id: 'helpdesk', name: 'Help Center', line: phrase('Tickets, teams and SLAs'), group: 'Business', href: 'https://help.hanzo.ai' },
+  { id: 'helpdesk', name: 'Help Center', line: phrase('Tickets, teams and SLAs'), group: 'Business', href: 'https://hanzo.help' },
   { id: 'marketing', name: 'Marketing', line: phrase('Campaigns, audiences and email sequences'), group: 'Business', href: 'https://marketing.hanzo.ai' },
   { id: 'ads', name: 'Ads', line: phrase('Paid campaigns, launched and paused in one place'), group: 'Business', href: 'https://ads.hanzo.ai' },
   { id: 'social', name: 'Social', line: phrase('Schedule posts across your social accounts'), group: 'Business', href: 'https://social.hanzo.ai' },
