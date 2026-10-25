@@ -72,7 +72,13 @@ vi.mock('./where', () => ({
   site: (p: string) => `https://hanzo.ai${p}`,
 }))
 
-import { Setup } from './Setup'
+import {
+  Setup,
+  GOOGLE_KEY,
+  GOOGLE_ACCOUNTS_KEY,
+  GOOGLE_WORKSPACE_SCOPES,
+  buildGoogleWorkspaceAuthorizeUrl,
+} from './Setup'
 
 describe('Setup 1-2-3 in-app onboarding', () => {
   beforeEach(() => {
@@ -94,23 +100,56 @@ describe('Setup 1-2-3 in-app onboarding', () => {
     expect(html).toContain('Connect Slack')
   })
 
-  test('advances to Step 3 (Google Workspace) when GitHub and Slack are connected', () => {
-    store.set('hanzo.onboarding.github', true)
-    store.set('hanzo.onboarding.slack', true)
+  test('stays on Step 3 (Connect Google) without looping back to Step 1 even if Google is connected and GitHub/Slack were skipped', () => {
+    store.set('hanzo.onboarding.github', false)
+    store.set('hanzo.onboarding.slack', false)
+    store.set(GOOGLE_KEY, true)
     store.set('hanzo.onboarding.step', 3)
     const html = renderToStaticMarkup(createElement(Setup))
     expect(html).toContain('3. Connect Google')
-    expect(html).toContain('Connect Google')
-    expect(html).toContain('Skip')
+    expect(html).toContain('+ Add Google account')
+    expect(html).toContain('Done')
+    expect(html).not.toContain('1. Connect GitHub')
   })
 
-  test('shows completion state when all 3 are finished', () => {
+  test('renders multiple connected Google accounts across personal and business orgs on Step 3', () => {
+    store.set('hanzo.onboarding.step', 3)
+    store.set(GOOGLE_ACCOUNTS_KEY, ['z@hanzo.ai', 'personal@gmail.com'])
+    const html = renderToStaticMarkup(createElement(Setup))
+    expect(html).toContain('3. Connect Google')
+    expect(html).toContain('2 connected')
+    expect(html).toContain('z@hanzo.ai')
+    expect(html).toContain('personal@gmail.com')
+    expect(html).toContain('+ Add Google account')
+  })
+
+  test('shows completion state with Add Google account option when all 3 are finished', () => {
     store.set('hanzo.onboarding.github', true)
     store.set('hanzo.onboarding.slack', true)
-    store.set('hanzo.onboarding.google', true)
+    store.set(GOOGLE_KEY, true)
+    store.set(GOOGLE_ACCOUNTS_KEY, ['z@hanzo.ai'])
     const html = renderToStaticMarkup(createElement(Setup))
     expect(html).toContain('GitHub, Slack &amp; Google connected')
+    expect(html).toContain('z@hanzo.ai')
+    expect(html).toContain('Add Google account')
     expect(html).toContain('Done')
+  })
+
+  test('builds Google Workspace authorize URL with Drive/Docs/Sheets/Gmail/Calendar scopes and select_account consent', () => {
+    const raw = buildGoogleWorkspaceAuthorizeUrl('https://hanzo.ai', 'test-client-id', 'gws_test')
+    const u = new URL(raw)
+    expect(u.origin).toBe('https://accounts.google.com')
+    expect(u.searchParams.get('client_id')).toBe('test-client-id')
+    expect(u.searchParams.get('redirect_uri')).toBe('https://hanzo.ai/v1/iam/oauth/callback')
+    expect(u.searchParams.get('response_type')).toBe('token')
+    expect(u.searchParams.get('prompt')).toBe('select_account consent')
+    expect(u.searchParams.get('include_granted_scopes')).toBe('true')
+    expect(u.searchParams.get('scope')).toBe(GOOGLE_WORKSPACE_SCOPES)
+    expect(GOOGLE_WORKSPACE_SCOPES).toContain('https://www.googleapis.com/auth/drive')
+    expect(GOOGLE_WORKSPACE_SCOPES).toContain('https://www.googleapis.com/auth/documents')
+    expect(GOOGLE_WORKSPACE_SCOPES).toContain('https://www.googleapis.com/auth/spreadsheets')
+    expect(GOOGLE_WORKSPACE_SCOPES).toContain('https://www.googleapis.com/auth/gmail.modify')
+    expect(GOOGLE_WORKSPACE_SCOPES).toContain('https://www.googleapis.com/auth/calendar')
   })
 
   test('is hidden when dismissed (later)', () => {

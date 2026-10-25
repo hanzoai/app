@@ -1,21 +1,21 @@
 'use client'
 
-// The 1-2-3 in-app onboarding: Connect GitHub, Connect Slack, Connect Google (Gmail, Calendar & Drive).
+// The 1-2-3 in-app onboarding: Connect GitHub, Connect Slack, Connect Google Workspace.
 // Runs INSIDE the app as a compact card in the sidebar column and as an interactive
 // popup modal dialog. Never a full-screen redirect away from the user's workspace.
 //
 //   1. GitHub:  Sync repositories, PRs, and team repository context
 //   2. Slack:   Route notifications, agent conversations, and bot alerts
-//   3. Google:  Connect Gmail, Calendar & Drive so agents can read files, draft emails & manage schedules
+//   3. Google:  Connect Google Drive, Docs, Sheets, Gmail & Calendar across one or many Google accounts (personal, work, multiple orgs)
 
 import { useEffect, useState } from 'react'
 import { useI18n } from '@hanzo/i18n/react'
 import { Box, Dialog, DialogContent, DialogTitle, SizableText, Text, XStack, YStack } from '@hanzo/ui'
 import { useIam } from '@hanzo/iam/react'
-import { Check, Maximize2, Sparkles, X } from 'lucide-react'
+import { Check, Maximize2, Plus, Sparkles, X } from 'lucide-react'
 import { ProviderMark } from './ProviderMark'
 import { useKept } from './kept'
-import { api, CLIENT } from './lib/api'
+import { api } from './lib/api'
 import { answers } from './lib/host'
 import { scope } from './lib/session'
 import { enter } from './lib/destination'
@@ -24,11 +24,44 @@ import { GOOD } from './lib/mix'
 
 const here = (): boolean => typeof window !== 'undefined' && answers(window.location.hostname)
 
-const LATER_KEY = 'hanzo.onboarding.later'
-const GITHUB_KEY = 'hanzo.onboarding.github'
-const SLACK_KEY = 'hanzo.onboarding.slack'
-const GOOGLE_KEY = 'hanzo.onboarding.google'
-const STEP_KEY = 'hanzo.onboarding.step'
+export const LATER_KEY = 'hanzo.onboarding.later'
+export const GITHUB_KEY = 'hanzo.onboarding.github'
+export const SLACK_KEY = 'hanzo.onboarding.slack'
+export const GOOGLE_KEY = 'hanzo.onboarding.google.v2'
+export const GOOGLE_ACCOUNTS_KEY = 'hanzo.onboarding.google.accounts'
+export const GOOGLE_TOKENS_KEY = 'hanzo.onboarding.google.tokens'
+export const STEP_KEY = 'hanzo.onboarding.step'
+
+export const DEFAULT_GOOGLE_CLIENT_ID =
+  '113591532635-s8pvqrebprkbndluhftddmdap4htvu1p.apps.googleusercontent.com'
+
+export const GOOGLE_WORKSPACE_SCOPES = [
+  'openid',
+  'email',
+  'profile',
+  'https://www.googleapis.com/auth/drive',
+  'https://www.googleapis.com/auth/documents',
+  'https://www.googleapis.com/auth/spreadsheets',
+  'https://www.googleapis.com/auth/gmail.modify',
+  'https://www.googleapis.com/auth/calendar',
+].join(' ')
+
+export function buildGoogleWorkspaceAuthorizeUrl(
+  origin: string,
+  clientId = DEFAULT_GOOGLE_CLIENT_ID,
+  state = 'gws',
+): string {
+  const cleanOrigin = origin.replace(/\/+$/, '')
+  const u = new URL('https://accounts.google.com/o/oauth2/v2/auth')
+  u.searchParams.set('client_id', clientId || DEFAULT_GOOGLE_CLIENT_ID)
+  u.searchParams.set('redirect_uri', `${cleanOrigin}/v1/iam/oauth/callback`)
+  u.searchParams.set('response_type', 'token')
+  u.searchParams.set('scope', GOOGLE_WORKSPACE_SCOPES)
+  u.searchParams.set('include_granted_scopes', 'true')
+  u.searchParams.set('prompt', 'select_account consent')
+  u.searchParams.set('state', state)
+  return u.toString()
+}
 
 /** Inline Slack Mark */
 function SlackMark({ size = 18 }: { size?: number }) {
@@ -48,13 +81,14 @@ function SlackMark({ size = 18 }: { size?: number }) {
 
 export function Setup() {
   const { t } = useI18n()
-  const { isAuthenticated, accessToken, sdk } = useIam()
+  const { isAuthenticated, accessToken } = useIam()
   const [later, setLater] = useKept(LATER_KEY, false)
   const [step, setStep] = useKept(STEP_KEY, 1)
 
   const [githubDone, setGithubDone] = useKept(GITHUB_KEY, false)
   const [slackDone, setSlackDone] = useKept(SLACK_KEY, false)
   const [googleDone, setGoogleDone] = useKept(GOOGLE_KEY, false)
+  const [googleAccounts, setGoogleAccounts] = useKept<string[]>(GOOGLE_ACCOUNTS_KEY, [])
 
   const [busy, setBusy] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
@@ -62,8 +96,58 @@ export function Setup() {
   const [syncTurn, setSyncTurn] = useState(0)
 
   const signed = isAuthenticated && Boolean(accessToken)
+  const accountList = Array.isArray(googleAccounts) ? googleAccounts : []
+  const hasGoogle = googleDone || accountList.length > 0
 
-  // Sync with remote integrations, connectors & linked IAM accounts when authenticated or returning from OAuth tab/popup
+  const addGoogleAccount = (
+    rawEmail: string,
+    tokenData?: { accessToken: string; scope?: string },
+  ) => {
+    const clean = rawEmail.trim().toLowerCase()
+    const current = Array.isArray(googleAccounts) ? googleAccounts : []
+    const next = clean && !current.includes(clean) ? [...current, clean] : current
+    setGoogleAccounts(next)
+    setGoogleDone(true)
+
+    if (typeof window !== 'undefined' && tokenData?.accessToken) {
+      try {
+        const rawTokens = window.localStorage.getItem(GOOGLE_TOKENS_KEY)
+        const parsed = rawTokens ? (JSON.parse(rawTokens) as Record<string, unknown>) : {}
+        parsed[clean || 'default'] = {
+          accessToken: tokenData.accessToken,
+          scope: tokenData.scope || GOOGLE_WORKSPACE_SCOPES,
+          connectedAt: new Date().toISOString(),
+        }
+        window.localStorage.setItem(GOOGLE_TOKENS_KEY, JSON.stringify(parsed))
+      } catch {
+        // ignore storage errors
+      }
+    }
+  }
+
+  const removeGoogleAccount = (targetEmail: string) => {
+    const current = Array.isArray(googleAccounts) ? googleAccounts : []
+    const next = current.filter((a) => a !== targetEmail)
+    setGoogleAccounts(next)
+    if (next.length === 0) {
+      setGoogleDone(false)
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        const rawTokens = window.localStorage.getItem(GOOGLE_TOKENS_KEY)
+        if (rawTokens) {
+          const parsed = JSON.parse(rawTokens) as Record<string, unknown>
+          delete parsed[targetEmail]
+          window.localStorage.setItem(GOOGLE_TOKENS_KEY, JSON.stringify(parsed))
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  // Sync with remote workspace integrations & connectors (never from IAM login linked-accounts,
+  // because basic IAM sign-in does not grant Google Drive/Docs/Sheets/Gmail/Calendar permissions).
   useEffect(() => {
     if (!signed) return
     let live = true
@@ -76,10 +160,7 @@ export function Setup() {
       fetch(`${api()}/v1/integrations/connectors`, { headers: auth })
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null),
-      fetch(`${api()}/v1/iam/linked-accounts`, { headers: auth })
-        .then((r) => (r.ok ? r.json() : null))
-        .catch(() => null),
-    ]).then(([integrationsData, connectorsData, linkedData]) => {
+    ]).then(([integrationsData, connectorsData]) => {
       if (!live) return
       const providers = Array.isArray(integrationsData?.providers)
         ? (integrationsData.providers as Record<string, unknown>[])
@@ -87,40 +168,51 @@ export function Setup() {
       const connectors = Array.isArray(connectorsData?.connectors)
         ? (connectorsData.connectors as Record<string, unknown>[])
         : null
-      const linkedAccounts = Array.isArray(linkedData?.data)
-        ? (linkedData.data as Record<string, unknown>[])
-        : null
 
-      if (!providers && !connectors && !linkedAccounts) return
+      if (!providers && !connectors) return
 
       const connectedSet = new Set<string>()
+      const discoveredGoogleAccounts: string[] = []
+
       if (providers) {
         for (const p of providers) {
-          if (p.connected) connectedSet.add(String(p.id))
+          if (p.connected) {
+            const id = String(p.id)
+            connectedSet.add(id)
+            const conn = p.connection as Record<string, unknown> | undefined
+            if (id === 'google' && typeof conn?.account === 'string' && conn.account.trim()) {
+              discoveredGoogleAccounts.push(conn.account.trim().toLowerCase())
+            }
+          }
         }
       }
       if (connectors) {
         for (const c of connectors) {
-          connectedSet.add(String(c.provider))
-        }
-      }
-      if (linkedAccounts) {
-        for (const l of linkedAccounts) {
-          if (l.provider) connectedSet.add(String(l.provider).toLowerCase())
+          const prov = String(c.provider)
+          connectedSet.add(prov)
+          if (prov === 'google' && typeof c.account === 'string' && c.account.trim()) {
+            discoveredGoogleAccounts.push(c.account.trim().toLowerCase())
+          }
         }
       }
 
-      const hasGithub = connectedSet.has('github') || connectedSet.has('github-copilot')
-      const hasSlack = connectedSet.has('slack')
-      const hasGoogle =
+      const remoteGithub = connectedSet.has('github') || connectedSet.has('github-copilot')
+      const remoteSlack = connectedSet.has('slack')
+      const remoteGoogle =
         connectedSet.has('google') ||
         connectedSet.has('gmail') ||
         connectedSet.has('google-drive') ||
         connectedSet.has('google-calendar')
 
-      if (hasGithub) setGithubDone(true)
-      if (hasSlack) setSlackDone(true)
-      if (hasGoogle) setGoogleDone(true)
+      if (remoteGithub) setGithubDone(true)
+      if (remoteSlack) setSlackDone(true)
+      if (remoteGoogle) setGoogleDone(true)
+      if (discoveredGoogleAccounts.length > 0) {
+        const merged = Array.from(new Set([...accountList, ...discoveredGoogleAccounts]))
+        if (merged.length !== accountList.length) {
+          setGoogleAccounts(merged)
+        }
+      }
     })
 
     return () => {
@@ -128,35 +220,88 @@ export function Setup() {
     }
   }, [signed, syncTurn])
 
+  // Listen for postMessage completion from /auth/callback popup and focus/visibility return
   useEffect(() => {
-    if (!signed) return
+    if (typeof window === 'undefined') return
+    const onMessage = (ev: MessageEvent) => {
+      if (ev.origin !== window.location.origin) return
+      const data = ev.data as {
+        type?: string
+        email?: string
+        accessToken?: string
+        scope?: string
+      } | null
+      if (data?.type === 'hanzo-google-workspace-connected') {
+        addGoogleAccount(data.email || '', {
+          accessToken: data.accessToken || '',
+          scope: data.scope,
+        })
+        setSyncTurn((n) => n + 1)
+      }
+    }
     const onReturn = () => {
       if (document.visibilityState === 'visible') {
         setSyncTurn((n) => n + 1)
       }
     }
     const onFocus = () => setSyncTurn((n) => n + 1)
+
+    window.addEventListener('message', onMessage)
     document.addEventListener('visibilitychange', onReturn)
     window.addEventListener('focus', onFocus)
     return () => {
+      window.removeEventListener('message', onMessage)
       document.removeEventListener('visibilitychange', onReturn)
       window.removeEventListener('focus', onFocus)
     }
-  }, [signed])
+  }, [signed, googleAccounts])
 
-  const totalDone = (githubDone ? 1 : 0) + (slackDone ? 1 : 0) + (googleDone ? 1 : 0)
+  const totalDone = (githubDone ? 1 : 0) + (slackDone ? 1 : 0) + (hasGoogle ? 1 : 0)
   const allDone = totalDone === 3
-
-  // Automatically advance step if current step is already done
-  useEffect(() => {
-    if (step === 1 && githubDone) setStep(slackDone ? 3 : 2)
-    else if (step === 2 && slackDone) setStep(googleDone ? 1 : 3)
-    else if (step === 3 && googleDone && (!githubDone || !slackDone)) setStep(!githubDone ? 1 : 2)
-  }, [githubDone, slackDone, googleDone, step])
+  const activeStep = step === 1 || step === 2 || step === 3 ? step : 1
 
   if (later && !modalOpen) return null
 
-  const openOAuthPopup = (authorizeUrl: string, provider: 'github' | 'slack' | 'google') => {
+  const completeGoogleToken = async (
+    accessTokenValue: string,
+    grantedScope: string | null,
+    onDone: () => void,
+  ) => {
+    let email = ''
+    try {
+      const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${accessTokenValue}` },
+      })
+      if (userRes.ok) {
+        const userJson = (await userRes.json()) as { email?: string }
+        if (typeof userJson?.email === 'string') {
+          email = userJson.email.trim().toLowerCase()
+        }
+      }
+    } catch {
+      // best-effort userinfo fetch
+    }
+
+    addGoogleAccount(email, {
+      accessToken: accessTokenValue,
+      scope: grantedScope || GOOGLE_WORKSPACE_SCOPES,
+    })
+
+    // Best-effort custody sync with backend
+    fetch(`${api()}/v1/integrations/google/connect`, {
+      method: 'POST',
+      headers: { ...scope(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: accessTokenValue, accountId: email }),
+    }).catch(() => null)
+
+    onDone()
+  }
+
+  const openOAuthPopup = (
+    authorizeUrl: string,
+    provider: 'github' | 'slack' | 'google',
+    onDone: () => void,
+  ) => {
     const popup = window.open(authorizeUrl, `hanzo-oauth-${provider}`, 'width=600,height=700')
     if (!popup) {
       window.open(authorizeUrl, '_blank', 'noopener,noreferrer')
@@ -165,53 +310,64 @@ export function Setup() {
         if (popup.closed) {
           window.clearInterval(timer)
           setSyncTurn((n) => n + 1)
+          return
         }
-      }, 1000)
+        if (provider === 'google') {
+          try {
+            if (popup.location.origin === window.location.origin) {
+              const hash = popup.location.hash || ''
+              if (hash.includes('access_token=') || hash.includes('error=')) {
+                const params = new URLSearchParams(hash.replace(/^#/, ''))
+                const tokenVal = params.get('access_token')
+                const scopeVal = params.get('scope')
+                window.clearInterval(timer)
+                popup.close()
+                if (tokenVal) {
+                  void completeGoogleToken(tokenVal, scopeVal, onDone)
+                }
+              }
+            }
+          } catch {
+            // Cross-origin while user is on accounts.google.com; ignore until callback redirects to same origin
+          }
+        }
+      }, 250)
     }
   }
 
-  const connectGoogleViaIam = async (onDone: () => void): Promise<string | 'done' | null> => {
+  const resolveGoogleWorkspaceUrl = async (): Promise<string> => {
+    let clientId = DEFAULT_GOOGLE_CLIENT_ID
     try {
-      const linkOrigin = here() && typeof window !== 'undefined' ? window.location.origin : api()
-      const returnUri = typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : 'https://hanzo.ai/auth/callback'
-      const linkRes = await fetch(`${linkOrigin}/v1/iam/link`, {
+      const res = await fetch(`${api()}/v1/integrations/google/connect`, {
         method: 'POST',
         headers: { ...scope(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider: 'provider-google',
-          clientId: CLIENT,
-          returnUri,
-        }),
+        body: '{}',
       }).catch(() => null)
-
-      if (linkRes?.ok) {
-        const linkJson = (await linkRes.json().catch(() => null)) as {
-          status?: string
-          msg?: string
-          data?: unknown
-        } | null
-        if (linkJson?.status === 'ok' && typeof linkJson.data === 'string' && linkJson.data) {
-          return linkJson.data
+      if (res?.ok) {
+        const j = (await res.json().catch(() => null)) as { authorizeUrl?: string } | null
+        if (j?.authorizeUrl) {
+          try {
+            const parsed = new URL(j.authorizeUrl)
+            const cid = parsed.searchParams.get('client_id')
+            if (cid) clientId = cid
+            if (!here()) {
+              parsed.searchParams.set('scope', GOOGLE_WORKSPACE_SCOPES)
+              parsed.searchParams.set('access_type', 'offline')
+              parsed.searchParams.set('include_granted_scopes', 'true')
+              parsed.searchParams.set('prompt', 'select_account consent')
+              return parsed.toString()
+            }
+          } catch {
+            // fall through
+          }
         }
-        if (linkJson?.msg && linkJson.msg.toLowerCase().includes('already connected')) {
-          onDone()
-          return 'done'
-        }
-      }
-
-      if (sdk && typeof sdk.getSigninUrl === 'function') {
-        const signinHref = await sdk.getSigninUrl({ additionalParams: { provider: 'provider-google' } })
-        const url = new URL(signinHref)
-        if (here() && typeof window !== 'undefined') {
-          url.protocol = window.location.protocol
-          url.host = window.location.host
-        }
-        return url.href
       }
     } catch {
       // fall through
     }
-    return null
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://hanzo.ai'
+    const state = `gws_${Date.now().toString(36)}`
+    return buildGoogleWorkspaceAuthorizeUrl(origin, clientId, state)
   }
 
   const connectOAuthProvider = async (
@@ -227,12 +383,9 @@ export function Setup() {
     setErrorMsg(null)
     try {
       if (provider === 'google') {
-        const iamResult = await connectGoogleViaIam(onDone)
-        if (iamResult === 'done') return
-        if (iamResult) {
-          openOAuthPopup(iamResult, 'google')
-          return
-        }
+        const googleUrl = await resolveGoogleWorkspaceUrl()
+        openOAuthPopup(googleUrl, 'google', onDone)
+        return
       }
       const res = await fetch(`${api()}/v1/integrations/${provider}/connect`, {
         method: 'POST',
@@ -257,7 +410,7 @@ export function Setup() {
       }
       const j = (await res.json()) as { authorizeUrl?: string; connected?: boolean }
       if (j.authorizeUrl) {
-        openOAuthPopup(j.authorizeUrl, provider)
+        openOAuthPopup(j.authorizeUrl, provider, onDone)
       } else if (j.connected) {
         onDone()
       }
@@ -282,7 +435,7 @@ export function Setup() {
       setStep(3)
     })
 
-  // 3. Connect Google (Gmail, Calendar & Drive)
+  // 3. Connect Google Workspace (Drive, Docs, Sheets, Gmail & Calendar; supports multiple accounts)
   const handleConnectGoogle = () =>
     connectOAuthProvider('google', 'Google', () => {
       setGoogleDone(true)
@@ -337,11 +490,38 @@ export function Setup() {
           </XStack>
         </XStack>
 
-        {/* Progress bar */}
+        {/* Interactive 3-step progress bar: click any segment to jump directly to Step 1, 2, or 3 */}
         <XStack gap="$1" width="100%">
-          <Box flex={1} height={4} rounded={2} bg={githubDone ? GOOD : step === 1 ? '$ink' : '$edge'} />
-          <Box flex={1} height={4} rounded={2} bg={slackDone ? GOOD : step === 2 ? '$ink' : '$edge'} />
-          <Box flex={1} height={4} rounded={2} bg={googleDone ? GOOD : step === 3 ? '$ink' : '$edge'} />
+          <Box
+            render="button"
+            aria-label={t('Step 1: Connect GitHub')}
+            onClick={() => setStep(1)}
+            flex={1}
+            height={6}
+            rounded={3}
+            bg={githubDone ? GOOD : activeStep === 1 ? '$ink' : '$edge'}
+            cursor="pointer"
+          />
+          <Box
+            render="button"
+            aria-label={t('Step 2: Connect Slack')}
+            onClick={() => setStep(2)}
+            flex={1}
+            height={6}
+            rounded={3}
+            bg={slackDone ? GOOD : activeStep === 2 ? '$ink' : '$edge'}
+            cursor="pointer"
+          />
+          <Box
+            render="button"
+            aria-label={t('Step 3: Connect Google')}
+            onClick={() => setStep(3)}
+            flex={1}
+            height={6}
+            rounded={3}
+            bg={hasGoogle ? GOOD : activeStep === 3 ? '$ink' : '$edge'}
+            cursor="pointer"
+          />
         </XStack>
 
         {allDone ? (
@@ -352,21 +532,68 @@ export function Setup() {
                 {t('GitHub, Slack & Google connected')}
               </Text>
             </XStack>
-            <Box
-              render="button"
-              onClick={() => setLater(true)}
-              p="$1.5"
-              rounded="$3"
-              bg="$edge"
-              hoverStyle={{ bg: '$hover' }}
-              items="center"
-              justify="center"
-              cursor="pointer"
-            >
-              <Text fontSize="$2" fontWeight="500">{t('Done')}</Text>
-            </Box>
+            {accountList.length > 0 ? (
+              <XStack gap="$1" flexWrap="wrap">
+                {accountList.map((acct) => (
+                  <XStack
+                    key={acct}
+                    items="center"
+                    gap="$1"
+                    px="$2"
+                    py="$0.5"
+                    rounded="$2"
+                    bg="$edge"
+                  >
+                    <Text fontSize="$1" color="$ink" numberOfLines={1}>
+                      {acct}
+                    </Text>
+                    <Box
+                      render="button"
+                      aria-label={t('Remove {account}', { account: acct })}
+                      onClick={() => removeGoogleAccount(acct)}
+                      cursor="pointer"
+                    >
+                      <X size={11} color="$soft" aria-hidden />
+                    </Box>
+                  </XStack>
+                ))}
+              </XStack>
+            ) : null}
+            <XStack gap="$1.5" items="center" flexWrap="wrap">
+              <Box
+                render="button"
+                onClick={handleConnectGoogle}
+                px="$2.5"
+                py="$1"
+                rounded="$3"
+                bg="$edge"
+                hoverStyle={{ bg: '$hover' }}
+                cursor="pointer"
+              >
+                <XStack items="center" gap="$1">
+                  <Plus size={12} color="$ink" aria-hidden />
+                  <Text fontSize="$1" fontWeight="500" color="$ink">
+                    {t('Add Google account')}
+                  </Text>
+                </XStack>
+              </Box>
+              <Box
+                render="button"
+                onClick={() => setLater(true)}
+                px="$2.5"
+                py="$1"
+                rounded="$3"
+                bg="$edge"
+                hoverStyle={{ bg: '$hover' }}
+                items="center"
+                justify="center"
+                cursor="pointer"
+              >
+                <Text fontSize="$2" fontWeight="500">{t('Done')}</Text>
+              </Box>
+            </XStack>
           </YStack>
-        ) : step === 1 ? (
+        ) : activeStep === 1 ? (
           /* Step 1: GitHub */
           <YStack gap="$2" minW={0}>
             <XStack items="center" justify="space-between" gap="$1.5" flexWrap="wrap" minW={0}>
@@ -415,7 +642,7 @@ export function Setup() {
               </Box>
             </XStack>
           </YStack>
-        ) : step === 2 ? (
+        ) : activeStep === 2 ? (
           /* Step 2: Slack */
           <YStack gap="$2" minW={0}>
             <XStack items="center" justify="space-between" gap="$1.5" flexWrap="wrap" minW={0}>
@@ -465,25 +692,54 @@ export function Setup() {
             </XStack>
           </YStack>
         ) : (
-          /* Step 3: Google Workspace (Gmail, Calendar & Drive) */
+          /* Step 3: Google Workspace (Drive, Docs, Sheets, Gmail & Calendar) */
           <YStack gap="$2" minW={0}>
             <XStack items="center" justify="space-between" gap="$1.5" flexWrap="wrap" minW={0}>
               <XStack items="center" gap="$2" minW={0} flex={1}>
                 <ProviderMark org="google" size={18} />
                 <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>{t('3. Connect Google')}</Text>
               </XStack>
-              {googleDone ? (
+              {hasGoogle ? (
                 <XStack items="center" gap="$1" shrink={0}>
                   <Check size={12} color={GOOD} aria-hidden />
                   <Text fontSize="$1" color={GOOD} fontWeight="600">
-                    {t('Connected')}
+                    {accountList.length > 1
+                      ? t('{n} connected', { n: accountList.length })
+                      : t('Connected')}
                   </Text>
                 </XStack>
               ) : null}
             </XStack>
             <Text fontSize="$1" color="$soft">
-              {t('Sync Gmail, Calendar & Drive so Hanzo can read files, draft emails & schedule meetings.')}
+              {t('Grant Drive, Docs, Sheets, Gmail & Calendar permissions. Add personal, work, or multiple org accounts.')}
             </Text>
+            {accountList.length > 0 ? (
+              <XStack gap="$1" flexWrap="wrap">
+                {accountList.map((acct) => (
+                  <XStack
+                    key={acct}
+                    items="center"
+                    gap="$1"
+                    px="$2"
+                    py="$0.5"
+                    rounded="$2"
+                    bg="$edge"
+                  >
+                    <Text fontSize="$1" color="$ink" numberOfLines={1}>
+                      {acct}
+                    </Text>
+                    <Box
+                      render="button"
+                      aria-label={t('Remove {account}', { account: acct })}
+                      onClick={() => removeGoogleAccount(acct)}
+                      cursor="pointer"
+                    >
+                      <X size={11} color="$soft" aria-hidden />
+                    </Box>
+                  </XStack>
+                ))}
+              </XStack>
+            ) : null}
             <XStack gap="$1.5" items="center" pt="$1" flexWrap="wrap">
               <Box
                 render="button"
@@ -498,7 +754,11 @@ export function Setup() {
                 opacity={busy === 'google' ? 0.6 : 1}
               >
                 <Text fontSize="$1" fontWeight="600" color="var(--accent-foreground)">
-                  {busy === 'google' ? t('Connecting…') : googleDone ? t('Reconnect') : t('Connect Google')}
+                  {busy === 'google'
+                    ? t('Connecting…')
+                    : hasGoogle
+                      ? t('+ Add Google account')
+                      : t('Connect Google')}
                 </Text>
               </Box>
               <Box
@@ -511,7 +771,9 @@ export function Setup() {
                 hoverStyle={{ bg: '$hover' }}
                 cursor="pointer"
               >
-                <Text fontSize="$1" color="$soft">{t('Skip')}</Text>
+                <Text fontSize="$1" color="$soft">
+                  {hasGoogle ? t('Done') : t('Skip')}
+                </Text>
               </Box>
             </XStack>
           </YStack>
@@ -536,7 +798,7 @@ export function Setup() {
             </XStack>
           </DialogTitle>
           <Text fontSize="$2" color="$soft">
-            {t('Connect your code, team chat, and Google Workspace (Gmail, Calendar & Drive) directly inside {brand}.', { brand: brand() })}
+            {t('Connect your code, team chat, and Google Workspace (Drive, Docs, Sheets, Gmail & Calendar) across personal and business orgs.', { brand: brand() })}
           </Text>
 
           <YStack gap="$3">
@@ -623,31 +885,26 @@ export function Setup() {
             </XStack>
 
             {/* Step 3 Item */}
-            <XStack
+            <YStack
               p="$3"
               rounded="$4"
               borderWidth={1}
-              borderColor={googleDone ? GOOD : '$borderColor'}
+              borderColor={hasGoogle ? GOOD : '$borderColor'}
               bg="$raised"
-              items="center"
-              justify="space-between"
-              gap="$3"
+              gap="$2.5"
             >
-              <XStack items="center" gap="$3" flex={1}>
-                <ProviderMark org="google" size={24} />
-                <YStack flex={1} minW={0}>
-                  <Text fontSize="$3" fontWeight="600" color="$ink">{t('3. Google Workspace (Gmail, Calendar & Drive)')}</Text>
-                  <Text fontSize="$1" color="$soft">{t('Access Docs, Sheets, Slides, Drive files, Gmail & Calendar')}</Text>
-                </YStack>
-              </XStack>
-              {googleDone ? (
-                <XStack items="center" gap="$1" px="$2" py="$1" rounded="$2" bg="$hover">
-                  <Check size={14} color={GOOD} />
-                  <Text fontSize="$1" color={GOOD} fontWeight="600">
-                    {t('Connected')}
-                  </Text>
+              <XStack items="center" justify="space-between" gap="$3">
+                <XStack items="center" gap="$3" flex={1}>
+                  <ProviderMark org="google" size={24} />
+                  <YStack flex={1} minW={0}>
+                    <Text fontSize="$3" fontWeight="600" color="$ink">
+                      {t('3. Google Workspace (Drive, Docs, Sheets, Gmail & Calendar)')}
+                    </Text>
+                    <Text fontSize="$1" color="$soft">
+                      {t('Edit Drive files, Docs, Sheets, Gmail & Calendar across personal and business accounts')}
+                    </Text>
+                  </YStack>
                 </XStack>
-              ) : (
                 <Box
                   render="button"
                   onClick={handleConnectGoogle}
@@ -659,11 +916,43 @@ export function Setup() {
                   cursor="pointer"
                 >
                   <Text fontSize="$2" fontWeight="600" color="var(--accent-foreground)">
-                    {busy === 'google' ? t('Connecting…') : t('Connect')}
+                    {busy === 'google'
+                      ? t('Connecting…')
+                      : hasGoogle
+                        ? t('+ Add account')
+                        : t('Connect')}
                   </Text>
                 </Box>
-              )}
-            </XStack>
+              </XStack>
+              {accountList.length > 0 ? (
+                <XStack gap="$1.5" flexWrap="wrap">
+                  {accountList.map((acct) => (
+                    <XStack
+                      key={acct}
+                      items="center"
+                      gap="$1.5"
+                      px="$2.5"
+                      py="$1"
+                      rounded="$2"
+                      bg="$hover"
+                    >
+                      <Check size={12} color={GOOD} aria-hidden />
+                      <Text fontSize="$1" color="$ink" fontWeight="500">
+                        {acct}
+                      </Text>
+                      <Box
+                        render="button"
+                        aria-label={t('Remove {account}', { account: acct })}
+                        onClick={() => removeGoogleAccount(acct)}
+                        cursor="pointer"
+                      >
+                        <X size={12} color="$soft" aria-hidden />
+                      </Box>
+                    </XStack>
+                  ))}
+                </XStack>
+              ) : null}
+            </YStack>
           </YStack>
 
           <XStack justify="flex-end" pt="$2">
