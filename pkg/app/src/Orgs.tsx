@@ -1571,7 +1571,7 @@ function Plan({
   // catalog row and can rise after the first paint.
   const [asked, setSeats] = useState(wanted)
   const seats = Math.max(floor, asked)
-  const [term, setTerm] = useState<Interval>('month')
+  const [term, setTerm] = useState<Interval>('year')
   const monthly = (plan && charge(plan, 'month')) ?? 0
   const yearly = plan ? charge(plan, 'year') : null
   const each = term === 'year' && yearly ? yearly : monthly

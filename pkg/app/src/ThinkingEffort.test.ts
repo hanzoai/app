@@ -15,15 +15,12 @@ vi.mock('@hanzo/i18n/react', () => ({
   useI18n: () => ({ t: (s: string) => s }),
 }))
 
-import { EFFORT_STEPS } from './ThinkingEffort'
+import { DEFAULT_EFFORT, EFFORT_STEPS } from './ThinkingEffort'
 
 describe('thinking effort', () => {
-  test('defines 4 standard discrete effort steps starting with auto', () => {
-    expect(EFFORT_STEPS.length).toBe(4)
-    expect(EFFORT_STEPS[0].id).toBe('auto')
-    expect(EFFORT_STEPS[1].id).toBe('low')
-    expect(EFFORT_STEPS[2].id).toBe('medium')
-    expect(EFFORT_STEPS[3].id).toBe('high')
+  test('defines 6 discrete effort steps with high as default', () => {
+    expect(DEFAULT_EFFORT).toBe('high')
+    expect(EFFORT_STEPS.map((s) => s.id)).toEqual(['auto', 'low', 'medium', 'high', 'xhigh', 'max'])
   })
 
   test('provides descriptions for all effort steps', () => {

@@ -26,7 +26,7 @@ import { HanzoWordmark } from '@hanzogui/shell'
 import { rememberDestination } from './lib/destination'
 import { named } from './lib/session'
 import { useSignOut } from './lib/signout'
-import { brand } from './where'
+import { brand, site } from './where'
 import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowControls'
 
 /** The bar's height under the notch: hanzo.ai's masthead's. */
@@ -64,7 +64,7 @@ export function Chrome({ back }: { back?: ReactNode }) {
       boxSizing="content-box"
       height={HEIGHT}
       pt={NOTCH}
-      px="var(--page-gutter, 20px)"
+      px={20}
       gap={12}
       items="center"
       bg="var(--background)"
@@ -96,75 +96,60 @@ export function Chrome({ back }: { back?: ReactNode }) {
       {back}
       <View flex={1} data-tauri-drag-region="deep" />
       {signed ? (
-        <>
-          <XStack render="section" aria-label={t('Account')} items="center" gap={12} minW={0} $max-md={{ display: 'none' }}>
-            <Avatar src={avatar || null} name={who} alt="" />
-            <YStack minW={0} gap={2}>
-              <Text fontSize="$3" fontWeight="500" color="$ink" numberOfLines={1}>
-                {who}
-              </Text>
-              {name && email ? (
-                <Text fontSize="$2" color="$soft" numberOfLines={1}>
-                  {email}
-                </Text>
-              ) : null}
-            </YStack>
-            <Button variant="ghost" size="sm" onClick={other}>
-              {t('Use another account')}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={out}>
-              {t('Log out')}
-            </Button>
-          </XStack>
-          <View display="none" $max-md={{ display: 'flex' }}>
-            {/* Under the face, flush with the bar's end edge. */}
-            <DropdownMenu placement={dir === 'rtl' ? 'bottom-start' : 'bottom-end'} offset={8}>
-              <DropdownMenuTrigger asChild>
-                <XStack
-                  render="button"
-                  aria-label={t('Account: {name}', { name: who })}
-                  width={40}
-                  height={40}
-                  rounded={999}
-                  items="center"
-                  justify="center"
-                  borderWidth={0}
-                  bg="transparent"
-                  hoverStyle={{ bg: '$hover' }}
-                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
-                  cursor="pointer"
-                >
-                  <Avatar src={avatar || null} name={who} alt="" />
-                </XStack>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent minW={240} maxW="calc(100vw - 16px)" aria-labelledby={undefined} aria-label={t('Account')}>
-                <DropdownMenuLabel>
-                  <YStack minW={0} gap={2}>
-                    <Text fontSize="$3" fontWeight="500" color="$ink" numberOfLines={1}>
-                      {who}
+        <View render="section" aria-label={t('Account')} display="flex">
+          {/* Under the face, flush with the bar's end edge. */}
+          <DropdownMenu placement={dir === 'rtl' ? 'bottom-start' : 'bottom-end'} offset={8}>
+            <DropdownMenuTrigger asChild>
+              <XStack
+                render="button"
+                aria-label={t('Account: {name}', { name: who })}
+                width={40}
+                height={40}
+                rounded={999}
+                items="center"
+                justify="center"
+                borderWidth={0}
+                bg="transparent"
+                hoverStyle={{ bg: '$hover' }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+                cursor="pointer"
+              >
+                <Avatar src={avatar || null} name={who} alt="" />
+              </XStack>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent minW={240} maxW="calc(100vw - 16px)" aria-labelledby={undefined} aria-label={t('Account')}>
+              <DropdownMenuLabel>
+                <YStack minW={0} gap={2}>
+                  <Text fontSize="$3" fontWeight="500" color="$ink" numberOfLines={1}>
+                    {who}
+                  </Text>
+                  {name && email ? (
+                    <Text fontSize="$2" color="$soft" numberOfLines={1}>
+                      {email}
                     </Text>
-                    {name && email ? (
-                      <Text fontSize="$2" color="$soft" numberOfLines={1}>
-                        {email}
-                      </Text>
-                    ) : null}
-                  </YStack>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={other}>
-                  <Text fontSize="$3" color="$ink">
-                    {t('Use another account')}
-                  </Text>
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={out}>
-                  <Text fontSize="$3" color="$ink">
-                    {t('Log out')}
-                  </Text>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </View>
-        </>
+                  ) : null}
+                </YStack>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => window.location.assign(site('/support'))}>
+                <Text fontSize="$3" color="$ink">
+                  {t('Help')}
+                </Text>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={other}>
+                <Text fontSize="$3" color="$ink">
+                  {t('Use another account')}
+                </Text>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={out}>
+                <Text fontSize="$3" color="$ink">
+                  {t('Log out')}
+                </Text>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </View>
       ) : null}
       <WindowControls />
     </XStack>

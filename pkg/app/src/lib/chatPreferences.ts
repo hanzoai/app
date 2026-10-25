@@ -4,10 +4,12 @@
  * - allowThirdPartyModels: whether 3rd-party models (OpenAI, Anthropic, etc.) are enabled via pre-paid credit (default: false)
  */
 import { useEffect, useState } from 'react'
+import { DEFAULT_EFFORT, EFFORT_STEPS, type EffortLevel } from '../ThinkingEffort'
 
 export interface ChatPreferences {
   showModelSelector: boolean
   allowThirdPartyModels: boolean
+  effort: EffortLevel
 }
 
 const STORAGE_KEY = 'hanzo.chat.preferences'
@@ -16,6 +18,11 @@ const EVENT_NAME = 'hanzo:chat:preferences'
 const DEFAULT_PREFERENCES: ChatPreferences = {
   showModelSelector: false,
   allowThirdPartyModels: false,
+  effort: DEFAULT_EFFORT,
+}
+
+function validEffort(v: unknown): EffortLevel {
+  return EFFORT_STEPS.some((s) => s.id === v) ? (v as EffortLevel) : DEFAULT_EFFORT
 }
 
 export function getChatPreferences(): ChatPreferences {
@@ -27,6 +34,7 @@ export function getChatPreferences(): ChatPreferences {
     return {
       showModelSelector: Boolean(parsed.showModelSelector),
       allowThirdPartyModels: Boolean(parsed.allowThirdPartyModels),
+      effort: validEffort(parsed.effort),
     }
   } catch {
     return DEFAULT_PREFERENCES

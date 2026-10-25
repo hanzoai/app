@@ -38,7 +38,7 @@ vi.mock('@hanzo/iam/react', () => ({ useIam: () => state.iam }))
 vi.mock('./lib/session', () => ({ named: () => state.named }))
 vi.mock('./lib/destination', () => ({ rememberDestination: () => {} }))
 vi.mock('./lib/signout', () => ({ useSignOut: () => async () => {} }))
-vi.mock('./where', () => ({ brand: () => 'Hanzo AI' }))
+vi.mock('./where', () => ({ brand: () => 'Hanzo AI', site: (p: string) => p }))
 
 const { Chrome } = await import('./Chrome')
 const { I18nProvider } = await import('@hanzo/i18n/react')
@@ -59,12 +59,12 @@ describe('the focused pages\' bar', () => {
     expect(html).toContain('>Hanzo AI<')
   })
 
-  test('signed in, it names who, wide and folded, with both ways out in each', () => {
+  test('signed in, it collapses account actions into the account dropdown menu', () => {
     const html = drawn()
-    expect(html.match(/>Bob Ross</g)).toHaveLength(2)
-    expect(html.match(/>bob@hanzo\.ai</g)).toHaveLength(2)
-    expect(html.match(/>Use another account</g)).toHaveLength(2)
-    expect(html.match(/>Log out</g)).toHaveLength(2)
+    expect(html.match(/>Bob Ross</g)).toHaveLength(1)
+    expect(html.match(/>bob@hanzo\.ai</g)).toHaveLength(1)
+    expect(html.match(/>Use another account</g)).toHaveLength(1)
+    expect(html.match(/>Log out</g)).toHaveLength(1)
     expect(html).toContain('aria-label="Account: Bob Ross"')
   })
 
@@ -78,7 +78,7 @@ describe('the focused pages\' bar', () => {
 
   test('a token with no display name is named by its address alone', () => {
     state.named = { name: '', display: '', email: 'bob@hanzo.ai' }
-    expect(drawn().match(/>bob@hanzo\.ai</g)).toHaveLength(2)
+    expect(drawn().match(/>bob@hanzo\.ai</g)).toHaveLength(1)
   })
 
   test('signed out, the brand alone: nobody named and no way out offered', () => {
@@ -101,7 +101,7 @@ describe('the focused pages\' bar', () => {
     const at = document.createElement('div')
     const root = createRoot(at)
     await act(async () => root.render(createElement(I18nProvider, { userId: 'bob', initialLocale: 'fr-FR' }, createElement(Chrome))))
-    await vi.waitFor(() => expect(at.innerHTML.match(new RegExp(`>${fr['Log out']}<`, 'g'))).toHaveLength(2))
+    await vi.waitFor(() => expect(at.innerHTML.match(new RegExp(`>${fr['Log out']}<`, 'g'))).toHaveLength(1))
     expect(at.innerHTML).toContain(`aria-label="${fr['Account']}"`)
     expect(at.innerHTML).not.toContain('>Log out<')
     await act(async () => root.unmount())

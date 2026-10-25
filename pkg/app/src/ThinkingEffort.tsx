@@ -5,7 +5,9 @@ import { Box, Popover, PopoverContent, PopoverTrigger, Text, XStack, YStack } fr
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useI18n } from '@hanzo/i18n/react'
 
-export type EffortLevel = 'auto' | 'low' | 'medium' | 'high'
+export type EffortLevel = 'auto' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
+
+export const DEFAULT_EFFORT: EffortLevel = 'high'
 
 export interface EffortStep {
   id: EffortLevel
@@ -17,7 +19,9 @@ export const EFFORT_STEPS: readonly EffortStep[] = [
   { id: 'auto', label: 'Auto', note: 'Adaptive reasoning based on task complexity' },
   { id: 'low', label: 'Low', note: 'A quick pass with minimal thinking' },
   { id: 'medium', label: 'Medium', note: 'Thinks before answering' },
-  { id: 'high', label: 'High', note: 'Slow and deep reasoning for hard problems' },
+  { id: 'high', label: 'High', note: 'Deep reasoning for complex problems' },
+  { id: 'xhigh', label: 'XHigh', note: 'Extended multi-step reasoning for hard tasks' },
+  { id: 'max', label: 'Max', note: 'Maximum compute and exhaustive verification' },
 ]
 
 export interface ThinkingEffortProps {
@@ -30,19 +34,17 @@ export interface ThinkingEffortProps {
  * Native iOS widget-style Thinking effort selector matching standard Safari mobile symmetry:
  * - Subtle pill button: "Thinking effort ⌄"
  * - Segmented slider popover with discrete stop dots and smooth active fill
- * - Default level: "auto" across all plans
+ * - Default level: "high" across all plans
  */
-export function ThinkingEffort({ effort = 'auto', onChange, disabled = false }: ThinkingEffortProps) {
+export function ThinkingEffort({ effort = DEFAULT_EFFORT, onChange, disabled = false }: ThinkingEffortProps) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
   const trackRef = useRef<HTMLDivElement | null>(null)
 
-  const activeIndex = Math.max(
-    0,
-    EFFORT_STEPS.findIndex((s) => s.id === effort),
-  )
-  const current = EFFORT_STEPS[activeIndex] ?? EFFORT_STEPS[0]
+  const foundIndex = EFFORT_STEPS.findIndex((s) => s.id === effort)
+  const activeIndex = foundIndex >= 0 ? foundIndex : EFFORT_STEPS.findIndex((s) => s.id === DEFAULT_EFFORT)
+  const current = EFFORT_STEPS[activeIndex] ?? EFFORT_STEPS[3]
 
   const updateFromPosition = (clientX: number) => {
     if (!trackRef.current) return
@@ -128,7 +130,17 @@ export function ThinkingEffort({ effort = 'auto', onChange, disabled = false }: 
       >
         <YStack gap="$3" data-slot="thinking-effort-card" role="dialog" aria-label={t('Thinking effort')}>
           {/* Header */}
-          <XStack items="center" justify="center" gap="$1" cursor="pointer" onClick={() => {}}>
+          <XStack
+            items="center"
+            justify="center"
+            gap="$1"
+            cursor="pointer"
+            onClick={() => {
+              if (disabled) return
+              const next = EFFORT_STEPS[(activeIndex + 1) % EFFORT_STEPS.length]
+              if (next) onChange(next.id)
+            }}
+          >
             <Text fontSize="$3" fontWeight="600" color="$ink">
               {current.label}
             </Text>
@@ -141,7 +153,7 @@ export function ThinkingEffort({ effort = 'auto', onChange, disabled = false }: 
             data-slot="thinking-slider-track"
             role="slider"
             aria-valuemin={0}
-            aria-valuemax={3}
+            aria-valuemax={EFFORT_STEPS.length - 1}
             aria-valuenow={activeIndex}
             aria-valuetext={current.label}
             position="relative"

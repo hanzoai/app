@@ -126,17 +126,22 @@ function Model() {
           {t('Default reasoning effort')}
         </Text>
         <Text fontSize="$2" color="$soft">
-          {t('Sets how deeply models think before answering. Defaults to Auto across all plans.')}
+          {t('Sets how deeply models think before answering. Defaults to High across all plans.')}
         </Text>
         <XStack gap="$2" pt="$1" flexWrap="wrap">
           {EFFORT_STEPS.map((step) => {
-            const active = (choice.effort || 'auto') === step.id
+            const active = (chatPrefs.effort || 'high') === step.id
             return (
               <Box
                 render={<button type="button" />}
                 key={step.id}
                 {...tap}
-                onClick={() => choose({ effort: step.id as any })}
+                onClick={() => {
+                  setChatPrefs({ effort: step.id })
+                  if (step.id === 'low' || step.id === 'medium' || step.id === 'high') {
+                    choose({ effort: step.id as any })
+                  }
+                }}
                 {...CHOICE}
                 bg={active ? 'var(--edge, var(--white-14))' : 'transparent'}
                 borderColor={active ? 'var(--borderColor, var(--white-22))' : 'var(--white-08)'}

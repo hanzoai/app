@@ -823,7 +823,7 @@ function Thread({
   const { limits, notice, reload: reread } = useLimits(!anonymous, org(), (id) => nameOf(id, catalog.current));
   const mind = useMind(target, anonymous ? "free" : limits?.plan);
   catalog.current = mind.models;
-  const [chatPrefs] = useChatPreferences();
+  const [chatPrefs, setChatPrefs] = useChatPreferences();
   const ai = useAi();
   // In the app's frame the composer floats on the pane as a pane of its own.
   const framed = useContext(Framed);
@@ -1068,7 +1068,7 @@ function Thread({
     // before the model is asked and asks without them, so a question about the
     // world, in any language, is answered from what the web says now and streams.
     params: {
-      reasoning_effort: mind.effort || 'auto',
+      reasoning_effort: chatPrefs.effort || 'high',
       ...(!anonymous && house(rowOf(model)?.family) ? { tools: WEB } : {}),
     },
     ...(open ? { thread: open } : {}),
@@ -2085,8 +2085,7 @@ function Thread({
               .filter((l) => !l.review || l.code === locale)
               .map((l) => ({
                 key: l.code,
-                label: l.name,
-                description: l.englishName !== l.name ? l.englishName : undefined,
+                label: l.englishName !== l.name ? `${l.name} (${l.englishName})` : l.name,
                 icon: l.code === locale ? <Check size={14} aria-hidden /> : undefined,
                 onSelect: () => void setLocale(l.code),
               }))}
@@ -2358,8 +2357,13 @@ function Thread({
             send: (
               <XStack items="center" gap="$1.5" shrink={0}>
                 <ThinkingEffort
-                  effort={(mind.effort as EffortLevel) || 'auto'}
-                  onChange={(eff) => mind.pace(eff as any)}
+                  effort={chatPrefs.effort || 'high'}
+                  onChange={(eff) => {
+                    setChatPrefs({ effort: eff })
+                    if (eff === 'low' || eff === 'medium' || eff === 'high') {
+                      mind.pace(eff)
+                    }
+                  }}
                   disabled={chat.streaming || talk.open}
                 />
                 {basePrompt.send}

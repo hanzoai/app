@@ -271,6 +271,7 @@ export function Me({
   const [open, setOpen] = useState(false)
   const [account, setAccount] = useState(false)
   const [lang, setLang] = useState(false)
+  const [langQuery, setLangQuery] = useState('')
   const [help, setHelp] = useState(false)
   const [creating, setCreating] = useState(false)
   const [keys, setKeys] = useState(false)
@@ -492,24 +493,61 @@ export function Me({
             <Line icon={<FlaskConical size={16} aria-hidden />}>{t('Beta')}</Line>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuSub open={lang} onOpenChange={setLang}>
+          <DropdownMenuSub
+            open={lang}
+            onOpenChange={(next) => {
+              setLang(next)
+              if (!next) setLangQuery('')
+            }}
+          >
             <DropdownMenuSubTrigger>
               <Line icon={<Languages size={16} aria-hidden />}>{t('Language')}</Line>
             </DropdownMenuSubTrigger>
             {lang ? (
-              <DropdownMenuSubContent minW={220} maxW="calc(100vw - 16px)" pointerEvents="auto">
-                {locales
-                  .filter((l) => !l.review || l.code === locale)
-                  .map((l) => (
-                    <DropdownMenuItem key={l.code} onSelect={() => void setLocale(l.code)}>
-                      <Line
-                        sub={l.englishName !== l.name ? l.englishName : undefined}
-                        trail={l.code === locale ? <Check size={16} aria-label={t('Current')} /> : null}
-                      >
-                        {l.name}
-                      </Line>
-                    </DropdownMenuItem>
-                  ))}
+              <DropdownMenuSubContent minW={220} maxW={260} pointerEvents="auto">
+                <XStack px="$2" pt="$1.5" pb="$1">
+                  <SizableText
+                    render={
+                      <input
+                        type="search"
+                        value={langQuery}
+                        onChange={(e) => setLangQuery(e.target.value)}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        placeholder={t('Search language...')}
+                        aria-label={t('Search language')}
+                      />
+                    }
+                    width="100%"
+                    height={30}
+                    px="$2.5"
+                    rounded="$2"
+                    borderWidth={1}
+                    borderColor="$borderColor"
+                    bg="$background"
+                    color="$ink"
+                    size="$2"
+                  />
+                </XStack>
+                <YStack maxH={260} overflowY="auto">
+                  {locales
+                    .filter((l) => !l.review || l.code === locale)
+                    .filter((l) => {
+                      const q = langQuery.trim().toLowerCase()
+                      if (!q) return true
+                      return (
+                        l.name.toLowerCase().includes(q) ||
+                        l.englishName.toLowerCase().includes(q) ||
+                        l.code.toLowerCase().includes(q)
+                      )
+                    })
+                    .map((l) => (
+                      <DropdownMenuItem key={l.code} onSelect={() => void setLocale(l.code)}>
+                        <Line trail={l.code === locale ? <Check size={16} aria-label={t('Current')} /> : null}>
+                          {l.englishName !== l.name ? `${l.name} (${l.englishName})` : l.name}
+                        </Line>
+                      </DropdownMenuItem>
+                    ))}
+                </YStack>
               </DropdownMenuSubContent>
             ) : null}
           </DropdownMenuSub>
