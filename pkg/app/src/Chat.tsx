@@ -29,7 +29,7 @@
 // pre-emptively refuses on the gateway's behalf.
 
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { isolate, phrase } from "@hanzo/i18n";
+import { isolate, locales, phrase } from "@hanzo/i18n";
 import { useI18n } from "@hanzo/i18n/react";
 import { billed, detail, familyOf, planRequired, plainly, refused } from "./failure";
 import { english, type Say } from "./say";
@@ -48,7 +48,7 @@ import { Face, brief as roomBrief, join, roleOf, roomTurn, roster as rosterLine,
 import { cleanForSpeech, speakAgent } from "./speech";
 import { AgentMaker, HOUSE, useAgentShelf, useCrew } from "./crew";
 import { called } from "./team";
-import { Anchor, Box, Button, Text, View, XStack, YStack } from "@hanzo/ui";
+import { Anchor, Box, Button, DropdownMenu, Text, View, XStack, YStack } from "@hanzo/ui";
 import { useMedia } from "@hanzo/gui";
 import { given, tidy } from "./lib/title";
 import { useIam, useIamToken } from "@hanzo/iam/react";
@@ -64,7 +64,7 @@ import { useHydrated } from "./lib/hydrated";
 import { base, served } from "./lib/ai";
 import { onServed, type Served as Heard } from "./lib/served";
 import { refused as worded, speech, useDictation, useTalk, useVoice } from "@hanzo/voice";
-import { Check, Clock, FileText, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, X } from "lucide-react";
+import { Check, Clock, FileText, Image as ImageMark, Languages, Library as LibraryMark, Paperclip, Sparkles, X } from "lucide-react";
 import { FREE, ENSO } from "./lib/ai";
 import { openThread, useOpen } from "./open";
 import { Beside, Framed } from "./Shell";
@@ -815,7 +815,7 @@ function Thread({
   // THE MODEL AND THE EFFORT are the one choice Chat and Dev share
   // (@hanzo/build `useMind`): the catalog from `GET /v1/models` and what the
   // reader kept, changed from the composer's chip or from Settings.
-  const { t } = useI18n();
+  const { t, locale, setLocale } = useI18n();
   const target = useMemo(() => ({ api: api(), token: bearer, org: org() }), [anonymous]); // eslint-disable-line react-hooks/exhaustive-deps
   // THE PLAN decides what the chip may offer: Free answers from the free lane
   // alone, so it opens there and lists the rest as upgrades (@hanzo/build).
@@ -2051,14 +2051,46 @@ function Thread({
               cursor="pointer"
               hoverStyle={{ bg: 'var(--white-10)' }}
               onPress={() => window.location.assign(payUrl('/cart', { org: org(), returnUrl: window.location.href }))}
-              aria-label={t("Upgrade")}
+              aria-label={t("Upgrade plan")}
             >
               <Sparkles size={13} color="var(--primary)" aria-hidden />
               <Text fontSize="$1" fontWeight="600" color="$ink">
-                {t("Upgrade")}
+                {t("Upgrade plan")}
               </Text>
             </Button>
           ) : null}
+          <DropdownMenu
+            minWidth={200}
+            placement="bottom-end"
+            trigger={
+              <Button
+                size="xs"
+                variant="outline"
+                data-slot="header-language"
+                gap="$1"
+                px="$2"
+                py="$1"
+                rounded="$4"
+                cursor="pointer"
+                hoverStyle={{ bg: 'var(--white-10)' }}
+                aria-label={t("Language")}
+              >
+                <Languages size={13} aria-hidden />
+                <Text fontSize="$1" fontWeight="600" color="$ink">
+                  {locale.toUpperCase()}
+                </Text>
+              </Button>
+            }
+            items={locales
+              .filter((l) => !l.review || l.code === locale)
+              .map((l) => ({
+                key: l.code,
+                label: l.name,
+                description: l.englishName !== l.name ? l.englishName : undefined,
+                icon: l.code === locale ? <Check size={14} aria-hidden /> : undefined,
+                onSelect: () => void setLocale(l.code),
+              }))}
+          />
           {open ? <Share thread={open} /> : null}
           {mine ? (
             <ConversationMenu threads={alone} active={open} onSchedule={anonymous ? undefined : () => setPlan(lastAsked())}>

@@ -1,5 +1,17 @@
+import { createElement, type ReactNode } from 'react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
+
+const { part } = vi.hoisted(() => ({
+  part: ({ children, ...rest }: { children?: ReactNode; [k: string]: unknown }) =>
+    createElement('div', { 'data-slot': rest['data-slot'], 'aria-label': rest['aria-label'] }, children),
+}))
+
+vi.mock('@hanzo/ui', () => ({
+  View: part,
+  XStack: part,
+}))
+
 import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowControls'
 
 vi.mock('@hanzo/ui', () => ({ View: 'div', XStack: 'div' }))

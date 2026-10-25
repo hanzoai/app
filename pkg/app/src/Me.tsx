@@ -390,7 +390,7 @@ export function Me({
                     }}
                     cursor="pointer"
                   >
-                    {t('Upgrade')}
+                    {t('Upgrade plan')}
                   </Button>
                 ) : null}
                 <ChevronsUpDown size={14} aria-hidden opacity={0.6} />
@@ -466,7 +466,7 @@ export function Me({
               actionsVisibility="always"
               actions={
                 ownPlan ? undefined : (
-                  <Button size="xs" variant="outline" onPress={getPro}>{t('Get Pro')}</Button>
+                  <Button size="xs" variant="outline" onPress={getPro}>{t('Upgrade plan')}</Button>
                 )
               }
             >

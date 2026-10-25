@@ -350,9 +350,120 @@ function Account() {
 
       <Separator />
 
+      <WalletPayouts />
+
+      <Separator />
+
       <XStack>
         <Button size="sm" onClick={() => logout()}>{t('Sign out')}</Button>
       </XStack>
+    </YStack>
+  )
+}
+
+/** Real Web3 Wallet Connect & Payout Address for collecting referral & compute rewards. */
+function WalletPayouts() {
+  const { t } = useI18n()
+  const [address, setAddress] = useState<string>(() => {
+    try {
+      return typeof window !== 'undefined' ? (window.localStorage.getItem('hanzo.wallet.address') ?? '') : ''
+    } catch {
+      return ''
+    }
+  })
+  const [busy, setBusy] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
+
+  const persist = async (addr: string, provider: string) => {
+    const clean = addr.trim()
+    setAddress(clean)
+    try {
+      if (clean) window.localStorage.setItem('hanzo.wallet.address', clean)
+      else window.localStorage.removeItem('hanzo.wallet.address')
+    } catch {}
+    const tok = bearer()
+    if (tok && clean) {
+      await fetch(`${api()}/v1/preferences`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
+        body: JSON.stringify({
+          preferences: {
+            rewards_payout_wallet: clean,
+            rewards_payout_provider: provider,
+          },
+        }),
+      }).catch(() => {})
+    }
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2400)
+  }
+
+  const connectEvm = async () => {
+    setError('')
+    setBusy(true)
+    try {
+      const eth = typeof window !== 'undefined' ? (window as unknown as { ethereum?: { request?: (args: { method: string }) => Promise<string[]> } }).ethereum : undefined
+      if (!eth?.request) {
+        setError(t('No EVM browser wallet detected. Install MetaMask, Coinbase Wallet, or Brave Wallet, or paste your payout address below.'))
+        return
+      }
+      const accounts = await eth.request({ method: 'eth_requestAccounts' })
+      const first = accounts?.[0]
+      if (first) await persist(first, 'evm')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('Wallet connection cancelled.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const connectSolana = async () => {
+    setError('')
+    setBusy(true)
+    try {
+      const sol = typeof window !== 'undefined' ? (window as unknown as { solana?: { connect?: () => Promise<{ publicKey?: { toString(): string } }> } }).solana : undefined
+      if (!sol?.connect) {
+        setError(t('No Solana wallet detected. Install Phantom or Backpack, or paste your payout address below.'))
+        return
+      }
+      const resp = await sol.connect()
+      const pub = resp?.publicKey?.toString()
+      if (pub) await persist(pub, 'solana')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('Wallet connection cancelled.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <YStack gap="$2.5" data-slot="wallet-payouts">
+      <Text fontSize="$3" fontWeight="600" color="$ink">{t('Web3 Wallet & Rewards Payouts')}</Text>
+      <Text fontSize="$2" color="$soft">
+        {t('Connect your Web3 wallet (MetaMask, EVM / Base, or Solana) or enter a payout address to collect referral rewards, affiliate commissions, and AI compute rebates.')}
+      </Text>
+      <XStack gap="$2" flexWrap="wrap">
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => void connectEvm()}>
+          {t('Connect EVM / MetaMask')}
+        </Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => void connectSolana()}>
+          {t('Connect Solana Wallet')}
+        </Button>
+      </XStack>
+      <XStack gap="$2" items="center">
+        <Input
+          flex={1}
+          size="sm"
+          placeholder={t('0x... (EVM / Base) or Solana payout address')}
+          value={address}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAddress(e.target.value)}
+        />
+        <Button size="sm" onClick={() => void persist(address, 'manual')}>
+          {saved ? t('Saved!') : t('Save Payout Wallet')}
+        </Button>
+      </XStack>
+      {error ? <Text fontSize="$1" color="$soft">{error}</Text> : null}
     </YStack>
   )
 }
@@ -428,6 +539,10 @@ function Referrals() {
           </XStack>
         </XStack>
       </YStack>
+
+      <Separator />
+
+      <WalletPayouts />
 
       <Separator />
 
