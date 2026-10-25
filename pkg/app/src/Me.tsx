@@ -254,6 +254,7 @@ export function Me({
   narrow = false,
   above = false,
   onOrg,
+  defaultAccountOpen = false,
 }: {
   host: Who
   /** The rail's: the face alone, the menu opening beside it. */
@@ -265,11 +266,13 @@ export function Me({
   above?: boolean
   /** Work in another organization: picked, then the app opened in it. */
   onOrg: (org: string) => void
+  defaultAccountOpen?: boolean
 }) {
   const { t, dir, locale, setLocale } = useI18n()
   const rtl = dir === 'rtl'
   const [open, setOpen] = useState(false)
-  const [account, setAccount] = useState(false)
+  const [account, setAccount] = useState(defaultAccountOpen ?? false)
+  const [orgs, setOrgs] = useState(false)
   const [lang, setLang] = useState(false)
   const [langQuery, setLangQuery] = useState('')
   const [help, setHelp] = useState(false)
@@ -333,6 +336,7 @@ export function Me({
           setOpen(next)
           if (next) return
           setAccount(false)
+          setOrgs(false)
           setLang(false)
           setHelp(false)
         }}
@@ -400,8 +404,9 @@ export function Me({
           </XStack>
         </DropdownMenuTrigger>
         <DropdownMenuContent minW={260} maxW="calc(100vw - 16px)" aria-labelledby={undefined} aria-label={t('Account')} onCloseAutoFocus={back}>
+          {/* 1. Account Options collapsed into the account icon */}
           <DropdownMenuSub open={account} onOpenChange={setAccount}>
-            <DropdownMenuSubTrigger minH={48} gap="$2.5">
+            <DropdownMenuSubTrigger minH={48} gap="$2.5" data-slot="me-account">
               <Face host={host} size={28} />
               <YStack flex={1} minW={0}>
                 <SizableText size="$2" fontWeight="600" color="$ink" numberOfLines={1}>
@@ -413,9 +418,34 @@ export function Me({
               </YStack>
             </DropdownMenuSubTrigger>
             {account ? (
-              <DropdownMenuSubContent minW={260} maxW="calc(100vw - 16px)" pointerEvents="auto">
+              <DropdownMenuSubContent minW={240} maxW="calc(100vw - 16px)" pointerEvents="auto">
                 <Meter read={read} onPlans={() => leave('here')} onBilling={() => (setOpen(false), showSettings('billing'))} />
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => showSettings('account')}>
+                  <Line icon={<CircleUserRound size={16} aria-hidden />}>{t('Profile')}</Line>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => showSettings('general')}>
+                  <Line icon={<Palette size={16} aria-hidden />}>{t('Personalization')}</Line>
+                </DropdownMenuItem>
+                <DropdownMenuItem aria-keyshortcuts="Control+, Meta+," onSelect={() => showSettings('general')}>
+                  <Line icon={<Settings size={16} aria-hidden />} trail={<DropdownMenuShortcut aria-hidden><bdi dir="ltr">{apple ? '⌘,' : 'Ctrl+,'}</bdi></DropdownMenuShortcut>}>{t('Settings')}</Line>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => window.location.assign(site('/beta'))}>
+                  <Line icon={<FlaskConical size={16} aria-hidden />}>{t('Beta')}</Line>
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            ) : null}
+          </DropdownMenuSub>
+
+          {/* 2. Organization Switcher */}
+          <DropdownMenuSub open={orgs} onOpenChange={setOrgs}>
+            <DropdownMenuSubTrigger data-slot="me-orgs">
+              <Line icon={<Mark org={here ?? all[0]} />} trail={<Check size={16} aria-label={t('Current')} />}>
+                {t('{org} · {plan}', { org: (here ? (here.personal ? t('Personal') : here.display) : current), plan: planName || t('No plan') })}
+              </Line>
+            </DropdownMenuSubTrigger>
+            {orgs ? (
+              <DropdownMenuSubContent minW={260} maxW="calc(100vw - 16px)" pointerEvents="auto">
                 <DropdownMenuLabel>{t('Organizations')}</DropdownMenuLabel>
                 {all.map((o) => (
                   <DropdownMenuItem key={o.name} onSelect={() => o.name !== current && onOrg(o.name)}>
@@ -434,7 +464,6 @@ export function Me({
                 <DropdownMenuItem onSelect={() => out(site(settings('organization')))}>
                   <Line icon={<Settings size={16} aria-hidden />}>{t('Organization settings')}</Line>
                 </DropdownMenuItem>
-                {/* On hanzo.team the reader is already in the team, and a team is founded through its setup. */}
                 {where().team ? null : here && !here.personal ? (
                   <DropdownMenuItem onSelect={() => out(`${ENTRY}&org=${encodeURIComponent(here.name)}`)}>
                     <Line icon={<Users size={16} aria-hidden />} trail={<ArrowUpRight size={14} aria-hidden opacity={0.6} />}>{t('Open in Hanzo Team')}</Line>
@@ -452,45 +481,10 @@ export function Me({
               </DropdownMenuSubContent>
             ) : null}
           </DropdownMenuSub>
-          {/* The organization and the person's own account, each with its plan: pressing one works in it. */}
-          {team ? (
-            <DropdownMenuItem data-slot="me-team" onSelect={() => team.name !== current && onOrg(team.name)}>
-              <Line icon={<Mark org={team} />} trail={team.name === current ? <Check size={16} aria-label={t('Current')} /> : null}>
-                {t('{org} · {plan}', { org: team.display, plan: teamPlan || t('No plan') })}
-              </Line>
-            </DropdownMenuItem>
-          ) : null}
-          {personal ? (
-            <DropdownMenuItem
-              data-slot="me-personal"
-              onSelect={() => personal.name !== current && onOrg(personal.name)}
-              actionsVisibility="always"
-              actions={
-                ownPlan ? undefined : (
-                  <Button size="xs" variant="outline" onPress={getPro}>{t('Upgrade plan')}</Button>
-                )
-              }
-            >
-              <Line icon={<CircleUserRound size={16} aria-hidden />} trail={personal.name === current ? <Check size={16} aria-label={t('Current')} /> : null}>
-                {t('Personal · {plan}', { plan: ownPlan || t('No plan') })}
-              </Line>
-            </DropdownMenuItem>
-          ) : null}
-          <DropdownMenuSeparator />
+
+          {/* 3. Upgrade / Plan */}
           <DropdownMenuItem onSelect={() => leave('here')}>
             <Line icon={<Sparkles size={16} aria-hidden />}>{t(plans)}</Line>
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => showSettings('general')}>
-            <Line icon={<Palette size={16} aria-hidden />}>{t('Personalization')}</Line>
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => showSettings('account')}>
-            <Line icon={<CircleUserRound size={16} aria-hidden />}>{t('Profile')}</Line>
-          </DropdownMenuItem>
-          <DropdownMenuItem aria-keyshortcuts="Control+, Meta+," onSelect={() => showSettings('general')}>
-            <Line icon={<Settings size={16} aria-hidden />} trail={<DropdownMenuShortcut aria-hidden><bdi dir="ltr">{apple ? '⌘,' : 'Ctrl+,'}</bdi></DropdownMenuShortcut>}>{t('Settings')}</Line>
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => window.location.assign(site('/beta'))}>
-            <Line icon={<FlaskConical size={16} aria-hidden />}>{t('Beta')}</Line>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuSub

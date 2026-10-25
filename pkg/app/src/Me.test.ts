@@ -52,14 +52,14 @@ vi.mock('./open', () => ({ showSettings: settings }))
 import { Me, upgrade } from './Me'
 
 /** The account menu, open, as its rows. */
-function menu() {
+function menu(accountOpen = false) {
   rows.length = 0
   const host = { api: '', token: () => null, org: 'acme', person: { name: 'Ada', email: 'ada@acme.dev', avatar: '' }, signOut: () => {} }
-  renderToStaticMarkup(createElement(Me, { host, onOrg: () => {} }))
+  renderToStaticMarkup(createElement(Me, { host, onOrg: () => {}, defaultAccountOpen: accountOpen }))
   return [...rows]
 }
 
-const press = (label: string) => menu().find((r) => r.label === label)?.press()
+const press = (label: string, accountOpen = true) => menu(accountOpen).find((r) => r.label === label)?.press()
 
 afterEach(() => {
   settings.mockClear()
@@ -67,8 +67,12 @@ afterEach(() => {
 })
 
 describe('the account menu', () => {
-  test('reads top to bottom: the account, the organization with its plan, Upgrade plan, Personalization, Profile, Settings, Beta, Language, Help and Log out', () => {
-    expect(menu().map((r) => r.label)).toEqual(['Ada', 'acme · No plan', 'Upgrade plan', 'Personalization', 'Profile', 'Settings', 'Beta', 'Language', 'Help', 'Log out'])
+  test('reads top to bottom: the account icon, the organization switcher, Upgrade plan, Language, Help and Log out', () => {
+    expect(menu(false).map((r) => r.label)).toEqual(['Ada', 'acme · Free', 'Upgrade plan', 'Language', 'Help', 'Log out'])
+  })
+
+  test('the account icon collapses account options: Profile, Personalization, Settings, Beta', () => {
+    expect(menu(true).map((r) => r.label)).toEqual(['Ada', 'Profile', 'Personalization', 'Settings', 'Beta', 'acme · Free', 'Upgrade plan', 'Language', 'Help', 'Log out'])
   })
 
   test("Beta opens the person's place on the waitlist, a page of the site", () => {
