@@ -90,14 +90,17 @@ describe('the phone drawer', () => {
     expect($('[data-slot="drawer-close"]')!.getAttribute('aria-label')).toBe('Close sidebar')
   })
 
-  test('its foot is the account and the accent New chat, nothing else', () => {
+  test('its foot is the accent New chat and the account, nothing else', () => {
     open()
     const foot = $('[data-slot="drawer-foot"]')!
     expect(foot.querySelector('[data-slot="me"]')).not.toBeNull()
     const chat = foot.querySelector<HTMLElement>('[data-slot="drawer-chat"]')!
     expect(chat.getAttribute('aria-label')).toBe('New chat')
     expect(chat.textContent).toBe('Chat')
-    expect(foot.querySelectorAll('button')).toHaveLength(2)
+    const buttons = Array.from(foot.querySelectorAll('button'))
+    expect(buttons).toHaveLength(2)
+    expect(buttons[0]?.getAttribute('data-slot')).toBe('drawer-chat')
+    expect(buttons[1]?.getAttribute('data-slot')).toBe('me')
     press(chat)
     expect(onChat).toHaveBeenCalledTimes(1)
   })

@@ -77,9 +77,15 @@ export interface Drawer {
  * rewrites the distance every frame, no React commit). Its start corners round.
  */
 const SLIDE = {
+  position: 'relative',
+  zIndex: 'var(--z-raised)',
+  overflow: 'hidden',
+  backgroundColor: 'var(--pane-solid)',
   transform: 'translateX(calc(var(--drawer-way, 1) * var(--drawer-at, 0px)))',
   borderStartStartRadius: 'var(--radius-composer)',
   borderEndStartRadius: 'var(--radius-composer)',
+  boxShadow: '0 0 0 1px var(--border-strong), var(--shadow-floating)',
+  willChange: 'transform',
 } as CSSProperties
 
 /** The slide's motion: the system's base duration on its entrance curve. */
@@ -228,8 +234,16 @@ export function useDrawer(): Drawer {
       return
     }
     s.setProperty('--drawer-way', String(way))
-    s.setProperty('transition', still ? 'none' : MOTION)
-    s.setProperty('--drawer-at', state === 'open' ? OPEN : '0px')
+    if (state === 'open') {
+      s.setProperty('transition', 'none')
+      s.setProperty('--drawer-at', '0px')
+      void pane.current?.getBoundingClientRect()
+      s.setProperty('transition', still ? 'none' : MOTION)
+      s.setProperty('--drawer-at', OPEN)
+    } else {
+      s.setProperty('transition', still ? 'none' : MOTION)
+      s.setProperty('--drawer-at', '0px')
+    }
   }, [state, way, still])
 
   // Closing ends when the slide does, or after it would have.
@@ -388,6 +402,7 @@ export function Layer({ drawer, top = 0, children }: { drawer: Drawer; top?: num
         t={0}
         b={0}
         insetInlineStart={0}
+        z="var(--z-base)"
         width={OPEN}
         bg="var(--pane-floor)"
         pt="var(--safe-top)"
@@ -408,11 +423,8 @@ export function Layer({ drawer, top = 0, children }: { drawer: Drawer; top?: num
           t={0}
           b={0}
           insetInlineEnd={0}
-          z="var(--z-panel)"
-          bg="var(--surface-overlay)"
-          backdropFilter="blur(2px)"
-          borderInlineStartWidth={1}
-          borderColor="var(--edge, var(--white-10))"
+          z="var(--z-drawer)"
+          bg="transparent"
           borderWidth={0}
           cursor="pointer"
           {...({ insetInlineStart: OPEN, touchAction: 'none' } as object)}
@@ -423,19 +435,18 @@ export function Layer({ drawer, top = 0, children }: { drawer: Drawer; top?: num
   )
 }
 
-/** The menu's foot: the account (its menu opens above it) and the accent New chat. */
+/** The menu's foot: the accent New chat at the start and the account (its menu opens above it) at the end. */
 export function Foot({ host, onChat, onOrg }: { host: Who; onChat: () => void; onOrg: (org: string) => void }) {
   const { t } = useI18n()
   return (
     <XStack data-slot="drawer-foot" items="center" justify="space-between" gap="$2" pt="$2" px="$1" shrink={0}>
-      <Me host={host} narrow above onOrg={onOrg} />
       <XStack
         render="button"
         data-slot="drawer-chat"
         aria-label={t('New chat')}
         onPress={onChat}
         height={44}
-        px="$4"
+        px="$4.5"
         gap="$2"
         rounded={9999}
         items="center"
@@ -452,6 +463,7 @@ export function Foot({ host, onChat, onOrg }: { host: Who; onChat: () => void; o
           {t('Chat')}
         </Text>
       </XStack>
+      <Me host={host} narrow above onOrg={onOrg} />
     </XStack>
   )
 }

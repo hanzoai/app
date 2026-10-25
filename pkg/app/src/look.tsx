@@ -27,7 +27,9 @@ import {
   type ModTheme,
 } from '@hanzo/mod'
 import { api } from './lib/api'
+import { useChatPreferences } from './lib/chatPreferences'
 import { useOrg } from './host'
+import { EFFORT_STEPS } from './ThinkingEffort'
 import { brand } from './where'
 import { tap } from './lib/tap'
 
@@ -46,6 +48,7 @@ export function Look() {
   const { t } = useI18n()
   const { accessToken } = useIam()
   const org = useOrg()
+  const [chatPrefs, setChatPrefs] = useChatPreferences()
 
   const [activePlatform, setPlatform] = useState<PlatformId | 'auto'>(() => {
     if (typeof window === 'undefined') return 'auto'
@@ -251,6 +254,86 @@ export function Look() {
         </Text>
         <XStack pt="$1">
           <LanguagePicker />
+        </XStack>
+      </YStack>
+
+      <Separator />
+
+      {/* Tool & Action Approval (Auto vs Manual) */}
+      <YStack gap="$2" data-slot="settings-approval-mode">
+        <Text fontSize="$4" fontWeight="600" color="$ink">
+          {t('Tool & Action Approval')}
+        </Text>
+        <Text fontSize="$2" color="$soft">
+          {t('Control whether tools, connectors, and actions execute automatically or require manual approval first.')}
+        </Text>
+        <XStack gap="$2" pt="$1">
+          {[
+            { id: 'auto' as const, label: t('Auto'), note: t('Runs tools on its own; pauses only for anything risky.') },
+            { id: 'manual' as const, label: t('Manual'), note: t('Asks before each tool, connector or site it opens.') },
+          ].map((opt) => {
+            const active = (chatPrefs.approvalMode || 'auto') === opt.id
+            return (
+              <Box
+                render={<button type="button" />}
+                key={opt.id}
+                {...tap}
+                onClick={() => setChatPrefs({ approvalMode: opt.id })}
+                {...CHOICE}
+                flex={1}
+                p="$2.5"
+                bg={active ? 'var(--edge, var(--white-14))' : 'transparent'}
+                borderColor={active ? 'var(--borderColor, var(--white-22))' : 'var(--white-08)'}
+              >
+                <XStack items="center" justify="space-between">
+                  <Text fontSize="$3" fontWeight={active ? '600' : '500'} color="$ink">
+                    {opt.label}
+                  </Text>
+                  {active ? <Check size={16} color="var(--primary)" aria-hidden /> : null}
+                </XStack>
+                <Text fontSize="$1" color="$soft">
+                  {opt.note}
+                </Text>
+              </Box>
+            )
+          })}
+        </XStack>
+      </YStack>
+
+      <Separator />
+
+      {/* Default Reasoning Effort */}
+      <YStack gap="$2" data-slot="settings-reasoning-effort">
+        <Text fontSize="$4" fontWeight="600" color="$ink">
+          {t('Default Reasoning Effort')}
+        </Text>
+        <Text fontSize="$2" color="$soft">
+          {t('Sets how deeply models think before answering. Defaults to High.')}
+        </Text>
+        <XStack gap="$2" pt="$1" flexWrap="wrap">
+          {EFFORT_STEPS.map((step) => {
+            const active = (chatPrefs.effort || 'high') === step.id
+            return (
+              <Box
+                render={<button type="button" />}
+                key={step.id}
+                {...tap}
+                onClick={() => setChatPrefs({ effort: step.id })}
+                {...CHOICE}
+                py={6}
+                px={12}
+                bg={active ? 'var(--edge, var(--white-14))' : 'transparent'}
+                borderColor={active ? 'var(--borderColor, var(--white-22))' : 'var(--white-08)'}
+              >
+                <XStack items="center" gap="$1.5">
+                  <Text fontSize="$2" fontWeight={active ? '600' : '400'} color={active ? '$ink' : '$soft'}>
+                    {step.label}
+                  </Text>
+                  {active ? <Check size={12} color="var(--primary)" aria-hidden /> : null}
+                </XStack>
+              </Box>
+            )
+          })}
         </XStack>
       </YStack>
     </YStack>

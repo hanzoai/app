@@ -852,6 +852,13 @@ function Thread({
     attach: (f) => lent.current.attach(f),
     go: (href) => (/^https?:/.test(href) ? void window.open(href, "_blank", "noopener,noreferrer") : go(href)),
   }, CHAT_MODES);
+  useEffect(() => {
+    const wantedMode = chatPrefs.approvalMode || "auto";
+    if (!anonymous && carry.mode.value !== wantedMode) {
+      carry.mode.set(wantedMode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatPrefs.approvalMode, anonymous]);
   const agentShelf = useAgentShelf();
   // The opening greets the person by the first word of their display name, capitalised ("What’s up, Z?").
   // A username is a handle, not a name: without a display name the greeting has none.
@@ -1866,7 +1873,8 @@ function Thread({
       ],
       slash: anonymous ? undefined : carry.skills,
       at: anonymous ? undefined : carry.plugins,
-      mode: anonymous ? null : carry.mode,
+      // Auto vs Manual approval lives in Settings rather than floating under the composer.
+      mode: null,
       // The model, the effort and the mode under the frame (@hanzo/build).
       mind,
       limits,

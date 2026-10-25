@@ -355,20 +355,23 @@ export function Me({
             // The name the gates and a screen reader know it by: who, and in which organization.
             aria-label={t('Account: {name}', { name: [who, current].filter(Boolean).join(' · ') })}
             {...({ title: who } as object)}
-            width={narrow ? 36 : '100%'}
-            minH={narrow ? 36 : 48}
+            width={narrow ? (above ? 44 : 36) : '100%'}
+            minH={narrow ? (above ? 44 : 36) : 48}
             // A thumb's 44 on a touch screen.
             $touchable={narrow ? { width: 44, minH: 44 } : undefined}
             px={narrow ? 0 : '$2'}
             gap="$2.5"
             rounded={narrow ? 999 : '$5'}
+            borderWidth={narrow && above ? 1 : 0}
+            borderColor={narrow && above ? 'var(--border-strong)' : undefined}
+            bg={narrow && above ? 'var(--pane-fill)' : undefined}
             items="center"
             justify={narrow ? 'center' : 'flex-start'}
             hoverStyle={{ bg: '$hover' }}
             focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
             cursor="pointer"
           >
-            <Face host={host} size={narrow ? 26 : 32} />
+            <Face host={host} size={narrow ? (above ? 32 : 26) : 32} />
             {narrow ? null : (
               <>
                 <YStack flex={1} minW={0}>

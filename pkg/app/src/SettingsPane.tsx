@@ -162,6 +162,49 @@ function Model() {
 
       <Separator />
 
+      {/* Tool & Action Approval (Auto vs Manual) */}
+      <YStack gap="$2" data-slot="settings-approval-mode">
+        <Text fontSize="$4" fontWeight="600" color="$ink">
+          {t('Tool & action approval')}
+        </Text>
+        <Text fontSize="$2" color="$soft">
+          {t('Choose whether agents run tools and connectors automatically or ask for manual approval before each action.')}
+        </Text>
+        <XStack gap="$2" pt="$1">
+          {[
+            { id: 'auto' as const, label: t('Auto'), desc: t('Runs tools on its own; pauses only for anything risky.') },
+            { id: 'manual' as const, label: t('Manual'), desc: t('Asks before each tool, connector or site it opens.') },
+          ].map((opt) => {
+            const active = (chatPrefs.approvalMode || 'auto') === opt.id
+            return (
+              <Box
+                render={<button type="button" />}
+                key={opt.id}
+                {...tap}
+                onClick={() => setChatPrefs({ approvalMode: opt.id })}
+                {...CHOICE}
+                flex={1}
+                p={10}
+                bg={active ? 'var(--edge, var(--white-14))' : 'transparent'}
+                borderColor={active ? 'var(--borderColor, var(--white-22))' : 'var(--white-08)'}
+              >
+                <XStack items="center" justify="space-between">
+                  <Text fontSize="$2" fontWeight="600" color="$ink">
+                    {opt.label}
+                  </Text>
+                  {active ? <Check size={12} color="var(--primary)" aria-hidden /> : null}
+                </XStack>
+                <Text fontSize="$1" color="$soft">
+                  {opt.desc}
+                </Text>
+              </Box>
+            )
+          })}
+        </XStack>
+      </YStack>
+
+      <Separator />
+
       {/* Advanced Paid Plan Controls */}
       <YStack gap="$3">
         <XStack items="center" justify="space-between">
@@ -706,10 +749,12 @@ function AgentSettings() {
   })
   const [saved, setSaved] = useState(false)
 
+  const [, setChatPrefs] = useChatPreferences()
   const save = () => {
     localStorage.setItem('hanzo.agent.instructions', instructions)
     localStorage.setItem('hanzo.agent.persona', persona)
     localStorage.setItem('hanzo.agent.autonomy', autonomy)
+    setChatPrefs({ approvalMode: autonomy === 'supervised' ? 'manual' : 'auto' })
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }

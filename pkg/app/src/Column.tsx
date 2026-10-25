@@ -242,12 +242,27 @@ export function Column({
             onMouseDown={dragWindow}
             onDoubleClick={toggleWindowMaximize}
           >
-            <Text flex={1} minW={0} fontSize={18} lineHeight={24} fontWeight="600" color="$ink" numberOfLines={1}>
+            <Text flex={1} minW={0} fontSize={drawer ? 20 : 18} lineHeight={24} fontWeight={drawer ? '700' : '600'} color="$ink" numberOfLines={1}>
               {wordmark(mode)}
             </Text>
-            <Activity host={host} />
-            <SidebarIconButton label={t('Search')} data-tauri-drag-region="false" onPress={onSeek} aria-haspopup="dialog" {...HEAD}>
-              <Search size={16} aria-hidden />
+            {drawer ? null : <Activity host={host} />}
+            <SidebarIconButton
+              label={t('Search')}
+              data-tauri-drag-region="false"
+              onPress={onSeek}
+              aria-haspopup="dialog"
+              {...(drawer
+                ? {
+                    width: 40,
+                    height: 40,
+                    rounded: 9999,
+                    borderWidth: 1,
+                    borderColor: 'var(--border-strong)',
+                    bg: 'var(--pane-fill)',
+                  }
+                : HEAD)}
+            >
+              <Search size={drawer ? 18 : 16} aria-hidden />
             </SidebarIconButton>
           </XStack>
         )}

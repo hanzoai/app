@@ -151,7 +151,7 @@ export function Top({
       : { label: made?.label ?? t('New'), onPress: made?.onPress }
   return (
     <XStack data-slot="app-bar" height={`calc(${LINE}px + var(--safe-top))`} pt="var(--safe-top)" px="$4.5" items="center" justify="space-between" shrink={0} $md={{ display: 'none' }}>
-      <Round label={t('Open sidebar')} data-slot="bar-menu" onPress={onMenu} opacity={open ? 0 : 1} pointerEvents={open ? 'none' : 'auto'}>
+      <Round label={t('Open sidebar')} data-slot="bar-menu" onPress={onMenu} pointerEvents={open ? 'none' : 'auto'}>
         <Lines />
       </Round>
       <XStack data-slot="bar-mode" {...GLASS} height={LINE} p="$1" items="center">
