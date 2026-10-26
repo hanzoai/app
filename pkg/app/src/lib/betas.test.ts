@@ -13,6 +13,14 @@ describe('the apps in beta', () => {
     for (const g of GROUPS) expect(BETAS.some((b) => b.group === g)).toBe(true)
   })
 
+  it('lists the six creative models, and the next Zen as a preview with no href', () => {
+    const creative = BETAS.filter((b) => b.group === 'Creative').map((b) => b.id)
+    expect(creative).toEqual(['koma', 'iro', 'mori', 'oto', 'koe', 'uta'])
+    const zen = BETAS.find((b) => b.id === 'zen7')
+    expect(zen).toMatchObject({ name: 'Zen 7', group: 'Models' })
+    expect(zen?.href).toBeUndefined()
+  })
+
   it('opens an app for its switch alone, and every app for a SuperAdmin', () => {
     expect(key('crm')).toBe('beta.crm')
     expect(opens('crm', {}, false)).toBe(false)

@@ -1,6 +1,7 @@
 /**
- * The apps in beta: every Hanzo app that exists or is announced and that the
- * Hanzo app does not offer everyone yet, once, for every list that names them —
+ * The apps and models in beta: every Hanzo app or model that exists or is
+ * announced and that the Hanzo app does not offer everyone yet, once, for every
+ * list that names them —
  * the app's Betas list (Betas.tsx) and hanzo.ai/beta's.
  *
  * Each is a principal switch on the cloud, `beta.<id>` (hanzo-inc/cloud
@@ -21,7 +22,7 @@
 
 import { phrase } from '@hanzo/i18n'
 
-export const GROUPS = ['Business', 'Data', 'Agents', 'Build & run', 'Security', 'Creative'] as const
+export const GROUPS = ['Business', 'Data', 'Agents', 'Build & run', 'Security', 'Creative', 'Models'] as const
 
 export type Group = (typeof GROUPS)[number]
 
@@ -80,7 +81,14 @@ export const BETAS: readonly Beta[] = [
   { id: 'authz', name: 'Authz', line: phrase('Fine-grained authorization, Zanzibar style'), group: 'Security', href: `${PLATFORM}/authz` },
   { id: 'hsm', name: 'HSM', line: phrase('Hardware-backed keys across cloud KMSs'), group: 'Security', href: `${PLATFORM}/hsm` },
 
+  { id: 'koma', name: 'Koma', line: phrase('Cinematic video with character continuity and shot-level control'), group: 'Creative' },
+  { id: 'iro', name: 'Iro', line: phrase('High-fidelity images, creative direction and consistent visual assets'), group: 'Creative' },
+  { id: 'mori', name: 'Mori', line: phrase('3D assets, materials, environments and spatially consistent scenes'), group: 'Creative' },
   { id: 'oto', name: 'Oto', line: phrase('Sound effects and Foley for film and games'), group: 'Creative' },
+  { id: 'koe', name: 'Koe', line: phrase('Directable speech, character performances and dubbing'), group: 'Creative' },
+  { id: 'uta', name: 'Uta', line: phrase('Soundtracks, original songs and cue-driven scoring'), group: 'Creative' },
+
+  { id: 'zen7', name: 'Zen 7', line: phrase('The next Zen, in research preview: no public weights yet'), group: 'Models' },
 ]
 
 /** The switch of one app in beta. */

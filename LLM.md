@@ -142,9 +142,11 @@ repository or a site from any surface.
   Customize row and Settings' Plugins and Skills rows lead there (`app()`), and
   Directory lists only Works with and Channels. A list is the registry's answer
   or a plain line saying why there is none — never rows standing in for it.
-- The apps in beta are one list, `lib/betas.ts` (`BETAS`, `GROUPS`): every app
-  no one has yet on hanzo.ai or platform.hanzo.ai, with its id, name, line, group
-  and where it opens. hanzo.ai/beta reads the same list. Each is the cloud's
+- The apps and models in beta are one list, `lib/betas.ts` (`BETAS`, `GROUPS`):
+  every app or model no one has yet on hanzo.ai or platform.hanzo.ai, with its id,
+  name, line, group and where it opens. The Creative group is the six creative
+  models (Koma, Iro, Mori, Oto, Koe, Uta); Models holds what is in research
+  preview (Zen 7: no public weights, no callable id). hanzo.ai/beta reads the same list. Each is the cloud's
   principal switch `beta.<id>` (cloud apps/flags betas.go, same ids), answered by
   `GET /v1/flag/platform`; `opens` is the one predicate (a SuperAdmin opens
   every one). `Betas.tsx` `useBetas` reads the switches and the person's CRM

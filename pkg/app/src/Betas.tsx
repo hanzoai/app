@@ -42,6 +42,7 @@ const HEADING: Record<Group, string> = {
   'Build & run': phrase('Build & run'),
   Security: phrase('Security'),
   Creative: phrase('Creative'),
+  Models: phrase('Models'),
 }
 
 /** One read per token, shared by every caller on the page. */
