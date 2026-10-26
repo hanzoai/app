@@ -41,7 +41,7 @@ const SEGMENT = 56
 /** The glass the three are cut from. */
 const GLASS = {
   ...pane(),
-  borderColor: 'var(--border-subtle)',
+  borderColor: 'var(--border-strong)',
   borderRadius: 9999,
   boxShadow: 'var(--shadow-sheet-1)',
   backdropFilter: 'blur(24px) saturate(190%) contrast(102%)',
@@ -107,7 +107,7 @@ function Side({ value, children }: { value: Place['mode']; children: string }) {
       bg="transparent"
       borderColor="transparent"
       hoverStyle={{ bg: '$hover' }}
-      activeStyle={{ bg: '$raised', borderColor: 'var(--border-subtle)' }}
+      activeStyle={{ bg: '$raised', borderColor: 'transparent' }}
     >
       <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>
         {children}

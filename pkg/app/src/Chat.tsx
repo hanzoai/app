@@ -1897,7 +1897,7 @@ function Thread({
         said.length === 0
           ? forgetful
             ? (
-              <XStack items="center" justify="center" gap="$2" py="$2" px="$3" rounded="$3" bg="var(--white-05)" borderWidth={1} borderColor="var(--border-subtle)">
+              <XStack items="center" justify="center" gap="$2" py="$2" px="$3" rounded="$3" bg="var(--white-05)" borderWidth={1} borderColor="$borderColor">
                 <Ghost size={14} strokeWidth={1.75} color="var(--primary)" />
                 <Text fontSize="$2" color="$soft">
                   {t("Private chat is active. Messages are temporary and won't be saved.")}
@@ -2120,7 +2120,7 @@ function Thread({
               rounded="$3"
               cursor="pointer"
               borderWidth={1}
-              borderColor={forgetful ? 'var(--primary)' : 'var(--border-subtle, var(--borderColor))'}
+              borderColor={forgetful ? 'var(--primary)' : '$borderColor'}
               bg={forgetful ? 'var(--primary-10, var(--white-10))' : 'transparent'}
               hoverStyle={{ bg: forgetful ? 'var(--primary-15, var(--white-15))' : '$hover' }}
               onPress={() => setForgetful(!forgetful)}
