@@ -11,7 +11,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi 
 
 const state = vi.hoisted(() => ({
   betas: { ready: true as boolean, open: (_id: string): boolean => true },
-  pref: { theme: 'dark', accent: '#3b82f6', density: 'compact' } as Record<string, string>,
+  pref: { theme: 'dark', accent: 'blue', density: 'compact' } as Record<string, string>,
   org: { id: 'hanzo' } as { id?: string },
   went: [] as string[],
   moved: [] as [string, boolean | undefined][],
@@ -99,7 +99,7 @@ const say = (data: unknown, from: { origin: string; source: unknown }) =>
 
 beforeEach(() => {
   state.betas = { ready: true, open: () => true }
-  state.pref = { theme: 'dark', accent: '#3b82f6', density: 'compact' }
+  state.pref = { theme: 'dark', accent: 'blue', density: 'compact' }
   state.org = { id: 'hanzo' }
   state.went = []
   state.moved = []
@@ -169,7 +169,7 @@ describe('what the host tells the frame, and what it hears', () => {
     await show('crm')
     const { posted } = stand(frames()[0])
     await load(frames()[0])
-    expect(posted).toEqual([[{ type: 'hanzo:host', theme: 'dark', accent: '#3b82f6', density: 'compact', org: 'hanzo' }, 'https://crm.hanzo.ai']])
+    expect(posted).toEqual([[{ type: 'hanzo:host', theme: 'dark', accent: 'blue', density: 'compact', org: 'hanzo' }, 'https://crm.hanzo.ai']])
   })
 
   test('a change of organization is told again', async () => {
