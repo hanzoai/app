@@ -449,7 +449,7 @@ function Window({ bar, betas }: Hosted) {
             // the floor. New chat is the bar's, so the foot carries nothing of its own.
             <Layer drawer={drawer} top={bar ? BAR : 0}>
               <XStack flex={1} minH={0}>
-                <YStack data-slot="drawer-rail" shrink={0}>
+                <YStack data-slot="drawer-rail" shrink={0} pt="$2">
                   <Rail host={host} mode={mode} at={where} inside={inside} open onChat={toChat} onDev={toDev} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />
                 </YStack>
                 <YStack flex={1} minW={0}>
