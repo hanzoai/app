@@ -35,6 +35,7 @@ import { showSettings } from './open'
 import { Look } from './look'
 import { ProviderMark } from './ProviderMark'
 import { bearer, org, pick } from './lib/session'
+import { usePref } from './pref'
 import { Experimental } from './experimental'
 import { site } from './where'
 import { named, ROWS } from './Settings'
@@ -417,37 +418,17 @@ function Account() {
 /** Real Web3 Wallet Connect & Payout Address for collecting referral & compute rewards. */
 function WalletPayouts() {
   const { t } = useI18n()
-  const [address, setAddress] = useState<string>(() => {
-    try {
-      return typeof window !== 'undefined' ? (window.localStorage.getItem('hanzo.wallet.address') ?? '') : ''
-    } catch {
-      return ''
-    }
-  })
+  const [address, setAddress] = usePref<string>('rewards_payout_wallet', '')
+  const [, setProvider] = usePref<string>('rewards_payout_provider', '')
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
 
   const persist = async (addr: string, provider: string) => {
     const clean = addr.trim()
+    // The account holds the address (PATCH /v1/pref), so it is the same on every machine.
     setAddress(clean)
-    try {
-      if (clean) window.localStorage.setItem('hanzo.wallet.address', clean)
-      else window.localStorage.removeItem('hanzo.wallet.address')
-    } catch {}
-    const tok = bearer()
-    if (tok && clean) {
-      await fetch(`${api()}/v1/preferences`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
-        body: JSON.stringify({
-          preferences: {
-            rewards_payout_wallet: clean,
-            rewards_payout_provider: provider,
-          },
-        }),
-      }).catch(() => {})
-    }
+    setProvider(clean ? provider : '')
     setSaved(true)
     setTimeout(() => setSaved(false), 2400)
   }

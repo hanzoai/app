@@ -30,6 +30,14 @@ vi.mock('./kept', () => ({
   },
 }))
 
+vi.mock('./pref', () => ({
+  usePref: (key: string, initial: any) => {
+    const val = store.has(key) ? store.get(key) : initial
+    const set = (v: any) => store.set(key, v)
+    return [val, set, true]
+  },
+}))
+
 vi.mock('@hanzo/ui', () => ({
   Box: part,
   Dialog: ({ children, open }: { children: ReactNode; open?: boolean }) =>

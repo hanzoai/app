@@ -25,6 +25,7 @@ import { ProviderMark } from './ProviderMark'
 import { useBetas } from './Betas'
 import { useRooms } from './host'
 import { useKept } from './kept'
+import { usePref } from './pref'
 import { api } from './lib/api'
 import { app } from './lib/host'
 import { scope } from './lib/session'
@@ -64,12 +65,12 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
   const { isAuthenticated, accessToken } = useIam()
   const { open: opens } = useBetas()
   const pathed = useRooms().path !== null
-  const [later, setLater] = useKept(LATER_KEY, false)
-  const [step, setStep] = useKept(STEP_KEY, 1)
+  const [later, setLater, known] = usePref(LATER_KEY, false)
+  const [step, setStep] = usePref(STEP_KEY, 1)
 
-  const [githubDone, setGithubDone] = useKept(GITHUB_KEY, false)
-  const [slackDone, setSlackDone] = useKept(SLACK_KEY, false)
-  const [pluginDone, setPluginDone] = useKept(PLUGIN_KEY, false)
+  const [githubDone, setGithubDone] = usePref(GITHUB_KEY, false)
+  const [slackDone, setSlackDone] = usePref(SLACK_KEY, false)
+  const [pluginDone, setPluginDone] = usePref(PLUGIN_KEY, false)
   const [googleDone, setGoogleDone] = useKept(GOOGLE_KEY, false)
   const [googleAccounts, setGoogleAccounts] = useKept<string[]>(GOOGLE_ACCOUNTS_KEY, [])
 
@@ -227,7 +228,8 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
   const allDone = totalDone === 3
   const activeStep = step === 1 || step === 2 || step === 3 ? step : 1
 
-  if (later && !modalOpen) return null
+  // Dismissed on another machine is dismissed here: the account answers before the card draws.
+  if (!known || (later && !modalOpen)) return null
 
   const openOAuthPopup = (
     authorizeUrl: string,
