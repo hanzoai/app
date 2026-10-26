@@ -117,7 +117,7 @@ import { first } from './lib/first';
 import { BAD } from "./lib/mix";
 import { brand } from './where'
 import { ThinkingEffort, type EffortLevel } from './ThinkingEffort'
-import { useChatPreferences } from './lib/chatPreferences'
+import { shared, useChatPreferences } from './lib/chatPreferences'
 
 // NO REASONING PANEL HERE. Every assistant turn opened a "Thinking" disclosure
 // listing seven steps — "Planning CSS extraction for chat styles", "Designing
@@ -823,16 +823,10 @@ function Thread({
   const { limits, notice, reload: reread } = useLimits(!anonymous, org(), (id) => nameOf(id, catalog.current));
   const mind = useMind(target, anonymous ? "free" : limits?.plan);
   catalog.current = mind.models;
+  // Chat's effort is its own (ThinkingEffort, sent as `reasoning_effort`); a
+  // pick of one Dev offers too moves Dev's, where it is made, and opening Chat
+  // never resets Dev's.
   const [chatPrefs, setChatPrefs] = useChatPreferences();
-  useEffect(() => {
-    const eff = chatPrefs.effort || "high";
-    if (eff === "low" || eff === "medium" || eff === "high") {
-      mind.pace(eff);
-    } else if (eff === "xhigh" || eff === "max") {
-      mind.pace("high");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatPrefs.effort]);
   const ai = useAi();
   // In the app's frame the composer floats on the pane as a pane of its own.
   const framed = useContext(Framed);
@@ -1875,8 +1869,9 @@ function Thread({
       at: anonymous ? undefined : carry.plugins,
       // Auto vs Manual approval lives in Settings rather than floating under the composer.
       mode: null,
-      // The model, the effort and the mode under the frame (@hanzo/build).
-      mind,
+      // The model under the frame (@hanzo/build) only where Settings' model
+      // selector is on; the effort is ThinkingEffort, beside send.
+      model: chatPrefs.showModelSelector ? mind : null,
       limits,
       onUpgrade: (id) => setAsk({ model: nameOf(id, listed) } as Ask),
       voice,
@@ -2333,7 +2328,6 @@ function Thread({
           const basePrompt = prompt(
             {
               ...composing,
-              mind: chatPrefs.showModelSelector ? mind : null,
               field: mention.field,
             },
             mention.state
@@ -2364,11 +2358,8 @@ function Thread({
                   effort={chatPrefs.effort || 'high'}
                   onChange={(eff) => {
                     setChatPrefs({ effort: eff })
-                    if (eff === 'low' || eff === 'medium' || eff === 'high') {
-                      mind.pace(eff)
-                    } else if (eff === 'xhigh' || eff === 'max') {
-                      mind.pace('high')
-                    }
+                    const next = shared(eff)
+                    if (next) mind.pace(next)
                   }}
                   disabled={chat.streaming || talk.open}
                 />

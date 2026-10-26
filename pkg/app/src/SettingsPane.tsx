@@ -7,7 +7,7 @@ import { useMemo, useState } from 'react'
 import { phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { ArrowUpRight, Check, ExternalLink, Lock, Sparkles } from 'lucide-react'
-import { useChatPreferences } from './lib/chatPreferences'
+import { shared, useChatPreferences } from './lib/chatPreferences'
 import { EFFORT_STEPS } from './ThinkingEffort'
 import {
   Box,
@@ -145,9 +145,8 @@ function Model() {
                 {...tap}
                 onClick={() => {
                   setChatPrefs({ effort: step.id })
-                  if (step.id === 'low' || step.id === 'medium' || step.id === 'high') {
-                    choose({ effort: step.id as any })
-                  }
+                  const next = shared(step.id)
+                  if (next) choose({ effort: next })
                 }}
                 {...CHOICE}
                 bg={active ? 'var(--edge, var(--white-14))' : 'transparent'}

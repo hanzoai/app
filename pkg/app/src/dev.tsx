@@ -43,6 +43,7 @@ import { CAST } from './agents'
 import { app, place, settings, visit } from './lib/host'
 import { link } from './lib/tags'
 import { payUrl } from './lib/pay'
+import { useChatPreferences } from './lib/chatPreferences'
 
 /** Where the builder links out: every one of them an address of this site. */
 const LINKS: Host['links'] = {
@@ -87,6 +88,7 @@ export function useDevHost(): Host {
   const { router, path: pathname } = useRooms()
   const here = path(route(at(pathname)))
   const look = useLook()
+  const [prefs] = useChatPreferences()
 
   // The token's claims change only when the token does: a sign-in, a refresh.
   const memberships = useMemo(() => orgs(), [accessToken]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -121,6 +123,8 @@ export function useDevHost(): Host {
       links: LINKS,
       // The sidebar lists Settings' sections and Customize's tabs (Column.tsx), and Customize › Agents offers the cast.
       sections: true,
+      // The model is named, and its picker offered, only where Settings' model selector is on (as in Chat).
+      models: prefs.showModelSelector,
       cast: CAST,
       // An address of the app moves the app, another of this site moves in the
       // router, and another origin is left in this tab. platform.hanzo.ai is
@@ -141,6 +145,6 @@ export function useDevHost(): Host {
       signIn: () => enter(),
       signOut: () => void logout(),
     }),
-    [scoped, memberships, look.pref.theme, look.set, name, email, avatar, here, router, logout],
+    [scoped, memberships, look.pref.theme, look.set, prefs.showModelSelector, name, email, avatar, here, router, logout],
   )
 }

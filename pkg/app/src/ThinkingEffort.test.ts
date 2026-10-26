@@ -37,12 +37,20 @@ vi.mock('@hanzo/i18n/react', () => ({
 }))
 
 import { DEFAULT_EFFORT, EFFORT_STEPS, ThinkingEffort } from './ThinkingEffort'
-import { getChatPreferences, setChatPreferences } from './lib/chatPreferences'
+import { EFFORTS } from '@hanzo/build/mind'
+import { getChatPreferences, setChatPreferences, shared } from './lib/chatPreferences'
 
 describe('thinking effort', () => {
   test('defines 6 discrete effort steps with high as default', () => {
     expect(DEFAULT_EFFORT).toBe('high')
     expect(EFFORT_STEPS.map((s) => s.id)).toEqual(['auto', 'low', 'medium', 'high', 'xhigh', 'max'])
+  })
+
+  test('hands Dev every effort it offers, Auto, High, XHigh and Max, in Chat\'s order and words', () => {
+    const dev = EFFORTS.map((e) => e.id)
+    expect(dev).toEqual(['auto', 'high', 'xhigh', 'max'])
+    expect(EFFORT_STEPS.filter((s) => dev.includes(s.id as never)).map((s) => [s.id, s.label, s.note])).toEqual(EFFORTS.map((e) => [e.id, e.label, e.note]))
+    expect(EFFORT_STEPS.map((s) => shared(s.id))).toEqual(['auto', null, null, 'high', 'xhigh', 'max'])
   })
 
   test('provides descriptions for all effort steps', () => {

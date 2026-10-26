@@ -5,6 +5,7 @@
  * - approvalMode: whether tools/actions run automatically ('auto') or ask for confirmation first ('manual') (default: 'auto')
  */
 import { useEffect, useState } from 'react'
+import { EFFORTS, type Effort } from '@hanzo/build/mind'
 import { DEFAULT_EFFORT, EFFORT_STEPS, type EffortLevel } from '../ThinkingEffort'
 
 export type ApprovalMode = 'auto' | 'manual'
@@ -32,6 +33,11 @@ const DEFAULT_PREFERENCES: ChatPreferences = {
   showLanguage: false,
   showTurboApproval: false,
   effortVersion: EFFORT_SCHEMA_VERSION,
+}
+
+/** The effort Dev takes for one chosen here (@hanzo/build `EFFORTS`: Auto, High, XHigh, Max), or null for Low and Medium, which only Chat offers. */
+export function shared(effort: EffortLevel): Effort | null {
+  return EFFORTS.some((e) => e.id === effort) ? (effort as Effort) : null
 }
 
 function validEffort(v: unknown): EffortLevel {

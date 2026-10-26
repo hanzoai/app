@@ -431,14 +431,20 @@ label, `SpeakButton`'s, Meet's status line).
 ## Models
 
 The model and the effort are ONE choice for Chat and Dev, kept in this browser
-by @hanzo/build (`useMind`, `hanzo.mind` = `{model, effort}`, Enso and Medium by
-default). On Free (`GET /v1/ai/limits` `plan` = `free`, and every
+by @hanzo/build (`useMind`, `hanzo.mind` = `{model, effort}`, Enso and High by
+default). The model is named under the composer, and its picker offered, only
+where Settings' model selector is on (`chatPreferences.showModelSelector`,
+default off, a paid plan's switch): Chat passes `model` to `prompt` under it,
+and Dev reads it as `Host.models` (dev.tsx). The effort is always shown: Chat's
+is ThinkingEffort beside send (Auto, Low, Medium, High, XHigh, Max, sent as
+`reasoning_effort`); Dev's is @hanzo/build's (Auto, High, XHigh, Max — a coding
+run takes low, medium or high, so Auto names none and the rest name high).
+Choosing one of Dev's four in Chat or Settings moves Dev's too (`shared`); Low
+and Medium are Chat's alone. On Free (`GET /v1/ai/limits` `plan` = `free`, and every
 visitor) the choice is the catalog's free class alone: Enso Free by default,
 every other model listed with Upgrade, which opens the upgrade instead of
-picking. Chat's composer draws @hanzo/build's chip (`Tune`): the effort (Low,
-Medium, High — what `reasoning_effort` and a coding run's `effort` both take;
-a model the catalog lists as not reasoning offers none), a sentence saying
-what serves the ask, and `@hanzo/ui/models` `ModelPicker` over the whole catalog
+picking. With the selector on, the composer draws @hanzo/build's chip (`Tune`):
+a sentence saying what serves the ask, and the catalog
 (`GET /v1/models`, read once and shared with Dev): Hanzo's families first, then
 every maker. A listed pick is sent as picked; only a name the catalog does not
 list falls to `served`. A model's class and family are the catalog's fields,
@@ -457,8 +463,8 @@ catalog files under Enso or Zen (`house`).
   the end dictation (the mic and its menu: the microphones with a live level,
   Dictation settings, Language) and one round button that is voice mode while
   the draft is empty, send with words, stop while a turn runs. Under the frame,
-  at its end: the model, the effort (dim) and the mode pill (Chat: Auto,
-  Manual; Dev adds Plan). Manual pauses before each plugin runs for a message
+  at its end: the model (only under the model selector), the effort and, in
+  Dev, the mode pill (Auto, Manual, Plan; Chat's approval mode is in Settings). Manual pauses before each plugin runs for a message
   (allow once, always in this chat, deny; `gear.allowed`), and Dev asks before
   a run starts. Dev puts where the run goes and its repository at that row's
   start. Under that, three suggestions while nothing has been said (the
