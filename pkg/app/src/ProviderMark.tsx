@@ -170,6 +170,11 @@ const MARKS: Record<string, string> = {
   // Zoo Labs, who make the Zen models. Their venn of three rings, cut to a disc.
   // Not in the fork — Zoo's own mark, mapped into the 24-unit space.
   //
+  // THE DISC FILLS THE BOX, and its lines are as heavy as the Hanzo mark's mass:
+  // the frame's outer edge is the box's edge (r 10.8 + half a 2.4 stroke = 12),
+  // so at a list's 16-20px it stands as large as the mark beside it instead of
+  // as a hairline ring inside a margin.
+  //
   // The cut MUST be an SVG `<clipPath>`, in USER units. A CSS
   // `clip-path: circle(11.5px …)` resolves against the RENDERED box instead, so
   // at an 18px icon it cuts nothing and the venn squares off into a scribble.
@@ -180,7 +185,7 @@ const MARKS: Record<string, string> = {
     // ring stays `currentColor` — it is the frame, not one of the three, and a
     // fourth hue there would read as a fourth petal. Under `ink` the petals'
     // strokes come off (`INKED`) and they take the group's `currentColor`.
-    '<defs><clipPath id="zoo-cut"><circle cx="12" cy="12" r="11.5"></circle></clipPath></defs><g clip-path="url(#zoo-cut)" fill="none" stroke="currentColor"><circle cx="12.203" cy="6.27" r="9.509" stroke-width="1.341" stroke="#00A652"></circle><circle cx="6.189" cy="15.454" r="9.509" stroke-width="1.341" stroke="#ED1C24"></circle><circle cx="17.486" cy="15.454" r="9.509" stroke-width="1.341" stroke="#2E3192"></circle><circle cx="12" cy="12" r="10.769" stroke-width="1.463"></circle></g>',
+    '<defs><clipPath id="zoo-cut"><circle cx="12" cy="12" r="12"></circle></clipPath></defs><g clip-path="url(#zoo-cut)" fill="none" stroke="currentColor"><circle cx="12.203" cy="6.27" r="9.509" stroke-width="2.4" stroke="#00A652"></circle><circle cx="6.189" cy="15.454" r="9.509" stroke-width="2.4" stroke="#ED1C24"></circle><circle cx="17.486" cy="15.454" r="9.509" stroke-width="2.4" stroke="#2E3192"></circle><circle cx="12" cy="12" r="10.8" stroke-width="2.4"></circle></g>',
 
   // THE CHANNELS, keyed by the registry's provider id. These are the brands'
   // own published marks, from simple-icons, so a connect tile is drawn the way

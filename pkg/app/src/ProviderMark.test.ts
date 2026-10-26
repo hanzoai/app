@@ -30,7 +30,13 @@ describe('the Zoo mark', () => {
       for (const hue of PETALS) expect(html).not.toContain(hue)
       expect(html).not.toMatch(/stroke="#/)
       expect(html).toContain('stroke="currentColor"')
-      expect(html.match(/<circle cx="[\d.]+" cy="[\d.]+" r="9.509" stroke-width="1.341">/g)).toHaveLength(3)
+      expect(html.match(/<circle cx="[\d.]+" cy="[\d.]+" r="9.509" stroke-width="2.4">/g)).toHaveLength(3)
     }
+  })
+
+  test('the disc fills its box: the frame\'s outer edge is the box\'s edge, and its lines carry weight', () => {
+    const [, r, width] = drawn({ org: 'zoo' }).match(/<circle cx="12" cy="12" r="([\d.]+)" stroke-width="([\d.]+)">/) ?? []
+    expect(Number(r) + Number(width) / 2).toBeCloseTo(12, 5)
+    expect(Number(width)).toBeGreaterThanOrEqual(2)
   })
 })
