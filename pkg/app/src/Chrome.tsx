@@ -17,7 +17,7 @@
  * session is IAM's: the host mounts `IamProvider`.
  */
 
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useI18n } from '@hanzo/i18n/react'
 import { useIam } from '@hanzo/iam/react'
 import { Text, View, XStack, YStack } from '@hanzo/gui'
@@ -31,6 +31,23 @@ import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowContro
 
 /** The bar's height under the notch: hanzo.ai's masthead's. */
 const HEIGHT = 60
+/** The bar's ground once the page has moved under it: the page's own, frosted. At rest it has none. */
+const GLASS = '$background/72'
+const BLUR = 'blur(20px) saturate(1.8)'
+/** How far the page moves before the bar takes a ground: a flick is not a scroll. */
+const MOVED = 8
+
+/** Whether the page has scrolled past `MOVED`. */
+function useMoved(): boolean {
+  const [moved, setMoved] = useState(false)
+  useEffect(() => {
+    const read = () => setMoved((window.scrollY || document.documentElement.scrollTop || 0) > MOVED)
+    read()
+    window.addEventListener('scroll', read, { passive: true })
+    return () => window.removeEventListener('scroll', read)
+  }, [])
+  return moved
+}
 /** The notch's inset. gui carries a CSS function to the page unchanged; its types only name custom properties. */
 const NOTCH = 'env(safe-area-inset-top)' as `var(--${string})`
 
@@ -50,10 +67,12 @@ export function Chrome({ back }: { back?: ReactNode }) {
   }
   const out = () => void signOut()
   const signed = isAuthenticated && Boolean(who)
+  const moved = useMoved()
   return (
     <XStack
       render="header"
       data-slot="masthead"
+      data-scrolled={moved ? 'true' : 'false'}
       data-tauri-drag-region="deep"
       onMouseDown={dragWindow}
       onDoubleClick={toggleWindowMaximize}
@@ -67,9 +86,10 @@ export function Chrome({ back }: { back?: ReactNode }) {
       px={20}
       gap={12}
       items="center"
-      bg="var(--background)"
-      borderBottomWidth={1}
-      borderColor="var(--border)"
+      bg={moved ? GLASS : 'transparent'}
+      backdropFilter={moved ? BLUR : 'none'}
+      transition="quickest"
+      borderBottomWidth={0}
     >
       <Text
         render={

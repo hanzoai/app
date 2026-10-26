@@ -17,10 +17,10 @@ const state = vi.hoisted(() => ({
 // A gui element draws the element it is given to render, with its children; the
 // menu draws its content, so the folded account's two ways out are in the markup.
 // Its accessible name is kept: it is what a reader and the gates know it by.
-const draw = ({ render, children, 'aria-label': named }: { render?: ReactElement | string; children?: ReactNode; 'aria-label'?: string }) =>
+const draw = ({ render, children, 'aria-label': named, 'data-scrolled': scrolled, bg }: { render?: ReactElement | string; children?: ReactNode; 'aria-label'?: string; 'data-scrolled'?: string; bg?: string }) =>
   isValidElement(render)
     ? cloneElement(render, undefined, children)
-    : createElement(typeof render === 'string' ? render : 'div', named ? { 'aria-label': named } : null, children)
+    : createElement(typeof render === 'string' ? render : 'div', { ...(named ? { 'aria-label': named } : null), ...(scrolled ? { 'data-scrolled': scrolled, 'data-bg': bg } : null) }, children)
 const pass = ({ children }: { children?: ReactNode }) => createElement('div', null, children)
 vi.mock('@hanzo/gui', () => ({ Text: draw, View: draw, XStack: draw, YStack: draw }))
 vi.mock('@hanzo/ui', () => ({
@@ -105,5 +105,35 @@ describe('the focused pages\' bar', () => {
     expect(at.innerHTML).toContain(`aria-label="${fr['Account']}"`)
     expect(at.innerHTML).not.toContain('>Log out<')
     await act(async () => root.unmount())
+  })
+})
+
+describe('the bar\'s ground', () => {
+  const html = () => document.body.innerHTML
+
+  test('at rest it has none, so the page\'s light runs up behind it; the page moving under it gives it glass', async () => {
+    state.iam = { isAuthenticated: false, user: null }
+    state.named = null
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => root.render(createElement(Chrome, {})))
+    expect(html()).toContain('data-scrolled="false"')
+    expect(html()).toContain('data-bg="transparent"')
+
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 120 })
+    await act(async () => {
+      window.dispatchEvent(new Event('scroll'))
+    })
+    expect(html()).toContain('data-scrolled="true"')
+    expect(html()).toContain('data-bg="$background/72"')
+
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 })
+    await act(async () => {
+      window.dispatchEvent(new Event('scroll'))
+    })
+    expect(html()).toContain('data-bg="transparent"')
+    await act(async () => root.unmount())
+    host.remove()
   })
 })
