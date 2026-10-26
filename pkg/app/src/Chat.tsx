@@ -40,7 +40,7 @@ import {
   useChat,
   type ChatMessage,
 } from "@hanzo/ai/react";
-import { Chat as ChatSurface, Failure, Parts, words, type Said } from "@hanzo/ui/chat";
+import { Chat as ChatSurface, EFFORTS, Failure, MEASURE, Parts, useFamilies, words, type ComposerProps, type Said } from "@hanzo/ui/chat";
 import { carriedIn, carrying, compose, partsOf, said as told, weigh } from "./lib/attach";
 import { download, dropped, fileOf, pct, readable, refOf, retrieve, type Api, type FileRef, type WorkFile } from "./lib/files";
 import { channel, drop, hold, landed, localOf, spend, take, usePane, useWorkFile, type Held, type Via } from "./pane";
@@ -64,7 +64,7 @@ import { useHydrated } from "./lib/hydrated";
 import { base, served } from "./lib/ai";
 import { onServed, type Served as Heard } from "./lib/served";
 import { refused as worded, speech, useDictation, useTalk, useVoice } from "@hanzo/voice";
-import { Check, Clock, FileText, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, X, Zap } from "lucide-react";
+import { Check, Clock, FileText, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, X } from "lucide-react";
 import { FREE, ENSO } from "./lib/ai";
 import { openThread, useOpen } from "./open";
 import { Beside, Framed } from "./Shell";
@@ -81,7 +81,6 @@ import {
   PAGE,
   Panel,
   PanelToggle,
-  prompt,
   renders,
   Reply,
   Served,
@@ -91,7 +90,6 @@ import {
   Suggestions,
   useCarry,
   useLanguage,
-  useMention,
   useMind,
   useSuggestions,
   book,
@@ -107,7 +105,6 @@ import {
   name as tabName,
   type Kind,
   type Listen,
-  type PromptOptions,
 } from "@hanzo/build";
 import type { ModelCatalogEntry as Model } from "@hanzo/ui/models/catalog";
 import { checkoutUrl, payUrl } from './lib/pay';
@@ -117,7 +114,6 @@ import { first } from './lib/first';
 import { BAD } from "./lib/mix";
 import { brand } from './where'
 import { BAND } from './ground'
-import { ThinkingEffort, type EffortLevel } from './ThinkingEffort'
 import { shared, useChatPreferences } from './lib/chatPreferences'
 
 // NO REASONING PANEL HERE. Every assistant turn opened a "Thinking" disclosure
@@ -130,13 +126,6 @@ import { shared, useChatPreferences } from './lib/chatPreferences'
 //
 // The queued-message box went with it: a second unmounted component, holding
 // the file's last use of the chevrons imported for the panel.
-
-/**
- * The room's reading measure: the design system's prose width, which is what
- * the Width setting (@hanzo/appearance) retunes. 48rem is 768px, the width this
- * room has always read at, so an untouched setting changes nothing.
- */
-const MEASURE = "var(--container-prose, 48rem)";
 
 /**
  * The text this screen arrived with, TYPED INTO THE COMPOSER — never sent.
@@ -824,7 +813,7 @@ function Thread({
   const { limits, notice, reload: reread } = useLimits(!anonymous, org(), (id) => nameOf(id, catalog.current));
   const mind = useMind(target, anonymous ? "free" : limits?.plan);
   catalog.current = mind.models;
-  // Chat's effort is its own (ThinkingEffort, sent as `reasoning_effort`); a
+  // Chat's effort is its own (six steps, sent as `reasoning_effort`); a
   // pick of one Dev offers too moves Dev's, where it is made, and opening Chat
   // never resets Dev's.
   const [chatPrefs, setChatPrefs] = useChatPreferences();
@@ -1721,8 +1710,8 @@ function Thread({
     },
   };
 
-  // THE COMPOSER'S OPTIONS, held apart so its keys (the `/` and `@` lists' arrows,
-  // Ctrl+U) hook in through `useMention` before the frame is drawn.
+  // THE COMPOSER'S SLOTS (@hanzo/ui/chat): this room hands it what it carries,
+  // and the composer draws the rest the way the person's setting says.
   // What pressing a suggestion does, at once: open what it names, send its prompt
   // here (the room is a new chat while one shows), hand its run to Dev, or make
   // its scheduled task and show it in Scheduled tasks.
@@ -1759,7 +1748,8 @@ function Thread({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, said.length]);
 
-  const composing: PromptOptions = {
+  const families = useFamilies(mind, (id) => setAsk({ model: nameOf(id, listed) } as Ask));
+  const composer: ComposerProps = {
       value: draft,
       onChange: setDraft,
       onSend: () => submit(),
@@ -1771,9 +1761,8 @@ function Thread({
       // (the defaults @hanzo/ui and @hanzo/build each call ASK), said here so both are the reader's.
       label: t("Ask anything"),
       placeholder: t("Type / for skills"),
-      // A phone's pill is the tall one: the field across the top, the controls under it.
-      narrow: !media.sm,
-      // In the app's frame the composer floats on the pane as a pane of its own.
+      // At the thread's measure, and in the app's frame floating on the pane as a pane of its own.
+      column: true,
       framed,
       // A file or an image pasted into the field is held like a picked one;
       // words paste as words.
@@ -1857,7 +1846,7 @@ function Thread({
             memory: { on: carry.gear.gear.memory, set: (on) => carry.gear.set({ memory: on }) },
           },
       // Who is in the room, then what the conversation carries, as chips after `+`.
-      on: [
+      carried: [
         ...room.map((name) => ({
           id: `agent:${name}`,
           label: name,
@@ -1868,11 +1857,32 @@ function Thread({
       ],
       slash: anonymous ? undefined : carry.skills,
       at: anonymous ? undefined : carry.plugins,
-      // Auto vs Manual approval lives in Settings rather than floating under the composer.
-      mode: null,
-      // The model under the frame (@hanzo/build) only where Settings' model
-      // selector is on; the effort is ThinkingEffort, beside send.
-      model: chatPrefs.showModelSelector ? mind : null,
+      // The mode is Auto or Manual approval, the one Settings keeps; the person
+      // turns the pill on in Settings → Appearance, and it is off until they do.
+      mode: anonymous
+        ? null
+        : {
+            ...carry.mode,
+            set: (m) => {
+              const approval = m === "manual" ? "manual" : "auto";
+              setChatPrefs({ approvalMode: approval });
+              carry.mode.set(approval);
+            },
+          },
+      // The model, only where the person turned the model selector on; the effort, always.
+      mind,
+      effort: {
+        value: chatPrefs.effort || "high",
+        set: (eff) => {
+          setChatPrefs({ effort: eff as typeof chatPrefs.effort });
+          const next = shared(eff as typeof chatPrefs.effort);
+          if (next) mind.pace(next);
+        },
+        items: EFFORTS,
+      },
+      // Chat keeps to the effort alone until the person asks for more: the family chips, the mode.
+      chips: anonymous ? undefined : families,
+      defaults: { chips: false, mode: false },
       limits,
       onUpgrade: (id) => setAsk({ model: nameOf(id, listed) } as Ask),
       voice,
@@ -1880,9 +1890,8 @@ function Thread({
       onLanguage: speakIn,
       talk,
       // While nothing has been said: what is worth doing next.
-      below: said.length === 0 && !anonymous ? <Suggestions rows={hints.rows} onAct={hint} onDismiss={hints.dismiss} /> : undefined,
+      starters: said.length === 0 && !anonymous ? <Suggestions rows={hints.rows} onAct={hint} onDismiss={hints.dismiss} /> : undefined,
   };
-  const mention = useMention(composing);
 
   return (
     <YStack
@@ -2105,12 +2114,10 @@ function Thread({
         {...chat}
         messages={shown}
         send={guarded}
-        // AN EMPTY ROOM CENTRES ITS COMPOSER on a laptop. While nothing has been
-        // said the opening (the heading) and the composer sit as one group in the
-        // middle of the height; the moment a turn exists the transcript takes the
-        // height and the composer docks under it. A phone keeps it at the foot,
-        // over the keyboard, from the first moment.
-        center={media.sm}
+        // THE COMPOSER IS FIXED TO THE FOOT, on a laptop and on a phone, empty or
+        // not: while nothing has been said the opening (the heading) stands at the
+        // foot of the height above it; once a turn exists the transcript scrolls
+        // under it. Over the keyboard, from the first moment.
         // AS IT WAS WRITTEN. The package renders a turn's words plainly and
         // says so — it ships no markdown pipeline because the plugin set is the
         // surface's to choose — so an answer arrived here reading "```ts" with
@@ -2241,14 +2248,9 @@ function Thread({
         // landings off /chat and /dev.
         empty={
           heading === null ? undefined : (
-            // Centred with the composer by `center` above: the free space is
-            // split above and below the [heading, composer] group, so it sits
-            // in the middle of whatever height the window happens to have, and
-            // stays right when the sidebar, the notice line or an error banner
-            // changes what is left over.
-            // On a phone (no `center`) it takes the height above the composer, which docks at the foot,
-            // and stands at the foot of that height: close above what it opens, as on a laptop.
-            <YStack data-slot="opening" items="center" width="100%" pt="$6" pb="$2" {...(media.sm ? null : { flex: 1, justify: "flex-end" as const })}>
+            // It takes the height above the composer, which is fixed to the foot,
+            // and stands at the foot of that height: close above what it opens.
+            <YStack data-slot="opening" items="center" width="100%" pt="$6" pb="$2" flex={1} justify="flex-end">
               {/* THE PORTRAIT IS A DM'S, AND ONLY A DM'S. It used to draw for
                   everyone, because `withWhom || "jobs"` gave a reader who had
                   chosen nobody a 160px photograph of somebody — and the heading
@@ -2325,50 +2327,7 @@ function Thread({
         // The transcript reads at the same measure. `Thread` defaults to 768
         // itself; handing it the column here is what lets Width reach it.
         column={{ maxW: MEASURE }}
-        composer={(() => {
-          const basePrompt = prompt(
-            {
-              ...composing,
-              field: mention.field,
-            },
-            mention.state
-          );
-          return {
-            ...basePrompt,
-            send: (
-              <XStack items="center" gap="$1.5" shrink={0}>
-                {chatPrefs.showTurboApproval ? (
-                  <XStack
-                    items="center"
-                    gap="$1"
-                    px="$2"
-                    py="$1"
-                    rounded={999}
-                    borderWidth={1}
-                    borderColor="$borderColor"
-                    bg="$background"
-                    aria-label={t("Turbo Approval: {mode}", { mode: chatPrefs.approvalMode })}
-                  >
-                    <Zap size={12} color="var(--primary)" aria-hidden />
-                    <Text fontSize="$1" fontWeight="600" color="$ink">
-                      {chatPrefs.approvalMode === "manual" ? t("Manual") : t("Turbo")}
-                    </Text>
-                  </XStack>
-                ) : null}
-                <ThinkingEffort
-                  effort={chatPrefs.effort || 'high'}
-                  onChange={(eff) => {
-                    setChatPrefs({ effort: eff })
-                    const next = shared(eff)
-                    if (next) mind.pace(next)
-                  }}
-                  disabled={chat.streaming || talk.open}
-                />
-                {basePrompt.send}
-              </XStack>
-            ),
-          };
-        })()}
+        composer={composer}
       />
       <AgentMaker />
       {carry.dialog}

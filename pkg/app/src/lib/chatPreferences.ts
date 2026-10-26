@@ -1,22 +1,25 @@
 /**
- * Chat composer preferences:
- * - showModelSelector: whether model selector is visible in composer (default: false, paid plan feature)
+ * What Chat does, kept in this browser. What the composer DRAWS (the key that
+ * sends, the chips, the model selector, the mode) is not here: it is one setting
+ * for every composer (@hanzo/appearance `composing`, Settings → Appearance).
  * - allowThirdPartyModels: whether 3rd-party models (OpenAI, Anthropic, etc.) are enabled via pre-paid credit (default: false)
  * - approvalMode: whether tools/actions run automatically ('auto') or ask for confirmation first ('manual') (default: 'auto')
+ * - effort: the reasoning effort a message asks for (default: high)
+ * - showLanguage: dictation listens in the person's own language rather than Auto
  */
 import { useEffect, useState } from 'react'
-import { EFFORTS, type Effort } from '@hanzo/build/mind'
-import { DEFAULT_EFFORT, EFFORT_STEPS, type EffortLevel } from '../ThinkingEffort'
+import { EFFORTS as DEV, type Effort as Level } from '@hanzo/build/mind'
+import { EFFORTS, type Effort } from '@hanzo/ui/chat/pure'
 
 export type ApprovalMode = 'auto' | 'manual'
 
+export const DEFAULT_EFFORT: Effort = 'high'
+
 export interface ChatPreferences {
-  showModelSelector: boolean
   allowThirdPartyModels: boolean
-  effort: EffortLevel
+  effort: Effort
   approvalMode: ApprovalMode
   showLanguage?: boolean
-  showTurboApproval?: boolean
   effortVersion?: number
 }
 
@@ -26,22 +29,20 @@ const EVENT_NAME = 'hanzo:chat:preferences'
 const EFFORT_SCHEMA_VERSION = 3
 
 const DEFAULT_PREFERENCES: ChatPreferences = {
-  showModelSelector: false,
   allowThirdPartyModels: false,
   effort: DEFAULT_EFFORT,
   approvalMode: 'auto',
   showLanguage: false,
-  showTurboApproval: false,
   effortVersion: EFFORT_SCHEMA_VERSION,
 }
 
 /** The effort Dev takes for one chosen here (@hanzo/build `EFFORTS`: Auto, High, XHigh, Max), or null for Low and Medium, which only Chat offers. */
-export function shared(effort: EffortLevel): Effort | null {
-  return EFFORTS.some((e) => e.id === effort) ? (effort as Effort) : null
+export function shared(effort: Effort): Level | null {
+  return DEV.some((e) => e.id === effort) ? (effort as Level) : null
 }
 
-function validEffort(v: unknown): EffortLevel {
-  return EFFORT_STEPS.some((s) => s.id === v) ? (v as EffortLevel) : DEFAULT_EFFORT
+function validEffort(v: unknown): Effort {
+  return EFFORTS.some((s) => s.id === v) ? (v as Effort) : DEFAULT_EFFORT
 }
 
 function validApprovalMode(v: unknown, fallbackAutonomy?: string | null): ApprovalMode {
@@ -65,12 +66,10 @@ export function getChatPreferences(): ChatPreferences {
     const migratedEffort =
       parsed.effortVersion === EFFORT_SCHEMA_VERSION ? validEffort(parsed.effort) : DEFAULT_EFFORT
     return {
-      showModelSelector: Boolean(parsed.showModelSelector),
       allowThirdPartyModels: Boolean(parsed.allowThirdPartyModels),
       effort: migratedEffort,
       approvalMode: validApprovalMode(parsed.approvalMode, autonomy),
       showLanguage: Boolean(parsed.showLanguage),
-      showTurboApproval: Boolean(parsed.showTurboApproval),
       effortVersion: EFFORT_SCHEMA_VERSION,
     }
   } catch {

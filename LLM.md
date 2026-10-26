@@ -433,18 +433,19 @@ label, `SpeakButton`'s, Meet's status line).
 The model and the effort are ONE choice for Chat and Dev, kept in this browser
 by @hanzo/build (`useMind`, `hanzo.mind` = `{model, effort}`, Enso and High by
 default). The model is named under the composer, and its picker offered, only
-where Settings' model selector is on (`chatPreferences.showModelSelector`,
-default off, a paid plan's switch): Chat passes `model` to `prompt` under it,
-and Dev reads it as `Host.models` (dev.tsx). The effort is always shown: Chat's
-is ThinkingEffort beside send (Auto, Low, Medium, High, XHigh, Max, sent as
+where the person turned the model selector on (`composing.model`,
+default off) — one setting for every composer, not a Chat preference: Settings →
+Appearance writes it (`@hanzo/appearance` `composing`) and `@hanzo/ui/chat`'s
+`Composer` reads it. The effort is always shown, in the composer's row: Chat's is
+the six steps (Auto, Low, Medium, High, XHigh, Max, sent as
 `reasoning_effort`); Dev's is @hanzo/build's (Auto, High, XHigh, Max — a coding
 run takes low, medium or high, so Auto names none and the rest name high).
 Choosing one of Dev's four in Chat or Settings moves Dev's too (`shared`); Low
 and Medium are Chat's alone. On Free (`GET /v1/ai/limits` `plan` = `free`, and every
 visitor) the choice is the catalog's free class alone: Enso Free by default,
 every other model listed with Upgrade, which opens the upgrade instead of
-picking. With the selector on, the composer draws @hanzo/build's chip (`Tune`):
-a sentence saying what serves the ask, and the catalog
+picking. With the selector on, the composer draws `ModelPicker`'s quiet pill:
+the catalog
 (`GET /v1/models`, read once and shared with Dev): Hanzo's families first, then
 every maker. A listed pick is sent as picked; only a name the catalog does not
 list falls to `served`. A model's class and family are the catalog's fields,
@@ -456,18 +457,20 @@ catalog files under Enso or Zen (`house`).
 
 ## Chat and Dev are drawn alike
 
-- The composer is @hanzo/build's `prompt` (Chat passes it to `@hanzo/ui/chat`
-  `Chat`'s `composer`), one frame for Chat and Dev: the field on top ("Type /
+- The composer is `@hanzo/ui/chat`'s `Composer` (Chat passes its slots to
+  `Chat`'s `composer`), one frame for Chat, Dev and Studio, drawn the way the
+  person's composer setting says (the key that sends, the chips, the model
+  selector, the mode; Chat's defaults hide the chips and the mode): the field on top ("Type /
   for skills"), then one row — `+` at the start and what the conversation
   carries as chips (who is in the room, the skills on, Research, Plan), and at
   the end dictation (the mic and its menu: the microphones with a live level,
   Dictation settings, Language) and one round button that is voice mode while
   the draft is empty, send with words, stop while a turn runs. Under the frame,
   at its end: the model (only under the model selector), the effort and, in
-  Dev, the mode pill (Auto, Manual, Plan; Chat's approval mode is in Settings). Manual pauses before each plugin runs for a message
+  Dev, the mode pill (Auto, Manual, Plan; Chat's is Auto or Manual, the approval mode Settings keeps, and off until the person turns it on). Manual pauses before each plugin runs for a message
   (allow once, always in this chat, deny; `gear.allowed`), and Dev asks before
-  a run starts. Dev puts where the run goes and its repository at that row's
-  start. Under that, three suggestions while nothing has been said (the
+  a run starts. Dev puts where the run goes, its repository and its branch as
+  pills above the field, and chips for its repositories, issues and templates under it. Under that, three suggestions while nothing has been said (the
   person's activity, then signup, then Hanzo's starters; above the frame on a
   phone). Each is one short action and pressing it does it (@hanzo/build
   `Act`): open goes to what it names, send is sent here at once (`submit`),
@@ -538,8 +541,7 @@ catalog files under Enso or Zen (`house`).
   (`openAgent`). Create agent and Browse personas open `Hire` through `make()`;
   the host mounts `<AgentMaker />` once beside the composer to draw it. Manage
   agents is Dev's Customize › Agents (`app('-/customize/agents')`). The Shelf,
-  Row and Link types are @hanzo/build plus.tsx's, copied in agents.ts until
-  build publishes them.
+  Row and Link types are @hanzo/ui/chat's, re-exported by agents.ts.
 - `Hire` (New agent) starts from a persona: @hanzo/personas' figures, fetched
   from `/personas/index.json`, fill the name, the instructions (the figure's
   PERSONA.md body word for word, or one paragraph saying who it is where none is

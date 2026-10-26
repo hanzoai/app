@@ -8,7 +8,7 @@ import { phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { ArrowUpRight, Check, ExternalLink, Lock, Sparkles } from 'lucide-react'
 import { shared, useChatPreferences } from './lib/chatPreferences'
-import { EFFORT_STEPS } from './ThinkingEffort'
+import { EFFORTS } from '@hanzo/ui/chat/pure'
 import {
   Box,
   Button,
@@ -136,7 +136,7 @@ function Model() {
           {t('Sets how deeply models think before answering. Defaults to High across all plans.')}
         </Text>
         <XStack gap="$2" pt="$1" flexWrap="wrap">
-          {EFFORT_STEPS.map((step) => {
+          {EFFORTS.map((step) => {
             const active = (chatPrefs.effort || 'high') === step.id
             return (
               <Box
@@ -229,34 +229,12 @@ function Model() {
               ) : null}
             </XStack>
             <Text fontSize="$2" color="$soft">
-              {t('Customize composer controls and third-party model access.')}
+              {t('Third-party model access, and the language dictation listens in.')}
             </Text>
           </YStack>
         </XStack>
 
-        {/* Toggle 1: Show model selector in composer */}
-        <YStack p="$3" rounded="$3" borderWidth={1} borderColor="$borderColor" gap="$2">
-          <XStack items="center" justify="space-between">
-            <YStack flex={1} pr="$2">
-              <Text fontSize="$3" fontWeight="600" color="$ink">
-                {t('Show model selector in composer')}
-              </Text>
-              <Text fontSize="$2" color="$soft">
-                {t('By default, chat composers simplify controls to reasoning effort only. Enable this to pick models on the fly in the composer.')}
-              </Text>
-            </YStack>
-            <Button
-              size="sm"
-              variant={chatPrefs.showModelSelector ? 'default' : 'outline'}
-              disabled={!paid}
-              onClick={() => paid && setChatPrefs({ showModelSelector: !chatPrefs.showModelSelector })}
-            >
-              {chatPrefs.showModelSelector ? t('Enabled') : t('Disabled')}
-            </Button>
-          </XStack>
-        </YStack>
-
-        {/* Toggle 2: Enable third-party models */}
+        {/* Toggle 1: Enable third-party models */}
         <YStack p="$3" rounded="$3" borderWidth={1} borderColor="$borderColor" gap="$2">
           <XStack items="center" justify="space-between">
             <YStack flex={1} pr="$2">
@@ -278,7 +256,7 @@ function Model() {
           </XStack>
         </YStack>
 
-        {/* Toggle 3: Show spoken language selector in composer */}
+        {/* Toggle 2: Show spoken language selector in composer */}
         <YStack p="$3" rounded="$3" borderWidth={1} borderColor="$borderColor" gap="$2">
           <XStack items="center" justify="space-between">
             <YStack flex={1} pr="$2">
@@ -295,27 +273,6 @@ function Model() {
               onClick={() => setChatPrefs({ showLanguage: !chatPrefs.showLanguage })}
             >
               {chatPrefs.showLanguage ? t('Enabled') : t('Disabled')}
-            </Button>
-          </XStack>
-        </YStack>
-
-        {/* Toggle 4: Show turbo approval indicator */}
-        <YStack p="$3" rounded="$3" borderWidth={1} borderColor="$borderColor" gap="$2">
-          <XStack items="center" justify="space-between">
-            <YStack flex={1} pr="$2">
-              <Text fontSize="$3" fontWeight="600" color="$ink">
-                {t('Show turbo approval indicator')}
-              </Text>
-              <Text fontSize="$2" color="$soft">
-                {t('Display the turbo / manual approval badge next to the thinking effort and send controls.')}
-              </Text>
-            </YStack>
-            <Button
-              size="sm"
-              variant={chatPrefs.showTurboApproval ? 'default' : 'outline'}
-              onClick={() => setChatPrefs({ showTurboApproval: !chatPrefs.showTurboApproval })}
-            >
-              {chatPrefs.showTurboApproval ? t('Enabled') : t('Disabled')}
             </Button>
           </XStack>
         </YStack>

@@ -5,7 +5,7 @@
 import type { Host } from '@hanzo/build'
 import { TEAM } from './team'
 
-export type { Link, Shelf, ShelfRow as Row } from '@hanzo/build'
+export type { Link, Shelf, ShelfRow as Row } from '@hanzo/ui/chat'
 
 /**
  * The model that draws an agent's face: Hanzo's own image SKU (hanzo-inc/zen

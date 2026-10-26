@@ -26,8 +26,6 @@ vi.mock('./lib/session', () => ({ bearer: () => 't', named: () => null, org: () 
 vi.mock('./lib/destination', () => ({ enter: () => {} }))
 vi.mock('./lib/api', () => ({ api: () => 'https://api.hanzo.ai' }))
 vi.mock('./open', () => ({ showSettings: () => {}, useOpen: () => ({ settings: null }) }))
-// The host reads the chat preferences, whose efforts sit beside their widget (ThinkingEffort); the widget is not drawn here.
-vi.mock('@hanzo/ui', () => ({}))
 
 import { path } from '@hanzo/build'
 import { leave, useDevHost } from './dev'
@@ -69,14 +67,6 @@ const where = (to: string) => {
 }
 
 describe('the app host', () => {
-  test('names the model to Dev only where Settings\' model selector is on', () => {
-    at('https://hanzo.ai/dev')
-    expect(host().models).toBe(false)
-    const prefs = JSON.stringify({ showModelSelector: true, effortVersion: 3 })
-    vi.stubGlobal('window', { ...window, localStorage: { getItem: (k: string) => (k === 'hanzo.chat.preferences' ? prefs : null), setItem: () => {} } })
-    expect(host().models).toBe(true)
-  })
-
   test('opens the plans on the pay site at once, for the organization in use, coming back to the page it left', () => {
     const { assign } = at('https://hanzo.ai/chat')
     host().go(path({ kind: 'screen', screen: 'plans' }))

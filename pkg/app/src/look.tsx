@@ -29,7 +29,7 @@ import {
 import { api } from './lib/api'
 import { useChatPreferences } from './lib/chatPreferences'
 import { useOrg } from './host'
-import { EFFORT_STEPS } from './ThinkingEffort'
+import { EFFORTS } from '@hanzo/ui/chat/pure'
 import { brand } from './where'
 import { tap } from './lib/tap'
 
@@ -311,7 +311,7 @@ export function Look() {
           {t('Sets how deeply models think before answering. Defaults to High.')}
         </Text>
         <XStack gap="$2" pt="$1" flexWrap="wrap">
-          {EFFORT_STEPS.map((step) => {
+          {EFFORTS.map((step) => {
             const active = (chatPrefs.effort || 'high') === step.id
             return (
               <Box
