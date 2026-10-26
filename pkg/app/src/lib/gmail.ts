@@ -27,16 +27,14 @@ export const GOOGLE_TOKENS_KEY = 'hanzo.onboarding.google.tokens'
 
 export const DEFAULT_GOOGLE_CLIENT_ID = '113591532635-s8pvqrebprkbndluhftddmdap4htvu1p.apps.googleusercontent.com'
 
-export const GOOGLE_WORKSPACE_SCOPES = [
-  'openid',
-  'email',
-  'profile',
-  'https://www.googleapis.com/auth/drive',
-  'https://www.googleapis.com/auth/documents',
-  'https://www.googleapis.com/auth/spreadsheets',
-  'https://www.googleapis.com/auth/gmail.modify',
-  'https://www.googleapis.com/auth/calendar',
-].join(' ')
+/**
+ * What the Google connect asks for: who the person is, and sending mail they
+ * wrote or approved (gmail.send). Nothing that reads a mailbox, a drive or a
+ * calendar: no feature here uses one, and Google verifies an app for the scopes
+ * it asks, each shown in use. A feature that needs more asks for it when it is
+ * used (`include_granted_scopes`).
+ */
+export const GOOGLE_WORKSPACE_SCOPES = ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/gmail.send'].join(' ')
 
 /** Google's own lifetime for a browser token, for one kept before `expiresAt` was. */
 const LIFE = 3600_000

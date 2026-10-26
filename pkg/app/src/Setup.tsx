@@ -562,7 +562,7 @@ export function Setup() {
               ) : null}
             </XStack>
             <Text fontSize="$1" color="$soft">
-              {t('Grant Drive, Docs, Sheets, Gmail & Calendar permissions. Add personal, work, or multiple org accounts.')}
+              {t('Let Hanzo send the invites and messages you approve from your Gmail. Add personal, work, or several accounts.')}
             </Text>
             {accountList.length > 0 ? (
               <XStack gap="$1" flexWrap="wrap">
@@ -649,7 +649,7 @@ export function Setup() {
             </XStack>
           </DialogTitle>
           <Text fontSize="$2" color="$soft">
-            {t('Connect your code, team chat, and Google Workspace (Drive, Docs, Sheets, Gmail & Calendar) across personal and business orgs.', { brand: brand() })}
+            {t('Connect your code, team chat, and Gmail across personal and business orgs.', { brand: brand() })}
           </Text>
 
           <YStack gap="$3">
@@ -749,10 +749,10 @@ export function Setup() {
                   <ProviderMark org="google" size={24} />
                   <YStack flex={1} minW={0}>
                     <Text fontSize="$3" fontWeight="600" color="$ink">
-                      {t('3. Google Workspace (Drive, Docs, Sheets, Gmail & Calendar)')}
+                      {t('3. Gmail')}
                     </Text>
                     <Text fontSize="$1" color="$soft">
-                      {t('Edit Drive files, Docs, Sheets, Gmail & Calendar across personal and business accounts')}
+                      {t('Send the invites and messages you approve, from your own address')}
                     </Text>
                   </YStack>
                 </XStack>

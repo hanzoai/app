@@ -140,11 +140,8 @@ describe('Setup 1-2-3 in-app onboarding', () => {
     expect(u.searchParams.get('prompt')).toBe('select_account consent')
     expect(u.searchParams.get('include_granted_scopes')).toBe('true')
     expect(u.searchParams.get('scope')).toBe(GOOGLE_WORKSPACE_SCOPES)
-    expect(GOOGLE_WORKSPACE_SCOPES).toContain('https://www.googleapis.com/auth/drive')
-    expect(GOOGLE_WORKSPACE_SCOPES).toContain('https://www.googleapis.com/auth/documents')
-    expect(GOOGLE_WORKSPACE_SCOPES).toContain('https://www.googleapis.com/auth/spreadsheets')
-    expect(GOOGLE_WORKSPACE_SCOPES).toContain('https://www.googleapis.com/auth/gmail.modify')
-    expect(GOOGLE_WORKSPACE_SCOPES).toContain('https://www.googleapis.com/auth/calendar')
+    // Only what is used: who the person is, and sending what they approve. No restricted scope.
+    expect(GOOGLE_WORKSPACE_SCOPES.split(' ')).toEqual(['openid', 'email', 'profile', 'https://www.googleapis.com/auth/gmail.send'])
   })
 
   test('is hidden when dismissed (later)', () => {
