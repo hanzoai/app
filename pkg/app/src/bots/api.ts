@@ -175,7 +175,7 @@ export interface Secret {
 export const secrets = (c: Client, path: string, signal?: AbortSignal) =>
   c.http.collection<Secret>('secrets', { path: '/v1/kms/secrets', query: { path }, signal })
 
-/** A connector as `/v1/integrations/connectors` answers it. Held by the PERSON
+/** A connector as `/v1/connection` answers it. Held by the PERSON
  *  who signed in to it: the contract publishes no per-agent binding. */
 export interface Connector {
   id: string
@@ -188,7 +188,7 @@ export interface Connector {
 }
 
 export const connectors = (c: Client, signal?: AbortSignal) =>
-  c.http.collection<Connector>('connectors', { path: '/v1/integrations/connectors', signal })
+  c.http.collection<Connector>('connectors', { path: '/v1/connection', signal })
 
 /** A short-lived grant to open a real terminal or a real screen on a sandbox.
  *  The URL it answers is the only address either surface is ever drawn from. */

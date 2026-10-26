@@ -176,7 +176,7 @@ const Note = ({ children }: { children: ReactNode }) => (
  * EVERY ROW DOES SOMETHING. Files come off the reader's own disk. Skills are
  * `GET /v1/tools/skills` and toggling one is `PUT /v1/tools/activation`, the
  * one write path that turns skills, plugins and connectors into callable tools.
- * Services are `GET /v1/integrations/connectors/providers`, connected by the
+ * Services are `GET /v1/connection/providers`, connected by the
  * device flow their cards declare. One panel, not flyouts: it hangs off the
  * right edge of the window, where a submenu has no room to open.
  */

@@ -697,7 +697,7 @@ function Secrets({ bot, keys, why }: { bot: Agent; keys: Secret[]; why?: string 
  * The one thing that is NOT this Bot's.
  *
  * A connector is held by the person who signed in to it.
- * `/v1/integrations/connectors` answers one set for the caller and no route in
+ * `/v1/connection` answers one set for the caller and no route in
  * the contract narrows it to one agent — so it is listed as what it is, and
  * there is no switch to press.
  */

@@ -66,14 +66,14 @@ export interface Device {
  *
  * THE PANE STARTS IT AND DOES NOT WATCH IT. Polling belongs where the result is
  * used — the connector appears in the Directory's own list, which reads
- * `/v1/integrations/connectors` — and a menu that closes the moment the reader
+ * `/v1/connection` — and a menu that closes the moment the reader
  * leaves for the provider's page has nowhere to put a result anyway. Starting
  * the flow, showing the code and opening the page is the whole of this control's
  * job; `flow` is returned so a surface that does want to watch has the id.
  */
 export async function startDevice(provider: string): Promise<Device> {
   const begun = await ask<Partial<Device>>(
-    `/v1/integrations/connectors/${encodeURIComponent(provider)}/device`,
+    `/v1/connection/${encodeURIComponent(provider)}/device`,
     {},
   )
   if (!begun.userCode || !begun.verifyUrl) throw new Error('This service did not start a sign-in.')

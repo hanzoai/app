@@ -4,7 +4,7 @@
 //
 // TWO READS, AND THEY ARE NOT THE SAME LIST. `/v1/tools/skills` is what THIS
 // org's agents already know how to do, each with the flag saying whether it is
-// switched on; `/v1/integrations/connectors/providers` is the catalogue of what
+// switched on; `/v1/connection/providers` is the catalogue of what
 // a person could connect that they have not. One answers "use something", the
 // other "connect something", which is why the menu has two rows and not one
 // list with a mixed meaning in it.
@@ -192,5 +192,5 @@ export function useSkills(): Ask<Skill> {
 
 /** What this account could connect and has not. */
 export function useProviders(): Ask<Provider> {
-  return useList('/v1/integrations/connectors/providers', asProviders)
+  return useList('/v1/connection/providers', asProviders)
 }

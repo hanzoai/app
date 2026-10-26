@@ -110,10 +110,10 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
     const auth = scope()
 
     Promise.all([
-      fetch(`${api()}/v1/integrations`, { headers: auth })
+      fetch(`${api()}/v1/provider`, { headers: auth })
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null),
-      fetch(`${api()}/v1/integrations/connectors`, { headers: auth })
+      fetch(`${api()}/v1/connection`, { headers: auth })
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null),
       fetch(`${api()}/v1/tool/plugins/authored`, { headers: auth })
@@ -271,7 +271,7 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
         }
         return
       }
-      const res = await fetch(`${api()}/v1/integrations/${provider}/connect`, {
+      const res = await fetch(`${api()}/v1/provider/${provider}/connect`, {
         method: 'POST',
         headers: { ...scope(), 'Content-Type': 'application/json' },
         body: '{}',

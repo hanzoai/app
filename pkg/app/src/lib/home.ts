@@ -71,6 +71,6 @@ export async function projects(client: AiClient, signal?: AbortSignal): Promise<
  * counts rather than being told a number.
  */
 export async function apps(client: AiClient, signal?: AbortSignal): Promise<App[]> {
-  const out = await client.http.json<{ providers?: App[] }>({ path: '/v1/integrations', signal })
+  const out = await client.http.json<{ providers?: App[] }>({ path: '/v1/provider', signal })
   return out?.providers ?? []
 }

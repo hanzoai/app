@@ -164,7 +164,7 @@ export function buildGoogleWorkspaceAuthorizeUrl(origin: string, clientId = DEFA
 async function authorizeUrl(): Promise<string> {
   let clientId = DEFAULT_GOOGLE_CLIENT_ID
   try {
-    const res = await fetch(`${api()}/v1/integrations/google/connect`, {
+    const res = await fetch(`${api()}/v1/provider/google/connect`, {
       method: 'POST',
       headers: { ...scope(), 'Content-Type': 'application/json' },
       body: '{}',
@@ -203,7 +203,7 @@ async function complete(accessToken: string, granted: string | null, expiresIn: 
     /* an unnamed account is kept as `default` */
   }
   keep(email, { accessToken, scope: granted || GOOGLE_WORKSPACE_SCOPES, expiresIn })
-  fetch(`${api()}/v1/integrations/google/connect`, {
+  fetch(`${api()}/v1/provider/google/connect`, {
     method: 'POST',
     headers: { ...scope(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ token: accessToken, accountId: email }),

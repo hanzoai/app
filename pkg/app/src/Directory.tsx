@@ -21,7 +21,7 @@
 // install flow — one `+` everywhere, branching internally.
 //
 // TWO TABS, and the channels are tiles. A channel is a provider the org can
-// hold an account with, read from `/v1/integrations` — which says whether this
+// hold an account with, read from `/v1/provider` — which says whether this
 // deployment can open a connection and whether this org has one — and every
 // tile's button is a call to that registry. The Inbox's "Connect an app" opens
 // this same directory on this tab; there is no second grid. Skills, plugins and
@@ -36,7 +36,7 @@
 //
 // SIGNED IN, EACH TAB READS ITS OWN REGISTRY. Apps is this site's public catalog
 // AND the org's connected accounts; Channels is the org's own list at
-// `/v1/integrations`. That one needs the bearer, so signed-out asks the reader to
+// `/v1/provider`. That one needs the bearer, so signed-out asks the reader to
 // sign in rather than drawing a catalogue nobody can connect from, and a
 // registry that cannot be reached says so rather than claiming the list is
 // empty. Nothing stands in for an answer: no row is drawn that the registry did
@@ -84,7 +84,7 @@ const TABS: { id: Tab; label: string }[] = [
 ]
 
 /** The org-plane catalogue: every provider the platform can connect an account to, with THIS org's connection and whether the deployment can open one. */
-const CHANNELS = '/v1/integrations'
+const CHANNELS = '/v1/provider'
 
 /** What an installable row is, whichever list it came from. */
 interface Row {
@@ -274,7 +274,7 @@ export function Catalog({ tab }: { tab: Tab }) {
       if (auth) {
         Promise.all([
           apps(),
-          fetch(`${api()}/v1/integrations/connectors`, { headers: auth }).then((r) => (r.ok ? r.json() : null)),
+          fetch(`${api()}/v1/connection`, { headers: auth }).then((r) => (r.ok ? r.json() : null)),
         ])
           .then(([list, j]) => {
             if (!live || !j?.connectors) return
@@ -536,7 +536,7 @@ function Channel({ row, onChange }: { row: Row; onChange: () => void }) {
     setBusy(true)
     setWrong(null)
     try {
-      const r = await fetch(`${api()}/v1/integrations/${encodeURIComponent(row.id)}/${verb}`, {
+      const r = await fetch(`${api()}/v1/provider/${encodeURIComponent(row.id)}/${verb}`, {
         method: 'POST',
         headers: { ...scope(), 'Content-Type': 'application/json' },
         body: '{}',
