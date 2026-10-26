@@ -16,52 +16,16 @@ import { Check, Maximize2, Plus, Sparkles, X } from 'lucide-react'
 import { ProviderMark } from './ProviderMark'
 import { useKept } from './kept'
 import { api } from './lib/api'
-import { answers } from './lib/host'
 import { scope } from './lib/session'
 import { enter } from './lib/destination'
 import { brand } from './where'
+import { GOOGLE_ACCOUNTS_KEY, GOOGLE_KEY, accounts, connect, drop, keep } from './lib/gmail'
 import { GOOD } from './lib/mix'
-
-const here = (): boolean => typeof window !== 'undefined' && answers(window.location.hostname)
 
 export const LATER_KEY = 'hanzo.onboarding.later'
 export const GITHUB_KEY = 'hanzo.onboarding.github'
 export const SLACK_KEY = 'hanzo.onboarding.slack'
-export const GOOGLE_KEY = 'hanzo.onboarding.google.v2'
-export const GOOGLE_ACCOUNTS_KEY = 'hanzo.onboarding.google.accounts'
-export const GOOGLE_TOKENS_KEY = 'hanzo.onboarding.google.tokens'
 export const STEP_KEY = 'hanzo.onboarding.step'
-
-export const DEFAULT_GOOGLE_CLIENT_ID =
-  '113591532635-s8pvqrebprkbndluhftddmdap4htvu1p.apps.googleusercontent.com'
-
-export const GOOGLE_WORKSPACE_SCOPES = [
-  'openid',
-  'email',
-  'profile',
-  'https://www.googleapis.com/auth/drive',
-  'https://www.googleapis.com/auth/documents',
-  'https://www.googleapis.com/auth/spreadsheets',
-  'https://www.googleapis.com/auth/gmail.modify',
-  'https://www.googleapis.com/auth/calendar',
-].join(' ')
-
-export function buildGoogleWorkspaceAuthorizeUrl(
-  origin: string,
-  clientId = DEFAULT_GOOGLE_CLIENT_ID,
-  state = 'gws',
-): string {
-  const cleanOrigin = origin.replace(/\/+$/, '')
-  const u = new URL('https://accounts.google.com/o/oauth2/v2/auth')
-  u.searchParams.set('client_id', clientId || DEFAULT_GOOGLE_CLIENT_ID)
-  u.searchParams.set('redirect_uri', `${cleanOrigin}/v1/iam/oauth/callback`)
-  u.searchParams.set('response_type', 'token')
-  u.searchParams.set('scope', GOOGLE_WORKSPACE_SCOPES)
-  u.searchParams.set('include_granted_scopes', 'true')
-  u.searchParams.set('prompt', 'select_account consent')
-  u.searchParams.set('state', state)
-  return u.toString()
-}
 
 /** Inline Slack Mark */
 function SlackMark({ size = 18 }: { size?: number }) {
@@ -99,51 +63,20 @@ export function Setup() {
   const accountList = Array.isArray(googleAccounts) ? googleAccounts : []
   const hasGoogle = googleDone || accountList.length > 0
 
-  const addGoogleAccount = (
-    rawEmail: string,
-    tokenData?: { accessToken: string; scope?: string },
-  ) => {
+  // The token itself is lib/gmail's to keep; Setup lists the addresses.
+  const addGoogleAccount = (rawEmail: string, tokenData?: { accessToken: string; scope?: string }) => {
+    if (tokenData?.accessToken) keep(rawEmail, tokenData)
     const clean = rawEmail.trim().toLowerCase()
     const current = Array.isArray(googleAccounts) ? googleAccounts : []
-    const next = clean && !current.includes(clean) ? [...current, clean] : current
-    setGoogleAccounts(next)
+    setGoogleAccounts(clean && !current.includes(clean) ? [...current, clean] : current)
     setGoogleDone(true)
-
-    if (typeof window !== 'undefined' && tokenData?.accessToken) {
-      try {
-        const rawTokens = window.localStorage.getItem(GOOGLE_TOKENS_KEY)
-        const parsed = rawTokens ? (JSON.parse(rawTokens) as Record<string, unknown>) : {}
-        parsed[clean || 'default'] = {
-          accessToken: tokenData.accessToken,
-          scope: tokenData.scope || GOOGLE_WORKSPACE_SCOPES,
-          connectedAt: new Date().toISOString(),
-        }
-        window.localStorage.setItem(GOOGLE_TOKENS_KEY, JSON.stringify(parsed))
-      } catch {
-        // ignore storage errors
-      }
-    }
   }
 
   const removeGoogleAccount = (targetEmail: string) => {
-    const current = Array.isArray(googleAccounts) ? googleAccounts : []
-    const next = current.filter((a) => a !== targetEmail)
+    drop(targetEmail)
+    const next = (Array.isArray(googleAccounts) ? googleAccounts : []).filter((a) => a !== targetEmail)
     setGoogleAccounts(next)
-    if (next.length === 0) {
-      setGoogleDone(false)
-    }
-    if (typeof window !== 'undefined') {
-      try {
-        const rawTokens = window.localStorage.getItem(GOOGLE_TOKENS_KEY)
-        if (rawTokens) {
-          const parsed = JSON.parse(rawTokens) as Record<string, unknown>
-          delete parsed[targetEmail]
-          window.localStorage.setItem(GOOGLE_TOKENS_KEY, JSON.stringify(parsed))
-        }
-      } catch {
-        // ignore
-      }
-    }
+    if (next.length === 0) setGoogleDone(false)
   }
 
   // Sync with remote workspace integrations & connectors (never from IAM login linked-accounts,
@@ -262,44 +195,9 @@ export function Setup() {
 
   if (later && !modalOpen) return null
 
-  const completeGoogleToken = async (
-    accessTokenValue: string,
-    grantedScope: string | null,
-    onDone: () => void,
-  ) => {
-    let email = ''
-    try {
-      const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: { Authorization: `Bearer ${accessTokenValue}` },
-      })
-      if (userRes.ok) {
-        const userJson = (await userRes.json()) as { email?: string }
-        if (typeof userJson?.email === 'string') {
-          email = userJson.email.trim().toLowerCase()
-        }
-      }
-    } catch {
-      // best-effort userinfo fetch
-    }
-
-    addGoogleAccount(email, {
-      accessToken: accessTokenValue,
-      scope: grantedScope || GOOGLE_WORKSPACE_SCOPES,
-    })
-
-    // Best-effort custody sync with backend
-    fetch(`${api()}/v1/integrations/google/connect`, {
-      method: 'POST',
-      headers: { ...scope(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: accessTokenValue, accountId: email }),
-    }).catch(() => null)
-
-    onDone()
-  }
-
   const openOAuthPopup = (
     authorizeUrl: string,
-    provider: 'github' | 'slack' | 'google',
+    provider: 'github' | 'slack',
     onDone: () => void,
   ) => {
     const popup = window.open(authorizeUrl, `hanzo-oauth-${provider}`, 'width=600,height=700')
@@ -312,62 +210,8 @@ export function Setup() {
           setSyncTurn((n) => n + 1)
           return
         }
-        if (provider === 'google') {
-          try {
-            if (popup.location.origin === window.location.origin) {
-              const hash = popup.location.hash || ''
-              if (hash.includes('access_token=') || hash.includes('error=')) {
-                const params = new URLSearchParams(hash.replace(/^#/, ''))
-                const tokenVal = params.get('access_token')
-                const scopeVal = params.get('scope')
-                window.clearInterval(timer)
-                popup.close()
-                if (tokenVal) {
-                  void completeGoogleToken(tokenVal, scopeVal, onDone)
-                }
-              }
-            }
-          } catch {
-            // Cross-origin while user is on accounts.google.com; ignore until callback redirects to same origin
-          }
-        }
       }, 250)
     }
-  }
-
-  const resolveGoogleWorkspaceUrl = async (): Promise<string> => {
-    let clientId = DEFAULT_GOOGLE_CLIENT_ID
-    try {
-      const res = await fetch(`${api()}/v1/integrations/google/connect`, {
-        method: 'POST',
-        headers: { ...scope(), 'Content-Type': 'application/json' },
-        body: '{}',
-      }).catch(() => null)
-      if (res?.ok) {
-        const j = (await res.json().catch(() => null)) as { authorizeUrl?: string } | null
-        if (j?.authorizeUrl) {
-          try {
-            const parsed = new URL(j.authorizeUrl)
-            const cid = parsed.searchParams.get('client_id')
-            if (cid) clientId = cid
-            if (!here()) {
-              parsed.searchParams.set('scope', GOOGLE_WORKSPACE_SCOPES)
-              parsed.searchParams.set('access_type', 'offline')
-              parsed.searchParams.set('include_granted_scopes', 'true')
-              parsed.searchParams.set('prompt', 'select_account consent')
-              return parsed.toString()
-            }
-          } catch {
-            // fall through
-          }
-        }
-      }
-    } catch {
-      // fall through
-    }
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://hanzo.ai'
-    const state = `gws_${Date.now().toString(36)}`
-    return buildGoogleWorkspaceAuthorizeUrl(origin, clientId, state)
   }
 
   const connectOAuthProvider = async (
@@ -383,8 +227,15 @@ export function Setup() {
     setErrorMsg(null)
     try {
       if (provider === 'google') {
-        const googleUrl = await resolveGoogleWorkspaceUrl()
-        openOAuthPopup(googleUrl, 'google', onDone)
+        try {
+          await connect()
+          setGoogleAccounts(accounts())
+          setGoogleDone(true)
+          setSyncTurn((n) => n + 1)
+          onDone()
+        } catch (err) {
+          setErrorMsg(err instanceof Error ? err.message : t('Could not connect {provider} right now. Please try again.', { provider: label }))
+        }
         return
       }
       const res = await fetch(`${api()}/v1/integrations/${provider}/connect`, {

@@ -72,13 +72,8 @@ vi.mock('./where', () => ({
   site: (p: string) => `https://hanzo.ai${p}`,
 }))
 
-import {
-  Setup,
-  GOOGLE_KEY,
-  GOOGLE_ACCOUNTS_KEY,
-  GOOGLE_WORKSPACE_SCOPES,
-  buildGoogleWorkspaceAuthorizeUrl,
-} from './Setup'
+import { Setup } from './Setup'
+import { GOOGLE_KEY, GOOGLE_ACCOUNTS_KEY, GOOGLE_WORKSPACE_SCOPES, buildGoogleWorkspaceAuthorizeUrl } from './lib/gmail'
 
 describe('Setup 1-2-3 in-app onboarding', () => {
   beforeEach(() => {

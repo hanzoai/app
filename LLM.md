@@ -103,6 +103,12 @@ repository or a site from any surface.
 - A module a server page renders (`ProviderMark`) carries no `'use client'` and
   imports gui primitives from `./ui`, never `@hanzo/ui`: the root barrel would
   register its whole client surface on the route (81 KB on a model page).
+- Gmail from the browser is `lib/gmail` (`@hanzo/app/lib/gmail`): the one
+  reader and writer of Setup's Google token store (`hanzo.onboarding.google.*`),
+  `connect()` (Setup's consent popup), `gmail(email?)` (the live token that may
+  send, the chosen account else the most recently connected) and `send(token,
+  message)` (one RFC 2822 multipart/alternative message). The token stays in
+  the browser: about an hour, no refresh, reconnect when it ends.
 
 ## Rules the rooms keep
 
