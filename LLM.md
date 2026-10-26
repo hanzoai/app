@@ -109,6 +109,12 @@ repository or a site from any surface.
   send, the chosen account else the most recently connected) and `send(token,
   message)` (one RFC 2822 multipart/alternative message). The token stays in
   the browser: about an hour, no refresh, reconnect when it ends.
+- Setup's three steps are GitHub, Slack and a plugin. Step 3 opens Dev's
+  Customize (`-/customize/plugins`) and is done once the org has a row in
+  `GET /v1/tool/plugins/authored` or `GET /v1/tool/mcp/servers`. Google
+  Workspace is the private beta `workspace` (lib/betas): its connect is drawn
+  only where `opens('workspace')` lets the reader in, until Google verifies the
+  Drive and Gmail scopes; nobody else meets the unverified-app screen.
 
 ## Rules the rooms keep
 

@@ -21,6 +21,14 @@ describe('the apps in beta', () => {
     expect(zen?.href).toBeUndefined()
   })
 
+  it('holds Google Workspace as a private beta in Data, with no href', () => {
+    const ws = BETAS.find((b) => b.id === 'workspace')
+    expect(ws).toMatchObject({ name: 'Google Workspace', group: 'Data' })
+    expect(ws?.href).toBeUndefined()
+    expect(opens('workspace', {}, false)).toBe(false)
+    expect(opens('workspace', { 'beta.workspace': true }, false)).toBe(true)
+  })
+
   it('opens an app for its switch alone, and every app for a SuperAdmin', () => {
     expect(key('crm')).toBe('beta.crm')
     expect(opens('crm', {}, false)).toBe(false)

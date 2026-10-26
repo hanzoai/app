@@ -1,24 +1,35 @@
 'use client'
 
-// The 1-2-3 in-app onboarding: Connect GitHub, Connect Slack, Connect Google Workspace.
+// The 1-2-3 in-app onboarding: Connect GitHub, Connect Slack, Connect a plugin.
 // Runs INSIDE the app as a compact card in the sidebar column and as an interactive
 // popup modal dialog. Never a full-screen redirect away from the user's workspace.
 //
 //   1. GitHub:  Sync repositories, PRs, and team repository context
 //   2. Slack:   Route notifications, agent conversations, and bot alerts
-//   3. Google:  Connect Google Drive, Docs, Sheets, Gmail & Calendar across one or many Google accounts (personal, work, multiple orgs)
+//   3. Plugin:  Give agents tools — a plugin the org builds or an MCP server it adds,
+//               both in Dev's Customize, the one home of plugins and connectors.
+//               Done once the org has one: GET /v1/tool/plugins/authored or
+//               GET /v1/tool/mcp/servers answers a row (the lists Customize reads).
+//
+// Google Workspace is the private beta `workspace` (lib/betas): its connect is
+// drawn only for a reader `opens('workspace')` lets in, staff included, because
+// Google has not verified the app's Drive and Gmail scopes and every other
+// reader would meet Google's unverified-app screen.
 
 import { useEffect, useState } from 'react'
 import { useI18n } from '@hanzo/i18n/react'
 import { Box, Dialog, DialogContent, DialogTitle, SizableText, Text, XStack, YStack } from '@hanzo/ui'
 import { useIam } from '@hanzo/iam/react'
-import { Check, Maximize2, Plus, Sparkles, X } from 'lucide-react'
+import { Check, Maximize2, Plug, Plus, Sparkles, X } from 'lucide-react'
 import { ProviderMark } from './ProviderMark'
+import { useBetas } from './Betas'
+import { useRooms } from './host'
 import { useKept } from './kept'
 import { api } from './lib/api'
+import { app } from './lib/host'
 import { scope } from './lib/session'
 import { enter } from './lib/destination'
-import { brand } from './where'
+import { brand, site } from './where'
 import { GOOGLE_ACCOUNTS_KEY, GOOGLE_KEY, accounts, connect, drop, keep } from './lib/gmail'
 import { GOOD } from './lib/mix'
 
@@ -26,6 +37,10 @@ export const LATER_KEY = 'hanzo.onboarding.later'
 export const GITHUB_KEY = 'hanzo.onboarding.github'
 export const SLACK_KEY = 'hanzo.onboarding.slack'
 export const STEP_KEY = 'hanzo.onboarding.step'
+export const PLUGIN_KEY = 'hanzo.onboarding.plugin'
+
+/** Where plugins and connectors live: Dev's Customize. */
+const PLUGINS = '-/customize/plugins'
 
 /** Inline Slack Mark */
 function SlackMark({ size = 18 }: { size?: number }) {
@@ -43,14 +58,17 @@ function SlackMark({ size = 18 }: { size?: number }) {
   )
 }
 
-export function Setup() {
+export function Setup({ go }: { go?: (address: string) => void } = {}) {
   const { t } = useI18n()
   const { isAuthenticated, accessToken } = useIam()
+  const { open: opens } = useBetas()
+  const pathed = useRooms().path !== null
   const [later, setLater] = useKept(LATER_KEY, false)
   const [step, setStep] = useKept(STEP_KEY, 1)
 
   const [githubDone, setGithubDone] = useKept(GITHUB_KEY, false)
   const [slackDone, setSlackDone] = useKept(SLACK_KEY, false)
+  const [pluginDone, setPluginDone] = useKept(PLUGIN_KEY, false)
   const [googleDone, setGoogleDone] = useKept(GOOGLE_KEY, false)
   const [googleAccounts, setGoogleAccounts] = useKept<string[]>(GOOGLE_ACCOUNTS_KEY, [])
 
@@ -62,6 +80,11 @@ export function Setup() {
   const signed = isAuthenticated && Boolean(accessToken)
   const accountList = Array.isArray(googleAccounts) ? googleAccounts : []
   const hasGoogle = googleDone || accountList.length > 0
+  // Google Workspace is a private beta until Google verifies its scopes.
+  const workspace = opens('workspace')
+
+  // Customize's plugins, inside the app where the host reads the path, else Dev on the site.
+  const openPlugins = () => (pathed && go ? go(app(PLUGINS)) : window.location.assign(site(app(PLUGINS))))
 
   // The token itself is lib/gmail's to keep; Setup lists the addresses.
   const addGoogleAccount = (rawEmail: string, tokenData?: { accessToken: string; scope?: string }) => {
@@ -93,8 +116,18 @@ export function Setup() {
       fetch(`${api()}/v1/integrations/connectors`, { headers: auth })
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null),
-    ]).then(([integrationsData, connectorsData]) => {
+      fetch(`${api()}/v1/tool/plugins/authored`, { headers: auth })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null),
+      fetch(`${api()}/v1/tool/mcp/servers`, { headers: auth })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null),
+    ]).then(([integrationsData, connectorsData, pluginsData, serversData]) => {
       if (!live) return
+      // A plugin the org built, or an MCP server it added: Customize's own lists.
+      const built = Array.isArray(pluginsData?.plugins) ? pluginsData.plugins.length : 0
+      const added = Array.isArray(serversData?.servers) ? serversData.servers.length : 0
+      if (built + added > 0) setPluginDone(true)
       const providers = Array.isArray(integrationsData?.providers)
         ? (integrationsData.providers as Record<string, unknown>[])
         : null
@@ -189,7 +222,7 @@ export function Setup() {
     }
   }, [signed, googleAccounts])
 
-  const totalDone = (githubDone ? 1 : 0) + (slackDone ? 1 : 0) + (hasGoogle ? 1 : 0)
+  const totalDone = (githubDone ? 1 : 0) + (slackDone ? 1 : 0) + (pluginDone ? 1 : 0)
   const allDone = totalDone === 3
   const activeStep = step === 1 || step === 2 || step === 3 ? step : 1
 
@@ -286,7 +319,7 @@ export function Setup() {
       setStep(3)
     })
 
-  // 3. Connect Google Workspace (Drive, Docs, Sheets, Gmail & Calendar; supports multiple accounts)
+  // Google Workspace, the private beta (Drive, Docs, Sheets, Gmail & Calendar; one or many accounts)
   const handleConnectGoogle = () =>
     connectOAuthProvider('google', 'Google', () => {
       setGoogleDone(true)
@@ -365,12 +398,12 @@ export function Setup() {
           />
           <Box
             render="button"
-            aria-label={t('Step 3: Connect Google')}
+            aria-label={t('Step 3: Connect a plugin')}
             onClick={() => setStep(3)}
             flex={1}
             height={6}
             rounded={3}
-            bg={hasGoogle ? GOOD : activeStep === 3 ? '$ink' : '$edge'}
+            bg={pluginDone ? GOOD : activeStep === 3 ? '$ink' : '$edge'}
             cursor="pointer"
           />
         </XStack>
@@ -380,10 +413,10 @@ export function Setup() {
             <XStack items="center" gap="$2">
               <Check size={16} color={GOOD} aria-hidden />
               <Text fontSize="$2" color="$ink" fontWeight="500">
-                {t('GitHub, Slack & Google connected')}
+                {t('GitHub, Slack & a plugin connected')}
               </Text>
             </XStack>
-            {accountList.length > 0 ? (
+            {workspace && accountList.length > 0 ? (
               <XStack gap="$1" flexWrap="wrap">
                 {accountList.map((acct) => (
                   <XStack
@@ -411,23 +444,25 @@ export function Setup() {
               </XStack>
             ) : null}
             <XStack gap="$1.5" items="center" flexWrap="wrap">
-              <Box
-                render="button"
-                onClick={handleConnectGoogle}
-                px="$2.5"
-                py="$1"
-                rounded="$3"
-                bg="$edge"
-                hoverStyle={{ bg: '$hover' }}
-                cursor="pointer"
-              >
-                <XStack items="center" gap="$1">
-                  <Plus size={12} color="$ink" aria-hidden />
-                  <Text fontSize="$1" fontWeight="500" color="$ink">
-                    {t('Add Google account')}
-                  </Text>
-                </XStack>
-              </Box>
+              {workspace ? (
+                  <Box
+                    render="button"
+                    onClick={handleConnectGoogle}
+                    px="$2.5"
+                    py="$1"
+                    rounded="$3"
+                    bg="$edge"
+                    hoverStyle={{ bg: '$hover' }}
+                    cursor="pointer"
+                  >
+                    <XStack items="center" gap="$1">
+                      <Plus size={12} color="$ink" aria-hidden />
+                      <Text fontSize="$1" fontWeight="500" color="$ink">
+                        {t('Add Google account')}
+                      </Text>
+                    </XStack>
+                  </Box>
+              ) : null}
               <Box
                 render="button"
                 onClick={() => setLater(true)}
@@ -543,73 +578,36 @@ export function Setup() {
             </XStack>
           </YStack>
         ) : (
-          /* Step 3: Google Workspace (Drive, Docs, Sheets, Gmail & Calendar) */
+          /* Step 3: a plugin or connector, in Dev's Customize; Google Workspace below it for the private beta */
           <YStack gap="$2" minW={0}>
             <XStack items="center" justify="space-between" gap="$1.5" flexWrap="wrap" minW={0}>
               <XStack items="center" gap="$2" minW={0} flex={1}>
-                <ProviderMark org="google" size={18} />
-                <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>{t('3. Connect Google')}</Text>
+                <Plug size={18} color="var(--foreground)" aria-hidden />
+                <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>{t('3. Connect a plugin')}</Text>
               </XStack>
-              {hasGoogle ? (
+              {pluginDone ? (
                 <XStack items="center" gap="$1" shrink={0}>
                   <Check size={12} color={GOOD} aria-hidden />
-                  <Text fontSize="$1" color={GOOD} fontWeight="600">
-                    {accountList.length > 1
-                      ? t('{n} connected', { n: accountList.length })
-                      : t('Connected')}
-                  </Text>
+                  <Text fontSize="$1" color={GOOD} fontWeight="600">{t('Connected')}</Text>
                 </XStack>
               ) : null}
             </XStack>
             <Text fontSize="$1" color="$soft">
-              {t('Grant Drive, Docs, Sheets, Gmail & Calendar permissions. Add personal, work, or multiple org accounts.')}
+              {t('Give your agents tools: build a plugin or add an MCP server in Customize.')}
             </Text>
-            {accountList.length > 0 ? (
-              <XStack gap="$1" flexWrap="wrap">
-                {accountList.map((acct) => (
-                  <XStack
-                    key={acct}
-                    items="center"
-                    gap="$1"
-                    px="$2"
-                    py="$0.5"
-                    rounded="$2"
-                    bg="$edge"
-                  >
-                    <Text fontSize="$1" color="$ink" numberOfLines={1}>
-                      {acct}
-                    </Text>
-                    <Box
-                      render="button"
-                      aria-label={t('Remove {account}', { account: acct })}
-                      onClick={() => removeGoogleAccount(acct)}
-                      cursor="pointer"
-                    >
-                      <X size={11} color="$soft" aria-hidden />
-                    </Box>
-                  </XStack>
-                ))}
-              </XStack>
-            ) : null}
             <XStack gap="$1.5" items="center" pt="$1" flexWrap="wrap">
               <Box
                 render="button"
-                onClick={handleConnectGoogle}
-                aria-disabled={busy === 'google'}
+                onClick={openPlugins}
                 px="$2.5"
                 py="$1"
                 rounded="$3"
                 bg="var(--accent)"
                 hoverStyle={{ bg: 'var(--accent-hover)' }}
                 cursor="pointer"
-                opacity={busy === 'google' ? 0.6 : 1}
               >
                 <Text fontSize="$1" fontWeight="600" color="var(--accent-foreground)">
-                  {busy === 'google'
-                    ? t('Connecting…')
-                    : hasGoogle
-                      ? t('+ Add Google account')
-                      : t('Connect Google')}
+                  {pluginDone ? t('Open plugins') : t('Connect a plugin')}
                 </Text>
               </Box>
               <Box
@@ -623,10 +621,82 @@ export function Setup() {
                 cursor="pointer"
               >
                 <Text fontSize="$1" color="$soft">
-                  {hasGoogle ? t('Done') : t('Skip')}
+                  {pluginDone ? t('Done') : t('Skip')}
                 </Text>
               </Box>
             </XStack>
+            {workspace ? (
+              <YStack gap="$2" minW={0} pt="$2" borderTopWidth={1} borderColor="$borderColor" data-slot="setup-workspace">
+                <XStack items="center" justify="space-between" gap="$1.5" flexWrap="wrap" minW={0}>
+                  <XStack items="center" gap="$2" minW={0} flex={1}>
+                    <ProviderMark org="google" size={18} />
+                    <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>{t('Google Workspace')}</Text>
+                  </XStack>
+                  {hasGoogle ? (
+                    <XStack items="center" gap="$1" shrink={0}>
+                      <Check size={12} color={GOOD} aria-hidden />
+                      <Text fontSize="$1" color={GOOD} fontWeight="600">
+                        {accountList.length > 1
+                          ? t('{n} connected', { n: accountList.length })
+                          : t('Connected')}
+                      </Text>
+                    </XStack>
+                  ) : null}
+                </XStack>
+                <Text fontSize="$1" color="$soft">
+                  {t('Grant Drive, Docs, Sheets, Gmail & Calendar permissions. Add personal, work, or multiple org accounts.')}
+                </Text>
+                {accountList.length > 0 ? (
+                  <XStack gap="$1" flexWrap="wrap">
+                    {accountList.map((acct) => (
+                      <XStack
+                        key={acct}
+                        items="center"
+                        gap="$1"
+                        px="$2"
+                        py="$0.5"
+                        rounded="$2"
+                        bg="$edge"
+                      >
+                        <Text fontSize="$1" color="$ink" numberOfLines={1}>
+                          {acct}
+                        </Text>
+                        <Box
+                          render="button"
+                          aria-label={t('Remove {account}', { account: acct })}
+                          onClick={() => removeGoogleAccount(acct)}
+                          cursor="pointer"
+                        >
+                          <X size={11} color="$soft" aria-hidden />
+                        </Box>
+                      </XStack>
+                    ))}
+                  </XStack>
+                ) : null}
+                <XStack gap="$1.5" items="center" pt="$1" flexWrap="wrap">
+                  <Box
+                    render="button"
+                    onClick={handleConnectGoogle}
+                    aria-disabled={busy === 'google'}
+                    px="$2.5"
+                    py="$1"
+                    rounded="$3"
+                    bg="var(--accent)"
+                    hoverStyle={{ bg: 'var(--accent-hover)' }}
+                    cursor="pointer"
+                    opacity={busy === 'google' ? 0.6 : 1}
+                  >
+                    <Text fontSize="$1" fontWeight="600" color="var(--accent-foreground)">
+                      {busy === 'google'
+                        ? t('Connecting…')
+                        : hasGoogle
+                          ? t('+ Add Google account')
+                          : t('Connect Google')}
+                    </Text>
+                  </Box>
+                </XStack>
+              </YStack>
+            ) : null}
           </YStack>
         )}
 
@@ -649,7 +719,7 @@ export function Setup() {
             </XStack>
           </DialogTitle>
           <Text fontSize="$2" color="$soft">
-            {t('Connect your code, team chat, and Google Workspace (Drive, Docs, Sheets, Gmail & Calendar) across personal and business orgs.', { brand: brand() })}
+            {t('Connect your code, your team chat, and the tools your agents use.', { brand: brand() })}
           </Text>
 
           <YStack gap="$3">
@@ -736,29 +806,32 @@ export function Setup() {
             </XStack>
 
             {/* Step 3 Item */}
-            <YStack
+            <XStack
               p="$3"
               rounded="$4"
               borderWidth={1}
-              borderColor={hasGoogle ? GOOD : '$borderColor'}
+              borderColor={pluginDone ? GOOD : '$borderColor'}
               bg="$raised"
-              gap="$2.5"
+              items="center"
+              justify="space-between"
+              gap="$3"
             >
-              <XStack items="center" justify="space-between" gap="$3">
-                <XStack items="center" gap="$3" flex={1}>
-                  <ProviderMark org="google" size={24} />
-                  <YStack flex={1} minW={0}>
-                    <Text fontSize="$3" fontWeight="600" color="$ink">
-                      {t('3. Google Workspace (Drive, Docs, Sheets, Gmail & Calendar)')}
-                    </Text>
-                    <Text fontSize="$1" color="$soft">
-                      {t('Edit Drive files, Docs, Sheets, Gmail & Calendar across personal and business accounts')}
-                    </Text>
-                  </YStack>
+              <XStack items="center" gap="$3" flex={1}>
+                <Plug size={24} color="var(--foreground)" aria-hidden />
+                <YStack flex={1} minW={0}>
+                  <Text fontSize="$3" fontWeight="600" color="$ink">{t('3. Plugins')}</Text>
+                  <Text fontSize="$1" color="$soft">{t('Plugins and MCP servers your agents can call')}</Text>
+                </YStack>
+              </XStack>
+              {pluginDone ? (
+                <XStack items="center" gap="$1" px="$2" py="$1" rounded="$2" bg="$hover">
+                  <Check size={14} color={GOOD} />
+                  <Text fontSize="$1" color={GOOD} fontWeight="600">{t('Connected')}</Text>
                 </XStack>
+              ) : (
                 <Box
                   render="button"
-                  onClick={handleConnectGoogle}
+                  onClick={openPlugins}
                   px="$3"
                   py="$1.5"
                   rounded="$3"
@@ -767,43 +840,83 @@ export function Setup() {
                   cursor="pointer"
                 >
                   <Text fontSize="$2" fontWeight="600" color="var(--accent-foreground)">
-                    {busy === 'google'
-                      ? t('Connecting…')
-                      : hasGoogle
-                        ? t('+ Add account')
-                        : t('Connect')}
+                    {t('Open')}
                   </Text>
                 </Box>
-              </XStack>
-              {accountList.length > 0 ? (
-                <XStack gap="$1.5" flexWrap="wrap">
-                  {accountList.map((acct) => (
-                    <XStack
-                      key={acct}
-                      items="center"
-                      gap="$1.5"
-                      px="$2.5"
-                      py="$1"
-                      rounded="$2"
-                      bg="$hover"
-                    >
-                      <Check size={12} color={GOOD} aria-hidden />
-                      <Text fontSize="$1" color="$ink" fontWeight="500">
-                        {acct}
-                      </Text>
-                      <Box
-                        render="button"
-                        aria-label={t('Remove {account}', { account: acct })}
-                        onClick={() => removeGoogleAccount(acct)}
-                        cursor="pointer"
-                      >
-                        <X size={12} color="$soft" aria-hidden />
-                      </Box>
+              )}
+            </XStack>
+
+            {/* Google Workspace, the private beta */}
+            {workspace ? (
+                <YStack
+                  p="$3"
+                  rounded="$4"
+                  borderWidth={1}
+                  borderColor={hasGoogle ? GOOD : '$borderColor'}
+                  bg="$raised"
+                  gap="$2.5"
+                >
+                  <XStack items="center" justify="space-between" gap="$3">
+                    <XStack items="center" gap="$3" flex={1}>
+                      <ProviderMark org="google" size={24} />
+                      <YStack flex={1} minW={0}>
+                        <Text fontSize="$3" fontWeight="600" color="$ink">
+                          {t('Google Workspace · private beta')}
+                        </Text>
+                        <Text fontSize="$1" color="$soft">
+                          {t('Edit Drive files, Docs, Sheets, Gmail & Calendar across personal and business accounts')}
+                        </Text>
+                      </YStack>
                     </XStack>
-                  ))}
-                </XStack>
-              ) : null}
-            </YStack>
+                    <Box
+                      render="button"
+                      onClick={handleConnectGoogle}
+                      px="$3"
+                      py="$1.5"
+                      rounded="$3"
+                      bg="var(--accent)"
+                      hoverStyle={{ bg: 'var(--accent-hover)' }}
+                      cursor="pointer"
+                    >
+                      <Text fontSize="$2" fontWeight="600" color="var(--accent-foreground)">
+                        {busy === 'google'
+                          ? t('Connecting…')
+                          : hasGoogle
+                            ? t('+ Add account')
+                            : t('Connect')}
+                      </Text>
+                    </Box>
+                  </XStack>
+                  {accountList.length > 0 ? (
+                    <XStack gap="$1.5" flexWrap="wrap">
+                      {accountList.map((acct) => (
+                        <XStack
+                          key={acct}
+                          items="center"
+                          gap="$1.5"
+                          px="$2.5"
+                          py="$1"
+                          rounded="$2"
+                          bg="$hover"
+                        >
+                          <Check size={12} color={GOOD} aria-hidden />
+                          <Text fontSize="$1" color="$ink" fontWeight="500">
+                            {acct}
+                          </Text>
+                          <Box
+                            render="button"
+                            aria-label={t('Remove {account}', { account: acct })}
+                            onClick={() => removeGoogleAccount(acct)}
+                            cursor="pointer"
+                          >
+                            <X size={12} color="$soft" aria-hidden />
+                          </Box>
+                        </XStack>
+                      ))}
+                    </XStack>
+                  ) : null}
+                </YStack>
+            ) : null}
           </YStack>
 
           <XStack justify="flex-end" pt="$2">

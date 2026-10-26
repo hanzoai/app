@@ -65,6 +65,7 @@ export const BETAS: readonly Beta[] = [
   { id: 'search', name: 'Search', line: phrase('Keyword and meaning in one query'), group: 'Data', href: `${PLATFORM}/search` },
   { id: 'world', name: 'World', line: phrase('A live map of every model and AI workload'), group: 'Data', href: 'https://world.hanzo.ai' },
   { id: 'crawl', name: 'Crawl', line: phrase('Turn a website into clean Markdown'), group: 'Data', href: `${PLATFORM}/crawl` },
+  { id: 'workspace', name: 'Google Workspace', line: phrase('Drive, Docs, Sheets, Gmail and Calendar for the assistant, read and write'), group: 'Data' },
 
   { id: 'operative', name: 'Operative', line: phrase('A desktop in a container, driven by a model'), group: 'Agents' },
   { id: 'tasks', name: 'Tasks', line: phrase('Durable execution for long-running work'), group: 'Agents', href: `${PLATFORM}/tasks` },

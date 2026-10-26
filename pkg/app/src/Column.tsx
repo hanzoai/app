@@ -335,7 +335,7 @@ export function Column({
         {at ? null : (
           <YStack gap="$2" pt="$2" shrink={0}>
             <Made />
-            <Setup />
+            <Setup go={go} />
           </YStack>
         )}
         {free ? (

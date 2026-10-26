@@ -72,6 +72,15 @@ vi.mock('./where', () => ({
   site: (p: string) => `https://hanzo.ai${p}`,
 }))
 
+// The private beta `workspace` opens for a reader the cloud lets in (or staff).
+vi.mock('./Betas', () => ({
+  useBetas: () => ({ open: (id: string) => store.get(`beta.${id}`) === true }),
+}))
+
+vi.mock('./host', () => ({
+  useRooms: () => ({ path: null }),
+}))
+
 import { Setup } from './Setup'
 import { GOOGLE_KEY, GOOGLE_ACCOUNTS_KEY, GOOGLE_WORKSPACE_SCOPES, buildGoogleWorkspaceAuthorizeUrl } from './lib/gmail'
 
@@ -95,39 +104,65 @@ describe('Setup 1-2-3 in-app onboarding', () => {
     expect(html).toContain('Connect Slack')
   })
 
-  test('stays on Step 3 (Connect Google) without looping back to Step 1 even if Google is connected and GitHub/Slack were skipped', () => {
-    store.set('hanzo.onboarding.github', false)
-    store.set('hanzo.onboarding.slack', false)
-    store.set(GOOGLE_KEY, true)
+  test('step 3 is the plugin step for an ordinary reader, with no Google connect', () => {
     store.set('hanzo.onboarding.step', 3)
     const html = renderToStaticMarkup(createElement(Setup))
-    expect(html).toContain('3. Connect Google')
-    expect(html).toContain('+ Add Google account')
-    expect(html).toContain('Done')
+    expect(html).toContain('3. Connect a plugin')
+    expect(html).toContain('Step 3: Connect a plugin')
+    expect(html).toContain('build a plugin or add an MCP server in Customize')
+    expect(html).not.toContain('Connect Google')
+    expect(html).not.toContain('data-slot="setup-workspace"')
     expect(html).not.toContain('1. Connect GitHub')
   })
 
-  test('renders multiple connected Google accounts across personal and business orgs on Step 3', () => {
+  test('step 3 says Connected once the org has a plugin or an MCP server', () => {
     store.set('hanzo.onboarding.step', 3)
+    store.set('hanzo.onboarding.plugin', true)
+    const html = renderToStaticMarkup(createElement(Setup))
+    expect(html).toContain('3. Connect a plugin')
+    expect(html).toContain('Connected')
+    expect(html).toContain('Open plugins')
+    expect(html).toContain('Done')
+  })
+
+  test('the Google Workspace card appears on step 3 only for a reader the workspace beta opens for', () => {
+    store.set('hanzo.onboarding.step', 3)
+    store.set('beta.workspace', true)
     store.set(GOOGLE_ACCOUNTS_KEY, ['z@hanzo.ai', 'personal@gmail.com'])
     const html = renderToStaticMarkup(createElement(Setup))
-    expect(html).toContain('3. Connect Google')
+    expect(html).toContain('3. Connect a plugin')
+    expect(html).toContain('data-slot="setup-workspace"')
+    expect(html).toContain('Google Workspace')
     expect(html).toContain('2 connected')
     expect(html).toContain('z@hanzo.ai')
-    expect(html).toContain('personal@gmail.com')
     expect(html).toContain('+ Add Google account')
   })
 
-  test('shows completion state with Add Google account option when all 3 are finished', () => {
+  test('a connected Google account does not count as step 3, and is hidden outside the beta', () => {
     store.set('hanzo.onboarding.github', true)
     store.set('hanzo.onboarding.slack', true)
     store.set(GOOGLE_KEY, true)
     store.set(GOOGLE_ACCOUNTS_KEY, ['z@hanzo.ai'])
+    store.set('hanzo.onboarding.step', 3)
     const html = renderToStaticMarkup(createElement(Setup))
-    expect(html).toContain('GitHub, Slack &amp; Google connected')
-    expect(html).toContain('z@hanzo.ai')
-    expect(html).toContain('Add Google account')
-    expect(html).toContain('Done')
+    expect(html).toContain('Quick setup (2/3)')
+    expect(html).not.toContain('z@hanzo.ai')
+    expect(html).not.toContain('Connect Google')
+  })
+
+  test('shows completion when GitHub, Slack and a plugin are in, with Add Google account only for the beta', () => {
+    store.set('hanzo.onboarding.github', true)
+    store.set('hanzo.onboarding.slack', true)
+    store.set('hanzo.onboarding.plugin', true)
+    const plain = renderToStaticMarkup(createElement(Setup))
+    expect(plain).toContain('GitHub, Slack &amp; a plugin connected')
+    expect(plain).not.toContain('Add Google account')
+    expect(plain).toContain('Done')
+    store.set('beta.workspace', true)
+    store.set(GOOGLE_ACCOUNTS_KEY, ['z@hanzo.ai'])
+    const beta = renderToStaticMarkup(createElement(Setup))
+    expect(beta).toContain('z@hanzo.ai')
+    expect(beta).toContain('Add Google account')
   })
 
   test('builds Google Workspace authorize URL with Drive/Docs/Sheets/Gmail/Calendar scopes and select_account consent', () => {
