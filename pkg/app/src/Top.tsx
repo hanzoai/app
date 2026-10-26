@@ -160,9 +160,14 @@ export function Top({
           <Side value="dev">Dev</Side>
         </ToggleGroup>
       </XStack>
-      <Round label={fresh.label} data-slot="bar-new" onPress={fresh.onPress}>
-        <SquarePen size={20} aria-hidden />
-      </Round>
+      {/* A mode with nothing to make (Betas) has no New: the bar keeps its menu and Chat | Dev. */}
+      {fresh.onPress ? (
+        <Round label={fresh.label} data-slot="bar-new" onPress={fresh.onPress}>
+          <SquarePen size={20} aria-hidden />
+        </Round>
+      ) : (
+        <XStack width={44} height={44} aria-hidden />
+      )}
     </XStack>
   )
 }

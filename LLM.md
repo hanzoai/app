@@ -155,6 +155,11 @@ repository or a site from any surface.
   each at its `href`, then Betas, the dialog of all of them. A switch only adds:
   nothing a person has is hidden by one. The grant is a SuperAdmin's,
   `POST /v1/admin/flags/beta.<id>/grant {user, on}`.
+- Betas (`/beta`) stands alone, as Tabs does: the rail and the pane, no
+  sidebar, and a phone's bar and menu carry no Dev places (its bar has no New).
+  A host that runs its own beta program passes it as `App`'s `betas` (`Hosted`
+  in App.tsx), drawn as the whole pane in place of `BetasPane`; hanzo.ai passes
+  its application, plan and referral board there.
 - A scroller says `overflowY="auto" overflowX="hidden"` (or the reverse for a
   strip that scrolls sideways), never `overflow="scroll"`: a classic scrollbar
   draws its track and steppers whether or not anything overflows. The bars

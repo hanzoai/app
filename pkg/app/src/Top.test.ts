@@ -108,4 +108,11 @@ describe('a phone’s bar', () => {
     group.pressed.get('bar-new')?.()
     expect(calls).toEqual(['creation'])
   })
+
+  test('Betas has nothing to make: no New, and Chat | Dev keep the middle', () => {
+    const html = top('beta', [])
+    expect(html).not.toContain('data-slot="bar-new"')
+    expect(html).toContain('aria-label="Open sidebar"')
+    expect(html).toContain('role="radiogroup"')
+  })
 })

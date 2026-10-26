@@ -110,6 +110,17 @@ export interface Bar {
   controls?: React.ReactNode
 }
 
+/**
+ * `betas`, what a host draws as Betas' whole pane (`/beta`) in place of the
+ * app's own list (Betas.tsx `BetasPane`): a site that runs its own beta program
+ * (its application, its plan, its referral board) shows it inside the app's
+ * window. Betas stands alone, as Tabs does: the rail and the pane, no sidebar.
+ */
+export interface Hosted {
+  bar?: Bar
+  betas?: React.ReactNode
+}
+
 /** The bar's height, px: the reference window's title bar. */
 const BAR = 40
 
@@ -122,16 +133,16 @@ const typing = (e: KeyboardEvent): boolean => {
   return !!el && (el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')
 }
 
-export function App({ bar }: { bar?: Bar } = {}) {
+export function App({ bar, betas }: Hosted = {}) {
   return (
     <Orgs>
-      <Window bar={bar} />
+      <Window bar={bar} betas={betas} />
     </Orgs>
   )
 }
 
 /** The window itself, drawn once the organization is settled. */
-function Window({ bar }: { bar?: Bar }) {
+function Window({ bar, betas }: Hosted) {
   const { t } = useI18n()
   const drawer = useDrawer()
   const { close: shut, depart, exit } = drawer
@@ -166,6 +177,8 @@ function Window({ bar }: { bar?: Bar }) {
   const here = path ?? '/'
   const at = place(here) ?? HOME
   const mode = at.mode
+  // Tabs and Betas are their panes alone: no sidebar beside them, and no Dev places in a phone's menu.
+  const alone = mode === 'tabs' || mode === 'beta'
   const where = at.mode === 'dev' ? at.at : null
   // Studio's host: Dev's, at Studio's address, its moves under /studio, and
   // another organization opening Studio's New in it.
@@ -287,7 +300,7 @@ function Window({ bar }: { bar?: Bar }) {
     pick(o)
     window.location.assign(mode === 'dev' ? app('') : mode === 'studio' ? studio('') : mode === 'tabs' ? TERMINALS : talk())
   }
-  const sidebar = mode === 'studio' ? places(maker, (p) => maker.go(p)) : mode === 'dev' && raised(where) === 'customize'
+  const sidebar = mode === 'beta' ? [] : mode === 'studio' ? places(maker, (p) => maker.go(p)) : mode === 'dev' && raised(where) === 'customize'
     ? tabs(host, (p) => host.go(p), t).map((group) => ({ ...group, links: [...group.links, {
       id: 'learning', label: t('Learning'), active: learning, icon: <RefreshCw size={16} aria-hidden />,
       onPress: () => { shut(); setLearning(true) },
@@ -380,13 +393,13 @@ function Window({ bar }: { bar?: Bar }) {
             <YStack height="100%" $max-md={{ display: 'none' }}>
               <Rail host={host} mode={mode} at={where} open={!closed} toggle={bar ? undefined : flip} onChat={toChat} onDev={toDev} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />
             </YStack>
-            {/* Tabs is its panes edge to edge: no sidebar beside them. */}
-            {closed || mode === 'tabs' ? null : (
+            {/* Tabs and Betas stand alone: no sidebar beside them. */}
+            {closed || alone ? null : (
               <YStack $max-md={{ display: 'none' }}>
                 <Column host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} onSeek={seek} onBack={back} places={sidebar} />
               </YStack>
             )}
-            <YStack data-slot="stage" flex={1} minW={0} minH={0} marginInlineStart={closed || mode === 'tabs' ? 0 : 'var(--pane-gap)'} $max-md={{ marginInlineStart: 0, pb: FOOT }}>
+            <YStack data-slot="stage" flex={1} minW={0} minH={0} marginInlineStart={closed || alone ? 0 : 'var(--pane-gap)'} $max-md={{ marginInlineStart: 0, pb: FOOT }}>
               {/* A phone has no rail and no sidebar: its bar opens them as a drawer and switches Chat and Dev. */}
               {bar ? null : <Top host={host} mode={mode} places={sidebar} open={drawer.state !== 'shut'} go={move} onMenu={drawer.open} onChat={toChat} onDev={toDev} />}
               <XStack data-slot="panes" flex={1} minW={0} minH={0}>
@@ -409,10 +422,12 @@ function Window({ bar }: { bar?: Bar }) {
                     </YStack>
                   </YStack>
                 ) : mode === 'beta' ? (
-                  <YStack render="main" data-slot="pane" {...pane()} overflow="scroll" flex={1} minW={0} minH={0} p="$4" $md={{ p: '$6' }}>
-                    <Suspense fallback={null}>
-                      <Betas go={move} />
-                    </Suspense>
+                  <YStack render="main" data-slot="pane" {...pane()} overflowY="auto" overflowX="hidden" flex={1} minW={0} minH={0} p="$4" $md={{ p: '$6' }}>
+                    {betas ?? (
+                      <Suspense fallback={null}>
+                        <Betas go={move} />
+                      </Suspense>
+                    )}
                   </YStack>
                 ) : (
                   <YStack render="main" data-slot="pane" {...(run ? null : { ...pane(), overflow: 'hidden' })} flex={1} minW={0} minH={0}>
