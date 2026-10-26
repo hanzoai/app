@@ -201,6 +201,10 @@ export function go(address: string, replace = false): void {
   if (`${window.location.pathname}${window.location.search}` === address) return
   if (replace) window.history.replaceState(null, '', address)
   else window.history.pushState(null, '', address)
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    const ev = typeof PopStateEvent !== 'undefined' ? new PopStateEvent('popstate') : typeof Event !== 'undefined' ? new Event('popstate') : null
+    if (ev) window.dispatchEvent(ev)
+  }
 }
 
 /** The host's router, as far as moving to a page goes (`useRooms().router`). */

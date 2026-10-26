@@ -98,6 +98,7 @@ import {
   want,
   path as devPath,
   type Act,
+  type Hint,
   CHAT_MODES,
   usePanel,
   type Artifact,
@@ -115,6 +116,7 @@ import { BAD } from "./lib/mix";
 import { brand } from './where'
 import { BAND } from './ground'
 import { shared, useChatPreferences } from './lib/chatPreferences'
+import { handleHint } from './hint'
 
 // NO REASONING PANEL HERE. Every assistant turn opened a "Thinking" disclosure
 // listing seven steps — "Planning CSS extraction for chat styles", "Designing
@@ -1715,27 +1717,8 @@ function Thread({
   // What pressing a suggestion does, at once: open what it names, send its prompt
   // here (the room is a new chat while one shows), hand its run to Dev, or make
   // its scheduled task and show it in Scheduled tasks.
-  const hint = (a: Act) => {
-    switch (a.kind) {
-      case "open":
-        if (a.item) want(a.item);
-        if (/^https:\/\//.test(a.to)) window.open(a.to, "_blank", "noopener,noreferrer");
-        else go(a.to.startsWith("/") ? a.to : app(a.to));
-        return;
-      case "send":
-        submit(a.prompt);
-        return;
-      case "task":
-        hand("task", a.prompt);
-        go(app(""));
-        return;
-      case "schedule":
-        void book(target, a, "chat").then(
-          (made) => go(app(devPath({ kind: "automation", id: made.id }))),
-          (e: unknown) => setPrepWrong(e instanceof Error && e.message ? e.message : t("The scheduled task could not be made.")),
-        );
-        return;
-    }
+  const hint = (a: Act, row?: Hint) => {
+    handleHint(a, row, { reopen, submit, target, setPrepWrong, t });
   };
   // A chat a suggestion in Dev left for this room is sent once the room is a new
   // chat: the address's own conversation let go of, nothing said yet.
