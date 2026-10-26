@@ -32,6 +32,7 @@ import { enter } from './lib/destination'
 import { brand, site } from './where'
 import { GOOGLE_ACCOUNTS_KEY, GOOGLE_KEY, accounts, connect, drop, keep } from './lib/gmail'
 import { GOOD } from './lib/mix'
+import { RETURN, awaitAnswer } from './lib/oauth'
 
 export const LATER_KEY = 'hanzo.onboarding.later'
 export const GITHUB_KEY = 'hanzo.onboarding.github'
@@ -231,20 +232,21 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
   const openOAuthPopup = (
     authorizeUrl: string,
     provider: 'github' | 'slack',
+    label: string,
     onDone: () => void,
   ) => {
     const popup = window.open(authorizeUrl, `hanzo-oauth-${provider}`, 'width=600,height=700')
     if (!popup) {
       window.open(authorizeUrl, '_blank', 'noopener,noreferrer')
-    } else {
-      const timer = window.setInterval(() => {
-        if (popup.closed) {
-          window.clearInterval(timer)
-          setSyncTurn((n) => n + 1)
-          return
-        }
-      }, 250)
+      return
     }
+    // The return page hands the answer back and closes the popup (lib/oauth);
+    // a popup closed without one still re-reads what is connected.
+    awaitAnswer(popup, provider, (answer) => {
+      if (answer?.ok) onDone()
+      else if (answer) setErrorMsg(t('Could not connect {provider} right now. Please try again.', { provider: label }))
+      setSyncTurn((n) => n + 1)
+    })
   }
 
   const connectOAuthProvider = async (
@@ -274,7 +276,9 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
       const res = await fetch(`${api()}/v1/provider/${provider}/connect`, {
         method: 'POST',
         headers: { ...scope(), 'Content-Type': 'application/json' },
-        body: '{}',
+        // Without a return the callback lands on the console's /connectors,
+        // where the popup stays open; RETURN is the page that closes it.
+        body: JSON.stringify({ return: RETURN }),
       })
       if (!res.ok) {
         let detail = ''
@@ -294,7 +298,7 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
       }
       const j = (await res.json()) as { authorizeUrl?: string; connected?: boolean }
       if (j.authorizeUrl) {
-        openOAuthPopup(j.authorizeUrl, provider, onDone)
+        openOAuthPopup(j.authorizeUrl, provider, label, onDone)
       } else if (j.connected) {
         onDone()
       }
