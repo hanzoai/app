@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 import { SECTIONS } from '@hanzo/build/route'
-import { app, CHAT, DEV, dev, page, paged, place, SETTINGS, settings, studio, talk, visit } from './host'
+import { app, BETA, CHAT, DEV, dev, page, paged, place, SETTINGS, settings, studio, talk, visit } from './host'
 import { configure } from '../where'
 
 const RUN = `sess_${'0123456789abcdef'.repeat(2)}`
@@ -119,6 +119,9 @@ describe('Studio is the third root', () => {
     expect(place('/tabs/')).toEqual({ mode: 'tabs' })
     expect(place('/tabs/x'), 'Tabs has no addresses of its own').toBeNull()
     expect(page('/tabs')).toBe('/tabs')
+    expect(place('/beta')).toEqual({ mode: 'beta' })
+    expect(place('/beta/')).toEqual({ mode: 'beta' })
+    expect(page('/beta')).toBe(BETA)
   })
 
   test('a path under /studio is Studio at its own address, and Studio writes it back', () => {

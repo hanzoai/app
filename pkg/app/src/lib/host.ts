@@ -69,6 +69,11 @@ export const STUDIO = '/studio'
  */
 export const TERMINALS = '/tabs'
 
+/**
+ * Betas: ecosystem betas, early access preview, and waitlist dashboard.
+ */
+export const BETA = '/beta'
+
 /** Studio at an address of its own (@hanzo/studio `route`): '' is New, /studio. */
 export const studio = (at: string): string => (at ? `${STUDIO}/${at.replace(/^\/+/, '')}` : STUDIO)
 
@@ -116,7 +121,7 @@ export function app(at: string): string {
 }
 
 /** A place in the app: Chat on a conversation or none, or Dev at a builder address. */
-export type Place = { mode: 'chat'; thread: string | null } | { mode: 'dev'; at: string } | { mode: 'studio'; at: string } | { mode: 'tabs' }
+export type Place = { mode: 'chat'; thread: string | null } | { mode: 'dev'; at: string } | { mode: 'studio'; at: string } | { mode: 'tabs' } | { mode: 'beta' }
 
 /** /chat/shared is a page of its own, where a chat shared by link is read (lib/share.ts). */
 const SHARED = 'shared'
@@ -128,6 +133,7 @@ export function place(pathname: string): Place | null {
   if (p === DEV || p.startsWith(`${DEV}/`)) return { mode: 'dev', at: path(parse(p.slice(DEV.length))) }
   if (p === STUDIO || p.startsWith(`${STUDIO}/`)) return { mode: 'studio', at: p.slice(STUDIO.length + 1) }
   if (p === TERMINALS) return { mode: 'tabs' }
+  if (p === BETA) return { mode: 'beta' }
   if (!p.startsWith(`${CHAT}/`)) return null
   const id = p.slice(CHAT.length + 1)
   if (id.includes('/') || id === SHARED) return null
@@ -145,6 +151,7 @@ export function page(pathname: string): string {
   if (at.mode === 'chat') return at.thread ? `${CHAT}/:id` : CHAT
   if (at.mode === 'tabs') return TERMINALS
   if (at.mode === 'studio') return STUDIO
+  if (at.mode === 'beta') return BETA
   const r = route(at.at)
   if (r.kind === 'run') return `${DEV}/run/:id`
   if (r.kind === 'repo') return `${DEV}/projects/:org/:repo`

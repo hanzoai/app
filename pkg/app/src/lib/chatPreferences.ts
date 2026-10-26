@@ -14,6 +14,8 @@ export interface ChatPreferences {
   allowThirdPartyModels: boolean
   effort: EffortLevel
   approvalMode: ApprovalMode
+  showLanguage?: boolean
+  showTurboApproval?: boolean
   effortVersion?: number
 }
 
@@ -27,6 +29,8 @@ const DEFAULT_PREFERENCES: ChatPreferences = {
   allowThirdPartyModels: false,
   effort: DEFAULT_EFFORT,
   approvalMode: 'auto',
+  showLanguage: false,
+  showTurboApproval: false,
   effortVersion: EFFORT_SCHEMA_VERSION,
 }
 
@@ -59,6 +63,8 @@ export function getChatPreferences(): ChatPreferences {
       allowThirdPartyModels: Boolean(parsed.allowThirdPartyModels),
       effort: migratedEffort,
       approvalMode: validApprovalMode(parsed.approvalMode, autonomy),
+      showLanguage: Boolean(parsed.showLanguage),
+      showTurboApproval: Boolean(parsed.showTurboApproval),
       effortVersion: EFFORT_SCHEMA_VERSION,
     }
   } catch {

@@ -17,7 +17,7 @@
 // cannot leak an unfinished app.
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
-import { ArrowUpRight, Compass } from 'lucide-react'
+import { ArrowUpRight, Compass, FlaskConical } from 'lucide-react'
 import { phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { useIam } from '@hanzo/iam/react'
@@ -248,5 +248,29 @@ export function BetasDialog({ open, onOpenChange, go }: { open: boolean; onOpenC
         </XStack>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** The Betas view rendered inside the app's main pane under /beta. */
+export function BetasPane({ go }: { go?: (href: string) => void }) {
+  const { t } = useI18n()
+  return (
+    <YStack flex={1} minH={0} maxW={900} mx="auto" width="100%" gap="$5" pb="$8">
+      <YStack gap="$1.5" pt="$2">
+        <XStack items="center" gap="$2">
+          <FlaskConical size={22} color="var(--primary)" aria-hidden />
+          <Text fontSize="$6" fontWeight="600" color="$color12">
+            {t('Ecosystem Betas & Early Access')}
+          </Text>
+        </XStack>
+        <Text fontSize="$3" color="$color11" lineHeight="$5">
+          {t('Preview upcoming releases, manage early access requests for your account, and explore models and developer tools.')}
+        </Text>
+      </YStack>
+
+      <YStack rounded="$4" borderWidth={1} borderColor="$borderColor" bg="$background" p="$4" $md={{ p: '$6' }} gap="$4">
+        <BetasList go={go} />
+      </YStack>
+    </YStack>
   )
 }

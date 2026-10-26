@@ -331,7 +331,7 @@ export function Column({
           </YStack>
         )}
         {rail}
-        {mode === 'studio' || mode === 'tabs' || at ? null : <Recents host={host} mode={mode} thread={thread} onOpen={open} onNew={create} />}
+        {mode === 'studio' || mode === 'tabs' || mode === 'beta' || at ? null : <Recents host={host} mode={mode} thread={thread} onOpen={open} onNew={create} />}
         {at ? null : (
           <YStack gap="$2" pt="$2" shrink={0}>
             <Made />

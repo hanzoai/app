@@ -92,6 +92,8 @@ import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowContro
 const Studio = lazy(() => import('@hanzo/studio').then((m) => ({ default: m.Studio })))
 /** Tabs, the same way: the terminals on the reader's machines (Terminals.tsx). */
 const Terminals = lazy(() => import('./Terminals'))
+/** Betas, fetched when opening /beta in the app. */
+const Betas = lazy(() => import('./Betas').then((m) => ({ default: m.BetasPane })))
 
 /** `/` is Chat on a new conversation. */
 const HOME: Place = { mode: 'chat', thread: null }
@@ -405,6 +407,12 @@ function Window({ bar }: { bar?: Bar }) {
                         <Studio host={maker} rail={false} />
                       </Suspense>
                     </YStack>
+                  </YStack>
+                ) : mode === 'beta' ? (
+                  <YStack render="main" data-slot="pane" {...pane()} overflow="scroll" flex={1} minW={0} minH={0} p="$4" $md={{ p: '$6' }}>
+                    <Suspense fallback={null}>
+                      <Betas go={move} />
+                    </Suspense>
                   </YStack>
                 ) : (
                   <YStack render="main" data-slot="pane" {...(run ? null : { ...pane(), overflow: 'hidden' })} flex={1} minW={0} minH={0}>

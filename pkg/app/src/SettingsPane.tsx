@@ -272,6 +272,48 @@ function Model() {
           </XStack>
         </YStack>
 
+        {/* Toggle 3: Show spoken language selector in composer */}
+        <YStack p="$3" rounded="$3" borderWidth={1} borderColor="$borderColor" gap="$2">
+          <XStack items="center" justify="space-between">
+            <YStack flex={1} pr="$2">
+              <Text fontSize="$3" fontWeight="600" color="$ink">
+                {t('Show language selector beside +')}
+              </Text>
+              <Text fontSize="$2" color="$soft">
+                {t('Display the dictation language indicator next to the + context button on the composer row.')}
+              </Text>
+            </YStack>
+            <Button
+              size="sm"
+              variant={chatPrefs.showLanguage ? 'default' : 'outline'}
+              onClick={() => setChatPrefs({ showLanguage: !chatPrefs.showLanguage })}
+            >
+              {chatPrefs.showLanguage ? t('Enabled') : t('Disabled')}
+            </Button>
+          </XStack>
+        </YStack>
+
+        {/* Toggle 4: Show turbo approval indicator */}
+        <YStack p="$3" rounded="$3" borderWidth={1} borderColor="$borderColor" gap="$2">
+          <XStack items="center" justify="space-between">
+            <YStack flex={1} pr="$2">
+              <Text fontSize="$3" fontWeight="600" color="$ink">
+                {t('Show turbo approval indicator')}
+              </Text>
+              <Text fontSize="$2" color="$soft">
+                {t('Display the turbo / manual approval badge next to the thinking effort and send controls.')}
+              </Text>
+            </YStack>
+            <Button
+              size="sm"
+              variant={chatPrefs.showTurboApproval ? 'default' : 'outline'}
+              onClick={() => setChatPrefs({ showTurboApproval: !chatPrefs.showTurboApproval })}
+            >
+              {chatPrefs.showTurboApproval ? t('Enabled') : t('Disabled')}
+            </Button>
+          </XStack>
+        </YStack>
+
         {!paid ? (
           <XStack pt="$1">
             <Button size="sm" variant="outline" onClick={() => window.location.assign(site('/pricing'))}>

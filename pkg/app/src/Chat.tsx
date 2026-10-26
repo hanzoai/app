@@ -64,7 +64,7 @@ import { useHydrated } from "./lib/hydrated";
 import { base, served } from "./lib/ai";
 import { onServed, type Served as Heard } from "./lib/served";
 import { refused as worded, speech, useDictation, useTalk, useVoice } from "@hanzo/voice";
-import { Check, Clock, FileText, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, X } from "lucide-react";
+import { Check, Clock, FileText, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, X, Zap } from "lucide-react";
 import { FREE, ENSO } from "./lib/ai";
 import { openThread, useOpen } from "./open";
 import { Beside, Framed } from "./Shell";
@@ -1880,7 +1880,7 @@ function Thread({
       limits,
       onUpgrade: (id) => setAsk({ model: nameOf(id, listed) } as Ask),
       voice,
-      language: spoken,
+      language: chatPrefs.showLanguage ? spoken : null,
       onLanguage: speakIn,
       talk,
       // While nothing has been said: what is worth doing next.
@@ -2342,6 +2342,24 @@ function Thread({
             ...basePrompt,
             send: (
               <XStack items="center" gap="$1.5" shrink={0}>
+                {chatPrefs.showTurboApproval ? (
+                  <XStack
+                    items="center"
+                    gap="$1"
+                    px="$2"
+                    py="$1"
+                    rounded={999}
+                    borderWidth={1}
+                    borderColor="$borderColor"
+                    bg="$background"
+                    aria-label={t("Turbo Approval: {mode}", { mode: chatPrefs.approvalMode })}
+                  >
+                    <Zap size={12} color="var(--primary)" aria-hidden />
+                    <Text fontSize="$1" fontWeight="600" color="$ink">
+                      {chatPrefs.approvalMode === "manual" ? t("Manual") : t("Turbo")}
+                    </Text>
+                  </XStack>
+                ) : null}
                 <ThinkingEffort
                   effort={chatPrefs.effort || 'high'}
                   onChange={(eff) => {
