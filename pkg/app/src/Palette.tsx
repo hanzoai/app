@@ -66,7 +66,7 @@ import { empty, openThread, withAgents } from './open'
 import { useThreadList } from './thread'
 import { useSignOut } from './lib/signout'
 import { choose } from './lib/session'
-import { app, paged, settings, studio, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
+import { app, hosted, paged, settings, studio, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
 import { BETAS } from './lib/betas'
 import { useBetas } from './Betas'
 import { tidy } from './lib/title'
@@ -278,7 +278,8 @@ export function Palette({
       icon: <Sparkles {...ICON} />,
       where: t('Beta'),
       keywords: ['beta', b.line],
-      run: () => out(b.href as string),
+      // One that draws inside the app opens there; any other at its own host.
+      run: () => (b.embed !== undefined ? go(hosted(b.id)) : out(b.href as string)),
     }))
     const here = [...top.map(swap), ...frame.filter((b) => !top.some((a) => a.id === b.id)), ...granted]
     const doing = actions(host, go, () => void signOut(), () => (setQuery(''), setKeys(true)), t)

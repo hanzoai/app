@@ -65,16 +65,19 @@ vi.mock('./lib/host', () => ({
   TERMINALS: '/tabs',
   app: (at: string) => `/dev/${at}`,
   go: () => {},
+  hosted: (id: string) => `/apps/${id}`,
   settings: () => '/settings',
   studio: (at: string) => `/studio/${at}`,
   talk: () => '/chat',
   visit: () => {},
-  place: (p: string) => (p === '/beta' ? { mode: 'beta' } : p === '/tabs' ? { mode: 'tabs' } : p === '/chat' ? { mode: 'chat', thread: null } : null),
+  place: (p: string) =>
+    p === '/beta' ? { mode: 'beta' } : p === '/tabs' ? { mode: 'tabs' } : p === '/chat' ? { mode: 'chat', thread: null } : p === '/apps/crm' ? { mode: 'hosted', id: 'crm' } : null,
 }))
 vi.mock('./Top', () => ({ Top: stub('app-bar') }))
 vi.mock('./view', () => ({ FOOT: 0, HEIGHT: '100dvh', TOP: 0, useView: () => () => {} }))
 vi.mock('./WindowControls', () => ({ dragWindow: () => {}, toggleWindowMaximize: () => {}, WindowControls: () => null }))
 vi.mock('./Betas', () => ({ BetasPane: stub('betas-pane') }))
+vi.mock('./Hosted', () => ({ HostedPane: ({ id }: { id: string }) => createElement('div', { 'data-slot': 'hosted-pane', 'data-id': id }) }))
 
 import { App } from './App'
 
@@ -122,6 +125,23 @@ describe('Betas stands alone, as Tabs does', () => {
     const html = draw('/tabs')
     expect(html).not.toContain('data-slot="app-column"')
     expect(html).toMatch(/data-slot="app-bar" data-places="none"/)
+  })
+
+  test('a hosted app stands alone too: its pane and the rail, no sidebar, and the bar’s places are none of Dev’s', async () => {
+    draw('/apps/crm')
+    await new Promise((r) => setTimeout(r, 0))
+    const html = draw('/apps/crm')
+    expect(html).toContain('data-slot="rail"')
+    expect(html).toContain('data-slot="hosted-pane" data-id="crm"')
+    expect(html).not.toContain('data-slot="app-column"')
+    expect(html).not.toContain('betas-pane')
+  })
+
+  test('a phone’s menu over a hosted app carries no places of Dev’s', () => {
+    state.drawer = 'open'
+    const html = draw('/apps/crm')
+    expect(html).toMatch(/data-slot="app-bar" data-places="0"/)
+    expect(html).toMatch(/data-slot="drawer"[^>]*>.*data-slot="app-column" data-places="0"/)
   })
 
   test('Chat keeps its sidebar', () => {

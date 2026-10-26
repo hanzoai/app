@@ -334,7 +334,7 @@ export function Column({
         )}
         {rail}
         {/* Recents fills the column; where there are none the foot is still pushed to the column's foot, on the rail's line. */}
-        {mode === 'studio' || mode === 'tabs' || mode === 'beta' || at ? <YStack flex={1} minH={0} /> : <Recents host={host} mode={mode} thread={thread} onOpen={open} onNew={create} />}
+        {mode === 'studio' || mode === 'tabs' || mode === 'beta' || mode === 'hosted' || at ? <YStack flex={1} minH={0} /> : <Recents host={host} mode={mode} thread={thread} onOpen={open} onNew={create} />}
         {at ? null : (
           <YStack gap="$2" pt="$2" shrink={0}>
             <Made />

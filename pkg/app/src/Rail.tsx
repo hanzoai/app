@@ -44,9 +44,10 @@ import { SidebarItem } from '@hanzo/ui/chat'
 import { BetasDialog, useBetas } from './Betas'
 import { out } from './help'
 import { BETAS } from './lib/betas'
+import { HOSTED_APPS } from './lib/hosted'
 import { Me } from './Me'
 import { BAND } from './ground'
-import { app, WORKSPACE, type Place } from './lib/host'
+import { app, hosted, WORKSPACE, type Place } from './lib/host'
 
 /** The rail's width, px. */
 export const RAIL = 44
@@ -174,6 +175,7 @@ export function Rail({
   at,
   open,
   toggle,
+  inside = null,
   rows = false,
   onChat,
   onDev,
@@ -190,6 +192,8 @@ export function Rail({
   open: boolean
   /** Lead with the sidebar's toggle; absent where the host's bar holds it. */
   toggle?: () => void
+  /** The hosted app (lib/hosted) the reader is in, if any. */
+  inside?: string | null
   /** Listed as rows in a phone's menu rather than marks down the window's edge. */
   rows?: boolean
   /** To Chat, Dev and Studio, each where the reader left it. */
@@ -210,8 +214,11 @@ export function Rail({
   const team = mode !== 'studio'
   const { open: opened } = useBetas()
   const [betas, setBetas] = useState(false)
-  // The apps in beta this reader may open, each where it lives.
-  const granted = BETAS.filter((b) => b.href && opened(b.id))
+  // The apps in beta this reader may open, each where it lives; those that draw inside the app have marks of their own.
+  const granted = BETAS.filter((b) => b.href && b.embed === undefined && opened(b.id))
+  const apps = HOSTED_APPS.filter((a) => opened(a.id))
+  // A link out of the app, or a place in it.
+  const reach = (address: string) => (address.startsWith('/') ? go(address) : out(address))
   const rest: NonNullable<DropdownMenuProps['items']> = [
     ...(rows
       ? [
@@ -231,7 +238,7 @@ export function Rail({
         ]
       : []),
   ]
-  const betasDialog = <BetasDialog open={betas} onOpenChange={setBetas} go={out} />
+  const betasDialog = <BetasDialog open={betas} onOpenChange={setBetas} go={reach} />
   if (rows)
     return (
       <YStack data-slot="places" render="nav" aria-label={t('Products')} pt="$2" shrink={0}>
@@ -242,6 +249,11 @@ export function Rail({
           <YStack role="listitem">
             <Row label="Tabs" on={mode === 'tabs'} onPress={onTabs} data-slot="place-tabs" icon={<SquareTerminal size={16} aria-hidden />} />
           </YStack>
+          {apps.map((a) => (
+            <YStack role="listitem" key={a.id}>
+              <Row label={a.name} on={inside === a.id} onPress={() => go(hosted(a.id))} data-slot={`place-app-${a.id}`} icon={<a.icon size={16} aria-hidden />} />
+            </YStack>
+          ))}
           <YStack role="listitem">
             <DropdownMenu placement="bottom-start" minWidth={220} trigger={<Row label={t('More')} data-slot="place-more" aria-haspopup="menu" icon={<Ellipsis size={16} aria-hidden />} />} items={rest} />
           </YStack>
@@ -281,6 +293,11 @@ export function Rail({
       <Mark label="Tabs" on={mode === 'tabs'} onPress={onTabs} data-slot="rail-tabs">
         <SquareTerminal size={18} aria-hidden />
       </Mark>
+      {apps.map((a) => (
+        <Mark key={a.id} label={a.name} on={inside === a.id} onPress={() => go(hosted(a.id))} data-slot={`rail-app-${a.id}`}>
+          <a.icon size={18} aria-hidden />
+        </Mark>
+      ))}
       <Mark label={t('Library')} on={here === 'library'} onPress={to(RAISED.library)} data-slot="rail-library">
         <Library size={18} aria-hidden />
       </Mark>

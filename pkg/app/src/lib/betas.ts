@@ -26,6 +26,14 @@ export const GROUPS = ['Business', 'Data', 'Agents', 'Build & run', 'Security', 
 
 export type Group = (typeof GROUPS)[number]
 
+/**
+ * How an app draws inside the Hanzo app, at /apps/<id>: its own live host in a
+ * frame (`href`, with `?embed=1`), so a deploy of the standalone app reaches
+ * hanzo.ai with no release here. A row may later name a module the app exports
+ * instead (`mount`); nothing reads it yet.
+ */
+export type Embed = 'frame' | { mount: string }
+
 export interface Beta {
   /** Stable, lowercase, one word: the switch is `beta.<id>`. */
   id: string
@@ -35,22 +43,24 @@ export interface Beta {
   group: Group
   /** Where it opens once granted; absent while it is not built as an app. */
   href?: string
+  /** Drawn inside the app as well, once granted (lib/hosted). */
+  embed?: Embed
 }
 
 /** The developer platform, where a module in beta opens at its own address for anyone who has it. */
 const PLATFORM = 'https://platform.hanzo.ai'
 
 export const BETAS: readonly Beta[] = [
-  { id: 'crm', name: 'CRM', line: phrase('Companies, contacts and deals, per org'), group: 'Business', href: `${PLATFORM}/crm` },
+  { id: 'crm', name: 'CRM', line: phrase('Companies, contacts and deals, per org'), group: 'Business', href: 'https://crm.hanzo.ai/', embed: 'frame' },
   { id: 'erp', name: 'ERP', line: phrase('Items, sales, purchasing, accounting and HR'), group: 'Business', href: `${PLATFORM}/erp` },
-  { id: 'commerce', name: 'Commerce', line: phrase('Catalog, cart, checkout and orders'), group: 'Business', href: 'https://commerce-admin.hanzo.ai/admin' },
+  { id: 'commerce', name: 'Commerce', line: phrase('Catalog, cart, checkout and orders'), group: 'Business', href: 'https://commerce-admin.hanzo.ai/admin/', embed: 'frame' },
   { id: 'books', name: 'Books', line: phrase('Chart of accounts, ledger and bank reconciliation'), group: 'Business' },
   { id: 'finance', name: 'Finance', line: phrase('One ledger for your money operations'), group: 'Business', href: 'https://finance.hanzo.ai' },
   { id: 'treasury', name: 'Treasury & Ledger', line: phrase('Reserves, payouts and a double-entry journal'), group: 'Business' },
   { id: 'dataroom', name: 'Data Room', line: phrase('Share documents and see who opened them'), group: 'Business', href: 'https://dataroom.hanzo.ai' },
   { id: 'sign', name: 'Sign', line: phrase('Send a PDF, get it signed, keep the record'), group: 'Business', href: 'https://esign.hanzo.ai' },
   { id: 'company', name: 'Company', line: phrase('Formation, documents and filings'), group: 'Business', href: `${PLATFORM}/company` },
-  { id: 'cms', name: 'CMS', line: phrase('Pages, posts, media and navigation'), group: 'Business', href: 'https://cms.hanzo.ai/admin' },
+  { id: 'cms', name: 'CMS', line: phrase('Pages, posts, media and navigation'), group: 'Business', href: 'https://cms.hanzo.ai/admin', embed: 'frame' },
   { id: 'helpdesk', name: 'Help Center', line: phrase('Tickets, teams and SLAs'), group: 'Business', href: 'https://hanzo.help' },
   { id: 'marketing', name: 'Marketing', line: phrase('Campaigns, audiences and email sequences'), group: 'Business', href: 'https://marketing.hanzo.ai' },
   { id: 'ads', name: 'Ads', line: phrase('Paid campaigns, launched and paused in one place'), group: 'Business', href: 'https://ads.hanzo.ai' },
@@ -60,8 +70,8 @@ export const BETAS: readonly Beta[] = [
   { id: 'idv', name: 'Identity Verification', line: phrase('KYC, KYB and AML vendors behind one interface'), group: 'Business' },
 
   { id: 'base', name: 'Base', line: phrase('Data, users, files and live updates per org'), group: 'Data', href: 'https://base.hanzo.ai' },
-  { id: 'analytics', name: 'Analytics', line: phrase('Privacy-first product analytics'), group: 'Data', href: 'https://analytics.hanzo.ai' },
-  { id: 'insights', name: 'Insights', line: phrase('Funnels, session replay, flags and experiments'), group: 'Data', href: 'https://insights.hanzo.ai' },
+  { id: 'analytics', name: 'Analytics', line: phrase('Privacy-first product analytics'), group: 'Data', href: 'https://analytics.hanzo.ai', embed: 'frame' },
+  { id: 'insights', name: 'Insights', line: phrase('Funnels, session replay, flags and experiments'), group: 'Data', href: 'https://insights.hanzo.ai', embed: 'frame' },
   { id: 'search', name: 'Search', line: phrase('Keyword and meaning in one query'), group: 'Data', href: `${PLATFORM}/search` },
   { id: 'world', name: 'World', line: phrase('A live map of every model and AI workload'), group: 'Data', href: 'https://world.hanzo.ai' },
   { id: 'crawl', name: 'Crawl', line: phrase('Turn a website into clean Markdown'), group: 'Data', href: `${PLATFORM}/crawl` },

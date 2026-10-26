@@ -83,7 +83,7 @@ import { Palette } from './Palette'
 import { summons } from './seek'
 import { floor, pane } from './ground'
 import { pick } from './lib/session'
-import { app, go, place, settings, studio, talk, TERMINALS, visit, type Place } from './lib/host'
+import { app, go, hosted, place, settings, studio, talk, TERMINALS, visit, type Place } from './lib/host'
 import { Top } from './Top'
 import { FOOT, HEIGHT, TOP, useView } from './view'
 import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowControls'
@@ -92,6 +92,8 @@ import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowContro
 const Studio = lazy(() => import('@hanzo/studio').then((m) => ({ default: m.Studio })))
 /** Tabs, the same way: the terminals on the reader's machines (Terminals.tsx). */
 const Terminals = lazy(() => import('./Terminals'))
+/** The apps in beta that draw inside the app (lib/hosted), fetched when one is opened at /apps/<id>. */
+const Hosted = lazy(() => import('./Hosted').then((m) => ({ default: m.HostedPane })))
 /** Betas, fetched when opening /beta in the app. */
 const Betas = lazy(() => import('./Betas').then((m) => ({ default: m.BetasPane })))
 
@@ -177,8 +179,10 @@ function Window({ bar, betas }: Hosted) {
   const here = path ?? '/'
   const at = place(here) ?? HOME
   const mode = at.mode
-  // Tabs and Betas are their panes alone: no sidebar beside them, and no Dev places in a phone's menu.
-  const alone = mode === 'tabs' || mode === 'beta'
+  // Tabs, Betas and the hosted apps are their panes alone: no sidebar beside them, and no Dev places in a phone's menu.
+  const alone = mode === 'tabs' || mode === 'beta' || mode === 'hosted'
+  // The hosted app the address names (lib/hosted), for the rail to light.
+  const inside = at.mode === 'hosted' ? at.id : null
   const where = at.mode === 'dev' ? at.at : null
   // Studio's host: Dev's, at Studio's address, its moves under /studio, and
   // another organization opening Studio's New in it.
@@ -298,9 +302,9 @@ function Window({ bar, betas }: Hosted) {
   // Another organization: picked, and the app opened in it at the mode's New.
   const org = (o: string) => {
     pick(o)
-    window.location.assign(mode === 'dev' ? app('') : mode === 'studio' ? studio('') : mode === 'tabs' ? TERMINALS : talk())
+    window.location.assign(mode === 'dev' ? app('') : mode === 'studio' ? studio('') : mode === 'tabs' ? TERMINALS : inside ? hosted(inside) : talk())
   }
-  const sidebar = mode === 'beta' ? [] : mode === 'studio' ? places(maker, (p) => maker.go(p)) : mode === 'dev' && raised(where) === 'customize'
+  const sidebar = mode === 'beta' || mode === 'hosted' ? [] : mode === 'studio' ? places(maker, (p) => maker.go(p)) : mode === 'dev' && raised(where) === 'customize'
     ? tabs(host, (p) => host.go(p), t).map((group) => ({ ...group, links: [...group.links, {
       id: 'learning', label: t('Learning'), active: learning, icon: <RefreshCw size={16} aria-hidden />,
       onPress: () => { shut(); setLearning(true) },
@@ -392,7 +396,7 @@ function Window({ bar, betas }: Hosted) {
           >
             {drawer.slide ? <Lift /> : null}
             <YStack height="100%" $max-md={{ display: 'none' }}>
-              <Rail host={host} mode={mode} at={where} open={!closed} toggle={bar ? undefined : flip} onChat={toChat} onDev={toDev} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />
+              <Rail host={host} mode={mode} at={where} inside={inside} open={!closed} toggle={bar ? undefined : flip} onChat={toChat} onDev={toDev} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />
             </YStack>
             {/* Tabs and Betas stand alone: no sidebar beside them. */}
             {closed || alone ? null : (
@@ -421,6 +425,12 @@ function Window({ bar, betas }: Hosted) {
                         <Studio host={maker} rail={false} />
                       </Suspense>
                     </YStack>
+                  </YStack>
+                ) : at.mode === 'hosted' ? (
+                  <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                    <Suspense fallback={null}>
+                      <Hosted id={at.id} go={move} />
+                    </Suspense>
                   </YStack>
                 ) : mode === 'beta' ? (
                   <YStack render="main" data-slot="pane" {...pane()} overflowY="auto" overflowX="hidden" flex={1} minW={0} minH={0} p="$4" $md={{ p: '$6' }}>
@@ -452,7 +462,7 @@ function Window({ bar, betas }: Hosted) {
                 onBack={back}
                 drawer
                 places={sidebar}
-                rail={<Rail host={host} mode={mode} at={where} open rows onChat={toChat} onDev={toDev} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />}
+                rail={<Rail host={host} mode={mode} at={where} inside={inside} open rows onChat={toChat} onDev={toDev} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />}
                 foot={<Foot host={host} onChat={fresh} onOrg={org} />}
               />
             </Layer>

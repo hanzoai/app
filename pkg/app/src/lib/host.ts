@@ -17,6 +17,7 @@
 import APP from './rooms.json' with { type: 'json' }
 import { href, parse, path, route, SESSION, SLUG } from '@hanzo/build/route'
 import { site } from '../where'
+import { BETAS } from './betas'
 
 /** The workspace's own address. */
 export const WORKSPACE = 'https://hanzo.team'
@@ -74,6 +75,18 @@ export const TERMINALS = '/tabs'
  */
 export const BETA = '/beta'
 
+/**
+ * The apps in beta that stand inside the app (lib/hosted): /apps/<id>, one
+ * pane for all of them, each the live host of the standalone app in a frame.
+ */
+export const HOSTED = '/apps'
+
+/** The address of one hosted app, and the page inside it (`at`, a path on its own host) when it is on one. */
+export const hosted = (id: string, at?: string): string => `${HOSTED}/${id}${at ? `?at=${encodeURIComponent(at)}` : ''}`
+
+/** Whether `id` is an app in beta that draws inside the app. */
+const inside = (id: string): boolean => BETAS.some((b) => b.id === id && b.embed !== undefined)
+
 /** Studio at an address of its own (@hanzo/studio `route`): '' is New, /studio. */
 export const studio = (at: string): string => (at ? `${STUDIO}/${at.replace(/^\/+/, '')}` : STUDIO)
 
@@ -121,7 +134,7 @@ export function app(at: string): string {
 }
 
 /** A place in the app: Chat on a conversation or none, or Dev at a builder address. */
-export type Place = { mode: 'chat'; thread: string | null } | { mode: 'dev'; at: string } | { mode: 'studio'; at: string } | { mode: 'tabs' } | { mode: 'beta' }
+export type Place = { mode: 'chat'; thread: string | null } | { mode: 'dev'; at: string } | { mode: 'studio'; at: string } | { mode: 'tabs' } | { mode: 'beta' } | { mode: 'hosted'; id: string }
 
 /** /chat/shared is a page of its own, where a chat shared by link is read (lib/share.ts). */
 const SHARED = 'shared'
@@ -134,6 +147,10 @@ export function place(pathname: string): Place | null {
   if (p === STUDIO || p.startsWith(`${STUDIO}/`)) return { mode: 'studio', at: p.slice(STUDIO.length + 1) }
   if (p === TERMINALS) return { mode: 'tabs' }
   if (p === BETA) return { mode: 'beta' }
+  if (p.startsWith(`${HOSTED}/`)) {
+    const id = p.slice(HOSTED.length + 1)
+    return inside(id) ? { mode: 'hosted', id } : null
+  }
   if (!p.startsWith(`${CHAT}/`)) return null
   const id = p.slice(CHAT.length + 1)
   if (id.includes('/') || id === SHARED) return null
@@ -152,6 +169,7 @@ export function page(pathname: string): string {
   if (at.mode === 'tabs') return TERMINALS
   if (at.mode === 'studio') return STUDIO
   if (at.mode === 'beta') return BETA
+  if (at.mode === 'hosted') return `${HOSTED}/:id`
   const r = route(at.at)
   if (r.kind === 'run') return `${DEV}/run/:id`
   if (r.kind === 'repo') return `${DEV}/projects/:org/:repo`

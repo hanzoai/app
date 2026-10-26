@@ -12,8 +12,10 @@ const state = vi.hoisted(() => ({ token: 't1' }))
 // element draws its children and keeps its data-* marks, which is what is read.
 const draw = ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) =>
   createElement('div', Object.fromEntries(Object.entries(props).filter(([k]) => k.startsWith('data-'))), children)
+const press = ({ children, onPress, ...props }: { children?: ReactNode; onPress?: () => void } & Record<string, unknown>) =>
+  createElement('button', { ...Object.fromEntries(Object.entries(props).filter(([k]) => k.startsWith('data-'))), onClick: onPress }, children)
 vi.mock('@hanzo/ui', () => ({
-  Button: draw,
+  Button: press,
   Dialog: draw,
   DialogContent: draw,
   DialogTitle: draw,
@@ -36,12 +38,12 @@ const cloud = (flags: Record<string, boolean>, opted: { on: boolean; blocked: bo
 
 const row = (id: string) => document.querySelector(`[data-beta="${id}"]`)?.textContent ?? ''
 
-async function draws() {
+async function draws(go?: (href: string) => void) {
   const { BetasList } = await import('./Betas')
   const at = document.createElement('div')
   document.body.append(at)
   const root = createRoot(at)
-  await act(async () => root.render(createElement(BetasList)))
+  await act(async () => root.render(createElement(BetasList, { go })))
   await act(async () => new Promise((r) => setTimeout(r, 0)))
   return async () => {
     await act(async () => root.unmount())
@@ -74,6 +76,18 @@ describe('the Betas list', () => {
     const done = await draws()
     expect(row('mori')).toContain('Public beta')
     expect(row('mori')).toContain('Turned off by your organization')
+    await done()
+  })
+})
+
+describe('opening an app from the list', () => {
+  test('one that draws inside the app opens there, at /apps/<id>; any other at its own host', async () => {
+    state.token = 't3'
+    vi.stubGlobal('fetch', cloud({ 'beta.crm': true, 'beta.finance': true }, { on: false, blocked: false, public: [] }))
+    const went: string[] = []
+    const done = await draws((href) => went.push(href))
+    for (const id of ['crm', 'finance']) await act(async () => void (document.querySelector(`[data-beta="${id}"] [data-slot="beta-open"]`) as HTMLElement).click())
+    expect(went).toEqual(['/apps/crm', 'https://finance.hanzo.ai'])
     await done()
   })
 })

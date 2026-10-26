@@ -34,8 +34,8 @@ vi.mock('@hanzo/gui', () => ({ Text: part, XStack: part, YStack: part }))
 vi.mock('@hanzo/ui', () => ({ DropdownMenu: menu }))
 vi.mock('@hanzo/ui/chat', () => ({ Sidebar: part, SidebarIconButton: part, SidebarItem: part, StatusDot: () => null }))
 vi.mock('@hanzogui/shell', () => ({ HanzoMark: () => null }))
-// The reader holds beta.crm and nothing else.
-vi.mock('./Betas', () => ({ BetasDialog: () => null, useBetas: () => ({ open: (id: string) => id === 'crm' }) }))
+// The reader holds beta.finance and nothing else.
+vi.mock('./Betas', () => ({ BetasDialog: () => null, useBetas: () => ({ open: (id: string) => id === 'finance' }) }))
 vi.mock('@hanzo/build', () => {
   const route = (at: string) =>
     at === '-/artifacts'
@@ -129,8 +129,8 @@ describe('the rail', () => {
 
   test('More holds the apps in beta the reader may open, then Betas, the list of all of them', () => {
     const html = rail('chat')
-    expect(at(html, 'data-item="beta-crm"')).toBeGreaterThan(at(html, 'data-item="team"'))
-    expect(at(html, 'data-item="betas"')).toBeGreaterThan(at(html, 'data-item="beta-crm"'))
+    expect(at(html, 'data-item="beta-finance"')).toBeGreaterThan(at(html, 'data-item="team"'))
+    expect(at(html, 'data-item="betas"')).toBeGreaterThan(at(html, 'data-item="beta-finance"'))
     expect(html, 'an app in beta the reader was not granted').not.toContain('data-item="beta-erp"')
   })
 
@@ -154,7 +154,7 @@ describe('a phone’s menu', () => {
     expect(html).toContain('data-slot="places"')
     expect(at(html, 'data-slot="place-studio"')).toBeLessThan(at(html, 'data-slot="place-tabs"'))
     expect(at(html, 'data-slot="place-tabs"')).toBeLessThan(at(html, 'data-slot="place-more"'))
-    const more = ['library', 'scheduled', 'customize', 'team', 'beta-crm', 'betas'].map((k) => at(html, `data-item="${k}"`))
+    const more = ['library', 'scheduled', 'customize', 'team', 'beta-finance', 'betas'].map((k) => at(html, `data-item="${k}"`))
     expect(more).toEqual([...more].sort((a, b) => a - b))
   })
 

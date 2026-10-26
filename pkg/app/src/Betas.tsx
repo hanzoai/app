@@ -31,6 +31,7 @@ import { Button, Dialog, DialogContent, DialogTitle, Text, XStack, YStack } from
 import { api } from './lib/api'
 import { BETAS, GROUPS, opens, type Beta, type Group } from './lib/betas'
 import { bearer, scope, superAdmin } from './lib/session'
+import { hosted } from './lib/host'
 import { CHANGED, optin } from './lib/optin'
 
 /** What the cloud said for one token: the switches in force and what was asked for. */
@@ -160,15 +161,16 @@ function here(): boolean {
   return host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host.endsWith('.local') || /^10\./.test(host) || /^192\.168\./.test(host)
 }
 
-/** One app's action: Open where it may, Requested once asked, else Request access. */
-function Ask({ beta, go }: { beta: Beta; go?: (href: string) => void }) {
+/** One app's action: Open where it may (in the app, for one that draws inside it), Requested once asked, else Request access. */
+export function Ask({ beta, go }: { beta: Beta; go?: (href: string) => void }) {
   const { t } = useI18n()
   const { open, asked, promoted, blocked, request } = useBetas()
   const [busy, setBusy] = useState(false)
   const [wrong, setWrong] = useState<string | null>(null)
   if (open(beta.id)) {
-    return beta.href && go ? (
-      <Button size="sm" rounded={999} onPress={() => go(beta.href as string)} data-slot="beta-open">
+    const to = beta.embed !== undefined ? hosted(beta.id) : beta.href
+    return to && go ? (
+      <Button size="sm" rounded={999} onPress={() => go(to)} data-slot="beta-open">
         {t('Open')}
       </Button>
     ) : (
