@@ -75,6 +75,8 @@ vi.mock('./lib/tags', () => ({ track: () => {} }))
 vi.mock('./lib/mix', () => ({ BAD: 'red', mix: () => '' }))
 // The focused pages' bar has its own tests (Chrome.test.ts); here it is only where it stands.
 vi.mock('./Chrome', () => ({ Chrome: () => createElement('header', { 'data-slot': 'masthead' }) }))
+// The accounts section has its own tests (Accounts.test.ts); here it is only where it stands.
+vi.mock('./Accounts', () => ({ Accounts: () => createElement('section', { 'aria-label': 'Accounts' }) }))
 vi.mock('./host', () => ({ useRooms: () => ({ router: { replace: () => {} } }) }))
 vi.mock('./where', () => ({ brand: () => 'Hanzo AI', site: (p: string) => p, where: () => state.where }))
 
@@ -186,6 +188,14 @@ describe('the organization gate', () => {
       for (const o of ['acme', 'webby-ai']) expect(html).toContain(`>${o}<`)
       expect(html).toContain('>Owner<')
       expect(html).not.toContain('<textarea')
+    })
+
+    test('the heading is the whole of what it says: no sentence about what an organization owns, and the accounts stand under the rows', () => {
+      const html = drawn()
+      expect(html).not.toContain('Everything you open')
+      expect(html).not.toContain('credit')
+      expect(html).toContain('aria-label="Accounts"')
+      expect(html.indexOf('aria-label="Your organizations"')).toBeLessThan(html.indexOf('aria-label="Accounts"'))
     })
 
     test('a person may found one here, and is never shown every organization', () => {

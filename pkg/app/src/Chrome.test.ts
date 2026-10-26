@@ -11,6 +11,12 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 const state = vi.hoisted(() => ({
   iam: { isAuthenticated: true, user: null as Record<string, string> | null },
   named: { name: 'Bob Ross', display: 'Bob Ross', email: 'bob@hanzo.ai' } as { name: string; display: string; email: string } | null,
+  accounts: { accounts: [], current: null, switchTo: async () => {}, add: async () => {} } as {
+    accounts: { sub: string; owner: string; name: string; displayName: string; email: string; avatar: string }[]
+    current: { sub: string } | null
+    switchTo: () => Promise<void>
+    add: () => Promise<void>
+  },
 }))
 
 // The drawing libraries are not under test and do not load outside a bundler.
@@ -28,7 +34,7 @@ vi.mock('@hanzo/ui', () => ({
   Button: ({ children }: { children?: ReactNode }) => createElement('button', null, children),
   DropdownMenu: pass,
   DropdownMenuContent: pass,
-  DropdownMenuItem: ({ children }: { children?: ReactNode }) => createElement('button', null, children),
+  DropdownMenuItem: ({ children, onSelect }: { children?: ReactNode; onSelect?: () => void }) => createElement('button', { onClick: onSelect }, children),
   DropdownMenuLabel: pass,
   DropdownMenuSeparator: () => null,
   DropdownMenuTrigger: pass,
@@ -36,7 +42,7 @@ vi.mock('@hanzo/ui', () => ({
 vi.mock('@hanzogui/shell', () => ({ HanzoWordmark: ({ label }: { label: string }) => createElement('span', null, label) }))
 vi.mock('@hanzo/iam/react', () => ({ useIam: () => state.iam }))
 vi.mock('./lib/session', () => ({ named: () => state.named }))
-vi.mock('./lib/destination', () => ({ rememberDestination: () => {} }))
+vi.mock('./lib/accounts', async (original) => ({ ...(await original<typeof import('./lib/accounts')>()), useAccounts: () => state.accounts }))
 vi.mock('./lib/signout', () => ({ useSignOut: () => async () => {} }))
 vi.mock('./where', () => ({ brand: () => 'Hanzo AI', site: (p: string) => p }))
 
@@ -63,7 +69,7 @@ describe('the focused pages\' bar', () => {
     const html = drawn()
     expect(html.match(/>Bob Ross</g)).toHaveLength(1)
     expect(html.match(/>bob@hanzo\.ai</g)).toHaveLength(1)
-    expect(html.match(/>Use another account</g)).toHaveLength(1)
+    expect(html.match(/>Add account</g)).toHaveLength(1)
     expect(html.match(/>Log out</g)).toHaveLength(1)
     expect(html).toContain('aria-label="Account: Bob Ross"')
   })
@@ -87,7 +93,7 @@ describe('the focused pages\' bar', () => {
     expect(html).toContain('>Hanzo AI<')
     expect(html).not.toContain('aria-label="Account')
     expect(html).not.toContain('Log out')
-    expect(html).not.toContain('Use another account')
+    expect(html).not.toContain('Add account')
   })
 
   test('the host\'s back stands after the brand', () => {
@@ -133,6 +139,45 @@ describe('the bar\'s ground', () => {
       window.dispatchEvent(new Event('scroll'))
     })
     expect(html()).toContain('data-bg="transparent"')
+    await act(async () => root.unmount())
+    host.remove()
+  })
+})
+
+describe('the bar\'s other accounts', () => {
+  const bob = { sub: 's1', owner: 'hanzo', name: 'bob', displayName: 'Bob Ross', email: 'bob@hanzo.ai', avatar: '' }
+  const carol = { sub: 's2', owner: 'hanzo', name: 'carol', displayName: 'Carol Ames', email: 'carol@example.com', avatar: '' }
+
+  beforeEach(() => {
+    state.iam = { isAuthenticated: true, user: null }
+    state.named = { name: 'Bob Ross', display: 'Bob Ross', email: 'bob@hanzo.ai' }
+  })
+
+  test('the accounts signed in on this browser are one tap away, and this one is not among them', () => {
+    state.accounts = { ...state.accounts, accounts: [bob, carol], current: bob }
+    const html = drawn()
+    expect(html.match(/>Carol Ames</g)).toHaveLength(1)
+    expect(html.match(/>carol@example\.com</g)).toHaveLength(1)
+    expect(html.match(/>bob@hanzo\.ai</g), 'the reader once, in the menu\'s heading').toHaveLength(1)
+  })
+
+  test('a tap is being that account, Add account is adding one, and neither signs anyone out', async () => {
+    const switchTo = vi.fn(async () => {})
+    const add = vi.fn(async () => {})
+    state.accounts = { accounts: [bob, carol], current: bob, switchTo, add }
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => root.render(createElement(Chrome, {})))
+    const press = async (text: string) => {
+      const button = [...host.querySelectorAll('button')].find((b) => b.textContent?.includes(text))
+      expect(button, text).toBeTruthy()
+      await act(async () => button!.click())
+    }
+    await press('Carol Ames')
+    expect(switchTo).toHaveBeenCalledWith(carol)
+    await press('Add account')
+    expect(add).toHaveBeenCalledTimes(1)
     await act(async () => root.unmount())
     host.remove()
   })

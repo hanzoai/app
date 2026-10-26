@@ -7,14 +7,15 @@
  * The brand at the start (`HanzoWordmark`: `brand()` in words, as the site's own bar sets it), going to this
  * host's root; then the host's `back`, where the page has a step to go back to.
  * At the end, once someone is signed in, who it is: the face, the name and the
- * address, with Use another account and Log out. Signed out, nothing but the
- * brand. Under gui's `md` the account folds into its face, a menu of the address
+ * address, the other accounts signed in on this browser to be one tap away
+ * (lib/accounts), Add account and Log out. Signed out, nothing but the brand. Under gui's `md` the account folds into its face, a menu of the address
  * and the same two ways out.
  *
- * Use another account writes this page down first (destination.ts
- * `rememberDestination`), so the sign-in that follows comes back to it, as
- * hanzo.ai's /join does. Log out is the account menu's own (lib/signout). The
- * session is IAM's: the host mounts `IamProvider`.
+ * Being another account, and adding one, write this page down first
+ * (destination.ts `rememberDestination`), so the sign-in that follows comes back
+ * to it, as hanzo.ai's /join does, and neither ends a session. Log out is the
+ * account menu's own (lib/signout) and ends every one. The session is IAM's: the
+ * host mounts `IamProvider`.
  */
 
 import { useEffect, useState, type ReactNode } from 'react'
@@ -23,7 +24,8 @@ import { useIam } from '@hanzo/iam/react'
 import { Text, View, XStack, YStack } from '@hanzo/gui'
 import { Avatar, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@hanzo/ui'
 import { HanzoWordmark } from '@hanzogui/shell'
-import { rememberDestination } from './lib/destination'
+import { Face } from './Accounts'
+import { useAccounts } from './lib/accounts'
 import { named } from './lib/session'
 import { useSignOut } from './lib/signout'
 import { brand, site } from './where'
@@ -61,11 +63,9 @@ export function Chrome({ back }: { back?: ReactNode }) {
   const email = u?.email || claimed?.email || ''
   const avatar = typeof u?.avatar === 'string' && u.avatar.startsWith('https://') ? u.avatar : ''
   const who = name || email
-  const other = () => {
-    rememberDestination()
-    void signOut()
-  }
   const out = () => void signOut()
+  const { accounts, current, switchTo, add } = useAccounts()
+  const others = accounts.filter((a) => a.sub !== current?.sub)
   const signed = isAuthenticated && Boolean(who)
   const moved = useMoved()
   return (
@@ -157,9 +157,16 @@ export function Chrome({ back }: { back?: ReactNode }) {
                 </Text>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={other}>
+              {others.map((a) => (
+                <DropdownMenuItem key={a.sub} onSelect={() => void switchTo(a)}>
+                  <XStack items="center" gap={10} minW={0}>
+                    <Face account={a} />
+                  </XStack>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuItem onSelect={() => void add()}>
                 <Text fontSize="$3" color="$ink">
-                  {t('Use another account')}
+                  {t('Add account')}
                 </Text>
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={out}>

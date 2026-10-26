@@ -9,7 +9,7 @@
  * one sign-out ends. Nobody is sent to hanzo.id for any of it.
  */
 
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { IAM } from '@hanzo/iam'
 import { useIam } from '@hanzo/iam/react'
 import { useSignOut as useUiSignOut } from '@hanzo/ui/auth'
@@ -42,5 +42,11 @@ export const OUT = '/login?from=logout'
  */
 export function useSignOut(): () => Promise<void> {
   // @ts-expect-error everywhere option added in @hanzo/ui / IAM shared sign-out
-  return useUiSignOut({ to: OUT, track, everywhere: true })
+  const signOut: () => Promise<void> = useUiSignOut({ to: OUT, track, everywhere: true })
+  return useCallback(async () => {
+    // Google One Tap signs a returning person in on its own (`auto_select`), which
+    // would put them straight back in the account they just left. Leaving says so.
+    ;(window as unknown as { google?: { accounts?: { id?: { disableAutoSelect?: () => void } } } }).google?.accounts?.id?.disableAutoSelect?.()
+    await signOut()
+  }, [signOut])
 }

@@ -56,6 +56,7 @@ import { english, type Say } from './say'
 import { countSignup } from './lib/intent'
 import { BAD, mix } from './lib/mix'
 import { useRooms } from './host'
+import { Accounts } from './Accounts'
 import { Chrome } from './Chrome'
 import { site, where } from './where'
 
@@ -332,15 +333,17 @@ function Rule({ mt = 20, mb = 20 }: { mt?: number; mb?: number }) {
 }
 
 /** A screen's heading and the line under it; `lead` is the line's leading where it states one. */
-function Heading({ title, lede, lead }: { title: ReactNode; lede: ReactNode; lead?: number }) {
+function Heading({ title, lede, lead }: { title: ReactNode; lede?: ReactNode; lead?: number }) {
   return (
     <>
       <Text render="h1" fontSize="$10" fontWeight="500" letterSpacing={-0.32} color="var(--text-primary)">
         {title}
       </Text>
-      <Text render="p" mt={6} fontSize="$4" lineHeight={lead} color={muted}>
-        {lede}
-      </Text>
+      {lede ? (
+        <Text render="p" mt={6} fontSize="$4" lineHeight={lead} color={muted}>
+          {lede}
+        </Text>
+      ) : null}
     </>
   )
 }
@@ -963,7 +966,7 @@ function Pick({
       <Column>
         <XStack items="flex-start" justify="space-between" gap={12}>
           <YStack flex={1} minW={0}>
-            <Heading title={t('Choose an organization')} lede={t("Everything you open — chats, agents, credit — is this one's.")} />
+            <Heading title={t('Choose an organization')} />
           </YStack>
           {onClose ? (
             <Button variant="ghost" size="icon-sm" marginInlineEnd={-8} onClick={onClose} aria-label={t('Close')}>
@@ -1008,6 +1011,7 @@ function Pick({
           </Text>
         ) : null}
         {sudo ? <Everyone q={q} skip={members} /> : null}
+        <Accounts />
       </Column>
       {founding ? <Found onClose={() => setFounding(false)} /> : null}
     </Page>
