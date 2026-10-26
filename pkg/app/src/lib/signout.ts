@@ -41,7 +41,6 @@ export const OUT = '/login?from=logout'
  * the session. A third-party app the person signed into keeps its own.
  */
 export function useSignOut(): () => Promise<void> {
-  // @ts-expect-error everywhere option added in @hanzo/ui / IAM shared sign-out
   const signOut: () => Promise<void> = useUiSignOut({ to: OUT, track, everywhere: true })
   return useCallback(async () => {
     // Google One Tap signs a returning person in on its own (`auto_select`), which
