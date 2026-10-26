@@ -25,7 +25,7 @@ import { Text, XStack } from '@hanzo/gui'
 import { nav, NEW, type Host } from '@hanzo/build'
 import { ToggleGroup, ToggleGroupItem } from '@hanzo/ui'
 import type { RailLink } from '@hanzo/ui/chat'
-import { pane } from './ground'
+import { BAND, pane } from './ground'
 import { empty } from './open'
 import { talk, type Place } from './lib/host'
 
@@ -150,7 +150,18 @@ export function Top({
         }
       : { label: made?.label ?? t('New'), onPress: made?.onPress }
   return (
-    <XStack data-slot="app-bar" height={`calc(${LINE}px + var(--safe-top))`} pt="var(--safe-top)" px="$4.5" items="center" justify="space-between" shrink={0} $md={{ display: 'none' }}>
+    // The gap above the bar is the gap the pane keeps all round, under the device's inset; the bar's row is the
+    // head band (BAND), the drawer's title row on the same line.
+    <XStack
+      data-slot="app-bar"
+      height={`calc(${BAND}px + var(--safe-top) + var(--pane-gap))`}
+      pt="calc(var(--safe-top) + var(--pane-gap))"
+      px="$4.5"
+      items="center"
+      justify="space-between"
+      shrink={0}
+      $md={{ display: 'none' }}
+    >
       <Round label={t('Open sidebar')} data-slot="bar-menu" onPress={onMenu} pointerEvents={open ? 'none' : 'auto'}>
         <Lines />
       </Round>

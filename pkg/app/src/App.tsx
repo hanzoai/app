@@ -384,7 +384,8 @@ function Window({ bar, betas }: Hosted) {
             minH={0}
             paddingInlineEnd="var(--pane-gap)"
             pb="var(--pane-gap)"
-            pt={0}
+            // The gap above the pane is the gap at its end and foot; a window's own bar above it is that gap.
+            pt={bar ? 0 : 'var(--pane-gap)'}
             // A phone's frame is full-bleed on the floor, which follows the theme,
             // so the top of the page the browser's bar tints from does too.
             $max-md={{ p: 0 }}
@@ -399,7 +400,7 @@ function Window({ bar, betas }: Hosted) {
                 <Column host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} onSeek={seek} onBack={back} places={sidebar} />
               </YStack>
             )}
-            <YStack data-slot="stage" flex={1} minW={0} minH={0} marginInlineStart={closed || alone ? 0 : 'var(--pane-gap)'} $max-md={{ marginInlineStart: 0, pb: FOOT }}>
+            <YStack data-slot="stage" flex={1} minW={0} minH={0} marginInlineStart={closed || alone ? 0 : 'var(--pane-gap)'} $max-md={{ marginInlineStart: 0, pb: `max(var(--pane-gap), ${FOOT})` }}>
               {/* A phone has no rail and no sidebar: its bar opens them as a drawer and switches Chat and Dev. */}
               {bar ? null : <Top host={host} mode={mode} places={sidebar} open={drawer.state !== 'shut'} go={move} onMenu={drawer.open} onChat={toChat} onDev={toDev} />}
               <XStack data-slot="panes" flex={1} minW={0} minH={0}>

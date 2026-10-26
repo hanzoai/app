@@ -45,13 +45,17 @@ import { BetasDialog, useBetas } from './Betas'
 import { out } from './help'
 import { BETAS } from './lib/betas'
 import { Me } from './Me'
+import { BAND } from './ground'
 import { app, WORKSPACE, type Place } from './lib/host'
 
 /** The rail's width, px. */
 export const RAIL = 44
 
 /** A mark, px: a 36px square on a 44px pitch. */
-const MARK = 36
+export const MARK = 36
+
+/** A mark on a touch screen, px: a thumb's 44. */
+const TOUCH = 44
 
 /** The places the rail holds beside the products, by the builder address each opens. */
 export const RAISED = { library: '-/artifacts', scheduled: '-/automations', customize: '-/customize' } as const
@@ -102,7 +106,7 @@ export function Mark({
       pressStyle={{ bg: '$raised' }}
       focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
       // A thumb's 44px on a touch screen.
-      $touchable={{ width: 44, height: 44 }}
+      $touchable={{ width: TOUCH, height: TOUCH }}
       {...rest}
     >
       {children}
@@ -246,7 +250,20 @@ export function Rail({
       </YStack>
     )
   return (
-    <YStack data-slot="rail" render="nav" aria-label={t('Products')} width={RAIL} flex={1} pt={4} pb={4} gap={4} shrink={0} items="center">
+    <YStack
+      data-slot="rail"
+      render="nav"
+      aria-label={t('Products')}
+      width={RAIL}
+      flex={1}
+      // The first mark centred on the head band beside it (BAND), the account on the sidebar's foot (Column's `pb`).
+      pt={(BAND - MARK) / 2}
+      pb="$2"
+      gap={4}
+      shrink={0}
+      items="center"
+      $touchable={{ pt: (BAND - TOUCH) / 2 }}
+    >
       {toggle ? (
         <YStack pb={4}>
           <Toggle open={open} onPress={toggle} />

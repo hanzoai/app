@@ -23,6 +23,12 @@ export const pane = (fill = 'var(--pane-fill)') =>
   }) as const
 
 /**
+ * One head row, px: the sidebar's title row, a pane's top bar and a phone's bar
+ * are this high and stand on one line, so the marks in them share a centerline.
+ */
+export const BAND = 52
+
+/**
  * THE FLOOR under the app's frame (app/_web.tsx, components/settings/Frame.tsx):
  * design's top light falling off down the window over the faint lamps of
  * `--pane-ground`. A straight fall rather than a radial glow, because at these

@@ -6,9 +6,11 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 // names itself: what is under test is which parts Betas, Tabs and Chat draw,
 // not how each is drawn. A part that takes places says how many groups it got.
 const { part, stub, state, through } = vi.hoisted(() => {
-  type Part = { children?: ReactNode; 'data-slot'?: string }
+  type Part = { children?: ReactNode; 'data-slot'?: string; pt?: unknown; pb?: unknown; paddingInlineEnd?: unknown }
   const through = ({ children }: { children?: ReactNode }) => createElement(Fragment, null, children)
-  const part = ({ children, 'data-slot': slot }: Part) => createElement('div', { 'data-slot': slot }, children)
+  // The frame's padding is what these tests read, so it is written on the stand-in.
+  const part = ({ children, 'data-slot': slot, pt, pb, paddingInlineEnd }: Part) =>
+    createElement('div', { 'data-slot': slot, 'data-pt': pt as string | undefined, 'data-pb': pb as string | undefined, 'data-pe': paddingInlineEnd as string | undefined }, children)
   const stub = (slot: string) => (props: { places?: unknown[]; children?: ReactNode }) =>
     createElement('div', { 'data-slot': slot, 'data-places': props.places === undefined ? 'none' : String(props.places.length) }, props.children)
   const state = { path: '/beta', drawer: 'shut' as 'shut' | 'open' }
@@ -76,9 +78,9 @@ vi.mock('./Betas', () => ({ BetasPane: stub('betas-pane') }))
 
 import { App } from './App'
 
-const draw = (path: string, betas?: ReactNode) => {
+const draw = (path: string, betas?: ReactNode, bar?: { inset?: number }) => {
   state.path = path
-  return renderToStaticMarkup(createElement(App, { betas }))
+  return renderToStaticMarkup(createElement(App, { betas, bar }))
 }
 
 beforeEach(() => {
@@ -124,5 +126,24 @@ describe('Betas stands alone, as Tabs does', () => {
 
   test('Chat keeps its sidebar', () => {
     expect(draw('/chat')).toContain('data-slot="app-column"')
+  })
+})
+
+describe('the pane keeps one gap all round', () => {
+  const frame = (html: string) => html.match(/<div[^>]*data-slot="frame"[^>]*>/)![0]
+
+  test('above, below and at its end the frame leaves the same gap', () => {
+    const tag = frame(draw('/chat'))
+    expect(tag).toContain('data-pt="var(--pane-gap)"')
+    expect(tag).toContain('data-pb="var(--pane-gap)"')
+    expect(tag).toContain('data-pe="var(--pane-gap)"')
+  })
+
+  test('a window’s own bar stands for the gap above', () => {
+    expect(frame(draw('/chat', undefined, {}))).toContain('data-pt="0"')
+  })
+
+  test('the same holds in Betas and Tabs', () => {
+    for (const path of ['/beta', '/tabs']) expect(frame(draw(path))).toContain('data-pt="var(--pane-gap)"')
   })
 })

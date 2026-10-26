@@ -116,6 +116,7 @@ import { enter, LOGIN } from './lib/destination';
 import { first } from './lib/first';
 import { BAD } from "./lib/mix";
 import { brand } from './where'
+import { BAND } from './ground'
 import { ThinkingEffort, type EffortLevel } from './ThinkingEffort'
 import { shared, useChatPreferences } from './lib/chatPreferences'
 
@@ -1967,7 +1968,7 @@ function Thread({
           Summary, and the tabs beside it. */}
       <XStack
         data-slot="conversation-head"
-        height={52}
+        height={BAND}
         items="center"
         justify="space-between"
         gap="$3"

@@ -38,7 +38,7 @@ import { Sidebar, SidebarIconButton, SidebarItem, StatusDot, type RailLink } fro
 import { useId, type ReactNode } from 'react'
 import { Made } from './Me'
 import { Recents } from './Recents'
-import { raised, type Raised } from './Rail'
+import { MARK, raised, type Raised } from './Rail'
 import { Setup } from './Setup'
 import { ago, UNTITLED_RUN, type Recent } from './recent'
 import { empty } from './open'
@@ -48,6 +48,7 @@ import { talk, type Place } from './lib/host'
 import { payUrl } from './lib/pay'
 import { brand, wordmark } from './where'
 import { dragWindow, toggleWindowMaximize } from './WindowControls'
+import { BAND } from './ground'
 
 /** The sidebar fills the column. Its `width` is typed in px alone, though its frame takes any gui size — the type is
  *  @hanzo/ui's to widen. */
@@ -203,8 +204,9 @@ export function Column({
         borderWidth={0}
         {...FILL}
         px="$2"
-        pt={drawer ? '$2' : 0}
-        pb="$2"
+        pt={drawer ? 'var(--pane-gap)' : 0}
+        // In the drawer the menu's own foot padding is the gap; its foot row stands on it.
+        pb={drawer ? 0 : '$2'}
         gap="$0"
       >
         {at ? (
@@ -214,7 +216,7 @@ export function Column({
             gap="$1"
             paddingInlineStart={2}
             paddingInlineEnd={2}
-            height={52}
+            height={BAND}
             shrink={0}
             minW={0}
             data-tauri-drag-region="deep"
@@ -235,7 +237,7 @@ export function Column({
             gap="$1"
             paddingInlineStart="$2"
             paddingInlineEnd={2}
-            height={52}
+            height={BAND}
             shrink={0}
             minW={0}
             data-tauri-drag-region="deep"
@@ -331,7 +333,8 @@ export function Column({
           </YStack>
         )}
         {rail}
-        {mode === 'studio' || mode === 'tabs' || mode === 'beta' || at ? null : <Recents host={host} mode={mode} thread={thread} onOpen={open} onNew={create} />}
+        {/* Recents fills the column; where there are none the foot is still pushed to the column's foot, on the rail's line. */}
+        {mode === 'studio' || mode === 'tabs' || mode === 'beta' || at ? <YStack flex={1} minH={0} /> : <Recents host={host} mode={mode} thread={thread} onOpen={open} onNew={create} />}
         {at ? null : (
           <YStack gap="$2" pt="$2" shrink={0}>
             <Made />
@@ -340,7 +343,8 @@ export function Column({
         )}
         {free ? (
           <YStack role="list" gap={2} shrink={0} pt="$2">
-            <YStack role="listitem">
+            {/* A mark's height, centred: the rail's account beside it stands on the same line. */}
+            <YStack role="listitem" minH={MARK} justify="center">
               <SidebarItem
                 {...ROW}
                 data-slot="column-upgrade"
