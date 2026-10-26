@@ -12,7 +12,7 @@
 //   │ ✎ New chat                │    │   the press that closes (`drawer-close`)
 //   │ ◇ Studio  ⌨ Tabs  ⋯ More  │    │
 //   │ Pinned …  Recents …       │    │
-//   │ (ZK)            (✎ Chat)  │    │   the foot: the account and the accent New chat
+//   │                           │    │   the account stands at the rail's foot (Rail.tsx)
 //   └──────────────────────────┴────╯
 //
 // Three states, because the slide home has to be seen: shut (no menu, the pane
@@ -39,9 +39,7 @@
 
 import { useI18n } from '@hanzo/i18n/react'
 import { Text, XStack, YStack, useMedia } from '@hanzo/gui'
-import { SquarePen } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { Me, type Who } from './Me'
 import { axis, OPEN, pull, settle, sign, type State } from './slide'
 
 /** A press that moves the app: told whether it should take the menu's place in history. */
@@ -432,38 +430,5 @@ export function Layer({ drawer, top = 0, children }: { drawer: Drawer; top?: num
         />
       ) : null}
     </YStack>
-  )
-}
-
-/** The menu's foot: the accent New chat at the start and the account (its menu opens above it) at the end. */
-export function Foot({ host, onChat, onOrg }: { host: Who; onChat: () => void; onOrg: (org: string) => void }) {
-  const { t } = useI18n()
-  return (
-    <XStack data-slot="drawer-foot" items="center" justify="space-between" gap="$2" pt="$2" px="$1" shrink={0}>
-      <XStack
-        render="button"
-        data-slot="drawer-chat"
-        aria-label={t('New chat')}
-        onPress={onChat}
-        height={44}
-        px="$4.5"
-        gap="$2"
-        rounded={9999}
-        items="center"
-        justify="center"
-        bg="var(--accent)"
-        borderWidth={0}
-        cursor="pointer"
-        hoverStyle={{ bg: 'var(--accent-hover)' }}
-        pressStyle={{ bg: 'var(--accent-hover)' }}
-        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
-      >
-        <SquarePen size={18} color="var(--accent-foreground)" aria-hidden />
-        <Text fontSize="$4" fontWeight="600" color="var(--accent-foreground)">
-          {t('Chat')}
-        </Text>
-      </XStack>
-      <Me host={host} narrow above onOrg={onOrg} />
-    </XStack>
   )
 }

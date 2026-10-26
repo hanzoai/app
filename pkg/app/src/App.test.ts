@@ -121,6 +121,14 @@ describe('Betas stands alone, as Tabs does', () => {
     expect(html).toMatch(/data-slot="drawer"[^>]*>.*data-slot="app-column" data-places="0"/)
   })
 
+  test('a phone’s menu draws the rail down its start edge, every product a mark, and no foot of its own', () => {
+    state.drawer = 'open'
+    const html = draw('/chat')
+    expect(html).toMatch(/data-slot="drawer"[^>]*>.*data-slot="drawer-rail".*data-slot="app-column"/)
+    expect(html).not.toContain('data-slot="drawer-foot"')
+    expect(html).not.toContain('data-slot="drawer-chat"')
+  })
+
   test('Tabs is as it was: no sidebar beside its panes, and the bar’s places are Dev’s', () => {
     const html = draw('/tabs')
     expect(html).not.toContain('data-slot="app-column"')

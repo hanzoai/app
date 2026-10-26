@@ -18,31 +18,27 @@ const { part } = vi.hoisted(() => {
 })
 
 vi.mock('@hanzo/gui', () => ({ Text: part, XStack: part, YStack: part, useMedia: () => ({ md: false }) }))
-vi.mock('./Me', () => ({ Me: () => createElement('button', { 'aria-label': 'Account: Bob Ross · hanzo', 'data-slot': 'me' }) }))
 
-const { Foot, Layer, useDrawer } = await import('./Drawer')
+const { Layer, useDrawer } = await import('./Drawer')
 const { OPEN } = await import('./slide')
-
-const host = { api: '', token: null, org: 'hanzo', person: { name: 'Bob Ross' }, signOut: () => {} } as unknown as Parameters<typeof Foot>[0]['host']
 
 /** The drawer the window last drew, for the moves App makes through it. */
 let drawer: ReturnType<typeof useDrawer>
 
 /** The window as App draws it: the pane with the bar's menu button in it, and the menu's layer while it is out. */
-function Window({ onChat }: { onChat: () => void }) {
+function Window() {
   const d = useDrawer()
   drawer = d
   return createElement(
     'div',
     { ref: d.window, 'data-slot': 'window' },
     createElement('div', { ref: d.pane, 'data-slot': 'frame', style: d.slide ?? undefined }, createElement('button', { 'data-slot': 'bar-menu', onClick: d.open }, 'Open sidebar')),
-    d.state === 'shut' ? null : createElement(Layer, { drawer: d, children: createElement(Foot, { host, onChat, onOrg: () => {} }) }),
+    d.state === 'shut' ? null : createElement(Layer, { drawer: d, children: createElement('div', { 'data-slot': 'menu-content' }) }),
   )
 }
 
 let root: Root
 let box: HTMLElement
-const onChat = vi.fn()
 const $ = (s: string) => box.querySelector<HTMLElement>(s)
 const frame = () => $('[data-slot="frame"]')!
 const press = (el: HTMLElement | null) => act(() => el!.click())
@@ -59,8 +55,7 @@ beforeEach(() => {
   box = document.createElement('div')
   document.body.appendChild(box)
   root = createRoot(box)
-  act(() => root.render(createElement(Window, { onChat })))
-  onChat.mockReset()
+  act(() => root.render(createElement(Window)))
 })
 
 afterEach(() => {
@@ -90,19 +85,10 @@ describe('the phone drawer', () => {
     expect($('[data-slot="drawer-close"]')!.getAttribute('aria-label')).toBe('Close sidebar')
   })
 
-  test('its foot is the accent New chat and the account, nothing else', () => {
+  test('it carries no foot of its own: New chat is the bar\'s and the account stands at the rail\'s foot', () => {
     open()
-    const foot = $('[data-slot="drawer-foot"]')!
-    expect(foot.querySelector('[data-slot="me"]')).not.toBeNull()
-    const chat = foot.querySelector<HTMLElement>('[data-slot="drawer-chat"]')!
-    expect(chat.getAttribute('aria-label')).toBe('New chat')
-    expect(chat.textContent).toBe('Chat')
-    const buttons = Array.from(foot.querySelectorAll('button'))
-    expect(buttons).toHaveLength(2)
-    expect(buttons[0]?.getAttribute('data-slot')).toBe('drawer-chat')
-    expect(buttons[1]?.getAttribute('data-slot')).toBe('me')
-    press(chat)
-    expect(onChat).toHaveBeenCalledTimes(1)
+    expect($('[data-slot="drawer-foot"]')).toBeNull()
+    expect($('[data-slot="drawer-chat"]')).toBeNull()
   })
 
   test('a press on the raised pane closes it: the pane slides home, then the menu goes and the focus comes back', () => {

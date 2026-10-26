@@ -76,7 +76,7 @@ import { Orgs } from './Orgs'
 import { useRooms } from './host'
 import { useKept } from './kept'
 import { Mark, raised, Rail, Toggle } from './Rail'
-import { Foot, Layer, Lift, RAISED, useDrawer } from './Drawer'
+import { Layer, Lift, RAISED, useDrawer } from './Drawer'
 import { empty, openThread, showSettings, useOpen } from './open'
 import { Paned } from './Shell'
 import { Palette } from './Palette'
@@ -294,11 +294,6 @@ function Window({ bar, betas }: Hosted) {
   const toDev = () => move(last.dev || app(''))
   const toStudio = () => move(last.studio || studio(''))
   const toTabs = () => move(TERMINALS)
-  /** The drawer's New chat. */
-  const fresh = () => {
-    empty()
-    move(talk())
-  }
   // Another organization: picked, and the app opened in it at the mode's New.
   const org = (o: string) => {
     pick(o)
@@ -449,22 +444,28 @@ function Window({ bar, betas }: Hosted) {
             </YStack>
           </XStack>
           {drawer.state === 'shut' ? null : (
-            // A phone's sidebar is the menu behind the pane: the same column on the floor, the
-            // places as rows under its own, the account and New chat at its foot.
+            // A phone's sidebar is the menu behind the pane: the rail down its start edge, every
+            // product a mark and the account at its foot as on a laptop, then the same column on
+            // the floor. New chat is the bar's, so the foot carries nothing of its own.
             <Layer drawer={drawer} top={bar ? BAR : 0}>
-              <Column
-                host={host}
-                mode={mode}
-                thread={thread}
-                go={move}
-                onShut={shut}
-                onSeek={seek}
-                onBack={back}
-                drawer
-                places={sidebar}
-                rail={<Rail host={host} mode={mode} at={where} inside={inside} open rows onChat={toChat} onDev={toDev} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />}
-                foot={<Foot host={host} onChat={fresh} onOrg={org} />}
-              />
+              <XStack flex={1} minH={0}>
+                <YStack data-slot="drawer-rail" shrink={0}>
+                  <Rail host={host} mode={mode} at={where} inside={inside} open onChat={toChat} onDev={toDev} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />
+                </YStack>
+                <YStack flex={1} minW={0}>
+                  <Column
+                    host={host}
+                    mode={mode}
+                    thread={thread}
+                    go={move}
+                    onShut={shut}
+                    onSeek={seek}
+                    onBack={back}
+                    drawer
+                    places={sidebar}
+                  />
+                </YStack>
+              </XStack>
             </Layer>
           )}
           {finding ? <Palette go={move} onClose={found} mode={mode} host={host} /> : null}
