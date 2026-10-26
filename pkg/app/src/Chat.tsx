@@ -48,7 +48,7 @@ import { Face, brief as roomBrief, join, roleOf, roomTurn, roster as rosterLine,
 import { cleanForSpeech, speakAgent } from "./speech";
 import { AgentMaker, HOUSE, useAgentShelf, useCrew } from "./crew";
 import { called } from "./team";
-import { Anchor, Box, Button, Text, View, XStack, YStack } from "@hanzo/ui";
+import { Anchor, Box, Button, Switch, Text, View, XStack, YStack } from "@hanzo/ui";
 import { useMedia } from "@hanzo/gui";
 import { given, tidy } from "./lib/title";
 import { useIam, useIamToken } from "@hanzo/iam/react";
@@ -64,13 +64,13 @@ import { useHydrated } from "./lib/hydrated";
 import { base, served } from "./lib/ai";
 import { onServed, type Served as Heard } from "./lib/served";
 import { refused as worded, speech, useDictation, useTalk, useVoice } from "@hanzo/voice";
-import { Check, Clock, FileText, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, X } from "lucide-react";
+import { Check, Clock, FileText, Ghost, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, X } from "lucide-react";
 import { FREE, ENSO } from "./lib/ai";
 import { openThread, useOpen } from "./open";
 import { Beside, Framed } from "./Shell";
 import { SEED, look, useSections, useSites, type Mark } from "./RightPane";
 import { Share } from "./Share";
-import { ConversationMenu, ThreadMore, useThreadList } from "./thread";
+import { ConversationMenu, ThreadMore, useThreadList, type Thread } from "./thread";
 import { Schedule } from "./Schedule";
 import { keepFile, useAttach, useKeep } from "./keep";
 import { dragWindow, toggleWindowMaximize } from "./WindowControls";
@@ -849,6 +849,8 @@ function Thread({
   // The opening greets the person by the first word of their display name, capitalised ("What’s up, Z?").
   // A username is a handle, not a name: without a display name the greeting has none.
   const firstName = useMemo(() => (anonymous ? "" : given(named()?.display ?? "")), [anonymous]);
+  // Private / forgetful mode: an ephemeral conversation kept in memory only, never saved to server history.
+  const [forgetful, setForgetful] = useState(false);
   // Up to three things worth doing next, from the person's own activity (@hanzo/build).
   const hints = useSuggestions(target);
   // THE HEADER'S ⋯ IS THE ROW'S MENU (thread.tsx): rename, pin, share, its
@@ -1059,7 +1061,7 @@ function Thread({
   // — the Recent they opened — so a reply lands in it rather than beside it.
   const chat = useChat({
     model,
-    keep: !anonymous,
+    keep: !anonymous && !forgetful,
     // THE PILL THAT WAS CUT READ A SETTING NOTHING SET, and that was the right
     // reason to cut it. This is the other half: `params` is forwarded to the
     // completion, so the effort chosen on the bar rides the request. An
@@ -1442,7 +1444,7 @@ function Thread({
   // WHAT AN ANSWER MAKES IS KEPT IN THE LIBRARY as it finishes (keep.ts): the
   // answer that just stopped, once the conversation it belongs to has an id.
   const [finished, setFinished] = useState<{ id: string; text: string } | null>(null);
-  useKeep(ai, !anonymous, kept ?? open, finished, artifacts);
+  useKeep(ai, !anonymous && !forgetful, kept ?? open, finished, artifacts);
   // WHAT AN ANSWER MAKES OPENS BESIDE IT. With the panel open, a page or a
   // picture an answer just finished writing is opened as a tab; with it shut,
   // the answer's own Open does it.
@@ -1469,6 +1471,24 @@ function Thread({
     () => chat.messages.filter((m) => m.role !== "system"),
     [chat.messages],
   );
+
+  const currentThread = useMemo<Thread>(() => {
+    const firstText = said[0]?.content;
+    const initialText = typeof firstText === "string" ? firstText : Array.isArray(firstText) ? (firstText[0] as { text?: string })?.text : "";
+    return mine ?? {
+      id: open || "active-chat",
+      title: tidy(initialText || t("New chat")),
+      created: Date.now(),
+      updated: Date.now(),
+      room: room.length ? room : [],
+    };
+  }, [mine, open, said, t, room]);
+
+  const currentThreadMap = useMemo(() => {
+    const map = new Map(alone);
+    if (!map.has(currentThread.id)) map.set(currentThread.id, currentThread);
+    return map;
+  }, [alone, currentThread]);
   // THE LIKENESS, WHERE ONE WAS DRAWN FOR THIS CHARACTER. `cast.tsx` is the one
   // table of who looks like what, and it says a name it does not hold "is not a
   // problem" — that name wears initials, never another character's face.
@@ -1873,7 +1893,21 @@ function Thread({
       onLanguage: speakIn,
       talk,
       // While nothing has been said: what is worth doing next.
-      starters: said.length === 0 && !anonymous ? <Suggestions rows={hints.rows} onAct={hint} onDismiss={hints.dismiss} /> : undefined,
+      starters:
+        said.length === 0
+          ? forgetful
+            ? (
+              <XStack items="center" justify="center" gap="$2" py="$2" px="$3" rounded="$3" bg="var(--white-05)" borderWidth={1} borderColor="var(--border-subtle)">
+                <Ghost size={14} strokeWidth={1.75} color="var(--primary)" />
+                <Text fontSize="$2" color="$soft">
+                  {t("Private chat is active. Messages are temporary and won't be saved.")}
+                </Text>
+              </XStack>
+            )
+            : !anonymous
+              ? <Suggestions rows={hints.rows} onAct={hint} onDismiss={hints.dismiss} />
+              : undefined
+          : undefined,
   };
 
   return (
@@ -2065,13 +2099,43 @@ function Thread({
             </Button>
           ) : null}
           {open ? <Share thread={open} /> : null}
-          {mine ? (
-            <ConversationMenu threads={alone} active={open} onSchedule={anonymous ? undefined : () => setPlan(lastAsked())}>
+          {said.length > 0 ? (
+            <ConversationMenu threads={currentThreadMap} active={open || currentThread.id} onSchedule={anonymous || forgetful ? undefined : () => setPlan(lastAsked())}>
               <XStack>
-                <ThreadMore t={mine} />
+                <ThreadMore t={currentThread} />
               </XStack>
             </ConversationMenu>
-          ) : null}
+          ) : (
+            <XStack
+              render="button"
+              data-slot="header-private-chat"
+              aria-label={t("Private chat mode")}
+              aria-pressed={forgetful}
+              {...({ title: forgetful ? t("Private chat enabled: messages will not be saved") : t("Private chat: forgetful mode") } as object)}
+              items="center"
+              gap="$1.5"
+              px="$2"
+              py="$1"
+              height={28}
+              rounded="$3"
+              cursor="pointer"
+              borderWidth={1}
+              borderColor={forgetful ? 'var(--primary)' : 'var(--border-subtle, var(--borderColor))'}
+              bg={forgetful ? 'var(--primary-10, var(--white-10))' : 'transparent'}
+              hoverStyle={{ bg: forgetful ? 'var(--primary-15, var(--white-15))' : '$hover' }}
+              onPress={() => setForgetful(!forgetful)}
+            >
+              <Ghost size={13} strokeWidth={1.75} color={forgetful ? 'var(--primary)' : 'var(--soft, var(--muted-foreground))'} aria-hidden />
+              <Text fontSize="$1" fontWeight={forgetful ? '600' : '500'} color={forgetful ? 'var(--primary)' : '$soft'}>
+                {t("Private")}
+              </Text>
+              <Switch
+                size="sm"
+                checked={forgetful}
+                pointerEvents="none"
+              />
+            </XStack>
+          )}
           <XStack $max-md={{ display: 'none' }}>
             <Summary sections={sections} onOpen={() => setPanel(true)} label={t("Summary")} />
           </XStack>

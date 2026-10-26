@@ -29,21 +29,21 @@ import { BAND, pane } from './ground'
 import { empty } from './open'
 import { talk, type Place } from './lib/host'
 
-/** A button, px: a thumb's 44. */
-const ROUND = 44
+/** A button, px: compact and refined. */
+const ROUND = 34
 
 /** The bar's line under the device's top inset, px: the pill's height. */
-const LINE = 48
+const LINE = 34
 
-/** A segment, px: the pill's 150px inside its rim, less the group's 4px gap, halved. */
-const SEGMENT = 73
+/** A segment, px: compact switcher button. */
+const SEGMENT = 56
 
 /** The glass the three are cut from. */
 const GLASS = {
   ...pane(),
-  borderColor: 'var(--border-strong)',
+  borderColor: 'var(--border-subtle)',
   borderRadius: 9999,
-  boxShadow: 'inset 0 1px 1px 0 var(--white-15), var(--shadow-sheet-1)',
+  boxShadow: 'var(--shadow-sheet-1)',
   backdropFilter: 'blur(24px) saturate(190%) contrast(102%)',
 } as const
 
@@ -86,10 +86,10 @@ function Round({
   )
 }
 
-/** The drawer's mark: two strokes, the lower one shorter and flush with the start, 19×11 as the reference draws it. */
+/** The drawer's mark: two strokes, the lower one shorter and flush with the start, 15×9. */
 function Lines() {
   return (
-    <svg width={19} height={11} viewBox="0 0 19 11" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden data-i18n-mirror>
+    <svg width={15} height={9} viewBox="0 0 19 11" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden data-i18n-mirror>
       <path d="M1 1h17M1 10h10.7" />
     </svg>
   )
@@ -100,15 +100,16 @@ function Side({ value, children }: { value: Place['mode']; children: string }) {
   return (
     <ToggleGroupItem
       value={value}
-      size="lg"
+      size="sm"
       width={SEGMENT}
+      height={26}
       rounded={9999}
       bg="transparent"
       borderColor="transparent"
       hoverStyle={{ bg: '$hover' }}
-      activeStyle={{ bg: '$raised', borderColor: 'transparent' }}
+      activeStyle={{ bg: '$raised', borderColor: 'var(--border-subtle)' }}
     >
-      <Text fontSize="$4" fontWeight="500" color="$ink" numberOfLines={1}>
+      <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>
         {children}
       </Text>
     </ToggleGroupItem>
@@ -174,10 +175,10 @@ export function Top({
       {/* A mode with nothing to make (Betas) has no New: the bar keeps its menu and Chat | Dev. */}
       {fresh.onPress ? (
         <Round label={fresh.label} data-slot="bar-new" onPress={fresh.onPress}>
-          <SquarePen size={20} aria-hidden />
+          <SquarePen size={16} strokeWidth={1.75} aria-hidden />
         </Round>
       ) : (
-        <XStack width={44} height={44} aria-hidden />
+        <XStack width={ROUND} height={ROUND} aria-hidden />
       )}
     </XStack>
   )

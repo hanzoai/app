@@ -1020,7 +1020,7 @@ export function Meet() {
                     title={micOn ? 'Mute Mic' : 'Unmute Mic'}
                     onClick={() => setMicOn(!micOn)}
                   >
-                    {micOn ? <Mic size={16} /> : <MicOff size={16} />}
+                    {micOn ? <Mic size={14} strokeWidth={1.75} /> : <MicOff size={14} strokeWidth={1.75} />}
                   </Button>
 
                   {/* Speaker & Audio Test Button */}
@@ -1038,7 +1038,7 @@ export function Meet() {
                       </>
                     ) : (
                       <>
-                        <Volume2 size={13} />
+                        <Volume2 size={12} strokeWidth={1.75} />
                         Test Audio
                       </>
                     )}

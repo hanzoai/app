@@ -38,6 +38,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { AiClient, Thread, ThreadChange } from '@hanzo/ai'
+export type { Thread }
 import { useAi } from '@hanzo/ai/react'
 import { Archive, ArchiveRestore, Clock, ExternalLink, Link2, MoreHorizontal, Pencil, Pin, PinOff, Share2, Trash2 } from 'lucide-react'
 import {

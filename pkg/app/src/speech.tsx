@@ -299,11 +299,11 @@ export function SpeakButton({
         <>
           <AudioWave active={true} color={GOOD} />
           {!compact && t('Speaking…')}
-          <Square size={10} fill="currentColor" />
+          <Square size={9} fill="currentColor" />
         </>
       ) : (
         <>
-          <Volume2 size={13} />
+          <Volume2 size={12} strokeWidth={1.75} />
           {!compact && t('Listen')}
         </>
       )}
