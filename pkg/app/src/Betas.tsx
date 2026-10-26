@@ -13,6 +13,12 @@
 // stamped with the time and stated on the event plane under the person and the
 // org, so the request reaches the team where it works the person.
 //
+// WHICH ARE PUBLIC is lib/optin's answer: a public beta is one an admin promoted,
+// on for a reader who opted in to experimental features unless their
+// organization turned that off. The cloud still says who is in, through the same
+// GET /v1/flag/platform, so `opens` stays the one predicate; a public beta only
+// reads as one, and says how to turn it on instead of asking for access.
+//
 // Signed out, still loading, or on any error nothing is open: a flags outage
 // cannot leak an unfinished app.
 
@@ -25,14 +31,18 @@ import { Button, Dialog, DialogContent, DialogTitle, Text, XStack, YStack } from
 import { api } from './lib/api'
 import { BETAS, GROUPS, opens, type Beta, type Group } from './lib/betas'
 import { bearer, scope, superAdmin } from './lib/session'
+import { CHANGED, optin } from './lib/optin'
 
 /** What the cloud said for one token: the switches in force and what was asked for. */
 interface Said {
   flags: Record<string, boolean>
   asked: string[]
+  /** The public betas' ids, and the reader's opt-in as the cloud holds it. */
+  public: string[]
+  blocked: boolean
 }
 
-const NONE: Said = { flags: {}, asked: [] }
+const NONE: Said = { flags: {}, asked: [], public: [], blocked: false }
 
 /** A group's heading as the list draws it: authored English, drawn through `t`. */
 const HEADING: Record<Group, string> = {
@@ -64,9 +74,10 @@ function read(token: string): Promise<void> {
   reading = Promise.all([
     get<{ flags?: Record<string, boolean> }>('/v1/flag/platform').catch(() => null),
     get<{ betas?: string[] }>('/v1/marketing/beta').catch(() => null),
+    optin().catch(() => null),
   ])
-    .then(([f, b]) => {
-      held = { token, said: { flags: f?.flags ?? {}, asked: b?.betas ?? [] }, at: Date.now() }
+    .then(([f, b, o]) => {
+      held = { token, said: { flags: f?.flags ?? {}, asked: b?.betas ?? [], public: o?.public ?? [], blocked: o?.blocked ?? false }, at: Date.now() }
     })
     .finally(() => {
       reading = null
@@ -86,6 +97,10 @@ export function useBetas(): {
   open: (id: string) => boolean
   /** Whether they asked for it. */
   asked: (id: string) => boolean
+  /** Whether it is a public beta, one an admin promoted (lib/optin). */
+  promoted: (id: string) => boolean
+  /** Their organization turned experimental features off. */
+  blocked: boolean
   /** Ask for these apps. */
   request: (ids: string[]) => Promise<void>
   /** The cloud has answered for this reader. */
@@ -104,9 +119,17 @@ export function useBetas(): {
   useEffect(() => {
     if (token && (!held || held.token !== token || Date.now() - held.at > FRESH)) void read(token)
   }, [token])
+  // A change of the opt-in changes what the cloud opens: read it all again.
+  useEffect(() => {
+    if (!token) return
+    const again = () => void read(token)
+    window.addEventListener(CHANGED, again)
+    return () => window.removeEventListener(CHANGED, again)
+  }, [token])
   const said = token && now?.token === token ? now.said : NONE
   const open = useCallback((id: string) => opens(id, said.flags, sudo || local), [said, sudo, local])
   const asked = useCallback((id: string) => said.asked.includes(id), [said])
+  const promoted = useCallback((id: string) => said.public.includes(id), [said])
   const request = useCallback(
     async (ids: string[]) => {
       const r = await fetch(`${api()}/v1/marketing/beta/request`, {
@@ -123,7 +146,7 @@ export function useBetas(): {
     },
     [token, t],
   )
-  return { open, asked, request, ready: Boolean(token) && now?.token === token }
+  return { open, asked, promoted, blocked: said.blocked, request, ready: Boolean(token) && now?.token === token }
 }
 
 /**
@@ -140,7 +163,7 @@ function here(): boolean {
 /** One app's action: Open where it may, Requested once asked, else Request access. */
 function Ask({ beta, go }: { beta: Beta; go?: (href: string) => void }) {
   const { t } = useI18n()
-  const { open, asked, request } = useBetas()
+  const { open, asked, promoted, blocked, request } = useBetas()
   const [busy, setBusy] = useState(false)
   const [wrong, setWrong] = useState<string | null>(null)
   if (open(beta.id)) {
@@ -151,6 +174,13 @@ function Ask({ beta, go }: { beta: Beta; go?: (href: string) => void }) {
     ) : (
       <Text fontSize="$2" color="$color11" data-slot="beta-on">
         {t('You’re in')}
+      </Text>
+    )
+  }
+  if (promoted(beta.id)) {
+    return (
+      <Text fontSize="$2" color="$color11" text="right" maxW={200} data-slot="beta-optin">
+        {t(blocked ? 'Turned off by your organization' : 'Turn on experimental features in Settings')}
       </Text>
     )
   }
@@ -191,6 +221,7 @@ function Ask({ beta, go }: { beta: Beta; go?: (href: string) => void }) {
 /** Every app in beta, by group, each with its action. */
 export function BetasList({ go }: { go?: (href: string) => void }) {
   const { t } = useI18n()
+  const { promoted } = useBetas()
   return (
     <YStack gap="$4" data-slot="betas">
       {GROUPS.map((group) => (
@@ -201,9 +232,16 @@ export function BetasList({ go }: { go?: (href: string) => void }) {
           {BETAS.filter((b) => b.group === group).map((b) => (
             <XStack key={b.id} items="center" gap="$3" data-beta={b.id}>
               <YStack flex={1} minW={0}>
-                <Text fontSize="$3" fontWeight="500">
-                  {b.name}
-                </Text>
+                <XStack items="center" gap="$2">
+                  <Text fontSize="$3" fontWeight="500">
+                    {b.name}
+                  </Text>
+                  {promoted(b.id) ? (
+                    <Text fontSize="$1" color="$color11" data-slot="beta-public">
+                      {t('Public beta')}
+                    </Text>
+                  ) : null}
+                </XStack>
                 <Text fontSize="$2" color="$color11">
                   {t(b.line)}
                 </Text>

@@ -35,6 +35,7 @@ import { showSettings } from './open'
 import { Look } from './look'
 import { ProviderMark } from './ProviderMark'
 import { bearer, org, pick } from './lib/session'
+import { Experimental } from './experimental'
 import { site } from './where'
 import { named, ROWS } from './Settings'
 
@@ -69,7 +70,13 @@ export function SettingsPane({ id }: { id: string }) {
 function Pane({ id, note }: { id: string; note?: string }) {
   const { t } = useI18n()
   if (id === 'apps' || id === 'channels') return <Catalog tab={id} />
-  if (id === 'general') return <Look />
+  if (id === 'general')
+    return (
+      <YStack gap="$5">
+        <Look />
+        <Experimental />
+      </YStack>
+    )
   if (id === 'account') return <Account />
   if (id === 'billing') return <Billing />
   if (id === 'referrals') return <Referrals />

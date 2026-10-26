@@ -152,7 +152,15 @@ repository or a site from any surface.
   every app or model no one has yet on hanzo.ai or platform.hanzo.ai, with its id,
   name, line, group and where it opens. The Creative group is the six creative
   models (Koma, Iro, Mori, Oto, Koe, Uta); Models holds what is in research
-  preview (Zen 7: no public weights, no callable id). hanzo.ai/beta reads the same list. Each is the cloud's
+  preview (Zen 7: no public weights, no callable id). A beta is PRIVATE (a
+  SuperAdmin grants it) or PUBLIC (an admin promoted it): `lib/optin.ts` is the
+  one client for the reader's opt-in (`GET`/`PUT /v1/flag/optin`, `{on, blocked,
+  public}`) and the organization's block (`PUT /v1/flag/optin/org`). An opted-in
+  reader gets every public beta unless their org blocked it; staff get every
+  beta. Who is in is still `GET /v1/flag/platform` through `opens`; a public beta
+  only reads "Public beta" and says how to turn it on. The switch is Settings,
+  General (`experimental.tsx`); no pane holds org-admin settings, so the org
+  block has a client and no switch yet. hanzo.ai/beta reads the same list. Each is the cloud's
   principal switch `beta.<id>` (cloud apps/flags betas.go, same ids), answered by
   `GET /v1/flag/platform`; `opens` is the one predicate (a SuperAdmin opens
   every one). `Betas.tsx` `useBetas` reads the switches and the person's CRM
