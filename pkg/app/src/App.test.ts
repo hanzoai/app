@@ -1,3 +1,4 @@
+vi.mock('./Usage', () => ({ UsageProvider: ({ children }: { children: unknown }) => children }))
 import { createElement, Fragment, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, describe, expect, test, vi } from 'vitest'

@@ -348,6 +348,8 @@ package whose version npm does not serve, the contract before the app.
 
 ## Plan usage
 
+The shared composer now exposes **Usage** in Chat, Dev and Studio (`src/Usage.tsx`). It combines explicitly estimated context, API-reported last-response tokens, organization-scoped 30-day account totals, plan windows, and links to Upgrade / Buy credits. See all usage opens Settings → Usage, also directly available in the account menu. The host Settings usage page shows tokens, requests and spend for every plan. `lib/served.ts` observes streamed/JSON usage without consuming responses; `lib/tokens.ts` isolates last-turn counts by IAM subject, organization, model and transcript. Never label estimates as reported usage or substitute zero for unavailable reads.
+
 The plan is named, read and drawn once, in @hanzo/build (≥ 0.2.53), and the
 rooms mount it: `label` names a plan by family with its rung as a small tag
 (`max-20x` reads Max, 20x; never a slug or an id), `useStanding` reads the

@@ -11,6 +11,7 @@
  * billing refusal's envelope, go to @hanzo/ui's `observe`.
  */
 
+import { recordTokens, tokenKey, tokensOf, tokenSubject } from './tokens'
 import { observe } from '@hanzo/ui/product/useLimits'
 
 /** A completion's asked and answering models. */
@@ -49,37 +50,42 @@ export function observed(base: typeof fetch): typeof fetch {
     if (CHAT.test(url)) observe(res)
     if (!COMPLETION.test(url) || !res.ok) return res
     let asked = ''
+    let key = ''
     try {
       const body = typeof init?.body === 'string' ? JSON.parse(init.body) : null
       if (typeof body?.model === 'string') asked = body.model
+      if (Array.isArray(body?.messages)) key = tokenKey(new Headers(init?.headers).get('X-Org-Id'), asked, body.messages, tokenSubject(new Headers(init?.headers).get('Authorization')))
     } catch {
       /* a body that is not JSON names no model */
     }
     const header = res.headers.get('x-hanzo-served')
     if (header) {
       tell({ asked, served: header })
-      return res
+    }
+    const usage = (frame: { usage?: unknown; model?: unknown }) => {
+      const counted = tokensOf(frame?.usage)
+      if (counted) recordTokens(key, { ...counted, ...(typeof frame.model === 'string' ? { model: frame.model } : {}) })
     }
     if (!res.body || !(res.headers.get('content-type') ?? '').includes('text/event-stream')) {
       res
         .clone()
         .json()
-        .then((d: { model?: unknown }) => {
+        .then((d: { model?: unknown; usage?: unknown }) => {
+          usage(d)
           if (typeof d?.model === 'string' && d.model) tell({ asked, served: d.model })
         })
         .catch(() => {})
       return res
     }
     const decoder = new TextDecoder()
-    let heard = false
+    let heard = Boolean(header)
     let carry = ''
     const watch = new TransformStream<Uint8Array, Uint8Array>({
       transform(chunk, out) {
         out.enqueue(chunk)
-        if (heard) return
         carry += decoder.decode(chunk, { stream: true })
         let at = carry.indexOf('\n')
-        while (!heard && at >= 0) {
+        while (at >= 0) {
           const line = carry.slice(0, at).trim()
           carry = carry.slice(at + 1)
           at = carry.indexOf('\n')
@@ -87,8 +93,9 @@ export function observed(base: typeof fetch): typeof fetch {
           const data = line.slice(5).trim()
           if (!data || data === '[DONE]') continue
           try {
-            const frame = JSON.parse(data) as { model?: unknown }
-            if (typeof frame.model === 'string' && frame.model) {
+            const frame = JSON.parse(data) as { model?: unknown; usage?: unknown }
+            usage(frame)
+            if (!heard && typeof frame.model === 'string' && frame.model) {
               heard = true
               tell({ asked, served: frame.model })
             }
@@ -96,6 +103,11 @@ export function observed(base: typeof fetch): typeof fetch {
             /* a frame split across chunks is read whole on the next line */
           }
         }
+      },
+      flush() {
+        const line = (carry + decoder.decode()).trim()
+        if (!line.startsWith('data:')) return
+        try { usage(JSON.parse(line.slice(5).trim())) } catch { /* unfinished frame */ }
       },
     })
     return new Response(res.body.pipeThrough(watch), { status: res.status, statusText: res.statusText, headers: res.headers })

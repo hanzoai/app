@@ -39,6 +39,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { SizableText, XStack, YStack } from '@hanzo/gui'
 import {
   ArrowUpRight,
+  Activity,
   BookOpen,
   Building2,
   Check,
@@ -484,6 +485,10 @@ export function Me({
               </DropdownMenuSubContent>
             ) : null}
           </DropdownMenuSub>
+
+          <DropdownMenuItem onSelect={() => showSettings('usage')}>
+            <Line icon={<Activity size={16} aria-hidden />}>{t('Usage')}</Line>
+          </DropdownMenuItem>
 
           {/* 3. Upgrade / Plan */}
           <DropdownMenuItem onSelect={() => leave('here')}>
