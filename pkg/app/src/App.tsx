@@ -69,6 +69,7 @@ import { Builder, HostProvider, PrefsProvider, route, tabs, type Host } from '@h
 import { nav as places } from '@hanzo/studio'
 import { useAi } from './lib/ai'
 import { Chat } from './Chat'
+import { UsageProvider } from './Usage'
 import { Column } from './Column'
 import { Learning } from './Learning'
 import { isPlans, leave, useDevHost } from './dev'
@@ -315,6 +316,7 @@ function Window({ bar, betas }: Hosted) {
       <HostProvider host={host}>
         {/* The person's preferences, read once for Chat and Dev: the side panel's width is one of them. */}
         <PrefsProvider>
+          <UsageProvider>
         {/* The floor runs under the bar where there is one, so the window is one ground. */}
         <YStack
           ref={windowRef}
@@ -471,6 +473,7 @@ function Window({ bar, betas }: Hosted) {
           {finding ? <Palette go={move} onClose={found} mode={mode} host={host} /> : null}
           {learning ? <Learning open onClose={() => setLearning(false)} /> : null}
         </YStack>
+          </UsageProvider>
         </PrefsProvider>
       </HostProvider>
     </AiProvider>

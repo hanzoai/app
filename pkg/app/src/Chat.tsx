@@ -115,6 +115,7 @@ import { first } from './lib/first';
 import { BAD } from "./lib/mix";
 import { brand } from './where'
 import { BAND } from './ground'
+import { UsageControl } from './Usage'
 import { shared, useChatPreferences } from './lib/chatPreferences'
 import { handleHint } from './hint'
 
@@ -812,7 +813,8 @@ function Thread({
   // THE PLAN decides what the chip may offer: Free answers from the free lane
   // alone, so it opens there and lists the rest as upgrades (@hanzo/build).
   const catalog = useRef<Model[]>([]);
-  const { limits, notice, reload: reread } = useLimits(!anonymous, org(), (id) => nameOf(id, catalog.current));
+  const planUsage = useLimits(!anonymous, org(), (id) => nameOf(id, catalog.current));
+  const { limits, notice, reload: reread } = planUsage;
   const mind = useMind(target, anonymous ? "free" : limits?.plan);
   catalog.current = mind.models;
   // Chat's effort is its own (six steps, sent as `reasoning_effort`); a
@@ -1072,6 +1074,7 @@ function Thread({
     // before the model is asked and asks without them, so a question about the
     // world, in any language, is answered from what the web says now and streams.
     params: {
+      stream_options: { include_usage: true },
       reasoning_effort: chatPrefs.effort || 'high',
       ...(!anonymous && house(rowOf(model)?.family) ? { tools: WEB } : {}),
     },
@@ -1886,6 +1889,7 @@ function Thread({
       // Chat keeps to the effort alone until the person asks for more: the family chips, the mode.
       chips: anonymous ? undefined : families,
       defaults: { chips: false, mode: false },
+      status: anonymous ? null : <UsageControl read={planUsage} context={{ model, window: rowOf(model)?.context_window, messages: chat.messages, draft, tools: !anonymous && house(rowOf(model)?.family) ? WEB : undefined }} />,
       limits,
       onUpgrade: (id) => setAsk({ model: nameOf(id, listed) } as Ask),
       voice,
