@@ -77,6 +77,8 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
   const [busy, setBusy] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  // A first press on Disconnect asks; the second lets go of GitHub.
+  const [dropping, setDropping] = useState(false)
   const [syncTurn, setSyncTurn] = useState(0)
 
   const signed = isAuthenticated && Boolean(accessToken)
@@ -318,6 +320,41 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
       setStep(slackDone ? 3 : 2)
     })
 
+  // Let go of the org's GitHub accounts, so another can be connected. The platform
+  // also removes its App from an account no other organization uses, so the next
+  // connect is a fresh install. An org admin's act: anyone else is told so.
+  const handleDisconnectGithub = async () => {
+    if (!dropping) {
+      setDropping(true)
+      return
+    }
+    setBusy('github')
+    setErrorMsg(null)
+    try {
+      const res = await fetch(`${api()}/v1/provider/github/disconnect`, {
+        method: 'POST',
+        headers: { ...scope(), 'Content-Type': 'application/json' },
+        body: '{}',
+      })
+      if (!res.ok) {
+        setErrorMsg(
+          res.status === 403
+            ? t('Only an organization admin can disconnect GitHub.')
+            : t('Could not disconnect {provider} right now. Please try again.', { provider: 'GitHub' }),
+        )
+        return
+      }
+      setGithubDone(false)
+      setStep(1)
+      setSyncTurn((n) => n + 1)
+    } catch {
+      setErrorMsg(t('Could not disconnect {provider} right now. Please try again.', { provider: 'GitHub' }))
+    } finally {
+      setDropping(false)
+      setBusy(null)
+    }
+  }
+
   // 2. Connect Slack
   const handleConnectSlack = () =>
     connectOAuthProvider('slack', 'Slack', () => {
@@ -520,6 +557,21 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                   {busy === 'github' ? t('Connecting…') : githubDone ? t('Reconnect') : t('Connect GitHub')}
                 </Text>
               </Box>
+              {githubDone ? (
+                <Box
+                  render="button"
+                  onClick={() => void handleDisconnectGithub()}
+                  aria-disabled={busy === 'github'}
+                  px="$2"
+                  py="$1"
+                  rounded="$3"
+                  bg="transparent"
+                  hoverStyle={{ bg: '$hover' }}
+                  cursor="pointer"
+                >
+                  <Text fontSize="$1" color={dropping ? '$ink' : '$soft'}>{dropping ? t('Confirm disconnect') : t('Disconnect')}</Text>
+                </Box>
+              ) : null}
               <Box
                 render="button"
                 onClick={() => setStep(2)}
@@ -748,9 +800,24 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                 </YStack>
               </XStack>
               {githubDone ? (
-                <XStack items="center" gap="$1" px="$2" py="$1" rounded="$2" bg="$hover">
-                  <Check size={14} color={GOOD} />
-                  <Text fontSize="$1" color={GOOD} fontWeight="600">{t('Connected')}</Text>
+                <XStack items="center" gap="$2">
+                  <XStack items="center" gap="$1" px="$2" py="$1" rounded="$2" bg="$hover">
+                    <Check size={14} color={GOOD} />
+                    <Text fontSize="$1" color={GOOD} fontWeight="600">{t('Connected')}</Text>
+                  </XStack>
+                  <Box
+                    render="button"
+                    onClick={() => void handleDisconnectGithub()}
+                    aria-disabled={busy === 'github'}
+                    px="$2"
+                    py="$1"
+                    rounded="$3"
+                    bg="transparent"
+                    hoverStyle={{ bg: '$hover' }}
+                    cursor="pointer"
+                  >
+                    <Text fontSize="$1" color={dropping ? '$ink' : '$soft'}>{dropping ? t('Confirm disconnect') : t('Disconnect')}</Text>
+                  </Box>
                 </XStack>
               ) : (
                 <Box
