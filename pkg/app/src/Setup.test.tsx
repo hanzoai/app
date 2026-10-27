@@ -104,6 +104,16 @@ describe('Setup 1-2-3 in-app onboarding', () => {
     expect(html).toContain('Connect GitHub')
   })
 
+  test('a connected GitHub can be disconnected from step 1; an unconnected one cannot', () => {
+    expect(renderToStaticMarkup(createElement(Setup))).not.toContain('Disconnect')
+    store.set('hanzo.onboarding.github', true)
+    store.set('hanzo.onboarding.step', 1)
+    const html = renderToStaticMarkup(createElement(Setup))
+    expect(html).toContain('Connected')
+    expect(html).toContain('Reconnect')
+    expect(html).toContain('Disconnect')
+  })
+
   test('advances to Step 2 (Slack) when GitHub is connected', () => {
     store.set('hanzo.onboarding.github', true)
     store.set('hanzo.onboarding.step', 2)
