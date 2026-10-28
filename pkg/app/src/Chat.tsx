@@ -1916,9 +1916,11 @@ function Thread({
 
   return (
     <YStack
-      flex={1}
-      minH={0}
+      display="grid"
+      gridTemplateRows="auto minmax(0, 1fr)"
       width="100%"
+      height="100%"
+      minH={0}
       position="relative"
       data-slot="chat-room"
       // A LINK IN AN ANSWER OPENS IN A TAB beside the conversation when the tab
@@ -1999,8 +2001,9 @@ function Thread({
       <XStack
         data-slot="conversation-head"
         height={BAND}
+        display="grid"
+        gridTemplateColumns="minmax(0, 1fr) auto"
         items="center"
-        justify="space-between"
         gap="$3"
         paddingInlineStart="$4"
         paddingInlineEnd="$2"
@@ -2010,7 +2013,7 @@ function Thread({
         onDoubleClick={toggleWindowMaximize}
         $max-md={!mine && !room.length ? { display: 'none' } : undefined}
       >
-        <XStack items="center" gap="$2" minW={0} flex={1}>
+        <XStack items="center" gap="$2" minW={0}>
           {mine ? (
             <Text fontSize={15} lineHeight={20} color="$ink" numberOfLines={1} shrink={1} minW={0}>
               {tidy(mine.title)}
@@ -2301,7 +2304,16 @@ function Thread({
           heading === null ? undefined : (
             // It takes the height above the composer, which is fixed to the foot,
             // and stands at the foot of that height: close above what it opens.
-            <YStack data-slot="opening" items="center" width="100%" pt="$6" pb="$2" flex={1} justify="flex-end">
+            <YStack
+              data-slot="opening"
+              display="grid"
+              gridTemplateRows="1fr auto"
+              items="center"
+              width="100%"
+              height="100%"
+              pt="$6"
+              pb="$2"
+            >
               {/* THE PORTRAIT IS A DM'S, AND ONLY A DM'S. It used to draw for
                   everyone, because `withWhom || "jobs"` gave a reader who had
                   chosen nobody a 160px photograph of somebody — and the heading

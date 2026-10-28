@@ -155,31 +155,36 @@ export function Top({
     // head band (BAND), the drawer's title row on the same line.
     <XStack
       data-slot="app-bar"
+      display="grid"
+      gridTemplateColumns="1fr auto 1fr"
+      items="center"
       height={`calc(${BAND}px + var(--safe-top) + var(--pane-gap))`}
       pt="calc(var(--safe-top) + var(--pane-gap))"
       px="$4.5"
-      items="center"
-      justify="space-between"
       shrink={0}
       $md={{ display: 'none' }}
     >
-      <Round label={t('Open sidebar')} data-slot="bar-menu" onPress={onMenu} pointerEvents={open ? 'none' : 'auto'}>
-        <Lines />
-      </Round>
-      <XStack data-slot="bar-mode" {...GLASS} height={LINE} p="$1" items="center">
+      <XStack justifySelf="start">
+        <Round label={t('Open sidebar')} data-slot="bar-menu" onPress={onMenu} pointerEvents={open ? 'none' : 'auto'}>
+          <Lines />
+        </Round>
+      </XStack>
+      <XStack data-slot="bar-mode" {...GLASS} height={LINE} p="$1" items="center" justifySelf="center">
         <ToggleGroup type="single" aria-label={t('App')} value={mode === 'chat' || mode === 'dev' ? mode : ''} disableDeactivation onValueChange={(v) => (v === 'chat' ? onChat() : v === 'dev' ? onDev() : undefined)}>
           <Side value="chat">{t('Chat')}</Side>
           <Side value="dev">Dev</Side>
         </ToggleGroup>
       </XStack>
       {/* A mode with nothing to make (Betas) has no New: the bar keeps its menu and Chat | Dev. */}
-      {fresh.onPress ? (
-        <Round label={fresh.label} data-slot="bar-new" onPress={fresh.onPress}>
-          <SquarePen size={16} strokeWidth={1.75} aria-hidden />
-        </Round>
-      ) : (
-        <XStack width={ROUND} height={ROUND} aria-hidden />
-      )}
+      <XStack justifySelf="end">
+        {fresh.onPress ? (
+          <Round label={fresh.label} data-slot="bar-new" onPress={fresh.onPress}>
+            <SquarePen size={16} strokeWidth={1.75} aria-hidden />
+          </Round>
+        ) : (
+          <XStack width={ROUND} height={ROUND} aria-hidden />
+        )}
+      </XStack>
     </XStack>
   )
 }

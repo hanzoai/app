@@ -401,10 +401,20 @@ function Window({ bar, betas }: Hosted) {
                 <Column host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} onSeek={seek} onBack={back} places={sidebar} />
               </YStack>
             )}
-            <YStack data-slot="stage" flex={1} minW={0} minH={0} marginInlineStart={closed || alone ? 0 : 'var(--pane-gap)'} $max-md={{ marginInlineStart: 0, pb: `max(var(--pane-gap), ${FOOT})` }}>
+            <YStack
+              data-slot="stage"
+              display="grid"
+              gridTemplateRows={bar ? '1fr' : 'auto minmax(0, 1fr)'}
+              width="100%"
+              height="100%"
+              minW={0}
+              minH={0}
+              marginInlineStart={closed || alone ? 0 : 'var(--pane-gap)'}
+              $max-md={{ marginInlineStart: 0, pb: `max(var(--pane-gap), ${FOOT})` }}
+            >
               {/* A phone has no rail and no sidebar: its bar opens them as a drawer and switches Chat and Dev. */}
               {bar ? null : <Top host={host} mode={mode} places={sidebar} open={drawer.state !== 'shut'} go={move} onMenu={drawer.open} onChat={toChat} onDev={toDev} />}
-              <XStack data-slot="panes" flex={1} minW={0} minH={0}>
+              <XStack data-slot="panes" display="grid" gridTemplateColumns="1fr" width="100%" height="100%" minW={0} minH={0}>
                 {mode === 'chat' ? (
                   <Paned framed>
                     <Chat />

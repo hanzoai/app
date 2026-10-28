@@ -1589,7 +1589,8 @@ export function Paned({
         ref={split.main}
         // inline-style: the pane hidden while the column has its room, written by a drag too (useSplit).
         style={split.mainStyle}
-        flex={1}
+        width="100%"
+        height="100%"
         minW={0}
         minH={0}
       >
