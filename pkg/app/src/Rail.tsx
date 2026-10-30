@@ -46,7 +46,7 @@ import { out } from './help'
 import { BETAS } from './lib/betas'
 import { HOSTED_APPS } from './lib/hosted'
 import { Me } from './Me'
-import { BAND } from './ground'
+import { HEAD, TOUCH_HEAD } from './ground'
 import { app, hosted, WORKSPACE, type Place } from './lib/host'
 
 /** The rail's width, px. */
@@ -268,13 +268,13 @@ export function Rail({
       aria-label={t('Products')}
       width={RAIL}
       flex={1}
-      // The first mark centred on the head band beside it (BAND), the account on the sidebar's foot (Column's `pb`).
-      pt={(BAND - MARK) / 2}
+      // The first mark stands at the pane's top edge, one head row high (HEAD), the account on the sidebar's foot (Column's `pb`).
+      pt={(HEAD - MARK) / 2}
       pb="$2"
       gap={4}
       shrink={0}
       items="center"
-      $touchable={{ pt: (BAND - TOUCH) / 2 }}
+      $touchable={{ pt: (TOUCH_HEAD - TOUCH) / 2 }}
     >
       {toggle ? (
         <YStack pb={4}>

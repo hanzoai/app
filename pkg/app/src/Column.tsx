@@ -48,7 +48,7 @@ import { talk, type Place } from './lib/host'
 import { payUrl } from './lib/pay'
 import { brand, wordmark } from './where'
 import { dragWindow, toggleWindowMaximize } from './WindowControls'
-import { BAND } from './ground'
+import { BAND, HEAD as LINE, TOUCH_HEAD } from './ground'
 
 /** The sidebar fills the column. Its `width` is typed in px alone, though its frame takes any gui size — the type is
  *  @hanzo/ui's to widen. */
@@ -216,7 +216,9 @@ export function Column({
             gap="$1"
             paddingInlineStart={2}
             paddingInlineEnd={2}
-            height={BAND}
+            // The phone's drawer lines up with its bar (BAND); beside the rail, with the rail's first mark (ground.ts HEAD).
+            height={drawer ? BAND : LINE}
+            $touchable={drawer ? undefined : { height: TOUCH_HEAD }}
             shrink={0}
             minW={0}
             data-tauri-drag-region="deep"
@@ -237,7 +239,9 @@ export function Column({
             gap="$1"
             paddingInlineStart="$2"
             paddingInlineEnd={2}
-            height={BAND}
+            // The phone's drawer lines up with its bar (BAND); beside the rail, with the rail's first mark (ground.ts HEAD).
+            height={drawer ? BAND : LINE}
+            $touchable={drawer ? undefined : { height: TOUCH_HEAD }}
             shrink={0}
             minW={0}
             data-tauri-drag-region="deep"

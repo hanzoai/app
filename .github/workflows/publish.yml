@@ -9,13 +9,15 @@
 # root, env prod), the same machine identity every other workflow here uses.
 name: Publish
 
+# THE 0.2 LINE, one release: @hanzo/app 0.2.59 under the dist-tag `v0.2`, so
+# hosts still on the 0.2 wire take the chat fix while 0.3.x stays `latest`.
+# This branch is deleted once it has published; the tag v0.2.59 is the receipt.
 on:
   push:
-    branches: [main]
-  workflow_dispatch:
+    branches: [release-0.2.59]
 
 concurrency:
-  group: publish
+  group: publish-0.2
   cancel-in-progress: false
 
 jobs:
@@ -29,8 +31,8 @@ jobs:
         run: |
           set -euo pipefail
           ahead=""
-          # The order is the dependency order: glass & mod before the app.
-          for dir in pkg/glass pkg/mod pkg/app; do
+          # The 0.2 line releases the app alone; its mod and glass are already on npm.
+          for dir in pkg/app; do
             [ -f "$dir/package.json" ] || continue
             NAME=$(jq -r .name "$dir/package.json")
             NEW=$(jq -r .version "$dir/package.json")
@@ -41,14 +43,9 @@ jobs:
               echo "$NAME $NEW is already on npm"
               continue
             fi
-            OLD=$(curl -sf -H 'Accept: application/vnd.npm.install-v1+json' "https://registry.npmjs.org/${NAME}" | jq -r '."dist-tags".latest // "0.0.0"' || echo 0.0.0)
-            TOP=$(printf '%s\n%s\n' "$OLD" "$NEW" | sort -V | tail -1)
-            if [ "$OLD" != "$NEW" ] && [ "$TOP" = "$NEW" ]; then
-              echo "$NAME $OLD -> $NEW"
-              ahead="$ahead $dir"
-            else
-              echo "$NAME $NEW is not ahead of npm ($OLD)"
-            fi
+            case "$NEW" in 0.2.*) ;; *) echo "::error::$NAME $NEW is not on the 0.2 line"; exit 1 ;; esac
+            echo "$NAME $NEW -> dist-tag v0.2"
+            ahead="$ahead $dir"
           done
           echo "dirs=${ahead# }" >> "$GITHUB_OUTPUT"
           if [ -n "$ahead" ]; then echo "release=true" >> "$GITHUB_OUTPUT"; else echo "release=false" >> "$GITHUB_OUTPUT"; fi
@@ -114,5 +111,5 @@ jobs:
         run: |
           set -euo pipefail
           for dir in $DIRS; do
-            (cd "$dir" && pnpm publish --access public --no-git-checks)
+            (cd "$dir" && pnpm publish --access public --no-git-checks --tag v0.2)
           done

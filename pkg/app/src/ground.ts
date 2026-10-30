@@ -29,6 +29,22 @@ export const pane = (fill = 'var(--pane-fill)') =>
 export const BAND = 52
 
 /**
+ * The head row from a tablet up, px: one rail mark high (Rail `MARK`), so the
+ * rail's first mark stands at the pane's top edge and the sidebar's title row
+ * and the pane's head share its centre (owner, 2026-10-30: "align sidebar icons
+ * top, left, right"). A thumb's mark is 44 on a touch screen, and the rows grow
+ * with it (`TOUCH_HEAD`).
+ */
+export const HEAD = 36
+export const TOUCH_HEAD = 44
+
+/**
+ * A row INSIDE a pane is 2px shorter than the row it lines up with: the pane's
+ * 1px top edge sets its content 1px down, so its centre stays on the line.
+ */
+export const inPane = (row: number): number => row - 2
+
+/**
  * THE FLOOR under the app's frame (app/_web.tsx, components/settings/Frame.tsx):
  * design's top light falling off down the window over the faint lamps of
  * `--pane-ground`. A straight fall rather than a radial glow, because at these

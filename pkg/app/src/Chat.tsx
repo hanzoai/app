@@ -48,7 +48,7 @@ import { Face, brief as roomBrief, join, roleOf, roomTurn, roster as rosterLine,
 import { cleanForSpeech, speakAgent } from "./speech";
 import { AgentMaker, HOUSE, useAgentShelf, useCrew } from "./crew";
 import { called } from "./team";
-import { Anchor, Box, Button, Switch, Text, View, XStack, YStack } from "@hanzo/ui";
+import { Anchor, Box, Button, Text, Tooltip, TooltipContent, TooltipTrigger, View, XStack, YStack } from "@hanzo/ui";
 import { useMedia } from "@hanzo/gui";
 import { given, tidy } from "./lib/title";
 import { useIam, useIamToken } from "@hanzo/iam/react";
@@ -114,7 +114,7 @@ import { enter, LOGIN } from './lib/destination';
 import { first } from './lib/first';
 import { BAD } from "./lib/mix";
 import { brand } from './where'
-import { BAND } from './ground'
+import { BAND, HEAD, TOUCH_HEAD, inPane } from './ground'
 import { UsageControl } from './Usage'
 import { shared, useChatPreferences } from './lib/chatPreferences'
 import { handleHint } from './hint'
@@ -1998,7 +1998,10 @@ function Thread({
           Summary, and the tabs beside it. */}
       <XStack
         data-slot="conversation-head"
+        // On the rail's line from a tablet up (HEAD, less the pane's edge); a phone's own bar is BAND.
         height={BAND}
+        $md={{ height: inPane(HEAD) }}
+        $touchable={{ height: inPane(TOUCH_HEAD) }}
         items="center"
         justify="space-between"
         gap="$3"
@@ -2110,35 +2113,31 @@ function Thread({
               </XStack>
             </ConversationMenu>
           ) : (
-            <XStack
-              render="button"
-              data-slot="header-private-chat"
-              aria-label={t("Private chat mode")}
-              aria-pressed={forgetful}
-              {...({ title: forgetful ? t("Private chat enabled: messages will not be saved") : t("Private chat: forgetful mode") } as object)}
-              items="center"
-              gap="$1.5"
-              px="$2"
-              py="$1"
-              height={28}
-              rounded="$3"
-              cursor="pointer"
-              borderWidth={1}
-              borderColor={forgetful ? 'var(--primary)' : '$borderColor'}
-              bg={forgetful ? 'var(--primary-10, var(--white-10))' : 'transparent'}
-              hoverStyle={{ bg: forgetful ? 'var(--primary-15, var(--white-15))' : '$hover' }}
-              onPress={() => setForgetful(!forgetful)}
-            >
-              <Ghost size={13} strokeWidth={1.75} color={forgetful ? 'var(--primary)' : 'var(--soft, var(--muted-foreground))'} aria-hidden />
-              <Text fontSize="$1" fontWeight={forgetful ? '600' : '500'} color={forgetful ? 'var(--primary)' : '$soft'}>
-                {t("Private")}
-              </Text>
-              <Switch
-                size="sm"
-                checked={forgetful}
-                pointerEvents="none"
-              />
-            </XStack>
+            // A ghost, nothing else: the icon says the state (filled while on), the
+            // name is the tooltip, as the header's other icons are (owner, 2026-10-30).
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <XStack
+                  render="button"
+                  data-slot="header-private-chat"
+                  aria-label={t("Private chat")}
+                  aria-pressed={forgetful}
+                  width={32}
+                  height={32}
+                  items="center"
+                  justify="center"
+                  rounded="$3"
+                  bg="transparent"
+                  cursor="pointer"
+                  hoverStyle={{ bg: "$hover" }}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+                  onPress={() => setForgetful(!forgetful)}
+                >
+                  <Ghost size={16} strokeWidth={1.75} color={forgetful ? "var(--foreground)" : "var(--muted-foreground)"} fill={forgetful ? "currentColor" : "none"} aria-hidden />
+                </XStack>
+              </TooltipTrigger>
+              <TooltipContent>{forgetful ? t("Private chat is on: this conversation is not saved") : t("Private chat")}</TooltipContent>
+            </Tooltip>
           )}
           <XStack $max-md={{ display: 'none' }}>
             <Summary sections={sections} onOpen={() => setPanel(true)} label={t("Summary")} />
@@ -2161,14 +2160,20 @@ function Thread({
       ) : null}
       {!wide && panel ? <Panel side={deck} kinds={NONE} sheet onHide={() => setPanel(false)} label={t("Tabs")} {...browsing} /> : null}
 
+      {/* The talk takes the rest of the column under the head row: @hanzo/ui's Chat is
+          height 100%, and of the whole room it ran a head row past the pane's foot. */}
+      <YStack data-slot="talk" flex={1} minH={0}>
       <ChatSurface
         {...chat}
         messages={shown}
         send={guarded}
-        // THE COMPOSER IS FIXED TO THE FOOT, on a laptop and on a phone, empty or
-        // not: while nothing has been said the opening (the heading) stands at the
-        // foot of the height above it; once a turn exists the transcript scrolls
-        // under it. Over the keyboard, from the first moment.
+        // WHILE NOTHING HAS BEEN SAID, from a tablet up, the opening and the
+        // composer are one pair centred in the pane (`center`: rows `1fr auto auto
+        // 1fr`), so the heading reads close above the field and nothing stands at
+        // the window's foot (owner, 2026-10-30). A phone keeps the composer at the
+        // foot, over the keyboard, from the first moment; once a turn exists every
+        // width does, and the transcript scrolls under it.
+        center={media.md}
         // AS IT WAS WRITTEN. The package renders a turn's words plainly and
         // says so — it ships no markdown pipeline because the plugin set is the
         // surface's to choose — so an answer arrived here reading "```ts" with
@@ -2299,9 +2304,9 @@ function Thread({
         // landings off /chat and /dev.
         empty={
           heading === null ? undefined : (
-            // It takes the height above the composer, which is fixed to the foot,
-            // and stands at the foot of that height: close above what it opens.
-            <YStack data-slot="opening" items="center" width="100%" pt="$6" pb="$2" flex={1} justify="flex-end">
+            // From a tablet up its own height, centred with the composer as one pair; on a
+            // phone it stands at the foot of the height above the composer, close above it.
+            <YStack data-slot="opening" items="center" justify="flex-end" width="100%" height="100%" pt="$6" pb="$2">
               {/* THE PORTRAIT IS A DM'S, AND ONLY A DM'S. It used to draw for
                   everyone, because `withWhom || "jobs"` gave a reader who had
                   chosen nobody a 160px photograph of somebody — and the heading
@@ -2380,6 +2385,7 @@ function Thread({
         column={{ maxW: MEASURE }}
         composer={composer}
       />
+      </YStack>
       <AgentMaker />
       {carry.dialog}
       <Upgrade ask={ask} onClose={() => setAsk(null)} />
