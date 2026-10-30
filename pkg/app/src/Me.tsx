@@ -88,7 +88,7 @@ import { api } from './lib/api'
 import { createOrg, say } from './lib/org'
 import type { Tier } from './lib/tier'
 import { list } from './lib/list'
-import { choose, org as current, orgs, pick, renew, scope, superAdmin } from './lib/session'
+import { choose, org as current, orgs, renew, reopen, scope, superAdmin } from './lib/session'
 import { ENTRY, settings } from './lib/host'
 import { leave } from './dev'
 import { payUrl } from './lib/pay'
@@ -645,12 +645,11 @@ function Create({ open, onOpenChange }: { open: boolean; onOpenChange: (open: bo
       } catch {
         /* the next load simply says nothing */
       }
-      pick(org)
       renew()
       // The app again, where the person is, in the new organization. Not `/`: on
       // hanzo.ai that is the landing for everyone (owner, 2026-10-29), so a
       // person who made an organization from /chat was left on the marketing page.
-      window.location.reload()
+      reopen(org)
     } catch (e) {
       setRefused(say(e, t))
       setBusy(false)
@@ -702,8 +701,7 @@ export function Made() {
       if (orgs().includes(kept.org)) return sessionStorage.removeItem(MADE)
       // Still out of the token: go on working where the person was.
       if (kept.from && current() !== kept.from && orgs().includes(kept.from)) {
-        pick(kept.from)
-        return window.location.reload()
+        return reopen(kept.from)
       }
       setMade({ org: kept.org, name: kept.name || kept.org })
     } catch {

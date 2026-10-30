@@ -458,12 +458,29 @@ export const ORG = 'hanzo:org'
  * answers, so the gate does not ask for it again.
  */
 export function pick(o: string): void {
+  keep(o)
+  window.dispatchEvent(new Event(ORG))
+}
+
+function keep(o: string): void {
   try {
     window.localStorage.setItem(`${PREFIX}current_org`, o)
   } catch {
     /* the choice lives only in this page */
   }
-  window.dispatchEvent(new Event(ORG))
+}
+
+/**
+ * Open the app again in this organization: the SDK's selection, written and
+ * NOT announced, then the reload. For an organization the token in memory does
+ * not name yet (one just made, one stepped into): announced, the rooms remount
+ * before the reload under that token, and @hanzo/iam's provider, finding the
+ * organization missing from it, writes the token's first organization back over
+ * the choice (useOrganizations), so the reload opened the wrong one.
+ */
+export function reopen(o: string): void {
+  keep(o)
+  window.location.reload()
 }
 
 /** Fired on `window` to open the organization chooser over the room. */
@@ -519,8 +536,7 @@ export async function support(org: string | null): Promise<void> {
   if (!res.ok || !next || typeof exp !== 'number') throw new Error(body?.msg || `IAM answered ${res.status}.`)
   tokens().setItem(ACCESS, next)
   tokens().setItem(EXPIRES, String(exp * 1000))
-  pick(org ?? opened(next)[0] ?? '')
-  window.location.reload()
+  reopen(org ?? opened(next)[0] ?? '')
 }
 
 /**
