@@ -640,7 +640,7 @@ function useTarget() {
  * the payment host, so adding funds and a card both open it.
  */
 function Billing() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { isAuthenticated } = useIam()
   const target = useTarget()
   const { tier } = useTier(isAuthenticated, org())
@@ -654,7 +654,7 @@ function Billing() {
         <YStack gap="$1" data-slot="billing-plan">
           <Title label={plan} size="$5" />
           <Text fontSize="$2" color="$soft">
-            {sub ? renewal(sub, t) : tier?.plan ? t('Your plan.') : t('No paid plan. Usage is paid from credits.')}
+            {sub ? renewal(sub, t, locale) : tier?.plan ? t('Your plan.') : t('No paid plan. Usage is paid from credits.')}
           </Text>
         </YStack>
       ) : (

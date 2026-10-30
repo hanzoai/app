@@ -28,6 +28,7 @@
 // attachments have nowhere to live yet, so they are not drawn.
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { phrase, type Say } from '@hanzo/i18n'
 import { useAgents, usePeople } from '@hanzo/ai/react'
 import { Box, Text, View, XStack, YStack } from '@hanzo/ui'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@hanzo/ui'
@@ -48,6 +49,7 @@ import {
   X,
 } from 'lucide-react'
 import { useOpen } from './open'
+import { useI18n } from '@hanzo/i18n/react'
 import { useAi } from './lib/ai'
 import { Face } from './cast'
 import { say } from './failure'
@@ -78,12 +80,81 @@ import { BAD } from './lib/mix'
 
 const DAY = 86400
 
+/** Said when a write has no board to write to. It is the same event whichever
+ *  write asked, so it is one sentence rather than two wordings of one. */
+const NOWHERE = phrase('No project answered, so there is nowhere to file this card.')
+
+/** A column's name, as the board says it. The id is the forge's; the words match `COLUMNS`. */
+function columnName(id: string, t: Say): string | null {
+  switch (id) {
+    case 'backlog':
+      return t('Backlog')
+    case 'todo':
+      return t('To do')
+    case 'in_progress':
+      return t('Doing')
+    case 'done':
+      return t('Done')
+    case 'canceled':
+      return t('Canceled')
+    default:
+      return null
+  }
+}
+
+/** A priority as a person reads it. The value sent to the store stays the id. */
+function priorityName(p: string, t: Say): string {
+  switch (p) {
+    case 'urgent':
+      return t('urgent')
+    case 'high':
+      return t('high')
+    case 'medium':
+      return t('medium')
+    case 'low':
+      return t('low')
+    case 'none':
+      return t('none')
+    default:
+      return p
+  }
+}
+
+/** What `reads` says a durable run is doing, in the reader's words. An unrecognized status stays a token. */
+function runStatus(status: string | undefined, t: Say): string {
+  switch (reads(status)) {
+    case 'unknown':
+      return t('unknown')
+    case 'running':
+      return t('running')
+    case 'done':
+      return t('done')
+    case 'failed':
+      return t('failed')
+    case 'canceled':
+      return t('canceled')
+    case 'stopped':
+      return t('stopped')
+    case 'timed out':
+      return t('timed out')
+    default:
+      return reads(status)
+  }
+}
+
+/** An hour on the planner, `8 am`, in the reader's language. */
+function hourLabel(hour: number, t: Say, locale: string): string {
+  const h = (hour % 12 === 0 ? 12 : hour % 12).toLocaleString(locale)
+  return hour < 12 ? t('{hour} am', { hour: h }) : t('{hour} pm', { hour: h })
+}
+
 /** A pane with nothing in it yet, centred, saying which nothing it is. */
 function Empty({ children }: { children: ReactNode }) {
+  const { t, locale } = useI18n()
   return (
     <YStack flex={1} items="center" justify="center" p="$6" gap="$2">
       <Text render="h1" fontSize="$6" fontWeight="600" color="var(--foreground)">
-        Board
+        {t('Board')}
       </Text>
       <Text fontSize="$3" color="$soft" text="center">
         {children}
@@ -140,13 +211,13 @@ function Label({ name }: { name: string }) {
   )
 }
 
-/** A date, as a person says it. */
-function when(unix?: number): string {
+/** A date, as a person says it, in the language they chose. */
+function when(unix: number | undefined, locale: string): string {
   if (!unix) return ''
   const at = new Date(unix * 1000)
   const now = new Date()
   const same = at.getFullYear() === now.getFullYear()
-  return at.toLocaleDateString(undefined, {
+  return at.toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
     ...(same ? {} : { year: 'numeric' }),
@@ -163,15 +234,18 @@ function when(unix?: number): string {
  * weekday, and one outside this week gets its date too, because "Tuesday" stops
  * being an answer once there is more than one of them in view.
  */
-function dayName(day: Date, now = new Date()): string {
+function dayName(day: Date, t: Say, locale: string, now = new Date()): string {
   const at = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
   const days = Math.round((at(day) - at(now)) / 86400000)
-  if (days === 0) return 'Today'
-  if (days === 1) return 'Tomorrow'
-  if (days === -1) return 'Yesterday'
-  const weekday = day.toLocaleDateString(undefined, { weekday: 'long' })
+  if (days === 0) return t('Today')
+  if (days === 1) return t('Tomorrow')
+  if (days === -1) return t('Yesterday')
+  const weekday = day.toLocaleDateString(locale, { weekday: 'long' })
   if (days > 1 && days < 7) return weekday
-  return `${weekday} ${day.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+  return t('{weekday} {date}', {
+    weekday,
+    date: day.toLocaleDateString(locale, { month: 'short', day: 'numeric' }),
+  })
 }
 
 /** The value a date input wants, from unix seconds. */
@@ -196,6 +270,7 @@ function Tile({
   who?: { avatar?: string; emoji?: string; name: string }
   onOpen: () => void
 }) {
+  const { t, locale } = useI18n()
   const list = steps(card.description)
   const done = list.filter((s) => s.done).length
   const late = card.dueAt ? card.dueAt * 1000 < Date.now() : false
@@ -236,7 +311,7 @@ function Tile({
               <XStack items="center" gap="$1">
                 <CalendarClock size={12} aria-hidden />
                 <Text fontSize="$1" color={late ? BAD : '$soft'}>
-                  {when(card.dueAt)}
+                  {when(card.dueAt, locale)}
                 </Text>
               </XStack>
             ) : null}
@@ -244,13 +319,13 @@ function Tile({
               <XStack items="center" gap="$1">
                 <ListChecks size={12} aria-hidden />
                 <Text fontSize="$1" color={done === list.length ? '$ink' : '$soft'}>
-                  {done}/{list.length}
+                  {t('{done}/{total}', { done: done.toLocaleString(locale), total: list.length.toLocaleString(locale) })}
                 </Text>
               </XStack>
             ) : null}
             {card.priority && card.priority !== 'none' ? (
               <Text fontSize="$1" color="$soft">
-                {card.priority}
+                {priorityName(card.priority, t)}
               </Text>
             ) : null}
             <YStack flex={1} />
@@ -291,6 +366,7 @@ function Detail({
   onClose: () => void
   onSaved: () => void
 }) {
+  const { t, locale } = useI18n()
   const { client } = useAi()
   const [panel, setPanel] = useState<'labels' | 'dates' | 'members' | null>(null)
   const [title, setTitle] = useState(card.title)
@@ -344,12 +420,12 @@ function Detail({
         await edit(client, card.projectKey, card.number, patch)
         onSaved()
       } catch (e) {
-        setWrong(e instanceof Error ? e.message : 'The change was refused')
+        setWrong(e instanceof Error ? e.message : t('The change was refused'))
       } finally {
         setBusy(false)
       }
     },
-    [client, card.projectKey, card.number, onSaved],
+    [client, card.projectKey, card.number, onSaved, t],
   )
 
   // TICKING A STEP REWRITES ITS LINE, and only its line — the description is
@@ -385,7 +461,7 @@ function Detail({
         <Text fontSize="$1" color="$soft" flex={1} numberOfLines={1}>
           {card.identifier}
         </Text>
-        <Box render="button" onClick={onClose} p="$1" rounded="$2" aria-label="Close">
+        <Box render="button" onClick={onClose} p="$1" rounded="$2" aria-label={t('Close')}>
           <X size={16} aria-hidden />
         </Box>
       </XStack>
@@ -406,7 +482,7 @@ function Detail({
           <Box
             render="button"
             onClick={() => void save({ status: finished ? 'todo' : 'done' })}
-            aria-label={finished ? 'Reopen this card' : 'Mark this card done'}
+            aria-label={t(finished ? 'Reopen this card' : 'Mark this card done')}
             aria-pressed={finished}
             width={22}
             height={22}
@@ -429,7 +505,7 @@ function Detail({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 onBlur={() => title.trim() && title !== card.title && void save({ title: title.trim() })}
-                aria-label="Card title"
+                aria-label={t('Card title')}
               />
             }
             flex={1}
@@ -445,15 +521,15 @@ function Detail({
         </XStack>
 
         <XStack gap="$1.5" flexWrap="wrap">
-          <Act icon={Tag} label="Labels" on={panel === 'labels'} onPress={() => setPanel(panel === 'labels' ? null : 'labels')} />
-          <Act icon={Calendar} label="Dates" on={panel === 'dates'} onPress={() => setPanel(panel === 'dates' ? null : 'dates')} />
-          <Act icon={UserPlus} label="Members" on={panel === 'members'} onPress={() => setPanel(panel === 'members' ? null : 'members')} />
+          <Act icon={Tag} label={t('Labels')} on={panel === 'labels'} onPress={() => setPanel(panel === 'labels' ? null : 'labels')} />
+          <Act icon={Calendar} label={t('Dates')} on={panel === 'dates'} onPress={() => setPanel(panel === 'dates' ? null : 'dates')} />
+          <Act icon={UserPlus} label={t('Members')} on={panel === 'members'} onPress={() => setPanel(panel === 'members' ? null : 'members')} />
         </XStack>
 
         {panel === 'labels' ? (
           <YStack gap="$2" p="$3" rounded="$3" borderWidth={1} borderColor="$borderColor">
             <Text fontSize="$2" fontWeight="600" color="$ink">
-              Labels
+              {t('Labels')}
             </Text>
             {card.labels.length > 0 ? (
               <XStack gap="$1" flexWrap="wrap">
@@ -463,15 +539,13 @@ function Detail({
               </XStack>
             ) : (
               <Text fontSize="$1" color="$soft">
-                None yet.
+                {t('None yet.')}
               </Text>
             )}
             {/* THE COLOUR IS THE NAME'S, derived rather than stored, so the same
                 label is the same colour everywhere and nothing can drift. */}
             <Text fontSize="$1" color="$soft">
-              A label is a word on the forge issue, and its colour comes from the
-              word — so it reads the same here and there. Labels are added on the
-              forge; this board does not write them yet.
+              {t('A label is a word on the forge issue, and its colour comes from the word — so it reads the same here and there. Labels are added on the forge; this board does not write them yet.')}
             </Text>
           </YStack>
         ) : null}
@@ -479,18 +553,18 @@ function Detail({
         {panel === 'dates' ? (
           <YStack gap="$2" p="$3" rounded="$3" borderWidth={1} borderColor="$borderColor">
             <Text fontSize="$2" fontWeight="600" color="$ink">
-              Dates
+              {t('Dates')}
             </Text>
             <XStack gap="$3" flexWrap="wrap">
               <YStack gap="$1">
                 <Text fontSize="$1" color="$soft">
-                  Start
+                  {t('Start')}
                 </Text>
                 <Text render={<input type="date" value={asInput(card.startAt)} readOnly />} {...DATE} />
               </YStack>
               <YStack gap="$1">
                 <Text fontSize="$1" color="$soft">
-                  Due
+                  {t('Due')}
                 </Text>
                 <Text render={<input type="date" value={asInput(card.dueAt)} readOnly />} {...DATE} />
               </YStack>
@@ -500,8 +574,7 @@ function Detail({
                 due date from the issue's MILESTONE — so a per-card date needs a
                 decision about milestones before it can be written from here. */}
             <Text fontSize="$1" color="$soft">
-              A card&apos;s dates come from its forge milestone, which is why they
-              read here and cannot yet be set here.
+              {t("A card's dates come from its forge milestone, which is why they read here and cannot yet be set here.")}
             </Text>
           </YStack>
         ) : null}
@@ -509,7 +582,7 @@ function Detail({
         {panel === 'members' ? (
           <YStack gap="$2" p="$3" rounded="$3" borderWidth={1} borderColor="$borderColor">
             <Text fontSize="$2" fontWeight="600" color="$ink">
-              Members
+              {t('Members')}
             </Text>
             {/* PEOPLE AND AGENTS IN ONE LIST, because the store keeps ONE
                 assignee and does not ask which kind of worker it is. Handing a
@@ -517,7 +590,7 @@ function Detail({
                 Pressing the one who already holds it takes it back off them. */}
             {people.length === 0 ? (
               <Text fontSize="$1" color="$soft">
-                Nobody to assign yet.
+                {t('Nobody to assign yet.')}
               </Text>
             ) : (
               people.map((p) => (
@@ -537,7 +610,7 @@ function Detail({
                     </Text>
                     {p.agent ? (
                       <Text fontSize="$1" color="$soft">
-                        agent
+                        {t('agent')}
                       </Text>
                     ) : null}
                     {card.assignee === p.name ? <Check size={14} aria-hidden /> : null}
@@ -562,7 +635,7 @@ function Detail({
               hoverStyle={{ bg: '$hover' }}
             >
               <Text fontSize="$1" color="$ink">
-                Take it myself
+                {t('Take it myself')}
               </Text>
             </Box>
           </YStack>
@@ -571,7 +644,7 @@ function Detail({
         {/* DESCRIPTION */}
         <YStack gap="$2">
           <Text fontSize="$2" fontWeight="600" color="$ink">
-            Description
+            {t('Description')}
           </Text>
           <Text
             render={
@@ -579,7 +652,7 @@ function Detail({
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 onBlur={() => body !== (card.description ?? '') && void save({ description: body })}
-                placeholder="What is this card about?"
+                placeholder={t('What is this card about?')}
                 rows={5}
               />
             }
@@ -599,11 +672,11 @@ function Detail({
         <YStack gap="$2">
           <XStack items="center" gap="$2">
             <Text fontSize="$2" fontWeight="600" color="$ink" flex={1}>
-              Checklist
+              {t('Checklist')}
             </Text>
             {list.length > 0 ? (
               <Text fontSize="$1" color="$soft">
-                {pct}%
+                {t('{percent}%', { percent: pct.toLocaleString(locale) })}
               </Text>
             ) : null}
           </XStack>
@@ -646,7 +719,7 @@ function Detail({
                     setStep('')
                     void save({ description: written })
                   }}
-                  placeholder="Add an item"
+                  placeholder={t('Add an item')}
                 />
               }
               flex={1}
@@ -667,16 +740,16 @@ function Detail({
         <XStack gap="$3" flexWrap="wrap">
           <YStack gap="$1">
             <Text fontSize="$1" color="$soft">
-              Column
+              {t('Column')}
             </Text>
             <Select value={card.status} onValueChange={(v) => void save({ status: v })}>
-              <SelectTrigger aria-label="Column" width={160}>
+              <SelectTrigger aria-label={t('Column')} width={160}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {COLUMNS.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
-                    {c.label}
+                    {columnName(c.id, t) ?? c.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -684,16 +757,16 @@ function Detail({
           </YStack>
           <YStack gap="$1">
             <Text fontSize="$1" color="$soft">
-              Priority
+              {t('Priority')}
             </Text>
             <Select value={card.priority || 'none'} onValueChange={(v) => void save({ priority: v })}>
-              <SelectTrigger aria-label="Priority" width={160}>
+              <SelectTrigger aria-label={t('Priority')} width={160}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {PRIORITIES.map((p) => (
                   <SelectItem key={p} value={p}>
-                    {p}
+                    {priorityName(p, t)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -708,19 +781,19 @@ function Detail({
             engine and no run state is copied onto the card. */}
         <YStack gap="$2" pt="$2" borderTopWidth={1} borderColor="$borderColor">
           <Text fontSize="$2" fontWeight="600" color="$ink">
-            Durable run
+            {t('Durable run')}
           </Text>
           {run ? (
             <XStack items="center" gap="$2" flexWrap="wrap">
               <Text fontSize="$2" color="$ink">
-                {reads(run.status)}
+                {runStatus(run.status, t)}
               </Text>
               <Text fontSize="$1" color="$soft" numberOfLines={1}>
                 {run.workflowId}
               </Text>
               {run.historyLength ? (
                 <Text fontSize="$1" color="$soft">
-                  {run.historyLength} events
+                  {t('{count} events', { count: run.historyLength.toLocaleString(locale) })}
                 </Text>
               ) : null}
             </XStack>
@@ -728,8 +801,8 @@ function Detail({
             <XStack items="center" gap="$2" flexWrap="wrap">
               <Text fontSize="$1" color="$soft" flex={1}>
                 {card.assignee
-                  ? `${card.assignee} holds this. Hand the work to the engine and it survives a crash.`
-                  : 'Nobody holds this yet — it can still be run, and the run is durable either way.'}
+                  ? t('{name} holds this. Hand the work to the engine and it survives a crash.', { name: card.assignee })
+                  : t('Nobody holds this yet — it can still be run, and the run is durable either way.')}
               </Text>
               <Box
                 render="button"
@@ -754,7 +827,7 @@ function Detail({
                 hoverStyle={{ bg: '$hover' }}
               >
                 <Text fontSize="$1" color="$ink">
-                  {starting ? 'Handing over…' : 'Run it'}
+                  {t(starting ? 'Handing over…' : 'Run it')}
                 </Text>
               </Box>
             </XStack>
@@ -765,7 +838,7 @@ function Detail({
           <XStack items="center" gap="$2">
             <Face src={who.avatar} emoji={who.emoji} name={who.label} size={22} />
             <Text fontSize="$2" color="$soft">
-              {who.label} has this one.
+              {t('{name} has this one.', { name: who.label })}
             </Text>
           </XStack>
         ) : null}
@@ -804,6 +877,7 @@ const DATE = {
  * the day rather than being placed at an hour nobody chose.
  */
 function Planner({ cards, onOpen }: { cards: Card[]; onOpen: (c: Card) => void }) {
+  const { t, locale } = useI18n()
   const [offset, setOffset] = useState(0)
   const day = useMemo(() => {
     const d = new Date()
@@ -832,9 +906,9 @@ function Planner({ cards, onOpen }: { cards: Card[]; onOpen: (c: Card) => void }
       >
         <Calendar size={14} aria-hidden />
         <Text fontSize="$2" fontWeight="600" color="$ink" flex={1}>
-          {day.toLocaleDateString(undefined, { month: 'long' })}
+          {day.toLocaleDateString(locale, { month: 'long' })}
         </Text>
-        <Box render="button" onClick={() => setOffset((n) => n - 1)} p="$1" rounded="$2" aria-label="Previous day">
+        <Box render="button" onClick={() => setOffset((n) => n - 1)} p="$1" rounded="$2" aria-label={t('Previous day')}>
           <ChevronLeft size={14} aria-hidden />
         </Box>
         <Box
@@ -847,20 +921,20 @@ function Planner({ cards, onOpen }: { cards: Card[]; onOpen: (c: Card) => void }
           borderColor="$borderColor"
         >
           <Text fontSize="$1" color="$ink">
-            Today
+            {t('Today')}
           </Text>
         </Box>
-        <Box render="button" onClick={() => setOffset((n) => n + 1)} p="$1" rounded="$2" aria-label="Next day">
+        <Box render="button" onClick={() => setOffset((n) => n + 1)} p="$1" rounded="$2" aria-label={t('Next day')}>
           <ChevronRight size={14} aria-hidden />
         </Box>
       </XStack>
 
       <YStack items="center" py="$2" gap="$1">
         <Text fontSize="$1" color="$soft">
-          {dayName(day)}
+          {dayName(day, t, locale)}
         </Text>
         <Text fontSize="$4" fontWeight="600" color="$ink">
-          {day.getDate()}
+          {day.getDate().toLocaleString(locale)}
         </Text>
       </YStack>
 
@@ -868,7 +942,7 @@ function Planner({ cards, onOpen }: { cards: Card[]; onOpen: (c: Card) => void }
         {due.length > 0 ? (
           <YStack p="$3" gap="$2">
             <Text fontSize="$1" color="$soft">
-              Due today
+              {t('Due today')}
             </Text>
             {due.map((c) => (
               <Box
@@ -896,7 +970,7 @@ function Planner({ cards, onOpen }: { cards: Card[]; onOpen: (c: Card) => void }
           <XStack key={hour} height={56} borderTopWidth={1} borderColor="$borderColor">
             <YStack width={54} pt="$1" pl="$3">
               <Text fontSize="$1" color="$soft">
-                {hour % 12 === 0 ? 12 : hour % 12} {hour < 12 ? 'am' : 'pm'}
+                {hourLabel(hour, t, locale)}
               </Text>
             </YStack>
           </XStack>
@@ -927,6 +1001,7 @@ function Column({
   /** The first read has not answered yet, so the count is not yet a fact. */
   loading?: boolean
 }) {
+  const { t, locale } = useI18n()
   const [over, setOver] = useState(false)
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
@@ -957,10 +1032,10 @@ function Column({
       >
         <XStack items="baseline" gap="$2" px="$2" pt="$1">
           <Text fontSize="$2" fontWeight="600" color="$ink" flex={1}>
-            {column.label}
+            {columnName(column.id, t) ?? column.label}
           </Text>
           <Text fontSize="$1" color="$soft">
-            {loading ? '' : cards.length}
+            {loading ? '' : cards.length.toLocaleString(locale)}
           </Text>
         </XStack>
 
@@ -1001,7 +1076,7 @@ function Column({
                       })
                     }
                   }}
-                  placeholder="What needs doing?"
+                  placeholder={t('What needs doing?')}
                   rows={2}
                 />
               }
@@ -1033,7 +1108,7 @@ function Column({
             <XStack items="center" gap="$1.5">
               <Plus size={13} aria-hidden />
               <Text fontSize="$1" color="$soft">
-                Add a card
+                {t('Add a card')}
               </Text>
             </XStack>
           </Box>
@@ -1113,6 +1188,7 @@ function Filter({
   onWant: (next: Sift) => void
   onClose: () => void
 }) {
+  const { t, locale } = useI18n()
   const set = (patch: Partial<Sift>) => onWant({ ...want, ...patch })
   const flipLabel = (l: string) => {
     const held = want.labels ?? []
@@ -1142,46 +1218,52 @@ function Filter({
     >
       <XStack items="center" px="$2" py="$1">
         <Text fontSize="$2" fontWeight="600" color="$ink" flex={1}>
-          Filter
+          {t('Filter')}
         </Text>
-        <Box render="button" onClick={onClose} p="$1" rounded="$2" aria-label="Close filter">
+        <Box render="button" onClick={onClose} p="$1" rounded="$2" aria-label={t('Close filter')}>
           <X size={14} aria-hidden />
         </Box>
       </XStack>
 
-      <Tick on={want.holder === 'none'} label="Nobody has it" onPress={() => set({ holder: want.holder === 'none' ? undefined : 'none' })} />
-      <Tick on={want.holder === 'me'} label="Mine" onPress={() => set({ holder: want.holder === 'me' ? undefined : 'me' })} />
+      <Tick on={want.holder === 'none'} label={t('Nobody has it')} onPress={() => set({ holder: want.holder === 'none' ? undefined : 'none' })} />
+      <Tick on={want.holder === 'me'} label={t('Mine')} onPress={() => set({ holder: want.holder === 'me' ? undefined : 'me' })} />
 
-      <Head>Who did the work</Head>
-      <Tick on={want.by === 'person'} label="A person" onPress={() => set({ by: want.by === 'person' ? undefined : 'person' })} />
-      <Tick on={want.by === 'agent'} label="An agent" onPress={() => set({ by: want.by === 'agent' ? undefined : 'agent' })} />
+      <Head>{t('Who did the work')}</Head>
+      <Tick on={want.by === 'person'} label={t('A person')} onPress={() => set({ by: want.by === 'person' ? undefined : 'person' })} />
+      <Tick on={want.by === 'agent'} label={t('An agent')} onPress={() => set({ by: want.by === 'agent' ? undefined : 'agent' })} />
 
-      <Head>Card status</Head>
-      <Tick on={want.state === 'done'} label="Finished" onPress={() => set({ state: want.state === 'done' ? undefined : 'done' })} />
-      <Tick on={want.state === 'open'} label="Still open" onPress={() => set({ state: want.state === 'open' ? undefined : 'open' })} />
+      <Head>{t('Card status')}</Head>
+      <Tick on={want.state === 'done'} label={t('Finished')} onPress={() => set({ state: want.state === 'done' ? undefined : 'done' })} />
+      <Tick on={want.state === 'open'} label={t('Still open')} onPress={() => set({ state: want.state === 'open' ? undefined : 'open' })} />
 
-      <Head>Due date</Head>
-      {([['none', 'No dates'], ['late', 'Overdue'], ['day', 'Due in the next day'], ['week', 'Due in the next week'], ['month', 'Due in the next month']] as const).map(
-        ([id, label]) => (
-          <Tick key={id} on={want.due === id} label={label} onPress={() => set({ due: want.due === id ? undefined : id })} />
-        ),
-      )}
+      <Head>{t('Due date')}</Head>
+      {([
+        ['none', t('No dates')],
+        ['late', t('Overdue')],
+        ['day', t('Due in the next day')],
+        ['week', t('Due in the next week')],
+        ['month', t('Due in the next month')],
+      ] as const).map(([id, label]) => (
+        <Tick key={id} on={want.due === id} label={label} onPress={() => set({ due: want.due === id ? undefined : id })} />
+      ))}
 
       {labels.length > 0 ? (
         <>
-          <Head>Labels</Head>
+          <Head>{t('Labels')}</Head>
           {labels.map((l) => (
             <Tick key={l} on={(want.labels ?? []).includes(l)} label={<Label name={l} />} onPress={() => flipLabel(l)} />
           ))}
         </>
       ) : null}
 
-      <Head>Activity</Head>
-      {([[7, 'Moved in the last week'], [14, 'Moved in the last two weeks'], [28, 'Moved in the last four weeks']] as const).map(
-        ([days, label]) => (
-          <Tick key={days} on={want.active === days} label={label} onPress={() => set({ active: want.active === days ? undefined : days })} />
-        ),
-      )}
+      <Head>{t('Activity')}</Head>
+      {([
+        [7, t('Moved in the last week')],
+        [14, t('Moved in the last two weeks')],
+        [28, t('Moved in the last four weeks')],
+      ] as const).map(([days, label]) => (
+        <Tick key={days} on={want.active === days} label={label} onPress={() => set({ active: want.active === days ? undefined : days })} />
+      ))}
 
       <Box
         render="button"
@@ -1195,7 +1277,7 @@ function Filter({
         hoverStyle={{ bg: '$hover' }}
       >
         <Text fontSize="$1" color="$ink">
-          Clear
+          {t('Clear')}
         </Text>
       </Box>
     </YStack>
@@ -1204,11 +1286,8 @@ function Filter({
 
 // ── the room ────────────────────────────────────────────────────────────────
 
-/** Said when a write has no board to write to. It is the same event whichever
- *  write asked, so it is one sentence rather than two wordings of one. */
-const NOWHERE = 'No project answered, so there is nowhere to file this card.'
-
 function Cards() {
+  const { t, locale } = useI18n()
   const { client } = useAi()
   const { user } = useIam()
   const { currentOrgId } = useOrganizations()
@@ -1266,12 +1345,12 @@ function Cards() {
       .catch(() => {})
     void readBoard(client, key ? { key } : {}, stop.signal)
       .then((rows) => live && (setCards(rows), setRefused(null)))
-      .catch((e: Error) => live && (setCards([]), setRefused(say(e, 'this board'))))
+      .catch((e: Error) => live && (setCards([]), setRefused(say(e, t('this board'), 'read', t))))
     return () => {
       live = false
       stop.abort()
     }
-  }, [client, key, nonce])
+  }, [client, key, nonce, t])
 
   // THE AGENT NAMES, so "an agent did this" can be answered about a card whose
   // source says `team` but whose holder is a bot — which is what a person filing
@@ -1304,12 +1383,12 @@ function Cards() {
       // somebody's real board. A write with no name to write under is refused.
       const targetKey = k || key || keys[0]
       if (!n) return
-      if (!targetKey) return setRefused(NOWHERE)
+      if (!targetKey) return setRefused(t(NOWHERE))
       void edit(client, targetKey, Number(n), { status })
         .then(() => bump((x) => x + 1))
-        .catch((e: Error) => setRefused(say(e, 'this card', 'save')))
+        .catch((e: Error) => setRefused(say(e, t('this card'), 'save', t)))
     },
-    [client, key, keys],
+    [client, key, keys, t],
   )
 
   /**
@@ -1319,7 +1398,7 @@ function Cards() {
     async (status: string, title: string): Promise<boolean> => {
       const targetKey = key || keys[0]
       if (!targetKey) {
-        setRefused(NOWHERE)
+        setRefused(t(NOWHERE))
         return false
       }
       try {
@@ -1332,11 +1411,11 @@ function Cards() {
         bump((x) => x + 1)
         return true
       } catch (e) {
-        setRefused(say(e, 'this card', 'save'))
+        setRefused(say(e, t('this card'), 'save', t))
         return false
       }
     },
-    [client, key, keys],
+    [client, key, keys, t],
   )
 
   return (
@@ -1351,15 +1430,15 @@ function Cards() {
         borderColor="$borderColor"
       >
         <Text render="h1" fontSize="$4" fontWeight="600" color="$ink" numberOfLines={1}>
-          Board
+          {t('Board')}
         </Text>
         <Select value={key || 'all'} onValueChange={setKey}>
-          <SelectTrigger aria-label="Board" width={140} $sm={{ width: 100 }}>
+          <SelectTrigger aria-label={t('Board')} width={140} $sm={{ width: 100 }}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem key="all" value="all">
-              All Boards
+              {t('All Boards')}
             </SelectItem>
             {keys.map((k) => (
               <SelectItem key={k} value={k}>
@@ -1371,19 +1450,21 @@ function Cards() {
         <YStack flex={1} />
         {cards ? (
           <Text fontSize="$1" color="$soft" display="none" $md={{ display: 'flex' }}>
-            {narrowed ? `${shown.length} of ${cards.length}` : `${cards.length} cards`}
+            {narrowed
+              ? t('{shown} of {total}', { shown: shown.length.toLocaleString(locale), total: cards.length.toLocaleString(locale) })
+              : t('{count} cards', { count: cards.length.toLocaleString(locale) })}
           </Text>
         ) : null}
         <Act
           icon={ListFilter}
-          label="Filter"
+          label={t('Filter')}
           on={filtering || narrowed}
           onPress={() => setFiltering((v) => !v)}
         />
         <XStack display="none" $md={{ display: 'flex' }}>
           <Act
             icon={SquareTerminal}
-            label="Tabs & Shell"
+            label={t('Tabs & Shell')}
             on={Boolean(aside)}
             onPress={() => showAside(aside ? null : "tasks")}
           />
@@ -1429,7 +1510,7 @@ function Cards() {
                   390px screen — where the reader can neither read the reason nor
                   press the one thing that answers it. */}
               <Text fontSize="$1" color="$soft" flex={1} minW={0}>
-                {refused} Cards will appear here when it answers.
+                {t('{reason} Cards will appear here when it answers.', { reason: refused })}
               </Text>
               <Box
                 render="button"
@@ -1443,7 +1524,7 @@ function Cards() {
                 hoverStyle={{ bg: '$hover' }}
               >
                 <Text fontSize="$1" color="$ink">
-                  Try again
+                  {t('Try again')}
                 </Text>
               </Box>
             </XStack>
@@ -1482,19 +1563,19 @@ function Cards() {
       >
         <Act
           icon={Columns3}
-          label="Board"
+          label={t('Board')}
           on={view === 'board'}
           onPress={() => setView('board')}
         />
         <Act
           icon={Calendar}
-          label="Planner"
+          label={t('Planner')}
           on={view === 'planner'}
           onPress={() => setView('planner')}
         />
         <YStack flex={1} />
         <Text fontSize="$1" color="$soft" numberOfLines={1} display="none" $md={{ display: 'flex' }}>
-          A card is a forge issue — moving it here moves it there.
+          {t('A card is a forge issue — moving it here moves it there.')}
         </Text>
       </XStack>
 

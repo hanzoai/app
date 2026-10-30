@@ -73,5 +73,17 @@ export function payUrl(path: string, query: Record<string, string | null | undef
 
 export const dollars = (n: number) => `$${n.toFixed(2)}`;
 
-/** Money as a sentence says it: whole dollars bare, anything else to the cent — $20, $16.67. */
-export const money = (n: number) => (Number.isInteger(n) ? `$${n.toLocaleString("en-US")}` : dollars(n));
+/**
+ * Money as a sentence says it. English stays `$20` or `$16.67`. Any other
+ * locale uses that locale's currency format for USD, so grouping and the
+ * currency mark follow the language the reader chose.
+ */
+export const money = (n: number, locale = "en-US") => {
+  if (locale === "en-US") return Number.isInteger(n) ? `$${n.toLocaleString("en-US")}` : dollars(n);
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+    maximumFractionDigits: Number.isInteger(n) ? 0 : 2,
+  }).format(n);
+};

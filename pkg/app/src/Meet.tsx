@@ -25,8 +25,10 @@ import {
 import { Text, View, XStack, YStack } from '@hanzo/gui'
 import { Button } from '@hanzo/ui'
 import { useIamToken } from '@hanzo/iam/react'
+import { phrase, type Say } from '@hanzo/i18n'
 import { refused, speech, useTranscript, useVoice } from '@hanzo/voice'
 import { Face, voiceOf } from './cast'
+import { useI18n } from '@hanzo/i18n/react'
 import { member } from './team'
 import { cleanForSpeech, speakAgent, stopAgentSpeech, AudioWave, useAgentSpeech } from './speech'
 import { GOOD } from './lib/mix'
@@ -40,21 +42,30 @@ export interface MeetingAgent {
   voice: string
 }
 
+/** Roles this screen writes, keyed by member id. A part the screen does not author stays the persona's. */
+const PARTS: Record<string, string> = {
+  maya: phrase('Chief of Staff'),
+  des: phrase('Designer'),
+  vi: phrase('Strategist'),
+  nora: phrase('Support Lead'),
+  einstein: phrase('Legal & IP Counsel'),
+}
+
 /** A core member as a meeting seats them: the team's name and part, the cast's voice. */
 const seated = (id: string): MeetingAgent => {
   const one = member(id)!
-  return { id, name: one.name, role: one.role, voice: voiceOf(id) }
+  return { id, name: one.name, role: PARTS[id] ?? one.role, voice: voiceOf(id) }
 }
 
 export const AVAILABLE_MEETING_AGENTS: MeetingAgent[] = [
-  { id: 'hanzo-coder', name: 'Hanzo Coder', role: 'Engineering Lead & Coder', voice: voiceOf('Hanzo Coder') },
-  { id: 'hanzo-researcher', name: 'Hanzo Researcher', role: 'Research & DeSci Scientist', voice: voiceOf('Hanzo Researcher') },
+  { id: 'hanzo-coder', name: 'Hanzo Coder', role: phrase('Engineering Lead & Coder'), voice: voiceOf('Hanzo Coder') },
+  { id: 'hanzo-researcher', name: 'Hanzo Researcher', role: phrase('Research & DeSci Scientist'), voice: voiceOf('Hanzo Researcher') },
   seated('maya'),
   seated('des'),
   seated('vi'),
   seated('nora'),
   seated('einstein'),
-  { id: 'zach', name: 'Zach', role: 'Quantitative Analyst', voice: voiceOf('zach') },
+  { id: 'zach', name: 'Zach', role: phrase('Quantitative Analyst'), voice: voiceOf('zach') },
 ]
 
 interface ScheduledMeeting {
@@ -65,6 +76,7 @@ interface ScheduledMeeting {
   date: string
   duration: string
   host: string
+  hostName?: string
   participants: string[]
   agents: string[]
   botInvited: boolean
@@ -74,12 +86,13 @@ interface ScheduledMeeting {
 const DEFAULT_MEETINGS: ScheduledMeeting[] = [
   {
     id: 'meet-1',
-    title: 'AI Platform Architecture & LLM Inference Sync',
+    title: phrase('AI Platform Architecture & LLM Inference Sync'),
     roomName: 'platform-architecture',
     time: '18:00 - 18:45',
-    date: 'Today',
+    date: phrase('Today'),
     duration: '45m',
-    host: 'Alex (You)',
+    host: phrase('{name} (You)'),
+    hostName: 'Alex',
     participants: ['Alex', 'Zach'],
     agents: ['Hanzo Coder', 'Vi'],
     botInvited: true,
@@ -87,12 +100,12 @@ const DEFAULT_MEETINGS: ScheduledMeeting[] = [
   },
   {
     id: 'meet-2',
-    title: 'Research Review',
+    title: phrase('Research Review'),
     roomName: 'research-review',
     time: '20:00 - 21:00',
-    date: 'Today',
+    date: phrase('Today'),
     duration: '60m',
-    host: 'Research',
+    host: phrase('Research'),
     participants: ['Alex', 'Research Team'],
     agents: ['Hanzo Researcher', 'Maya'],
     botInvited: true,
@@ -100,12 +113,12 @@ const DEFAULT_MEETINGS: ScheduledMeeting[] = [
   },
   {
     id: 'meet-3',
-    title: 'Security & Compliance Sync',
+    title: phrase('Security & Compliance Sync'),
     roomName: 'security-sync',
     time: '11:00 - 11:30',
-    date: 'Tomorrow',
+    date: phrase('Tomorrow'),
     duration: '30m',
-    host: 'Security',
+    host: phrase('Security'),
     participants: ['Alex', 'Core Developers'],
     agents: ['Des', 'Einstein'],
     botInvited: false,
@@ -119,8 +132,8 @@ const DEFAULT_MEETINGS: ScheduledMeeting[] = [
  * `useIamToken`) through the one API host; a refusal is thrown with what the
  * gateway said, never answered with a line nobody wrote.
  */
-async function generateAgentMeetingResponse(prompt: string, agentName: string, token: string | null): Promise<string> {
-  if (!token) throw new Error('Sign in to ask the co-pilot.')
+async function generateAgentMeetingResponse(prompt: string, agentName: string, token: string | null, t: Say): Promise<string> {
+  if (!token) throw new Error(t('Sign in to ask the co-pilot.'))
   const res = await fetch(`${api()}/v1/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -136,10 +149,10 @@ async function generateAgentMeetingResponse(prompt: string, agentName: string, t
       max_tokens: 150,
     }),
   })
-  if (!res.ok) throw new Error(`The co-pilot is unavailable (${res.status}).`)
+  if (!res.ok) throw new Error(t('The co-pilot is unavailable ({status}).', { status: res.status }))
   const data = await res.json()
   const text = data.choices?.[0]?.message?.content?.trim()
-  if (!text) throw new Error('The co-pilot answered with nothing.')
+  if (!text) throw new Error(t('The co-pilot answered with nothing.'))
   return text
 }
 
@@ -147,6 +160,7 @@ async function generateAgentMeetingResponse(prompt: string, agentName: string, t
 const FLOOR = 10
 
 export function Meet() {
+  const { t, locale } = useI18n()
   const [activeMeetingRoom, setActiveMeetingRoom] = useState<string | null>(null)
   const [roomInput, setRoomInput] = useState('')
   const [copied, setCopied] = useState(false)
@@ -257,7 +271,9 @@ export function Meet() {
     }
     setAudioTesting(true)
     speakAgent(
-      `Welcome to Hanzo Meet. This is ${activeCoPilotAgent}'s voice. If you can hear this, your speakers are working.`,
+      t("Welcome to Hanzo Meet. This is {agent}'s voice. If you can hear this, your speakers are working.", {
+        agent: activeCoPilotAgent,
+      }),
       {
         agent: activeCoPilotAgent,
         token,
@@ -289,23 +305,26 @@ export function Meet() {
   const transcriber = useTranscript({
     speech: ear,
     onPartial: setCaption,
-    onSettled: (text) => setLiveNotes((prev) => [...prev, `${clock()}: You: ${text}`]),
+    onSettled: (text) => setLiveNotes((prev) => [...prev, t('{time}: You: {text}', { time: clock(locale), text })]),
   })
   const transcriberNote = transcriber.reason ?? (transcriber.refusal ? refused(transcriber.refusal) : null)
 
   const handleSpokenInput = useCallback(
     async (transcript: string) => {
-      const time = clock()
-      setLiveNotes((prev) => [...prev, `${time}: You (voice): ${transcript}`])
+      const time = clock(locale)
+      setLiveNotes((prev) => [...prev, t('{time}: You (voice): {text}', { time, text: transcript })])
       try {
-        const reply = await generateAgentMeetingResponse(transcript, activeCoPilotAgent, token)
-        setLiveNotes((prev) => [...prev, `${time}: ${activeCoPilotAgent} (AI): ${reply}`])
+        const reply = await generateAgentMeetingResponse(transcript, activeCoPilotAgent, token, t)
+        setLiveNotes((prev) => [...prev, t('{time}: {agent} (AI): {reply}', { time, agent: activeCoPilotAgent, reply })])
         void handsFreeSay(cleanForSpeech(reply), voiceOf(activeCoPilotAgent))
       } catch (err) {
-        setLiveNotes((prev) => [...prev, `${time}: ${activeCoPilotAgent} did not answer: ${(err as Error).message}`])
+        setLiveNotes((prev) => [
+          ...prev,
+          t('{time}: {agent} did not answer: {reason}', { time, agent: activeCoPilotAgent, reason: (err as Error).message }),
+        ])
       }
     },
-    [activeCoPilotAgent, token, handsFreeSay],
+    [activeCoPilotAgent, token, handsFreeSay, t, locale],
   )
 
   const handleAskAgent = async (e: React.FormEvent) => {
@@ -313,21 +332,25 @@ export function Meet() {
     const q = agentQuestion.trim()
     if (!q) return
     setAgentQuestion('')
-    const time = clock()
-    setLiveNotes((prev) => [...prev, `${time}: You: ${q}`])
+    const time = clock(locale)
+    setLiveNotes((prev) => [...prev, t('{time}: You: {text}', { time, text: q })])
     try {
-      const reply = await generateAgentMeetingResponse(q, activeCoPilotAgent, token)
-      setLiveNotes((prev) => [...prev, `${time}: ${activeCoPilotAgent} (AI): ${reply}`])
+      const reply = await generateAgentMeetingResponse(q, activeCoPilotAgent, token, t)
+      setLiveNotes((prev) => [...prev, t('{time}: {agent} (AI): {reply}', { time, agent: activeCoPilotAgent, reply })])
       speak(reply, activeCoPilotAgent)
     } catch (err) {
-      setLiveNotes((prev) => [...prev, `${time}: ${activeCoPilotAgent} did not answer: ${(err as Error).message}`])
+      setLiveNotes((prev) => [
+        ...prev,
+        t('{time}: {agent} did not answer: {reason}', { time, agent: activeCoPilotAgent, reason: (err as Error).message }),
+      ])
     }
   }
 
   // The briefing is the call's own notes, read aloud; with none there is nothing to brief.
   const handleReadBriefing = () => {
     if (!liveNotes.length) return
-    toggle(`Briefing for ${activeMeetingRoom || 'this call'}. ${liveNotes.join('. ')}`, activeCoPilotAgent)
+    const room = activeMeetingRoom || t('this call')
+    toggle(t('Briefing for {room}. {notes}', { room, notes: liveNotes.join('. ') }), activeCoPilotAgent)
   }
 
   // What the hands-free control says: why it cannot run, or that Hanzo's speech
@@ -368,11 +391,11 @@ export function Meet() {
                 py={1}
                 rounded={4}
               >
-                LIVE · meet.hanzo.ai
+                {t('LIVE · {site}', { site: 'meet.hanzo.ai' })}
               </Text>
             </XStack>
             <Text fontSize="$1" color="$soft">
-              Native WebRTC video conferencing with AI meeting bot transcription &amp; voice
+              {t('Native WebRTC video conferencing with AI meeting bot transcription & voice')}
             </Text>
           </YStack>
         </XStack>
@@ -381,8 +404,8 @@ export function Meet() {
           <XStack items="center" gap={8} shrink={1} minW="auto" flexWrap="wrap">
             <XStack bg="$hover" rounded={8} p={2} gap={2} borderWidth={1} borderColor="$borderColor" shrink={1} minW="auto">
               {([
-                ['iframe', 'SFU Stage', Tv],
-                ['grid', 'Agent Grid', LayoutGrid],
+                ['iframe', t('SFU Stage'), Tv],
+                ['grid', t('Agent Grid'), LayoutGrid],
               ] as const).map(([view, label, Icon]) => (
                 <Button
                   key={view}
@@ -405,18 +428,18 @@ export function Meet() {
                   size="sm"
                   variant={copilot ? 'secondary' : 'default'}
                   onClick={() => setCopilot((v) => !v)}
-                  aria-label="Co-pilot"
+                  aria-label={t('Co-pilot')}
                   aria-expanded={copilot}
                   aria-controls="meet-copilot"
                 >
                   <Bot size={13} />
-                  Co-pilot
+                  {t('Co-pilot')}
                 </Button>
               </View>
             ) : null}
             <Button size="sm" onClick={() => handleCopyLink(activeMeetingRoom)}>
               {copied ? <Check size={13} /> : <Copy size={13} />}
-              {copied ? 'Link Copied' : 'Copy meeting link'}
+              {t(copied ? 'Link Copied' : 'Copy meeting link')}
             </Button>
             <Button
               size="sm"
@@ -431,7 +454,7 @@ export function Meet() {
               }}
             >
               <PhoneOff size={14} />
-              Leave Call
+              {t('Leave Call')}
             </Button>
           </XStack>
         ) : (
@@ -460,7 +483,7 @@ export function Meet() {
                   <iframe
                     src={`https://meet.hanzo.ai/${activeMeetingRoom}#config.prejoinPageEnabled=false&config.startWithAudioMuted=${!micOn}&config.startWithVideoMuted=${!cameraOn}`}
                     allow="camera; microphone; display-capture; autoplay; clipboard-write; speaker-selection; screen-wake-lock"
-                    title={`Hanzo Meet: ${activeMeetingRoom}`}
+                    title={t('Hanzo Meet: {room}', { room: activeMeetingRoom })}
                   />
                 }
                 width="100%"
@@ -503,14 +526,14 @@ export function Meet() {
                       mb={8}
                     >
                       <Text fontSize="$8" fontWeight="700" color="$ink">
-                        You
+                        {t('You')}
                       </Text>
                     </YStack>
                     <Text fontSize="$2" fontWeight="600" color="$ink">
-                      Alex (Host)
+                      {t('{name} (Host)', { name: 'Alex' })}
                     </Text>
                     <Text fontSize="$1" color={micOn ? GOOD : '$soft'}>
-                      {micOn ? 'Mic Active' : 'Muted'}
+                      {t(micOn ? 'Mic Active' : 'Muted')}
                     </Text>
                   </YStack>
                 </YStack>
@@ -558,7 +581,7 @@ export function Meet() {
                         {agentName}
                       </Text>
                       <Text fontSize="$1" color="$soft" mb={8}>
-                        Voice: {voice}
+                        {t('Voice: {voice}', { voice })}
                       </Text>
 
                       <XStack
@@ -573,14 +596,14 @@ export function Meet() {
                           <>
                             <AudioWave active={true} color="var(--state-success)" />
                             <Text fontSize="$1" fontWeight="600" color={GOOD}>
-                              Speaking in Call
+                              {t('Speaking in Call')}
                             </Text>
                           </>
                         ) : (
                           <>
                             <Bot size={11} color="var(--muted-foreground)" />
                             <Text fontSize="$1" fontWeight="600" color="$quiet">
-                              AI Agent · In Call
+                              {t('AI Agent · In Call')}
                             </Text>
                           </>
                         )}
@@ -625,7 +648,7 @@ export function Meet() {
                       {activeCoPilotAgent}
                     </Text>
                     <Text fontSize={FLOOR} color="$faint">
-                      AI Co-pilot · Voice: {voiceOf(activeCoPilotAgent)}
+                      {t('AI Co-pilot · Voice: {voice}', { voice: voiceOf(activeCoPilotAgent) })}
                     </Text>
                   </YStack>
                 </XStack>
@@ -638,7 +661,7 @@ export function Meet() {
                   py={2}
                   rounded={4}
                 >
-                  Live in call
+                  {t('Live in call')}
                 </Text>
               </XStack>
 
@@ -670,13 +693,13 @@ export function Meet() {
                   {speaking ? (
                     <>
                       <AudioWave active={true} color="var(--state-success)" />
-                      Stop Briefing
+                      {t('Stop Briefing')}
                       <Square size={11} fill="currentColor" />
                     </>
                   ) : (
                     <>
                       <Volume2 size={14} />
-                      Briefing
+                      {t('Briefing')}
                     </>
                   )}
                 </Button>
@@ -691,12 +714,16 @@ export function Meet() {
                   disabled={!!handsFree.blocked}
                   title={
                     handsFreeNote ??
-                    (handsFree.open ? 'Hands-Free Voice Active (Speaks and interrupts on voice)' : 'Enable Hands-Free Voice Mode')
+                    t(
+                      handsFree.open
+                        ? 'Hands-Free Voice Active (Speaks and interrupts on voice)'
+                        : 'Enable Hands-Free Voice Mode',
+                    )
                   }
                   onClick={handsFree.toggle}
                 >
                   <Mic size={14} color={handsFree.open ? 'var(--state-success)' : 'currentColor'} />
-                  {handsFree.open ? 'Hands-Free On' : 'Hands-Free'}
+                  {t(handsFree.open ? 'Hands-Free On' : 'Hands-Free')}
                 </Button>
 
                 <Button
@@ -707,11 +734,14 @@ export function Meet() {
                   data-refusal={transcriber.refusal ? transcriber.refusal.service : undefined}
                   aria-pressed={transcriber.open}
                   disabled={!!transcriber.blocked}
-                  title={transcriberNote ?? (transcriber.open ? 'Transcribing — click to stop' : 'Transcribe what is said into the notes')}
+                  title={
+                    transcriberNote ??
+                    t(transcriber.open ? 'Transcribing — click to stop' : 'Transcribe what is said into the notes')
+                  }
                   onClick={transcriber.toggle}
                 >
                   <Captions size={14} color={transcriber.open ? 'var(--state-success)' : 'currentColor'} />
-                  {transcriber.open ? 'Transcribing' : 'Transcribe'}
+                  {t(transcriber.open ? 'Transcribing' : 'Transcribe')}
                 </Button>
               </XStack>
               {handsFreeNote ? (
@@ -764,7 +794,7 @@ export function Meet() {
                       type="text"
                       value={agentQuestion}
                       onChange={(e) => setAgentQuestion(e.target.value)}
-                      placeholder={`Ask ${activeCoPilotAgent} in meeting...`}
+                      placeholder={t('Ask {agent} in meeting...', { agent: activeCoPilotAgent })}
                     />
                   }
                   flex={1}
@@ -778,7 +808,7 @@ export function Meet() {
                   fontSize="$1"
                   outlineStyle="none"
                 />
-                <Button type="submit" variant="primary" size="icon-sm" disabled={!agentQuestion.trim()} aria-label="Ask">
+                <Button type="submit" variant="primary" size="icon-sm" disabled={!agentQuestion.trim()} aria-label={t('Ask')}>
                   <Send size={12} />
                 </Button>
               </XStack>
@@ -789,15 +819,15 @@ export function Meet() {
                   size="sm"
                   flex={1}
                   disabled={!agentQuestion.trim()}
-                  title="Add what is typed above to the notes, without asking the co-pilot"
+                  title={t('Add what is typed above to the notes, without asking the co-pilot')}
                   onClick={() => {
                     const note = agentQuestion.trim()
                     if (!note) return
                     setAgentQuestion('')
-                    setLiveNotes((prev) => [...prev, `${clock()}: You (note): ${note}`])
+                    setLiveNotes((prev) => [...prev, t('{time}: You (note): {note}', { time: clock(locale), note })])
                   }}
                 >
-                  + Add Live Note
+                  {t('+ Add Live Note')}
                 </Button>
                 <Button
                   variant="primary"
@@ -807,7 +837,7 @@ export function Meet() {
                     navigator.clipboard.writeText(text)
                   }}
                 >
-                  Copy Summary
+                  {t('Copy Summary')}
                 </Button>
               </XStack>
             </YStack>
@@ -833,10 +863,20 @@ export function Meet() {
           >
             <YStack gap={6}>
               <Text fontSize="$8" fontWeight="800" color="$ink" letterSpacing={-0.5}>
-                Secure, High-Definition Video Calls
+                {t('Secure, High-Definition Video Calls')}
               </Text>
               <Text fontSize="$3" color="$soft">
-                Powered by native Hanzo Meet (<Text render={<a href="https://meet.hanzo.ai" target="_blank" rel="noopener noreferrer" />} color="$ink" textDecorationLine="underline">meet.hanzo.ai</Text>). Connect with team members, clients, and autonomous AI agents.
+                {t('Powered by native Hanzo Meet ({link}). Connect with team members, clients, and autonomous AI agents.', {
+                  link: (
+                    <Text
+                      render={<a href="https://meet.hanzo.ai" target="_blank" rel="noopener noreferrer" />}
+                      color="$ink"
+                      textDecorationLine="underline"
+                    >
+                      meet.hanzo.ai
+                    </Text>
+                  ),
+                })}
               </Text>
             </YStack>
 
@@ -844,7 +884,7 @@ export function Meet() {
             <XStack gap={12} flexWrap="wrap">
               <Button variant="primary" size="lg" onClick={startInstantMeeting}>
                 <Plus size={16} />
-                Start Instant Meeting
+                {t('Start Instant Meeting')}
               </Button>
 
               <XStack
@@ -864,8 +904,8 @@ export function Meet() {
                       value={roomInput}
                       onChange={(e) => setRoomInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && joinCustomMeeting()}
-                      placeholder="Enter meeting code or link"
-                      aria-label="Meeting code or link"
+                      placeholder={t('Enter meeting code or link')}
+                      aria-label={t('Meeting code or link')}
                     />
                   }
                   bg="transparent"
@@ -877,7 +917,7 @@ export function Meet() {
                   px={8}
                 />
                 <Button variant="primary" size="sm" disabled={!roomInput.trim()} onClick={joinCustomMeeting}>
-                  Join
+                  {t('Join')}
                 </Button>
               </XStack>
 
@@ -888,7 +928,7 @@ export function Meet() {
                 onClick={() => setShowAgentPicker(!showAgentPicker)}
               >
                 <UserPlus size={14} />
-                {`Invite Agents (${invitedAgents.length})`}
+                {t('Invite Agents ({count})', { count: invitedAgents.length.toLocaleString(locale) })}
               </Button>
             </XStack>
 
@@ -904,10 +944,10 @@ export function Meet() {
               >
                 <XStack items="center" justify="space-between" mb={12}>
                   <Text fontSize="$2" fontWeight="700" color="$ink">
-                    Select AI Agents to Attend Meetings
+                    {t('Select AI Agents to Attend Meetings')}
                   </Text>
                   <Text fontSize="$1" color="$soft">
-                    Each agent joins the call with voice synthesis &amp; pair programming
+                    {t('Each agent joins the call with voice synthesis & pair programming')}
                   </Text>
                 </XStack>
 
@@ -935,7 +975,7 @@ export function Meet() {
                             {agent.name}
                           </Text>
                           <Text fontSize={10} color="$faint" numberOfLines={1}>
-                            {agent.role} · Voice: {agent.voice}
+                            {t('{role} · Voice: {voice}', { role: t(agent.role), voice: agent.voice })}
                           </Text>
                         </YStack>
                         <View
@@ -979,7 +1019,7 @@ export function Meet() {
                     <XStack width={64} height={64} rounded={9999} bg="$raised" items="center" justify="center">
                       <VideoOff size={28} color="var(--muted-foreground)" />
                     </XStack>
-                    <Text fontSize="$2" color="$soft">Camera is off</Text>
+                    <Text fontSize="$2" color="$soft">{t('Camera is off')}</Text>
                   </YStack>
                 )}
 
@@ -1005,8 +1045,8 @@ export function Meet() {
                     size="icon"
                     rounded={9999}
                     variant={cameraOn ? 'default' : 'destructive'}
-                    aria-label={cameraOn ? 'Turn Camera Off' : 'Turn Camera On'}
-                    title={cameraOn ? 'Turn Camera Off' : 'Turn Camera On'}
+                    aria-label={t(cameraOn ? 'Turn Camera Off' : 'Turn Camera On')}
+                    title={t(cameraOn ? 'Turn Camera Off' : 'Turn Camera On')}
                     onClick={() => setCameraOn(!cameraOn)}
                   >
                     {cameraOn ? <Video size={16} /> : <VideoOff size={16} />}
@@ -1016,8 +1056,8 @@ export function Meet() {
                     size="icon"
                     rounded={9999}
                     variant={micOn ? 'default' : 'destructive'}
-                    aria-label={micOn ? 'Mute Mic' : 'Unmute Mic'}
-                    title={micOn ? 'Mute Mic' : 'Unmute Mic'}
+                    aria-label={t(micOn ? 'Mute Mic' : 'Unmute Mic')}
+                    title={t(micOn ? 'Mute Mic' : 'Unmute Mic')}
                     onClick={() => setMicOn(!micOn)}
                   >
                     {micOn ? <Mic size={14} strokeWidth={1.75} /> : <MicOff size={14} strokeWidth={1.75} />}
@@ -1028,18 +1068,18 @@ export function Meet() {
                     size="sm"
                     rounded={9999}
                     variant={audioTesting ? 'secondary' : 'default'}
-                    title="Test Agent Voice & Audio Output"
+                    title={t('Test Agent Voice & Audio Output')}
                     onClick={testAudioSpeaker}
                   >
                     {audioTesting ? (
                       <>
                         <AudioWave active={true} color="var(--state-success)" />
-                        Testing Audio…
+                        {t('Testing Audio…')}
                       </>
                     ) : (
                       <>
                         <Volume2 size={12} strokeWidth={1.75} />
-                        Test Audio
+                        {t('Test Audio')}
                       </>
                     )}
                   </Button>
@@ -1052,17 +1092,21 @@ export function Meet() {
                     onClick={() => setBotAssisting(!botAssisting)}
                   >
                     <Bot size={13} />
-                    {botAssisting ? 'AI Bot Co-pilot ON' : 'AI Bot OFF'}
+                    {t(botAssisting ? 'AI Bot Co-pilot ON' : 'AI Bot OFF')}
                   </Button>
                 </XStack>
               </XStack>
 
               <XStack p={12} items="center" justify="space-between" bg="$panel">
                 <Text fontSize="$1" color="$soft">
-                  Readiness: Camera {cameraOn ? 'Active' : 'Muted'} · Mic {micOn ? 'Active' : 'Muted'} · Audio {audioTesting ? 'Testing' : 'Ready'}
+                  {t('Readiness: Camera {camera} · Mic {mic} · Audio {audio}', {
+                    camera: t(cameraOn ? 'Active' : 'Muted'),
+                    mic: t(micOn ? 'Active' : 'Muted'),
+                    audio: t(audioTesting ? 'Testing' : 'Ready'),
+                  })}
                 </Text>
                 <Text fontSize="$1" color="$quiet" fontWeight="600">
-                  HD 1080p Ready
+                  {t('HD 1080p Ready')}
                 </Text>
               </XStack>
             </YStack>
@@ -1092,10 +1136,10 @@ export function Meet() {
           >
             <XStack items="center" justify="space-between">
               <Text fontSize="$3" fontWeight="700" color="$ink">
-                Upcoming Meetings
+                {t('Upcoming Meetings')}
               </Text>
               <Text fontSize="$1" color="$faint">
-                Synced with /cal
+                {t('Synced with /cal')}
               </Text>
             </XStack>
 
@@ -1120,24 +1164,24 @@ export function Meet() {
                       py={2}
                       rounded={4}
                     >
-                      {m.date} · {m.time}
+                      {t('{date} · {time}', { date: t(m.date), time: m.time })}
                     </Text>
                     {m.botInvited ? (
                       <XStack items="center" gap={4}>
                         <Bot size={12} color="var(--muted-foreground)" />
-                        <Text fontSize={FLOOR} color="$soft" fontWeight="600">Agents Attending</Text>
+                        <Text fontSize={FLOOR} color="$soft" fontWeight="600">{t('Agents Attending')}</Text>
                       </XStack>
                     ) : null}
                   </XStack>
 
                   <Text fontSize="$2" fontWeight="600" color="$ink" lineHeight={16.9}>
-                    {m.title}
+                    {t(m.title)}
                   </Text>
 
                   {/* Attendees & Agents row */}
                   <XStack items="center" gap={6} flexWrap="wrap">
                     <Text fontSize="$1" color="$soft">
-                      Host: {m.host}
+                      {t('Host: {host}', { host: m.hostName ? t(m.host, { name: m.hostName }) : t(m.host) })}
                     </Text>
                     {m.agents && m.agents.length > 0 ? (
                       <XStack display="inline-flex" items="center" gap={4}>
@@ -1163,12 +1207,12 @@ export function Meet() {
                       }}
                     >
                       <Video size={12} />
-                      Join Call
+                      {t('Join Call')}
                     </Button>
                     <Button
                       size="icon-sm"
-                      aria-label="Copy invite link"
-                      title="Copy invite link"
+                      aria-label={t('Copy invite link')}
+                      title={t('Copy invite link')}
                       onClick={() => handleCopyLink(m.roomName)}
                     >
                       <Copy size={12} />
@@ -1190,14 +1234,14 @@ export function Meet() {
             >
               <XStack items="center" gap={8}>
                 <Calendar size={14} color="var(--muted-foreground)" />
-                <Text fontSize="$2" fontWeight="700" color="$ink">Need to book a slot?</Text>
+                <Text fontSize="$2" fontWeight="700" color="$ink">{t('Need to book a slot?')}</Text>
               </XStack>
               <Text fontSize="$1" color="$soft">
-                Use the Hanzo Calendar Scheduler to coordinate available times across team members and bots.
+                {t('Use the Hanzo Calendar Scheduler to coordinate available times across team members and bots.')}
               </Text>
               <Button asChild variant="link" size="sm" px={0} justify="flex-start">
                 <a href="/cal">
-                  Open Calendar Scheduler
+                  {t('Open Calendar Scheduler')}
                   <ArrowRight size={11} />
                 </a>
               </Button>
@@ -1210,6 +1254,6 @@ export function Meet() {
 }
 
 /** A note's time, as the reader's clock shows it: 4:22 PM, never "4:22:". */
-function clock(): string {
-  return new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+function clock(locale: string): string {
+  return new Date().toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' })
 }

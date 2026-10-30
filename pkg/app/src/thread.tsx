@@ -74,7 +74,7 @@ import { attempt, bind, enlist, reread, snapshot, subscribe, sweep, tick, view, 
 import { chord, named, said, type Act } from './chord'
 import { carry } from './stars'
 import { ShareDialog } from './Share'
-import { english, type Say } from './say'
+import { english, type Say } from '@hanzo/i18n'
 
 export interface ThreadList {
   threads: Thread[]

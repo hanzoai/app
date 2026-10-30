@@ -8,7 +8,9 @@
  */
 
 import { useState, useEffect } from 'react'
-import { LanguagePicker, useI18n } from '@hanzo/i18n/react'
+import { phrase } from '@hanzo/i18n'
+import { LanguagePicker } from '@hanzo/i18n/react'
+import { useI18n } from '@hanzo/i18n/react'
 import { Box, Button, Input, Separator, Text, XStack, YStack } from '@hanzo/ui'
 import { Appearance } from '@hanzo/appearance'
 import { useIam } from '@hanzo/iam/react'
@@ -36,12 +38,12 @@ import { tap } from './lib/tap'
 const CHOICE = { rounded: 8, borderWidth: 1, borderStyle: 'solid', cursor: 'pointer' } as const
 
 const PLATFORM_OPTIONS: { id: PlatformId | 'auto'; label: string; note: string }[] = [
-  { id: 'auto', label: 'Auto (System OS)', note: 'Automatically detects your device operating system' },
-  { id: 'ios', label: 'Apple iOS (Liquid Glass)', note: 'Continuous squircles, specular liquid glass, SF Pro typography' },
-  { id: 'android', label: 'Android (Material 3)', note: 'Material 3 tonal elevations and Google Sans geometry' },
-  { id: 'macos', label: 'Apple macOS (Vibrant)', note: 'Translucent glass sidebars and compact desktop density' },
-  { id: 'windows', label: 'Windows (Mica Fluent)', note: 'Fluent Design acrylic Mica and Segoe UI Variable' },
-  { id: 'linux', label: 'Linux (Clean System)', note: 'Crisp system geometry and flat modern edges' },
+  { id: 'auto', label: phrase('Auto (System OS)'), note: phrase('Automatically detects your device operating system') },
+  { id: 'ios', label: phrase('Apple iOS (Liquid Glass)'), note: phrase('Continuous squircles, specular liquid glass, SF Pro typography') },
+  { id: 'android', label: phrase('Android (Material 3)'), note: phrase('Material 3 tonal elevations and Google Sans geometry') },
+  { id: 'macos', label: phrase('Apple macOS (Vibrant)'), note: phrase('Translucent glass sidebars and compact desktop density') },
+  { id: 'windows', label: phrase('Windows (Mica Fluent)'), note: phrase('Fluent Design acrylic Mica and Segoe UI Variable') },
+  { id: 'linux', label: phrase('Linux (Clean System)'), note: phrase('Crisp system geometry and flat modern edges') },
 ]
 
 export function Look() {
@@ -140,10 +142,10 @@ export function Look() {
                 <XStack items="center" justify="space-between">
                   <YStack gap="$0.5">
                     <Text fontSize="$3" fontWeight={active ? '600' : '500'} color={active ? '$ink' : '$ink'}>
-                      {opt.label}
+                      {t(opt.label)}
                     </Text>
                     <Text fontSize="$1" color="$soft">
-                      {opt.note}
+                      {t(opt.note)}
                     </Text>
                   </YStack>
                   {active ? <Check size={16} color="var(--primary)" aria-hidden /> : null}

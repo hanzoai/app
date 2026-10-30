@@ -19,11 +19,9 @@ import { useLimits } from './lib/limits'
 import { contextOf, readTokens, subscribeTokens, tokenKey, type Turn } from './lib/tokens'
 
 export interface ContextUsage { model: string; window?: number; messages: readonly Turn[]; draft?: string; tools?: unknown }
-const integer = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 0 })
-
 /** The account control, shared by Chat, Dev and Studio through the composer slot. */
 export function UsageControl({ context, read }: { context?: ContextUsage; read?: UseLimits }) {
-  const { t } = useI18n()
+  const { t, format } = useI18n()
   const [open, setOpen] = useState(false)
   const currentOrg = org()
   const identity = `${currentOrg}:${subject()}`
@@ -76,7 +74,8 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
   const highest = limits ? Math.max(0, ...Object.values(limits.classes).flatMap((c) => c ? [c.percent, ...(c.window ? [c.window.percent] : [])] : [])) : null
   const title = plan ? `${plan.name}${plan.tag ? ` ${plan.tag}` : ''}` : t('Plan usage')
   const toggle = (on: boolean) => { setOpen(on); if (on && read) read.reload() }
-  const metric = (name: string, n: number) => <XStack key={name} justify="space-between" gap="$3"><Text fontSize="$2" color="$soft">{name}</Text><Text fontSize="$2" color="$ink" fontVariant={['tabular-nums']}>{integer(n)}</Text></XStack>
+  const integer = (n: number) => format.number(n, { maximumFractionDigits: 0 })
+  const metric = (name: string, n: number) => <XStack key={name} justify="space-between" gap="$3"><Text fontSize="$2" color="$soft">{name}</Text><Text fontSize="$2" color="$ink" fontVariant={['tabular-nums']}><bdi>{integer(n)}</bdi></Text></XStack>
 
   return (
     <Popover open={open} onOpenChange={toggle} placement="top-end">

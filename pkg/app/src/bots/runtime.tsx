@@ -28,6 +28,8 @@ import { Play, Square, X } from 'lucide-react'
 import type { Agent, Channel, McpServer, Machine as Target, Ran, Sandbox, Tool } from '@hanzo/ai'
 import { useOrganizations } from '@hanzo/iam/react'
 import { useAi } from '../lib/ai'
+import { useI18n } from '@hanzo/i18n/react'
+import type { Say } from '@hanzo/i18n'
 import { say } from '../failure'
 import { Input, Text, XStack, YStack } from '@hanzo/gui'
 import { Picker } from '@hanzo/ui'
@@ -38,6 +40,8 @@ import {
   type McpTool,
   type Project,
   type Secret,
+  ALWAYS,
+  ONCE,
   answer,
   answering,
   call,
@@ -51,7 +55,38 @@ import {
   workOn,
 } from './api'
 
+/** The platform's word for how a bot runs, as a person reads it. An unknown mode stays a token. */
+function modeName(mode: string | undefined, t: Say): string {
+  if (mode === ALWAYS) return t('long-running')
+  if (!mode || mode === ONCE) return t('one-shot')
+  return mode
+}
+
+/** A computer's status, in the reader's words. An unrecognized status stays a token. */
+function boxStatus(status: string, t: Say): string {
+  switch (status) {
+    case 'running':
+      return t('running')
+    case 'pending':
+      return t('pending')
+    case 'error':
+      return t('error')
+    case 'unknown':
+      return t('unknown')
+    default:
+      return status
+  }
+}
+
+/** Where a tool was published, and whether the org has turned it on. */
+function toolFrom(from: string, ready: boolean, t: Say): string {
+  if (from === 'MCP') return t(ready ? 'MCP' : 'MCP · not activated')
+  if (from === 'skill') return t(ready ? 'skill' : 'skill · not activated')
+  return t(ready ? 'platform' : 'platform · not activated')
+}
+
 export function Runtime({ bot }: { bot: Agent }) {
+  const { t, locale } = useI18n()
   const { client } = useAi()
   const { currentOrg } = useOrganizations()
   const org = currentOrg?.displayName || currentOrg?.name || ''
@@ -70,24 +105,24 @@ export function Runtime({ bot }: { bot: Agent }) {
   const [why, setWhy] = useState<Record<string, string>>({})
 
   const blame = useCallback((k: string, e: unknown, subject: string) => {
-    setWhy((w) => ({ ...w, [k]: say(e, subject) }))
-  }, [])
+    setWhy((w) => ({ ...w, [k]: say(e, subject, 'read', t) }))
+  }, [t])
 
   const survey = useCallback(async () => {
     if (!client) return
     await Promise.all([
-      client.machines.list().then(setMachines).catch((e) => blame('machine', e, 'this org’s machines')),
-      client.sandboxes.list({ project }).then(setBoxes).catch((e) => blame('box', e, 'this bot’s computer')),
-      client.tools.mcp().then(setServers).catch((e) => blame('mcp', e, 'this org’s MCP servers')),
-      client.tools.skills().then((s) => setSkills(s.tools ?? [])).catch((e) => blame('skill', e, 'this org’s skills')),
+      client.machines.list().then(setMachines).catch((e) => blame('machine', e, t('this org’s machines'))),
+      client.sandboxes.list({ project }).then(setBoxes).catch((e) => blame('box', e, t('this bot’s computer'))),
+      client.tools.mcp().then(setServers).catch((e) => blame('mcp', e, t('this org’s MCP servers'))),
+      client.tools.skills().then((s) => setSkills(s.tools ?? [])).catch((e) => blame('skill', e, t('this org’s skills'))),
       client.tools.activation().then((a) => setActivated(a.enabled ?? [])).catch(() => setActivated([])),
-      readTools(client).then(setPublished).catch((e) => blame('served', e, 'the platform’s tools')),
-      readConnectors(client).then(setLinks).catch((e) => blame('link', e, 'your connectors')),
-      client.channels.list().then(setRooms).catch((e) => blame('room', e, 'this org’s channels')),
-      readSecrets(client, vault(bot.name)).then(setKeys).catch((e) => blame('key', e, 'this bot’s secrets')),
-      readProjects(client).then(setRepos).catch((e) => blame('repo', e, 'this org’s repos')),
+      readTools(client).then(setPublished).catch((e) => blame('served', e, t('the platform’s tools'))),
+      readConnectors(client).then(setLinks).catch((e) => blame('link', e, t('your connectors'))),
+      client.channels.list().then(setRooms).catch((e) => blame('room', e, t('this org’s channels'))),
+      readSecrets(client, vault(bot.name)).then(setKeys).catch((e) => blame('key', e, t('this bot’s secrets'))),
+      readProjects(client).then(setRepos).catch((e) => blame('repo', e, t('this org’s repos'))),
     ])
-  }, [client, project, bot.name, blame])
+  }, [client, project, bot.name, blame, t])
 
   useEffect(() => {
     void survey()
@@ -96,7 +131,7 @@ export function Runtime({ bot }: { bot: Agent }) {
   return (
     <YStack
       render="aside"
-      aria-label={`${bot.name} runtime`}
+      aria-label={t('{name} runtime', { name: bot.name })}
       data-hz="runtime-pane"
       width={360}
       shrink={0}
@@ -107,16 +142,25 @@ export function Runtime({ bot }: { bot: Agent }) {
     >
       {/* WHOSE. Every read below is answered for the token this browser holds,
           so the org named here is the only one any of it can be about. */}
-      <Part title="Runtime">
+      <Part title={t('Runtime')}>
         <Line>
-          {bot.name} runs for <Text color={INK}>{org || 'your org'}</Text>
-          {bot.serviceAccountId ? ` as ${bot.serviceAccountId}` : ''}. Nothing on this panel
-          crosses into another org.
+          {t(
+            bot.serviceAccountId
+              ? '{name} runs for {org} as {id}. Nothing on this panel crosses into another org.'
+              : '{name} runs for {org}. Nothing on this panel crosses into another org.',
+            {
+              name: bot.name,
+              org: <Text color={INK}>{org || t('your org')}</Text>,
+              id: bot.serviceAccountId ?? '',
+            },
+          )}
         </Line>
         {bot.schedule ? (
           <Line>
-            Wakes on <Text color={INK}>{bot.schedule}</Text>
-            {bot.executionMode ? ` (${bot.executionMode})` : ''}.
+            {t(bot.executionMode ? 'Wakes on {schedule} ({mode}).' : 'Wakes on {schedule}.', {
+              schedule: <Text color={INK}>{bot.schedule}</Text>,
+              mode: modeName(bot.executionMode, t),
+            })}
           </Line>
         ) : null}
       </Part>
@@ -140,6 +184,7 @@ export function Runtime({ bot }: { bot: Agent }) {
 
 /** The machine this Bot runs on. The list is the org's; the binding is the Bot's. */
 function Machine({ bot, machines, why }: { bot: Agent; machines: Target[]; why?: string }) {
+  const { t, locale } = useI18n()
   const { client } = useAi()
   const [bound, setBound] = useState(bot.computeRef ?? '')
   const [failed, setFailed] = useState<string | null>(null)
@@ -147,16 +192,16 @@ function Machine({ bot, machines, why }: { bot: Agent; machines: Target[]; why?:
   useEffect(() => setBound(bot.computeRef ?? ''), [bot.computeRef])
 
   return (
-    <Part title="Machine">
+    <Part title={t('Machine')}>
       {why ? <Line>{why}</Line> : null}
       {!why && machines.length === 0 ? (
-        <Line>No machine is registered to this org, so this bot runs wherever the platform places it.</Line>
+        <Line>{t('No machine is registered to this org, so this bot runs wherever the platform places it.')}</Line>
       ) : null}
       {machines.length > 0 ? (
         <Picker
           {...PICK}
           value={bound}
-          aria-label="Machine"
+          aria-label={t('Machine')}
           onChange={async (e) => {
             const id = e.target.value
             setBound(id)
@@ -165,15 +210,19 @@ function Machine({ bot, machines, why }: { bot: Agent; machines: Target[]; why?:
               await client.agents.update(bot.name, { computeRef: id })
               setFailed(null)
             } catch (err) {
-              setFailed(say(err, 'this bot', 'save'))
+              setFailed(say(err, t('this bot'), 'save', t))
             }
           }}
         >
-          <option value="">Unbound</option>
+          <option value="">{t('Unbound')}</option>
           {machines.map((m) => (
             <option key={m.id} value={m.id}>
-              {m.label || m.host || m.id}
-              {m.status ? ` — ${m.status}` : ''}
+              {m.status
+                ? t('{name} — {status}', {
+                    name: m.label || m.host || m.id,
+                    status: m.status === 'online' ? t('online') : m.status,
+                  })
+                : m.label || m.host || m.id}
             </option>
           ))}
         </Picker>
@@ -210,6 +259,7 @@ function Computer({
   why?: string
   onChange: () => void | Promise<void>
 }) {
+  const { t, locale } = useI18n()
   const { client } = useAi()
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState<string | null>(null)
@@ -227,27 +277,29 @@ function Computer({
       } catch (e) {
         // The fleet's own words. A sandbox that will not start is the reader's
         // situation and only the fleet knows why, so it is not translated away.
-        setFailed(`${what}: ${e instanceof Error ? e.message : String(e)}`)
+        const message = e instanceof Error ? e.message : String(e)
+        setFailed(t('{what}: {message}', { what, message }))
       } finally {
         setBusy(false)
       }
     },
-    [client, busy],
+    [client, busy, t],
   )
 
   const open = (kind: 'terminal' | 'screen') =>
-    attempt(`Could not open the ${kind}`, async () => {
+    attempt(t(kind === 'terminal' ? 'Could not open the terminal' : 'Could not open the screen'), async () => {
       if (!client || !box) return
       const g = await grant(client, box.id, kind)
-      if (!g.url) throw new Error('the platform minted no address')
+      if (!g.url) throw new Error(t('the platform minted no address'))
       setWindow({ kind, url: g.url })
     })
 
   return (
-    <Part title="Computer">
+    <Part title={t('Computer')}>
       <Line>
-        Its own disk, <Text render="code" fontSize="$1" color={INK}>{project}</Text>. A lease on this project finds the same
-        disk every time, so what this bot writes outlives the lease.
+        {t('Its own disk, {project}. A lease on this project finds the same disk every time, so what this bot writes outlives the lease.', {
+          project: <Text render="code" fontSize="$1" color={INK}>{project}</Text>,
+        })}
       </Line>
 
       {why ? <Line>{why}</Line> : null}
@@ -256,7 +308,10 @@ function Computer({
         <>
           <Row>
             <Text fontSize="$2" color={INK} data-hz="box">
-              {box.class ?? 'sandbox'} · {box.status ?? 'unknown'}
+              {t('{class} · {status}', {
+                class: box.class ?? t('sandbox'),
+                status: box.status ? boxStatus(box.status, t) : t('unknown'),
+              })}
             </Text>
             <Text fontSize="$1" color={FAINT}>{box.id.slice(0, 14)}</Text>
           </Row>
@@ -267,37 +322,37 @@ function Computer({
               pending row behind, so drawing its controls would put a Terminal
               on a box that will never open one. */}
           {box.status === 'pending' ? (
-            <Line>Waiting for the fleet to place it. Nothing can be opened on it until it is running.</Line>
+            <Line>{t('Waiting for the fleet to place it. Nothing can be opened on it until it is running.')}</Line>
           ) : null}
-          {box.status === 'error' ? <Line>{box.error || 'The fleet could not start it.'}</Line> : null}
+          {box.status === 'error' ? <Line>{box.error || t('The fleet could not start it.')}</Line> : null}
           <XStack gap={6} flexWrap="wrap">
             {box.status === 'running' ? (
               <Text {...TAB} onClick={() => open('terminal')} disabled={busy}>
-                Terminal
+                {t('Terminal')}
               </Text>
             ) : null}
             {box.status === 'running' && box.class === 'desktop' ? (
               <Text {...TAB} onClick={() => open('screen')} disabled={busy}>
-                Screen
+                {t('Screen')}
               </Text>
             ) : null}
             <Text
               {...TAB}
               disabled={busy}
               onClick={() =>
-                attempt('Could not stop it', async () => {
+                attempt(t('Could not stop it'), async () => {
                   await client!.sandboxes.stop({ id: box.id })
                 })
               }
             >
               <Square size={11} aria-hidden />
-              Stop
+              {t('Stop')}
             </Text>
             <Text
               {...TAB}
               disabled={busy}
               onClick={() =>
-                attempt('Could not end the lease', async () => {
+                attempt(t('Could not end the lease'), async () => {
                   await client!.sandboxes.end({ id: box.id })
                   setWindow(null)
                   await onChange()
@@ -305,14 +360,14 @@ function Computer({
               }
             >
               <X size={11} aria-hidden />
-              End
+              {t('End')}
             </Text>
           </XStack>
 
           {window ? (
             <YStack
               render="iframe"
-              {...{ src: window.url, title: `${bot.name} ${window.kind}` }}
+              {...{ src: window.url, title: t(window.kind === 'terminal' ? '{name} terminal' : '{name} screen', { name: bot.name }) }}
               width="100%"
               height={240}
               borderWidth={1}
@@ -327,7 +382,7 @@ function Computer({
             {...{
               onSubmit: (e: React.FormEvent) => {
                 e.preventDefault()
-                void attempt('Could not run it', async () => {
+                void attempt(t('Could not run it'), async () => {
                   setRan(await client!.sandboxes.run({ id: box.id, command }))
                 })
               },
@@ -341,27 +396,26 @@ function Computer({
               minW={0}
               value={command}
               onChange={(e) => setCommand(e.target.value)}
-              placeholder="Command"
-              aria-label="Command to run in this bot's computer"
+              placeholder={t('Command')}
+              aria-label={t("Command to run in this bot's computer")}
             />
             <Text {...TAB} {...{ type: 'submit' }} disabled={busy || !command.trim()}>
               <Play size={11} aria-hidden />
-              Run
+              {t('Run')}
             </Text>
           </XStack>
 
           {ran ? (
             <Text {...OUT}>
               {(ran.stdout ?? '') + (ran.stderr ?? '')}
-              {`\nexit ${ran.exitCode ?? 0}`}
+              {`\n${t('exit {code}', { code: ran.exitCode ?? 0 })}`}
             </Text>
           ) : null}
         </>
       ) : (
         <>
           <Line>
-            No computer is leased. A lease is what a terminal, a screen and a command all hang off,
-            so until one starts there is nothing here to open.
+            {t('No computer is leased. A lease is what a terminal, a screen and a command all hang off, so until one starts there is nothing here to open.')}
           </Line>
           <XStack gap={6} flexWrap="wrap">
             <Text
@@ -369,26 +423,26 @@ function Computer({
               data-hz="lease"
               disabled={busy}
               onClick={() =>
-                attempt('Could not lease a computer', async () => {
+                attempt(t('Could not lease a computer'), async () => {
                   await client!.sandboxes.lease({ class: 'dev', project })
                   await onChange()
                 })
               }
             >
-              {busy ? 'Leasing…' : 'Lease a computer'}
+              {t(busy ? 'Leasing…' : 'Lease a computer')}
             </Text>
             <Text
               {...TAB}
               data-hz="lease-desktop"
               disabled={busy}
               onClick={() =>
-                attempt('Could not lease a screen', async () => {
+                attempt(t('Could not lease a screen'), async () => {
                   await client!.sandboxes.lease({ class: 'desktop', project })
                   await onChange()
                 })
               }
             >
-              {busy ? 'Leasing…' : 'Lease a screen'}
+              {t(busy ? 'Leasing…' : 'Lease a screen')}
             </Text>
           </XStack>
         </>
@@ -436,6 +490,7 @@ function Tools({
   activated: string[]
   why?: string
 }) {
+  const { t, locale } = useI18n()
   const { client } = useAi()
   const [held, setHeld] = useState<string[]>(bot.tools ?? [])
   const [failed, setFailed] = useState<string | null>(null)
@@ -448,7 +503,7 @@ function Tools({
   useEffect(() => setPick((p) => (held.includes(p) ? p : (held[0] ?? ''))), [held])
 
   const offered = [
-    ...published.map((t) => ({ name: t.name, from: 'platform', ready: true })),
+    ...published.map((tool) => ({ name: tool.name, from: 'platform', ready: true })),
     ...servers.map((s) => ({ name: s.name || s.id, from: 'MCP', ready: activated.includes(s.name || s.id) })),
     ...skills.map((s) => ({ name: s.name, from: 'skill', ready: activated.includes(s.name) })),
   ]
@@ -461,23 +516,23 @@ function Tools({
       await client.agents.update(bot.name, { tools: next })
       setFailed(null)
     } catch (e) {
-      setFailed(say(e, 'this bot', 'save'))
+      setFailed(say(e, t('this bot'), 'save', t))
     }
   }
 
   return (
-    <Part title="Tools">
+    <Part title={t('Tools')}>
       {why ? <Line>{why}</Line> : null}
       {offered.length === 0 && !why ? (
-        <Line>Nothing publishes a tool for this org yet, so there is nothing to grant.</Line>
+        <Line>{t('Nothing publishes a tool for this org yet, so there is nothing to grant.')}</Line>
       ) : null}
 
       <YStack data-hz="tools" maxH={200} overflowY="auto" gap={4}>
-        {offered.map((t) => (
-          <XStack render="label" key={`${t.from}-${t.name}`} items="center" justify="space-between" gap={8} cursor="pointer">
-            <input type="checkbox" checked={held.includes(t.name)} onChange={() => flip(t.name)} aria-label={t.name} />
-            <Text flex={1} fontSize="$2" color={INK}>{t.name}</Text>
-            <Text fontSize="$1" color={FAINT}>{t.ready ? t.from : `${t.from} · not activated`}</Text>
+        {offered.map((tool) => (
+          <XStack render="label" key={`${tool.from}-${tool.name}`} items="center" justify="space-between" gap={8} cursor="pointer">
+            <input type="checkbox" checked={held.includes(tool.name)} onChange={() => flip(tool.name)} aria-label={tool.name} />
+            <Text flex={1} fontSize="$2" color={INK}>{tool.name}</Text>
+            <Text fontSize="$1" color={FAINT}>{toolFrom(tool.from, tool.ready, t)}</Text>
           </XStack>
         ))}
       </YStack>
@@ -501,7 +556,7 @@ function Tools({
           }}
           gap={6}
         >
-          <Picker {...PICK} value={pick} onChange={(e) => setPick(e.target.value)} aria-label="Tool to call">
+          <Picker {...PICK} value={pick} onChange={(e) => setPick(e.target.value)} aria-label={t('Tool to call')}>
             {held.map((h) => (
               <option key={h} value={h}>
                 {h}
@@ -516,11 +571,11 @@ function Tools({
               data-hz="op"
               value={op}
               onChange={(e) => setOp(e.target.value)}
-              placeholder="Operation"
-              aria-label="Operation to run"
+              placeholder={t('Operation')}
+              aria-label={t('Operation to run')}
             />
             <Text {...TAB} {...{ type: 'submit' }} data-hz="call" disabled={busy || !op.trim()}>
-              {busy ? 'Calling…' : 'Call'}
+              {t(busy ? 'Calling…' : 'Call')}
             </Text>
           </XStack>
         </YStack>
@@ -540,6 +595,7 @@ function Tools({
  * Answer here moves that channel from whichever bot holds it to this one.
  */
 function Channels({ bot, rooms, why }: { bot: Agent; rooms: Channel[]; why?: string }) {
+  const { t, locale } = useI18n()
   const { client } = useAi()
   const [bound, setBound] = useState<Record<string, string>>({})
   const [failed, setFailed] = useState<string | null>(null)
@@ -563,9 +619,9 @@ function Channels({ bot, rooms, why }: { bot: Agent; rooms: Channel[]; why?: str
   }, [read])
 
   return (
-    <Part title="Channels">
+    <Part title={t('Channels')}>
       {why ? <Line>{why}</Line> : null}
-      {rooms.length === 0 && !why ? <Line>This org has no channels.</Line> : null}
+      {rooms.length === 0 && !why ? <Line>{t('This org has no channels.')}</Line> : null}
       {rooms.map((r) => {
         const mine = bound[r.id] === bot.name
         return (
@@ -573,7 +629,7 @@ function Channels({ bot, rooms, why }: { bot: Agent; rooms: Channel[]; why?: str
             <Text fontSize="$2" color={INK}>{r.id}</Text>
             <XStack items="center" gap={8}>
               <Text fontSize="$1" color={FAINT}>
-                {r.connected ? bound[r.id] || 'unbound' : 'not connected'}
+                {r.connected ? bound[r.id] || t('unbound') : t('not connected')}
               </Text>
               <Text
                 {...TAB}
@@ -586,11 +642,11 @@ function Channels({ bot, rooms, why }: { bot: Agent; rooms: Channel[]; why?: str
                     setFailed(null)
                     await read()
                   } catch (e) {
-                    setFailed(say(e, 'this channel', 'save'))
+                    setFailed(say(e, t('this channel'), 'save', t))
                   }
                 }}
               >
-                {mine ? 'Answers' : 'Answer'}
+                {t(mine ? 'Answers' : 'Answer')}
               </Text>
             </XStack>
           </Row>
@@ -610,6 +666,7 @@ function Channels({ bot, rooms, why }: { bot: Agent; rooms: Channel[]; why?: str
  * set is refused by the platform naming it, and the refusal is what is shown.
  */
 function Code({ bot, repos, why }: { bot: Agent; repos: Project[]; why?: string }) {
+  const { t, locale } = useI18n()
   const { client } = useAi()
   const withRepo = repos.filter((p) => p.repo?.url)
   const [repo, setRepo] = useState('')
@@ -622,10 +679,10 @@ function Code({ bot, repos, why }: { bot: Agent; repos: Project[]; why?: string 
   }, [repo, withRepo])
 
   return (
-    <Part title="Code">
+    <Part title={t('Code')}>
       {why ? <Line>{why}</Line> : null}
       {withRepo.length === 0 && !why ? (
-        <Line>No project in this org names a repo, so there is nothing for this bot to work on.</Line>
+        <Line>{t('No project in this org names a repo, so there is nothing for this bot to work on.')}</Line>
       ) : (
         <YStack
           render="form"
@@ -637,7 +694,7 @@ function Code({ bot, repos, why }: { bot: Agent; repos: Project[]; why?: string 
               setSaid(null)
               try {
                 const started = await workOn(client, { repo, prompt: task.trim(), agentRef: bot.name, project: repo })
-                setSaid(`Started ${started.sessionId || started.id || 'a run'} on ${repo}.`)
+                setSaid(t('Started {run} on {repo}.', { run: started.sessionId || started.id || t('a run'), repo }))
                 setTask('')
               } catch (err) {
                 setSaid(err instanceof Error ? err.message : String(err))
@@ -648,7 +705,7 @@ function Code({ bot, repos, why }: { bot: Agent; repos: Project[]; why?: string 
           }}
           gap={6}
         >
-          <Picker {...PICK} value={repo} onChange={(e) => setRepo(e.target.value)} aria-label="Repo">
+          <Picker {...PICK} value={repo} onChange={(e) => setRepo(e.target.value)} aria-label={t('Repo')}>
             {withRepo.map((p) => (
               <option key={p.id} value={p.slug}>
                 {p.slug}
@@ -660,11 +717,11 @@ function Code({ bot, repos, why }: { bot: Agent; repos: Project[]; why?: string 
             data-hz="task"
             value={task}
             onChange={(e) => setTask(e.target.value)}
-            placeholder="What to change"
-            aria-label="What to change"
+            placeholder={t('What to change')}
+            aria-label={t('What to change')}
           />
           <Text {...TAB} {...{ type: 'submit' }} data-hz="code" self="flex-start" disabled={busy || !task.trim()}>
-            {busy ? 'Starting…' : 'Work on it'}
+            {t(busy ? 'Starting…' : 'Work on it')}
           </Text>
         </YStack>
       )}
@@ -675,14 +732,16 @@ function Code({ bot, repos, why }: { bot: Agent; repos: Project[]; why?: string 
 
 /** The names under this Bot's KMS prefix. The values stay in KMS. */
 function Secrets({ bot, keys, why }: { bot: Agent; keys: Secret[]; why?: string }) {
+  const { t, locale } = useI18n()
   return (
-    <Part title="Secrets">
+    <Part title={t('Secrets')}>
       <Line>
-        Held under <Text render="code" fontSize="$1" color={INK}>{vault(bot.name)}</Text> in KMS. Names are readable here; values
-        are not, by KMS and not by this screen.
+        {t('Held under {path} in KMS. Names are readable here; values are not, by KMS and not by this screen.', {
+          path: <Text render="code" fontSize="$1" color={INK}>{vault(bot.name)}</Text>,
+        })}
       </Line>
       {why ? <Line>{why}</Line> : null}
-      {keys.length === 0 && !why ? <Line>None yet.</Line> : null}
+      {keys.length === 0 && !why ? <Line>{t('None yet.')}</Line> : null}
       {keys.map((k) => (
         <Row key={`${k.path}/${k.name}`}>
           <Text fontSize="$2" color={INK}>{k.name}</Text>
@@ -702,14 +761,14 @@ function Secrets({ bot, keys, why }: { bot: Agent; keys: Secret[]; why?: string 
  * there is no switch to press.
  */
 function Held({ links, why }: { links: Connector[]; why?: string }) {
+  const { t, locale } = useI18n()
   return (
-    <Part title="Your connectors">
+    <Part title={t('Your connectors')}>
       <Line>
-        Signed in by you, reachable by every bot in this org. The platform publishes no per-bot
-        binding for a connector, so nothing here is scoped down to this one.
+        {t('Signed in by you, reachable by every bot in this org. The platform publishes no per-bot binding for a connector, so nothing here is scoped down to this one.')}
       </Line>
       {why ? <Line>{why}</Line> : null}
-      {links.length === 0 && !why ? <Line>None connected.</Line> : null}
+      {links.length === 0 && !why ? <Line>{t('None connected.')}</Line> : null}
       {links.map((l) => (
         <Row key={l.id}>
           <Text fontSize="$1" color={DIM}>{l.label || l.provider}</Text>

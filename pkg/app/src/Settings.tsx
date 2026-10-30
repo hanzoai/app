@@ -24,9 +24,8 @@
 // The panes that are not yet built say so in one sentence rather than pretending
 // to a screen. An honest empty pane is a smaller lie than an invented one.
 
-import { phrase } from '@hanzo/i18n'
+import { phrase, type Say } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
-import type { Say } from './say'
 import { app, dev } from './lib/host'
 import { ArrowLeft, ArrowUpRight } from 'lucide-react'
 import { Text } from '@hanzo/ui'

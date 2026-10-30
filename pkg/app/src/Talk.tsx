@@ -19,7 +19,7 @@
 // accept is on screen for longer than one round trip.
 
 import { useRef, useState } from 'react'
-import { isolate } from '@hanzo/i18n'
+import { isolate, type Say } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { ChannelHeader } from '@hanzo/ui/agents'
 import { Composer } from '@hanzo/ui/chat'
@@ -29,7 +29,6 @@ import { useIam } from '@hanzo/iam/react'
 import { Face } from './cast'
 import { SpeakButton } from './speech'
 import { say } from './failure'
-import type { Say } from './say'
 import { useOpen } from './open'
 import { Beside } from './Shell'
 import { memberOf, useMe, useRoster, type Member } from './roster'
@@ -37,11 +36,11 @@ import { useRoomMessages, type TeamRoom } from './rooms'
 import { BAD } from './lib/mix'
 
 /** The clock a transcript reads by: the time for today, the date before that. */
-function when(ms: number): string {
+function when(ms: number, locale: string): string {
   const then = new Date(ms)
   const sameDay = new Date().toDateString() === then.toDateString()
   return then.toLocaleString(
-    undefined,
+    locale,
     sameDay ? { hour: 'numeric', minute: '2-digit' } : { month: 'short', day: 'numeric' },
   )
 }
@@ -60,7 +59,7 @@ const mention = (draft: string, name: string): string =>
   `${draft && !/\s$/.test(draft) ? `${draft} ` : draft}@${name} `
 
 export function Talk({ room }: { room: TeamRoom }) {
-  const { t, dir } = useI18n()
+  const { t, dir, locale } = useI18n()
   const { messages, failed, send } = useRoomMessages(room.id, room.space)
   const { members, wrong } = useRoster()
   const me = useMe()
@@ -139,7 +138,7 @@ export function Talk({ room }: { room: TeamRoom }) {
               key={one.id}
               member={memberOf(members, one.author)}
               fallback={one.author}
-              stamp={when(one.createdOn)}
+              stamp={when(one.createdOn, locale)}
               text={one.text}
             />
           ))

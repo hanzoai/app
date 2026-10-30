@@ -12,8 +12,10 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
+import { phrase, type Say } from '@hanzo/i18n'
 import { Text, View, XStack, YStack } from '@hanzo/gui'
 import { Button } from '@hanzo/ui'
+import { useI18n } from '@hanzo/i18n/react'
 
 export interface CalendarEvent {
   id: string
@@ -32,62 +34,62 @@ export interface CalendarEvent {
 const DEFAULT_EVENTS: CalendarEvent[] = [
   {
     id: 'evt-1',
-    title: 'Daily Morning AI Intelligence Digest',
+    title: phrase('Daily Morning AI Intelligence Digest'),
     type: 'bot_automation',
     date: '2026-09-04',
     time: '09:00',
-    duration: '15m',
+    duration: phrase('15m'),
     botName: 'Chief',
     cronPattern: '0 9 * * 1-5',
-    description: 'Scrape breaking frontier AI papers, benchmark shifts, and repo PRs into team Slack.',
+    description: phrase('Scrape breaking frontier AI papers, benchmark shifts, and repo PRs into team Slack.'),
     status: 'scheduled',
   },
   {
     id: 'evt-2',
-    title: 'Platform Architecture & Inference Sync',
+    title: phrase('Platform Architecture & Inference Sync'),
     type: 'meeting',
     date: '2026-09-04',
     time: '18:00',
-    duration: '45m',
+    duration: phrase('45m'),
     meetUrl: 'https://meet.hanzo.ai/platform-architecture',
     botName: 'Hanzo Coder (Bot Co-pilot)',
-    description: 'Sync on port 9005 drive server performance and ingress routing.',
+    description: phrase('Sync on port 9005 drive server performance and ingress routing.'),
     status: 'scheduled',
   },
   {
     id: 'evt-3',
-    title: 'Autonomous Outbound Prospecting Run',
+    title: phrase('Autonomous Outbound Prospecting Run'),
     type: 'bot_automation',
     date: '2026-09-04',
     time: '11:00',
-    duration: '60m',
+    duration: phrase('60m'),
     botName: 'Sales Outbound',
     cronPattern: '0 11 * * 1-5',
-    description: 'Extract 50 lookalike enterprise leads and prepare personalized drafts.',
+    description: phrase('Extract 50 lookalike enterprise leads and prepare personalized drafts.'),
     status: 'scheduled',
   },
   {
     id: 'evt-4',
-    title: 'Hourly GitHub PR & Typecheck Review',
+    title: phrase('Hourly GitHub PR & Typecheck Review'),
     type: 'agent_query',
     date: '2026-09-04',
     time: '14:00',
-    duration: '20m',
+    duration: phrase('20m'),
     botName: 'Hanzo Coder',
     cronPattern: '0 * * * *',
-    description: 'Verify type safety and lint across all open PRs in hanzoai organization.',
+    description: phrase('Verify type safety and lint across all open PRs in hanzoai organization.'),
     status: 'scheduled',
   },
   {
     id: 'evt-5',
-    title: 'Research Review',
+    title: phrase('Research Review'),
     type: 'meeting',
     date: '2026-09-04',
     time: '20:00',
-    duration: '60m',
+    duration: phrase('60m'),
     meetUrl: 'https://meet.hanzo.ai/research-review',
     botName: 'Hanzo Researcher',
-    description: 'Review datasets and proofs for the week’s research runs.',
+    description: phrase('Review datasets and proofs for the week’s research runs.'),
     status: 'scheduled',
   },
 ]
@@ -95,30 +97,63 @@ const DEFAULT_EVENTS: CalendarEvent[] = [
 /** The public booking pages, one card each on the Booker tab. */
 const BOOKINGS = [
   {
-    title: 'Quick Sync',
-    duration: '15m',
+    title: phrase('Quick Sync'),
+    duration: phrase('15m'),
     slug: '15min',
-    description: 'Fast 15-minute alignment or triage call on Hanzo Meet.',
+    description: phrase('Fast 15-minute alignment or triage call on Hanzo Meet.'),
   },
   {
-    title: 'Technical Deep Dive',
-    duration: '30m',
+    title: phrase('Technical Deep Dive'),
+    duration: phrase('30m'),
     slug: '30min',
-    description: 'In-depth architectural review, bug diagnosis, or sprint planning.',
+    description: phrase('In-depth architectural review, bug diagnosis, or sprint planning.'),
   },
   {
-    title: 'AI Pair Programming',
-    duration: '45m',
+    title: phrase('AI Pair Programming'),
+    duration: phrase('45m'),
     slug: 'pair-ai',
-    description: 'Interactive coding session with Hanzo Coder assisting in the terminal.',
+    description: phrase('Interactive coding session with Hanzo Coder assisting in the terminal.'),
   },
   {
-    title: 'Executive & Strategy Sync',
-    duration: '60m',
+    title: phrase('Executive & Strategy Sync'),
+    duration: phrase('60m'),
     slug: '60min',
-    description: 'Quarterly roadmap sync, partnerships, and leadership decision forum.',
+    description: phrase('Quarterly roadmap sync, partnerships, and leadership decision forum.'),
   },
 ] as const
+
+/** Demo titles and descriptions. A reader's own event is drawn as they wrote it. */
+const AUTHORED = new Set<string>(
+  DEFAULT_EVENTS.flatMap((event) => [event.title, event.description].filter((line): line is string => Boolean(line))),
+)
+
+const TYPE_LABEL: Record<CalendarEvent['type'], string> = {
+  meeting: phrase('meeting'),
+  bot_automation: phrase('bot automation'),
+  agent_query: phrase('agent query'),
+}
+
+/** A bot's label. Names stay as written; a role this screen authors is translated. */
+function botLabel(name: string, t: Say): string {
+  switch (name) {
+    case 'Sales Outbound':
+      return t('Sales Outbound')
+    case 'Inbox Manager':
+      return t('Inbox Manager')
+    case 'Account Manager':
+      return t('Account Manager')
+    case 'Talent Scout':
+      return t('Talent Scout')
+    case 'Expense Manager':
+      return t('Expense Manager')
+    case 'Offsite crew':
+      return t('Offsite crew')
+    case 'Hanzo Coder (Bot Co-pilot)':
+      return t('{name} (Bot Co-pilot)', { name: 'Hanzo Coder' })
+    default:
+      return name
+  }
+}
 
 /** design's smallest rung (`--text-floor`, 10px), below gui's `$1`; gui's font size takes a rung or a number. */
 const FLOOR = 10
@@ -138,6 +173,7 @@ const FIELD = {
 const LABEL = { render: 'label', fontSize: '$1', color: '$soft', mb: 4, display: 'block' } as const
 
 export function CalScheduler() {
+  const { t, locale } = useI18n()
   const [events, setEvents] = useState<CalendarEvent[]>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -231,7 +267,7 @@ export function CalScheduler() {
           </XStack>
           <YStack shrink={1} minW="auto">
             <XStack items="center" gap={8}>
-              <Text fontSize="$4" fontWeight="700" color="$ink">Hanzo Calendar &amp; Scheduler</Text>
+              <Text fontSize="$4" fontWeight="700" color="$ink">{t('Hanzo Calendar & Scheduler')}</Text>
               <Text
                 fontSize={FLOOR}
                 fontWeight="700"
@@ -247,7 +283,7 @@ export function CalScheduler() {
               </Text>
             </XStack>
             <Text fontSize="$1" color="$soft">
-              Full unified scheduler across meetings, bot routines, automated crons, and query triggers
+              {t('Full unified scheduler across meetings, bot routines, automated crons, and query triggers')}
             </Text>
           </YStack>
         </XStack>
@@ -265,9 +301,9 @@ export function CalScheduler() {
             minW="auto"
           >
             {[
-              { id: 'scheduler', label: 'Master Schedule' },
-              { id: 'automations', label: 'Bot Crons' },
-              { id: 'booker', label: 'Public Booker' },
+              { id: 'scheduler', label: t('Master Schedule') },
+              { id: 'automations', label: t('Bot Crons') },
+              { id: 'booker', label: t('Public Booker') },
             ].map((tab) => (
               <Button
                 key={tab.id}
@@ -284,7 +320,7 @@ export function CalScheduler() {
 
           <Button variant="primary" size="sm" onClick={() => setShowModal(true)}>
             <Plus size={14} />
-            Schedule Event / Routine
+            {t('Schedule Event / Routine')}
           </Button>
         </XStack>
       </XStack>
@@ -294,9 +330,19 @@ export function CalScheduler() {
         /* Embed of cal.hanzo.ai Booker or Native Event Types */
         <YStack flex={1} p={28} overflowY="auto" gap={20}>
           <YStack gap={4}>
-            <Text fontSize="$7" fontWeight="800" color="$ink">Public Booking Pages</Text>
+            <Text fontSize="$7" fontWeight="800" color="$ink">{t('Public Booking Pages')}</Text>
             <Text fontSize="$2" color="$soft">
-              Shareable links powered by the Cal.com fork at <Text render={<a href="https://cal.hanzo.ai" target="_blank" rel="noopener noreferrer" />} color="$ink" textDecorationLine="underline">cal.hanzo.ai</Text>. Allows teammates, clients, and automated agents to book dedicated time slots.
+              {t('Shareable links powered by the Cal.com fork at {link}. Allows teammates, clients, and automated agents to book dedicated time slots.', {
+                link: (
+                  <Text
+                    render={<a href="https://cal.hanzo.ai" target="_blank" rel="noopener noreferrer" />}
+                    color="$ink"
+                    textDecorationLine="underline"
+                  >
+                    cal.hanzo.ai
+                  </Text>
+                ),
+              })}
             </Text>
           </YStack>
 
@@ -313,15 +359,15 @@ export function CalScheduler() {
               >
                 <XStack items="center" justify="space-between">
                   <Text fontSize="$4" fontWeight="700" color="$ink">
-                    {card.title}
+                    {t(card.title)}
                   </Text>
                   <Text fontSize="$1" fontWeight="700" bg="$hover" px={8} py={2} rounded={4} color="$soft">
-                    {card.duration}
+                    {t(card.duration)}
                   </Text>
                 </XStack>
 
                 <Text fontSize="$2" color="$soft" lineHeight="$2">
-                  {card.description}
+                  {t(card.description)}
                 </Text>
 
                 <Text px={10} py={8} bg="$sunken" rounded={6} fontSize="$1" fontFamily="$mono" color="$soft">
@@ -336,11 +382,11 @@ export function CalScheduler() {
                       navigator.clipboard.writeText(`https://cal.hanzo.ai/alex/${card.slug}`)
                     }}
                   >
-                    Copy Link
+                    {t('Copy Link')}
                   </Button>
                   <Button asChild variant="primary" size="sm">
                     <a href={`https://cal.hanzo.ai/alex/${card.slug}`} target="_blank" rel="noopener noreferrer">
-                      Open
+                      {t('Open')}
                       <ExternalLink size={12} />
                     </a>
                   </Button>
@@ -365,13 +411,13 @@ export function CalScheduler() {
             gap={8}
           >
             <XStack items="center" gap={8} shrink={1} minW="auto" flexWrap="wrap">
-              <Text fontSize="$2" fontWeight="600" color="$soft">Filter:</Text>
+              <Text fontSize="$2" fontWeight="600" color="$soft">{t('Filter:')}</Text>
               {/* The kinds wear the same monochrome glyphs their event tiles do, never a colour emoji. */}
               {([
-                { id: 'all', label: 'All Items' },
-                { id: 'meeting', label: 'Human Meetings', icon: Video },
-                { id: 'bot_automation', label: 'Bot Routines', icon: Bot },
-                { id: 'agent_query', label: 'Agent Queries', icon: Zap },
+                { id: 'all', label: t('All Items') },
+                { id: 'meeting', label: t('Human Meetings'), icon: Video },
+                { id: 'bot_automation', label: t('Bot Routines'), icon: Bot },
+                { id: 'agent_query', label: t('Agent Queries'), icon: Zap },
               ] as const).map((f) => (
                 <Button
                   key={f.id}
@@ -388,7 +434,9 @@ export function CalScheduler() {
             </XStack>
 
             <Text fontSize="$1" color="$faint">
-              Showing {filteredEvents.length} scheduled events &amp; routines
+              {t('Showing {count} scheduled events & routines', {
+                count: filteredEvents.length.toLocaleString(locale),
+              })}
             </Text>
           </XStack>
 
@@ -430,7 +478,7 @@ export function CalScheduler() {
                         {evt.time}
                       </Text>
                       <Text fontSize="$1" color="$faint">
-                        {evt.date} · {evt.duration}
+                        {t('{date} · {duration}', { date: evt.date, duration: t(evt.duration) })}
                       </Text>
                     </YStack>
                   </XStack>
@@ -439,7 +487,7 @@ export function CalScheduler() {
                   {/* Never narrower than a line of its description: on a phone it takes a row of its own. */}
                   <View flex={1} minW={240} display="block">
                     <XStack items="center" gap={8} mb={2}>
-                      <Text fontSize="$3" fontWeight="600" color="$ink">{evt.title}</Text>
+                      <Text fontSize="$3" fontWeight="600" color="$ink">{AUTHORED.has(evt.title) ? t(evt.title) : evt.title}</Text>
                       <Text
                         fontSize={FLOOR}
                         fontWeight="700"
@@ -450,18 +498,48 @@ export function CalScheduler() {
                         rounded={4}
                         textTransform="uppercase"
                       >
-                        {evt.type.replace('_', ' ')}
+                        {t(TYPE_LABEL[evt.type])}
                       </Text>
                     </XStack>
 
                     <Text display="block" fontSize="$2" color="$soft" mb={4}>
-                      {evt.description}
+                      {evt.description && AUTHORED.has(evt.description) ? t(evt.description) : evt.description}
                     </Text>
 
                     <XStack items="center" gap={12}>
-                      {evt.botName ? <Text fontSize="$1" color="$faint">Bot: <Text render="strong" fontSize="$1" color="$quiet">{evt.botName}</Text></Text> : null}
-                      {evt.cronPattern ? <Text fontSize="$1" color="$faint">Cron: <Text render="code" color="$ink">{evt.cronPattern}</Text></Text> : null}
-                      {evt.meetUrl ? <Text fontSize="$1" color="$faint">Link: <Text render="code" color="$ink">{evt.meetUrl}</Text></Text> : null}
+                      {evt.botName ? (
+                        <Text fontSize="$1" color="$faint">
+                          {t('Bot: {name}', {
+                            name: (
+                              <Text render="strong" fontSize="$1" color="$quiet">
+                                {botLabel(evt.botName, t)}
+                              </Text>
+                            ),
+                          })}
+                        </Text>
+                      ) : null}
+                      {evt.cronPattern ? (
+                        <Text fontSize="$1" color="$faint">
+                          {t('Cron: {pattern}', {
+                            pattern: (
+                              <Text render="code" color="$ink">
+                                {evt.cronPattern}
+                              </Text>
+                            ),
+                          })}
+                        </Text>
+                      ) : null}
+                      {evt.meetUrl ? (
+                        <Text fontSize="$1" color="$faint">
+                          {t('Link: {url}', {
+                            url: (
+                              <Text render="code" color="$ink">
+                                {evt.meetUrl}
+                              </Text>
+                            ),
+                          })}
+                        </Text>
+                      ) : null}
                     </XStack>
                   </View>
 
@@ -471,14 +549,14 @@ export function CalScheduler() {
                       <Button asChild variant="primary" size="sm">
                         <a href="/meet">
                           <Video size={13} />
-                          Join /meet
+                          {t('Join /meet')}
                         </a>
                       </Button>
                     ) : (
                       <Button asChild variant="primary" size="sm">
                         <a href="/bots">
                           <Bot size={13} />
-                          View /bots
+                          {t('View /bots')}
                         </a>
                       </Button>
                     )}
@@ -488,8 +566,8 @@ export function CalScheduler() {
                       size="icon-sm"
                       color="$soft"
                       onClick={() => handleDeleteEvent(evt.id)}
-                      aria-label="Remove schedule"
-                      title="Remove schedule"
+                      aria-label={t('Remove schedule')}
+                      title={t('Remove schedule')}
                     >
                       <Trash2 size={14} />
                     </Button>
@@ -525,9 +603,9 @@ export function CalScheduler() {
           >
             <XStack items="center" justify="space-between">
               <Text fontSize="$4" fontWeight="700" color="$ink">
-                Schedule Event or Bot Routine
+                {t('Schedule Event or Bot Routine')}
               </Text>
-              <Button type="button" variant="ghost" size="icon-sm" mr={-8} onClick={() => setShowModal(false)} aria-label="Close">
+              <Button type="button" variant="ghost" size="icon-sm" mr={-8} onClick={() => setShowModal(false)} aria-label={t('Close')}>
                 <X size={16} aria-hidden />
               </Button>
             </XStack>
@@ -535,7 +613,7 @@ export function CalScheduler() {
             <YStack render="form" {...{ onSubmit: handleCreateEvent }} gap={12}>
               <View display="block">
                 <Text {...LABEL}>
-                  Title
+                  {t('Title')}
                 </Text>
                 <Text
                   render={
@@ -543,7 +621,7 @@ export function CalScheduler() {
                       type="text"
                       value={newEvent.title}
                       onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                      placeholder="e.g. Daily Security Audit / Team Sync"
+                      placeholder={t('e.g. Daily Security Audit / Team Sync')}
                       required
                     />
                   }
@@ -554,23 +632,23 @@ export function CalScheduler() {
 
               <View display="block">
                 <Text {...LABEL}>
-                  Schedule Type
+                  {t('Schedule Type')}
                 </Text>
                 <Text
                   render={<select value={newEvent.type} onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value as any })} />}
                   {...FIELD}
                   px={12}
                 >
-                  <option value="bot_automation">Automated Bot Cron Routine</option>
-                  <option value="meeting">Human Video Meeting (/meet)</option>
-                  <option value="agent_query">Recurring Agent Query</option>
+                  <option value="bot_automation">{t('Automated Bot Cron Routine')}</option>
+                  <option value="meeting">{t('Human Video Meeting (/meet)')}</option>
+                  <option value="agent_query">{t('Recurring Agent Query')}</option>
                 </Text>
               </View>
 
               <View display="grid" gridTemplateColumns="1fr 1fr" gap={10}>
                 <View display="block">
                   <Text {...LABEL}>
-                    Date
+                    {t('Date')}
                   </Text>
                   <Text
                     render={<input type="date" value={newEvent.date} onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })} />}
@@ -580,7 +658,7 @@ export function CalScheduler() {
                 </View>
                 <View display="block">
                   <Text {...LABEL}>
-                    Time
+                    {t('Time')}
                   </Text>
                   <Text
                     render={<input type="time" value={newEvent.time} onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })} />}
@@ -592,7 +670,7 @@ export function CalScheduler() {
 
               <View display="block">
                 <Text {...LABEL}>
-                  Assigned Bot
+                  {t('Assigned Bot')}
                 </Text>
                 <Text
                   render={<select value={newEvent.botName} onChange={(e) => setNewEvent({ ...newEvent, botName: e.target.value })} />}
@@ -600,25 +678,25 @@ export function CalScheduler() {
                   px={12}
                 >
                   <option value="Chief">Chief</option>
-                  <option value="Sales Outbound">Sales Outbound</option>
-                  <option value="Inbox Manager">Inbox Manager</option>
-                  <option value="Account Manager">Account Manager</option>
-                  <option value="Talent Scout">Talent Scout</option>
-                  <option value="Expense Manager">Expense Manager</option>
-                  <option value="Offsite crew">Offsite crew</option>
+                  <option value="Sales Outbound">{t('Sales Outbound')}</option>
+                  <option value="Inbox Manager">{t('Inbox Manager')}</option>
+                  <option value="Account Manager">{t('Account Manager')}</option>
+                  <option value="Talent Scout">{t('Talent Scout')}</option>
+                  <option value="Expense Manager">{t('Expense Manager')}</option>
+                  <option value="Offsite crew">{t('Offsite crew')}</option>
                 </Text>
               </View>
 
               <View display="block">
                 <Text {...LABEL}>
-                  Description / Instruction
+                  {t('Description / Instruction')}
                 </Text>
                 <Text
                   render={
                     <textarea
                       value={newEvent.description}
                       onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                      placeholder="Details or cron automation prompt..."
+                      placeholder={t('Details or cron automation prompt...')}
                       rows={3}
                     />
                   }
@@ -631,10 +709,10 @@ export function CalScheduler() {
 
               <XStack justify="flex-end" gap={8} mt={8}>
                 <Button type="button" onClick={() => setShowModal(false)}>
-                  Cancel
+                  {t('Cancel')}
                 </Button>
                 <Button type="submit" variant="primary">
-                  Save Schedule
+                  {t('Save Schedule')}
                 </Button>
               </XStack>
             </YStack>

@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useAi } from '@hanzo/ai/react'
+import { useI18n } from '@hanzo/i18n/react'
 import { Anchor, Button, Dialog, DialogContent, DialogTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SizableText, Text, Textarea, XStack, YStack } from '@hanzo/ui'
 import { cron, schedule, zone, type When } from './lib/auto'
 import { app } from './lib/host'
@@ -25,11 +26,11 @@ export interface Choice {
 /** How long the "When" field rests before it is read. */
 const REST = 400
 
-/** A moment as the reader's clock says it. */
-function local(at: string): string {
+/** A moment as the reader's clock says it, in the language they chose. */
+function local(at: string, locale: string): string {
   const d = new Date(at)
   if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return d.toLocaleString(locale, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
 export function Schedule({
@@ -47,6 +48,7 @@ export function Schedule({
   model: string
   models: readonly Choice[]
 }) {
+  const { t, locale } = useI18n()
   const ai = useAi()
   const [words, setWords] = useState('')
   const [said, setSaid] = useState('')
@@ -80,7 +82,7 @@ export function Schedule({
     const n = ++asked.current
     const stop = new AbortController()
     setReading(true)
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       cron(ai, text, zone(), stop.signal).then(
         (got) => {
           if (n !== asked.current) return
@@ -91,13 +93,13 @@ export function Schedule({
         (e: unknown) => {
           if (n !== asked.current || stop.signal.aborted) return
           setRead(null)
-          setWrong((e as Error)?.message || 'That is not a time the scheduler can read.')
+          setWrong((e as Error)?.message || t('That is not a time the scheduler can read.'))
           setReading(false)
         },
       )
     }, REST)
     return () => {
-      clearTimeout(t)
+      clearTimeout(timer)
       stop.abort()
     }
   }, [said, open, ai])
@@ -111,7 +113,7 @@ export function Schedule({
       await schedule(ai, words, read.schedule, chose || undefined)
       setMade(true)
     } catch (e) {
-      setWrong((e as Error)?.message || 'The task was not scheduled.')
+      setWrong((e as Error)?.message || t('The task was not scheduled.'))
     } finally {
       setBusy(false)
     }
@@ -121,18 +123,21 @@ export function Schedule({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent maxW={520} rounded="$6" gap="$3" data-slot="schedule">
-        <DialogTitle>Schedule this</DialogTitle>
+        <DialogTitle>{t('Schedule this')}</DialogTitle>
         {made ? (
           <YStack gap="$3">
             <SizableText size="$3" color="$ink" role="status">
-              Scheduled.{' '}
-              <Anchor href={site(app('-/automations'))} color="$ink" textDecorationLine="underline">
-                See it in Scheduled tasks.
-              </Anchor>
+              {t('Scheduled. {link}', {
+                link: (
+                  <Anchor href={site(app('-/automations'))} color="$ink" textDecorationLine="underline">
+                    {t('See it in Scheduled tasks.')}
+                  </Anchor>
+                ),
+              })}
             </SizableText>
             <XStack justify="flex-end">
               <Button size="sm" rounded={999} onPress={() => onOpenChange(false)}>
-                Done
+                {t('Done')}
               </Button>
             </XStack>
           </YStack>
@@ -140,20 +145,20 @@ export function Schedule({
           <YStack gap="$3">
             <YStack gap="$1">
               <Text fontSize="$1" color="$soft">
-                Prompt
+                {t('Prompt')}
               </Text>
-              <Textarea value={words} onChangeText={setWords} rows={4} aria-label="Prompt" />
+              <Textarea value={words} onChangeText={setWords} rows={4} aria-label={t('Prompt')} />
             </YStack>
             <YStack gap="$1">
               <Text fontSize="$1" color="$soft">
-                When
+                {t('When')}
               </Text>
               <Input
                 autoFocus
                 value={said}
                 onChangeText={setSaid}
-                placeholder="Every Monday at 9am"
-                aria-label="When it runs"
+                placeholder={t('Every Monday at 9am')}
+                aria-label={t('When it runs')}
                 aria-describedby="schedule-when"
                 onKeyDown={(e: { key?: string; nativeEvent?: { isComposing?: boolean } }) => {
                   if (e.key === 'Enter' && !e.nativeEvent?.isComposing) void create()
@@ -163,19 +168,19 @@ export function Schedule({
                 {wrong
                   ? wrong
                   : reading
-                    ? 'Reading.'
+                    ? t('Reading.')
                     : read
-                      ? [read.says, read.next ? `next ${local(read.next)}` : 'when you run it'].filter(Boolean).join(' · ')
-                      : 'Say it the way you would: every weekday at 8, every 5 minutes, tomorrow at noon.'}
+                      ? [read.says, read.next ? t('next {when}', { when: local(read.next, locale) }) : t('when you run it')].filter(Boolean).join(' · ')
+                      : t('Say it the way you would: every weekday at 8, every 5 minutes, tomorrow at noon.')}
               </Text>
             </YStack>
             {options.length ? (
               <YStack gap="$1">
                 <Text fontSize="$1" color="$soft">
-                  Model
+                  {t('Model')}
                 </Text>
                 <Select value={chose} onValueChange={setChose}>
-                  <SelectTrigger aria-label="Model" width="100%">
+                  <SelectTrigger aria-label={t('Model')} width="100%">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -190,10 +195,10 @@ export function Schedule({
             ) : null}
             <XStack gap="$2" justify="flex-end">
               <Button size="sm" variant="outline" rounded={999} onPress={() => onOpenChange(false)}>
-                Cancel
+                {t('Cancel')}
               </Button>
               <Button size="sm" rounded={999} disabled={!ready} onPress={() => void create()}>
-                {busy ? 'Scheduling…' : 'Create'}
+                {busy ? t('Scheduling…') : t('Create')}
               </Button>
             </XStack>
           </YStack>

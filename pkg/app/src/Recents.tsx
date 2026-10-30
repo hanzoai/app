@@ -18,7 +18,7 @@ import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { SidebarItem, StatusDot } from '@hanzo/ui/chat'
 import { useKept } from './kept'
 import { arrange, chats, MENUS, PINNED, PLAIN, runs, SINCE, UNFILED, UNTITLED, UNTITLED_RUN, viewOf, type Mode, type Option, type Recent, type View } from './recent'
-import type { Say } from './say'
+import type { Say } from '@hanzo/i18n'
 import { ConversationMenu, ThreadRow, useThreadList } from './thread'
 
 /** The menu's items: each section a heading and its options (recent.ts's phrases, drawn through `t`), the one in force checked. */

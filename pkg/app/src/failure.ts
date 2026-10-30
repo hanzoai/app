@@ -13,7 +13,7 @@
 
 import { refusalOf, type Refusal } from '@hanzo/ui/product/limits'
 import { told } from './lib/reach'
-import { english, type Say } from './say'
+import { english, type Say } from '@hanzo/i18n'
 
 /**
  * THE STATUS, WHERE THE FAILURE CARRIES ONE.

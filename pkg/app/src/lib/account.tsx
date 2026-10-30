@@ -5,7 +5,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, ReactNo
 import { useIam, useIamIdentity, useIamToken, useOrganizations } from '@hanzo/iam/react';
 import type { User as IamUser, Organization as IamOrg } from '@hanzo/iam';
 import { useI18n } from '@hanzo/i18n/react';
-import type { Say } from '../say';
+import type { Say } from '@hanzo/i18n';
 import { api } from './api';
 
 export interface OrganizationMember {

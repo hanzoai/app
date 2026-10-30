@@ -28,12 +28,12 @@ import { api } from './api'
 import { bearer, org, orgs, scope } from './session'
 import { list } from './list'
 import { money } from './pay'
-import { english, type Say } from '../say'
+import { english, type Say } from '@hanzo/i18n'
 
 /** A period's end as a sentence states it — "Oct 30, 2026" — or '' for none. Periods end on UTC days. */
-function date(iso: string | null | undefined): string {
+function date(iso: string | null | undefined, locale = 'en-US'): string {
   const t = iso ? Date.parse(iso) : NaN
-  return Number.isNaN(t) ? '' : new Date(t).toLocaleDateString('en-US', { timeZone: 'UTC', year: 'numeric', month: 'short', day: 'numeric' })
+  return Number.isNaN(t) ? '' : new Date(t).toLocaleDateString(locale, { timeZone: 'UTC', year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 /** The plan, as billing names it. */
@@ -159,9 +159,9 @@ export async function readSubscription(signal?: AbortSignal): Promise<Subscripti
  * price is per seat, so it is the seats times it; a cancelled term ends rather
  * than renews.
  */
-export function renewal(s: Subscription, t: Say = english): string {
-  const each = money((s.plan.price * Math.max(1, s.quantity || 1)) / 100)
-  const when = date(s.currentPeriodEnd)
+export function renewal(s: Subscription, t: Say = english, locale = 'en-US'): string {
+  const each = money((s.plan.price * Math.max(1, s.quantity || 1)) / 100, locale)
+  const when = date(s.currentPeriodEnd, locale)
   const interval = s.plan.interval || 'month'
   // A term the catalogue names other than a month or a year is drawn as it names it.
   const price = interval === 'month' ? t('{price}/month', { price: each }) : interval === 'year' ? t('{price}/year', { price: each }) : `${each}/${interval}`

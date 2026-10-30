@@ -66,13 +66,20 @@ repository or a site from any surface.
   after the module evaluates. Read at call time (`get route()`, `invite()`,
   `dev()`, `signUp()`).
 - The session is IAM's (`@hanzo/iam/react`; the host mounts `IamProvider`).
-- Copy is `@hanzo/i18n`'s, from npm, one source: nothing is vendored here. A
-  room takes `useI18n` from `@hanzo/i18n/react` and passes authored English
-  through `t()`, a name or address as a `{name}` argument, never concatenated.
-  The host mounts `I18nProvider`; with none, `t` returns the English, so a host
-  or a test without one reads English. A string the package's catalogs lack
-  renders English until the next catalog run in `hanzoai/i18n`. Needs
-  @hanzo/i18n ≥ 0.4.0 (`phrase`, `pieces`, `t` with an element argument).
+- Copy is `@hanzo/i18n`'s, from npm, one source: nothing is vendored here, no
+  catalog of this package's own. A room takes `useI18n` from
+  `@hanzo/i18n/react` and passes authored English through `t()`, a name or
+  address as a `{name}` argument, never concatenated. The host mounts
+  `I18nProvider`; with none, `t` returns the English, so a host or a test
+  without one reads English. Every key is extracted from this package's source
+  into `@hanzo/i18n`'s catalog by that repo's `tools/extract --catalogs
+  --prune`, run over every reader at once (the package, this repo's `pkg/*`,
+  hanzo.ai), and translated there on local models; a string the published
+  catalog lacks renders English until the next catalog release. Needs
+  `@hanzo/i18n` ≥ 0.5.4 (`phrase`, `pieces`, `t` with an element argument,
+  `english` and `Say`). Dates and money a room prints take the reader's locale
+  (`useI18n().locale`, `format`, `money(n, locale)`); English stays `$20` /
+  `en-US`.
   - The catalog is extracted from the syntax tree, so the first argument of
     `t()` is a literal (or a ternary of literals); copy written as data is
     `phrase('Library')` where it is written and `t(row.label)` where it is drawn.
@@ -81,7 +88,7 @@ repository or a site from any surface.
   - A component's own `label`/`title` props arrive translated; it never calls
     `t` on a prop.
   - A plain module that words a sentence takes `t: Say = english` last
-    (`src/say.ts`): `say(e, t('this board'), 'read', t)`, `ago(at, now, t)`,
+    (`english` and `Say` from `@hanzo/i18n`): `say(e, t('this board'), 'read', t)`, `ago(at, now, t)`,
     `paused(…, t)`, `renewal(sub, t)`, `quote(plan, interval, t)`, `join(names, t)`.
     A cache holds the answer, never the sentence (tools.ts).
   - Products keep their names in every language: Dev, Studio, Tabs, Team,

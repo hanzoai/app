@@ -16,6 +16,7 @@
 
 import { useEffect, useState } from 'react'
 import { useIam } from '@hanzo/iam/react'
+import { useI18n } from '@hanzo/i18n/react'
 import { Anchor, Button, Text, XStack, YStack } from '@hanzo/ui'
 import { brand } from './where'
 import { useHydrated } from './lib/hydrated'
@@ -44,6 +45,7 @@ function target(): Target {
 const MEASURE = 'var(--container-prose, 48rem)'
 
 export function Shared() {
+  const { t } = useI18n()
   const hydrated = useHydrated()
   const { isLoading, isAuthenticated, accessToken } = useIam()
   const [aim, setAim] = useState<Target | undefined>(undefined)
@@ -79,7 +81,7 @@ export function Shared() {
         }
         setState(shared ? { kind: 'read', shared } : { kind: 'gone' })
       })
-      .catch((e) => on && setState({ kind: 'wrong', said: e instanceof Error ? e.message : 'This chat could not be read. Try again.' }))
+      .catch((e) => on && setState({ kind: 'wrong', said: e instanceof Error ? e.message : t('This chat could not be read. Try again.') }))
     return () => {
       on = false
     }
@@ -102,7 +104,7 @@ export function Shared() {
         </Anchor>
         {shown.kind === 'read' && shown.shared.full ? (
           <Text fontSize="$1" color="$soft">
-            Shared with you · Read only
+            {t('Shared with you · Read only')}
           </Text>
         ) : null}
       </XStack>
@@ -114,10 +116,11 @@ export function Shared() {
 }
 
 function Body({ state, signedIn, onOpen }: { state: State; signedIn: boolean; onOpen: () => void }) {
+  const { t } = useI18n()
   if (state.kind === 'reading') {
     return (
       <Text fontSize="$3" color="$soft" aria-live="polite">
-        Opening the chat.
+        {t('Opening the chat.')}
       </Text>
     )
   }
@@ -125,14 +128,14 @@ function Body({ state, signedIn, onOpen }: { state: State; signedIn: boolean; on
     return (
       <YStack gap="$3" items="flex-start">
         <Text render="h1" fontSize="$7" fontWeight="600" color="$ink">
-          This chat is no longer shared.
+          {t('This chat is no longer shared.')}
         </Text>
         <Text fontSize="$3" color="$soft">
-          {state.kind === 'missing' ? 'The link is incomplete. Ask for it again.' : 'The link was turned off, or it was never a link to a chat.'}
+          {state.kind === 'missing' ? t('The link is incomplete. Ask for it again.') : t('The link was turned off, or it was never a link to a chat.')}
         </Text>
         <Anchor href="/">
           <Button size="sm" variant="outline">
-            Go to {brand()}
+            {t('Go to {brand}', { brand: brand() })}
           </Button>
         </Anchor>
       </YStack>
@@ -145,19 +148,19 @@ function Body({ state, signedIn, onOpen }: { state: State; signedIn: boolean; on
     return (
       <YStack gap="$3" items="flex-start">
         <Text render="h1" fontSize="$6" fontWeight="600" color="$ink">
-          This chat could not be opened.
+          {t('This chat could not be opened.')}
         </Text>
         <Text role="alert" fontSize="$3" color="$soft">
           {state.said}
         </Text>
         <Button size="sm" onClick={() => window.location.reload()}>
-          Try again
+          {t('Try again')}
         </Button>
       </YStack>
     )
   }
   const { shared } = state
-  const by = shared.by || 'The person who shared it'
+  const by = shared.by || t('The person who shared it')
   if (!shared.full) {
     return (
       <>
@@ -165,16 +168,18 @@ function Body({ state, signedIn, onOpen }: { state: State; signedIn: boolean; on
           {shared.title}
         </Text>
         {shared.confirm ? (
-          <YStack gap="$3" p="$4" rounded="$4" borderWidth={1} borderColor="$borderColor" bg="$backgroundHover" role="region" aria-label="Open the chat">
+          <YStack gap="$3" p="$4" rounded="$4" borderWidth={1} borderColor="$borderColor" bg="$backgroundHover" role="region" aria-label={t('Open the chat')}>
             <Text fontSize="$4" fontWeight="600" color="$ink">
-              {shared.by ? `${shared.by} shared this chat with you` : 'This chat was shared with you'}
+              {shared.by ? t('{name} shared this chat with you', { name: shared.by }) : t('This chat was shared with you')}
             </Text>
             <Text fontSize="$2" color="$soft">
-              Opening it shows {shared.by || 'them'} the name you signed in with, and keeps it under Shared with you.
+              {shared.by
+                ? t('Opening it shows {name} the name you signed in with, and keeps it under Shared with you.', { name: shared.by })
+                : t('Opening it shows them the name you signed in with, and keeps it under Shared with you.')}
             </Text>
             <XStack>
               <Button size="sm" onClick={onOpen}>
-                {`Open — ${by} will see your name`}
+                {t('Open — {name} will see your name', { name: by })}
               </Button>
             </XStack>
           </YStack>
@@ -191,15 +196,15 @@ function Body({ state, signedIn, onOpen }: { state: State; signedIn: boolean; on
       </Text>
       {shared.by ? (
         <Text fontSize="$2" color="$soft">
-          Shared by {shared.by}
+          {t('Shared by {name}', { name: shared.by })}
         </Text>
       ) : null}
       {/* Each `li` is a gui stack, so it draws no marker: the list needs no list-style of its own. */}
-      <YStack gap="$4" render="ol" m={0} p={0} aria-label="Messages">
+      <YStack gap="$4" render="ol" m={0} p={0} aria-label={t('Messages')}>
         {shared.messages.map((turn, i) => (
           <YStack render="li" key={i} gap="$1">
             <Text fontSize="$1" color="$soft" textTransform="uppercase">
-              {turn.role === 'user' ? 'Asked' : turn.model ? `Answered · ${turn.model}` : 'Recorded by the person who shared this'}
+              {turn.role === 'user' ? t('Asked') : turn.model ? t('Answered · {model}', { model: turn.model }) : t('Recorded by the person who shared this')}
             </Text>
             {turn.role === 'assistant' && turn.model ? (
               <Prose text={turn.content} />
@@ -222,38 +227,38 @@ function Body({ state, signedIn, onOpen }: { state: State; signedIn: boolean; on
  * in again.
  */
 function Ask({ signedIn }: { signedIn: boolean }) {
-  const seen = 'The person who shared it will see that you opened it.'
+  const { t } = useI18n()
   if (signedIn) {
     return (
-      <YStack gap="$3" p="$4" rounded="$4" borderWidth={1} borderColor="$borderColor" bg="$backgroundHover" role="region" aria-label="Sign in to read the chat">
+      <YStack gap="$3" p="$4" rounded="$4" borderWidth={1} borderColor="$borderColor" bg="$backgroundHover" role="region" aria-label={t('Sign in to read the chat')}>
         <Text fontSize="$4" fontWeight="600" color="$ink">
-          Sign in again to read this chat
+          {t('Sign in again to read this chat')}
         </Text>
         <Text fontSize="$2" color="$soft">
-          Your session has ended; signing in brings you straight back here. {seen}
+          {t('Your session has ended; signing in brings you straight back here. The person who shared it will see that you opened it.')}
         </Text>
         <XStack gap="$2">
           <Button size="sm" onClick={() => enter(LOGIN)}>
-            Sign in
+            {t('Sign in')}
           </Button>
         </XStack>
       </YStack>
     )
   }
   return (
-    <YStack gap="$3" p="$4" rounded="$4" borderWidth={1} borderColor="$borderColor" bg="$backgroundHover" role="region" aria-label="Sign in to read the chat">
+    <YStack gap="$3" p="$4" rounded="$4" borderWidth={1} borderColor="$borderColor" bg="$backgroundHover" role="region" aria-label={t('Sign in to read the chat')}>
       <Text fontSize="$4" fontWeight="600" color="$ink">
-        Sign in to read this chat
+        {t('Sign in to read this chat')}
       </Text>
       <Text fontSize="$2" color="$soft">
-        A free Hanzo account opens it, and you come straight back here. {seen}
+        {t('A free Hanzo account opens it, and you come straight back here. The person who shared it will see that you opened it.')}
       </Text>
       <XStack gap="$2" flexWrap="wrap">
         <Button size="sm" onClick={() => enter(signUp())}>
-          Sign up to view
+          {t('Sign up to view')}
         </Button>
         <Button size="sm" variant="outline" onClick={() => enter(LOGIN)}>
-          Sign in
+          {t('Sign in')}
         </Button>
       </XStack>
     </YStack>

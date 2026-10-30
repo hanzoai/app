@@ -11,12 +11,11 @@
 // here is what an answer cites.
 
 import { useEffect, useState } from 'react'
-import { phrase } from '@hanzo/i18n'
+import { phrase, english, type Say } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { ArrowLeft, MessageSquare, X } from 'lucide-react'
 import { Box, Button, Text, XStack, YStack } from '@hanzo/ui'
 import { pct, section as openSection, toc, type Api, type Opened, type Passage, type TocEntry, type WorkFile } from './lib/files'
-import { english, type Say } from './say'
 import { BAD } from './lib/mix'
 
 /** What each stage of a file's ingest is doing, as a person reads it: authored English, drawn through `t`. */

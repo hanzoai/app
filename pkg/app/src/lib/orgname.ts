@@ -9,7 +9,7 @@
  * slug shown is the slug IAM makes of the same name.
  */
 
-import { english, type Say } from '../say'
+import { english, type Say } from '@hanzo/i18n'
 
 /** The longest organization name IAM takes. */
 export const LONGEST = 55

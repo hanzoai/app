@@ -16,8 +16,7 @@
  * the server answers, and a refusal comes back as the server's own sentence.
  */
 
-import { phrase } from '@hanzo/i18n'
-import { english, type Say } from '../say'
+import { phrase, english, type Say } from '@hanzo/i18n'
 import { scope } from './session'
 import { api } from './api'
 import { list } from './list'
@@ -253,7 +252,7 @@ export async function invoices(): Promise<Invoice[]> {
   return list<Invoice>((await ask<{ invoices?: unknown }>('/v1/billing/invoices')).invoices)
 }
 
-/** Whole cents as money: `$1,234.56`. */
-export function cents(n: number, currency = 'usd'): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency.toUpperCase() }).format(n / 100)
+/** Whole cents as money. English is `$1,234.56`; another locale follows its own currency format. */
+export function cents(n: number, currency = 'usd', locale = 'en-US'): string {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: currency.toUpperCase() }).format(n / 100)
 }
