@@ -9,7 +9,17 @@
  * At the end, once someone is signed in, who it is: the face, the name and the
  * address, the other accounts signed in on this browser to be one tap away
  * (lib/accounts), Add account and Log out. Signed out, nothing but the brand. Under gui's `md` the account folds into its face, a menu of the address
- * and the same two ways out.
+ * and the same two ways out. A host with an account control of its own hands it
+ * in as `account`, and the bar draws that in this one's place (null: none).
+ *
+ * THE WORDMARK STANDS WHERE THE MARKETING BAR'S DOES: the bar's side is the
+ * page's gutter (@hanzo/design `--page-gutter`), 60px tall, and the name is a
+ * pill whose 12px of padding the bar takes back with a -12px start margin, the
+ * shape hanzo.ai's own bar gives it. So the name's first letter is at the gutter
+ * on every page of every host, the focused ones and the marketing ones alike.
+ * Under a pointer or keyboard focus the pill takes the soft outline a section's
+ * label wears (`--border-strong`) and an arrow opens before the name: this goes
+ * back to the site.
  *
  * Being another account, and adding one, write this page down first
  * (destination.ts `rememberDestination`), so the sign-in that follows comes back
@@ -18,7 +28,8 @@
  * host mounts `IamProvider`.
  */
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type FocusEvent, type PointerEvent, type ReactNode } from 'react'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { useI18n } from '@hanzo/i18n/react'
 import { useIam } from '@hanzo/iam/react'
 import { Text, View, XStack, YStack } from '@hanzo/gui'
@@ -33,6 +44,15 @@ import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowContro
 
 /** The bar's height under the notch: hanzo.ai's masthead's. */
 const HEIGHT = 60
+/** The bar's side: the page's gutter, as hanzo.ai's marketing bar has it. */
+const GUTTER = 'var(--page-gutter, 20px)'
+/** The name's pill: its padding, which the bar takes back so the name's first letter is at the gutter. */
+const PAD = 12
+/** The pill lit: the soft outline a section's label wears, on no ground. */
+const OUTLINE = 'inset 0 0 0 1px var(--border-strong)'
+/** The arrow that opens before the name, and the space after it. */
+const CUE = 14
+const CUE_GAP = 6
 /** The bar's ground once the page has moved under it: the page's own, frosted. At rest it has none. */
 const GLASS = '$background/72'
 const BLUR = 'blur(20px) saturate(1.8)'
@@ -53,7 +73,7 @@ function useMoved(): boolean {
 /** The notch's inset. gui carries a CSS function to the page unchanged; its types only name custom properties. */
 const NOTCH = 'env(safe-area-inset-top)' as `var(--${string})`
 
-export function Chrome({ back }: { back?: ReactNode }) {
+export function Chrome({ back, account }: { back?: ReactNode; account?: ReactNode }) {
   const { t, dir } = useI18n()
   const { user, isAuthenticated } = useIam()
   const signOut = useSignOut()
@@ -83,7 +103,7 @@ export function Chrome({ back }: { back?: ReactNode }) {
       boxSizing="content-box"
       height={HEIGHT}
       pt={NOTCH}
-      px={20}
+      px={GUTTER}
       gap={12}
       items="center"
       bg={moved ? GLASS : 'transparent'}
@@ -91,31 +111,10 @@ export function Chrome({ back }: { back?: ReactNode }) {
       transition="quickest"
       borderBottomWidth={0}
     >
-      <Text
-        render={
-          <a
-            href="/"
-            aria-label={t('{brand} home', { brand: brand() })}
-            data-tauri-drag-region="deep"
-            onClick={(e) => {
-              if (typeof document !== 'undefined' && document.documentElement.getAttribute('data-desktop') === 'true') {
-                e.preventDefault()
-              }
-            }}
-          />
-        }
-        display="flex"
-        items="center"
-        shrink={0}
-        color="var(--foreground)"
-        textDecorationLine="none"
-        data-tauri-drag-region="deep"
-      >
-        <HanzoWordmark label={brand()} size={22} data-tauri-drag-region="deep" />
-      </Text>
+      <Home />
       {back}
       <View flex={1} data-tauri-drag-region="deep" />
-      {signed ? (
+      {account !== undefined ? account : signed ? (
         <View render="section" aria-label={t('Account')} display="flex">
           {/* Under the face, flush with the bar's end edge. */}
           <DropdownMenu placement={dir === 'rtl' ? 'bottom-start' : 'bottom-end'} offset={8}>
@@ -180,5 +179,69 @@ export function Chrome({ back }: { back?: ReactNode }) {
       ) : null}
       <WindowControls />
     </XStack>
+  )
+}
+
+/**
+ * The name, going to this host's root. Lit (the outline and the arrow before the
+ * name) under a mouse or pen and under keyboard focus; a finger's tap navigates
+ * and is not a hover, so it does not light.
+ */
+function Home() {
+  const { t, dir } = useI18n()
+  const [lit, setLit] = useState(false)
+  const Arrow = dir === 'rtl' ? ArrowRight : ArrowLeft
+  const point = (on: boolean) => (e: PointerEvent) => {
+    if (e.pointerType !== 'touch') setLit(on)
+  }
+  const focus = (e: FocusEvent<HTMLElement>) => setLit(e.currentTarget.matches(':focus-visible'))
+  return (
+    <Text
+      render={
+        <a
+          href="/"
+          aria-label={t('{brand} home', { brand: brand() })}
+          data-lit={lit ? 'true' : 'false'}
+          data-tauri-drag-region="deep"
+          onClick={(e) => {
+            if (typeof document !== 'undefined' && document.documentElement.getAttribute('data-desktop') === 'true') {
+              e.preventDefault()
+            }
+          }}
+          onPointerEnter={point(true)}
+          onPointerLeave={point(false)}
+          onFocus={focus}
+          onBlur={() => setLit(false)}
+        />
+      }
+      data-slot="home"
+      display="flex"
+      items="center"
+      shrink={0}
+      height={34}
+      marginInlineStart={-PAD}
+      paddingInline={PAD}
+      rounded={999}
+      color="var(--foreground)"
+      textDecorationLine="none"
+      boxShadow={lit ? OUTLINE : 'none'}
+      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor', outlineOffset: 2 }}
+      transition="quickest"
+      data-tauri-drag-region="deep"
+    >
+      <View
+        aria-hidden
+        display="flex"
+        items="center"
+        overflow="hidden"
+        width={lit ? CUE : 0}
+        marginInlineEnd={lit ? CUE_GAP : 0}
+        opacity={lit ? 1 : 0}
+        transition="quickest"
+      >
+        <Arrow size={CUE} strokeWidth={2.2} />
+      </View>
+      <HanzoWordmark label={brand()} size={22} data-tauri-drag-region="deep" />
+    </Text>
   )
 }

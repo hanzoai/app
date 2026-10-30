@@ -273,9 +273,22 @@ Paths below are under `pkg/app`.
   every gate screen (`Orgs.tsx` `Page`, once someone is signed in; "Signing you
   in" stands alone), and the host's own focused pages (the way in, the way to
   pay, a beta application), none of which draws a bar of its own. Sticky, 60px
-  under the notch, `header[data-slot="masthead"]`. The brand at the start
-  (@hanzogui/shell `HanzoLockup`: the mark and `brand()`, going to the host's
-  `/`), then the host's `back`; at the end, signed in, the face, name and
+  under the notch, `header[data-slot="masthead"]`, its side the page's gutter
+  (@hanzo/design `--page-gutter`, 20px where a host loads no tokens). The brand
+  at the start (@hanzogui/shell `HanzoWordmark`, `brand()` in words, going to the
+  host's `/`; `a[data-slot="home"]`) is a 34px pill whose 12px padding the bar
+  takes back with a -12px start margin, the shape hanzo.ai's marketing bar gives
+  its name, so the name's first letter stands at the gutter on every page of
+  every host: 20 / 30.7 / 57.6 / 72px at 390 / 768 / 1440 / 1800, measured
+  against hanzo.ai's `/` (owner, 2026-10-29: "all the same wordmark alignment").
+  Under a mouse or pen, and under keyboard focus, the pill takes the soft
+  outline a section's label wears (`--border-strong`, no ground) and lucide's
+  arrow opens before the name (`data-lit`): this goes back to the site. A
+  finger's tap navigates and does not light it. hanzo-inc/pay draws its own
+  bar to the same measure (`.pay-bar`, `.pay-mark`). Then the host's `back`;
+  at the end a host's own account control when it hands one in (`account`;
+  null draws none: hanzo.ai passes the account pill its marketing bar wears),
+  else, signed in, the face, name and
   address with Use another account (`rememberDestination`, then sign-out, so the
   sign-in comes back to the page, as hanzo.ai's /join does) and Log out
   (lib/signout, the account menu's). Under gui's `md` the account folds into its

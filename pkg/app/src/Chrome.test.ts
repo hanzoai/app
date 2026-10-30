@@ -23,9 +23,10 @@ const state = vi.hoisted(() => ({
 // A gui element draws the element it is given to render, with its children; the
 // menu draws its content, so the folded account's two ways out are in the markup.
 // Its accessible name is kept: it is what a reader and the gates know it by.
-const draw = ({ render, children, 'aria-label': named, 'data-scrolled': scrolled, bg }: { render?: ReactElement | string; children?: ReactNode; 'aria-label'?: string; 'data-scrolled'?: string; bg?: string }) =>
+// gui stamps its own `data-slot` on what it draws, so a slot the bar names is a prop; the mock stamps it the same way.
+const draw = ({ render, children, 'aria-label': named, 'data-scrolled': scrolled, 'data-slot': slot, bg }: { render?: ReactElement | string; children?: ReactNode; 'aria-label'?: string; 'data-scrolled'?: string; 'data-slot'?: string; bg?: string }) =>
   isValidElement(render)
-    ? cloneElement(render, undefined, children)
+    ? cloneElement(render, slot ? ({ 'data-slot': slot } as object) : undefined, children)
     : createElement(typeof render === 'string' ? render : 'div', { ...(named ? { 'aria-label': named } : null), ...(scrolled ? { 'data-scrolled': scrolled, 'data-bg': bg } : null) }, children)
 const pass = ({ children }: { children?: ReactNode }) => createElement('div', null, children)
 vi.mock('@hanzo/gui', () => ({ Text: draw, View: draw, XStack: draw, YStack: draw }))
@@ -50,7 +51,7 @@ const { Chrome } = await import('./Chrome')
 const { I18nProvider } = await import('@hanzo/i18n/react')
 const { default: fr } = await import('@hanzo/i18n/catalogs/fr-FR.json')
 
-const drawn = (back?: ReactNode) => renderToStaticMarkup(createElement(Chrome, { back }))
+const drawn = (back?: ReactNode, account?: ReactNode) => renderToStaticMarkup(createElement(Chrome, account === undefined ? { back } : { back, account }))
 
 describe('the focused pages\' bar', () => {
   beforeEach(() => {
@@ -62,7 +63,18 @@ describe('the focused pages\' bar', () => {
     const html = drawn()
     expect(html).toContain('href="/"')
     expect(html).toContain('aria-label="Hanzo AI home"')
+    expect(html).toContain('data-slot="home"')
     expect(html).toContain('>Hanzo AI<')
+  })
+
+  test('a host\'s own account control stands in the bar\'s, and null draws none', () => {
+    const own = drawn(undefined, createElement('button', { 'aria-label': 'Account: Ada' }, 'Ada'))
+    expect(own).toContain('aria-label="Account: Ada"')
+    expect(own).not.toContain('Bob Ross')
+    expect(own).not.toContain('Log out')
+    const none = drawn(undefined, null)
+    expect(none).toContain('>Hanzo AI<')
+    expect(none).not.toContain('aria-label="Account')
   })
 
   test('signed in, it collapses account actions into the account dropdown menu', () => {
@@ -178,6 +190,30 @@ describe('the bar\'s other accounts', () => {
     expect(switchTo).toHaveBeenCalledWith(carol)
     await press('Add account')
     expect(add).toHaveBeenCalledTimes(1)
+    await act(async () => root.unmount())
+    host.remove()
+  })
+})
+
+describe('the way home', () => {
+  test('a mouse over the name lights it (the outline and the arrow); leaving puts it out; a finger never lights it', async () => {
+    state.iam = { isAuthenticated: false, user: null }
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => root.render(createElement(Chrome, {})))
+    const home = host.querySelector<HTMLAnchorElement>('a[data-slot="home"]')!
+    expect(home.getAttribute('data-lit')).toBe('false')
+    const point = async (type: string, pointerType: string) =>
+      act(async () => {
+        home.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType, relatedTarget: document.body }))
+      })
+    await point('pointerover', 'mouse')
+    expect(home.getAttribute('data-lit')).toBe('true')
+    await point('pointerout', 'mouse')
+    expect(home.getAttribute('data-lit')).toBe('false')
+    await point('pointerover', 'touch')
+    expect(home.getAttribute('data-lit')).toBe('false')
     await act(async () => root.unmount())
     host.remove()
   })
