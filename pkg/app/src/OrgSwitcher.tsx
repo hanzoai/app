@@ -5,10 +5,10 @@ import { useI18n } from '@hanzo/i18n/react'
 import { Check, ChevronDown, Plus, Settings } from 'lucide-react'
 import { HanzoMark } from '@hanzogui/shell'
 import { useOrganizations } from '@hanzo/iam/react'
-import { Button } from '@hanzo/ui'
+import { Avatar, Button } from '@hanzo/ui'
 import { useAccount } from './lib/account'
 import { iam } from './lib/api'
-import { pick } from './lib/session'
+import { CHOOSE, pick } from './lib/session'
 import { Text, View, XStack, YStack, type GuiElement } from '@hanzo/gui'
 import { site } from './where'
 import { settings } from './lib/host'
@@ -26,6 +26,42 @@ export interface OrganizationItem {
   avatar?: string
   role?: string
   isPersonal?: boolean
+}
+
+/**
+ * The organizations a person belongs to (the account's and IAM's, merged by
+ * id), the one this page works in, and how to choose another. The dropdown and
+ * the rooms' org rail read the same list.
+ */
+export function useOrgList(): { orgs: OrganizationItem[]; active: string; choose: (id: string) => void } {
+  const { organizations: iamOrgs, switchOrg, currentOrg, currentOrgId } = useOrganizations() || {}
+  const { organizations: accountOrgs, switchOrganization, currentOrganization } = useAccount() || {}
+  const orgs = useMemo(() => {
+    const map = new Map<string, OrganizationItem>()
+    for (const o of [...(accountOrgs ?? []), ...(iamOrgs ?? [])]) {
+      const item = o as any
+      const id = item.id || item.name
+      if (id && !map.has(id)) {
+        map.set(id, {
+          id,
+          name: item.name || id,
+          displayName: item.displayName || item.name || id,
+          logo: item.logo || item.avatar,
+          role: item.role || 'member',
+          isPersonal: Boolean(item.isPersonal),
+        })
+      }
+    }
+    return Array.from(map.values())
+  }, [accountOrgs, iamOrgs])
+  const current = (currentOrganization || currentOrg) as { id?: string; name?: string } | undefined
+  const active = current?.name || current?.id || currentOrgId || ''
+  const choose = (id: string) => {
+    pick(id)
+    if (switchOrg) switchOrg(id)
+    if (switchOrganization) switchOrganization(id)
+  }
+  return { orgs, active, choose }
 }
 
 export function OrgSwitcherDropdown({
@@ -48,8 +84,7 @@ export function OrgSwitcherDropdown({
   triggerRef?: React.RefObject<GuiElement | null>
 }) {
   const { t } = useI18n()
-  const { organizations: iamOrgs, switchOrg } = useOrganizations() || {}
-  const { organizations: accountOrgs, switchOrganization } = useAccount() || {}
+  const { orgs, choose } = useOrgList()
   const menuRef = useRef<GuiElement>(null)
 
   useEffect(() => {
@@ -75,43 +110,6 @@ export function OrgSwitcherDropdown({
     }
   }, [open, onClose, triggerRef])
 
-  const orgs: OrganizationItem[] = useMemo(() => {
-    const map = new Map<string, OrganizationItem>()
-
-    // Add detected account orgs
-    for (const o of (accountOrgs ?? [])) {
-      const item = o as any
-      const id = item.id || item.name
-      if (id) {
-        map.set(id, {
-          id,
-          name: item.name || id,
-          displayName: item.displayName || item.name || id,
-          logo: item.logo || item.avatar,
-          role: item.role || 'member',
-          isPersonal: Boolean(item.isPersonal),
-        })
-      }
-    }
-
-    // Add detected IAM orgs
-    for (const o of (iamOrgs ?? [])) {
-      const item = o as any
-      const id = item.id || item.name
-      if (id && !map.has(id)) {
-        map.set(id, {
-          id,
-          name: item.name || id,
-          displayName: item.displayName || item.name || id,
-          logo: item.logo || item.avatar,
-          role: item.role || 'member',
-          isPersonal: Boolean(item.isPersonal),
-        })
-      }
-    }
-
-    return Array.from(map.values())
-  }, [accountOrgs, iamOrgs])
 
   if (!open) return null
 
@@ -158,9 +156,7 @@ export function OrgSwitcherDropdown({
             key={o.id}
             variant="ghost"
             onClick={() => {
-              pick(o.id)
-              if (switchOrg) switchOrg(o.id)
-              if (switchOrganization) switchOrganization(o.id)
+              choose(o.id)
               onSelect(o.id)
               onClose()
             }}
@@ -305,5 +301,66 @@ export function TopOrgSelector() {
         triggerRef={buttonRef}
       />
     </XStack>
+  )
+}
+
+/**
+ * The organizations as tiles down the far left, as a team chat draws them:
+ * each its logo, or its initial in its own hue (@hanzo/ui `Avatar` seeded on its
+ * id, as the org chooser and the landing's preview draw it), the one this page
+ * works in ringed, and "+" under them for the chooser, where another is made or
+ * joined. A press works in that organization.
+ */
+export function Tiles() {
+  const { t } = useI18n()
+  const { orgs, active, choose } = useOrgList()
+  if (orgs.length === 0) return null
+  return (
+    <YStack data-slot="org-tiles" role="group" aria-label={t('Organizations')} items="center" gap={10} pt={10} pb={6}>
+      {orgs.map((o) => {
+        const on = o.id === active || o.name === active
+        return (
+          <XStack key={o.id} position="relative" items="center" justify="center">
+            <View position="absolute" insetInlineStart={-10} width={4} height={on ? 26 : 0} rounded={9999} bg="$color" />
+            <XStack
+              render="button"
+              aria-pressed={on}
+              aria-label={t('Open {org}', { org: o.displayName })}
+              {...({ title: o.displayName } as object)}
+              onClick={() => choose(o.id)}
+              p={2}
+              rounded={10}
+              borderWidth={2}
+              borderColor={on ? '$color' : 'transparent'}
+              bg="transparent"
+              cursor="pointer"
+              opacity={on ? 1 : 0.8}
+              hoverStyle={{ opacity: 1 }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+            >
+              <Avatar size="lg" shape="rounded" src={o.logo || null} name={o.displayName} colorSeed={o.id} variant={on ? 'outline' : 'soft'} alt="" />
+            </XStack>
+          </XStack>
+        )
+      })}
+      <XStack
+        render="button"
+        aria-label={t('Organizations')}
+        {...({ title: t('Organizations') } as object)}
+        onClick={() => void window.dispatchEvent(new Event(CHOOSE))}
+        width={32}
+        height={32}
+        rounded={8}
+        items="center"
+        justify="center"
+        borderWidth={1}
+        borderColor="$borderColor"
+        bg="transparent"
+        cursor="pointer"
+        hoverStyle={{ bg: '$backgroundHover' }}
+      >
+        <Plus size={15} aria-hidden />
+      </XStack>
+    </YStack>
   )
 }

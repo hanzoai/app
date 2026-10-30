@@ -211,6 +211,7 @@ import {
 import { bare } from './lib/bare'
 import { BAD } from './lib/mix'
 import { brand, site, where, wordmark } from './where'
+import { Tiles } from './OrgSwitcher'
 
 /** The pane while a settings row is open, loaded when one is: none of it is an app's first screen. */
 const SettingsPane = lazy(() => import('./SettingsPane').then((m) => ({ default: m.SettingsPane })))
@@ -1767,7 +1768,6 @@ function Rail({
       borderInlineEndWidth={1}
       borderInlineEndStyle="solid"
       borderColor="var(--edge, var(--white-06))"
-      $md={open ? { display: "none" } : undefined}
       $max-md={{
         flexDirection: "row",
         items: "center",
@@ -1779,8 +1779,14 @@ function Rail({
       pb={HOME_INDICATOR}
     >
 
+        {/* The organizations, far left as a team chat draws them, and there with
+            the sidebar open too; a phone keeps its tab bar of places. */}
+        <YStack $max-md={{ display: "none" }} borderBottomWidth={1} borderColor="var(--edge, var(--white-06))" mx="$2">
+          <Tiles />
+        </YStack>
         {/* A phone lays the places out as equal tabs, four and More; the rest
-            wait in the finder. */}
+            wait in the finder. An open sidebar lists the places itself, so from
+            a tablet up they step aside and the rail keeps the organizations. */}
         <YStack
           data-slot="places"
           {...bare}
@@ -1791,6 +1797,7 @@ function Rail({
           minH={0}
           overflowY="auto"
           pt="$2"
+          $md={open ? { display: "none" } : undefined}
           $max-md={{
             display: "grid",
             gridAutoFlow: "column",
@@ -1878,7 +1885,8 @@ function Rail({
           </Box>
         </YStack>
 
-      <YStack items="center" pb="$2">
+      {/* The sidebar lists Settings too, so with it open the rail keeps the organizations alone. */}
+      <YStack items="center" pb="$2" $md={open ? { display: "none" } : undefined}>
           <Box
             render="button"
             onClick={onSettings}
@@ -2508,14 +2516,15 @@ function Frame({
     // THE SHELL IS A GRID: the rail down the left, the bar across the top, and
     // under it the list, the pane and the side, each placed by its area. On a
     // phone the grid turns — bar, pane, and the rail along the bottom as the tab
-    // bar — and the list is a sheet between them. An open sidebar lists the
-    // places itself, so from a tablet up the rail's column closes.
+    // bar — and the list is a sheet between them. The rail's column stays from a
+    // tablet up, its organizations at the top as a team chat draws them; an open
+    // sidebar lists the places itself, so then the rail keeps only the orgs.
     <YStack
       data-slot="workspace"
       data-hydrated={settled ? "true" : undefined}
       data-sidebar={asked ? "open" : "shut"}
       display="grid"
-      gridTemplateColumns={`${asked ? 0 : 64}px auto minmax(0, 1fr) auto`}
+      gridTemplateColumns="64px auto minmax(0, 1fr) auto"
       gridTemplateRows="44px minmax(0, 1fr)"
       gridTemplateAreas={'"rail bar bar bar" "rail list pane side"'}
       $max-md={{

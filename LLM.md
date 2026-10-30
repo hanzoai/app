@@ -265,6 +265,16 @@ Paths below are under `pkg/app`.
   `superAdmin()` is @hanzo/iam's `superAdmin(claims)` (hanzoai/authz
   `Claims.Sudo`): a person whose `orgs[0].org` is `admin`, never a program and
   never an empty home shifted onto a later entry. No copy of the rule lives here.
+- **The organizations stand at the far left, as a team chat draws them**
+  (owner, 2026-10-29). The shell's rail (`Shell.tsx` `Rail`) leads with
+  `OrgSwitcher.tsx` `Tiles`: every org the person belongs to (`useOrgList`, the
+  same merged list the org dropdown reads), each its logo or its initial in its
+  hue (@hanzo/ui `Avatar` seeded on its id, as `TeamPreview` draws them), the
+  one this page works in ringed with a mark at the rail's edge, and "+" under
+  them for the chooser (`CHOOSE`). A press works in that org (`choose`: `pick`
+  and IAM's own switch). The rail's column stays from a tablet up with the
+  sidebar open too: then the sidebar lists the places and the rail keeps the
+  orgs. A phone keeps its tab bar of places; its orgs are the chooser's.
 - The chooser is `Gate.tsx` `Pick`: on arrival with several orgs and none picked,
   or over the app when `choose()` fires (the account menu's All organizations).
   Rows are the token's orgs with IAM's rows beside them (`GET
