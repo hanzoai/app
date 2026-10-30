@@ -414,8 +414,21 @@ function Window({ bar, betas }: Hosted) {
             >
               {/* A phone has no rail and no sidebar: its bar opens them as a drawer and switches Chat and Dev. */}
               {bar ? null : <Bar host={host} mode={mode} places={sidebar} open={drawer.state !== 'shut'} go={move} onMenu={drawer.open} onChat={toChat} onDev={toDev} />}
-              {/* The stage's rest, one cell: a pane scrolls inside it rather than growing past it. */}
-              <XStack data-slot="panes" flex={1} display="grid" gridTemplateColumns="minmax(0, 1fr)" gridTemplateRows="minmax(0, 1fr)" minW={0} minH={0}>
+              {/* The stage's rest: the pane, and beside it the column a pane opens (Split names
+                  them `pane` and `side`). The areas are named here because Split places its two by
+                  name; unnamed, `grid-area: pane` made implicit tracks and Chat's pane stood its
+                  content's size in the far corner. A pane scrolls inside its cell rather than
+                  growing past it. */}
+              <XStack
+                data-slot="panes"
+                flex={1}
+                display="grid"
+                gridTemplateAreas={'"pane side"'}
+                gridTemplateColumns="minmax(0, 1fr) auto"
+                gridTemplateRows="minmax(0, 1fr)"
+                minW={0}
+                minH={0}
+              >
                 {mode === 'chat' ? (
                   <Split framed>
                     <Chat />

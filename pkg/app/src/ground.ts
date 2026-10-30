@@ -23,10 +23,26 @@ export const pane = (fill = 'var(--pane-fill)') =>
   }) as const
 
 /**
- * One head row, px: the sidebar's title row, a pane's top bar and a phone's bar
- * are this high and stand on one line, so the marks in them share a centerline.
+ * A phone's head row, px: its bar and the drawer's title row are this high and
+ * stand on one line, so the marks in them share a centerline.
  */
 export const BAND = 52
+
+/**
+ * The head row from a tablet up, px: one rail mark high (Rail `MARK`), so the
+ * rail's first mark stands at the pane's top edge and the sidebar's title row
+ * and the pane's head share its centre (owner, 2026-10-30: "align sidebar icons
+ * top, left, right"). A thumb's mark is 44 on a touch screen, and the rows grow
+ * with it (`TOUCH_HEAD`).
+ */
+export const HEAD = 36
+export const TOUCH_HEAD = 44
+
+/**
+ * A row INSIDE a pane is 2px shorter than the row it lines up with: the pane's
+ * 1px top edge sets its content 1px down, so its centre stays on the line.
+ */
+export const inPane = (row: number): number => row - 2
 
 /**
  * THE FLOOR under the app's frame (app/_web.tsx, components/settings/Frame.tsx):

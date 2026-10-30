@@ -709,6 +709,27 @@ reference captures; outer window, inner panel):
   var(--view-height, 100dvh)`. The stage's foot is the home indicator's inset
   while the keyboard is down (`FOOT`). A pinch zoom is not followed. Every
   descendant reads `--keyboard` (px the keyboard takes, 0 when down).
+- **A grid never holds a child that can vanish.** A `display: none` child
+  leaves a grid, and the next one is auto-placed into its track: the stage's
+  `auto`/`1fr` rows with the phone bar hidden from md put the panes in the
+  `auto` row and Dev's pane collapsed to its border; Chat's conversation did the
+  same with its head hidden on a phone. The stage and the conversation are
+  columns (the bar or head, then the rest `flex: 1`). The panes are a grid with
+  NAMED areas (`"pane side"`), because Split places its two by `gridArea`; an
+  unnamed `grid-area: pane` makes implicit tracks and the pane stood in a corner.
+- **The chrome is one line from a tablet up** (owner, 2026-10-30, "align sidebar
+  icons top, left, right"; ground.ts `HEAD`, 36 = Rail `MARK`). The rail's first
+  mark stands at the pane's top edge; the sidebar's title row is `HEAD` high and
+  the pane's head `inPane(HEAD)` (2px less, for the pane's 1px top edge), so the
+  title, its bell and search, and the pane head's icons share the toggle's
+  centre. A touch screen's 44px marks take `TOUCH_HEAD`. A phone's bar and the
+  drawer's title row stay `BAND` (52). hanzo.ai `e2e/gates/opening.spec.ts`
+  measures every centre to 0.5px.
+- **An empty chat is one pair in the middle of the pane** from a tablet up:
+  @hanzo/ui Chat `center` (rows `1fr auto auto 1fr`) with the opening at its own
+  height; a phone keeps the composer at the foot over the keyboard. Private is a
+  ghost: one icon, filled while on, `aria-label` "Private chat", `aria-pressed`,
+  its name the tooltip; no border, word or switch.
 - What a person reads and the code both call these apps, and a team's
   conversations channels (HIP-0523): the shell is `Shell`, a team channel is
   `channels.ts` `Channel` (`useChannels`, `useMessages`), the network a message

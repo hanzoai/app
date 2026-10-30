@@ -47,7 +47,7 @@ import { Face, brief as castBrief, join, roleOf, castTurn, roster as rosterLine,
 import { cleanForSpeech, speakAgent } from "./speech";
 import { AgentMaker, HOUSE, useAgentShelf, useCrew } from "./crew";
 import { called } from "./team";
-import { Anchor, Box, Button, Switch, Text, View, XStack, YStack } from "@hanzo/ui";
+import { Anchor, Box, Button, Text, Tooltip, TooltipContent, TooltipTrigger, View, XStack, YStack } from "@hanzo/ui";
 import { useMedia } from "@hanzo/gui";
 import { given, tidy } from "./lib/title";
 import { useIam, useIamToken } from "@hanzo/iam/react";
@@ -113,7 +113,7 @@ import { enter, LOGIN } from './lib/destination';
 import { first } from './lib/first';
 import { BAD } from "./lib/mix";
 import { brand } from './where'
-import { BAND } from './ground'
+import { BAND, HEAD, TOUCH_HEAD, inPane } from './ground'
 import { UsageControl } from './Usage'
 import { shared, useChatPreferences } from './lib/chatPreferences'
 import { handleHint } from './hint'
@@ -1914,9 +1914,11 @@ function Thread({
   };
 
   return (
+    // A COLUMN: the head row, then the talk taking the rest (`data-slot="talk"`).
+    // Not a grid of `auto` and `1fr` rows: on a phone the head is display none,
+    // which leaves the grid, so the talk landed in the `auto` row and stood its
+    // content's height at the top of the pane.
     <YStack
-      display="grid"
-      gridTemplateRows="auto minmax(0, 1fr)"
       width="100%"
       height="100%"
       minH={0}
@@ -1999,7 +2001,10 @@ function Thread({
           Summary, and the tabs beside it. */}
       <XStack
         data-slot="conversation-head"
+        // On the rail's line from a tablet up (HEAD, less the pane's edge); a phone's own bar is BAND.
         height={BAND}
+        $md={{ height: inPane(HEAD) }}
+        $touchable={{ height: inPane(TOUCH_HEAD) }}
         display="grid"
         gridTemplateColumns="minmax(0, 1fr) auto"
         items="center"
@@ -2112,35 +2117,31 @@ function Thread({
               </XStack>
             </ConversationMenu>
           ) : (
-            <XStack
-              render="button"
-              data-slot="header-private-chat"
-              aria-label={t("Private chat mode")}
-              aria-pressed={forgetful}
-              {...({ title: forgetful ? t("Private chat enabled: messages will not be saved") : t("Private chat: forgetful mode") } as object)}
-              items="center"
-              gap="$1.5"
-              px="$2"
-              py="$1"
-              height={28}
-              rounded="$3"
-              cursor="pointer"
-              borderWidth={1}
-              borderColor={forgetful ? 'var(--primary)' : '$borderColor'}
-              bg={forgetful ? 'var(--primary-10, var(--white-10))' : 'transparent'}
-              hoverStyle={{ bg: forgetful ? 'var(--primary-15, var(--white-15))' : '$hover' }}
-              onPress={() => setForgetful(!forgetful)}
-            >
-              <Ghost size={13} strokeWidth={1.75} color={forgetful ? 'var(--primary)' : 'var(--soft, var(--muted-foreground))'} aria-hidden />
-              <Text fontSize="$1" fontWeight={forgetful ? '600' : '500'} color={forgetful ? 'var(--primary)' : '$soft'}>
-                {t("Private")}
-              </Text>
-              <Switch
-                size="sm"
-                checked={forgetful}
-                pointerEvents="none"
-              />
-            </XStack>
+            // A ghost, nothing else: the icon says the state (filled while on), the
+            // name is the tooltip, as the header's other icons are (owner, 2026-10-30).
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <XStack
+                  render="button"
+                  data-slot="header-private-chat"
+                  aria-label={t("Private chat")}
+                  aria-pressed={forgetful}
+                  width={32}
+                  height={32}
+                  items="center"
+                  justify="center"
+                  rounded="$3"
+                  bg="transparent"
+                  cursor="pointer"
+                  hoverStyle={{ bg: "$hover" }}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+                  onPress={() => setForgetful(!forgetful)}
+                >
+                  <Ghost size={16} strokeWidth={1.75} color={forgetful ? "var(--foreground)" : "var(--muted-foreground)"} fill={forgetful ? "currentColor" : "none"} aria-hidden />
+                </XStack>
+              </TooltipTrigger>
+              <TooltipContent>{forgetful ? t("Private chat is on: this conversation is not saved") : t("Private chat")}</TooltipContent>
+            </Tooltip>
           )}
           <XStack $max-md={{ display: 'none' }}>
             <Summary sections={sections} onOpen={() => setPanel(true)} label={t("Summary")} />
@@ -2163,234 +2164,230 @@ function Thread({
       ) : null}
       {!wide && panel ? <Panel side={deck} kinds={NONE} sheet onHide={() => setPanel(false)} label={t("Tabs")} {...browsing} /> : null}
 
-      <ChatSurface
-        {...chat}
-        messages={shown}
-        send={guarded}
-        // THE COMPOSER IS FIXED TO THE FOOT, on a laptop and on a phone, empty or
-        // not: while nothing has been said the opening (the heading) stands at the
-        // foot of the height above it; once a turn exists the transcript scrolls
-        // under it. Over the keyboard, from the first moment.
-        // AS IT WAS WRITTEN. The package renders a turn's words plainly and
-        // says so — it ships no markdown pipeline because the plugin set is the
-        // surface's to choose — so an answer arrived here reading "```ts" with
-        // the backticks on screen. `Prose` is the site's one renderer, reading
-        // with the same `marked` the legal pages parse with and drawing every
-        // token in gui elements, and the shared view draws through it too.
-        body={(turn) => {
-          if (String(turn.id).startsWith(`${FAILED}:`)) {
-            const question = shown.find((one) => one.id === String(turn.id).slice(FAILED.length + 1));
-            return question ? failure(question) : null;
-          }
-          // A QUESTION THAT CARRIED PICTURES draws them beside its words.
-          if (turn.role === "user" && Array.isArray(turn.content)) {
-            const parts = partsOf(turn.content);
-            const asked = parts.flatMap((p) => (p.type === "text" ? [p.text] : [])).join("\n");
-            return (
-              <YStack gap="$1">
-                <Parts parts={parts} prose={(text) => <Prose text={text} />} />
-                {!anonymous && asked ? <Plan onPress={() => setPlan(asked)} /> : null}
-              </YStack>
-            );
-          }
-          const said = typeof turn.content === "string" ? turn.content : "";
-          // A QUESTION THAT CARRIED FILES draws its words and the files' chips;
-          // the passages it handed the model are the model's to read, not ours.
-          if (turn.role === "user" && said) {
-            const read = told(said);
-            if (read.carried)
+      <YStack data-slot="talk" flex={1} minH={0}>
+        <ChatSurface
+          {...chat}
+          messages={shown}
+          send={guarded}
+          // WHILE NOTHING HAS BEEN SAID, from a tablet up, the opening and the
+          // composer are one pair centred in the pane (`center`: rows `1fr auto auto
+          // 1fr`), so the heading reads close above the field and nothing stands at
+          // the window's foot (owner, 2026-10-30). A phone keeps the composer at the
+          // foot, over the keyboard, from the first moment; once a turn exists every
+          // width does, and the transcript scrolls under it.
+          center={media.md}
+          // AS IT WAS WRITTEN. The package renders a turn's words plainly and
+          // says so — it ships no markdown pipeline because the plugin set is the
+          // surface's to choose — so an answer arrived here reading "```ts" with
+          // the backticks on screen. `Prose` is the site's one renderer, reading
+          // with the same `marked` the legal pages parse with and drawing every
+          // token in gui elements, and the shared view draws through it too.
+          body={(turn) => {
+            if (String(turn.id).startsWith(`${FAILED}:`)) {
+              const question = shown.find((one) => one.id === String(turn.id).slice(FAILED.length + 1));
+              return question ? failure(question) : null;
+            }
+            // A QUESTION THAT CARRIED PICTURES draws them beside its words.
+            if (turn.role === "user" && Array.isArray(turn.content)) {
+              const parts = partsOf(turn.content);
+              const asked = parts.flatMap((p) => (p.type === "text" ? [p.text] : [])).join("\n");
               return (
                 <YStack gap="$1">
-                  <Carried
-                    text={read.text}
-                    attached={read.carried.attached}
-                    reused={read.carried.reused}
-                    onOpen={openFile}
-                    onSave={anonymous ? undefined : (url, id, f) => keepOne(url, id, f.name, f.type)}
-                  />
-                  {!anonymous && read.text ? <Plan onPress={() => setPlan(read.text)} /> : null}
+                  <Parts parts={parts} prose={(text) => <Prose text={text} />} />
+                  {!anonymous && asked ? <Plan onPress={() => setPlan(asked)} /> : null}
                 </YStack>
               );
-          }
-          // WHILE THE ANSWER HAS NO WORDS YET: who is answering (the agents the
-          // question addresses, or the whole cast when it names nobody), and the
-          // model's reasoning as it streams (`reasoning` on the turn), dimmed and
-          // cut to its last lines.
-          const thought = turn.role === "assistant" && !said && chat.streaming ? ((turn as { reasoning?: string }).reasoning ?? "").trim() : "";
-          if (turn.role === "assistant" && !said && chat.streaming && (cast.length || thought)) {
-            const q = [...shown].reverse().find((one) => one.role === "user");
-            const whom = cast.length ? addressed(words(q?.content as Said), cast) : [];
-            return (
-              <YStack gap="$1" data-slot="thinking">
-                <Text fontSize="$2" color="$soft">
-                  {whom.length
-                    ? whom.length > 1
-                      ? thought
-                        ? t("{names} are thinking…", { names: join(whom, t) })
-                        : t("{names} are answering…", { names: join(whom, t) })
-                      : thought
-                        ? t("{names} is thinking…", { names: join(whom, t) })
-                        : t("{names} is answering…", { names: join(whom, t) })
-                    : t("Thinking…")}
-                </Text>
-                {thought ? (
-                  <Text fontSize="$2" color="$soft" opacity={0.72} data-slot="thought">
-                    {thought.length > THOUGHT ? `…${thought.slice(-THOUGHT).replace(/^\S*\s/, "")}` : thought}
-                  </Text>
-                ) : null}
-              </YStack>
-            );
-          }
-          // A CAST'S ANSWER IS SEVERAL PEOPLE'S. Each opens a line with their
-          // name, as the brief asks, so each is drawn under their own face and
-          // read in their own voice. A reply that names nobody is drawn whole.
-          const parts = turn.role === "assistant" ? speakers(said, known) : null;
-          if (parts && parts.some((part) => part.who)) {
-            // Asked and silent: an agent the question addressed who has no part
-            // in this reply.
-            const at = shown.findIndex((one) => one.id === turn.id);
-            const q = shown.slice(0, at).reverse().find((one) => one.role === "user");
-            const silent =
-              cast.length > 1 && !(chat.streaming && at === shown.length - 1)
-                ? addressed(words(q?.content as Said), cast).filter(
-                    (name) => !parts.some((part) => part.who?.toLowerCase() === name.toLowerCase()),
-                  )
-                : [];
-            return (
-              <YStack gap="$3">
-                {parts.map((part, i) => (
-                  <YStack key={i} gap="$1">
-                    {part.who ? (
-                      <XStack items="center" gap="$2">
-                        <Face src={faces[part.who]?.avatar} emoji={faces[part.who]?.emoji} name={part.who} size={20} />
-                        <Text fontSize="$2" fontWeight="600" color="$ink">
-                          {part.who}
-                        </Text>
-                      </XStack>
-                    ) : null}
-                    <Prose text={part.text} />
-                    {part.text ? <Reply text={part.text} listen={listen(part.who ?? withWhom ?? undefined)} onOpen={opener(part.text)} /> : null}
+            }
+            const said = typeof turn.content === "string" ? turn.content : "";
+            // A QUESTION THAT CARRIED FILES draws its words and the files' chips;
+            // the passages it handed the model are the model's to read, not ours.
+            if (turn.role === "user" && said) {
+              const read = told(said);
+              if (read.carried)
+                return (
+                  <YStack gap="$1">
+                    <Carried
+                      text={read.text}
+                      attached={read.carried.attached}
+                      reused={read.carried.reused}
+                      onOpen={openFile}
+                      onSave={anonymous ? undefined : (url, id, f) => keepOne(url, id, f.name, f.type)}
+                    />
+                    {!anonymous && read.text ? <Plan onPress={() => setPlan(read.text)} /> : null}
                   </YStack>
-                ))}
-                {silent.length ? (
+                );
+            }
+            // WHILE THE ANSWER HAS NO WORDS YET: who is answering (the agents the
+            // question addresses, or the whole cast when it names nobody), and the
+            // model's reasoning as it streams (`reasoning` on the turn), dimmed and
+            // cut to its last lines.
+            const thought = turn.role === "assistant" && !said && chat.streaming ? ((turn as { reasoning?: string }).reasoning ?? "").trim() : "";
+            if (turn.role === "assistant" && !said && chat.streaming && (cast.length || thought)) {
+              const q = [...shown].reverse().find((one) => one.role === "user");
+              const whom = cast.length ? addressed(words(q?.content as Said), cast) : [];
+              return (
+                <YStack gap="$1" data-slot="thinking">
                   <Text fontSize="$2" color="$soft">
-                    {t("No answer from {names} in this reply.", { names: join(silent, t) })}
+                    {whom.length
+                      ? whom.length > 1
+                        ? thought
+                          ? t("{names} are thinking…", { names: join(whom, t) })
+                          : t("{names} are answering…", { names: join(whom, t) })
+                        : thought
+                          ? t("{names} is thinking…", { names: join(whom, t) })
+                          : t("{names} is answering…", { names: join(whom, t) })
+                      : t("Thinking…")}
                   </Text>
-                ) : null}
-                {byline(turn.id)}
+                  {thought ? (
+                    <Text fontSize="$2" color="$soft" opacity={0.72} data-slot="thought">
+                      {thought.length > THOUGHT ? `…${thought.slice(-THOUGHT).replace(/^\S*\s/, "")}` : thought}
+                    </Text>
+                  ) : null}
+                </YStack>
+              );
+            }
+            // A CAST'S ANSWER IS SEVERAL PEOPLE'S. Each opens a line with their
+            // name, as the brief asks, so each is drawn under their own face and
+            // read in their own voice. A reply that names nobody is drawn whole.
+            const parts = turn.role === "assistant" ? speakers(said, known) : null;
+            if (parts && parts.some((part) => part.who)) {
+              // Asked and silent: an agent the question addressed who has no part
+              // in this reply.
+              const at = shown.findIndex((one) => one.id === turn.id);
+              const q = shown.slice(0, at).reverse().find((one) => one.role === "user");
+              const silent =
+                cast.length > 1 && !(chat.streaming && at === shown.length - 1)
+                  ? addressed(words(q?.content as Said), cast).filter(
+                      (name) => !parts.some((part) => part.who?.toLowerCase() === name.toLowerCase()),
+                    )
+                  : [];
+              return (
+                <YStack gap="$3">
+                  {parts.map((part, i) => (
+                    <YStack key={i} gap="$1">
+                      {part.who ? (
+                        <XStack items="center" gap="$2">
+                          <Face src={faces[part.who]?.avatar} emoji={faces[part.who]?.emoji} name={part.who} size={20} />
+                          <Text fontSize="$2" fontWeight="600" color="$ink">
+                            {part.who}
+                          </Text>
+                        </XStack>
+                      ) : null}
+                      <Prose text={part.text} />
+                      {part.text ? <Reply text={part.text} listen={listen(part.who ?? withWhom ?? undefined)} onOpen={opener(part.text)} /> : null}
+                    </YStack>
+                  ))}
+                  {silent.length ? (
+                    <Text fontSize="$2" color="$soft">
+                      {t("No answer from {names} in this reply.", { names: join(silent, t) })}
+                    </Text>
+                  ) : null}
+                  {byline(turn.id)}
+                </YStack>
+              );
+            }
+            return (
+              <YStack gap="$1">
+                <Prose text={said} />
+                {/* UNDER AN ANSWER, the row Dev's answers have too (@hanzo/build
+                    `Reply`): copy the markdown as written, listen in the
+                    speaker's voice, and open what it wrote in the side panel.
+                    Only an answer, and only one with words in it. */}
+                {turn.role === "assistant" && said ? <Reply text={said} listen={listen(withWhom ?? undefined)} onOpen={opener(said)} /> : null}
+                {turn.role === "assistant" && said ? byline(turn.id) : null}
+                {turn.role === "user" && said && !anonymous ? <Plan onPress={() => setPlan(said)} /> : null}
               </YStack>
             );
-          }
-          return (
-            <YStack gap="$1">
-              <Prose text={said} />
-              {/* UNDER AN ANSWER, the row Dev's answers have too (@hanzo/build
-                  `Reply`): copy the markdown as written, listen in the
-                  speaker's voice, and open what it wrote in the side panel.
-                  Only an answer, and only one with words in it. */}
-              {turn.role === "assistant" && said ? <Reply text={said} listen={listen(withWhom ?? undefined)} onOpen={opener(said)} /> : null}
-              {turn.role === "assistant" && said ? byline(turn.id) : null}
-              {turn.role === "user" && said && !anonymous ? <Plan onPress={() => setPlan(said)} /> : null}
-            </YStack>
-          );
-        }}
-        // The page's ONE heading, and it belongs to the empty transcript rather
-        // than to a signed-out branch — the branch is gone, and the heading went
-        // with it when it did. `Ask` passes its own, because the page embedding
-        // it already has an `<h1>` and a second is the defect that took the
-        // landings off /chat and /dev.
-        empty={
-          heading === null ? undefined : (
-            // It takes the height above the composer, which is fixed to the foot,
-            // and stands at the foot of that height: close above what it opens.
-            <YStack
-              data-slot="opening"
-              display="grid"
-              gridTemplateRows="1fr auto"
-              items="center"
-              width="100%"
-              height="100%"
-              pt="$6"
-              pb="$2"
-            >
-              {/* THE PORTRAIT IS A DM'S, AND ONLY A DM'S. It used to draw for
-                  everyone, because `withWhom || "jobs"` gave a reader who had
-                  chosen nobody a 160px photograph of somebody — and the heading
-                  under it said their name. A fresh /chat is not a conversation
-                  with anyone yet. */}
-              {cast.length > 1 ? (
-                <XStack items="center" justify="center" mb="$4">
-                  {cast.map((name, i) => (
-                    <Box key={name} marginInlineStart={i ? -16 : 0} rounded={40} borderWidth={2} borderColor="$background" z={cast.length - i}>
-                      <Face src={faces[name]?.avatar} emoji={faces[name]?.emoji} name={name} size={72} />
-                    </Box>
-                  ))}
-                </XStack>
-              ) : portrait ? (
-                <Box
-                  width={160}
-                  height={160}
-                  rounded={24}
-                  overflow="hidden"
-                  borderWidth={2}
-                  borderColor="var(--white-15)"
-                  boxShadow="0 10px 24px color-mix(in srgb, var(--pure-black) 70%, transparent)"
-                  mb="$4"
-                  bg="var(--neutral-900)"
-                >
-                  <View render={<img src={portrait} alt={withWhom} />} width="100%" height="100%" objectFit="cover" />
-                </Box>
-              ) : null}
+          }}
+          // The page's ONE heading, and it belongs to the empty transcript rather
+          // than to a signed-out branch — the branch is gone, and the heading went
+          // with it when it did. `Ask` passes its own, because the page embedding
+          // it already has an `<h1>` and a second is the defect that took the
+          // landings off /chat and /dev.
+          empty={
+            heading === null ? undefined : (
+              // From a tablet up its own height, centred with the composer as one pair; on a
+              // phone it stands at the foot of the height above the composer, close above it.
+              <YStack data-slot="opening" items="center" justify="flex-end" width="100%" height="100%" pt="$6" pb="$2">
+                {/* THE PORTRAIT IS A DM'S, AND ONLY A DM'S. It used to draw for
+                    everyone, because `withWhom || "jobs"` gave a reader who had
+                    chosen nobody a 160px photograph of somebody — and the heading
+                    under it said their name. A fresh /chat is not a conversation
+                    with anyone yet. */}
+                {cast.length > 1 ? (
+                  <XStack items="center" justify="center" mb="$4">
+                    {cast.map((name, i) => (
+                      <Box key={name} marginInlineStart={i ? -16 : 0} rounded={40} borderWidth={2} borderColor="$background" z={cast.length - i}>
+                        <Face src={faces[name]?.avatar} emoji={faces[name]?.emoji} name={name} size={72} />
+                      </Box>
+                    ))}
+                  </XStack>
+                ) : portrait ? (
+                  <Box
+                    width={160}
+                    height={160}
+                    rounded={24}
+                    overflow="hidden"
+                    borderWidth={2}
+                    borderColor="var(--white-15)"
+                    boxShadow="0 10px 24px color-mix(in srgb, var(--pure-black) 70%, transparent)"
+                    mb="$4"
+                    bg="var(--neutral-900)"
+                  >
+                    <View render={<img src={portrait} alt={withWhom} />} width="100%" height="100%" objectFit="cover" />
+                  </Box>
+                ) : null}
 
-              {/* A face for an agent with no picture at all — the glyph it
-                  picked, or its initial. The block above draws the picture when
-                  there is one, so only one of the two ever stands here. */}
-              {cast.length === 1 && !portrait ? (
-                <Box mb="$3">
-                  <Face emoji={mate?.emoji ?? persona?.emoji} name={withWhom} size={72} />
-                </Box>
-              ) : null}
+                {/* A face for an agent with no picture at all — the glyph it
+                    picked, or its initial. The block above draws the picture when
+                    there is one, so only one of the two ever stands here. */}
+                {cast.length === 1 && !portrait ? (
+                  <Box mb="$3">
+                    <Face emoji={mate?.emoji ?? persona?.emoji} name={withWhom} size={72} />
+                  </Box>
+                ) : null}
 
-              <Text
-                render="h1"
-                fontSize="$7"
-                lineHeight="$7"
-                fontWeight="700"
-                color="$ink"
-                text="center"
-                mb="$1"
-              >
-                {join(cast, t) || heading || (firstName ? t("What’s up, {name}?", { name: firstName }) : t("What’s up?"))}
-              </Text>
-
-              {/* WHAT THE AGENT ROW SAYS ABOUT ITSELF, and only that. The
-                  fallback under this read gave two colleagues a job title each —
-                  "Engineering Lead @ Hanzo", "Admin & Founder @ Hanzo" — and
-                  anyone else a blurb about product vision. Those were typed
-                  here, not read from anywhere: a claim about an identifiable
-                  person, shipped in the bundle, that nobody they name has seen.
-                  A persona with no description gets a name and no sentence. */}
-              {cast.length === 1 && (mate?.description ?? persona?.description) ? (
                 <Text
-                  fontSize="$3"
-                  color="$soft"
+                  render="h1"
+                  fontSize="$7"
+                  lineHeight="$7"
+                  fontWeight="700"
+                  color="$ink"
                   text="center"
-                  maxW={500}
-                  mb="$4"
-                  lineHeight="$4"
+                  mb="$1"
                 >
-                  {mate?.description ?? persona?.description}
+                  {join(cast, t) || heading || (firstName ? t("What’s up, {name}?", { name: firstName }) : t("What’s up?"))}
                 </Text>
-              ) : null}
 
-            </YStack>
-          )
-        }
-        // The transcript reads at the same measure. `Thread` defaults to 768
-        // itself; handing it the column here is what lets Width reach it.
-        column={{ maxW: MEASURE }}
-        composer={composer}
-      />
+                {/* WHAT THE AGENT ROW SAYS ABOUT ITSELF, and only that. The
+                    fallback under this read gave two colleagues a job title each —
+                    "Engineering Lead @ Hanzo", "Admin & Founder @ Hanzo" — and
+                    anyone else a blurb about product vision. Those were typed
+                    here, not read from anywhere: a claim about an identifiable
+                    person, shipped in the bundle, that nobody they name has seen.
+                    A persona with no description gets a name and no sentence. */}
+                {cast.length === 1 && (mate?.description ?? persona?.description) ? (
+                  <Text
+                    fontSize="$3"
+                    color="$soft"
+                    text="center"
+                    maxW={500}
+                    mb="$4"
+                    lineHeight="$4"
+                  >
+                    {mate?.description ?? persona?.description}
+                  </Text>
+                ) : null}
+
+              </YStack>
+            )
+          }
+          // The transcript reads at the same measure. `Thread` defaults to 768
+          // itself; handing it the column here is what lets Width reach it.
+          column={{ maxW: MEASURE }}
+          composer={composer}
+        />
+      </YStack>
       <AgentMaker />
       {carry.dialog}
       <Upgrade ask={ask} onClose={() => setAsk(null)} />
