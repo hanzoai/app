@@ -29,10 +29,9 @@
 // pre-emptively refuses on the gateway's behalf.
 
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { isolate, phrase } from "@hanzo/i18n";
+import { english, isolate, phrase, type Say } from "@hanzo/i18n";
 import { useI18n } from "@hanzo/i18n/react";
 import { billed, detail, familyOf, planRequired, plainly, refused } from "./failure";
-import { english, type Say } from "./say";
 import { Prose } from "./Prose";
 import {
   useAgent,

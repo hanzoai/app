@@ -30,6 +30,8 @@ import {
 } from '@hanzo/ui/agents'
 import { Text, XStack, YStack } from '@hanzo/ui'
 import { useIam } from '@hanzo/iam/react'
+import { useI18n } from '@hanzo/i18n/react'
+import type { Say } from '@hanzo/i18n'
 import { Composer } from '@hanzo/ui/chat'
 import { Start } from './Start'
 import { Bar } from './progress'
@@ -59,40 +61,41 @@ const STATUS = (s?: string): RunStatus =>
  * and says it. Anything that does not look like a payload is human text already
  * and passes through untouched.
  */
-const say = (preview?: string): string | undefined => {
+const previewOf = (preview: string | undefined, t: Say): string | undefined => {
   if (!preview) return undefined
   const raw = preview.trim()
   if (!raw.startsWith('{') && !raw.startsWith('"{') && !raw.startsWith('[')) return preview
   const kind = /"type"\s*:\s*\\?"([a-z_]+)/i.exec(raw)?.[1]
   switch (kind) {
-    case 'done': return 'Finished'
-    case 'error': return 'Failed'
-    case 'start': return 'Starting'
-    case 'tool': case 'tool_call': return 'Using a tool'
-    case 'text': case 'delta': return 'Writing'
+    case 'done': return t('Finished')
+    case 'error': return t('Failed')
+    case 'start': return t('Starting')
+    case 'tool': case 'tool_call': return t('Using a tool')
+    case 'text': case 'delta': return t('Writing')
     case undefined: return undefined
     default: return kind.replace(/_/g, ' ')
   }
 }
 
-const toRun = (s: Session, children: Run[] = []): Run => ({
+const toRun = (s: Session, t: Say, children: Run[] = []): Run => ({
   id: s.id,
   agent: s.agent || s.title || s.id,
   status: STATUS(s.status),
-  doing: say(s.lastEvent?.preview),
+  doing: previewOf(s.lastEvent?.preview, t),
   target: s.target,
   project: s.project,
   children,
 })
 
 /** Flatten the server's tree into the board's, dropping the node we asked for. */
-const kidsOf = (node: TreeNode | null): Run[] =>
+const kidsOf = (node: TreeNode | null, t: Say): Run[] =>
   // `children` is NULL on a leaf, not `[]` — the guard is load-bearing.
   (node?.children ?? []).map((child) =>
-    child.session ? toRun(child.session, kidsOf(child)) : null,
+    child.session ? toRun(child.session, t, kidsOf(child, t)) : null,
   ).filter((r): r is Run => r !== null)
 
 function Watching({ idle }: { idle?: ReactNode }) {
+  const { t } = useI18n()
   const ai = useAi()
   const { sessions, loading, reload } = useSessions({ limit: 100 })
   // THE OPEN RUN IS THE SHELL'S, not this pane's. `Start` announces a new run by
@@ -118,18 +121,18 @@ function Watching({ idle }: { idle?: ReactNode }) {
       swarms.map((s) =>
         ai.sessions
           .tree(s.id, { signal: stop.signal })
-          .then((node) => [s.id, kidsOf(node)] as const)
+          .then((node) => [s.id, kidsOf(node, t)] as const)
           .catch(() => [s.id, [] as Run[]] as const),
       ),
     ).then((pairs) => {
       if (!stop.signal.aborted) setTrees(Object.fromEntries(pairs))
     })
     return () => stop.abort()
-  }, [ai, sessions])
+  }, [ai, sessions, t])
 
   const runs = useMemo(
-    () => sessions.map((s) => toRun(s, trees[s.id] ?? [])),
-    [sessions, trees],
+    () => sessions.map((s) => toRun(s, t, trees[s.id] ?? [])),
+    [sessions, trees, t],
   )
 
   return (
@@ -185,7 +188,7 @@ function Watching({ idle }: { idle?: ReactNode }) {
           onOpen={setOpen}
           empty={
             <Text fontSize="$2" color="$soft">
-              {loading ? 'Reading runs…' : 'No runs yet. Start one and it appears here.'}
+              {loading ? t('Reading runs…') : t('No runs yet. Start one and it appears here.')}
             </Text>
           }
         />
@@ -214,6 +217,7 @@ function Watching({ idle }: { idle?: ReactNode }) {
  * home — the composer and what to do next.
  */
 function Idle({ runs }: { runs: number }) {
+  const { t } = useI18n()
   if (runs === 0) {
     return (
       <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden">
@@ -227,15 +231,15 @@ function Idle({ runs }: { runs: number }) {
         >
           <YStack gap="$2">
             <Text render="h1" fontSize="$7" fontWeight="500" color="$ink">
-              Start a run
+              {t('Start a run')}
             </Text>
             <Text fontSize="$3" color="$soft" maxW={520}>
-              Give an agent a task. Its plan, progress, and output will appear here.
+              {t('Give an agent a task. Its plan, progress, and output will appear here.')}
             </Text>
           </YStack>
           <Start />
           <Text fontSize="$1" color="$soft">
-            Runs stay visible in Working so you can inspect or steer them at any time.
+            {t('Runs stay visible in Working so you can inspect or steer them at any time.')}
           </Text>
         </YStack>
       </YStack>
@@ -244,7 +248,7 @@ function Idle({ runs }: { runs: number }) {
   return (
     <YStack flex={1} items="center" justify="center" p="$6">
       <Text fontSize="$3" color="$soft">
-        Pick a run to watch it work.
+        {t('Pick a run to watch it work.')}
       </Text>
     </YStack>
   )
@@ -258,6 +262,7 @@ function Idle({ runs }: { runs: number }) {
  * carrying the previous run's.
  */
 function Watch({ id }: { id: string }) {
+  const { t } = useI18n()
   const ai = useAi()
   const { session } = useSession(id)
   const [live, setLive] = useState<SessionEvent[]>([])
@@ -301,12 +306,28 @@ function Watch({ id }: { id: string }) {
       setNote(null)
       try {
         await ai.sessions.steer(id, command)
-        setNote(`${command} queued — it takes effect between turns`)
+        setNote(
+          command === 'pause'
+            ? t('Pause queued — it takes effect between turns')
+            : command === 'resume'
+              ? t('Resume queued — it takes effect between turns')
+              : command === 'stop'
+                ? t('Stop queued — it takes effect between turns')
+                : t('Sent — the agent reads it between turns'),
+        )
       } catch {
-        setNote(`Could not ${command} this run`)
+        setNote(
+          command === 'pause'
+            ? t('Could not pause this run')
+            : command === 'resume'
+              ? t('Could not resume this run')
+              : command === 'stop'
+                ? t('Could not stop this run')
+                : t('Could not reach this run'),
+        )
       }
     },
-    [ai, id],
+    [ai, id, t],
   )
 
   const send = useCallback(async () => {
@@ -316,11 +337,11 @@ function Watch({ id }: { id: string }) {
     setNote(null)
     try {
       await ai.sessions.steer(id, 'message', { message: text })
-      setNote('Sent — the agent reads it between turns')
+      setNote(t('Sent — the agent reads it between turns'))
     } catch {
-      setNote('Could not reach this run')
+      setNote(t('Could not reach this run'))
     }
-  }, [ai, draft, id])
+  }, [ai, draft, id, t])
 
   return (
     <XStack flex={1} minH={0} flexWrap="wrap">
@@ -351,8 +372,8 @@ function Watch({ id }: { id: string }) {
             value={draft}
             onChange={setDraft}
             onSend={() => void send()}
-            placeholder="Steer this run…"
-            label="Steer this run"
+            placeholder={t('Steer this run…')}
+            label={t('Steer this run')}
           />
         </YStack>
       </YStack>
@@ -368,9 +389,9 @@ function Watch({ id }: { id: string }) {
       >
         <Pane
           tabs={[
-            { id: 'code', label: 'Code', kind: 'code', content: <Nothing what="changes" /> },
-            { id: 'view', label: 'View', kind: 'view', content: <Nothing what="preview" /> },
-            { id: 'canvas', label: 'Canvas', kind: 'canvas', content: <Nothing what="summary" /> },
+            { id: 'code', label: t('Code'), kind: 'code', content: <Nothing what="changes" /> },
+            { id: 'view', label: t('View'), kind: 'view', content: <Nothing what="preview" /> },
+            { id: 'canvas', label: t('Canvas'), kind: 'canvas', content: <Nothing what="summary" /> },
           ]}
         />
       </YStack>
@@ -378,10 +399,17 @@ function Watch({ id }: { id: string }) {
   )
 }
 
-function Nothing({ what }: { what: string }) {
+function Nothing({ what }: { what: 'changes' | 'preview' | 'summary' }) {
+  const { t } = useI18n()
+  const line =
+    what === 'changes'
+      ? t('This run has produced no changes yet.')
+      : what === 'preview'
+        ? t('This run has produced no preview yet.')
+        : t('This run has produced no summary yet.')
   return (
     <Text fontSize="$2" color="$soft">
-      This run has produced no {what} yet.
+      {line}
     </Text>
   )
 }
@@ -395,15 +423,16 @@ function Nothing({ what }: { what: string }) {
  * an `if` the rules forbid.
  */
 export function Work({ idle }: { idle?: ReactNode }) {
+  const { t } = useI18n()
   const { user, isLoading } = useIam()
   if (isLoading || !user) {
     return (
       <YStack flex={1} items="center" justify="center" p="$6" gap="$2">
         <Text render="h1" fontSize="$5" fontWeight="600" color="$ink">
-          Agents
+          {t('Agents')}
         </Text>
         <Text fontSize="$3" color="$soft" text="center">
-          {isLoading ? '\u00a0' : 'Sign in to watch your agents work.'}
+          {isLoading ? '\u00a0' : t('Sign in to watch your agents work.')}
         </Text>
       </YStack>
     )

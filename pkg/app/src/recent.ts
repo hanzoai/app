@@ -3,8 +3,7 @@
 // and heading is authored English written through `phrase`, so Recents.tsx draws
 // it through `t`; a heading that is a project's name is data and drawn as is.
 
-import { phrase } from '@hanzo/i18n'
-import { english, type Say } from './say'
+import { phrase, english, type Say } from '@hanzo/i18n'
 
 export type Mode = 'chat' | 'dev'
 

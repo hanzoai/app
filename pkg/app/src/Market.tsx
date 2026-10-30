@@ -17,6 +17,7 @@
 // reach, a stdio package is a process someone still has to run.
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useI18n } from '@hanzo/i18n/react'
 import { say } from './failure'
 import { ArrowUpRight, Check, Compass, Search } from 'lucide-react'
 import type { McpListing, McpServer } from '@hanzo/ai'
@@ -93,6 +94,7 @@ function Card({
   onInstall: () => void
   busy: boolean
 }) {
+  const { t } = useI18n()
   const canInstall = reachable(listing)
   return (
     <YStack
@@ -116,14 +118,14 @@ function Card({
       </XStack>
 
       <Text fontSize="$2" color="$soft" numberOfLines={3}>
-        {listing.description || 'No description published.'}
+        {listing.description || t('No description published.')}
       </Text>
 
       {installed ? (
         <XStack items="center" gap="$2">
           <Check size={14} aria-hidden />
           <Text fontSize="$2" color="$soft">
-            Installed
+            {t('Installed')}
           </Text>
         </XStack>
       ) : canInstall ? (
@@ -139,15 +141,16 @@ function Card({
           hoverStyle={{ bg: '$hover' }}
         >
           <Text fontSize="$2" color="$ink">
-            {busy ? 'Installing' : 'Install'}
+            {busy ? t('Installing') : t('Install')}
           </Text>
         </Box>
       ) : (
         // Honest, and specific: this is not "unavailable", it is a package that
         // needs a process. Naming which one keeps the row useful.
         <Text fontSize="$1" color="$soft">
-          Ships as a {(listing.packages ?? [])[0]?.registry ?? 'stdio'} package — needs a
-          runner before it can be connected.
+          {t('Ships as a {kind} package — needs a runner before it can be connected.', {
+            kind: (listing.packages ?? [])[0]?.registry ?? 'stdio',
+          })}
         </Text>
       )}
     </YStack>
@@ -155,6 +158,7 @@ function Card({
 }
 
 export function Market({ scope }: { scope: 'all' | 'installed' }) {
+  const { t } = useI18n()
   const { client } = useAi()
 // SIGNED IN IS THE CREDENTIAL, NOT THE PROFILE. This gated on `user`, which is
 // the answer to a userinfo REQUEST — and `IamProvider` swallows that request's
@@ -241,17 +245,17 @@ export function Market({ scope }: { scope: 'all' | 'installed' }) {
 
   const signedIn = isAuthenticated || hasSession()
   if (isLoading) return <Empty>&nbsp;</Empty>
-  if (!signedIn) return <Empty>Sign in to browse agents you can add.</Empty>
-  if (failed) return <Empty>{say(failed, 'the marketplace')}</Empty>
+  if (!signedIn) return <Empty>{t('Sign in to browse agents you can add.')}</Empty>
+  if (failed) return <Empty>{say(failed, t('the marketplace'), 'read', t)}</Empty>
 
   return (
     <YStack flex={1} minH={0}>
       <YStack p="$5" gap="$2" borderBottomWidth={1} borderColor="$borderColor">
         <Text fontSize="$7" lineHeight="$7" fontWeight="500" color="$ink">
-          Put AI to work in {brand()}
+          {t('Put AI to work in {brand}', { brand: brand() })}
         </Text>
         <Text fontSize="$3" color="$soft">
-          Browse agents that bring your tools into {brand()}.
+          {t('Browse agents that bring your tools into {brand}.', { brand: brand() })}
         </Text>
 
         <XStack items="center" justify="space-between" flexWrap="wrap" gap="$2" mt="$2">
@@ -268,7 +272,7 @@ export function Market({ scope }: { scope: 'all' | 'installed' }) {
           >
             <Search size={14} aria-hidden />
             <Text
-              render={<input value={ask} onChange={(e) => setAsk(e.target.value)} placeholder="Search agents" />}
+              render={<input value={ask} onChange={(e) => setAsk(e.target.value)} placeholder={t('Search agents')} aria-label={t('Search agents')} />}
               flex={1}
               bg="transparent"
               borderWidth={0}
@@ -291,7 +295,7 @@ export function Market({ scope }: { scope: 'all' | 'installed' }) {
           >
             <Compass size={14} aria-hidden />
             <Text fontSize="$2" fontWeight="500" color="$ink">
-              Explore on hanzo.market
+              {t('Explore on hanzo.market')}
             </Text>
             <ArrowUpRight size={13} aria-hidden color="$soft" />
           </XStack>
@@ -299,14 +303,14 @@ export function Market({ scope }: { scope: 'all' | 'installed' }) {
       </YStack>
 
       {!listings ? (
-        <Empty>Reading the shelf.</Empty>
+        <Empty>{t('Reading the shelf.')}</Empty>
       ) : shown.length === 0 ? (
         <Empty>
           {scope === 'installed'
-            ? 'No agents installed yet.'
+            ? t('No agents installed yet.')
             : ask
-              ? 'Nothing in the registry matches that.'
-              : 'The shelf is empty — the catalog has not been synced yet.'}
+              ? t('Nothing in the registry matches that.')
+              : t('The shelf is empty — the catalog has not been synced yet.')}
         </Empty>
       ) : (
         <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden" p="$5" gap="$3">
@@ -314,10 +318,10 @@ export function Market({ scope }: { scope: 'all' | 'installed' }) {
               a card grid that implies otherwise reads as a complete catalogue. */}
           <Text fontSize="$1" color="$soft">
             {scope === 'installed'
-              ? `${shown.length} installed`
+              ? t('{count} installed', { count: shown.length })
               : ask
-                ? `${shown.length} of ${total} matching`
-                : `${shown.length} featured`}
+                ? t('{count} of {total} matching', { count: shown.length, total })
+                : t('{count} featured', { count: shown.length })}
           </Text>
           <XStack flexWrap="wrap" gap="$3">
             {shown.map((listing) => (

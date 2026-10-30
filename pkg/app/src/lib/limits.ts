@@ -12,7 +12,7 @@
 import { label, said, spent, ways, when } from '@hanzo/build/plan'
 import { useLimits as useHeld, type UseLimits } from '@hanzo/ui/product/useLimits'
 import { paidPlan, type LimitAction, type LimitNotice } from '@hanzo/ui/product/limits'
-import { english, type Say } from '../say'
+import { english, type Say } from '@hanzo/i18n'
 import { api } from './api'
 import { scope } from './session'
 

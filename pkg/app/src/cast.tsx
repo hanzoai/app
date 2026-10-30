@@ -15,7 +15,7 @@
 
 import { type ReactNode, useEffect, useState } from 'react'
 import { Text, Tooltip, TooltipContent, TooltipTrigger, View, XStack } from '@hanzo/ui'
-import { english, type Say } from './say'
+import { english, type Say } from '@hanzo/i18n'
 import { member } from './team'
 
 interface Role {

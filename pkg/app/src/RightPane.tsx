@@ -41,7 +41,7 @@ import { list } from './lib/list'
 import { localOf, take, type Held } from './pane'
 import { useProviders, useSkills } from './tools'
 import { activate, startDevice } from './connect'
-import type { Say } from './say'
+import type { Say } from '@hanzo/i18n'
 
 /** A conversation's panel before anyone has arranged it. */
 export const SEED: Tabs = { tabs: [], at: null }

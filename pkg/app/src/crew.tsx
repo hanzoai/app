@@ -18,7 +18,7 @@
 // is one sentence with its fields in it (`Sentence`), so a translation places
 // the fields where its own word order puts them.
 
-import { phrase, pieces } from '@hanzo/i18n'
+import { phrase, pieces, type Say } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useRooms } from './host'
@@ -37,7 +37,6 @@ import { app, go } from './lib/host'
 import { site } from './where'
 import { bare } from './lib/bare'
 import { BAD, mix } from './lib/mix'
-import type { Say } from './say'
 
 /** One disc's edge, and the name under it. */
 const DISC = 48

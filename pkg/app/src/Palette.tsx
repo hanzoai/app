@@ -29,7 +29,7 @@
 // types, and a read the palette closes on is aborted.
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { isolate } from '@hanzo/i18n'
+import { isolate, english, type Say } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import {
   BookOpen,
@@ -73,7 +73,6 @@ import { tidy } from './lib/title'
 import { KEYS, legal, out, pages } from './help'
 import { site } from './where'
 import { find, type Group, type Hit } from './seek'
-import { english, type Say } from './say'
 
 /** A row: what it is called (in the reader's words), its glyph, where it lives, and what pressing it does. */
 export interface Action extends Hit {

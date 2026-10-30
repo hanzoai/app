@@ -35,6 +35,8 @@ import {
 } from 'lucide-react'
 import { Box, Button, Text, View, XStack, YStack } from '@hanzo/ui'
 import { useIam, useOrganizations } from '@hanzo/iam/react'
+import { useI18n } from '@hanzo/i18n/react'
+import type { Say } from '@hanzo/i18n'
 import { useAi } from './lib/ai'
 import { empty, useOpen } from './open'
 import { attach, channel } from './pane'
@@ -105,51 +107,51 @@ interface Project {
   updatedAt?: number
 }
 
-const blame = (e: unknown): string => {
+const blame = (e: unknown, t: Say): string => {
   const text = e instanceof Error ? e.message : String(e ?? '')
-  return text || 'The store did not say what went wrong.'
+  return text || t('The store did not say what went wrong.')
 }
 
 /** A size as a row shows it; nothing is a dash. */
 const weigh = (bytes: number): string => (bytes ? size(bytes) : '—')
 
 /** Format timestamp */
-const when = (stamp: number): string => {
+const when = (stamp: number, locale: string): string => {
   if (!stamp) return ''
   const ms = stamp < 1e12 ? stamp * 1000 : stamp
   const d = new Date(ms)
   const now = new Date()
   const sameDay = d.toDateString() === now.toDateString()
-  if (sameDay) return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  if (sameDay) return d.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' })
   const sameYear = d.getFullYear() === now.getFullYear()
-  return d.toLocaleDateString([], sameYear ? { month: 'short', day: 'numeric' } : { year: 'numeric', month: 'short', day: 'numeric' })
+  return d.toLocaleDateString(locale, sameYear ? { month: 'short', day: 'numeric' } : { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 /** The store publishes a bucket's own display name; the slug is the fallback. */
-const getBucketDisplayName = (b: Bucket | string | undefined): string =>
-  (typeof b === 'string' ? b : b?.displayName || b?.name) || 'Drive'
+const getBucketDisplayName = (b: Bucket | string | undefined, t: Say): string =>
+  (typeof b === 'string' ? b : b?.displayName || b?.name) || t('Drive')
 
 const wire = (key: string): string => key.split('/').map(encodeURIComponent).join('/')
 const objects = (bucket: string): string => `/v1/s3/buckets/${encodeURIComponent(bucket)}/objects`
 
-async function putBytes(client: Client, bucket: string, key: string, body: Blob, type?: string): Promise<void> {
+async function putBytes(client: Client, bucket: string, key: string, body: Blob, t: Say, type?: string): Promise<void> {
   const grant = await client.http.json<{ url: string; method?: string }>({
     method: 'POST',
     path: objects(bucket),
     body: { bucket, key },
   })
-  if (!grant?.url) throw new Error('The store issued no upload address.')
+  if (!grant?.url) throw new Error(t('The store issued no upload address.'))
   const sent = await fetch(grant.url, {
     method: grant.method || 'PUT',
     body,
     headers: type ? { 'Content-Type': type } : undefined,
   })
-  if (!sent.ok) throw new Error(`${key.split('/').pop()} did not upload (${sent.status}).`)
+  if (!sent.ok) throw new Error(t('{name} did not upload ({status}).', { name: key.split('/').pop() || '', status: sent.status }))
 }
 
-async function urlFor(client: Client, bucket: string, key: string): Promise<string> {
+async function urlFor(client: Client, bucket: string, key: string, t: Say): Promise<string> {
   const grant = await client.http.json<{ url: string }>({ path: `${objects(bucket)}/${wire(key)}` })
-  if (!grant?.url) throw new Error('The store issued no download address.')
+  if (!grant?.url) throw new Error(t('The store issued no download address.'))
   return grant.url
 }
 
@@ -185,8 +187,9 @@ const CELL = { fontSize: '$2', color: '$soft' } as const
 
 /** A row's "more" control. */
 function More({ onPress }: { onPress: (e: { stopPropagation: () => void }) => void }) {
+  const { t, locale } = useI18n()
   return (
-    <Button variant="ghost" size="icon-sm" onClick={onPress} aria-label="More" title="More">
+    <Button variant="ghost" size="icon-sm" onClick={onPress} aria-label={t('More')} title={t('More')}>
       <MoreHorizontal size={15} />
     </Button>
   )
@@ -232,6 +235,7 @@ type NavSection = 'my-drive' | 'recent' | 'local'
 type ViewMode = 'list' | 'grid' | 'details'
 
 export function Drive() {
+  const { t, locale } = useI18n()
   const { client } = useAi()
   const { user, isAuthenticated } = useIam()
   const ready = Boolean(client && isAuthenticated)
@@ -287,8 +291,8 @@ export function Drive() {
       : activeWs.path
     listLocalEntries(targetDir)
       .then((items) => setLocalEntries(items))
-      .catch((e) => setFailed(blame(e)))
-  }, [activeWs, localPrefix])
+      .catch((e) => setFailed(blame(e, t)))
+  }, [activeWs, localPrefix, t])
 
   useEffect(() => {
     if (navSection === 'local') {
@@ -335,11 +339,11 @@ export function Drive() {
     client.http
       .json<{ buckets?: Bucket[] }>({ path: '/v1/s3/buckets' })
       .then((out) => live && setBuckets(out?.buckets ?? []))
-      .catch((e) => live && setFailed(blame(e)))
+      .catch((e) => live && setFailed(blame(e, t)))
     return () => {
       live = false
     }
-  }, [ready, client, reload])
+  }, [ready, client, reload, t])
 
   // THE DRIVE IS A BUCKET THE ORG OWNS. It used to fall back to the literal
   // "my-drive", which is a nav label rather than a name the store answers to —
@@ -408,9 +412,9 @@ export function Drive() {
       void client.http
         .json<WorkFile>({ path: `/v1/knowledge/files/${encodeURIComponent(id)}` })
         .then((f) => setContents({ file: f, at }))
-        .catch((e) => setFailed(blame(e)))
+        .catch((e) => setFailed(blame(e, t)))
     },
-    [index, client],
+    [index, client, t],
   )
 
   /** ASK IN CHAT: a new conversation with the file put into it, by reference. */
@@ -436,11 +440,11 @@ export function Drive() {
     client.http
       .collection<Entry>('objects', { path: objects(activeBucket), query: { prefix } })
       .then((found) => live && setEntries(found))
-      .catch((e) => live && setFailed(blame(e)))
+      .catch((e) => live && setFailed(blame(e, t)))
     return () => {
       live = false
     }
-  }, [ready, client, activeBucket, prefix])
+  }, [ready, client, activeBucket, prefix, t])
 
   useEffect(() => {
     loadEntries()
@@ -482,12 +486,12 @@ export function Drive() {
         await work(setBusy)
         setReload((n) => n + 1)
       } catch (e) {
-        setFailed(blame(e))
+        setFailed(blame(e, t))
       } finally {
         setBusy(null)
       }
     },
-    [client, activeBucket, busy],
+    [client, activeBucket, busy, t],
   )
 
   // UPLOAD skips the platform: the bytes go straight to the store through
@@ -500,10 +504,19 @@ export function Drive() {
       if (!files) return
       const list = Array.from(files)
       if (!list.length || !client || !activeBucket) return
-      void run(`Uploading ${list.length === 1 ? list[0].name : `${list.length} files`}`, async (say) => {
+      const count = list.length.toLocaleString(locale)
+      const uploading = (percent?: string) =>
+        list.length === 1
+          ? percent === undefined
+            ? t('Uploading {name}', { name: list[0].name })
+            : t('Uploading {name} — {percent}%', { name: list[0].name, percent })
+          : percent === undefined
+            ? t('Uploading {count} files', { count })
+            : t('Uploading {count} files — {percent}%', { count, percent })
+      void run(uploading(), async (say) => {
         const sent = new Map<File, number>()
         const total = list.reduce((n, f) => n + f.size, 0) || 1
-        const tell = () => say(`Uploading ${list.length === 1 ? list[0].name : `${list.length} files`} — ${Math.floor(([...sent.values()].reduce((a, b) => a + b, 0) / total) * 100)}%`)
+        const tell = () => say(uploading(Math.floor(([...sent.values()].reduce((a, b) => a + b, 0) / total) * 100).toLocaleString(locale)))
         await pool(list, 3, async (file) => {
           const f = file as File & { webkitRelativePath?: string; relative?: string }
           const key = `${prefix}${f.relative || f.webkitRelativePath || file.name}`
@@ -515,7 +528,7 @@ export function Drive() {
         })
       })
     },
-    [client, activeBucket, prefix, run],
+    [client, activeBucket, prefix, run, t, locale],
   )
 
   const handleCreateFolder = useCallback(
@@ -532,14 +545,14 @@ export function Drive() {
             setNaming(null)
             loadLocalEntries()
           })
-          .catch((e) => setFailed(blame(e)))
+          .catch((e) => setFailed(blame(e, t)))
         return
       }
       if (!client || !activeBucket) return
-      void run(`Creating ${clean}`, () => putBytes(client, activeBucket, `${prefix}${clean}/`, new Blob([])))
+      void run(t('Creating {name}', { name: clean }), () => putBytes(client, activeBucket, `${prefix}${clean}/`, new Blob([]), t))
       setNaming(null)
     },
-    [client, activeBucket, prefix, run, navSection, activeWs, localPrefix, loadLocalEntries],
+    [client, activeBucket, prefix, run, navSection, activeWs, localPrefix, loadLocalEntries, t],
   )
 
   const handleCreateFile = useCallback(
@@ -557,14 +570,14 @@ export function Drive() {
             loadLocalEntries()
             setEditingFile({ path: filePath, name: clean })
           })
-          .catch((e) => setFailed(blame(e)))
+          .catch((e) => setFailed(blame(e, t)))
         return
       }
       if (!client || !activeBucket) return
-      void run(`Creating ${clean}`, () => putBytes(client, activeBucket, `${prefix}${clean}`, new Blob([''])))
+      void run(t('Creating {name}', { name: clean }), () => putBytes(client, activeBucket, `${prefix}${clean}`, new Blob(['']), t))
       setNaming(null)
     },
-    [client, activeBucket, prefix, run, navSection, activeWs, localPrefix, loadLocalEntries],
+    [client, activeBucket, prefix, run, navSection, activeWs, localPrefix, loadLocalEntries, t],
   )
 
   const handleCloneRepo = useCallback(
@@ -572,7 +585,7 @@ export function Drive() {
       const clean = repoUrl.trim()
       if (!clean) return
       setNaming(null)
-      void run(`Cloning ${clean}`, async () => {
+      void run(t('Cloning {name}', { name: clean }), async () => {
         const ws = await cloneRemoteRepo(clean)
         setNavSection('local')
         setActiveWorkspace(ws)
@@ -580,20 +593,20 @@ export function Drive() {
         loadLocalEntries()
       })
     },
-    [run, loadLocalEntries],
+    [run, loadLocalEntries, t],
   )
 
   const handleOpenLocalFile = useCallback(async () => {
     try {
       const selected = await pickLocalFile()
       if (selected) {
-        const fileName = selected.split(/[/\\]/).pop() || 'file'
+        const fileName = selected.split(/[/\\]/).pop() || t('file')
         setEditingFile({ path: selected, name: fileName })
       }
     } catch (e) {
-      setFailed(blame(e))
+      setFailed(blame(e, t))
     }
-  }, [])
+  }, [t])
 
   const handleImportLocalFile = useCallback(async () => {
     if (!activeWs) return
@@ -607,9 +620,9 @@ export function Drive() {
         loadLocalEntries()
       }
     } catch (e) {
-      setFailed(blame(e))
+      setFailed(blame(e, t))
     }
-  }, [activeWs, localPrefix, loadLocalEntries])
+  }, [activeWs, localPrefix, loadLocalEntries, t])
 
   const handleRename = useCallback(
     (entry: Entry, to: string) => {
@@ -617,16 +630,16 @@ export function Drive() {
       if (!clean || !client || !activeBucket || entry.isDir) return
       const from = `${prefix}${entry.key}`
       // The store has no copy, so a rename is the three verbs it does have.
-      void run(`Renaming ${entry.key}`, async () => {
-        const src = await fetch(await urlFor(client, activeBucket, from))
-        if (!src.ok) throw new Error(`${entry.key} could not be read (${src.status}).`)
+      void run(t('Renaming {name}', { name: entry.key }), async () => {
+        const src = await fetch(await urlFor(client, activeBucket, from, t))
+        if (!src.ok) throw new Error(t('{name} could not be read ({status}).', { name: entry.key, status: src.status }))
         const body = await src.blob()
-        await putBytes(client, activeBucket, `${prefix}${clean}`, body, body.type || undefined)
+        await putBytes(client, activeBucket, `${prefix}${clean}`, body, t, body.type || undefined)
         await remove(client, activeBucket, from)
       })
       setNaming(null)
     },
-    [client, activeBucket, prefix, run],
+    [client, activeBucket, prefix, run, t],
   )
 
   const handleDelete = useCallback(
@@ -638,7 +651,7 @@ export function Drive() {
         const f = index.get(k)
         if (f) await forget(client, f.id).catch(() => {})
       }
-      void run(`Deleting ${entry.key}`, async (say) => {
+      void run(t('Deleting {name}', { name: entry.key }), async (say) => {
         if (!entry.isDir) {
           await remove(client, activeBucket, key)
           return unindex(key)
@@ -646,14 +659,14 @@ export function Drive() {
         const root = key.endsWith('/') ? key : `${key}/`
         const out = await client.http.json<{ objects?: Entry[] }>({ path: objects(activeBucket), query: { prefix: root, recursive: 'true' } })
         for (const e of (out?.objects ?? []).filter((x) => !x.isDir)) {
-          say(`Deleting ${e.key}`)
+          say(t('Deleting {name}', { name: e.key }))
           await remove(client, activeBucket, root + e.key)
           await unindex(root + e.key)
         }
         await remove(client, activeBucket, root).catch(() => {})
       })
     },
-    [client, activeBucket, prefix, run, index],
+    [client, activeBucket, prefix, run, index, t],
   )
 
   // DOWNLOAD follows a presigned GET. The object's platform address answers a
@@ -662,8 +675,8 @@ export function Drive() {
   const handleDownload = useCallback(
     (entry: Entry) => {
       if (!client || !activeBucket || entry.isDir) return
-      void run(`Fetching ${entry.key}`, async () => {
-        const url = await urlFor(client, activeBucket, `${prefix}${entry.key}`)
+      void run(t('Fetching {name}', { name: entry.key }), async () => {
+        const url = await urlFor(client, activeBucket, `${prefix}${entry.key}`, t)
         const a = document.createElement('a')
         a.href = url
         a.download = entry.key.split('/').pop() || 'download'
@@ -674,7 +687,7 @@ export function Drive() {
         document.body.removeChild(a)
       })
     },
-    [client, activeBucket, prefix, run],
+    [client, activeBucket, prefix, run, t],
   )
 
   const allProjects = useMemo(
@@ -682,11 +695,11 @@ export function Drive() {
       (projects ?? []).map((p) => ({
         id: p.id || p.slug || p.name,
         name: p.name || p.slug || p.id,
-        type: p.framework || 'Project',
-        updated: when(p.updatedAt || p.createdAt || 0),
+        type: p.framework || t('Project'),
+        updated: when(p.updatedAt || p.createdAt || 0, locale),
         size: '—',
       })),
-    [projects],
+    [projects, t, locale],
   )
 
   const filteredProjects = useMemo(() => {
@@ -790,10 +803,10 @@ export function Drive() {
               variant="ghost"
               size="icon-sm"
               onClick={() => setMenu((v) => !v)}
-              aria-label="Drive menu"
+              aria-label={t('Drive menu')}
               aria-expanded={menu}
               aria-controls="drive-menu"
-              title="Drive menu"
+              title={t('Drive menu')}
             >
               <PanelLeft size={16} />
             </Button>
@@ -815,18 +828,18 @@ export function Drive() {
         >
           <Search size={15} color="var(--muted-foreground)" aria-hidden />
           <Text
-            render={<input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search Drive" aria-label="Search Drive" />}
+            render={<input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t('Search Drive')} aria-label={t('Search Drive')} />}
             {...BARE}
           />
         </XStack>
 
         {/* Right Header Actions: Upload, +, User Avatar */}
         <XStack items="center" gap="$3">
-          <Button size="icon-sm" onClick={() => fileInputRef.current?.click()} aria-label="Upload" title="Upload">
+          <Button size="icon-sm" onClick={() => fileInputRef.current?.click()} aria-label={t('Upload')} title={t('Upload')}>
             <Upload size={15} />
           </Button>
 
-          <Button size="icon-sm" onClick={() => setNaming({ kind: 'folder', value: '' })} aria-label="Add Folder" title="Add Folder">
+          <Button size="icon-sm" onClick={() => setNaming({ kind: 'folder', value: '' })} aria-label={t('Add Folder')} title={t('Add Folder')}>
             <Plus size={16} />
           </Button>
 
@@ -902,7 +915,7 @@ export function Drive() {
                 <XStack items="center" gap="$2">
                   <Plus size={16} />
                   <Text fontSize="$3" fontWeight="500" color="$ink">
-                    New
+                    {t('New')}
                   </Text>
                 </XStack>
                 <ChevronDown size={14} opacity={0.65} />
@@ -935,7 +948,7 @@ export function Drive() {
                         }}
                       >
                         <FilePlus size={14} />
-                        New file
+                        {t('New file')}
                       </Button>
                       <Button
                         {...ITEM}
@@ -946,7 +959,7 @@ export function Drive() {
                         }}
                       >
                         <FolderPlus size={14} />
-                        New folder
+                        {t('New folder')}
                       </Button>
                       <View height={1} bg="$borderColor" my={4} />
                       <Button
@@ -963,7 +976,7 @@ export function Drive() {
                         }}
                       >
                         <FolderInput size={14} />
-                        Open local folder…
+                        {t('Open local folder…')}
                       </Button>
                       <Button
                         {...ITEM}
@@ -974,7 +987,7 @@ export function Drive() {
                         }}
                       >
                         <FileText size={14} />
-                        Open local file…
+                        {t('Open local file…')}
                       </Button>
                       <Button
                         {...ITEM}
@@ -985,7 +998,7 @@ export function Drive() {
                         }}
                       >
                         <Upload size={14} />
-                        Import local file…
+                        {t('Import local file…')}
                       </Button>
                       <Button
                         {...ITEM}
@@ -996,7 +1009,7 @@ export function Drive() {
                         }}
                       >
                         <FolderGit2 size={14} />
-                        Clone remote repo…
+                        {t('Clone remote repo…')}
                       </Button>
                     </>
                   ) : (
@@ -1010,7 +1023,7 @@ export function Drive() {
                         }}
                       >
                         <FilePlus size={14} />
-                        New file
+                        {t('New file')}
                       </Button>
                       <Button
                         {...ITEM}
@@ -1021,7 +1034,7 @@ export function Drive() {
                         }}
                       >
                         <FolderPlus size={14} />
-                        New folder
+                        {t('New folder')}
                       </Button>
                       <View height={1} bg="$borderColor" my={4} />
                       <Button
@@ -1033,7 +1046,7 @@ export function Drive() {
                         }}
                       >
                         <Upload size={14} />
-                        File upload
+                        {t('File upload')}
                       </Button>
                       <Button
                         {...ITEM}
@@ -1044,7 +1057,7 @@ export function Drive() {
                         }}
                       >
                         <FolderInput size={14} />
-                        Folder upload
+                        {t('Folder upload')}
                       </Button>
                       <View height={1} bg="$borderColor" my={4} />
                       <Button
@@ -1056,7 +1069,7 @@ export function Drive() {
                         }}
                       >
                         <FolderGit2 size={14} />
-                        Clone remote repo…
+                        {t('Clone remote repo…')}
                       </Button>
                     </>
                   )}
@@ -1067,9 +1080,9 @@ export function Drive() {
             {/* Navigation links */}
             <YStack gap="$1">
               {[
-                { id: 'my-drive', label: 'My Drive', icon: HardDrive },
-                { id: 'local', label: 'Local Folders', icon: Laptop },
-                { id: 'recent', label: 'Recent', icon: Clock },
+                { id: 'my-drive', label: t('My Drive'), icon: HardDrive },
+                { id: 'local', label: t('Local Folders'), icon: Laptop },
+                { id: 'recent', label: t('Recent'), icon: Clock },
               ].map((item) => {
                 const isActive = navSection === item.id && !bucket && !prefix
                 const Icon = item.icon
@@ -1101,7 +1114,7 @@ export function Drive() {
             {navSection === 'local' || localWorkspaces.length > 0 ? (
               <YStack gap="$1" pl="$2" borderLeftWidth={1} borderColor="$borderColor" ml="$3">
                 <Text fontSize={11} fontWeight="600" color="$faint" letterSpacing={0.5} mb={2}>
-                  Workspaces
+                  {t('Workspaces')}
                 </Text>
                 {localWorkspaces.map((ws) => {
                   const isCur = navSection === 'local' && activeWs?.id === ws.id
@@ -1135,7 +1148,7 @@ export function Drive() {
                           e.stopPropagation()
                           removeLocalWorkspace(ws.id)
                         }}
-                        title="Remove"
+                        title={t('Remove')}
                       >
                         <Trash2 size={11} color="var(--muted-foreground)" />
                       </Button>
@@ -1160,7 +1173,7 @@ export function Drive() {
                   }}
                 >
                   <Plus size={13} />
-                  <Text fontSize="$1" color="$soft">Open folder…</Text>
+                  <Text fontSize="$1" color="$soft">{t('Open folder…')}</Text>
                 </Button>
               </YStack>
             ) : null}
@@ -1168,14 +1181,24 @@ export function Drive() {
             {/* Storage Progress Section */}
             <YStack gap="$2" mt="$2" px="$2">
               <Text fontSize={11} fontWeight="600" color="$faint" letterSpacing={0.6}>
-                Storage
+                {t('Storage')}
               </Text>
               <Text fontSize={12} color="$quiet">
-                {usage ? `${usage.capped ? 'over ' : ''}${weigh(usage.bytes)} in ${usage.files.toLocaleString()} file${usage.files === 1 ? '' : 's'}` : 'Measuring…'}
+                {usage
+                  ? usage.capped
+                    ? t(usage.files === 1 ? 'over {size} in {count} file' : 'over {size} in {count} files', {
+                        size: weigh(usage.bytes),
+                        count: usage.files.toLocaleString(locale),
+                      })
+                    : t(usage.files === 1 ? '{size} in {count} file' : '{size} in {count} files', {
+                        size: weigh(usage.bytes),
+                        count: usage.files.toLocaleString(locale),
+                      })
+                  : t('Measuring…')}
               </Text>
               <Button asChild size="sm" mt={8}>
                 <a href={checkoutUrl()} target="_blank" rel="noreferrer">
-                  Manage storage
+                  {t('Manage storage')}
                 </a>
               </Button>
             </YStack>
@@ -1185,14 +1208,14 @@ export function Drive() {
           <YStack px={14} py={12} rounded={10} borderWidth={1} borderColor="$borderColor" bg="$panel" gap={6}>
             <XStack items="center" gap="$2">
               <Cloud size={16} color="var(--foreground)" />
-              <Text fontSize="$2" fontWeight="600" color="$ink">Hanzo Drive</Text>
+              <Text fontSize="$2" fontWeight="600" color="$ink">{t('Hanzo Drive')}</Text>
             </XStack>
             <Text fontSize="$1" color="$soft">
               {[userEmail, activeBucket].filter(Boolean).join(' · ')}
             </Text>
             <Button asChild variant="link" size="sm" px={0} mt={4} justify="flex-start">
               <a href="https://docs.hanzo.ai/docs/openapi/s3/" target="_blank" rel="noreferrer">
-                Documentation
+                {t('Documentation')}
                 <ArrowRight size={12} />
               </a>
             </Button>
@@ -1211,7 +1234,7 @@ export function Drive() {
                   setLocalPrefix('')
                 }}
               >
-                Local Folders
+                {t('Local Folders')}
               </Button>
               <ChevronRight size={13} color="var(--muted-foreground)" />
               <Button
@@ -1246,7 +1269,7 @@ export function Drive() {
                   setPrefix('')
                 }}
               >
-                Drive
+                {t('Drive')}
               </Button>
               <ChevronRight size={13} color="var(--muted-foreground)" />
               <Button {...CRUMB} color={crumbs.length === 0 ? '$ink' : '$soft'} onClick={() => setPrefix('')}>
@@ -1271,23 +1294,23 @@ export function Drive() {
           <XStack items="center" justify="space-between">
             <YStack gap="$1">
               <Text render="h1" fontSize={26} fontWeight="700" color="$ink">
-                {navSection === 'local' ? (activeWs ? activeWs.name : 'Local Folders') : 'Drive'}
+                {navSection === 'local' ? (activeWs ? activeWs.name : t('Local Folders')) : t('Drive')}
               </Text>
               <Text fontSize={13} color="$soft">
                 {navSection === 'local'
                   ? activeWs
                     ? activeWs.path
-                    : 'Edit local files, add files & folders, and code locally.'
-                  : 'Secure. Private. Built for builders.'}
+                    : t('Edit local files, add files & folders, and code locally.')
+                  : t('Secure. Private. Built for builders.')}
               </Text>
             </YStack>
 
             {/* View Mode Toggle Pill (List, Grid, Details) */}
             <XStack items="center" bg="$panel" rounded={8} borderWidth={1} borderColor="$borderColor" p={2} gap={2}>
               {([
-                ['list', 'List View', List],
-                ['grid', 'Grid View', LayoutGrid],
-                ['details', 'Details View', MoreHorizontal],
+                ['list', t('List View'), List],
+                ['grid', t('Grid View'), LayoutGrid],
+                ['details', t('Details View'), MoreHorizontal],
               ] as const).map(([mode, label, Icon]) => (
                 <Button
                   key={mode}
@@ -1339,17 +1362,17 @@ export function Drive() {
                     }}
                     placeholder={
                       naming.kind === 'file'
-                        ? 'File name (e.g. index.ts)'
+                        ? t('File name (e.g. {example})', { example: 'index.ts' })
                         : naming.kind === 'clone'
-                        ? 'owner/repo or Git URL (e.g. hanzoai/desktop)'
-                        : 'Folder name'
+                        ? t('owner/repo or Git URL (e.g. {example})', { example: 'hanzoai/desktop' })
+                        : t('Folder name')
                     }
                     aria-label={
                       naming.kind === 'file'
-                        ? 'File name'
+                        ? t('File name')
                         : naming.kind === 'clone'
-                        ? 'Clone remote repository'
-                        : 'Folder name'
+                          ? t('Clone remote repository')
+                          : t('Folder name')
                     }
                   />
                 }
@@ -1364,10 +1387,10 @@ export function Drive() {
                   else handleCreateFolder(naming.value)
                 }}
               >
-                {naming.kind === 'clone' ? 'Clone' : 'Create'}
+                {t(naming.kind === 'clone' ? 'Clone' : 'Create')}
               </Button>
               <Button variant="ghost" size="sm" color="$soft" onClick={() => setNaming(null)}>
-                Cancel
+                {t('Cancel')}
               </Button>
             </XStack>
           ) : null}
@@ -1390,7 +1413,7 @@ export function Drive() {
 
           {/* Busy notification */}
           {busy ? (
-            <Text fontSize="$2" color="$soft" data-slot="drive-busy">{busy}…</Text>
+            <Text fontSize="$2" color="$soft" data-slot="drive-busy">{t('{status}…', { status: busy })}</Text>
           ) : null}
 
           {/* What the files say about the search, passage by passage. */}
@@ -1414,10 +1437,10 @@ export function Drive() {
                 <Laptop size={40} color="var(--primary)" />
                 <YStack items="center" gap="$1" maxW={460}>
                   <Text fontSize={18} fontWeight="600" color="$ink" text="center">
-                    No local folder opened
+                    {t('No local folder opened')}
                   </Text>
                   <Text fontSize={13} color="$soft" text="center">
-                    Open a local folder on your computer to browse, create, edit, and save files directly in Hanzo Desktop.
+                    {t('Open a local folder on your computer to browse, create, edit, and save files directly in Hanzo Desktop.')}
                   </Text>
                 </YStack>
                 <XStack items="center" gap="$2">
@@ -1432,14 +1455,14 @@ export function Drive() {
                     }}
                   >
                     <FolderPlus size={16} />
-                    Open Local Folder…
+                    {t('Open Local Folder…')}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => setNaming({ kind: 'clone', value: '' })}
                   >
                     <FolderGit2 size={16} />
-                    Clone Remote Repo…
+                    {t('Clone Remote Repo…')}
                   </Button>
                 </XStack>
               </YStack>
@@ -1447,7 +1470,7 @@ export function Drive() {
               <YStack gap="$2">
                 <XStack items="center" justify="space-between" pb="$1">
                   <Text fontSize={12} fontWeight="600" color="$soft">
-                    {localPrefix ? `Folder: ${localPrefix}` : 'Root Files & Directories'}
+                    {localPrefix ? t('Folder: {path}', { path: localPrefix }) : t('Root Files & Directories')}
                   </Text>
                   <XStack items="center" gap="$2">
                     <Button
@@ -1456,7 +1479,7 @@ export function Drive() {
                       onClick={() => setNaming({ kind: 'file', value: '' })}
                     >
                       <FilePlus size={13} />
-                      New file
+                      {t('New file')}
                     </Button>
                     <Button
                       variant="outline"
@@ -1464,7 +1487,7 @@ export function Drive() {
                       onClick={() => setNaming({ kind: 'folder', value: '' })}
                     >
                       <FolderPlus size={13} />
-                      New folder
+                      {t('New folder')}
                     </Button>
                     <Button
                       variant="outline"
@@ -1472,7 +1495,7 @@ export function Drive() {
                       onClick={() => void handleImportLocalFile()}
                     >
                       <Upload size={13} />
-                      Import file
+                      {t('Import file')}
                     </Button>
                     <Button
                       variant="outline"
@@ -1480,7 +1503,7 @@ export function Drive() {
                       onClick={() => setNaming({ kind: 'clone', value: '' })}
                     >
                       <FolderGit2 size={13} />
-                      Clone repo
+                      {t('Clone repo')}
                     </Button>
                   </XStack>
                 </XStack>
@@ -1494,16 +1517,16 @@ export function Drive() {
                     borderBottomWidth={1}
                     borderColor="$borderColor"
                   >
-                    <Text {...HEAD}>Name</Text>
-                    <Text {...HEAD}>Type</Text>
-                    <Text {...HEAD}>Updated</Text>
-                    <Text {...HEAD}>Size</Text>
+                    <Text {...HEAD}>{t('Name')}</Text>
+                    <Text {...HEAD}>{t('Type')}</Text>
+                    <Text {...HEAD}>{t('Updated')}</Text>
+                    <Text {...HEAD}>{t('Size')}</Text>
                     <View />
                   </View>
 
                   {!localEntries || localEntries.length === 0 ? (
                     <Text py={36} px={16} text="center" fontSize="$2" color="$faint">
-                      Empty folder
+                      {t('Empty folder')}
                     </Text>
                   ) : (
                     localEntries.map((e) => {
@@ -1540,11 +1563,11 @@ export function Drive() {
                           </XStack>
 
                           <Text fontSize="$2" color="$soft" numberOfLines={1}>
-                            {e.isDir ? 'Folder' : ext.toUpperCase() || 'File'}
+                            {e.isDir ? t('Folder') : ext.toUpperCase() || t('File')}
                           </Text>
 
                           <Text {...CELL}>
-                            {e.lastModified ? when(e.lastModified) : '—'}
+                            {e.lastModified ? when(e.lastModified, locale) : '—'}
                           </Text>
 
                           <Text {...CELL}>
@@ -1576,7 +1599,7 @@ export function Drive() {
                                 {!e.isDir ? (
                                   <Pick
                                     icon={FileCode}
-                                    label="Edit file"
+                                    label={t('Edit file')}
                                     onPress={() => {
                                       setItemMenuKey(null)
                                       setEditingFile({ path: e.path, name: e.name })
@@ -1585,13 +1608,13 @@ export function Drive() {
                                 ) : null}
                                 <Pick
                                   icon={Trash2}
-                                  label="Delete"
+                                  label={t('Delete')}
                                   tone={BAD}
                                   onPress={() => {
                                     setItemMenuKey(null)
                                     deleteLocalPath(e.path)
                                       .then(() => loadLocalEntries())
-                                      .catch((err) => setFailed(blame(err)))
+                                      .catch((err) => setFailed(blame(err, t)))
                                   }}
                                 />
                               </YStack>
@@ -1617,17 +1640,17 @@ export function Drive() {
                   borderBottomWidth={1}
                   borderColor="$borderColor"
                 >
-                  <Text {...HEAD}>NAME</Text>
-                  <Text {...HEAD}>TYPE</Text>
-                  <Text {...HEAD}>UPDATED ↓</Text>
-                  <Text {...HEAD}>SIZE</Text>
+                  <Text {...HEAD}>{t('NAME')}</Text>
+                  <Text {...HEAD}>{t('TYPE')}</Text>
+                  <Text {...HEAD}>{t('UPDATED ↓')}</Text>
+                  <Text {...HEAD}>{t('SIZE')}</Text>
                   <View />
                 </View>
 
                 {/* Table Rows or None */}
                 {!filteredEntries || filteredEntries.length === 0 ? (
                   <Text py={36} px={16} text="center" fontSize="$2" color="$faint">
-                    None
+                    {t('None')}
                   </Text>
                 ) : (
                   filteredEntries.map((e) => {
@@ -1664,10 +1687,10 @@ export function Drive() {
                         </XStack>
 
                         <View items="flex-start">
-                          <Text {...CHIP}>{isFolder ? 'Folder' : cleanName.split('.').pop()?.toUpperCase() || 'File'}</Text>
+                          <Text {...CHIP}>{isFolder ? t('Folder') : cleanName.split('.').pop()?.toUpperCase() || t('File')}</Text>
                         </View>
 
-                        <Text {...CELL}>{when(e.lastModified)}</Text>
+                        <Text {...CELL}>{when(e.lastModified, locale)}</Text>
 
                         <Text {...CELL}>{weigh(e.size)}</Text>
 
@@ -1698,7 +1721,7 @@ export function Drive() {
                                 <>
                                   <Pick
                                     icon={ListTree}
-                                    label="Contents"
+                                    label={t('Contents')}
                                     onPress={() => {
                                       setItemMenuKey(null)
                                       setContents({ file: index.get(prefix + e.key)! })
@@ -1706,7 +1729,7 @@ export function Drive() {
                                   />
                                   <Pick
                                     icon={MessageSquare}
-                                    label="Ask in chat"
+                                    label={t('Ask in chat')}
                                     onPress={() => {
                                       setItemMenuKey(null)
                                       askInChat(index.get(prefix + e.key)!)
@@ -1717,7 +1740,7 @@ export function Drive() {
                               {!isFolder ? (
                                 <Pick
                                   icon={Download}
-                                  label="Download"
+                                  label={t('Download')}
                                   onPress={() => {
                                     setItemMenuKey(null)
                                     handleDownload(e)
@@ -1726,7 +1749,7 @@ export function Drive() {
                               ) : null}
                               <Pick
                                 icon={Trash2}
-                                label="Delete"
+                                label={t('Delete')}
                                 tone={BAD}
                                 onPress={() => {
                                   setItemMenuKey(null)
@@ -1748,7 +1771,7 @@ export function Drive() {
               {/* Storage Buckets Section */}
               <YStack gap="$2.5">
                 <Text fontSize={12} fontWeight="600" color="$soft">
-                  Storage Buckets
+                  {t('Storage Buckets')}
                 </Text>
 
                 <YStack borderWidth={1} borderColor="$borderColor" rounded={8} overflowX="auto" overflowY="hidden">
@@ -1764,13 +1787,13 @@ export function Drive() {
                           setReload((n) => n + 1)
                         }}
                       >
-                        Try again
+                        {t('Try again')}
                       </Button>
                     </Text>
                   ) : !buckets ? (
-                    <Text {...NOTE}>Reading your storage…</Text>
+                    <Text {...NOTE}>{t('Reading your storage…')}</Text>
                   ) : buckets.length === 0 ? (
-                    <Text {...NOTE}>No buckets yet.</Text>
+                    <Text {...NOTE}>{t('No buckets yet.')}</Text>
                   ) : (
                     buckets.map((b) => (
                       <XStack
@@ -1787,11 +1810,11 @@ export function Drive() {
                       >
                         <XStack items="center" gap="$2.5">
                           <Folder size={17} color="var(--foreground)" />
-                          <Text fontSize="$2" fontWeight="500" color="$ink">{getBucketDisplayName(b)}</Text>
+                          <Text fontSize="$2" fontWeight="500" color="$ink">{getBucketDisplayName(b, t)}</Text>
                         </XStack>
 
                         <XStack items="center" gap="$4">
-                          <Text fontSize="$2" color="$faint">{when(b.createdAt)}</Text>
+                          <Text fontSize="$2" color="$faint">{when(b.createdAt, locale)}</Text>
                           <More onPress={(e) => e.stopPropagation()} />
                         </XStack>
                       </XStack>
@@ -1803,7 +1826,7 @@ export function Drive() {
               {/* Projects (Unified VFS) Section */}
               <YStack gap="$2.5">
                 <Text fontSize={12} fontWeight="600" color="$soft">
-                  Projects (Unified VFS)
+                  {t('Projects (Unified VFS)')}
                 </Text>
 
                 <YStack borderWidth={1} borderColor="$borderColor" rounded={8} overflowX="auto" overflowY="hidden">
@@ -1817,17 +1840,17 @@ export function Drive() {
                     borderBottomWidth={1}
                     borderColor="$borderColor"
                   >
-                    <Text {...HEAD}>NAME</Text>
-                    <Text {...HEAD}>TYPE</Text>
-                    <Text {...HEAD}>UPDATED ↓</Text>
-                    <Text {...HEAD}>SIZE</Text>
+                    <Text {...HEAD}>{t('NAME')}</Text>
+                    <Text {...HEAD}>{t('TYPE')}</Text>
+                    <Text {...HEAD}>{t('UPDATED ↓')}</Text>
+                    <Text {...HEAD}>{t('SIZE')}</Text>
                     <View />
                   </View>
 
                   {/* Table Rows or None */}
                   {filteredProjects.length === 0 ? (
                     <Text py={36} px={16} text="center" fontSize="$2" color="$faint">
-                      None
+                      {t('None')}
                     </Text>
                   ) : (
                     filteredProjects.map((p) => (
@@ -1909,7 +1932,7 @@ export function Drive() {
           <YStack items="center" gap="$2">
             <Upload size={36} color="currentColor" />
             <Text fontSize="$4" fontWeight="600" color="$ink">
-              Drop files to upload to {bucket || workspace}
+              {t('Drop files to upload to {name}', { name: bucket || workspace })}
             </Text>
           </YStack>
         </Box>

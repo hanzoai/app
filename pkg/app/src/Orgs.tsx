@@ -31,7 +31,7 @@
 import { dev } from './lib/host'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useIam } from '@hanzo/iam/react'
-import { phrase } from '@hanzo/i18n'
+import { phrase, english, type Say } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { Text, View, XStack, YStack } from '@hanzo/gui'
 import { Avatar, Button, Tag } from '@hanzo/ui'
@@ -52,7 +52,6 @@ import { checkoutUrl, money } from './lib/pay'
 import { cartUrl, charge, priced, usePlan, usePlans, type Interval, type SubscriptionPlan } from './lib/plans'
 import { createInvitation, inviteLink, setOrganizationProfile } from './lib/invite'
 import { createOrg, say } from './lib/org'
-import { english, type Say } from './say'
 import { countSignup } from './lib/intent'
 import { BAD, mix } from './lib/mix'
 import { useRooms } from './host'
@@ -1568,7 +1567,7 @@ function Plan({
   /** Part of creating the team, so it is its third step. */
   setup?: boolean
 }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { plan } = usePlan('team')
   const floor = Math.max(1, Number(plan?.limits?.minSeats ?? 1))
   // The count asked for, held above the floor: the floor arrives with the live
@@ -1580,23 +1579,23 @@ function Plan({
   const yearly = plan ? charge(plan, 'year') : null
   const each = term === 'year' && yearly ? yearly : monthly
   const terms: [Interval, string, string][] = [
-    ['month', t('Monthly'), t('{price} / seat / month', { price: money(monthly) })],
-    ...(yearly ? [['year', t('Annual'), t('{price} / seat, billed once a year', { price: money(yearly) })] as [Interval, string, string]] : []),
+    ['month', t('Monthly'), t('{price} / seat / month', { price: money(monthly, locale) })],
+    ...(yearly ? [['year', t('Annual'), t('{price} / seat, billed once a year', { price: money(yearly, locale) })] as [Interval, string, string]] : []),
   ]
   // What the seats come to, bold inside the sentence that adds them up.
   const total = (
     <Text fontWeight="500" color="$ink">
-      {term === 'year' ? t('{amount} a year', { amount: money(seats * each) }) : t('{amount} a month', { amount: money(seats * each) })}
+      {term === 'year' ? t('{amount} a year', { amount: money(seats * each, locale) }) : t('{amount} a month', { amount: money(seats * each, locale) })}
     </Text>
   )
   const sum =
     term === 'year'
       ? seats === 1
-        ? t('1 seat at {price} a year is {total}.', { price: money(each), total })
-        : t('{seats} seats at {price} a year is {total}.', { seats, price: money(each), total })
+        ? t('1 seat at {price} a year is {total}.', { price: money(each, locale), total })
+        : t('{seats} seats at {price} a year is {total}.', { seats, price: money(each, locale), total })
       : seats === 1
-        ? t('1 seat at {price} a month is {total}.', { price: money(each), total })
-        : t('{seats} seats at {price} a month is {total}.', { seats, price: money(each), total })
+        ? t('1 seat at {price} a month is {total}.', { price: money(each, locale), total })
+        : t('{seats} seats at {price} a month is {total}.', { seats, price: money(each, locale), total })
   return (
     <Page label={t('Choose your plan')}>
       <Column>

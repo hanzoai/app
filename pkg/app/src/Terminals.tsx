@@ -8,16 +8,18 @@
 
 import { Text, YStack } from '@hanzo/gui'
 import { useFleet, Workspace } from '@hanzo/tabs'
+import { useI18n } from '@hanzo/i18n/react'
 import { api } from './lib/api'
 import { bearer } from './lib/session'
 
 export default function Terminals() {
+  const { t } = useI18n()
   const fleet = useFleet(bearer(), api())
   return (
     <YStack data-slot="terminals" flex={1} minH={0} minW={0}>
       {fleet.error ? (
         <Text role="alert" px="$4" py="$2" fontSize="$2" color="$soft">
-          {`The machines could not be read: ${fleet.error}`}
+          {t('The machines could not be read: {error}', { error: fleet.error })}
         </Text>
       ) : null}
       <Workspace hosts={fleet.hosts} mint={fleet.mint} onLaunch={fleet.launch} />

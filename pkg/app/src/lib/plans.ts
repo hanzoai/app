@@ -35,7 +35,7 @@ import { where } from "../where";
 import { api } from "./api";
 import { org } from "./session";
 import { billing, checkoutUrl, dollars, money, payUrl } from "./pay";
-import { english, type Say } from "../say";
+import { english, type Say } from "@hanzo/i18n";
 
 /** A row exactly as GET /v1/billing/plans returns it. */
 export interface BillingPlan {

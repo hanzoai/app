@@ -11,12 +11,11 @@
 // do not reply: a conversation belongs to the member who started it.
 
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import { DEFAULT_LOCALE } from '@hanzo/i18n'
+import { DEFAULT_LOCALE, type Say } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { Check, Link2, Upload } from 'lucide-react'
 import { Box, Button, Dialog, DialogContent, DialogTitle, Text, XStack, YStack } from '@hanzo/ui'
 import { hold, heldToken, link, Refused, shares, type ShareRow, type Viewer } from './lib/share'
-import type { Say } from './say'
 import { BAD } from './lib/mix'
 
 /** How long "Link copied" stays. The same 1400 ms `Take` confirms for. */

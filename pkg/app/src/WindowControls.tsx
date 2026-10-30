@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { View, XStack } from '@hanzo/ui'
+import { useI18n } from '@hanzo/i18n/react'
 
 function getWindow() {
   if (typeof window === 'undefined') return null
@@ -130,6 +131,7 @@ export function toggleWindowMaximize(e: React.MouseEvent) {
 }
 
 export function WindowControls() {
+  const { t } = useI18n()
   const [isDesktop, setIsDesktop] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
 
@@ -220,7 +222,7 @@ export function WindowControls() {
         data-tauri-drag-region="false"
         onClick={handleMinimize}
         onMouseDown={(e: { stopPropagation?: () => void }) => e.stopPropagation?.()}
-        aria-label="Minimize"
+        aria-label={t('Minimize')}
         width={28}
         height={28}
         rounded={6}
@@ -246,7 +248,7 @@ export function WindowControls() {
         data-tauri-drag-region="false"
         onClick={handleToggleMaximize}
         onMouseDown={(e: { stopPropagation?: () => void }) => e.stopPropagation?.()}
-        aria-label={isMaximized ? 'Restore' : 'Maximize'}
+        aria-label={isMaximized ? t('Restore') : t('Maximize')}
         width={28}
         height={28}
         rounded={6}
@@ -279,7 +281,7 @@ export function WindowControls() {
         data-tauri-drag-region="false"
         onClick={handleClose}
         onMouseDown={(e: { stopPropagation?: () => void }) => e.stopPropagation?.()}
-        aria-label="Close"
+        aria-label={t('Close')}
         width={28}
         height={28}
         rounded={6}

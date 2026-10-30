@@ -27,7 +27,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { phrase } from "@hanzo/i18n";
+import { phrase, type Say } from "@hanzo/i18n";
 import { useI18n } from "@hanzo/i18n/react";
 import {
   MessageSquare,
@@ -141,7 +141,6 @@ const HOME_INDICATOR = "env(safe-area-inset-bottom)" as `var(--${string})`
 import { invite } from "./lib/home";
 import { reach } from "./lib/reach";
 import { say } from "./failure";
-import type { Say } from "./say";
 import { Face } from "./cast";
 import { useStarred, titleOf } from "./stars";
 import { roomName } from "./network";

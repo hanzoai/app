@@ -54,8 +54,8 @@ import { Directory } from './Directory'
 import { BAD } from './lib/mix'
 
 /** Unix SECONDS, which is what the platform sends. Milliseconds here read as 1970. */
-const when = (seconds: number): string =>
-  new Date(seconds * 1000).toLocaleString(undefined, {
+const when = (seconds: number, locale: string): string =>
+  new Date(seconds * 1000).toLocaleString(locale, {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -64,7 +64,7 @@ const when = (seconds: number): string =>
 
 /** Today says the time; anything older says the day. A list scans on the part
  *  that differs, and for mail from this morning that is the clock. */
-function stamp(seconds: number): string {
+function stamp(seconds: number, locale: string): string {
   const then = new Date(seconds * 1000)
   const now = new Date()
   const sameDay =
@@ -72,7 +72,7 @@ function stamp(seconds: number): string {
     then.getMonth() === now.getMonth() &&
     then.getDate() === now.getDate()
   return then.toLocaleString(
-    undefined,
+    locale,
     sameDay ? { hour: 'numeric', minute: '2-digit' } : { month: 'short', day: 'numeric' },
   )
 }
@@ -159,7 +159,7 @@ function Arrivals({
   open: string | null
   onPick: (key: string) => void
 }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   return (
     <YStack flex={1} minH={0}>
       <XStack
@@ -209,7 +209,7 @@ function Arrivals({
                       is not a time. Silence is the honest answer. */}
                   {one.lastAt ? (
                     <Text fontSize="$1" color="$soft">
-                      <bdi>{stamp(one.lastAt / 1000)}</bdi>
+                      <bdi>{stamp(one.lastAt / 1000, locale)}</bdi>
                     </Text>
                   ) : null}
                 </XStack>
@@ -237,7 +237,7 @@ function Reading({
   room: ReturnType<typeof useInbox>['rooms'][number]
   reload: () => void
 }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { client } = useAi()
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
@@ -311,7 +311,7 @@ function Reading({
                     {speaker(room.channel, message.sender)}
                   </Text>
                   <Text fontSize="$1" color="$soft">
-                    <bdi>{when(message.createdAt)}</bdi>
+                    <bdi>{when(message.createdAt, locale)}</bdi>
                   </Text>
                 </XStack>
                 <Text fontSize="$3" color="$ink">

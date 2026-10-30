@@ -20,7 +20,9 @@
 // problems and one control for both would do the wrong one half the time.
 
 import { useCallback, useEffect, useState } from 'react'
+import { useI18n } from '@hanzo/i18n/react'
 import { say } from './failure'
+import type { Say } from '@hanzo/i18n'
 import { Play, Plus, Square, X } from 'lucide-react'
 import type { Sandbox, SandboxClass } from '@hanzo/ai'
 import { ChannelHeader } from '@hanzo/ui/agents'
@@ -57,12 +59,12 @@ const HOURLY: Record<SandboxClass, number> = {
 const usd = (micros: number): string => `$${(micros / 1_000_000).toFixed(2)}`
 
 /** Unix seconds to how long is left, or the fact that it is over. */
-const remaining = (expiresAt?: number): string => {
+const remaining = (expiresAt: number | undefined, t: Say): string => {
   if (!expiresAt) return ''
   const left = expiresAt - Math.floor(Date.now() / 1000)
-  if (left <= 0) return 'expired'
-  if (left < 3600) return `${Math.ceil(left / 60)}m left`
-  return `${Math.floor(left / 3600)}h ${Math.ceil((left % 3600) / 60)}m left`
+  if (left <= 0) return t('expired')
+  if (left < 3600) return t('{count}m left', { count: Math.ceil(left / 60) })
+  return t('{hours}h {minutes}m left', { hours: Math.floor(left / 3600), minutes: Math.ceil((left % 3600) / 60) })
 }
 
 /**
@@ -78,6 +80,7 @@ const remaining = (expiresAt?: number): string => {
  * The rate is stated on the button because taking this lease starts a meter.
  */
 function Start({ onDone }: { onDone: () => void }) {
+  const { t } = useI18n()
   const { client } = useAi()
   const [klass, setKlass] = useState<SandboxClass>('exec')
   const [project, setProject] = useState('')
@@ -89,7 +92,7 @@ function Start({ onDone }: { onDone: () => void }) {
   const take = useCallback(async () => {
     if (!client || busy) return
     if (keeps && !project.trim()) {
-      setFailed(`A ${klass} sandbox keeps a disk, so it needs a project to name it.`)
+      setFailed(t('A {class} sandbox keeps a disk, so it needs a project to name it.', { class: klass }))
       return
     }
     setBusy(true)
@@ -105,19 +108,19 @@ function Start({ onDone }: { onDone: () => void }) {
     } finally {
       setBusy(false)
     }
-  }, [client, busy, keeps, klass, project, onDone])
+  }, [client, busy, keeps, klass, project, onDone, t])
 
   return (
     <YStack gap="$2" p="$4" borderBottomWidth={1} borderColor="$borderColor">
       <XStack gap="$2" items="center" flexWrap="wrap">
         <Select value={klass} onValueChange={(v) => setKlass(v as SandboxClass)}>
-          <SelectTrigger aria-label="Sandbox class" width={200}>
+          <SelectTrigger aria-label={t('Sandbox class')} width={200}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {(Object.keys(HOURLY) as SandboxClass[]).map((c) => (
               <SelectItem key={c} value={c}>
-                {c} — {usd(HOURLY[c])}/hr list
+                {t('{class} — {price}/hr list', { class: c, price: usd(HOURLY[c]) })}
               </SelectItem>
             ))}
           </SelectContent>
@@ -140,7 +143,8 @@ function Start({ onDone }: { onDone: () => void }) {
                   value={project}
                   onChange={(e) => setProject(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && void take()}
-                  placeholder="Project — the disk it keeps"
+                  placeholder={t('Project — the disk it keeps')}
+                  aria-label={t('Project — the disk it keeps')}
                 />
               }
               flex={1}
@@ -152,7 +156,7 @@ function Start({ onDone }: { onDone: () => void }) {
           </XStack>
         ) : (
           <Text fontSize="$1" color="$soft" flex={1}>
-            Keeps nothing — an exec sandbox has no disk.
+            {t('Keeps nothing — an exec sandbox has no disk.')}
           </Text>
         )}
 
@@ -169,7 +173,7 @@ function Start({ onDone }: { onDone: () => void }) {
           <XStack items="center" gap="$1">
             <Plus size={13} aria-hidden />
             <Text fontSize="$2" color="$ink">
-              {busy ? 'Leasing' : 'Lease'}
+              {busy ? t('Leasing') : t('Lease')}
             </Text>
           </XStack>
         </Box>
@@ -238,6 +242,7 @@ function Row({
   onEnd: () => void
   busy?: string
 }) {
+  const { t } = useI18n()
   const rate = HOURLY[(box.class ?? 'exec') as SandboxClass] ?? HOURLY.exec
   return (
     <YStack gap="$2" p="$3" borderWidth={1} borderColor="$borderColor" rounded="$3">
@@ -247,7 +252,7 @@ function Row({
           {box.project ? ` · ${box.project}` : ''}
         </Text>
         <Text fontSize="$1" color="$soft">
-          {usd(rate)}/hr list
+          {t('{price}/hr list', { price: usd(rate) })}
         </Text>
       </XStack>
 
@@ -259,7 +264,7 @@ function Row({
           {box.runtime ? ` · ${box.runtime}` : ''}
         </Text>
         <Text fontSize="$1" color="$soft">
-          {remaining(box.expiresAt)}
+          {remaining(box.expiresAt, t)}
         </Text>
       </XStack>
 
@@ -272,15 +277,16 @@ function Row({
       ) : null}
 
       <XStack gap="$1">
-        <Act icon={Play} label="Resume" onPress={onResume} busy={busy === 'resume'} />
-        <Act icon={Square} label="Stop" onPress={onStop} busy={busy === 'stop'} />
-        <Act icon={X} label="End" onPress={onEnd} busy={busy === 'end'} />
+        <Act icon={Play} label={t('Resume')} onPress={onResume} busy={busy === 'resume'} />
+        <Act icon={Square} label={t('Stop')} onPress={onStop} busy={busy === 'stop'} />
+        <Act icon={X} label={t('End')} onPress={onEnd} busy={busy === 'end'} />
       </XStack>
     </YStack>
   )
 }
 
 export function Boxes() {
+  const { t } = useI18n()
   const { client } = useAi()
 // SIGNED IN IS THE CREDENTIAL, NOT THE PROFILE. This gated on `user`, which is
 // the answer to a userinfo REQUEST — and `IamProvider` swallows that request's
@@ -327,15 +333,15 @@ export function Boxes() {
 
   const signedIn = isAuthenticated || hasSession()
   if (isLoading) return <Empty>&nbsp;</Empty>
-  if (!signedIn) return <Empty>Sign in to see the compute your org is holding.</Empty>
-  if (failed) return <Empty>{say(failed, 'this list')}</Empty>
-  if (!boxes) return <Empty>Reading your leases.</Empty>
+  if (!signedIn) return <Empty>{t('Sign in to see the compute your org is holding.')}</Empty>
+  if (failed) return <Empty>{say(failed, t('this list'), 'read', t)}</Empty>
+  if (!boxes) return <Empty>{t('Reading your leases.')}</Empty>
 
   return (
     <YStack flex={1} minH={0}>
-      <ChannelHeader name="Sandboxes">
+      <ChannelHeader name={t('Sandboxes')}>
         <Text fontSize="$2" color="$soft">
-          from {usd(HOURLY.exec)}/hr
+          {t('from {price}/hr', { price: usd(HOURLY.exec) })}
         </Text>
       </ChannelHeader>
 
@@ -343,8 +349,7 @@ export function Boxes() {
 
       {boxes.length === 0 ? (
         <Empty>
-          Nothing is running. A sandbox is leased when an agent needs somewhere to
-          work, and billed for the hours it is held.
+          {t('Nothing is running. A sandbox is leased when an agent needs somewhere to work, and billed for the hours it is held.')}
         </Empty>
       ) : (
         <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden" p="$4" gap="$3">
