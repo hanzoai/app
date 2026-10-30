@@ -101,24 +101,10 @@ export const LIQUID_SPECULAR_SHADOW =
   'inset 0 1px 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 1px 0 rgba(0, 0, 0, 0.16), 0 8px 32px 0 rgba(0, 0, 0, 0.28)'
 
 /**
- * Native iOS Safari widget liquid glass preset:
- * - Fluid specular lighting top and bottom
- * - Continuous squircle corner
- * - 24px hardware accelerated blur with 190% saturation
- * - Touch-responsive spring physics
+ * Liquid glass as @hanzo/gui props, to spread on a gui element: the fill, the
+ * corner, the edge and the specular light as props, and the backdrop filter,
+ * which gui has no prop for, as `$platform-web`.
  */
-export const IOS_WIDGET_GLASS = {
-  backgroundColor: 'var(--liquid-glass-bg, var(--pane-fill, rgba(20, 20, 24, 0.72)))',
-  borderRadius: 9999,
-  borderWidth: 1,
-  borderStyle: 'solid' as const,
-  borderColor: 'var(--liquid-glass-border, var(--pane-edge, rgba(255, 255, 255, 0.12)))',
-  backdropFilter: 'blur(24px) saturate(190%) contrast(102%)',
-  WebkitBackdropFilter: 'blur(24px) saturate(190%) contrast(102%)',
-  boxShadow: LIQUID_SPECULAR_SHADOW,
-} as const
-
-/** Generates CSS style object for liquid glass surfaces */
 export function liquidGlass(options: LiquidGlassOptions = {}) {
   const {
     fill = 'var(--liquid-glass-bg, var(--pane-fill, rgba(20, 20, 24, 0.72)))',
@@ -131,13 +117,20 @@ export function liquidGlass(options: LiquidGlassOptions = {}) {
   const filter = `blur(${blur}px) saturate(${saturate}%) contrast(102%)`
 
   return {
-    backgroundColor: fill,
-    borderRadius: radius,
+    bg: fill,
+    rounded: radius,
     borderWidth: 1,
-    borderStyle: 'solid' as const,
     borderColor: border,
-    backdropFilter: filter,
-    WebkitBackdropFilter: filter,
     boxShadow: LIQUID_SPECULAR_SHADOW,
+    '$platform-web': { backdropFilter: filter, WebkitBackdropFilter: filter },
   }
 }
+
+/**
+ * Native iOS Safari widget liquid glass preset:
+ * - Fluid specular lighting top and bottom
+ * - Continuous squircle corner
+ * - 24px hardware accelerated blur with 190% saturation
+ * - Touch-responsive spring physics
+ */
+export const IOS_WIDGET_GLASS = liquidGlass()

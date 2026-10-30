@@ -8,4 +8,6 @@ export {
   type LiquidGlassOptions,
 } from './liquid'
 
-export { LiquidGlass, type LiquidGlassProps } from './LiquidGlass'
+// The element draws through @hanzo/gui, so it is its own subpath:
+// `import { LiquidGlass } from '@hanzo/glass/LiquidGlass'`. The root stays
+// loadable by Node tools without React Native.

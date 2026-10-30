@@ -187,8 +187,7 @@ export function Sidebar({
     <YStack
       data-slot="app-column"
       ref={drawer ? undefined : span.ref}
-      // inline-style: `--span`, the width a drag rewrites on the element itself (span.ts); no prop sets a variable.
-      style={drawer ? undefined : span.style}
+      {...(drawer ? null : span.props)}
       position="relative"
       flex={drawer ? 1 : undefined}
       shrink={drawer ? 1 : 0}

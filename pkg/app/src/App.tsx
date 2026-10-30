@@ -77,7 +77,7 @@ import { Gate } from './Gate'
 import { useHost } from './host'
 import { useKept } from './kept'
 import { Mark, raised, Rail, Toggle } from './Rail'
-import { Layer, Lift, RAISED, useDrawer } from './Drawer'
+import { Layer, Lift, useDrawer } from './Drawer'
 import { empty, openThread, showSettings, useOpen } from './open'
 import { Split } from './Shell'
 import { Search } from './Search'
@@ -376,9 +376,7 @@ function Window({ bar, betas }: Hosted) {
             data-slot="frame"
             {...(bar ? null : floor)}
             // While a phone's drawer is out the pane is raised over it, sliding toward the end side.
-            {...(drawer.slide ? RAISED : null)}
-            // inline-style: the slide, a transform with no logical form whose sign and distance the drawer writes on the element itself, a drag every frame (Drawer.tsx).
-            style={drawer.slide ?? undefined}
+            {...drawer.slide}
             flex={1}
             minW={0}
             minH={0}

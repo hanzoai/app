@@ -1,13 +1,13 @@
-import React, { type CSSProperties, type ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
+import { View } from '@hanzo/gui'
 import { liquidGlass, IOS_WIDGET_GLASS, type LiquidGlassOptions } from './liquid'
 
 export interface LiquidGlassProps extends LiquidGlassOptions {
   children?: ReactNode
-  className?: string
-  style?: CSSProperties
   onClick?: () => void
   disabled?: boolean
-  as?: keyof React.JSX.IntrinsicElements
+  /** The element it is drawn as: a tag, or an element whose own attributes it keeps. */
+  render?: string | ReactElement
   'aria-label'?: string
 }
 
@@ -16,8 +16,6 @@ export interface LiquidGlassProps extends LiquidGlassOptions {
  */
 export function LiquidGlass({
   children,
-  className,
-  style,
   fill,
   radius,
   border,
@@ -25,37 +23,33 @@ export function LiquidGlass({
   saturate,
   onClick,
   disabled,
-  as: Component = 'div',
+  render,
   'aria-label': ariaLabel,
-  ...rest
 }: LiquidGlassProps) {
-  const baseStyle = liquidGlass({ fill, radius, border, blur, saturate })
-
-  const combinedStyle: CSSProperties = {
-    ...baseStyle,
-    position: 'relative',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.18s ease',
-    opacity: disabled ? 0.45 : 1,
-    cursor: onClick && !disabled ? 'pointer' : undefined,
-    userSelect: 'none',
-    WebkitTapHighlightColor: 'transparent',
-    ...style,
-  }
-
+  const glass = liquidGlass({ fill, radius, border, blur, saturate })
   return (
-    <Component
-      className={className}
-      style={combinedStyle}
-      onClick={disabled ? undefined : onClick}
+    <View
+      {...glass}
+      render={render as never}
+      position="relative"
+      display="flex"
+      flexDirection="row"
+      alignItems="center"
+      justifyContent="center"
+      opacity={disabled ? 0.45 : 1}
+      cursor={onClick && !disabled ? 'pointer' : undefined}
+      userSelect="none"
+      $platform-web={{
+        ...glass['$platform-web'],
+        transition: 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.18s ease',
+        WebkitTapHighlightColor: 'transparent',
+      }}
+      onPress={disabled ? undefined : onClick}
       aria-label={ariaLabel}
       aria-disabled={disabled || undefined}
-      {...rest}
     >
       {children}
-    </Component>
+    </View>
   )
 }
 

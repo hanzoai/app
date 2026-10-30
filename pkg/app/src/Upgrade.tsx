@@ -108,8 +108,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
           <X size={18} aria-hidden color="var(--soft, var(--muted-foreground))" />
         </Box>
         <DialogTitle
-          // inline-style: design's serif face. gui names Zen and Zen Mono only; a family it cannot name resets the rung to 15px.
-          style={{ fontFamily: 'var(--font-serif)' }}
+          fontFamily="$serif"
           fontSize="$8"
           lineHeight="$9"
           fontWeight="400"
