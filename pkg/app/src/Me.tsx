@@ -647,7 +647,10 @@ function Create({ open, onOpenChange }: { open: boolean; onOpenChange: (open: bo
       }
       pick(org)
       renew()
-      window.location.assign('/')
+      // The app again, where the person is, in the new organization. Not `/`: on
+      // hanzo.ai that is the landing for everyone (owner, 2026-10-29), so a
+      // person who made an organization from /chat was left on the marketing page.
+      window.location.reload()
     } catch (e) {
       setRefused(say(e, t))
       setBusy(false)

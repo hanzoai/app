@@ -125,6 +125,9 @@ export function Chrome({ back }: { back?: ReactNode }) {
                 aria-label={t('Account: {name}', { name: who })}
                 width={40}
                 height={40}
+                // The face on the gutter, as the name is at the start: the 40px target
+                // reaches 4px past it, never the face.
+                marginInlineEnd={-4}
                 rounded={999}
                 items="center"
                 justify="center"
