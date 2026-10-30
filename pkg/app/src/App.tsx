@@ -405,7 +405,9 @@ function Window({ bar, betas }: Hosted) {
               data-slot="stage"
               display="grid"
               gridTemplateRows={bar ? '1fr' : 'auto minmax(0, 1fr)'}
-              width="100%"
+              // The rest of the row beside the rail and the sidebar. At width 100% it was the whole row
+              // again, and a View does not shrink, so the pane stood past the window's edge.
+              flex={1}
               height="100%"
               minW={0}
               minH={0}
