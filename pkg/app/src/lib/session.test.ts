@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { configure } from '../where'
-import { bearer, home, live, me, named, org, orgs, renew, scope, superAdmin } from './session'
+import { ORG, bearer, home, live, me, named, org, orgs, renew, reopen, scope, superAdmin, support } from './session'
 
 /** A Storage held in a map. */
 function memory(seed: Record<string, string> = {}): Storage {
@@ -144,5 +144,39 @@ describe('who the token names', () => {
     expect(named()).toEqual({ name: 'Zach Kelling', display: 'Zach Kelling', email: 'z@hanzo.ai' })
     as({ name: 'z', email: 'z@hanzo.ai' })
     expect(named()).toEqual({ name: 'z', display: '', email: 'z@hanzo.ai' })
+  })
+})
+
+describe('a SuperAdmin steps into an organization through IAM', () => {
+  const token = (claims: Record<string, unknown>) => `e30.${btoa(JSON.stringify(claims)).replace(/=+$/, '')}.`
+
+  test('the organization asked for is the one the reload opens, and nothing is announced before it', async () => {
+    const exp = Math.floor(Date.now() / 1000) + 600
+    const store = memory({ hanzo_iam_access_token: token({ sub: 'bob', orgs: [{ org: 'admin', role: 'admin' }], exp }), hanzo_iam_current_org: 'admin' })
+    const heard: string[] = []
+    const reload = vi.fn()
+    vi.stubGlobal('window', { localStorage: store, location: { reload, hostname: 'hanzo.ai', origin: 'https://hanzo.ai', protocol: 'https:' }, dispatchEvent: (e: Event) => void heard.push(e.type) })
+    const assumed = token({ sub: 'bob', orgs: [{ org: 'admin', role: 'admin' }, { org: 'zoo', role: 'admin' }], assumed: 'zoo', exp })
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ status: 'ok', data: { accessToken: assumed } }), { status: 200 })))
+    await support('zoo')
+    expect(store.getItem('hanzo_iam_access_token')).toBe(assumed)
+    expect(store.getItem('hanzo_iam_current_org')).toBe('zoo')
+    // Announced, the rooms would remount under the token the SDK still holds, and
+    // its provider would write `admin` back before the reload.
+    expect(heard).not.toContain(ORG)
+    expect(reload).toHaveBeenCalledOnce()
+  })
+})
+
+describe('an organization the token does not name yet opens on the reload', () => {
+  test('reopen writes the choice and reloads, and announces nothing the old token would undo', () => {
+    const store = memory({ hanzo_iam_current_org: 'admin' })
+    const heard: string[] = []
+    const reload = vi.fn()
+    vi.stubGlobal('window', { localStorage: store, location: { reload }, dispatchEvent: (e: Event) => void heard.push(e.type) })
+    reopen('acme')
+    expect(store.getItem('hanzo_iam_current_org')).toBe('acme')
+    expect(heard).toEqual([])
+    expect(reload).toHaveBeenCalledOnce()
   })
 })

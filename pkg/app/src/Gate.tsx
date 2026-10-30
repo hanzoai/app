@@ -45,7 +45,7 @@ import { useHostname } from './lib/hostname'
 import { useHydrated } from './lib/hydrated'
 import { api } from './lib/api'
 import { usePersonal, useTier } from './lib/tier'
-import { CHOOSE, ORG, assumed, bearer, hasSession, org, orgs as claimed, pick, renew, role, scope, superAdmin, support } from './lib/session'
+import { CHOOSE, ORG, assumed, bearer, hasSession, org, orgs as claimed, pick, renew, reopen, role, scope, superAdmin, support } from './lib/session'
 import { matches, refusal, slugify } from './lib/orgname'
 import { team as workspace } from './lib/host'
 import { checkoutUrl, money } from './lib/pay'
@@ -1155,8 +1155,7 @@ function Found({ onClose }: { onClose: () => void }) {
           throw new Error(t('{org} is made, and it is still called {org}: {reason}', { org: made, reason: say(err, t) }))
         })
       }
-      pick(made)
-      window.location.reload()
+      reopen(made)
     } catch (err) {
       setRefused(say(err, t))
       setBusy(false)
