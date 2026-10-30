@@ -32,11 +32,11 @@ vi.mock('@hanzo/build', () => ({
 vi.mock('@hanzo/studio', () => ({ nav: () => [{ id: 'studio', links: [] }], Studio: stub('studio') }))
 vi.mock('./lib/ai', () => ({ useAi: () => ({ client: null }) }))
 vi.mock('./Chat', () => ({ Chat: stub('chat') }))
-vi.mock('./Column', () => ({ Column: stub('app-column') }))
+vi.mock('./Sidebar', () => ({ Sidebar: stub('app-column') }))
 vi.mock('./Learning', () => ({ Learning: () => null }))
 vi.mock('./dev', () => ({ isPlans: () => false, leave: () => {}, useDevHost: () => ({ go: () => {}, path: '', token: () => '' }) }))
-vi.mock('./Orgs', () => ({ Orgs: through }))
-vi.mock('./host', () => ({ useRooms: () => ({ router: { back: () => {}, forward: () => {}, push: () => {} }, path: state.path }) }))
+vi.mock('./Gate', () => ({ Gate: through }))
+vi.mock('./host', () => ({ useHost: () => ({ router: { back: () => {}, forward: () => {}, push: () => {} }, path: state.path }) }))
 vi.mock('./kept', () => ({ useKept: () => [false, () => {}] }))
 vi.mock('./Rail', () => ({ Mark: () => null, raised: () => null, Rail: stub('rail'), Toggle: () => null }))
 vi.mock('./Drawer', () => ({
@@ -57,8 +57,8 @@ vi.mock('./Drawer', () => ({
   }),
 }))
 vi.mock('./open', () => ({ empty: () => {}, openThread: () => {}, showSettings: () => {}, useOpen: () => ({ thread: null, settings: null }) }))
-vi.mock('./Shell', () => ({ Paned: through }))
-vi.mock('./Palette', () => ({ Palette: () => null }))
+vi.mock('./Shell', () => ({ Split: through }))
+vi.mock('./Search', () => ({ Search: () => null }))
 vi.mock('./seek', () => ({ summons: () => false }))
 vi.mock('./ground', () => ({ floor: {}, pane: () => ({}) }))
 vi.mock('./lib/session', () => ({ pick: () => {} }))
@@ -74,7 +74,7 @@ vi.mock('./lib/host', () => ({
   place: (p: string) =>
     p === '/beta' ? { mode: 'beta' } : p === '/tabs' ? { mode: 'tabs' } : p === '/chat' ? { mode: 'chat', thread: null } : p === '/apps/crm' ? { mode: 'hosted', id: 'crm' } : null,
 }))
-vi.mock('./Top', () => ({ Top: stub('app-bar') }))
+vi.mock('./Bar', () => ({ Bar: stub('app-bar') }))
 vi.mock('./view', () => ({ FOOT: 0, HEIGHT: '100dvh', TOP: 0, useView: () => () => {} }))
 vi.mock('./WindowControls', () => ({ dragWindow: () => {}, toggleWindowMaximize: () => {}, WindowControls: () => null }))
 vi.mock('./Betas', () => ({ BetasPane: stub('betas-pane') }))

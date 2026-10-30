@@ -27,7 +27,7 @@
  * WHERE WHAT WAS FOUND GOES: the end of the leading system turn, between two
  * markers no page can know. Not a system turn of its own, because the gateway's
  * text pipeline keeps only the last system turn it reads, and that would drop
- * the room's own; not the person's turn, because the router chooses the model
+ * the conversation's own; not the person's turn, because the router chooses the model
  * from the last user turn and would read the web pages as the question.
  *
  * A page is read only when the person points at it — never an address that

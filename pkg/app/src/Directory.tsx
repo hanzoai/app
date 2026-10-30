@@ -120,7 +120,7 @@ const LEAD = ['tiktok', 'instagram', 'linkedin', 'slack', 'x', 'whatsapp', 'disc
 
 /**
  * The published integrations (lib/integrations), as directory rows. Real,
- * public, counted. Loaded when the tab first opens, so a page the rooms frame
+ * public, counted. Loaded when the tab first opens, so a page the shell frames
  * carries none of the catalogue's guides.
  */
 let listing: Promise<Row[]> | null = null
@@ -171,11 +171,10 @@ function channelsOf(j: unknown): Row[] {
  * A rejection `say()` can read.
  *
  * It ranks a numeric `status` above the prose beside it, precisely so a
- * reworded message cannot change what a room tells a reader — and a `fetch`
- * that rejects with a bare number carries neither. Measured signed out on
- * production: /v1/channels, /v1/tools/plugins and /v1/tools/skills all answer
- * 403 "a validated principal is required", so a refusal is the common case and
- * has to arrive as one rather than as a flat "could not read".
+ * reworded message cannot change what an app tells a reader — and a `fetch`
+ * that rejects with a bare number carries neither. Signed out, the org's reads
+ * answer 403 "a validated principal is required", so a refusal is the common
+ * case and has to arrive as one rather than as a flat "could not read".
  */
 const refusal = (r: Response) => Object.assign(new Error(String(r.status)), { status: r.status })
 
@@ -394,26 +393,8 @@ export function Catalog({ tab }: { tab: Tab }) {
 
 function RowCard({ row, tab }: { row: Row; tab: Tab }) {
   const { t } = useI18n()
-  const { isAuthenticated } = useIam()
 
-  /** Hand a channel to the gateway's OAuth and let it say what happened. */
-  const connect = () => {
-    if (!isAuthenticated) {
-      enter()
-      return
-    }
-    // Same-tab origin for the return leg: the reader lands back on the site
-    // they started from rather than on production from a preview build.
-    const back = encodeURIComponent(`${window.location.origin}/inbox`)
-    window.open(
-      `${api()}/v1/channels/${encodeURIComponent(row.id)}/oauth/authorize?redirect_uri=${back}`,
-      '_blank',
-      'noopener,noreferrer',
-    )
-  }
-
-  // Apps open the page this site serves. Only a channel has a flow of its own,
-  // and only that one is a button.
+  // Apps open the page this site serves.
   const href = site(`/integrations/${row.id}`)
   return (
     <YStack
@@ -447,24 +428,6 @@ function RowCard({ row, tab }: { row: Row; tab: Tab }) {
               {t('Connected')}
             </Text>
           </XStack>
-        ) : tab === 'channels' ? (
-          <Box
-            render="button"
-            onClick={connect}
-            aria-label={t('Connect {name}', { name: row.name })}
-            px="$2"
-            py="$1"
-            rounded="$2"
-            borderWidth={1}
-            borderColor="$borderColor"
-            bg="var(--white-05)"
-            hoverStyle={{ bg: '$hover' }}
-            cursor="pointer"
-          >
-            <Text fontSize="$1" color="$color" fontWeight="600">
-              {t('Connect')}
-            </Text>
-          </Box>
         ) : (
           /* A LINK, because it goes somewhere. It was a button calling
              `location.href`, which cost the row its middle click, its hover

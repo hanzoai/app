@@ -60,20 +60,20 @@ vi.mock('@hanzo/build', () => {
     useScheduled: () => [group('scheduled-do', '', ['New task']), group('scheduled-tasks', 'Tasks', ['Morning brief'])],
   }
 })
-vi.mock('./Me', () => ({ Made: () => null, Me: () => createElement('div', { 'data-slot': 'me' }) }))
+vi.mock('./Account', () => ({ Made: () => null, Account: () => createElement('div', { 'data-slot': 'me' }) }))
 vi.mock('./Recents', () => ({ Recents: () => createElement('div', { 'data-slot': 'recents' }) }))
 vi.mock('./Setup', () => ({ Setup: () => null }))
 vi.mock('./span', () => ({ useSpan: () => ({ ref: null, style: {}, span: 272, move: () => {}, keep: () => {} }) }))
 
-import { Column } from './Column'
+import { Sidebar } from './Sidebar'
 import { Rail } from './Rail'
 import { TABS, WORKSPACE, type Place } from './lib/host'
 
-const hostAt = (path = '') => ({ go: () => {}, path }) as unknown as Parameters<typeof Column>[0]['host']
+const hostAt = (path = '') => ({ go: () => {}, path }) as unknown as Parameters<typeof Sidebar>[0]['host']
 const host = hostAt()
 const noop = () => {}
 
-const column = (mode: Place['mode'], path = '') => renderToStaticMarkup(createElement(Column, { host: hostAt(path), mode, thread: null, go: noop, onShut: noop, onBack: noop }))
+const column = (mode: Place['mode'], path = '') => renderToStaticMarkup(createElement(Sidebar, { host: hostAt(path), mode, thread: null, go: noop, onShut: noop, onBack: noop }))
 const rail = (mode: Place['mode'], toggle?: () => void, where: string | null = null) =>
   renderToStaticMarkup(createElement(Rail, { host, mode, at: where, open: true, toggle, onChat: noop, onDev: noop, onStudio: noop, onTabs: noop, go: noop, onOrg: noop }))
 
@@ -171,7 +171,7 @@ describe('a phone’s menu', () => {
 
   test('in the drawer the column holds its own rows, then the places, then Recents, and the foot last', () => {
     const html = renderToStaticMarkup(
-      createElement(Column, {
+      createElement(Sidebar, {
         host,
         mode: 'chat',
         thread: null,

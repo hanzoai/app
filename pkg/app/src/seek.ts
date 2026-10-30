@@ -1,4 +1,4 @@
-// The palette's decisions (Palette.tsx draws them): which rows a query keeps,
+// The palette's decisions (Search.tsx draws them): which rows a query keeps,
 // in what order, under which heading, and which key press opens it. No React,
 // so a spec reads them as they are.
 

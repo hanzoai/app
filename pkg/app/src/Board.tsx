@@ -4,7 +4,7 @@
 //
 // NAMED BOARD, NOT TASKS, and the rename is the point rather than a tidy-up.
 // `/v1/tasks` is Hanzo Tasks — the durable execution engine, ten thousand
-// workflow runs deep — and this room is a board of forge issues. Two different
+// workflow runs deep — and this app is a board of forge issues. Two different
 // things wearing one word is how somebody comes to believe the board IS the
 // engine, and asks why their cards are not replayable. Tasks keeps the word it
 // earned; this is the Board.
@@ -16,7 +16,7 @@
 // the forge, and everything written here is a row they will find there.
 //
 // TWO READINGS OF ONE SET OF CARDS, and one of them is up at a time: the board
-// by column, the planner by date. The room opens on the board, which is what it
+// by column, the planner by date. The app opens on the board, which is what it
 // is called. There is no inbox pane: the workspace already has one, and a second
 // would be two places for the same arriving thing.
 //
@@ -1284,7 +1284,7 @@ function Filter({
   )
 }
 
-// ── the room ────────────────────────────────────────────────────────────────
+// ── the app ─────────────────────────────────────────────────────────────────
 
 function Cards() {
   const { t, locale } = useI18n()
@@ -1301,7 +1301,7 @@ function Cards() {
   const [keys, setKeys] = useState<string[]>([])
   const [refused, setRefused] = useState<string | null>(null)
   // ONE STATE FOR TWO READINGS OF THE SAME CARDS. Two booleans — one per view
-  // — is how a room ends up showing neither or both, and the foot ended up
+  // — is how an app ends up showing neither or both, and the foot ended up
   // lighting Board while the planner was the thing on screen.
   const { aside, showAside } = useOpen()
   const [view, setView] = useState<'board' | 'planner'>('board')
@@ -1479,7 +1479,7 @@ function Cards() {
             closed set, the same five whether anything answers — so replacing the
             whole board with a failure took away the shape, the counts and every
             Add a card along with the rows nobody could read. A refusal belongs
-            in a line that says what is missing, not in place of the room.
+            in a line that says what is missing, not in place of the board.
 
             An empty column and a column whose cards could not be fetched read
             differently now, which they must: one is a board with nothing in it,
@@ -1547,8 +1547,8 @@ function Cards() {
         </YStack>
       </XStack>
 
-      {/* THE FOOT: which reading of the cards is up. Board leads it and the room
-          opens there, because Board is what this room is called — the planner is
+      {/* THE FOOT: which reading of the cards is up. Board leads it and the app
+          opens there, because Board is what this app is called — the planner is
           the same cards laid against the calendar. Two panes and not three: the
           workspace already has an inbox, and a second would be two places for
           the same arriving thing. */}

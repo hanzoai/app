@@ -11,7 +11,7 @@
 //                 is deterministic, so the same disk comes back after a lease ends
 //   its TOOLS     `tools[]` — the names this Bot may call, out of the platform's
 //                 own MCP surface plus whatever the org has registered
-//   its CHANNELS  the rooms it answers, from /v1/channels/agent
+//   its TRANSPORTS the networks it answers on, from /v1/transport/agent
 //   its CODE      an autonomous run against one of the org's repos
 //   its SECRETS   the KMS names under `bots/<name>`
 //
@@ -25,7 +25,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Play, Square, X } from 'lucide-react'
-import type { Agent, Channel, McpServer, Machine as Target, Ran, Sandbox, Tool } from '@hanzo/ai'
+import type { Agent, McpServer, Machine as Target, Ran, Sandbox, Tool, Transport } from '@hanzo/ai'
 import { useOrganizations } from '@hanzo/iam/react'
 import { useAi } from '../lib/ai'
 import { useI18n } from '@hanzo/i18n/react'
@@ -99,7 +99,7 @@ export function Runtime({ bot }: { bot: Agent }) {
   const [activated, setActivated] = useState<string[]>([])
   const [published, setPublished] = useState<McpTool[]>([])
   const [links, setLinks] = useState<Connector[]>([])
-  const [rooms, setRooms] = useState<Channel[]>([])
+  const [transports, setTransports] = useState<Transport[]>([])
   const [keys, setKeys] = useState<Secret[]>([])
   const [repos, setRepos] = useState<Project[]>([])
   const [why, setWhy] = useState<Record<string, string>>({})
@@ -118,7 +118,7 @@ export function Runtime({ bot }: { bot: Agent }) {
       client.tools.activation().then((a) => setActivated(a.enabled ?? [])).catch(() => setActivated([])),
       readTools(client).then(setPublished).catch((e) => blame('served', e, t('the platform’s tools'))),
       readConnectors(client).then(setLinks).catch((e) => blame('link', e, t('your connectors'))),
-      client.channels.list().then(setRooms).catch((e) => blame('room', e, t('this org’s channels'))),
+      client.transports.list().then(setTransports).catch((e) => blame('transport', e, t('this org’s transports'))),
       readSecrets(client, vault(bot.name)).then(setKeys).catch((e) => blame('key', e, t('this bot’s secrets'))),
       readProjects(client).then(setRepos).catch((e) => blame('repo', e, t('this org’s repos'))),
     ])
@@ -174,7 +174,7 @@ export function Runtime({ bot }: { bot: Agent }) {
         activated={activated}
         why={why.served ?? why.mcp ?? why.skill}
       />
-      <Channels bot={bot} rooms={rooms} why={why.room} />
+      <Transports bot={bot} transports={transports} why={why.transport} />
       <Code bot={bot} repos={repos} why={why.repo} />
       <Secrets bot={bot} keys={keys} why={why.key} />
       <Held links={links} why={why.link} />
@@ -588,13 +588,13 @@ function Tools({
 }
 
 /**
- * The rooms this Bot answers.
+ * The transports this Bot answers on.
  *
- * `/v1/channels/agent` binds ONE agent per channel as the org's default
+ * `/v1/transport/agent` binds ONE agent per transport as the org's default
  * answerer, so this is a per-Bot binding and not an account-wide list: pressing
- * Answer here moves that channel from whichever bot holds it to this one.
+ * Answer here moves that transport from whichever bot holds it to this one.
  */
-function Channels({ bot, rooms, why }: { bot: Agent; rooms: Channel[]; why?: string }) {
+function Transports({ bot, transports, why }: { bot: Agent; transports: Transport[]; why?: string }) {
   const { t, locale } = useI18n()
   const { client } = useAi()
   const [bound, setBound] = useState<Record<string, string>>({})
@@ -603,7 +603,7 @@ function Channels({ bot, rooms, why }: { bot: Agent; rooms: Channel[]; why?: str
   const read = useCallback(async () => {
     if (!client) return
     const pairs = await Promise.all(
-      rooms.map(async (r) => {
+      transports.map(async (r) => {
         try {
           return [r.id, (await answering(client, r.id)).default ?? ''] as const
         } catch {
@@ -612,17 +612,17 @@ function Channels({ bot, rooms, why }: { bot: Agent; rooms: Channel[]; why?: str
       }),
     )
     setBound(Object.fromEntries(pairs))
-  }, [client, rooms])
+  }, [client, transports])
 
   useEffect(() => {
     void read()
   }, [read])
 
   return (
-    <Part title={t('Channels')}>
+    <Part title={t('Transports')}>
       {why ? <Line>{why}</Line> : null}
-      {rooms.length === 0 && !why ? <Line>{t('This org has no channels.')}</Line> : null}
-      {rooms.map((r) => {
+      {transports.length === 0 && !why ? <Line>{t('This org has no transports.')}</Line> : null}
+      {transports.map((r) => {
         const mine = bound[r.id] === bot.name
         return (
           <Row key={r.id}>
@@ -642,7 +642,7 @@ function Channels({ bot, rooms, why }: { bot: Agent; rooms: Channel[]; why?: str
                     setFailed(null)
                     await read()
                   } catch (e) {
-                    setFailed(say(e, t('this channel'), 'save', t))
+                    setFailed(say(e, t('this transport'), 'save', t))
                   }
                 }}
               >

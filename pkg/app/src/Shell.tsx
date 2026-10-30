@@ -1,9 +1,9 @@
 "use client";
 
-// The rooms' shell. ONE of them, worn by /chat and every room. (The web app is
+// The apps' shell. ONE of them, worn by /chat and every app. (The web app is
 // `/`, whole, with a rail of its own: app/page.tsx. Dev is its door.)
 //
-// The two routes are the same room with different furniture: a rail on the left,
+// The two routes are the same shell with different furniture: a rail on the left,
 // a pane on the right. What differs is the rail's title, its nav, and which list
 // it shows — three props, not two components. Building a second shell is how the
 // two surfaces drift, and they are meant to be one product.
@@ -12,7 +12,7 @@
 // where the Hanzo chat shell lives for every surface that wears one; this file
 // holds arrangement and words and owns no pixels of its own. That is the whole
 // architecture: a stranger with `@hanzo/ui`, `@hanzo/ai` and `@hanzo/iam` can
-// assemble this room, because nothing in it is private to hanzo.ai.
+// assemble this shell, because nothing in it is private to hanzo.ai.
 
 import {
   createContext,
@@ -39,7 +39,7 @@ import {
   Settings2,
   UserPlus,
   PanelLeftClose,
-  Search,
+  SearchIcon,
   Hash,
   AtSign,
   Lock,
@@ -105,14 +105,17 @@ import {
   HanzoMark,
 } from "@hanzogui/shell";
 import { useHydrated } from "./lib/hydrated";
-import { useHost } from "./lib/hostname";
+import { useHostname } from "./lib/hostname";
+import { useHost } from "./host";
+import { Gate } from "./Gate";
+import { link } from "./lib/tags";
 import { useAi } from "./lib/ai";
 import { useTiers, useHidden, type Tier } from "./lib/tiers";
 import { useAccount } from "./lib/account";
 import { bearer, hasSession, org as scoped, pick as choose } from "./lib/session";
 import { api } from "./lib/api";
 import { useSignOut } from "./lib/signout";
-import { enter, LOGIN } from "./lib/destination";
+import { enter, LOGIN, rememberDestination } from "./lib/destination";
 import { address, sharedWithMe, type SharedItem } from "./lib/share";
 import { list } from "./lib/list";
 import { ModelPicker } from "@hanzo/ui/models";
@@ -124,7 +127,7 @@ import { pane } from "./ground";
 import { useFree } from "./Upgrade";
 import { payUrl } from "./lib/pay";
 
-/** The new-agent row's fields: an outlined box in the room's own ink. */
+/** The new-agent row's fields: an outlined box in the shell's own ink. */
 const FIELD = {
   bg: "transparent",
   borderWidth: 1,
@@ -143,17 +146,17 @@ import { reach } from "./lib/reach";
 import { say } from "./failure";
 import { Face } from "./cast";
 import { useStarred, titleOf } from "./stars";
-import { roomName } from "./network";
-import { useTeamRooms, teamKey, roomHref, type TeamRoom } from "./rooms";
-import { apex, app, dev, ENTRY, room as moves, WORKSPACE } from "./lib/host";
+import { channelName } from "./network";
+import { useChannels, teamKey, channelHref, type Channel } from "./channels";
+import { apex, app, away, dev, ENTRY, leaves, WORKSPACE } from "./lib/host";
 import { netKey } from "./conversations";
 import {
   FIRST,
   SettingsList,
   type Row as SettingsRow,
 } from "./Settings";
-import { Me, type Who } from "./Me";
-import { Palette, type Action } from "./Palette";
+import { Account, type Who } from "./Account";
+import { Search, type Action } from "./Search";
 import { tidy } from "./lib/title";
 import { summons } from "./seek";
 import { called } from "./team";
@@ -209,7 +212,7 @@ import { bare } from './lib/bare'
 import { BAD } from './lib/mix'
 import { brand, site, where, wordmark } from './where'
 
-/** The room while a settings row is open, loaded when one is: none of it is a room's first screen. */
+/** The pane while a settings row is open, loaded when one is: none of it is an app's first screen. */
 const SettingsPane = lazy(() => import('./SettingsPane').then((m) => ({ default: m.SettingsPane })))
 
 export type Mode =
@@ -240,7 +243,7 @@ interface Place {
   /** What "new" means here, where it means anything. A destination that cannot
    *  create draws no button rather than one that fails at press. */
   create?: string;
-  /** The preview tier this room is behind, or undefined for a room everyone
+  /** The preview tier this app is behind, or undefined for an app everyone
    *  gets. Chat and Dev carry none — they are the landing's offer. The rest are
    *  alpha or beta until they ship, opened per identity by `useTiers`. */
   tier?: Tier;
@@ -255,7 +258,7 @@ interface Place {
  */
 const HOME: Place = {
   id: "home",
-  // The rooms' Home is the host's: /home beside the app, / on hanzo.team.
+  // The shell's Home is the host's: /home beside the app, / on hanzo.team.
   get route() {
     return where().home;
   },
@@ -263,23 +266,23 @@ const HOME: Place = {
     return brand();
   },
   label: phrase("Home"),
-  // The chat bubble. Home IS the conversation with the org — the rooms it talks
+  // The chat bubble. Home IS the conversation with the org — the channels it talks
   // in and the people in them — so it is drawn as one. It shared this glyph with
   // Chat once and was given a house to separate them; the two never sit in the
   // rail together (CHAT is a tile, HOME is not), so there is nothing to tell
-  // apart, and a house says "a place" where the room is a conversation.
+  // apart, and a house says "a place" where the app is a conversation.
   icon: MessageSquare,
 };
 
 /**
  * CHAT LEADS THE RAIL, and Dev follows it.
  *
- * These are the two rooms a person lives in — one to ask and one to build — so
+ * These are the two apps a person lives in — one to ask and one to build — so
  * they are the first two tiles and the switch between them is one press. The
  * rest of the rail is where you go from there.
  *
  * It was off the rail while /chat answered `invalid redirect_uri`: a tile that
- * leads to an error page offers a door that does not open. The room is this
+ * leads to an error page offers a door that does not open. The app is this
  * export's own now, so the door opens.
  */
 const CHAT: Place = {
@@ -385,40 +388,105 @@ export const CONSOLE_PRODUCTS: ConsoleProduct[] = [
  * Whether a place belongs in THIS reader's rail.
  *
  * A place with no tier is the landing's offer — Chat and Dev — and everyone gets
- * it. A tiered room shows only where two things are true: the reader's identity
+ * it. A tiered app shows only where two things are true: the reader's identity
  * OPENS the tier (`useTiers`: a SuperAdmin gets every tier, an alpha/beta org its
- * own, a stranger none), and the reader has not HIDDEN it in Settings. The rooms
+ * own, a stranger none), and the reader has not HIDDEN it in Settings. The apps
  * stay in PLACES either way — the structure is whole — so opening a tier is a
  * flag flip, not a code change. Hide, never delete.
  *
  * A rail of two is what a stranger meets, which is the landing's offer exactly.
  * The other four are dark until each ships and its tier is turned on.
  *
- * ON THE APEX THE ROOMS ARE hanzo.team'S. There a place shows only when its
+ * ON THE APEX THE APPS ARE hanzo.team'S. There a place shows only when its
  * route stays on the apex, which is Chat and Dev, and the rail ends in one tile
  * that opens the workspace instead.
  */
 const shows = (place: Place, tiers: Set<Tier>, hidden: Set<Tier>, onApex: boolean): boolean =>
-  !(onApex && moves(place.route)) &&
+  !(onApex && leaves(place.route)) &&
   (!place.tier || (tiers.has(place.tier) && !hidden.has(place.tier)));
 
 /**
- * WHERE "GO THERE" COMES FROM, and why it is a prop.
+ * The shell at one app, under the host's router, behind the gate.
  *
- * The rail moves between rooms, which is the one thing in this shell only the
- * HOST can do: a Next route pushes through its router, a Tauri window swaps a
- * view, an embedded surface may refuse to navigate at all. Taking `navigate`
- * as a prop is what leaves this file — and every component under it — with no
- * import from any framework, so the same shell mounts under Next, under Vite
- * in a desktop webview, or under a test that just records where it was asked
- * to go.
- *
- * Measured before the change: `next/navigation` here and `next/link` in
- * `Chat.tsx` were the ONLY two framework imports in the whole /chat + /dev
- * surface — 13 files, all `'use client'`, no RSC. Those two were the entire
- * cost of the port, and this removes one of them.
+ * THE ROUTER LIVES HERE, and only here. The frame takes navigation as props
+ * rather than importing a router, so everything under it names no framework —
+ * the same shell mounts under Next, under Vite in a desktop webview, or under a
+ * test that records where it was asked to go. That binding used to be written
+ * in each route file, and four of six never wrote it: /board, /drive, /inbox and
+ * /work mounted the frame with no `navigate`, so the rail rendered and did
+ * nothing. One copy cannot be forgotten in four places.
  */
-export function Workspace({
+export function Shell({
+  mode,
+  front = false,
+  children,
+}: {
+  mode: Mode;
+  /** Home at `/` on a workspace rooted there: a stranger meets the host's Landing (`Gate`). */
+  front?: boolean;
+  children: ReactNode;
+}) {
+  const { router } = useHost();
+  // A sign-in leaves for the issuer and returns to a FIXED callback that knows
+  // nothing of the app the reader was in. So the address is written down here,
+  // the one place the app meets the router, and the trip `Gate` starts for a
+  // signed-out reader returns HERE — address, `?q=` and all — rather than to
+  // the host's landing.
+  useEffect(() => {
+    rememberDestination();
+  }, []);
+  // THE APEX KEEPS THE APP AND THE WORKSPACE KEEPS ITS APPS. An app asked for
+  // on hanzo.ai is the same path and query on hanzo.team, and the location is
+  // replaced with it once React owns the page: the export is static, so nothing
+  // earlier knows the host. The shell draws nothing while it leaves, so `Gate`
+  // never starts a sign-in on the host being left.
+  const host = useHostname();
+  const here = host ? window.location : null;
+  const to = here ? away(host, `${here.pathname}${here.search}${here.hash}`) : null;
+  useEffect(() => {
+    if (to) window.location.replace(link(to));
+  }, [to]);
+  if (to) return null;
+  // A session comes first, then the organization: nothing of the workspace is
+  // drawn until the reader has signed in and picked the organization they are
+  // working in, and on the workspace's own host until that organization's plan
+  // is live (`Gate`).
+  return (
+    <Gate front={front}>
+      <Client
+        mode={mode}
+        navigate={(route) => {
+          // A page of another origin — hanzo.ai's from hanzo.team — is a
+          // document load, not a client route the host's router can take.
+          if (/^https?:\/\//.test(route)) return window.location.assign(link(route));
+          const to = away(window.location.hostname, route);
+          if (to) window.location.assign(link(to));
+          else router.push(route);
+        }}
+        back={() => router.back()}
+        forward={() => router.forward()}
+      >
+        {children}
+      </Client>
+    </Gate>
+  );
+}
+
+/**
+ * ONE @hanzo/ai client for every app under the shell. `AiProvider` prefers the
+ * `client` prop over the one it built, so a session that settles after mount
+ * reaches every hook below — which is exactly what its internal `useRef` would
+ * otherwise prevent. Signed out the prop is absent and the provider's own
+ * anonymous client stands in, so `useAi()` never throws and the org-scoped hooks
+ * simply answer nothing.
+ *
+ * `Frame` is a separate component because the rail READS through those hooks,
+ * and a hook cannot run in the component that mounts its provider. The
+ * SELECTION is deliberately not provided here. It lives in `open.ts`, outside
+ * React, because this component is what the router mounts — holding it in state
+ * here is what emptied the conversation on every route change.
+ */
+function Client({
   mode,
   children,
   navigate,
@@ -427,27 +495,15 @@ export function Workspace({
 }: {
   mode: Mode;
   children: ReactNode;
-  /** Take the reader to a route. Absent, the rail's places do not navigate. */
-  navigate?: (route: string) => void;
-  /** Step back through this reader's own history. Absent, the arrows are not drawn. */
-  back?: () => void;
+  /** Take the reader to a route. */
+  navigate: (route: string) => void;
+  /** Step back through this reader's own history. */
+  back: () => void;
   /** And forward again. */
-  forward?: () => void;
+  forward: () => void;
 }) {
   const { client } = useAi();
   return (
-    // ONE client for the whole room. `AiProvider` prefers the `client` prop over
-    // the one it built, so a session that settles after mount reaches every hook
-    // below — which is exactly what its internal `useRef` would otherwise
-    // prevent. Signed out the prop is absent and the provider's own anonymous
-    // client stands in, so `useAi()` never throws and the org-scoped hooks simply
-    // answer nothing.
-    //
-    // `Frame` is a separate component because the rail READS through those hooks,
-    // and a hook cannot run in the component that mounts its provider.
-    // The SELECTION is deliberately not provided here. It lives in `room.ts`,
-    // outside React, because this component is what the router mounts — holding
-    // it in state here is what emptied the room on every route change.
     <AiProvider client={client ?? undefined}>
       <Frame mode={mode} navigate={navigate} back={back} forward={forward}>
         {children}
@@ -806,53 +862,54 @@ function Projects({
 
 
 /**
- * The rooms the inbox holds, under the transport that carried each one.
+ * The channels the inbox holds, under the transport that carried each one.
  *
  * The transport is the section because that is how a person holds it: Slack
  * here, iMessage there. The same display name can appear under both without
  * being one person — `senderUser` is declared by the schema and omitted by every
  * measured message, so a handle is a handle and a name would be a guess.
  *
- * `useInbox` groups the page it fetched; the server has no rooms route. So this
- * is the rooms in what has ARRIVED, and it grows as the page does.
+ * `useInbox` groups the page it fetched; the server has no route that lists
+ * them. So this is the channels in what has ARRIVED, and it grows as the page
+ * does.
  */
-function Rooms({
+function Channels({
   onPick,
   navigate,
 }: {
   onPick?: () => void;
   navigate?: (route: string) => void;
 }) {
-  const { room, openRoom } = useOpen();
-  const { rooms } = useInbox({ limit: 100 });
-  if (rooms.length === 0) return null;
+  const { channel, openChannel } = useOpen();
+  const { channels } = useInbox({ limit: 100 });
+  if (channels.length === 0) return null;
 
-  const carried = new Map<string, typeof rooms>();
-  for (const one of rooms) {
-    const held = carried.get(one.channel);
+  const carried = new Map<string, typeof channels>();
+  for (const one of channels) {
+    const held = carried.get(one.transport);
     if (held) held.push(one);
-    else carried.set(one.channel, [one]);
+    else carried.set(one.transport, [one]);
   }
 
   return (
     <>
-      {[...carried].map(([channel, held]) => (
-        <SidebarFolder key={channel} name={channel} defaultOpen>
+      {[...carried].map(([transport, held]) => (
+        <SidebarFolder key={transport} name={transport} defaultOpen>
           {held.map((one) => (
             <SidebarItem
               key={one.key}
-              active={netKey(one) === room}
+              active={netKey(one) === channel}
               onPress={() => {
                 // ONE NAMESPACE. This wrote the bare inbox key while the team
-                // rows wrote a bare room id, into the SAME slot — so whichever
+                // rows wrote a bare channel id, into the SAME slot — so whichever
                 // pane was open looked the value up in its own list, missed,
                 // and drew nothing. `conversations.ts` holds the one key.
-                openRoom(netKey(one));
+                openChannel(netKey(one));
                 navigate?.("/inbox");
                 onPick?.();
               }}
             >
-              {roomName(one)}
+              {channelName(one)}
             </SidebarItem>
           ))}
         </SidebarFolder>
@@ -892,13 +949,13 @@ function Team({
 }: {
   filter?: string;
   onPick?: () => void;
-  /** A room opens in the ONE place every conversation is read, at the address
+  /** A channel opens in the ONE place every conversation is read, at the address
    *  that names it, so the host can carry it to hanzo.team from the apex. */
   navigate?: (route: string) => void;
 }) {
   const { t } = useI18n();
-  const { room, openRoom } = useOpen();
-  const { rooms, wrong } = useTeamRooms();
+  const { channel, openChannel } = useOpen();
+  const { channels, wrong } = useChannels();
   const { isAuthenticated, user } = useIam();
   const { user: account } = useAccount();
   const signedIn = isAuthenticated || Boolean(user) || Boolean(account) || hasSession();
@@ -906,7 +963,7 @@ function Team({
 
   const [starred] = useStarred();
 
-  const shown = list<TeamRoom>(rooms).filter((r) => matches(r.name, filter));
+  const shown = list<Channel>(channels).filter((r) => matches(r.name, filter));
 
   const favourites = shown.filter((r) => starred.has(titleOf(r.name, r.direct)));
   const publicChannels = shown.filter((r) => !r.direct && r.visibility === "public");
@@ -914,13 +971,13 @@ function Team({
   const privateChannels = shown.filter((r) => !r.direct && (r.visibility === "private" || r.private));
   const directs = shown.filter((r) => r.direct);
 
-  // THE ORDER IS SESSION, THEN REFUSAL, THEN SILENCE — the ladder every room in
-  // this app climbs (see Home's `Waiting`). "Reading." never resolves for a
+  // THE ORDER IS SESSION, THEN REFUSAL, THEN SILENCE — the ladder every app in
+  // this shell climbs (see Home's `Waiting`). "Reading." never resolves for a
   // reader nobody is going to answer, so the session is asked first.
   if (!signedIn) return <Note>{t("Sign in to see your org's channels.")}</Note>;
   if (wrong) return <Note>{say(wrong, t("your channels"), "read", t)}</Note>;
-  if (rooms === null) return <Note>{t("Reading your channels.")}</Note>;
-  if (rooms.length === 0)
+  if (channels === null) return <Note>{t("Reading your channels.")}</Note>;
+  if (channels.length === 0)
     return <Note>{t("No channels yet.")}</Note>;
   if (shown.length === 0) return <Note>{t("No channel matches “{filter}”.", { filter })}</Note>;
 
@@ -931,11 +988,11 @@ function Team({
           {favourites.map((one) => (
             <SidebarItem
               key={one.id}
-              active={teamKey(one) === room}
+              active={teamKey(one) === channel}
               icon={<Star size={13} aria-hidden />}
               onPress={() => {
-                openRoom(teamKey(one));
-                navigate?.(roomHref(teamKey(one)));
+                openChannel(teamKey(one));
+                navigate?.(channelHref(teamKey(one)));
                 onPick?.();
               }}
             >
@@ -950,11 +1007,11 @@ function Team({
           {publicChannels.map((one) => (
             <SidebarItem
               key={one.id}
-              active={teamKey(one) === room}
+              active={teamKey(one) === channel}
               icon={<Globe size={13} aria-hidden />}
               onPress={() => {
-                openRoom(teamKey(one));
-                navigate?.(roomHref(teamKey(one)));
+                openChannel(teamKey(one));
+                navigate?.(channelHref(teamKey(one)));
                 onPick?.();
               }}
             >
@@ -969,11 +1026,11 @@ function Team({
           {orgChannels.map((one) => (
             <SidebarItem
               key={one.id}
-              active={teamKey(one) === room}
+              active={teamKey(one) === channel}
               icon={<Hash size={13} aria-hidden />}
               onPress={() => {
-                openRoom(teamKey(one));
-                navigate?.(roomHref(teamKey(one)));
+                openChannel(teamKey(one));
+                navigate?.(channelHref(teamKey(one)));
                 onPick?.();
               }}
             >
@@ -988,11 +1045,11 @@ function Team({
           {privateChannels.map((one) => (
             <SidebarItem
               key={one.id}
-              active={teamKey(one) === room}
+              active={teamKey(one) === channel}
               icon={<Lock size={13} aria-hidden />}
               onPress={() => {
-                openRoom(teamKey(one));
-                navigate?.(roomHref(teamKey(one)));
+                openChannel(teamKey(one));
+                navigate?.(channelHref(teamKey(one)));
                 onPick?.();
               }}
             >
@@ -1007,11 +1064,11 @@ function Team({
           {directs.map((one) => (
             <SidebarItem
               key={one.id}
-              active={teamKey(one) === room}
+              active={teamKey(one) === channel}
               icon={<AtSign size={13} aria-hidden />}
               onPress={() => {
-                openRoom(teamKey(one));
-                navigate?.(roomHref(teamKey(one)));
+                openChannel(teamKey(one));
+                navigate?.(channelHref(teamKey(one)));
                 onPick?.();
               }}
             >
@@ -1082,7 +1139,7 @@ function Bots({
   navigate?: (route: string) => void;
 }) {
   const { t } = useI18n();
-  const { agents: room, openAgent, withAgents, openSession, open: openThread } = useOpen();
+  const { agents: cast, openAgent, withAgents, openSession, open: openThread } = useOpen();
   const { agents, create, remove, loading: agentsLoading, error: agentsWrong } = useAgents();
   const {
     people,
@@ -1191,7 +1248,7 @@ function Bots({
     setBusy(true);
     try {
       await remove(id);
-      if (room.includes(name)) openAgent(name);
+      if (cast.includes(name)) openAgent(name);
     } catch {
       // Left in the list, which is the truth if the delete did not land.
     } finally {
@@ -1416,7 +1473,7 @@ function Bots({
             <XStack key={agent.id} items="center" gap="$1">
               <YStack flex={1} minW={0}>
                 <SidebarItem
-                  active={room.includes(called(agent.name))}
+                  active={cast.includes(called(agent.name))}
                   icon={
                     <Face
                       src={(agent as any).avatar}
@@ -1495,33 +1552,33 @@ const FLOOR = 200
 const CEIL = 480
 /** Per-reader, per-browser. A width that resets is a width you set every load. */
 const SPAN = "hanzo.sidebar.span"
-/** The rooms' sidebar: its default width, px. */
+/** The shell's sidebar: its default width, px. */
 const SIDEBAR_WIDTH = 244
 
 /**
- * Where a room's own column goes, when it has one.
+ * Where an app's own column goes, when it has one.
  *
  * The frame owns the COLUMN — its width, its edge, whether it is open — and the
- * room owns what is IN it, which is the only split that lets the shell stay
- * ignorant of sources and previews and whatever a room grows next. A slot rather
- * than a prop because the content belongs to the room's own state: passed up
+ * app owns what is IN it, which is the only split that lets the shell stay
+ * ignorant of sources and previews and whatever an app grows next. A slot rather
+ * than a prop because the content belongs to the app's own state: passed up
  * through the router as a prop, the sources of an answer would have to live
  * somewhere both the route and the pane can see, and that is the conversation
  * itself moved out of the component holding it.
  */
 const Slot = createContext<HTMLElement | null>(null)
 
-/** Whether the room is drawn in the app's frame (`Paned framed`), where what
+/** Whether the pane is drawn in the app's frame (`Split framed`), where what
  *  floats on the frame's ground is cut as a pane. */
 export const Framed = createContext(false)
 
-/** Puts its children in the column beside the room. Draws nothing where the
+/** Puts its children in the column beside the pane. Draws nothing where the
  *  frame has no column open. */
-export function Beside({ children }: { children: ReactNode }) {
+export function Side({ children }: { children: ReactNode }) {
   const slot = useContext(Slot)
   if (!slot) return null
-  // WHAT IS BESIDE THE ROOM CANNOT PUT SOMETHING BESIDE THE ROOM. A portal
-  // keeps the REACT tree it was written in, so a room rendered in this column
+  // WHAT IS BESIDE THE PANE CANNOT PUT SOMETHING BESIDE THE PANE. A portal
+  // keeps the REACT tree it was written in, so a view rendered in this column
   // still sees this slot and would draw its own column into the column it is
   // already in. Handing its contents an empty slot ends that by construction
   // rather than by a rule somebody has to remember.
@@ -1529,10 +1586,10 @@ export function Beside({ children }: { children: ReactNode }) {
 }
 
 /**
- * A PANE AND THE COLUMN BESIDE IT. The room draws the pane; the column is open
- * while `useOpen().aside` names one, and `Beside` fills it. The rooms' frame and
- * the app at `/` lay a room out with this, so a room's column is one mechanism.
- * `swap` stands in the pane in the room's place (a chosen Settings row).
+ * A PANE AND THE COLUMN BESIDE IT. The app draws the pane; the column is open
+ * while `useOpen().aside` names one, and `Side` fills it. The shell and
+ * the app at `/` lay an app out with this, so an app's column is one mechanism.
+ * `swap` stands in the pane in the app's place (a chosen Settings row).
  *
  * The column is @hanzo/build's (`useSplit`), the one Dev's runs stand their
  * panel in: its edge, the width the person drags (kept in their preferences
@@ -1543,12 +1600,12 @@ export function Beside({ children }: { children: ReactNode }) {
  *
  * `framed` is the app at `/`: both are panes floating on the frame's ground
  * (app/_web.tsx), filled with `--pane-fill` and cut by `pane()`, and the edge
- * that sizes the column sits in the gutter between them. In a room they lie on
- * the paper ladder instead. In the rooms' shell the two are its `pane` and
- * `side` grid areas. `bare` leaves the framed pane uncut, for a room that floats
+ * that sizes the column sits in the gutter between them. Unframed they lie on
+ * the paper ladder instead. In the shell the two are its `pane` and
+ * `side` grid areas. `bare` leaves the framed pane uncut, for a view that floats
  * panes of its own: a Dev run, which @hanzo/build draws as two.
  */
-export function Paned({
+export function Split({
   children,
   swap,
   framed = false,
@@ -1580,13 +1637,13 @@ export function Paned({
             : { ...pane(), overflow: "hidden" as const }
           : {
               ...sheet(0),
-              // The edge the room shares with the column before it: the left, or the right in a right-to-left language.
+              // The edge the pane shares with the column before it: the left, or the right in a right-to-left language.
               borderInlineStartWidth: 1,
               borderInlineStartStyle: "solid" as const,
               borderColor: "var(--edge, var(--white-06))",
             })}
         ref={split.main}
-        // inline-style: the pane hidden while the column has its room, written by a drag too (useSplit).
+        // inline-style: the pane hidden while the column takes its space, written by a drag too (useSplit).
         style={split.mainStyle}
         width="100%"
         height="100%"
@@ -1619,10 +1676,10 @@ export function Paned({
           $lg={{ display: "flex" }}
         >
           {split.grip ? (
-            // In the gutter the frame leaves between the panes (a room has none), measured inside the column's 1px edge.
+            // In the gutter the frame leaves between the panes (an unframed split has none), measured inside the column's 1px edge.
             <Gutter {...split.grip} label={t("Resize side panel")} inset={1} />
           ) : null}
-          {/* The column above is the landmark; this is the box the room
+          {/* The column above is the landmark; this is the box a view
               projects into, a container and not a second region. It carries the
               corner, so what scrolls in it is cut to the pane. */}
           <YStack
@@ -1696,7 +1753,7 @@ function Rail({
   /** The sidebar is open, and lists the places itself: from a tablet up the rail steps aside. */
   open: boolean;
   /** The workspace's address, drawn as one tile after the places where the
-   *  rooms live on another host. A link, so it opens in this tab. */
+   *  apps live on another host. A link, so it opens in this tab. */
   team?: string;
   navigate?: (route: string) => void;
   onSettings: () => void;
@@ -1818,7 +1875,7 @@ function Rail({
             gap={2}
             hoverStyle={{ bg: "$hover" }}
           >
-            <Search size={18} aria-hidden />
+            <SearchIcon size={18} aria-hidden />
             <Text fontSize={12} lineHeight={14} color="$quiet">
               {t("More")}
             </Text>
@@ -1903,9 +1960,9 @@ function Index({
   onPick?: () => void;
   navigate?: (route: string) => void;
 }) {
-  const rooms = (
+  const channels = (
     <>
-      <Rooms onPick={onPick} navigate={navigate} />
+      <Channels onPick={onPick} navigate={navigate} />
       <Team filter={filter} onPick={onPick} navigate={navigate} />
     </>
   );
@@ -1914,14 +1971,14 @@ function Index({
     return (
       <>
         <Chats filter={filter} onPick={onPick} />
-        {rooms}
+        {channels}
         <Bots show="people" owner={owner} filter={filter} onPick={onPick} navigate={navigate} />
         <Bots show="agents" owner={owner} filter={filter} onPick={onPick} navigate={navigate} />
       </>
     );
   if (mode === "bots") return <Bots show="agents" owner={owner} filter={filter} onPick={onPick} navigate={navigate} />;
   if (mode === "contacts") return <Bots show="people" owner={owner} filter={filter} onPick={onPick} navigate={navigate} />;
-  if (mode === "inbox") return rooms;
+  if (mode === "inbox") return channels;
   if (mode === "tasks") return <Projects filter={filter} onPick={onPick} />;
   return <Chats filter={filter} onPick={onPick} />;
 }
@@ -1950,8 +2007,8 @@ function Frame({
   /**
    * WHICH SETTINGS ROW IS OPEN, and null for none. ONE value, not two.
    *
-   * The rail swaps its rooms for the settings list while this holds a row, and
-   * the room draws that row's pane. Both read the same answer, so a pane deep in
+   * The rail swaps its lists for the settings list while this holds a row, and
+   * the shell draws that row's pane. Both read the same answer, so a pane deep in
    * the tree asking for Channels and the column's own Settings row are the same
    * act — which is why there is no second `panel` state beside this one.
    */
@@ -2002,12 +2059,12 @@ function Frame({
   }, [aside, showAside]);
 
 
-  // WHAT THE SEARCH OPENS ONTO. The threads this reader has and the rooms the
+  // WHAT THE SEARCH OPENS ONTO. The threads this reader has and the channels the
   // org keeps, in one list, because "recent" is a question about where you have
   // been rather than about which store the answer came from. Both hooks already
   // run for the sidebar, so this costs no request of its own.
-  // Which rooms this reader's rail carries: Chat and Dev for everyone, the tiered
-  // rooms only where the identity opens the tier and the reader has not hidden it.
+  // Which apps this reader's rail carries: Chat and Dev for everyone, the tiered
+  // apps only where the identity opens the tier and the reader has not hidden it.
   const tiers = useTiers();
   const [hidden] = useHidden();
 
@@ -2035,11 +2092,11 @@ function Frame({
   }, []);
 
   /**
-   * THE SURFACES THAT ARE NOT ROOMS, said once.
+   * THE SURFACES THAT ARE NOT APPS, said once.
    *
    * Customize is Dev's page, Usage a pane of Settings, Terminals another
    * product at its own host, Docs a page. The column draws each as a
-   * row of its own under the quiet label Setup, right under the rooms — nothing
+   * row of its own under the quiet label Setup, right under the apps — nothing
    * waits behind a More — and the palette offers the same set, so this says
    * WHAT they are and each surface says only how it draws them. Written twice
    * they had already parted: Settings was in one list and not the other.
@@ -2102,7 +2159,7 @@ function Frame({
    *
    * A row that names a destination goes there and closes the list behind it; a
    * row that names a pane opens it and, on a phone, puts the drawer away —
-   * the sheet covers the room the pane is about to fill.
+   * the sheet covers the space the pane is about to fill.
    */
   const pick = (row: SettingsRow) => {
     if (!row.href) {
@@ -2122,12 +2179,12 @@ function Frame({
   /**
    * WHERE THE PALETTE CAN GO WITHOUT ASKING ANYONE.
    *
-   * The rooms this identity may open, and the surfaces above, as the palette's
+   * The apps this identity may open, and the surfaces above, as the palette's
    * Actions; this Settings and Customize stand in for the palette's own. The
    * lists that have to be read — conversations, projects, agents, skills — are
    * the palette's, which is why they are not here.
    */
-  const onApex = apex(useHost());
+  const onApex = apex(useHostname());
   const places = useMemo(
     () => [CHAT, ...PLACES].filter((place) => shows(place, tiers, hidden, onApex)),
     [tiers, hidden, onApex],
@@ -2142,7 +2199,7 @@ function Frame({
         .map((place) => ({
           // The LABEL, not the title: `title` is what a browser tab says, and
           // Home's is the brand — one row reading "Hanzo" among Chat, Dev and
-          // Drive names the company rather than the room.
+          // Drive names the company rather than the app.
           id: place.id,
           label: t(place.label),
           icon: <place.icon size={16} aria-hidden />,
@@ -2167,7 +2224,7 @@ function Frame({
   const products = CONSOLE_PRODUCTS.filter((prod) => matches(t(prod.label), filter));
   const more = tools.filter((tool) => matches(tool.label, filter));
 
-  // The static export prerenders the signed-out room, so the rail's identity
+  // The static export prerenders the signed-out shell, so the rail's identity
   // half stays quiet until React owns the page. `isLoading` alone is not enough:
   // during prerender it is already false and `user` is already null, which would
   // ship "Sign in" baked into HTML a signed-in reader then sees flash.
@@ -2310,7 +2367,7 @@ function Frame({
           borderWidth={1}
           borderColor="$borderColor"
         >
-          <Search size={13} aria-hidden />
+          <SearchIcon size={13} aria-hidden />
           <Text
             render={
               <input
@@ -2339,9 +2396,9 @@ function Frame({
 
       {/* THE COLUMN HAS TWO LEVELS, and only one is drawn.
 
-          The rooms are the first; a chosen settings row makes the second stand
+          The app's lists are the first; a chosen settings row makes the second stand
           in its place. A swap rather than an overlay: the pane a row opens fills
-          the room, so a column still listing rooms would name one place while
+          the app, so a column still listing channels would name one place while
           the page showed another. The filter above and the account below belong
           to the column itself and stay through both. */}
       {settingsPane ? (
@@ -2360,7 +2417,7 @@ function Frame({
             {/* WHAT THIS PLACE HOLDS. Chat lists everyone you can talk to —
                 recent conversations, channels, people, agents — so a person or
                 an agent is one press away; every other place lists its own
-                things: runs, projects, rooms. */}
+                things: runs, projects, channels. */}
             {settled ? (
               <Index mode={mode} owner={owner} filter={filter} onPick={onPick} navigate={navigate} />
             ) : null}
@@ -2428,11 +2485,11 @@ function Frame({
             >
               {t("Share Hanzo")}
             </SidebarItem>
-            {/* WHO YOU ARE, at the foot: the app's one account menu (Me.tsx),
+            {/* WHO YOU ARE, at the foot: the app's one account menu (Account.tsx),
                 SuperAdmin's All organizations under its account row. */}
             <XStack items="center" gap="$1" px="$1.5" py="$1" borderTopWidth={1} borderColor="$borderColor">
               <YStack flex={1} minW={0}>
-                <Me host={who} onOrg={(o) => (choose(o), window.location.reload())} />
+                <Account host={who} onOrg={(o) => (choose(o), window.location.reload())} />
               </YStack>
               <Box
                 render="button"
@@ -2507,7 +2564,7 @@ function Frame({
               search between them sits centred on a laptop — but stated as `width` it
               is also a FLOOR, and two 180px floors plus the search do not fit a
               390px phone: the right-hand cluster was measured reaching 396. As a
-              maximum that can shrink, the centring is unchanged where there is room
+              maximum that can shrink, the centring is unchanged where there is space
               and the row simply gets narrower where there is not. */}
           {/* LEADING: sidebar toggle (if collapsed) + back/forward navigation arrows left aligned */}
           <XStack
@@ -2574,7 +2631,7 @@ function Frame({
               borderColor="$borderColor"
               hoverStyle={{ bg: '$hover' }}
             >
-              <Search size={13} aria-hidden color="var(--soft, var(--muted-foreground))" />
+              <SearchIcon size={13} aria-hidden color="var(--soft, var(--muted-foreground))" />
               <Text fontSize="$1" color="$soft" $max-md={{ display: "none" }}>
                 {t("Search {workspace}", { workspace })}
               </Text>
@@ -2657,7 +2714,7 @@ function Frame({
             </Box>
           ) : null}
 
-          {/* WHAT STANDS BESIDE THE ROOM: the work behind an answer, a preview
+          {/* WHAT STANDS BESIDE THE PANE: the work behind an answer, a preview
               of what a run built. Drawn where the column is — from `$lg`, the
               breakpoint `side` below uses — because below it these would
               toggle a column nobody can see. */}
@@ -2720,17 +2777,17 @@ function Frame({
           {list}
         </XStack>
       ) : null}
-        {/* A CHOSEN SETTINGS ROW IS WHAT THE ROOM SHOWS, and the room is put
-            away while it does. Not drawn over it: a pane that covered the room
-            would be the takeover this replaced, and a room left mounted under
+        {/* A CHOSEN SETTINGS ROW IS WHAT THE PANE SHOWS, and the app is put
+            away while it does. Not drawn over it: a pane that covered the app
+            would be the takeover this replaced, and an app left mounted under
             it would go on running its lists for a reader who is reading
             something else. What the workspace is holding — which thread, which
             run — lives in `open.ts`, above every component, so coming back
             opens the same work. */}
-        <Paned swap={settingsPane ? <Suspense fallback={null}><SettingsPane id={settingsPane} /></Suspense> : undefined}>{children}</Paned>
+        <Split swap={settingsPane ? <Suspense fallback={null}><SettingsPane id={settingsPane} /></Suspense> : undefined}>{children}</Split>
 
         {finding ? (
-          <Palette
+          <Search
             actions={doors}
             onClose={found}
             // A chat opens in this workspace's Chat, the palette having picked it; the rest is the app's.

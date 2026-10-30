@@ -38,7 +38,7 @@ export function slugify(name: string): string {
  * would. A name onboarding keeps exactly as typed: IAM's shape with single inner
  * hyphens, since onboarding folds a double one. The names IAM holds for the
  * platform are IAM's to refuse, in its own words. Said in the reader's language
- * through the room's `t`.
+ * through the app's `t`.
  */
 export function refusal(slug: string, t: Say = english): string | null {
   if (slug.length < 2) return t('Use at least 2 letters or numbers.')

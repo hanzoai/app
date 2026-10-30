@@ -21,7 +21,7 @@
 // personal one first, with its plan — switched with `onOrg`; Create
 // organization, Organization settings, and Hanzo Team (opened in the same
 // organization for a team, offered as "Create a team" for a personal one); and
-// All organizations for a SuperAdmin, which opens the chooser (Orgs.tsx).
+// All organizations for a SuperAdmin, which opens the chooser (Gate.tsx).
 //
 // Its words go through `t`; names, plans, addresses and keys are drawn as they
 // are, a key isolated left to right so its `+` and `,` keep their places in a
@@ -30,7 +30,7 @@
 // IAM is the source of every fact here: names and roles from the token's `orgs`
 // claim, display names and which org is personal from `GET /v1/iam/organizations`,
 // the plan from billing and the limits. An organization is created by the same
-// `POST /v1/account/orgs` the no-organization gate uses (Orgs.tsx); the next load
+// `POST /v1/account/orgs` the no-organization gate uses (Gate.tsx); the next load
 // mints a token that carries it.
 
 import { phrase, locales } from '@hanzo/i18n'
@@ -250,7 +250,7 @@ export const upgrade = (family: string | null | undefined): string =>
 /** The keys a row prints, in this platform's spelling. */
 const mac = (): boolean => typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
 
-export function Me({
+export function Account({
   host,
   narrow = false,
   above = false,

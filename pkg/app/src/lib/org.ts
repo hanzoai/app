@@ -77,7 +77,7 @@ const enc = encodeURIComponent
 
 /**
  * The words of any failure, for a toast or a line under a control: a refusal
- * this module worded in the reader's language (a room passes its `t`), the
+ * this module worded in the reader's language (an app passes its `t`), the
  * server's words as they came, else a plain line.
  */
 export const say = (e: unknown, t: Say = english): string =>

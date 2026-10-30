@@ -2,16 +2,17 @@
 
 // WHAT ARRIVED, IN ONE LIST.
 //
-// The messages other networks carry in (`/v1/channels/inbox`, read by
-// `@hanzo/ai`'s `useInbox`), as the Inbox lists them. A room of this platform
-// is not an arrival: it is a place the org talks in, read and answered on
-// /home (`rooms.ts`), and each kind keeps its own reader because a thread you
-// REPLY to and a room you POST into are not the same act.
+// The messages other networks carry in (`/v1/transport/inbox`, read by
+// `@hanzo/ai`'s `useInbox`), as the Inbox lists them. A team channel is not an
+// arrival: it is a place the org talks in, read and answered on /home
+// (`channels.ts`), and each kind keeps its own reader because a thread you
+// REPLY to and a channel you POST into are not the same act.
 //
 // `key` is the ONE id the workspace selects by, and it names its own source:
-// `net:<channel> <roomId>` here, `team:<space>/<id>` for a room. Prefixed
-// rather than hashed, because a key a person can read in a URL is one they can
-// report in a bug, and a lookup that misses is a bug rather than a category.
+// `net:<key>` here (`@hanzo/ai` keys an arrived channel by its transport and
+// channel id), `team:<space>/<id>` for a team channel. Prefixed rather than
+// hashed, because a key a person can read in a URL is one they can report in a
+// bug, and a lookup that misses is a bug rather than a category.
 
 import { useMemo } from 'react'
 import { useInbox } from '@hanzo/ai/react'
@@ -19,7 +20,7 @@ import type { AiClient, Thread } from '@hanzo/ai'
 import type { Member } from './roster'
 import { roster } from './cast'
 
-/** What to call a member in a room. The roster carries one name; this is it. */
+/** What to call a member in a conversation. The roster carries one name; this is it. */
 const label = (m: Member): string => m.name
 
 /** "Ada", "Ada and Mel", "Ada, Mel and Sam". */
@@ -28,17 +29,17 @@ const named = (names: string[]): string =>
     ? (names[0] ?? '')
     : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 
-/** An arrival room, as `@hanzo/ai` groups one. Named so this file can speak of
- *  it without every caller importing the hook's return type. */
-type Arrival = ReturnType<typeof useInbox>['rooms'][number]
+/** An arrived channel, as `@hanzo/ai` groups one. Named so this file can speak
+ *  of it without every caller importing the hook's return type. */
+type Arrival = ReturnType<typeof useInbox>['channels'][number]
 
 /** One conversation another network carries. */
 export interface Conversation {
   key: string
   /** What to call it in a list. */
   title: string
-  /** The network it arrived on. */
-  channel: string
+  /** The transport it arrived on. */
+  transport: string
   /** Unix MILLIseconds of the last thing said. The arrival plane stamps
    *  SECONDS, and this is the one place that is reconciled. */
   lastAt: number
@@ -47,7 +48,7 @@ export interface Conversation {
   arrival: Arrival
 }
 
-/** The key for an arrival. `useInbox` already keys a room; this qualifies it. */
+/** The key for an arrival. `useInbox` already keys a channel; this qualifies it. */
 export const netKey = (arrival: Arrival): string => `net:${arrival.key}`
 
 /**
@@ -61,7 +62,7 @@ export function useConversations(): {
   loading: boolean
   reload: () => void
 } {
-  const { rooms: arrivals, loading, reload } = useInbox({ limit: 100 })
+  const { channels: arrivals, loading, reload } = useInbox({ limit: 100 })
 
   const conversations = useMemo(
     () =>
@@ -70,8 +71,8 @@ export function useConversations(): {
           key: netKey(arrival),
           // The handle we hold, which is the only thing that tells two senders
           // on one network apart. See Inbox's `speaker`.
-          title: arrival.last.sender ? `@${arrival.last.sender}` : arrival.channel,
-          channel: arrival.channel,
+          title: arrival.last.sender ? `@${arrival.last.sender}` : arrival.transport,
+          transport: arrival.transport,
           lastAt: arrival.lastAt * 1000,
           preview: arrival.last.text,
           arrival,
@@ -91,7 +92,7 @@ export function conversationOf(all: Conversation[], key: string | null): Convers
 
 // ── Starting one, and when one last named someone ──────────────────────────
 //
-// These came across the rewrite of how rooms are READ, because they are not
+// These came across the rewrite of how channels are READ, because they are not
 // about reading: `start` opens a conversation with people the directory picked,
 // and `spokenAt` says when one last named a person, which is how the directory
 // sorts. `Member` belongs to the roster now, so they take it from there.
@@ -99,11 +100,11 @@ export function conversationOf(all: Conversation[], key: string | null): Convers
 export const opening = (members: Member[]): string => `With ${named(members.map(label))}`
 
 /**
- * Writes the room and answers its id.
+ * Writes the conversation and answers its id.
  *
  * The agents in it go in AHEAD of the opening line as the roster turn
  * (cast.tsx `roster`), which is how a conversation keeps who is in it: /chat
- * seats that room when the thread opens and reads each agent's brief fresh.
+ * seats them when the thread opens and reads each agent's brief fresh.
  * One agent, several, people, or a mix: all open by this one call.
  */
 export async function start(ai: AiClient, members: Member[]): Promise<string> {
@@ -114,7 +115,7 @@ export async function start(ai: AiClient, members: Member[]): Promise<string> {
     { role: 'user', content: opening(members) },
   ])
   // `record` answers "" where the body carried no id, which is a write that did
-  // not happen — never a room to open.
+  // not happen — never a conversation to open.
   if (!id) throw new Error('The conversation store answered without an id.')
   return id
 }

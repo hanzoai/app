@@ -9,14 +9,14 @@ import { phrase } from '@hanzo/i18n'
  * a round, review a design, hire and launch; in the evening the switcher flips
  * to Friday Club, where friends build a recipe app and book game night.
  *
- * The script is events, each a room's (`org/channel`): a message, someone
+ * The script is events, each a channel's (`org/channel`): a message, someone
  * typing, a reaction, a thread reply, a card changing state (a pull request
- * merged, a draft sent), a huddle, and the view moving to another room. A
- * message to a room out of view leaves it unread, which is what the next room
- * is opened by. `pace` sets how long each event waits from what came before
- * it: the reading time of the message before, the typing, the pause after a
- * room opens. `frame` folds the events up to a point into what the screen
- * shows, so any beat is a whole frame and the script holds no state.
+ * merged, a draft sent), a huddle, and the view moving to another channel. A
+ * message to a channel out of view leaves it unread, which is what the next
+ * channel is opened by. `pace` sets how long each event waits from what came
+ * before it: the reading time of the message before, the typing, the pause
+ * after a channel opens. `frame` folds the events up to a point into what the
+ * screen shows, so any beat is a whole frame and the script holds no state.
  *
  * Every authored word is `phrase`d; a person's or agent's name, a channel, a
  * file and a repository stay as written. Nothing here is a measurement: the
@@ -41,17 +41,17 @@ export type Card =
 type Base = { wait?: number }
 export type Event = Base &
   (
-    | { kind: 'open'; room: string; time: number }
-    | { kind: 'say'; room: string; who: string; text: string; id?: string; card?: Card }
-    | { kind: 'typing'; room: string; who: string }
+    | { kind: 'open'; channel: string; time: number }
+    | { kind: 'say'; channel: string; who: string; text: string; id?: string; card?: Card }
+    | { kind: 'typing'; channel: string; who: string }
     | { kind: 'react'; to: string; mark: Mark; n: number }
     | { kind: 'reply'; to: string; who: string; text: string }
     /** A card changes: a pull request merges, a draft is sent, an answer is picked. */
     | { kind: 'card'; to: string; patch: Partial<Card> }
     /** The thread beside the channel opens on a message, or closes (`to: null`). */
     | { kind: 'thread'; to: string | null }
-    /** A huddle starts in a room with these people, or ends (`who: []`). */
-    | { kind: 'huddle'; room: string; who: string[] }
+    /** A huddle starts in a channel with these people, or ends (`who: []`). */
+    | { kind: 'huddle'; channel: string; who: string[] }
     /** A step of an org's mission is done. */
     | { kind: 'step'; org: string; n: number }
   )
@@ -184,8 +184,8 @@ export const MISSIONS: Record<string, { title: string; steps: string[] }> = {
   lab: { title: phrase('A first prototype'), steps: [phrase('Boot it'), phrase('Plan a week with it'), phrase('Write up what broke')] },
 }
 
-export const orgOf = (room: string) => ORGS.find((o) => o.id === room.split('/')[0]) ?? ORGS[0]
-export const channelOf = (room: string) => room.split('/')[1] ?? 'general'
+export const orgOf = (channel: string) => ORGS.find((o) => o.id === channel.split('/')[0]) ?? ORGS[0]
+export const channelOf = (channel: string) => channel.split('/')[1] ?? 'general'
 
 /** Minutes after midnight. */
 const hm = (h: number, m: number) => h * 60 + m
@@ -203,7 +203,7 @@ export interface Message {
 
 type Seed = { who: string; text: string; time: number }
 
-/** What each room already holds when the day begins, so none opens empty. */
+/** What each channel already holds when the day begins, so none opens empty. */
 const SEED: Record<string, Seed[]> = {
   'acme/general': [
     { who: 'zoe', text: phrase('Welcome to Acme. Agents are teammates here: mention one to hand it work.'), time: hm(8, 30) },
@@ -240,25 +240,25 @@ const SEED: Record<string, Seed[]> = {
   'lab/ideas': [{ who: 'theo', text: phrase('A bot that waters the plants.'), time: hm(21, 5) }],
 }
 
-/** Rooms with news before the day starts: their channel is bold, their org's tile marked. */
+/** Channels with news before the day starts: their name is bold, their org's tile marked. */
 export const UNREAD: Record<string, number> = { 'acme/random': 2, 'orbit/releases': 3, 'friday/ideas': 1, 'lab/ideas': 1 }
 
-/** The events of one room's scene, in the room's own words. */
-function room(id: string, time: number, build: (r: Room) => Event[]): Event[] {
-  return [{ kind: 'open', room: id, time }, ...build(new Room(id))]
+/** The events of one channel's scene, in the channel's own words. */
+function scene(id: string, time: number, build: (c: Script) => Event[]): Event[] {
+  return [{ kind: 'open', channel: id, time }, ...build(new Script(id))]
 }
 
-/** Writes a room's events without naming the room each time. */
-class Room {
+/** Writes a channel's events without naming the channel each time. */
+class Script {
   constructor(readonly id: string) {}
   say(who: string, text: string, more: { id?: string; card?: Card } = {}): Event {
-    return { kind: 'say', room: this.id, who, text, ...more }
+    return { kind: 'say', channel: this.id, who, text, ...more }
   }
   typing(who: string): Event {
-    return { kind: 'typing', room: this.id, who }
+    return { kind: 'typing', channel: this.id, who }
   }
   huddle(...who: string[]): Event {
-    return { kind: 'huddle', room: this.id, who }
+    return { kind: 'huddle', channel: this.id, who }
   }
 }
 const react = (to: string, mark: Mark, n: number): Event => ({ kind: 'react', to, mark, n })
@@ -267,23 +267,23 @@ const card = (to: string, patch: Partial<Card>): Event => ({ kind: 'card', to, p
 const thread = (to: string | null): Event => ({ kind: 'thread', to })
 /** A step of an org's mission is done. */
 const step = (org: string, n: number): Event => ({ kind: 'step', org, n })
-/** A message that arrives in another room while this one is open: it goes unread, and it is the next room's first line. */
-const elsewhere = (room: string, who: string, text: string, more: { id?: string; card?: Card } = {}): Event => ({ kind: 'say', room, who, text, ...more })
+/** A message that arrives in another channel while this one is open: it goes unread, and it is the next channel's first line. */
+const elsewhere = (channel: string, who: string, text: string, more: { id?: string; card?: Card } = {}): Event => ({ kind: 'say', channel, who, text, ...more })
 
 /**
  * The morning, across organizations: Acme's #general, a thank-you from the
  * open-source project that took Acme's fix, friends planning tonight's build,
  * and back to Acme, where #eng has news. Three switches in under thirty seconds.
  */
-const MORNING = room('acme/general', hm(9, 2), (r) => [
-  r.say('zoe', phrase("Morning. Launch is Thursday, and Orbit's maintainers are helping us test it.")),
+const MORNING = scene('acme/general', hm(9, 2), (c) => [
+  c.say('zoe', phrase("Morning. Launch is Thursday, and Orbit's maintainers are helping us test it.")),
   elsewhere('orbit/contributors', 'priya', phrase('@dev your retry fix from Acme landed upstream. Thank you.'), { id: 'upstream' }),
 ])
 
 /** Orbit: people from different teams, and an agent that works for more than one. */
-const ORBIT = room('orbit/contributors', hm(9, 4), (r) => [
-  r.typing('dev'),
-  r.say('dev', phrase('Glad it helped. I opened a follow-up so the docs say how retries back off.'), {
+const ORBIT = scene('orbit/contributors', hm(9, 4), (c) => [
+  c.typing('dev'),
+  c.say('dev', phrase('Glad it helped. I opened a follow-up so the docs say how retries back off.'), {
     id: 'followup',
     card: { kind: 'pr', repo: 'orbit/orbit', number: 1187, title: phrase('Docs: how retries back off'), add: 42, del: 6, state: 'review', reviewer: 'priya' },
   }),
@@ -293,63 +293,63 @@ const ORBIT = room('orbit/contributors', hm(9, 4), (r) => [
 ])
 
 /** Friends, in the morning: tonight is on. */
-const PLANS = room('friday/side-project', hm(9, 6), (r) => [
-  r.say('leo', phrase('On. @mu a playlist for it?')),
+const PLANS = scene('friday/side-project', hm(9, 6), (c) => [
+  c.say('leo', phrase('On. @mu a playlist for it?')),
   elsewhere('acme/eng', 'theo', phrase('Heads up: checkout looks odd on main.')),
 ])
 
 /** Coding together: a bug report, a pull request, a review, the checks, the merge. */
-const ENG = room('acme/eng', hm(9, 12), (r) => [
-  r.say('mina', phrase('Checkout charges twice if you press Pay twice. Steps are in the thread.'), { id: 'bug' }),
+const ENG = scene('acme/eng', hm(9, 12), (c) => [
+  c.say('mina', phrase('Checkout charges twice if you press Pay twice. Steps are in the thread.'), { id: 'bug' }),
   reply('bug', 'mina', phrase('Card form, press Pay, press Pay again before it answers. Two charges.')),
   react('bug', 'eyes', 2),
-  r.say('sam', phrase('@dev can you take this one?')),
-  r.typing('dev'),
-  r.say('dev', phrase('On it. The Pay button stays live until the charge answers, so a second press is a second charge.')),
-  r.typing('dev'),
-  r.say('dev', phrase('Pull request is up. A new test presses Pay twice and expects one charge.'), {
+  c.say('sam', phrase('@dev can you take this one?')),
+  c.typing('dev'),
+  c.say('dev', phrase('On it. The Pay button stays live until the charge answers, so a second press is a second charge.')),
+  c.typing('dev'),
+  c.say('dev', phrase('Pull request is up. A new test presses Pay twice and expects one charge.'), {
     id: 'pr',
     card: { kind: 'pr', repo: 'acme/web', number: 482, title: phrase('Disable Pay while a charge is pending'), add: 18, del: 3, state: 'review', reviewer: 'theo' },
   }),
   thread('pr'),
   reply('pr', 'theo', phrase('Reviewing. Could the button show a spinner too? A grey button looks broken.')),
-  r.typing('dev'),
+  c.typing('dev'),
   reply('pr', 'dev', phrase('Added a spinner, and the button now says Paying.')),
   card('pr', { state: 'passed' }),
   reply('pr', 'theo', phrase('Approved.')),
   thread(null),
   elsewhere('friday/side-project', 'mu', phrase('Playlist is ready: forty minutes, no lyrics, nothing that sounds like a deadline.')),
   react('pr', 'rocket', 3),
-  r.typing('dev'),
+  c.typing('dev'),
   card('pr', { state: 'merged' }),
-  r.say('dev', phrase('Merged and deployed. Checkout is live with the fix.')),
+  c.say('dev', phrase('Merged and deployed. Checkout is live with the fix.')),
   step('acme', 0),
-  r.say('mina', phrase('Pressed Pay four times on purpose. Charged once.'), { id: 'tried' }),
+  c.say('mina', phrase('Pressed Pay four times on purpose. Charged once.'), { id: 'tried' }),
   react('tried', 'party', 3),
-  r.say('sam', phrase('Pressing Pay twice is no longer a personality trait we support.'), { id: 'trait' }),
+  c.say('sam', phrase('Pressing Pay twice is no longer a personality trait we support.'), { id: 'trait' }),
   react('trait', 'laugh', 4),
   elsewhere('acme/support', 'su', phrase('New ticket: invoices download as blank PDFs in Safari.')),
 ])
 
 /** Support together: an agent drafts, a person makes it warmer, it is sent, the cause is fixed. */
-const SUPPORT = room('acme/support', hm(10, 4), (r) => [
-  r.typing('su'),
-  r.say('su', phrase('Drafted a reply.'), {
+const SUPPORT = scene('acme/support', hm(10, 4), (c) => [
+  c.typing('su'),
+  c.say('su', phrase('Drafted a reply.'), {
     id: 'answer',
     card: { kind: 'draft', to: phrase('Ticket #1042'), body: phrase('Sorry about the blank invoices. Safari blocks the download; this link opens them now, and a fix ships today.'), approver: 'nia' },
   }),
-  r.say('nia', phrase("Warmer first line, please. And let's not blame Safari in writing.")),
-  r.typing('su'),
+  c.say('nia', phrase("Warmer first line, please. And let's not blame Safari in writing.")),
+  c.typing('su'),
   card('answer', { body: phrase('Thanks for telling us, and sorry for the blank invoices. This link opens them now, and a fix ships today.') }),
-  r.say('su', phrase('Updated.')),
-  r.say('nia', phrase('Perfect. Send it.')),
+  c.say('su', phrase('Updated.')),
+  c.say('nia', phrase('Perfect. Send it.')),
   card('answer', { sent: true }),
   react('answer', 'check', 1),
-  r.say('su', phrase('Sent. @dev the download link expires before Safari opens it.')),
-  r.typing('dev'),
-  r.say('dev', phrase('Found it. Links last five minutes now instead of five seconds. The fix is in #483.'), { id: 'links' }),
+  c.say('su', phrase('Sent. @dev the download link expires before Safari opens it.')),
+  c.typing('dev'),
+  c.say('dev', phrase('Found it. Links last five minutes now instead of five seconds. The fix is in #483.'), { id: 'links' }),
   react('links', 'laugh', 3),
-  r.say('su', phrase('The customer wrote back: “That was fast. Thank you.”'), { id: 'thanks' }),
+  c.say('su', phrase('The customer wrote back: “That was fast. Thank you.”'), { id: 'thanks' }),
   react('thanks', 'heart', 5),
   step('acme', 1),
   elsewhere('acme/inbox', 'opera', phrase('Morning sort is done.'), {
@@ -363,42 +363,42 @@ const SUPPORT = room('acme/support', hm(10, 4), (r) => [
 ])
 
 /** Email: the agent triages and drafts, a person approves a batch, a lawyer catches a clause. */
-const INBOX = room('acme/inbox', hm(10, 41), (r) => [
-  r.say('opera', phrase('Six replies are drafted in your voice. Approve them as a batch?'), { id: 'batch', card: { kind: 'ask', options: [phrase('Approve all'), phrase('One by one')], asks: 'ada' } }),
-  r.typing('ada'),
+const INBOX = scene('acme/inbox', hm(10, 41), (c) => [
+  c.say('opera', phrase('Six replies are drafted in your voice. Approve them as a batch?'), { id: 'batch', card: { kind: 'ask', options: [phrase('Approve all'), phrase('One by one')], asks: 'ada' } }),
+  c.typing('ada'),
   card('batch', { picked: 0 }),
-  r.say('ada', phrase('Approve all. You know how I write by now.')),
-  r.typing('opera'),
-  r.say('opera', phrase("Sent all six. The renewal needs a lawyer's eye, so I asked @law.")),
-  r.typing('law'),
-  r.say('law', phrase('Read it. It renews itself for three years. I would ask for one.'), { id: 'clause' }),
+  c.say('ada', phrase('Approve all. You know how I write by now.')),
+  c.typing('opera'),
+  c.say('opera', phrase("Sent all six. The renewal needs a lawyer's eye, so I asked @law.")),
+  c.typing('law'),
+  c.say('law', phrase('Read it. It renews itself for three years. I would ask for one.'), { id: 'clause' }),
   react('clause', 'eyes', 2),
-  r.say('ada', phrase('Good catch. Ask for one, nicely.')),
-  r.typing('opera'),
-  r.say('opera', phrase('Drafted.'), { id: 'renewal', card: { kind: 'draft', to: phrase('The vendor, about our renewal'), body: phrase('Happy to renew. Could we make the term one year, with the option to extend?'), approver: 'ada' } }),
-  r.say('ada', phrase('Nicely done. Send.')),
+  c.say('ada', phrase('Good catch. Ask for one, nicely.')),
+  c.typing('opera'),
+  c.say('opera', phrase('Drafted.'), { id: 'renewal', card: { kind: 'draft', to: phrase('The vendor, about our renewal'), body: phrase('Happy to renew. Could we make the term one year, with the option to extend?'), approver: 'ada' } }),
+  c.say('ada', phrase('Nicely done. Send.')),
   card('renewal', { sent: true }),
   step('acme', 2),
-  r.say('opera', phrase('Sent. The inbox is at zero, except for the newsletter you keep meaning to read.'), { id: 'zero' }),
+  c.say('opera', phrase('Sent. The inbox is at zero, except for the newsletter you keep meaning to read.'), { id: 'zero' }),
   react('zero', 'laugh', 2),
   elsewhere('acme/fundraise', 'zoe', phrase('@fin we need a seed deck by Friday.')),
 ])
 
 /** Fundraising: the deck and the model, the intros, a meeting booked. */
-const FUNDRAISE = room('acme/fundraise', hm(11, 20), (r) => [
-  r.typing('fin'),
-  r.say('fin', phrase('On it: a deck, and a model with three scenarios where every number links to its source.')),
-  r.say('zoe', phrase("No hockey sticks we can't explain.")),
-  r.typing('fin'),
-  r.say('fin', phrase('Deck v1 is in Drive.'), { id: 'deck', card: { kind: 'file', name: 'Acme seed deck.pdf', type: 'deck', detail: phrase('12 slides') } }),
-  r.say('fin', phrase('And the model.'), { id: 'model', card: { kind: 'file', name: 'Acme model.xlsx', type: 'sheet', detail: phrase('Three scenarios, sources linked') } }),
-  r.say('fin', phrase('@sal the deck is ready for the intros.')),
-  r.say('zoe', phrase('Slide 4 says “synergy”. Remove it with prejudice.')),
-  r.typing('fin'),
-  r.say('fin', phrase('Removed. Slide 4 now says what the product does.'), { id: 'synergy' }),
+const FUNDRAISE = scene('acme/fundraise', hm(11, 20), (c) => [
+  c.typing('fin'),
+  c.say('fin', phrase('On it: a deck, and a model with three scenarios where every number links to its source.')),
+  c.say('zoe', phrase("No hockey sticks we can't explain.")),
+  c.typing('fin'),
+  c.say('fin', phrase('Deck v1 is in Drive.'), { id: 'deck', card: { kind: 'file', name: 'Acme seed deck.pdf', type: 'deck', detail: phrase('12 slides') } }),
+  c.say('fin', phrase('And the model.'), { id: 'model', card: { kind: 'file', name: 'Acme model.xlsx', type: 'sheet', detail: phrase('Three scenarios, sources linked') } }),
+  c.say('fin', phrase('@sal the deck is ready for the intros.')),
+  c.say('zoe', phrase('Slide 4 says “synergy”. Remove it with prejudice.')),
+  c.typing('fin'),
+  c.say('fin', phrase('Removed. Slide 4 now says what the product does.'), { id: 'synergy' }),
   react('synergy', 'laugh', 4),
-  r.typing('sal'),
-  r.say('sal', phrase('I found four investors who back developer tools. The intros are drafted in your voice.'), {
+  c.typing('sal'),
+  c.say('sal', phrase('I found four investors who back developer tools. The intros are drafted in your voice.'), {
     id: 'intros',
     card: {
       kind: 'list',
@@ -406,30 +406,30 @@ const FUNDRAISE = room('acme/fundraise', hm(11, 20), (r) => [
       items: [phrase('A seed fund that backs developer tools'), phrase('An angel who built a developer tools company'), phrase('A partner who wrote about agents last week'), phrase('A fund Theo knows from his last company')],
     },
   }),
-  r.say('zoe', phrase('Send all four.')),
+  c.say('zoe', phrase('Send all four.')),
   card('intros', { done: [0, 1, 2, 3] }),
-  r.say('sal', phrase('Sent.')),
-  r.typing('sal'),
-  r.say('sal', phrase('One replied already. Thursday at 2 works for them.'), { id: 'meeting', card: { kind: 'meeting', title: phrase('Acme and a seed fund'), when: phrase('Thursday, 2:00 PM') } }),
+  c.say('sal', phrase('Sent.')),
+  c.typing('sal'),
+  c.say('sal', phrase('One replied already. Thursday at 2 works for them.'), { id: 'meeting', card: { kind: 'meeting', title: phrase('Acme and a seed fund'), when: phrase('Thursday, 2:00 PM') } }),
   react('meeting', 'flame', 5),
-  r.say('theo', phrase('Prep doc?')),
-  r.typing('fin'),
-  r.say('fin', phrase('In the deck folder: the questions they are likely to ask, with our answers.')),
+  c.say('theo', phrase('Prep doc?')),
+  c.typing('fin'),
+  c.say('fin', phrase('In the deck folder: the questions they are likely to ask, with our answers.')),
   step('acme', 3),
   elsewhere('acme/design', 'sam', phrase('@des the plan cards feel crowded.')),
 ])
 
 /** A design review: two directions, a pick, a handoff. */
-const DESIGN = room('acme/design', hm(13, 15), (r) => [
-  r.typing('des'),
-  r.say('des', phrase('Two directions. A keeps every feature; B keeps the five people compare.'), { id: 'options', card: { kind: 'options', file: 'plan-cards.fig', options: ['A', 'B'] } }),
-  r.say('ada', phrase('B. Fewer words, same truth.')),
-  r.say('sam', phrase('B, and the prices on one baseline.')),
+const DESIGN = scene('acme/design', hm(13, 15), (c) => [
+  c.typing('des'),
+  c.say('des', phrase('Two directions. A keeps every feature; B keeps the five people compare.'), { id: 'options', card: { kind: 'options', file: 'plan-cards.fig', options: ['A', 'B'] } }),
+  c.say('ada', phrase('B. Fewer words, same truth.')),
+  c.say('sam', phrase('B, and the prices on one baseline.')),
   card('options', { picked: 1 }),
-  r.typing('des'),
-  r.say('des', phrase('B it is, prices aligned. @dev the handoff is in the file.')),
-  r.typing('dev'),
-  r.say('dev', phrase('Picked it up. It will be on the preview link in ten minutes.'), { id: 'handoff' }),
+  c.typing('des'),
+  c.say('des', phrase('B it is, prices aligned. @dev the handoff is in the file.')),
+  c.typing('dev'),
+  c.say('dev', phrase('Picked it up. It will be on the preview link in ten minutes.'), { id: 'handoff' }),
   react('handoff', 'heart', 3),
   step('acme', 4),
   elsewhere('acme/hiring', 'huma', phrase('Designer role: the shortlist is ready, with a note on each.'), {
@@ -439,41 +439,41 @@ const DESIGN = room('acme/design', hm(13, 15), (r) => [
 ])
 
 /** Hiring: a shortlist, interviews booked, an exercise that respects weekends. */
-const HIRING = room('acme/hiring', hm(14, 2), (r) => [
-  r.say('mina', phrase("Let's talk to all three.")),
-  r.typing('huma'),
-  r.say('huma', phrase('Booked for Tuesday and Wednesday. Des wrote the exercise: two hours, not a weekend.')),
-  r.say('mina', phrase('Thank you for respecting weekends.'), { id: 'weekends' }),
+const HIRING = scene('acme/hiring', hm(14, 2), (c) => [
+  c.say('mina', phrase("Let's talk to all three.")),
+  c.typing('huma'),
+  c.say('huma', phrase('Booked for Tuesday and Wednesday. Des wrote the exercise: two hours, not a weekend.')),
+  c.say('mina', phrase('Thank you for respecting weekends.'), { id: 'weekends' }),
   react('weekends', 'heart', 4),
-  r.say('des', phrase('One screen, two hours, no trick questions.')),
+  c.say('des', phrase('One screen, two hours, no trick questions.')),
   step('acme', 5),
   elsewhere('acme/launch', 'mark', phrase('The launch post is drafted.'), { id: 'post', card: { kind: 'file', name: 'launch-post.md', type: 'doc', detail: phrase('Draft') } }),
 ])
 
 /** The launch: the post cut, translated, the checklist closed, a huddle, live. */
-const LAUNCH = room('acme/launch', hm(15, 30), (r) => [
-  r.say('zoe', phrase('Shorter, please. Nobody reads paragraph four.')),
-  r.typing('mark'),
-  r.say('mark', phrase('Cut to three paragraphs. Paragraph four is now a footnote nobody will read either.'), { id: 'cut' }),
+const LAUNCH = scene('acme/launch', hm(15, 30), (c) => [
+  c.say('zoe', phrase('Shorter, please. Nobody reads paragraph four.')),
+  c.typing('mark'),
+  c.say('mark', phrase('Cut to three paragraphs. Paragraph four is now a footnote nobody will read either.'), { id: 'cut' }),
   react('cut', 'laugh', 5),
-  r.say('mark', phrase('@lang can you take it into Japanese and Spanish?')),
-  r.typing('lang'),
-  r.say('lang', phrase('Translated into Japanese and Spanish. The terms match the glossary.')),
-  r.say('mana', phrase('Everything is done but the docs pass. @doc it is yours.'), {
+  c.say('mark', phrase('@lang can you take it into Japanese and Spanish?')),
+  c.typing('lang'),
+  c.say('lang', phrase('Translated into Japanese and Spanish. The terms match the glossary.')),
+  c.say('mana', phrase('Everything is done but the docs pass. @doc it is yours.'), {
     id: 'checklist',
     card: { kind: 'list', title: phrase('Launch checklist'), items: [phrase('Launch post'), phrase('Translations'), phrase('Pricing page'), phrase('Docs pass'), phrase('Status page')], done: [0, 1, 2, 4] },
   }),
-  r.typing('doc'),
-  r.say('doc', phrase('Docs pass is done. The quickstart links the new pages.')),
+  c.typing('doc'),
+  c.say('doc', phrase('Docs pass is done. The quickstart links the new pages.')),
   card('checklist', { done: [0, 1, 2, 3, 4] }),
-  r.huddle('zoe', 'ada', 'sam'),
-  r.say('ada', phrase('Ship it.')),
-  r.typing('mark'),
-  r.say('mark', phrase('Posted. It is live.'), { id: 'live' }),
+  c.huddle('zoe', 'ada', 'sam'),
+  c.say('ada', phrase('Ship it.')),
+  c.typing('mark'),
+  c.say('mark', phrase('Posted. It is live.'), { id: 'live' }),
   react('live', 'rocket', 8),
   react('live', 'party', 6),
   step('acme', 6),
-  r.huddle(),
+  c.huddle(),
   elsewhere('acme/general', 'vi', phrase("Today's notes are ready."), {
     id: 'notes',
     card: {
@@ -486,92 +486,92 @@ const LAUNCH = room('acme/launch', hm(15, 30), (r) => [
 ])
 
 /** The day closes in #general. */
-const GENERAL = room('acme/general', hm(17, 50), (r) => [
-  r.say('zoe', phrase('And nobody worked the weekend.')),
-  r.say('vi', phrase("Tomorrow's plan is on the board. Good evening, everyone."), { id: 'evening' }),
+const GENERAL = scene('acme/general', hm(17, 50), (c) => [
+  c.say('zoe', phrase('And nobody worked the weekend.')),
+  c.say('vi', phrase("Tomorrow's plan is on the board. Good evening, everyone."), { id: 'evening' }),
   react('notes', 'heart', 9),
   react('evening', 'thumbs', 5),
 ])
 
 /** Friends after work: a recipe app, a board, pairing, a logo before a product. */
-const SIDE = room('friday/side-project', hm(19, 10), (r) => [
-  r.say('mina', phrase('Recipe app tonight?')),
-  r.say('omar', phrase('In. @mana set up a board?')),
-  r.typing('mana'),
-  r.say('mana', phrase('Board is ready: a card each.'), {
+const SIDE = scene('friday/side-project', hm(19, 10), (c) => [
+  c.say('mina', phrase('Recipe app tonight?')),
+  c.say('omar', phrase('In. @mana set up a board?')),
+  c.typing('mana'),
+  c.say('mana', phrase('Board is ready: a card each.'), {
     id: 'board',
     card: { kind: 'list', title: phrase('Board'), items: [phrase('Sign-in'), phrase('Save a recipe'), phrase("Search by what's in the fridge")] },
   }),
   step('friday', 0),
-  r.say('jun', phrase("I'll take search. @dev pair with me?")),
-  r.typing('dev'),
-  r.say('dev', phrase('Pairing. Search works on ingredients now: “leftover pizza” returns pizza.'), { id: 'pizza' }),
+  c.say('jun', phrase("I'll take search. @dev pair with me?")),
+  c.typing('dev'),
+  c.say('dev', phrase('Pairing. Search works on ingredients now: “leftover pizza” returns pizza.'), { id: 'pizza' }),
   card('board', { done: [2] }),
   step('friday', 1),
   react('pizza', 'laugh', 4),
-  r.say('leo', phrase('Bringing snacks and opinions.')),
-  r.typing('art'),
-  r.say('art', phrase('Logo sketches, in case anyone wants a logo before a product.'), { id: 'logos', card: { kind: 'file', name: 'logo-sketches.png', type: 'image', detail: phrase('Three options') } }),
+  c.say('leo', phrase('Bringing snacks and opinions.')),
+  c.typing('art'),
+  c.say('art', phrase('Logo sketches, in case anyone wants a logo before a product.'), { id: 'logos', card: { kind: 'file', name: 'logo-sketches.png', type: 'image', detail: phrase('Three options') } }),
   react('logos', 'heart', 5),
   step('friday', 2),
   elsewhere('friday/game-night', 'omar', phrase('Game night Thursday?')),
 ])
 
 /** Game night, booked by an agent that is now in charge of scheduling forever. */
-const GAME = room('friday/game-night', hm(19, 42), (r) => [
-  r.say('mina', phrase('Yes. @vi can you find a time that works for everyone?')),
-  r.typing('vi'),
-  r.say('vi', phrase('Thursday at 8 works for all four of you. It is on your calendars.'), { id: 'slot', card: { kind: 'meeting', title: phrase('Game night'), when: phrase('Thursday, 8:00 PM') } }),
-  r.say('jun', phrase('Vi is now in charge of all scheduling, forever.'), { id: 'forever' }),
-  r.typing('vi'),
-  r.say('vi', phrase('Accepted. I will be fair.')),
+const GAME = scene('friday/game-night', hm(19, 42), (c) => [
+  c.say('mina', phrase('Yes. @vi can you find a time that works for everyone?')),
+  c.typing('vi'),
+  c.say('vi', phrase('Thursday at 8 works for all four of you. It is on your calendars.'), { id: 'slot', card: { kind: 'meeting', title: phrase('Game night'), when: phrase('Thursday, 8:00 PM') } }),
+  c.say('jun', phrase('Vi is now in charge of all scheduling, forever.'), { id: 'forever' }),
+  c.typing('vi'),
+  c.say('vi', phrase('Accepted. I will be fair.')),
   react('forever', 'laugh', 3),
   step('friday', 3),
 ])
 
-/** Rooms the day does not pass through, played when a reader opens them. */
+/** Channels the day does not pass through, played when a reader opens them. */
 const EXTRA: Record<string, Event[]> = {
-  'acme/random': room('acme/random', hm(12, 30), (r) => [
-    r.say('theo', phrase('Lunch?')),
-    r.say('vi', phrase('The noodle place is quiet until 12:45. I booked a table for five.')),
-    r.say('theo', phrase('I said lunch, not a plan.'), { id: 'lunch' }),
+  'acme/random': scene('acme/random', hm(12, 30), (c) => [
+    c.say('theo', phrase('Lunch?')),
+    c.say('vi', phrase('The noodle place is quiet until 12:45. I booked a table for five.')),
+    c.say('theo', phrase('I said lunch, not a plan.'), { id: 'lunch' }),
     react('lunch', 'laugh', 3),
   ]),
-  'friday/ideas': room('friday/ideas', hm(20, 5), (r) => [
-    r.say('leo', phrase('@mu a song for when the timer rings?')),
-    r.typing('mu'),
-    r.say('mu', phrase('Eight seconds, upbeat, and it stops when you open the oven.'), { id: 'song', card: { kind: 'file', name: 'timer.mp3', type: 'doc', detail: phrase('0:08') } }),
+  'friday/ideas': scene('friday/ideas', hm(20, 5), (c) => [
+    c.say('leo', phrase('@mu a song for when the timer rings?')),
+    c.typing('mu'),
+    c.say('mu', phrase('Eight seconds, upbeat, and it stops when you open the oven.'), { id: 'song', card: { kind: 'file', name: 'timer.mp3', type: 'doc', detail: phrase('0:08') } }),
     react('song', 'heart', 3),
   ]),
-  'orbit/general': room('orbit/general', hm(9, 40), (r) => [
-    r.say('jun', phrase('First-time contributor here. Where do I start?')),
-    r.typing('doc'),
-    r.say('doc', phrase('The contributing guide, then any issue marked good first. I linked three that fit a first afternoon.')),
-    r.say('priya', phrase('Welcome aboard.'), { id: 'aboard' }),
+  'orbit/general': scene('orbit/general', hm(9, 40), (c) => [
+    c.say('jun', phrase('First-time contributor here. Where do I start?')),
+    c.typing('doc'),
+    c.say('doc', phrase('The contributing guide, then any issue marked good first. I linked three that fit a first afternoon.')),
+    c.say('priya', phrase('Welcome aboard.'), { id: 'aboard' }),
     react('aboard', 'party', 3),
   ]),
-  'orbit/releases': room('orbit/releases', hm(10, 15), (r) => [
-    r.say('theo', phrase('Is 2.4 ready to tag?')),
-    r.typing('cyber'),
-    r.say('cyber', phrase('The dependency audit is clean. Nothing new needs a patch.')),
-    r.say('doc', phrase('Changelog is final.'), { id: 'tag', card: { kind: 'file', name: 'CHANGELOG.md', type: 'doc', detail: phrase('2.4') } }),
+  'orbit/releases': scene('orbit/releases', hm(10, 15), (c) => [
+    c.say('theo', phrase('Is 2.4 ready to tag?')),
+    c.typing('cyber'),
+    c.say('cyber', phrase('The dependency audit is clean. Nothing new needs a patch.')),
+    c.say('doc', phrase('Changelog is final.'), { id: 'tag', card: { kind: 'file', name: 'CHANGELOG.md', type: 'doc', detail: phrase('2.4') } }),
     react('tag', 'rocket', 5),
   ]),
-  'lab/general': room('lab/general', hm(21, 10), (r) => [
-    r.say('theo', phrase('What if the app planned the week for you?')),
-    r.typing('sci'),
-    r.say('sci', phrase('I will try it on our own calendars first and write up what happens.')),
-    r.say('priya', phrase('@data how often does a plan survive Tuesday?')),
-    r.typing('data'),
-    r.say('data', phrase('I can count that once we have a few weeks of plans to look at.'), { id: 'tuesday' }),
+  'lab/general': scene('lab/general', hm(21, 10), (c) => [
+    c.say('theo', phrase('What if the app planned the week for you?')),
+    c.typing('sci'),
+    c.say('sci', phrase('I will try it on our own calendars first and write up what happens.')),
+    c.say('priya', phrase('@data how often does a plan survive Tuesday?')),
+    c.typing('data'),
+    c.say('data', phrase('I can count that once we have a few weeks of plans to look at.'), { id: 'tuesday' }),
     react('tuesday', 'eyes', 2),
   ]),
-  'lab/ideas': room('lab/ideas', hm(21, 20), (r) => [r.say('priya', phrase('A plant that texts when it is thirsty.')), r.say('theo', phrase('Filed under someday, next to the bot that waters it.'))]),
+  'lab/ideas': scene('lab/ideas', hm(21, 20), (c) => [c.say('priya', phrase('A plant that texts when it is thirsty.')), c.say('theo', phrase('Filed under someday, next to the bot that waters it.'))]),
 }
 
 /** The day, in order. */
 const SCENES = [MORNING, ORBIT, PLANS, ENG, SUPPORT, INBOX, FUNDRAISE, DESIGN, HIRING, LAUNCH, GENERAL, SIDE, GAME]
-/** What a reader opening a room plays: each room's own scene (the morning's two passes are the day's, not a room's). */
+/** What a reader opening a channel plays: each channel's own scene (the morning's two passes are the day's, not a channel's). */
 const OWN = [ORBIT, ENG, SUPPORT, INBOX, FUNDRAISE, DESIGN, HIRING, LAUNCH, GENERAL, SIDE, GAME]
 
 /** Words a line holds: how long it takes to read. */
@@ -580,7 +580,7 @@ const words = (text: string) => text.split(/\s+/).filter(Boolean).length
 /**
  * How long each event waits from the one before it: long enough to read what
  * came before (a message, and a card under it), to watch someone type, to
- * take in a room just opened.
+ * take in a channel just opened.
  */
 export function pace(events: Event[]): Beat[] {
   return events.map((e, i) => {
@@ -604,12 +604,12 @@ export function pace(events: Event[]): Beat[] {
 /** The whole day, paced. */
 export const DAY: Beat[] = pace(SCENES.flat())
 
-/** Every room's own scene, paced, for a reader who opens it. */
+/** Every channel's own scene, paced, for a reader who opens it. */
 export const SCENE: Record<string, Beat[]> = Object.fromEntries(
-  [...OWN, ...Object.values(EXTRA)].map((s) => [(s[0] as Extract<Event, { kind: 'open' }>).room, pace(s)]),
+  [...OWN, ...Object.values(EXTRA)].map((s) => [(s[0] as Extract<Event, { kind: 'open' }>).channel, pace(s)]),
 )
 
-/** The room an org opens on when its tile is pressed. */
+/** The channel an org opens on when its tile is pressed. */
 export const HOME: Record<string, string> = { acme: 'acme/eng', orbit: 'orbit/contributors', friday: 'friday/side-project', lab: 'lab/general' }
 
 /**
@@ -622,13 +622,13 @@ export const STILL = MORNING.length + ORBIT.length + PLANS.length + ENG.length
 /** How long the day plays before it starts again, in milliseconds (`REST` held at the end not counted). */
 export const LENGTH = DAY.reduce((n, b) => n + b.wait, 0)
 
-/** What the screen shows: the room in view and everything each room holds by then. */
+/** What the screen shows: the channel in view and everything each channel holds by then. */
 export interface Frame {
-  room: string
-  rooms: Record<string, Message[]>
+  channel: string
+  channels: Record<string, Message[]>
   unread: Record<string, number>
   /** Who is typing, and where. */
-  typing: { room: string; who: string } | null
+  typing: { channel: string; who: string } | null
   /** The message whose thread stands beside the channel. */
   thread: string | null
   huddle: Record<string, string[]>
@@ -642,7 +642,7 @@ export interface Frame {
 export interface Handoff {
   from: string
   to: string
-  room: string
+  channel: string
   time: number
   text: string
 }
@@ -650,24 +650,24 @@ export interface Handoff {
 /** The handoffs a frame keeps: the newest. */
 const HANDOFFS = 8
 
-/** How many messages a room keeps on screen: the oldest leave the top. */
+/** How many messages a channel keeps on screen: the oldest leave the top. */
 const KEEP = 14
 
 /** Folds the first `at` events into a frame. */
 export function frame(events: Event[], at: number): Frame {
-  const rooms: Record<string, Message[]> = {}
+  const channels: Record<string, Message[]> = {}
   const where = new Map<string, Message>()
   const seat = (id: string) => {
-    if (!rooms[id]) {
-      rooms[id] = (SEED[id] ?? []).map((s, i) => ({ id: `${id}#${i}`, who: s.who, text: s.text, time: s.time, reactions: [], replies: [] }))
+    if (!channels[id]) {
+      channels[id] = (SEED[id] ?? []).map((s, i) => ({ id: `${id}#${i}`, who: s.who, text: s.text, time: s.time, reactions: [], replies: [] }))
     }
-    return rooms[id]
+    return channels[id]
   }
   const unread: Record<string, number> = { ...UNREAD }
   const huddle: Record<string, string[]> = {}
   const steps: Record<string, number[]> = {}
   const handoffs: Handoff[] = []
-  let view = (events.find((e) => e.kind === 'open') as Extract<Event, { kind: 'open' }> | undefined)?.room ?? 'acme/eng'
+  let view = (events.find((e) => e.kind === 'open') as Extract<Event, { kind: 'open' }> | undefined)?.channel ?? 'acme/eng'
   let clock = hm(9, 0)
   let thread: string | null = null
   let typing: Frame['typing'] = null
@@ -675,23 +675,23 @@ export function frame(events: Event[], at: number): Frame {
     if (e.kind !== 'typing') typing = null
     switch (e.kind) {
       case 'open':
-        view = e.room
+        view = e.channel
         clock = Math.max(clock, e.time)
-        unread[e.room] = 0
+        unread[e.channel] = 0
         thread = null
-        seat(e.room)
+        seat(e.channel)
         break
       case 'say': {
         clock += Math.max(1, Math.round(words(e.text) / 10))
-        const m: Message = { id: e.id ?? `${e.room}@${i}`, who: e.who, text: e.text, time: clock, card: e.card, reactions: [], replies: [] }
-        seat(e.room).push(m)
+        const m: Message = { id: e.id ?? `${e.channel}@${i}`, who: e.who, text: e.text, time: clock, card: e.card, reactions: [], replies: [] }
+        seat(e.channel).push(m)
         where.set(m.id, m)
-        for (const [, to] of e.text.matchAll(/@([a-z]+)/g)) if (to !== e.who && (to in AGENTS || to in PEOPLE)) handoffs.push({ from: e.who, to, room: e.room, time: clock, text: e.text })
-        if (e.room !== view) unread[e.room] = (unread[e.room] ?? 0) + 1
+        for (const [, to] of e.text.matchAll(/@([a-z]+)/g)) if (to !== e.who && (to in AGENTS || to in PEOPLE)) handoffs.push({ from: e.who, to, channel: e.channel, time: clock, text: e.text })
+        if (e.channel !== view) unread[e.channel] = (unread[e.channel] ?? 0) + 1
         break
       }
       case 'typing':
-        typing = { room: e.room, who: e.who }
+        typing = { channel: e.channel, who: e.who }
         break
       case 'react': {
         const m = where.get(e.to)
@@ -717,7 +717,7 @@ export function frame(events: Event[], at: number): Frame {
         thread = e.to
         break
       case 'huddle':
-        huddle[e.room] = e.who
+        huddle[e.channel] = e.who
         break
       case 'step':
         steps[e.org] = [...new Set([...(steps[e.org] ?? []), e.n])]
@@ -725,14 +725,14 @@ export function frame(events: Event[], at: number): Frame {
     }
   })
   seat(view)
-  for (const id of Object.keys(rooms)) rooms[id] = rooms[id].slice(-KEEP)
-  return { room: view, rooms, unread, typing, thread, huddle, steps, handoffs: handoffs.slice(-HANDOFFS) }
+  for (const id of Object.keys(channels)) channels[id] = channels[id].slice(-KEEP)
+  return { channel: view, channels, unread, typing, thread, huddle, steps, handoffs: handoffs.slice(-HANDOFFS) }
 }
 
 /** Something an agent left for a person: a reply to send, a question to answer, a pull request to review, or (supervised) a step to approve. */
 export interface Ask {
   id: string
-  room: string
+  channel: string
   /** The person it waits on. */
   who: string
   /** What the agent asked for, as a phrase with `{what}` filled from the card. */
@@ -743,20 +743,20 @@ export interface Ask {
 /**
  * What waits on a person in a frame. Always: a draft not yet sent, a question
  * not yet answered, a pull request still under review. Supervised, also every
- * agent's work a person has not answered yet in its room: an agent asks before
- * each tool, connector or site (the app's Manual approval).
+ * agent's work a person has not answered yet in its channel: an agent asks
+ * before each tool, connector or site (the app's Manual approval).
  */
 export function waiting(f: Frame, supervised: boolean): Ask[] {
   const out: Ask[] = []
-  for (const [room, list] of Object.entries(f.rooms)) {
+  for (const [channel, list] of Object.entries(f.channels)) {
     list.forEach((m, i) => {
       const c = m.card
-      if (c?.kind === 'draft' && !c.sent) out.push({ id: m.id, room, who: c.approver ?? 'ada', say: phrase('Send the reply to {what}'), what: c.to })
-      else if (c?.kind === 'ask' && c.picked === undefined) out.push({ id: m.id, room, who: c.asks ?? 'ada', say: phrase('Answer: {what}'), what: m.text })
-      else if (c?.kind === 'pr' && c.state === 'review') out.push({ id: m.id, room, who: c.reviewer ?? 'theo', say: phrase('Review {what}'), what: `#${c.number}` })
+      if (c?.kind === 'draft' && !c.sent) out.push({ id: m.id, channel, who: c.approver ?? 'ada', say: phrase('Send the reply to {what}'), what: c.to })
+      else if (c?.kind === 'ask' && c.picked === undefined) out.push({ id: m.id, channel, who: c.asks ?? 'ada', say: phrase('Answer: {what}'), what: m.text })
+      else if (c?.kind === 'pr' && c.state === 'review') out.push({ id: m.id, channel, who: c.reviewer ?? 'theo', say: phrase('Review {what}'), what: `#${c.number}` })
       else if (supervised && c && agent(m.who) && !list.slice(i + 1).some((n) => !agent(n.who))) {
-        const owner = orgOf(room).people[0]
-        out.push({ id: m.id, room, who: owner, say: phrase('Approve {what}'), what: c.kind === 'file' ? c.name : c.kind === 'meeting' || c.kind === 'list' ? c.title : m.text })
+        const owner = orgOf(channel).people[0]
+        out.push({ id: m.id, channel, who: owner, say: phrase('Approve {what}'), what: c.kind === 'file' ? c.name : c.kind === 'meeting' || c.kind === 'list' ? c.title : m.text })
       }
     })
   }

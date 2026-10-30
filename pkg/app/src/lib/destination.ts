@@ -31,7 +31,7 @@ import { where } from "../where";
 export const DEFAULT_DESTINATION = "/";
 
 /** Where a sign-in with no page to go back to lands on `hostname`: the app on
- *  the apex, and the rooms' Home everywhere else. */
+ *  the apex, and the shell's Home everywhere else. */
 export function landing(hostname: string): string {
   return apex(hostname) ? DEFAULT_DESTINATION : where().home;
 }
@@ -117,7 +117,7 @@ export function door(): string {
  * Send this reader to sign in, and back to this page after.
  *
  * Every signed-out door into the app is this one call: /chat, /dev and every
- * path under them, a room. The page is written down, and the browser goes to `to`,
+ * path under them, an app. The page is written down, and the browser goes to `to`,
  * which asks IAM for an existing session before it draws a form
  * (components/auth/panel.tsx `Gate`). On a `guest` host the same address is asked for on hanzo.ai instead. With no `to`
  * the page is `door()`'s; a control that says "Sign in" names LOGIN.
@@ -145,7 +145,7 @@ export const CAMPAIGN = [
  * The sign-in address for a reader on `here`: `to`, with `here` as its `next=`
  * when that is a page worth coming back to, and the campaign `here` carries as
  * `to`'s own parameters. The page itself is written in the address too, so the
- * place (a room, a prompt in `?q=`) survives what sessionStorage does not: a new
+ * place (an app, a prompt in `?q=`) survives what sessionStorage does not: a new
  * tab, a pasted link.
  */
 export function entry(to: string, here: string): string {

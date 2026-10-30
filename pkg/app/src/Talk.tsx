@@ -1,16 +1,16 @@
 'use client'
 
-// A room, read and answered.
+// A channel, read and answered.
 //
-// The org's rooms live on /home: the rail lists them, this pane reads one, and
-// the composer answers in it. It draws the same three parts every other room on
-// this site draws — the header, the transcript, the one composer — from the
-// same components, so a room is not a second design.
+// The org's channels live on /home: the rail lists them, this pane reads one,
+// and the composer answers in it. It draws the same three parts every other
+// conversation on this site draws — the header, the transcript, the one
+// composer — from the same components, so a channel is not a second design.
 //
 // WHO SAID IT is the roster's answer (`roster.ts`). A message carries the
 // account that wrote it, and the name and face beside each row are looked up
 // there, once, for people and agents alike; an account the roster lacks is
-// printed as the id it is. The transcript is polled by `rooms.ts`, so an answer
+// printed as the id it is. The transcript is polled by `channels.ts`, so an answer
 // — a teammate's or an agent's — lands without a reload.
 //
 // WHAT YOU SAY IS DRAWN AT ONCE, in the quiet ink and without a stamp, and it
@@ -30,9 +30,9 @@ import { Face } from './cast'
 import { SpeakButton } from './speech'
 import { say } from './failure'
 import { useOpen } from './open'
-import { Beside } from './Shell'
+import { Side } from './Shell'
 import { memberOf, useMe, useRoster, type Member } from './roster'
-import { useRoomMessages, type TeamRoom } from './rooms'
+import { useMessages, type Channel } from './channels'
 import { BAD } from './lib/mix'
 
 /** The clock a transcript reads by: the time for today, the date before that. */
@@ -46,21 +46,21 @@ function when(ms: number, locale: string): string {
 }
 
 /**
- * WHAT A ROOM IS CALLED. A channel carries a name; a direct message does not —
- * its members are its name — so one falls back to the other rather than drawing
- * an empty header. The sigil is how a client DRAWS a room and is not stored, so
+ * WHAT A CHANNEL IS CALLED. An open one carries a name; a direct message does
+ * not — its members are its name — so one falls back to the other rather than
+ * drawing an empty header. The sigil is how a client DRAWS a channel and is not stored, so
  * it is added here and only where there is a name to put it on.
  */
-const titleOf = (room: TeamRoom, t: Say): string =>
-  room.name ? `#${room.name}` : room.direct ? t('Direct message') : t('Channel')
+const titleOf = (channel: Channel, t: Say): string =>
+  channel.name ? `#${channel.name}` : channel.direct ? t('Direct message') : t('Channel')
 
 /** Adds `@name ` to a draft, after a space where the draft needs one. */
 const mention = (draft: string, name: string): string =>
   `${draft && !/\s$/.test(draft) ? `${draft} ` : draft}@${name} `
 
-export function Talk({ room }: { room: TeamRoom }) {
+export function Talk({ channel }: { channel: Channel }) {
   const { t, dir, locale } = useI18n()
-  const { messages, failed, send } = useRoomMessages(room.id, room.space)
+  const { messages, failed, send } = useMessages(channel.id, channel.space)
   const { members, wrong } = useRoster()
   const me = useMe()
   const { aside, showAside } = useOpen()
@@ -70,7 +70,7 @@ export function Talk({ room }: { room: TeamRoom }) {
   const minted = useRef(0)
 
   const agents = (members ?? []).filter((one) => one.agent)
-  const title = titleOf(room, t)
+  const title = titleOf(channel, t)
   const mine = me ? memberOf(members, me) : undefined
 
   const speak = async () => {
@@ -96,9 +96,9 @@ export function Talk({ room }: { room: TeamRoom }) {
     <YStack flex={1} minH={0}>
       {/* A channel's name keeps its own order, its sigil with it, in a right-to-left page. */}
       <ChannelHeader name={dir === 'rtl' ? isolate(title) : title}>
-        {room.topic ? (
+        {channel.topic ? (
           <Text fontSize="$2" color="$soft" numberOfLines={1}>
-            {room.topic}
+            {channel.topic}
           </Text>
         ) : null}
         <Box
@@ -116,8 +116,8 @@ export function Talk({ room }: { room: TeamRoom }) {
       </ChannelHeader>
 
       <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden" p="$4" gap="$3">
-        {/* THREE STATES, AND SILENCE IS NOT ONE. A room that has not answered,
-            a room that answered with nothing, and a room that refused all read
+        {/* THREE STATES, AND SILENCE IS NOT ONE. A channel that has not answered,
+            one that answered with nothing, and one that refused all read
             differently — a pane that drew an empty list for all three would
             report an outage as an empty conversation. */}
         {failed ? (
@@ -126,7 +126,7 @@ export function Talk({ room }: { room: TeamRoom }) {
           </Text>
         ) : messages === null ? (
           <Text fontSize="$3" color="$soft">
-            {t('Reading the room.')}
+            {t('Reading the channel.')}
           </Text>
         ) : messages.length === 0 && pending.length === 0 ? (
           <Text fontSize="$3" color="$soft">
@@ -156,8 +156,8 @@ export function Talk({ room }: { room: TeamRoom }) {
           value={draft}
           onChange={setDraft}
           onSend={() => void speak()}
-          placeholder={t('Message {room}', { room: title })}
-          label={t('Message {room}', { room: title })}
+          placeholder={t('Message {channel}', { channel: title })}
+          label={t('Message {channel}', { channel: title })}
           hint={agents.length ? t('Mention an agent with @name and it answers.') : undefined}
         >
           {agents.length ? (
@@ -188,11 +188,11 @@ export function Talk({ room }: { room: TeamRoom }) {
         ) : null}
       </YStack>
 
-      {/* The frame owns the column; this is what a room puts in it when the
+      {/* The frame owns the column; this is what a channel puts in it when the
           header's Users control asks for the roster. */}
-      <Beside>
+      <Side>
         {aside === 'roster' ? <Roster members={members} wrong={wrong} onMention={name} /> : null}
-      </Beside>
+      </Side>
     </YStack>
   )
 }
@@ -247,7 +247,7 @@ function Line({
 }
 
 /**
- * Who is here, beside the room. An agent is pressable — pressing it names it in
+ * Who is here, beside the channel. An agent is pressable — pressing it names it in
  * the draft, which is how it is asked something — and a person is a person:
  * IAM publishes no route that messages one, so the row identifies rather than
  * opens.

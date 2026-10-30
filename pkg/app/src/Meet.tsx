@@ -71,7 +71,7 @@ export const AVAILABLE_MEETING_AGENTS: MeetingAgent[] = [
 interface ScheduledMeeting {
   id: string
   title: string
-  roomName: string
+  call: string
   time: string
   date: string
   duration: string
@@ -87,7 +87,7 @@ const DEFAULT_MEETINGS: ScheduledMeeting[] = [
   {
     id: 'meet-1',
     title: phrase('AI Platform Architecture & LLM Inference Sync'),
-    roomName: 'platform-architecture',
+    call: 'platform-architecture',
     time: '18:00 - 18:45',
     date: phrase('Today'),
     duration: '45m',
@@ -101,7 +101,7 @@ const DEFAULT_MEETINGS: ScheduledMeeting[] = [
   {
     id: 'meet-2',
     title: phrase('Research Review'),
-    roomName: 'research-review',
+    call: 'research-review',
     time: '20:00 - 21:00',
     date: phrase('Today'),
     duration: '60m',
@@ -114,7 +114,7 @@ const DEFAULT_MEETINGS: ScheduledMeeting[] = [
   {
     id: 'meet-3',
     title: phrase('Security & Compliance Sync'),
-    roomName: 'security-sync',
+    call: 'security-sync',
     time: '11:00 - 11:30',
     date: phrase('Tomorrow'),
     duration: '30m',
@@ -161,8 +161,8 @@ const FLOOR = 10
 
 export function Meet() {
   const { t, locale } = useI18n()
-  const [activeMeetingRoom, setActiveMeetingRoom] = useState<string | null>(null)
-  const [roomInput, setRoomInput] = useState('')
+  const [activeCall, setActiveCall] = useState<string | null>(null)
+  const [callInput, setCallInput] = useState('')
   const [copied, setCopied] = useState(false)
   const [cameraOn, setCameraOn] = useState(true)
   const [micOn, setMicOn] = useState(true)
@@ -190,7 +190,7 @@ export function Meet() {
   const localStreamRef = useRef<MediaStream | null>(null)
 
   useEffect(() => {
-    if (activeMeetingRoom) {
+    if (activeCall) {
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((t) => t.stop())
         localStreamRef.current = null
@@ -223,7 +223,7 @@ export function Meet() {
         localStreamRef.current.getTracks().forEach((t) => t.stop())
       }
     }
-  }, [cameraOn, activeMeetingRoom])
+  }, [cameraOn, activeCall])
 
   // Stop speech when meeting closes
   useEffect(() => {
@@ -234,20 +234,20 @@ export function Meet() {
 
   const startInstantMeeting = () => {
     const randomId = `hanzo-${Math.random().toString(36).slice(2, 8)}`
-    setActiveMeetingRoom(randomId)
+    setActiveCall(randomId)
   }
 
   const joinCustomMeeting = () => {
-    if (!roomInput.trim()) return
-    let clean = roomInput.trim()
+    if (!callInput.trim()) return
+    let clean = callInput.trim()
     if (clean.includes('meet.hanzo.ai/')) {
       clean = clean.split('meet.hanzo.ai/')[1].split('?')[0].split('#')[0]
     }
-    setActiveMeetingRoom(clean)
+    setActiveCall(clean)
   }
 
-  const handleCopyLink = (room: string) => {
-    const link = `https://meet.hanzo.ai/${room}`
+  const handleCopyLink = (call: string) => {
+    const link = `https://meet.hanzo.ai/${call}`
     navigator.clipboard.writeText(link)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -349,8 +349,8 @@ export function Meet() {
   // The briefing is the call's own notes, read aloud; with none there is nothing to brief.
   const handleReadBriefing = () => {
     if (!liveNotes.length) return
-    const room = activeMeetingRoom || t('this call')
-    toggle(t('Briefing for {room}. {notes}', { room, notes: liveNotes.join('. ') }), activeCoPilotAgent)
+    const call = activeCall || t('this call')
+    toggle(t('Briefing for {call}. {notes}', { call, notes: liveNotes.join('. ') }), activeCoPilotAgent)
   }
 
   // What the hands-free control says: why it cannot run, or that Hanzo's speech
@@ -400,7 +400,7 @@ export function Meet() {
           </YStack>
         </XStack>
 
-        {activeMeetingRoom ? (
+        {activeCall ? (
           <XStack items="center" gap={8} shrink={1} minW="auto" flexWrap="wrap">
             <XStack bg="$hover" rounded={8} p={2} gap={2} borderWidth={1} borderColor="$borderColor" shrink={1} minW="auto">
               {([
@@ -437,7 +437,7 @@ export function Meet() {
                 </Button>
               </View>
             ) : null}
-            <Button size="sm" onClick={() => handleCopyLink(activeMeetingRoom)}>
+            <Button size="sm" onClick={() => handleCopyLink(activeCall)}>
               {copied ? <Check size={13} /> : <Copy size={13} />}
               {t(copied ? 'Link Copied' : 'Copy meeting link')}
             </Button>
@@ -450,7 +450,7 @@ export function Meet() {
                 // settles the transcript with it.
                 if (handsFree.open) handsFree.toggle()
                 if (transcriber.open) transcriber.toggle()
-                setActiveMeetingRoom(null)
+                setActiveCall(null)
               }}
             >
               <PhoneOff size={14} />
@@ -470,7 +470,7 @@ export function Meet() {
       </XStack>
 
       {/* Main Content */}
-      {activeMeetingRoom ? (
+      {activeCall ? (
         /* Active Video Call Screen */
         <XStack flex={1} overflow="hidden" position="relative">
           {/* The stage gives way only down to what it holds, as a block box would: the grid keeps its 280px tiles. */}
@@ -481,9 +481,9 @@ export function Meet() {
                 key="stage"
                 render={
                   <iframe
-                    src={`https://meet.hanzo.ai/${activeMeetingRoom}#config.prejoinPageEnabled=false&config.startWithAudioMuted=${!micOn}&config.startWithVideoMuted=${!cameraOn}`}
+                    src={`https://meet.hanzo.ai/${activeCall}#config.prejoinPageEnabled=false&config.startWithAudioMuted=${!micOn}&config.startWithVideoMuted=${!cameraOn}`}
                     allow="camera; microphone; display-capture; autoplay; clipboard-write; speaker-selection; screen-wake-lock"
-                    title={t('Hanzo Meet: {room}', { room: activeMeetingRoom })}
+                    title={t('Hanzo Meet: {call}', { call: activeCall })}
                   />
                 }
                 width="100%"
@@ -901,8 +901,8 @@ export function Meet() {
                   render={
                     <input
                       type="text"
-                      value={roomInput}
-                      onChange={(e) => setRoomInput(e.target.value)}
+                      value={callInput}
+                      onChange={(e) => setCallInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && joinCustomMeeting()}
                       placeholder={t('Enter meeting code or link')}
                       aria-label={t('Meeting code or link')}
@@ -916,7 +916,7 @@ export function Meet() {
                   width={220}
                   px={8}
                 />
-                <Button variant="primary" size="sm" disabled={!roomInput.trim()} onClick={joinCustomMeeting}>
+                <Button variant="primary" size="sm" disabled={!callInput.trim()} onClick={joinCustomMeeting}>
                   {t('Join')}
                 </Button>
               </XStack>
@@ -1203,7 +1203,7 @@ export function Meet() {
                           setInvitedAgents(m.agents)
                           if (m.agents[0]) setActiveCoPilotAgent(m.agents[0])
                         }
-                        setActiveMeetingRoom(m.roomName)
+                        setActiveCall(m.call)
                       }}
                     >
                       <Video size={12} />
@@ -1213,7 +1213,7 @@ export function Meet() {
                       size="icon-sm"
                       aria-label={t('Copy invite link')}
                       title={t('Copy invite link')}
-                      onClick={() => handleCopyLink(m.roomName)}
+                      onClick={() => handleCopyLink(m.call)}
                     >
                       <Copy size={12} />
                     </Button>

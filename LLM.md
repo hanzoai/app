@@ -1,13 +1,13 @@
 # @hanzo/app
 
-The workspace rooms — Home, Chat, Inbox, Contacts, Meet, Cal, Drive, Board,
-Work, Bots, Settings — and the frame that holds them (Room, Shell,
-Orgs), once, for every surface. hanzo.ai and hanzo.team import them; neither
+The workspace's apps — Home, Chat, Inbox, Contacts, Meet, Cal, Drive, Board,
+Work, Bots, Settings — and the one shell that holds them (`Shell`, behind the
+`Gate`), once, for every surface. hanzo.ai and hanzo.team import them; neither
 keeps a copy. Repo `github.com/hanzoai/app`, npm `@hanzo/app`.
 
 ## Why its own package and its own repo
 
-`@hanzo/ui` is presentational: data in, events out, no fetch. The rooms are
+`@hanzo/ui` is presentational: data in, events out, no fetch. The apps are
 connected — an IAM session, an `@hanzo/ai` client, billing and plan reads — and
 bring `@hanzo/ai`, `@hanzo/voice`, `@hanzo/build`, `@hanzo/usage` and
 `@hanzo/personas`. They sit beside `@hanzo/ui` the way `@hanzo/build` does
@@ -30,10 +30,10 @@ configure({ session: keychain })
 ```
 
 ```tsx
-// Where the rooms render (client: host.tsx).
-<Rooms router={useRouter()} path={usePathname()} route={route} Link={NextLink}>
-  <Room mode="cal"><CalScheduler /></Room>
-</Rooms>
+// Where the apps render (client: host.tsx; Shell from '@hanzo/app/Shell').
+<Host router={useRouter()} path={usePathname()} route={route} Link={NextLink}>
+  <Shell mode="cal"><CalScheduler /></Shell>
+</Host>
 ```
 
 The app's addresses are paths (lib/host.ts, "The app's addresses" below): Chat
@@ -47,16 +47,16 @@ repository or a site from any surface.
 | address | hanzo.ai | hanzo.team |
 |---|---|---|
 | `site` — where the app's pages live (`/dev`, `/legal/*`, `/pricing`) | `''` | `https://hanzo.ai` |
-| `home` — the rooms' Home | `/home` | `/` |
-| `brand` — the product's name wherever a room prints it: the sidebar's wordmark, Home's and Chat's titles, the composer's placeholder, the setup, the shared page (`brand()`) | `Hanzo AI` (default) | `Hanzo Team` (`@hanzogui/shell/registry` `brandName`) |
+| `home` — the workspace's Home | `/home` | `/` |
+| `brand` — the product's name wherever an app prints it: the sidebar's wordmark, Home's and Chat's titles, the composer's placeholder, the setup, the shared page (`brand()`) | `Hanzo AI` (default) | `Hanzo Team` (`@hanzogui/shell/registry` `brandName`) |
 | `signUp` | `/signup` | `/start` |
 | `Landing`, `Signup` — the front door of a workspace rooted at `/` | — | team's components |
-| `team` — every room behind the per-seat Team plan, organizations founded through `Start` | — | `true` |
+| `team` — every app behind the per-seat Team plan, organizations founded through `Start` | — | `true` |
 | `track` — the host's own funnel call, where it boots its own tags | — (@hanzo/event's tag manager) | `lib/analytics/tags` |
 | `plans` — the first-paint plan catalogue | build data | — (the live `GET /v1/billing/plans`) |
 
-- A string a room prints that names the product reads `brand()` at render
-  time, never a literal: "Hanzo AI" written into a room is "Hanzo AI" on
+- A string an app prints that names the product reads `brand()` at render
+  time, never a literal: "Hanzo AI" written into an app is "Hanzo AI" on
   hanzo.team.
 - Plain modules read addresses through `where()` / `site()` and must import
   them from `./where`, never `./host`: `host.tsx` is `'use client'`, and a
@@ -67,7 +67,7 @@ repository or a site from any surface.
   `dev()`, `signUp()`).
 - The session is IAM's (`@hanzo/iam/react`; the host mounts `IamProvider`).
 - Copy is `@hanzo/i18n`'s, from npm, one source: nothing is vendored here, no
-  catalog of this package's own. A room takes `useI18n` from
+  catalog of this package's own. A view takes `useI18n` from
   `@hanzo/i18n/react` and passes authored English through `t()`, a name or
   address as a `{name}` argument, never concatenated. The host mounts
   `I18nProvider`; with none, `t` returns the English, so a host or a test
@@ -77,7 +77,7 @@ repository or a site from any surface.
   hanzo.ai), and translated there on local models; a string the published
   catalog lacks renders English until the next catalog release. Needs
   `@hanzo/i18n` ≥ 0.5.4 (`phrase`, `pieces`, `t` with an element argument,
-  `english` and `Say`). Dates and money a room prints take the reader's locale
+  `english` and `Say`). Dates and money an app prints take the reader's locale
   (`useI18n().locale`, `format`, `money(n, locale)`); English stays `$20` /
   `en-US`.
   - The catalog is extracted from the syntax tree, so the first argument of
@@ -106,7 +106,7 @@ repository or a site from any surface.
   Settings panel is the Appearance panel, theme row included. No theme library
   is imported.
 - Navigation to another origin (`site()` on hanzo.team) is a document load in
-  `Room`; same-origin routes go through the host's router.
+  `Shell`; same-origin routes go through the host's router.
 - A module a server page renders (`ProviderMark`) carries no `'use client'` and
   imports gui primitives from `./ui`, never `@hanzo/ui`: the root barrel would
   register its whole client surface on the route (81 KB on a model page).
@@ -123,7 +123,7 @@ repository or a site from any surface.
   only where `opens('workspace')` lets the reader in, until Google verifies the
   Drive and Gmail scopes; nobody else meets the unverified-app screen.
 
-## Rules the rooms keep
+## Rules the apps keep
 
 - The app's places are marks on its rail (Rail.tsx): Chat, Dev, Studio, Tabs,
   Library, Scheduled tasks, Customize, then More (Team, on a host of its own),
@@ -135,7 +135,7 @@ repository or a site from any surface.
   the app, and Shell's sidebar wears the product's name alone; the one Chat |
   Dev switch is a phone's bar, which has no rail. Dev's own places (New run,
   Projects, Issues, Templates: @hanzo/build `own`) are rows in Dev's sidebar
-  (Column), with no group labels. Library, Scheduled tasks and Customize each
+  (Sidebar), with no group labels. Library, Scheduled tasks and Customize each
   take the sidebar (Rail.tsx `raised`): Back (to where the reader was, Chat or
   Dev), the place's name, and its own rows — Customize's tabs Agents first
   (`tabs`), Library's Upload and kinds (`library`, the kind in the address,
@@ -194,10 +194,17 @@ repository or a site from any surface.
 - A pane is cut by `pane()` (ground.ts) on design's first paper rung,
   `--shadow-sheet-1`, over the floor's `--glass`: the second rung's drop and
   `--glass-strong` read as a gradient through a translucent pane.
-- Files go with a chat message by the paperclip or a drop on the room
+- Files go with a chat message by the paperclip or a drop on the pane
   (`lib/attach`): an image as an `image_url` part through @hanzo/ai's
   `send(text, images)` (≥ 0.6.20), a text file fenced under its name, any other
   kind refused by name.
+- A team channel is `channels.ts` over `/v1/team/channels` (HIP-0523 §2.1: a
+  list is `{channels}`, one is `{channel}`, a message names its `channel`),
+  keyed `team:<space>/<id>` and opened on Home as `?channel=`. What arrived
+  over a transport is `@hanzo/ai`'s `useInbox` (`/v1/transport/inbox`, keyed
+  `net:<key>`), answered by `POST /v1/transport/{transport}/send` with
+  `{channel: {id}}` (Inbox.tsx); a Bot answers on a transport through
+  `/v1/transport/agent` (bots/api.ts).
 
 ## A conversation's menu
 
@@ -238,9 +245,9 @@ the one conversation the pane holds).
 
 Paths below are under `pkg/app`.
 
-- `src/*.tsx` — the rooms, as `components/workspace/*` was in hanzo.ai; each is
-  a subpath (`@hanzo/app/CalScheduler`).
-- `src/bots/*` — the Bots room.
+- `src/*.tsx` — the shell and the apps, as `components/workspace/*` was in
+  hanzo.ai; each is a subpath (`@hanzo/app/CalScheduler`).
+- `src/bots/*` — the Bots app.
 - `src/lib/*` — the workspace's infrastructure, one copy for every host:
   `session`, `destination`, `api`, `ai` (useAi), `account`, `tier`, `limits`,
   `plans`, `pay` (the pay site and money, apart from the plan catalogue), `share`, `coding`, `todo`, `durable`, `tags`, `host` (estate routing and the app's addresses),
@@ -258,8 +265,8 @@ Paths below are under `pkg/app`.
   `superAdmin()` is @hanzo/iam's `superAdmin(claims)` (hanzoai/authz
   `Claims.Sudo`): a person whose `orgs[0].org` is `admin`, never a program and
   never an empty home shifted onto a later entry. No copy of the rule lives here.
-- The chooser is `Orgs.tsx` `Pick`: on arrival with several orgs and none picked,
-  or over the room when `choose()` fires (the account menu's All organizations).
+- The chooser is `Gate.tsx` `Pick`: on arrival with several orgs and none picked,
+  or over the app when `choose()` fires (the account menu's All organizations).
   Rows are the token's orgs with IAM's rows beside them (`GET
   /v1/iam/organizations`: the first page carries all of one's own) — the mark
   (@hanzo/ui `Avatar`: IAM's avatar, emoji or logo, else the initial in the
@@ -274,10 +281,10 @@ Paths below are under `pkg/app`.
   by cursor, each row stepped into through `support()` (IAM `assume`, audited).
   An organization's mark is its IAM row alone: Hanzo's H is `admin/hanzo`'s
   `avatar`, never drawn here for a brand.
-- `Chrome` is the one bar over a focused page, imported from the
-  `@hanzo/app/Chrome` subpath and never the root: the root loads in plain
-  Node, and the UI packages Chrome pulls in do not. It stands over the chooser and
-  every gate screen (`Orgs.tsx` `Page`, once someone is signed in; "Signing you
+- `Header` is the one bar over a focused page, imported from the
+  `@hanzo/app/Header` subpath and never the root: the root loads in plain
+  Node, and the UI packages Header pulls in do not. It stands over the chooser and
+  every gate screen (`Gate.tsx` `Page`, once someone is signed in; "Signing you
   in" stands alone), and the host's own focused pages (the way in, the way to
   pay, a beta application), none of which draws a bar of its own. Sticky, 60px
   under the notch, `header[data-slot="masthead"]`, its side the page's gutter
@@ -312,8 +319,8 @@ Paths below are under `pkg/app`.
   it (loaded when the tab opens).
 - `src/lib/terms.ts` — the Terms and AUP versions (`POLICY`), the one copy:
   hanzo.ai's legal pages print them, every sign-up card records them.
-- `assets/` — the files the rooms name by path: the cast's portraits
-  (`assets/agents`, `/agents/<id>.png` in `cast.tsx`), the Bots room's
+- `assets/` — the files the apps name by path: the cast's portraits
+  (`assets/agents`, `/agents/<id>.png` in `cast.tsx`), the Bots app's
   avatars (`assets/bots`) and the personas roster (`assets/personas`, written
   by `scripts/team.mjs` at build and ignored by git: `index.json` lists every
   figure, `<slug>.md` is a figure's PERSONA.md where one is written). A host
@@ -337,7 +344,7 @@ reopens. Retired addresses — `/?at=`, `/?chat=`,
 `/dev?run=|project=|view=|at=`, and the builder's own grammar under /dev that
 0.1.35–0.1.38 wrote (`/dev/sess_<id>`, `/dev/-/<place>`, `/dev/<org>/<repo>`,
 `/dev/<slug>`) — are moved to their paths by the host before `App` draws
-(hanzo.ai `app/_door.tsx` `moved`); nothing here reads them. The rooms' own links to hanzo.team's
+(hanzo.ai `app/_door.tsx` `moved`); nothing here reads them. The apps' own links to hanzo.team's
 /chat (`/chat?q=`, `/chat?thread=`) are that app's addresses and stay as they
 are.
 
@@ -373,10 +380,10 @@ package whose version npm does not serve, the contract before the app.
 The shared composer now exposes **Usage** in Chat, Dev and Studio (`src/Usage.tsx`). It combines explicitly estimated context, API-reported last-response tokens, organization-scoped 30-day account totals, plan windows, and links to Upgrade / Buy credits. See all usage opens Settings → Usage, also directly available in the account menu. The host Settings usage page shows tokens, requests and spend for every plan. `lib/served.ts` observes streamed/JSON usage without consuming responses; `lib/tokens.ts` isolates last-turn counts by IAM subject, organization, model and transcript. Never label estimates as reported usage or substitute zero for unavailable reads.
 
 The plan is named, read and drawn once, in @hanzo/build (≥ 0.2.53), and the
-rooms mount it: `label` names a plan by family with its rung as a small tag
+apps mount it: `label` names a plan by family with its rung as a small tag
 (`max-20x` reads Max, 20x; never a slug or an id), `useStanding` reads the
 tier, the limits, the free allowance and the balance, `Meter` leads the
-account menu's account row › (`Me`, the one account menu), `Plan` is
+account menu's account row › (`Account`, the one account menu), `Plan` is
 Settings → Usage and `Credits` is Settings → Billing. A plan's meter is its
 session, day and month as shares, never money; Free reads the free allowance
 left today; only an account with no plan and money in its balance sees the
@@ -423,7 +430,7 @@ whole. The model asks for no lookups of its own.
   the reader's languages.
 - What was found goes at the END OF THE LEADING SYSTEM TURN, between random
   markers. Not a system turn of its own: hanzoai/ai's text pipeline keeps only
-  the last system turn and would drop the room's. Not the user turn: `enso-auto`
+  the last system turn and would drop the conversation's. Not the user turn: `enso-auto`
   routes on `lastUserText`. The empty-answer re-ask rides there too.
 
 ## Voice
@@ -476,7 +483,7 @@ list falls to `served`. A model's class and family are the catalog's fields,
 never read from its id. A premium pick holds for the conversation and is never
 kept (`usePick`); Settings' default picker writes the same choice and offers no
 premium model. A paid plan's pick is not gated: the gateway refuses or answers
-from Enso, and the room shows that. The live web rides a turn whose model the
+from Enso, and the conversation shows that. The live web rides a turn whose model the
 catalog files under Enso or Zen (`house`).
 
 ## Chat and Dev are drawn alike
@@ -486,7 +493,7 @@ catalog files under Enso or Zen (`house`).
   person's composer setting says (the key that sends, the chips, the model
   selector, the mode; Chat's defaults hide the chips and the mode): the field on top ("Type /
   for skills"), then one row — `+` at the start and what the conversation
-  carries as chips (who is in the room, the skills on, Research, Plan), and at
+  carries as chips (who is in the conversation, the skills on, Research, Plan), and at
   the end dictation (the mic and its menu: the microphones with a live level,
   Dictation settings, Language) and one round button that is voice mode while
   the draft is empty, send with words, stop while a turn runs. Under the frame,
@@ -500,7 +507,7 @@ catalog files under Enso or Zen (`house`).
   `Act`): open goes to what it names, send is sent here at once (`submit`),
   task is handed to Dev (`hand`, which Dev's New `taken`s and starts), schedule
   is made (`book`) and opened in Scheduled tasks; a send pressed in Dev arrives
-  here the same way and is sent once the room is a new chat. `/` lists the
+  here the same way and is sent once the conversation is a new chat. `/` lists the
   skills above the frame. As wide as the words above it (`measure`); cut as a
   pane in the app's frame. At rest the frame is two rows, a line of text and
   the tools, and grows with the text. The opening above it is one line,
@@ -511,7 +518,7 @@ catalog files under Enso or Zen (`house`).
 - `+` (@hanzo/build `Plus`): Upload or add files (Ctrl+U), Agents ›
   (`useAgentShelf`: the org's agents, the cast first; a pick seats or unseats
   one; Create agent opens `Hire`), Skills › (the org's active skills; a pick
-  puts its SKILL.md in the room's system turn), Plugins › (@hanzo/build
+  puts its SKILL.md in the conversation's system turn), Plugins › (@hanzo/build
   `usePlugins`: what runs for this person — Work in a project, Deep research,
   Sketch, Template Creator, Presentations, PDF; `@` lists the same), then
   Research (the Deep research plugin: a Hanzo model plans the searches, the
@@ -537,17 +544,17 @@ catalog files under Enso or Zen (`house`).
   artifact rendered from its own bytes, a file or an address. A tab can be
   pinned (`Deck.pin`): it leads the strip and closes only on purpose. Tabs, order and the chosen one are kept per
   conversation (`useDeck`, `chat:<channel>`); open or shut is kept on a laptop
-  (`hanzo.side.chat.open`), where the frame's column holds it (`Beside`), and a
+  (`hanzo.side.chat.open`), where the frame's column holds it (`Side`), and a
   phone opens it over the whole window. The header's Panel button and ⌘. /
   Ctrl+. toggle it.
-- The column is @hanzo/build's `useSplit` (Paned), the one Dev's run stands its
+- The column is @hanzo/build's `useSplit` (`Split`), the one Dev's run stands its
   panel in. Its edge is @hanzo/build's `Gutter` (the kit's `Grip` with its
   inline bar, centred in the gutter, drawn only while reached for), the same
   one the sidebar's edge uses; the width is the person's, kept in
   their preferences (`side.width`, `PATCH /v1/pref`, read by the `PrefsProvider`
   App mounts, one document for Chat and Dev; without one, as in hanzo.team's
   shell, it lasts the page). Pulled over the conversation the column takes its
-  room, the conversation hidden and never unmounted, until the strip's Show chat
+  place, the conversation hidden and never unmounted, until the strip's Show chat
   or a pull back out; the strip's full-screen button puts the panel over the
   window and Escape returns. A drag writes two elements a frame, no React commit.
   An answer that finishes writing a page while the panel is open opens it there.
@@ -581,7 +588,7 @@ catalog files under Enso or Zen (`house`).
 
 `@hanzo/app/App` is the web app as the whole window: the rail, the sidebar,
 Chat and Dev, moved by the path (`place`) and written back with `go`. A host
-mounts IamProvider and `<Rooms>` with its router and `path`, and draws `App`
+mounts IamProvider and `<Host>` with its router and `path`, and draws `App`
 for a signed-in reader; the signed-out page is the host's. hanzo.ai's `/` and
 the desktop app's main window draw this one component, so a change here
 reaches both. The desktop's router is `history` itself: `go` writes it and the
@@ -599,10 +606,10 @@ reference captures; outer window, inner panel):
     [⋯]                       │╰─────────────────────────────────────────╯
     [me]
 
-- OUTER: the rail (Rail.tsx) and the sidebar (Column.tsx) stand on the floor,
+- OUTER: the rail (Rail.tsx) and the sidebar (Sidebar.tsx) stand on the floor,
   no fill, no edge. INNER: the content is one rounded panel (`pane()`), inset
   from the window's edges and from the sidebar by `--pane-gap`; Chat's tabs
-  are a second panel beside it (Paned), Dev's run floats its own two.
+  are a second panel beside it (`Split`), Dev's run floats its own two.
 - The rail, one order: Chat, Dev, Studio (@hanzo/studio, the app's third mode
   at /studio), Library, Scheduled tasks, Customize, then More (Tabs, Team: the
   products on hosts of their own; on a phone the three places lead it), the
@@ -625,7 +632,7 @@ reference captures; outer window, inner panel):
   ⌘K / Ctrl+K from anywhere), New chat or Dev's places, then Pinned and
   Recents as plain 14px titles on a 31px pitch — no dates, no icons; a run's
   state is a dot at its end. The Recents view menu stands at the heading's end.
-- The account menu (Me.tsx) is the one account menu: the rail's face draws it
+- The account menu (Account.tsx) is the one account menu: the rail's face draws it
   for Chat, Dev and Studio, and the shell's sidebar foot for every other app
   (`Who`, the host's person, org, api, token and sign-out). @hanzo/ui's
   DropdownMenu, top to bottom: the account row (face, name, email) whose ›
@@ -657,7 +664,7 @@ reference captures; outer window, inner panel):
   conversation's address to /chat.
 - The transcript reads at the reference's type (Prose.tsx): a 16px body on a
   24px line, headings 28/24/20.
-- A phone has neither rail nor sidebar (under gui's `md`): its bar (Top.tsx,
+- A phone has neither rail nor sidebar (under gui's `md`): its bar (Bar.tsx,
   the owner's iPhone reference) is three glass pieces on one 48px line under
   the device's top inset — a 44px circle that opens the sidebar as a drawer
   (below); the 158×48 pill Chat | Dev, which
@@ -673,7 +680,7 @@ reference captures; outer window, inner panel):
   in sight (slide.ts `OPEN`). The menu is the column: head, the mode's rows, the
   places as rows (Rail `rows`: Studio, Tabs, More led by Library, Scheduled tasks
   and Customize; Chat and Dev are the bar's), Pinned and Recents, and the foot
-  (`Foot`): the account's face (`Me` `above`) and the accent New chat pill
+  (`Foot`): the account's face (`Account` `above`) and the accent New chat pill
   (`--accent`). It is a modal dialog: everything else in the window `inert`,
   focus in on open and back to the opener on shut, Escape closes unless a menu it
   opened holds the focus, a tap on the strip or a pull toward the start closes
@@ -692,9 +699,10 @@ reference captures; outer window, inner panel):
   var(--view-height, 100dvh)`. The stage's foot is the home indicator's inset
   while the keyboard is down (`FOOT`). A pinch zoom is not followed. Every
   descendant reads `--keyboard` (px the keyboard takes, 0 when down).
-- What a person reads calls these apps, and a team's conversation spaces
-  channels; "room" is a name in the code only (the package, `Room`, `rooms.ts`,
-  `useRooms`, the `rooms` card kind), kept for the @hanzo/apps rename.
+- What a person reads and the code both call these apps, and a team's
+  conversations channels (HIP-0523): the shell is `Shell`, a team channel is
+  `channels.ts` `Channel` (`useChannels`, `useMessages`), the network a message
+  arrives over is a transport (HIP-1066).
 
 ## Previews: `@hanzo/app/TeamPreview`, `@hanzo/app/preview`
 
@@ -730,13 +738,14 @@ builds the deck and the model, Sal sends four intros and books a meeting
 books interviews (#hiring); Mark's post is cut and translated, the checklist
 closes in a huddle, and it goes live (#launch); Vi closes the day (#general).
 Then the switcher flips to Friday Club, where friends build a recipe app and
-Vi books game night. A message to a room out of view leaves it unread, and that
-is what the next room is opened by. `pace` derives every wait from what came
-before (the reading time of a message and its card, the typing, a room just
-opened), and `frame` folds the events up to a beat into the whole screen, so
-the component keeps no script state and every room holds at most 14 messages.
+Vi books game night. A message to a channel out of view leaves it unread, and
+that is what the next channel is opened by. `pace` derives every wait from what
+came before (the reading time of a message and its card, the typing, a channel
+just opened), and `frame` folds the events up to a beat into the whole screen,
+so the component keeps no script state and every channel holds at most 14
+messages.
 
-Pressing an org or a channel plays that room's own scene (`SCENE`); a draft's
+Pressing an org or a channel plays that channel's own scene (`SCENE`); a draft's
 Send, a question's answer and a design option answer a press; a thread opens
 from its reply count. From the first press nothing loops over the reader. A
 reader who asked for less motion, the server and the first paint get `STILL`:
@@ -753,7 +762,7 @@ or Supervised, which the reader can flip: the app's Auto and Manual, "pauses
 only for anything risky" against "asks before each tool, connector or site";
 spending limits hold either way), **Needs a person** (`waiting`: a draft not
 sent, a question not answered, a pull request under review, and, supervised,
-every agent's work no person has answered yet in its room), the org's
+every agent's work no person has answered yet in its channel), the org's
 **mission** (`MISSIONS`, its steps done by `step` events, a bar and "n of m"),
 **Handoffs** (every mention one teammate makes of another, newest first, with
 its time) and the agents' **spending limits** (`LIMITS`, a weekly cap and the
@@ -786,9 +795,9 @@ whole script, still, and nothing plays), and what a host passes,
   its own width: the desktop app from 600px, the phone's below);
 - `phone` (the phone app whatever the width).
 
-## The palette
+## The search
 
-ONE search (Palette.tsx, its decisions in seek.ts): the sidebar's search,
+ONE search (Search.tsx, its decisions in seek.ts): the sidebar's search,
 ⌘K / Ctrl+K from anywhere (a field included; `summons`), which toggles it, in
 Chat, Dev and Studio, and in the workspace frame (Shell) its bar's Search and
 ⌘K. No other search box: the Recents filter and the old `Find`

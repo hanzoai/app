@@ -39,8 +39,8 @@ import { useI18n } from '@hanzo/i18n/react'
 import type { Say } from '@hanzo/i18n'
 import { useAi } from './lib/ai'
 import { empty, useOpen } from './open'
-import { attach, channel } from './pane'
-import { useRooms } from './host'
+import { attach, conversation } from './pane'
+import { useHost } from './host'
 import { org } from './lib/session'
 import { Badge, Contents, Hits } from './Contents'
 import { Editor } from './Editor'
@@ -239,8 +239,8 @@ export function Drive() {
   const { client } = useAi()
   const { user, isAuthenticated } = useIam()
   const ready = Boolean(client && isAuthenticated)
-  const { bucket, openBucket, room } = useOpen()
-  const { router } = useRooms()
+  const { bucket, openBucket, channel } = useOpen()
+  const { router } = useHost()
   const { currentOrg } = useOrganizations()
   const workspace = currentOrg?.displayName || currentOrg?.name || 'hanzo'
   // THE WORKSPACE'S BUCKET is the one named for the org: where a file put into a
@@ -422,10 +422,10 @@ export function Drive() {
     (f: WorkFile) => {
       if (!client) return
       empty()
-      attach(channel({ room, thread: null, agent: null }), [f], { api: client, org: scope })
+      attach(conversation({ channel, thread: null, agent: null }), [f], { api: client, org: scope })
       router.push('/chat')
     },
-    [client, room, scope, router],
+    [client, channel, scope, router],
   )
 
   // WHAT IS AT THIS LEVEL. The store's listing takes `recursive`; passing

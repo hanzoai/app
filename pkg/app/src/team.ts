@@ -3,7 +3,7 @@
 // Each member's file is who they are and what the model is told, word for word:
 // the front matter names them (`Dev`) and gives their part (`Engineer`), and the
 // body is the system prompt. The files are read from the pinned package at
-// build (scripts/team.mjs), so the rooms keep no copy of a persona: moving the
+// build (scripts/team.mjs), so the apps keep no copy of a persona: moving the
 // pin is how a persona changes.
 //
 // Every member the package publishes, in the order the crew is drawn in

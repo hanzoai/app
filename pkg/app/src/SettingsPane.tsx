@@ -1,7 +1,7 @@
 'use client'
 
-// The room while a settings row is open: every section's screen (Settings.tsx
-// holds the rows). Loaded when a row is chosen, never with the room.
+// The pane while a settings row is open: every section's screen (Settings.tsx
+// holds the rows). Loaded when a row is chosen, never with the shell.
 
 import { useMemo, useState } from 'react'
 import { phrase } from '@hanzo/i18n'
@@ -45,9 +45,9 @@ import { named, ROWS } from './Settings'
 const CHOICE = { rounded: 8, borderWidth: 1, borderStyle: 'solid', cursor: 'pointer' } as const
 
 /**
- * The room, while a settings row is open.
+ * The pane, while a settings row is open.
  *
- * It scrolls itself, the way the column beside a room does: `main` gives its
+ * It scrolls itself, the way the side beside a pane does: `main` gives its
  * child a floor and no overflow, so a pane that did not would push the whole
  * shell down the page.
  */
@@ -292,7 +292,7 @@ function Model() {
 }
 
 /**
- * WHAT THE GATEWAY SERVES, read from the same `/v1/models` the rooms read.
+ * WHAT THE GATEWAY SERVES, read from the same `/v1/models` the apps read.
  *
  * Counted, never typed: the catalog moves without this file, so a number written
  * here is wrong by the next deploy. An empty answer says the account reaches

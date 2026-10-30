@@ -1,11 +1,12 @@
 'use client'
 
-// The directory: who is in this org, and who you can put in a room.
+// The directory: who is in this org, and who you can put in a conversation.
 //
 // IT IS A LIST OF SUBJECTS AND NOTHING ELSE. People, the org's agents, and the
 // presets an org can install as one. It holds no conversations, keeps no
-// threads, and remembers nothing of its own — the rooms it starts live in the
-// thread store with every other conversation, which is `conversations.ts`.
+// threads, and remembers nothing of its own — the conversations it starts live
+// in the thread store with every other conversation, which is
+// `conversations.ts`.
 //
 // WHAT IT USED TO DO. Four `localStorage` keys: a roster of people it invented,
 // a list of agents it invented, a set of `direct_…`/`group_…`/`call_…` threads
@@ -20,19 +21,20 @@
 //   presets  GET  /v1/agent/chat/presets              (the catalog, public)
 //   invite   POST /v1/iam/invitations                 (`createInvitation`)
 //   agent    POST /v1/agents                          (`Hire`, the crew's sheet)
-//   room     POST /v1/agents/chat/conversations       (`start`)
+//   thread   POST /v1/agents/chat/conversations       (`start`)
 //
 // THERE IS NO CALL CONTROL, because there is no call. Measured against the
 // platform's own contract — 1629 paths in /v1/openapi.json — nothing serves
-// signalling, an SFU, a room token or a TURN credential. A button that says
+// signalling, an SFU, a call token or a TURN credential. A button that says
 // Call and opens a chat is worse than no button: it reports a thing that did
-// not happen. When the estate serves a call, the room it attaches to is the one
-// `start` already writes, and this file gains a verb rather than a store.
+// not happen. When the estate serves a call, the conversation it attaches to is
+// the one `start` already writes, and this file gains a verb rather than a
+// store.
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
-import { useRooms } from './host'
+import { useHost } from './host'
 import { Check, Plus, Search, UserPlus } from 'lucide-react'
 import { Box, Text, XStack, YStack } from '@hanzo/ui'
 import { useAi, useModels, usePeople, useThreads } from '@hanzo/ai/react'
@@ -63,8 +65,8 @@ interface Preset {
  *
  * `name` is the handle the platform knows — an agent's name, a person's login —
  * and `label` is what a reader is shown. They differ for a person and agree for
- * an agent, and keeping both is what lets a row be pressed into a room without
- * the room having to look anybody up again.
+ * an agent, and keeping both is what lets a row be pressed into a conversation
+ * without the conversation having to look anybody up again.
  */
 interface Entry {
   key: string
@@ -115,7 +117,7 @@ export function Contacts() {
   return <Roster owner={currentOrgId} />
 }
 
-/** The room's one heading, for every state that has nothing to list. */
+/** The app's one heading, for every state that has nothing to list. */
 function Alone({ children }: { children: React.ReactNode }) {
   const { t } = useI18n()
   return (
@@ -148,14 +150,14 @@ function Note({ children }: { children: string }) {
 function Roster({ owner }: { owner: string }) {
   const { t } = useI18n()
   const ai = useAi()
-  const { router } = useRooms()
+  const { router } = useHost()
   const { people, loading: reading, error: unread } = usePeople({ owner, service: false })
   // `create` and not `ai.agents.create`: the hook's own writer refreshes the
   // list it read, which is what moves an installed preset out of the catalog
   // and into the org's agents without a reload.
   const { agents, create, loading: gathering, error: ungathered } = useCrew()
   // WHAT "RECENTLY" MEANS: the conversations this reader has. It is the same
-  // read the sidebar makes, and the only record of who a room was with.
+  // read the sidebar makes, and the only record of who a conversation was with.
   const { threads } = useThreads()
   // An installed preset needs a model, and `POST /v1/agents` refuses one this
   // deployment does not serve — so it is named against the served catalog by
@@ -267,7 +269,7 @@ function Roster({ owner }: { owner: string }) {
   )
 
   /**
-   * INTO A ROOM, by the one call that starts one.
+   * INTO A CONVERSATION, by the one call that starts one.
    *
    * One selected is a direct conversation, several is a group, and a group of
    * agents or a mix of both is the same act — nothing here branches on how many
@@ -279,7 +281,7 @@ function Roster({ owner }: { owner: string }) {
       .filter((one): one is Entry => Boolean(one))
       .map((one) => ({ id: one.key, name: one.label || one.name, agent: one.kind === 'agent' }))
     if (members.length === 0 || busy) return
-    setBusy('room')
+    setBusy('conversation')
     setWrong(null)
     try {
       const id = await start(ai, members)
@@ -424,7 +426,7 @@ function Roster({ owner }: { owner: string }) {
           </Text>
           <Control onPress={() => setPicked([])}>{t('Clear')}</Control>
           <Control onPress={() => void enter()} strong>
-            {t(busy === 'room' ? 'Opening…' : 'Start conversation')}
+            {t(busy === 'conversation' ? 'Opening…' : 'Start conversation')}
           </Control>
         </XStack>
       ) : null}
@@ -487,7 +489,7 @@ function Row({
   )
 }
 
-/** A named control. One shape for every button in this room. */
+/** A named control. One shape for every button in this app. */
 function Control({
   children,
   onPress,

@@ -12,7 +12,7 @@ import { Text, View, XStack, YStack } from '@hanzo/ui'
  * where each one leads are here, so the two cannot drift.
  *
  * Every sentence states something the product does: organizations and channels
- * (the switcher, the rooms), agents with roles and spending limits (an agent's
+ * (the switcher, the channels), agents with roles and spending limits (an agent's
  * settings: a period cap and the most one task may spend, docs "Budgets"),
  * agents handing work to agents (Hanzo Bot's multi-agent sessions), and the
  * approval mode (Auto, which the app also calls autonomous, or Manual,

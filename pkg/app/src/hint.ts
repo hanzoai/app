@@ -16,7 +16,7 @@ export interface HintActions {
  *         if external, opens in a new tab;
  *         if another app route, navigates via go;
  *         fallback: submits row title as query.
- * - send / task: submits prompt or title directly into the chat room.
+ * - send / task: submits prompt or title directly into the conversation.
  * - schedule: books automation or falls back to submitting the prompt.
  */
 export function handleHint(a: Act, row: Hint | undefined, actions: HintActions): void {

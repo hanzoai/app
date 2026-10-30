@@ -5,16 +5,17 @@
  * hanzo.ai is the site for a stranger and the app for a member: the web app is
  * /chat and /dev once signed in, and `/` takes a member to the mode they were
  * last in. hanzo.team is the workspace, its own app (hanzo-apps/team) with Home
- * at its root. This export still carries the rooms, so a room asked for on the
- * apex is sent to the same room on hanzo.team, and `output: 'export'` has no
- * server to do that, so it is decided in the browser off the hostname, here.
+ * at its root. This export still carries the workspace's apps, so an app asked
+ * for on the apex is sent to the same app on hanzo.team, and `output: 'export'`
+ * has no server to do that, so it is decided in the browser off the hostname,
+ * here.
  *
  * Two predicates, one per product: `apex()` for the app, `team()` for the
  * workspace. Every host that is neither (localhost, a preview) draws the whole
  * workspace and admits the way the apex does.
  */
 
-import APP from './rooms.json' with { type: 'json' }
+import ROUTES from './routes.json' with { type: 'json' }
 import { href, parse, path, route, SESSION, SLUG } from '@hanzo/build/route'
 import { site } from '../where'
 import { BETAS } from './betas'
@@ -183,7 +184,7 @@ const REPO = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}\/[A-Za-z0-9][A-Za-z0-9._-]{0,63}$
 
 /**
  * Dev opened on one run, repository or site, from anywhere: every "Try Hanzo
- * Dev" link, a room's Dev, the console's "open in the builder". It signs a
+ * Dev" link, the rail's Dev, the console's "open in the builder". It signs a
  * stranger in on the way (app/(app)/dev/_door.tsx), and is reached through
  * `site()`: here on hanzo.ai, across to hanzo.ai from hanzo.team. Only a value
  * that is exactly a session id, a repository or a site's slug is carried;
@@ -207,7 +208,7 @@ export function go(address: string, replace = false): void {
   }
 }
 
-/** The host's router, as far as moving to a page goes (`useRooms().router`). */
+/** The host's router, as far as moving to a page goes (`useHost().router`). */
 interface Router {
   push(href: string): void
   replace(href: string): void
@@ -250,39 +251,39 @@ export function resume(): string {
 const KEPT = new Set(['/chat', '/chat/shared', '/dev'])
 
 /**
- * The workspace's rooms: every route under app/(app) the apex does not keep.
+ * The workspace's apps: every route under app/(app) the apex does not keep.
  *
- * Derived from the tree `scripts/sync-rooms.mjs` walks, so a room added under
- * app/(app) lives on hanzo.team unless the apex names it above.
+ * Derived from the routes hanzo.ai keeps under app/(app) (routes.json), so an
+ * app added there lives on hanzo.team unless the apex names it above.
  */
-export const ROOMS: readonly string[] = APP.filter(
+export const APPS: readonly string[] = ROUTES.filter(
   (path) => !KEPT.has(path) && path !== SETTINGS && !path.startsWith(`${SETTINGS}/`),
 )
 
-/** The apex's hosts, where the app is served and the rooms are not. */
+/** The apex's hosts, where the app is served and the workspace's apps are not. */
 export const APEX: readonly string[] = ['hanzo.ai', 'www.hanzo.ai']
 
 /** Whether a host is the apex. */
 export const apex = (hostname: string): boolean => APEX.includes(hostname)
 
-/** Whether a host is the workspace's own, where every room asks for a paid plan. */
+/** Whether a host is the workspace's own, where every app asks for a paid plan. */
 export const team = (hostname: string): boolean => hostname === 'hanzo.team' || hostname === 'www.hanzo.team'
 
-/** Whether an address on this export, query and all, opens one of the workspace's rooms. */
-export function room(address: string): boolean {
+/** Whether an address on this export, query and all, opens one of the workspace's apps, which leave the apex. */
+export function leaves(address: string): boolean {
   const path = address.split(/[?#]/)[0].replace(/\/+$/, '') || '/'
-  return ROOMS.includes(path)
+  return APPS.includes(path)
 }
 
 /**
  * Where an address belongs when it is asked for on `hostname`: on a `guest`
- * alias, the same address on hanzo.ai, because every room signs in and a guest
- * host cannot; on the apex, the same room and query on the workspace; otherwise
- * null. Home is the workspace's root, so /home?room=x lands on /?room=x.
+ * alias, the same address on hanzo.ai, because every app signs in and a guest
+ * host cannot; on the apex, the same app and query on the workspace; otherwise
+ * null. Home is the workspace's root, so /home?channel=x lands on /?channel=x.
  */
 export const away = (hostname: string, address: string): string | null => {
   if (guest(hostname)) return SIGNIN + address
-  if (!apex(hostname) || !room(address)) return null
+  if (!apex(hostname) || !leaves(address)) return null
   const home = address.match(/^\/home\/?(?=[?#]|$)/)
   return home ? `${WORKSPACE}/${address.slice(home[0].length)}` : `${WORKSPACE}${address}`
 }

@@ -5,7 +5,7 @@
 // Every piece here comes from `@hanzo/ui/agents` and every fact from
 // `@hanzo/ai`. This file is arrangement — it owns no pixels and no transport,
 // which is the test of whether the lift actually landed: a stranger with the
-// two packages can assemble this room, and a channel workspace will assemble
+// two packages can assemble this app, and a channel workspace will assemble
 // the same one from the same parts.
 //
 // THE BOARD IS A TREE, not a list. `sessions.list` answers ROOT sessions only,
@@ -165,7 +165,7 @@ function Watching({ idle }: { idle?: ReactNode }) {
         // the 316px left after the rail and the sidebar, so the pane beside it
         // was 32px wide and the run itself was unreadable — a narrow strip with
         // a rule down it, which is what a squeezed column looks like. Above
-        // 1024 there is room for both; below it the board is a strip across the
+        // 1024 there is space for both; below it the board is a strip across the
         // top and the run has the whole width under it.
         //
         // STATE THE VALUE, NEVER `undefined`. gui emits nothing for an

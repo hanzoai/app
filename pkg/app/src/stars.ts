@@ -1,6 +1,6 @@
 'use client'
 
-// The rooms this reader has starred.
+// The channels this reader has starred.
 //
 // It lived inside the channel header, so the star it drew was the only thing in
 // the app that knew about it: you starred a channel and nothing anywhere changed
@@ -15,17 +15,15 @@
 import { useCallback, useEffect, useState } from 'react'
 
 /**
- * One store, two shortlists. A room and a project are both things a reader
+ * One store, two shortlists. A channel and a project are both things a reader
  * pins, and they are pinned the same way — but they are not the same list, so
  * the kind names the key rather than the two sets sharing one and colliding on
- * an id that happens to match a room's title.
- *
- * `rooms` keeps the key it already had, so nobody's stars move.
+ * an id that happens to match a channel's title.
  */
 const keyOf = (kind: string) => `hanzo.starred-${kind}`
 
-/** How a room is written wherever a person reads it — a sigil and the name.
- *  One formula, because the header and the sidebar star the same room and a
+/** How a channel is written wherever a person reads it — a sigil and the name.
+ *  One formula, because the header and the sidebar star the same channel and a
  *  second spelling of its title would star two different things. */
 export const titleOf = (name: string, direct?: boolean): string =>
   `${direct ? '@' : '#'} ${name}`
@@ -39,7 +37,7 @@ const read = (kind: string): Set<string> => {
 }
 
 /**
- * The starred rooms, and the toggle that sets them.
+ * The starred channels, and the toggle that sets them.
  *
  * Read in an effect rather than in the initialiser, because storage is a fact
  * only the browser holds and reading it during the render that hydrates is how
@@ -49,7 +47,7 @@ const read = (kind: string): Set<string> => {
  * the sidebar in the same tick: two components, one set, no prop threaded
  * between them through the four components that separate them.
  */
-export function useStarred(kind = 'rooms'): [Set<string>, (id: string) => void] {
+export function useStarred(kind = 'channels'): [Set<string>, (id: string) => void] {
   const [starred, setStarred] = useState<Set<string>>(new Set())
 
   useEffect(() => {
@@ -85,7 +83,7 @@ export function useStarred(kind = 'rooms'): [Set<string>, (id: string) => void] 
 
 /**
  * The conversations starred in this browser before a pin was the server's
- * (@hanzo/rooms 0.1.36 stopped reading the set), made pins once. Each is asked
+ * (0.1.36 of this package stopped reading the set), made pins once. Each is asked
  * for as a pin through `pin`; once the store has taken any of them the stars
  * are forgotten, and a store that takes none — one without the route yet —
  * leaves them for a later visit. Answers whether they were carried.

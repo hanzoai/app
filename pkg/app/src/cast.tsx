@@ -47,9 +47,9 @@ interface Role {
    * voice id, sent to /v1/audio/speech as it is. The first letter is the accent
    * (a American, b British), the second the register (f female, m male).
    *
-   * ONE VOICE PER CHARACTER, and never two who would be in the same room. A
-   * house part shares the voice of the character whose face it wears, so Hanzo
-   * Coder sounds like Dev; no two characters share one.
+   * ONE VOICE PER CHARACTER, and never two who would be in the same
+   * conversation. A house part shares the voice of the character whose face it
+   * wears, so Hanzo Coder sounds like Dev; no two characters share one.
    *
    * CAST, NOT COPIED. These are the speech service's own voices, chosen for fit
    * — a playful reader for the physicist, something low and measured for the
@@ -107,14 +107,14 @@ export const join = (names: string[], t: Say = english): string =>
   names.length < 2 ? (names[0] ?? '') : t('{names} & {last}', { names: names.slice(0, -1).join(', '), last: names[names.length - 1] })
 
 /**
- * The room's system turn.
+ * The conversation's system turn.
  *
  * One person's brief rides as it is, under their name. Several ride together:
- * who is in the room, who answers — the ones the user names, or everyone when
- * nobody is named (Chat.tsx `addressed` draws the same rule) — the one rule that
- * lets a reader tell them apart — each contribution opens with a name and a
- * colon — and then each brief under its name. Null for a room with nobody to
- * describe, which is the plain model.
+ * who is in the conversation, who answers — the ones the user names, or
+ * everyone when nobody is named (Chat.tsx `addressed` draws the same rule) —
+ * the one rule that lets a reader tell them apart — each contribution opens
+ * with a name and a colon — and then each brief under its name. Null for a
+ * conversation with nobody to describe, which is the plain model.
  */
 export function brief(cast: { name: string; says: string | null }[]): string | null {
   if (!cast.length || cast.every((one) => !one.says)) return null
@@ -129,12 +129,12 @@ export function brief(cast: { name: string; says: string | null }[]): string | n
   ].join('\n\n')
 }
 
-/** The first line of a room's system turn: who is in the conversation, by name. */
+/** The first line of a conversation's system turn: who is in it, by name. */
 const ROSTER = 'Agents in this conversation: '
 
 /**
  * The line a conversation records to say who is in it. The thread keeps it as a
- * system turn, so reopening the thread anywhere seats the same room. Names are
+ * system turn, so reopening the thread anywhere seats the same cast. Names are
  * the agents' handles, which carry no comma (the agents API's name pattern).
  */
 export const roster = (names: string[]): string => `${ROSTER}${names.length ? names.join(', ') : 'none'}`
@@ -148,16 +148,16 @@ export function rosterOf(content: string): string[] | null {
 }
 
 /**
- * The system turn a room sends: the roster line, then the brief. Null for an
- * empty room, which is the plain model.
+ * The system turn a conversation sends: the roster line, then the brief. Null
+ * for an empty conversation, which is the plain model.
  */
-export function roomTurn(names: string[], said: string | null): string | null {
+export function castTurn(names: string[], said: string | null): string | null {
   if (!names.length) return null
   return said ? `${roster(names)}\n\n${said}` : roster(names)
 }
 
 /**
- * A room's reply, split by who said what.
+ * A conversation's reply, split by who said what.
  *
  * A line that opens with a member's name and a colon — plain or bold — starts
  * that member's part; lines before any such line belong to nobody, and a reply

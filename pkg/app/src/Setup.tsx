@@ -23,7 +23,7 @@ import { useIam } from '@hanzo/iam/react'
 import { Check, Maximize2, Plug, Plus, Sparkles, X } from 'lucide-react'
 import { ProviderMark } from './ProviderMark'
 import { useBetas } from './Betas'
-import { useRooms } from './host'
+import { useHost } from './host'
 import { useKept } from './kept'
 import { usePref } from './pref'
 import { api } from './lib/api'
@@ -64,7 +64,7 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
   const { t } = useI18n()
   const { isAuthenticated, accessToken } = useIam()
   const { open: opens } = useBetas()
-  const pathed = useRooms().path !== null
+  const pathed = useHost().path !== null
   const [later, setLater, known] = usePref(LATER_KEY, false)
   const [step, setStep] = usePref(STEP_KEY, 1)
 

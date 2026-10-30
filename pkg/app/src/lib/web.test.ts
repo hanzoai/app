@@ -452,7 +452,7 @@ describe('researched', () => {
       await ask(
         g,
         turns([
-          { role: 'system', content: 'You are the room.' },
+          { role: 'system', content: 'You are the conversation.' },
           { role: 'user', content: 'hello there' },
           { role: 'assistant', content: 'Hi.' },
           { role: 'user', content: PLAGUE },
@@ -462,7 +462,7 @@ describe('researched', () => {
     const [asked] = g.completions()
     expect(asked.body.messages.map((m: any) => m.role)).toEqual(['system', 'user', 'assistant', 'user'])
     const system: string = asked.body.messages[0].content
-    expect(system.startsWith('You are the room.\n\n')).toBe(true)
+    expect(system.startsWith('You are the conversation.\n\n')).toBe(true)
     const mark = system.match(/<<web ([0-9a-f]{12})>>/)![1]
     expect(mark).not.toBe('000000000000')
     const at = system.indexOf('Operator rule')

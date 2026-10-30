@@ -3,7 +3,7 @@
 // The tab strip, once.
 //
 // Three surfaces drew one by hand and no two agreed on what a chosen tab looks
-// like. The builder and the room underlined it 2px; /work used 1px, which sits
+// like. The builder and the channel underlined it 2px; /work used 1px, which sits
 // flush on the 1px divider the strip already draws under itself and so reads as
 // no rule at all — in a screenshot the chosen tab there was told apart by colour
 // and weight alone. /work was also the only one to bold the chosen label, which
@@ -44,7 +44,7 @@ export interface Tab<Id extends string = string> {
 /**
  * A row of tabs and the one you are on.
  *
- * `onPick` is OPTIONAL because a strip can have a single destination — a room
+ * `onPick` is OPTIONAL because a strip can have a single destination — a channel
  * whose only tab is its conversation — and a tab with nowhere else to go is not
  * a control. Drawn as a button it would take a focus stop to say the thing the
  * label already says. So without a handler these are labels, and the moment

@@ -86,7 +86,7 @@ vi.mock('./Betas', () => ({
 }))
 
 vi.mock('./host', () => ({
-  useRooms: () => ({ path: null }),
+  useHost: () => ({ path: null }),
 }))
 
 import { Setup } from './Setup'

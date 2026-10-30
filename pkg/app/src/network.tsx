@@ -1,14 +1,14 @@
 'use client'
 
-// Which channel a message arrived on, as a mark.
+// Which transport a message arrived on, as a mark.
 //
-// A message carries `channel` — the platform measures it — so this is a fact
+// A message carries `transport` — the platform measures it — so this is a fact
 // about the message and not decoration. The mark is what makes an inbox of many
 // transports readable: a name tells you after you read it, a mark tells you
-// before. The Channels grid asks a different question of the same set — which
+// before. The Directory's grid asks a different question of the same set — which
 // of these have you connected — so it reads this table too. Two tables would
-// drift, and a channel called one thing in the Inbox and another in the grid is
-// two channels to whoever is reading.
+// drift, and a transport called one thing in the Inbox and another in the grid
+// is two transports to whoever is reading.
 //
 // NOTHING BELOW IS DRAWN BY US, and that is the whole of the design. A mark
 // approximated by hand is a forgery that happens to be bad at it: it is close
@@ -140,7 +140,7 @@ const SLACK = `<svg width="54" height="54" viewBox="0 0 54 54" fill="none" xmlns
 </defs>
 </svg>`
 
-/** The ground for a channel nobody has told us the colour of. */
+/** The ground for a transport nobody has told us the colour of. */
 const NEUTRAL = 'var(--neutral-600)'
 
 interface Net {
@@ -158,10 +158,10 @@ interface Net {
 }
 
 /**
- * The channels, keyed by what the platform puts in `channel`.
+ * The transports, keyed by what the platform puts in `transport`.
  *
  * Lowercase because that is how it arrives. A key nobody has taught this table
- * still renders — `of()` falls back to the channel's own name and a neutral
+ * still renders — `of()` falls back to the transport's own name and a neutral
  * ground — so a fifth transport appearing on the server needs no release here.
  */
 const NETWORK: Record<string, Net> = {
@@ -200,11 +200,11 @@ const NETWORK: Record<string, Net> = {
   linkedin: { name: 'LinkedIn' },
 }
 
-/** What we know about a channel key, including one nobody taught us — which is
- *  a name and nothing else, and lands on the same initial Yahoo does. */
-export function of(channel: string): Net {
-  const key = (channel || '').trim().toLowerCase()
-  return NETWORK[key] ?? { name: channel || 'Network' }
+/** What we know about a transport key, including one nobody taught us — which
+ *  is a name and nothing else, and lands on the same initial Yahoo does. */
+export function of(transport: string): Net {
+  const key = (transport || '').trim().toLowerCase()
+  return NETWORK[key] ?? { name: transport || 'Network' }
 }
 
 /**
@@ -213,7 +213,7 @@ export function of(channel: string): Net {
  * NOTHING THAT ARRIVES HERE CARRIES A NAME. `sender` is the network's own id
  * for the person — "U031THJJ7F1" on Slack, a snowflake on Discord, a GUID on
  * Teams — because that is what every adapter puts there; the envelope declares
- * a `Display` beside it (cloud apps/channels/envelope.go) and not one of the
+ * a `Display` beside it (the transport's envelope) and not one of the
  * five adapters fills it, so no name is stored and none is served.
  * `senderUser` is not the name either: it is the linked account's OIDC `sub`,
  * which IAM mints from a UUID, so it identifies a Hanzo account without saying
@@ -223,34 +223,34 @@ export function of(channel: string): Net {
  * "U031THJJ7F1" for what somebody calls themselves. So the id is MARKED as an
  * id — '@' is how every one of these networks writes a handle it has not
  * resolved — and it is kept, because it is the only thing that tells two
- * speakers apart. A room holds messages from many people (useInbox groups by
- * channel and room, never by sender), so dropping it renders every line of a
+ * speakers apart. A channel holds messages from many people (useInbox groups by
+ * transport and channel, never by sender), so dropping it renders every line of a
  * group identically and a reader cannot tell who said what. Only where no id
  * arrived at all is the network the one thing left to say. The day the
  * platform resolves a name, this is where it goes.
  */
-export const speaker = (channel: string, sender?: string): string =>
-  sender ? `@${sender}` : `Someone on ${of(channel).name}`
+export const speaker = (transport: string, sender?: string): string =>
+  sender ? `@${sender}` : `Someone on ${of(transport).name}`
 
-/** A room is named by its own address, not by whoever spoke in it last: the
- *  handle for a DM, the network's room id otherwise, and the channel it is on
- *  where no id arrived. */
-export function roomName(room: { channel: string; roomId?: string; roomKind: string; last: { sender?: string } }): string {
-  if (room.roomKind === 'dm') return speaker(room.channel, room.last.sender)
-  return room.roomId ? `#${room.roomId}` : `A channel on ${of(room.channel).name}`
+/** A channel is named by its own address, not by whoever spoke in it last: the
+ *  handle for a DM, the network's channel id otherwise, and the transport it is
+ *  on where no id arrived. */
+export function channelName(channel: { transport: string; channelId?: string; channelKind: string; last: { sender?: string } }): string {
+  if (channel.channelKind === 'dm') return speaker(channel.transport, channel.last.sender)
+  return channel.channelId ? `#${channel.channelId}` : `A channel on ${of(channel.transport).name}`
 }
 
 /**
- * One channel's mark, at whatever size the caller has room for.
+ * One transport's mark, at whatever size the caller has space for.
  *
  * A rounded square rather than a disc, because in the Inbox the face beside it
  * IS a disc and two circles the same size read as two people rather than as a
- * person and where they wrote from. The Channels grid draws the same mark at
+ * person and where they wrote from. The Directory's grid draws the same mark at
  * 46px, which is the size the vendor files were cut for and still the size the
  * simple-icons silhouettes were meant to scale to.
  */
-export function Network({ channel, size = 16 }: { channel: string; size?: number }) {
-  const net = of(channel)
+export function Network({ transport, size = 16 }: { transport: string; size?: number }) {
+  const net = of(transport)
 
   // A capability wears no ground and no colour. It is not a product, and a tile
   // in a brand colour is the one thing that would say it was.

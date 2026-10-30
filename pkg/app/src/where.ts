@@ -12,7 +12,7 @@ import type { BillingPlan } from './lib/plans'
 
 /** The addresses a host serves from, which plain modules read. */
 export interface Addresses {
-  /** The gateway's origin. Absent, the rooms derive it from the page's host. */
+  /** The gateway's origin. Absent, the apps derive it from the page's host. */
   api?: string
   /** IAM's origin. Absent, hanzo.id. */
   iam?: string
@@ -21,12 +21,12 @@ export interface Addresses {
    * Empty on the site that serves them; `https://hanzo.ai` on hanzo.team.
    */
   site: string
-  /** The rooms' Home: `/home` beside the app, `/` on hanzo.team. */
+  /** The shell's Home: `/home` beside the app, `/` on hanzo.team. */
   home: string
   /** Where a new account starts: `/signup`, or hanzo.team's `/start`. */
   signUp: string
   /**
-   * The product's name, wherever the rooms print it: the sidebar's wordmark,
+   * The product's name, wherever the apps print it: the sidebar's wordmark,
    * Home's and Chat's titles, the composer's placeholder, the setup. The host's
    * brand by hostname (`@hanzogui/shell/registry`'s `brandName`): `Hanzo Team`
    * on hanzo.team. Default `Hanzo AI`, hanzo.ai's.
@@ -37,7 +37,7 @@ export interface Addresses {
   /**
    * Where the IAM session is kept when it is not this page's `localStorage`:
    * the `storage` the host hands its IamProvider (Hanzo Desktop's keychain).
-   * The rooms read the access token, its expiry and its claims from it.
+   * The apps read the access token, its expiry and its claims from it.
    */
   session?: Storage
   /** The plan catalogue as the host's build last read it: the first paint. */
@@ -50,7 +50,7 @@ export interface Addresses {
   Landing?: ComponentType<{ member?: boolean }>
   Signup?: ComponentType
   /**
-   * The rooms are hanzo.team's: every room is behind the per-seat Team plan,
+   * The apps are hanzo.team's: every app is behind the per-seat Team plan,
    * and an organization is founded through the team's setup, never the create
    * dialog a person on hanzo.ai uses.
    */
@@ -68,7 +68,7 @@ let addresses: Addresses = { site: '', home: '/home', signUp: '/signup' }
 /**
  * State the host's addresses, at module scope, before anything renders. Each
  * call adds to what is stated, so a host can name its cheap addresses at its
- * root and the heavier ones only where the rooms are drawn.
+ * root and the heavier ones only where the apps are drawn.
  */
 export function configure(given: Partial<Addresses>): void {
   addresses = { ...addresses, ...given }
@@ -83,5 +83,5 @@ export const brand = (): string => addresses.brand ?? 'Hanzo AI'
 /** The product's name in each mode of the app: the host's brand in Chat (Hanzo AI, Hanzo Team), Hanzo Dev in Dev. */
 export const wordmark = (mode: 'chat' | 'dev' | 'studio' | 'tabs' | 'beta' | 'hosted'): string => (mode === 'dev' ? 'Hanzo Dev' : mode === 'studio' ? 'Hanzo Studio' : mode === 'tabs' ? 'Hanzo Tabs' : mode === 'beta' ? 'Hanzo Betas' : brand())
 
-/** A page of the app's own, from wherever the rooms are mounted. */
+/** A page of the app's own, from wherever the apps are mounted. */
 export const site = (path: string): string => `${addresses.site}${path}`

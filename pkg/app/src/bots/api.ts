@@ -1,11 +1,11 @@
 'use client'
 
-// Every route this room calls that the SDK has no method for, named once.
+// Every route this app calls that the SDK has no method for, named once.
 //
 // `@hanzo/ai` 0.6.16 owns the agent verbs, the sandbox verbs, the tool
-// registry, the channel list and the machines, and those are called through it
-// — a path written twice is a path that drifts. What is here is the remainder:
-// registering and narrating a session, binding a channel to one Bot, starting
+// registry, the transport list and the machines, and those are called through
+// it — a path written twice is a path that drifts. What is here is the
+// remainder: registering and narrating a session, binding a transport to one Bot, starting
 // a coding run, calling a tool, minting a window onto a sandbox, and reading a
 // Bot's own secrets.
 //
@@ -54,7 +54,7 @@ export const ONCE = 'one-shot'
  * The sessions opened under this Bot's name.
  *
  * NARROWED HERE, BECAUSE THE ROUTE WILL NOT. Its query is root, parent,
- * status, project, room and limit — there is no per-agent filter — and an
+ * status, project, channel and limit — there is no per-agent filter — and an
  * `agent=` it does not know is SILENTLY IGNORED rather than refused. Measured:
  * `?agent=nope` and no query at all answer the same five rows. A caller that
  * trusts the parameter draws the whole org's work as one bot's, which is how
@@ -94,19 +94,20 @@ export const steer = (
 
 // ── What it can reach ───────────────────────────────────────────────────────
 
-/** Which Bot answers a channel: the org default and any room bound past it. */
+/** Which Bot answers on a transport: the org default and any channel bound past it. */
 export interface Answering {
-  channel: string
+  transport: string
   default?: string
-  rooms?: Record<string, string>
+  /** A channel id on that transport, to the agent bound to it. */
+  channels?: Record<string, string>
 }
 
-export const answering = (c: Client, channel: string, signal?: AbortSignal) =>
-  c.http.json<Answering>({ path: '/v1/channels/agent', query: { channel }, signal })
+export const answering = (c: Client, transport: string, signal?: AbortSignal) =>
+  c.http.json<Answering>({ path: '/v1/transport/agent', query: { transport }, signal })
 
-/** Makes this Bot the one that answers a channel. */
-export const answer = (c: Client, channel: string, agent: string) =>
-  c.http.json<Answering>({ method: 'PUT', path: '/v1/channels/agent', body: { channel, default: agent } })
+/** Makes this Bot the one that answers on a transport. */
+export const answer = (c: Client, transport: string, agent: string) =>
+  c.http.json<Answering>({ method: 'PUT', path: '/v1/transport/agent', body: { transport, default: agent } })
 
 /**
  * The platform's own MCP surface — every subsystem's operations, projected as

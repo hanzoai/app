@@ -53,12 +53,12 @@ import { DAY, HOME, LIMITS, MISSIONS, ORGS, SCENE, STILL, agent, channelOf, fram
  * (bold and counted when unread), Direct messages with who is here, and the
  * org's Agents; then the channel: its name and topic, who is in it, the huddle,
  * the messages with their cards, reactions and threads, who is typing, and the
- * composer. A thread opens beside the channel when there is room, over it when
+ * composer. A thread opens beside the channel when there is space, over it when
  * not.
  *
  * The day is `./workday`: more than five minutes of people and agents working
  * together before it plays again. It plays while on screen and the pointer is
- * elsewhere. Pressing an org or a channel plays that room's own scene, an
+ * elsewhere. Pressing an org or a channel plays that channel's own scene, an
  * agent's question or a draft answers a press, and from then on the reader
  * drives: nothing loops over them. A reader who asked for less motion, the
  * server and the first paint get one whole frame: #eng with the pull request
@@ -83,7 +83,7 @@ const ROW = {
   focusVisibleStyle: { outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)', outlineOffset: -2 },
 } as const
 
-/** The fade a list takes where it runs out of room. */
+/** The fade a list takes where it runs out of space. */
 const TOP = { maskImage: 'linear-gradient(to bottom, transparent, black 48px)', WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 48px)' } as const
 const FOOT = { maskImage: 'linear-gradient(to bottom, black 82%, transparent)', WebkitMaskImage: 'linear-gradient(to bottom, black 82%, transparent)' } as const
 
@@ -102,7 +102,7 @@ const FACES = 900
 /** "1 reply", "3 replies". */
 const replies = (t: ReturnType<typeof useI18n>['t'], n: number) => (n === 1 ? t('1 reply') : t('{count} replies', { count: n }))
 /** How wide it must be for a thread to stand beside the channel rather than over it. */
-const ROOM = 1000
+const WIDE = 1000
 
 /** A person's initials or an agent's memoji. */
 function Avatar({ id, size }: { id: string; size: number }) {
@@ -603,7 +603,7 @@ function Progress({ done, total }: { done: number; total: number }) {
  * agents act here, what waits on a person, the org's mission and how far it
  * has come, who handed what to whom, and the agents' spending limits.
  */
-function Panel({ org, supervised, onMode, asks, done, handoffs, onOpen }: { org: string; supervised: boolean; onMode: (supervised: boolean) => void; asks: Ask[]; done: number[]; handoffs: Handoff[]; onOpen: (room: string) => void }) {
+function Panel({ org, supervised, onMode, asks, done, handoffs, onOpen }: { org: string; supervised: boolean; onMode: (supervised: boolean) => void; asks: Ask[]; done: number[]; handoffs: Handoff[]; onOpen: (channel: string) => void }) {
   const { t } = useI18n()
   const clock = useClock()
   const mission = MISSIONS[org]
@@ -632,7 +632,7 @@ function Panel({ org, supervised, onMode, asks, done, handoffs, onOpen }: { org:
             <XStack
               key={a.id}
               data-motion="rise"
-              render={<button type="button" aria-label={t('Open #{channel}', { channel: channelOf(a.room) })} onClick={() => onOpen(a.room)} />}
+              render={<button type="button" aria-label={t('Open #{channel}', { channel: channelOf(a.channel) })} onClick={() => onOpen(a.channel)} />}
               items="center"
               gap={8}
               p={4}
@@ -747,11 +747,11 @@ export function TeamPreview(props: PreviewProps) {
   // hero's half and a device's screen alike; the window decides only before it
   // is measured (the server's render and the first paint).
   const desk = phone ? false : width ? width >= DESK : null
-  const roomy = desk !== false && width >= ROOM
+  const wide = desk !== false && width >= WIDE
   const [driven, setDriven] = useState(false)
   const loop = useRef(true)
   const [replay, setReplay] = useState(0)
-  // The room the reader opened, the rooms they have read, and what they set by hand.
+  // The channel the reader opened, the channels they have read, and what they set by hand.
   const [opened, setOpened] = useState<string | null>(null)
   const [read, setRead] = useState<string[]>([])
   const [hand, setHand] = useState<Record<string, Partial<Card>>>({})
@@ -764,38 +764,38 @@ export function TeamPreview(props: PreviewProps) {
     loop.current = !driven
   }, [driven])
 
-  const lines = useMemo(() => (opened ? (SCENE[opened] ?? pace([{ kind: 'open', room: opened, time: 9 * 60 }])) : DAY), [opened])
+  const lines = useMemo(() => (opened ? (SCENE[opened] ?? pace([{ kind: 'open', channel: opened, time: 9 * 60 }])) : DAY), [opened])
   const run = seen && !still
   const at = usePlay(lines, run, replay, { visible, held, loop, live, end })
   // Before it plays, and under reduced motion, the day stands at its still frame.
   const upto = opened || run ? at : STILL
   const f = useMemo(() => frame(lines, upto), [lines, upto])
 
-  const here = f.room
+  const here = f.channel
   const o = orgOf(here)
   const channel = channelOf(here)
   const topic = o.channels.find((c) => c.id === channel)?.topic ?? ''
-  const messages = (f.rooms[here] ?? []).map((m) => (hand[m.id] && m.card ? { ...m, card: { ...m.card, ...hand[m.id] } as Card } : m))
+  const messages = (f.channels[here] ?? []).map((m) => (hand[m.id] && m.card ? { ...m, card: { ...m.card, ...hand[m.id] } as Card } : m))
   const thread = threadHand === undefined ? f.thread : threadHand
   const parent = thread ? messages.find((m) => m.id === thread) : undefined
   const typing = f.typing
   const huddle = f.huddle[here] ?? []
-  const unread = (room: string) => (room === here || read.includes(room) ? 0 : (f.unread[room] ?? 0))
+  const unread = (id: string) => (id === here || read.includes(id) ? 0 : (f.unread[id] ?? 0))
   /** What is unread across an org's channels. */
   const news = (org: string) => ORGS.find((x) => x.id === org)?.channels.reduce((n, c) => n + unread(`${org}/${c.id}`), 0) ?? 0
   const members = [...o.people.slice(0, 2), ...o.agents.slice(0, 2)]
-  const asks = waiting(f, supervised).filter((a) => orgOf(a.room).id === o.id)
+  const asks = waiting(f, supervised).filter((a) => orgOf(a.channel).id === o.id)
   const done = f.steps[o.id] ?? []
-  const handoffs = f.handoffs.filter((h) => orgOf(h.room).id === o.id)
+  const handoffs = f.handoffs.filter((h) => orgOf(h.channel).id === o.id)
   const mission = MISSIONS[o.id]
 
   /** The reader takes over: nothing loops over what they set. */
-  const go = (room: string) => {
+  const go = (id: string) => {
     setDriven(true)
     setDrawer(false)
     setThreadHand(undefined)
-    setOpened(room)
-    setRead((r) => (r.includes(room) ? r : [...r, room]))
+    setOpened(id)
+    setRead((r) => (r.includes(id) ? r : [...r, id]))
     setReplay((n) => n + 1)
   }
   const pick = (id: string) => (patch: Partial<Card>) => {
@@ -870,13 +870,13 @@ export function TeamPreview(props: PreviewProps) {
       </XStack>
       {heading(t('Channels'))}
       {o.channels.map((c) => {
-        const room = `${o.id}/${c.id}`
-        const on = room === here
-        const n = unread(room)
+        const id = `${o.id}/${c.id}`
+        const on = id === here
+        const n = unread(id)
         return (
           <XStack
             key={c.id}
-            render={<button type="button" aria-pressed={on} aria-label={t('Open #{channel}', { channel: c.id })} onClick={() => go(room)} />}
+            render={<button type="button" aria-pressed={on} aria-label={t('Open #{channel}', { channel: c.id })} onClick={() => go(id)} />}
             items="center"
             gap={6}
             px={10}
@@ -1016,7 +1016,7 @@ export function TeamPreview(props: PreviewProps) {
       gridTemplateColumns="minmax(0, 1fr)"
       {...md(desk, {
         height: compact ? '100%' : 640,
-        gridTemplateColumns: `60px ${breadth(width)}px minmax(0, 1fr)${roomy ? ' 290px' : ''}`,
+        gridTemplateColumns: `60px ${breadth(width)}px minmax(0, 1fr)${wide ? ' 290px' : ''}`,
       })}
       $platform-web={{ textAlign: 'start' }}
     >
@@ -1090,13 +1090,13 @@ export function TeamPreview(props: PreviewProps) {
           </XStack>
           <XStack flexWrap="wrap" gap={6} px={12} display={height && height < LIST ? 'none' : 'flex'}>
             {o.channels.map((c) => {
-              const room = `${o.id}/${c.id}`
-              const on = room === here
-              const n = unread(room)
+              const id = `${o.id}/${c.id}`
+              const on = id === here
+              const n = unread(id)
               return (
                 <XStack
                   key={c.id}
-                  render={<button type="button" aria-pressed={on} aria-label={t('Open #{channel}', { channel: c.id })} onClick={() => go(room)} />}
+                  render={<button type="button" aria-pressed={on} aria-label={t('Open #{channel}', { channel: c.id })} onClick={() => go(id)} />}
                   shrink={0}
                   items="center"
                   gap={5}
@@ -1123,7 +1123,7 @@ export function TeamPreview(props: PreviewProps) {
         {list(messages, true)}
 
         <XStack items="center" gap={6} px={18} minH={20}>
-          {typing && typing.room === here ? (
+          {typing && typing.channel === here ? (
             <>
               <Dots />
               <Text fontSize="$1" color="$soft" numberOfLines={1}>
@@ -1132,8 +1132,8 @@ export function TeamPreview(props: PreviewProps) {
             </>
           ) : null}
         </XStack>
-        {/* Where there is no room for the panel: how agents act, what waits on a person, the mission's progress. */}
-        {roomy || (height && height < LIST) ? null : (
+        {/* Where there is no space for the panel: how agents act, what waits on a person, the mission's progress. */}
+        {wide || (height && height < LIST) ? null : (
           <XStack flexWrap="wrap" items="center" gap={8} px={12} pb={8}>
             <Mode supervised={supervised} onSet={setSupervised} small />
             <XStack items="center" gap={6} px={10} height={28} rounded={9999} borderWidth={1} borderColor={asks.length ? '$ink' : '$edge'} $platform-web={{ borderRadius: '9999px' }}>
@@ -1158,7 +1158,7 @@ export function TeamPreview(props: PreviewProps) {
         {composer(t('Message #{channel}', { channel }))}
 
         {/* The thread over the channel, where it cannot stand beside it. */}
-        {side && !roomy ? (
+        {side && !wide ? (
           <YStack data-motion="rise" position="absolute" t={0} b={0} insetInlineEnd={0} width="100%" maxW={420} borderColor="$edge" borderInlineStartWidth={1} bg="var(--background)" boxShadow="0 24px 60px -24px color-mix(in srgb, var(--pure-black) 60%, transparent)">
             {side}
           </YStack>
@@ -1188,7 +1188,7 @@ export function TeamPreview(props: PreviewProps) {
         ) : null}
       </YStack>
 
-      {roomy ? (
+      {wide ? (
         <YStack minW={0} minH={0} borderColor="$edge" borderInlineStartWidth={1}>
           {side ?? <Panel org={o.id} supervised={supervised} onMode={setSupervised} asks={asks} done={done} handoffs={handoffs} onOpen={go} />}
         </YStack>

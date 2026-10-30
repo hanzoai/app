@@ -95,7 +95,7 @@ export function useAi(): Ai {
   // The organization every call is scoped to: the SDK's selection, sent only
   // when the token says the reader belongs to it (`org()`), and followed through
   // the one event a change fires — so the client is rebuilt and every hook on
-  // it reads the new organization's rooms, agents and threads.
+  // it reads the new organization's channels, agents and threads.
   const [scoped, setScoped] = useState<string | null>(() => org())
   useEffect(() => {
     const on = () => setScoped(org())

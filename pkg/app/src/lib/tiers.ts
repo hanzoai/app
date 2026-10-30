@@ -2,7 +2,7 @@
 
 // Which preview tiers this identity may see.
 //
-// The rail offers Chat and Dev to everyone. The rooms after them — Inbox,
+// The rail offers Chat and Dev to everyone. The apps after them — Inbox,
 // Agents, Tasks, Drive — are behind a tier, and a tier opens for exactly three
 // reasons, asked here and nowhere else:
 //
@@ -15,18 +15,18 @@
 //   2. An ALPHA or BETA org sees its own tier. Whether an org is in a cohort is
 //      a targeting decision that lives on the cloud, so it is asked of the cloud:
 //      POST /v1/flags answers the feature flags in force for this identity, and
-//      `tier.alpha` / `tier.beta` open their rooms.
+//      `tier.alpha` / `tier.beta` open their apps.
 //
-//   3. A LOCALHOST BUILD sees every tier, because a room nobody can open is a
-//      room nobody can work on. The check is the ORIGIN the page was served
+//   3. A LOCALHOST BUILD sees every tier, because an app nobody can open is an
+//      app nobody can work on. The check is the ORIGIN the page was served
 //      from, not an env var and not a build flag: a deployed host can never
 //      satisfy it however it is configured, so this cannot leak an unfinished
-//      room into production by being set wrong somewhere.
+//      app into production by being set wrong somewhere.
 //
 //   4. Nothing else. Signed out, still loading, or on any error the answer is the
 //      empty set: the rail shows Chat and Dev and nothing more. Failing closed is
 //      the point — a stranger meets the product the landing page describes, and a
-//      flags outage cannot leak an unfinished room into it.
+//      flags outage cannot leak an unfinished app into it.
 //
 // The per-account SETTING that hides a tier the reader is entitled to lives with
 // the reader, not here — see `useHidden`. This answers what you MAY see; that
@@ -92,9 +92,9 @@ export function useTiers(): Set<Tier> {
     const ac = new AbortController()
     // The PostHog-shaped evaluate: a distinct_id and the person's org, answered
     // with `{ featureFlags: { … } }`. The bearer carries the principal, as on
-    // every other read: no host the rooms are drawn on holds a session cookie
+    // every other read: no host the apps are drawn on holds a session cookie
     // for the API, so a cookie alone was answered 403 on every page. A refusal
-    // still falls to the empty set, the signed-out room — the safe direction.
+    // still falls to the empty set, the signed-out rail — the safe direction.
     fetch(`${api()}/v1/flags`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...scope() },
@@ -108,7 +108,7 @@ export function useTiers(): Set<Tier> {
   }, [id, superAdmin, organizations])
 
   // A platform admin, or a page served off a developer's own machine. Both see
-  // every tier for the same reason: a room nobody can open is a room nobody can
+  // every tier for the same reason: an app nobody can open is an app nobody can
   // work on.
   if (superAdmin || here) return new Set<Tier>(ALL)
   const tiers = new Set<Tier>()
@@ -122,7 +122,7 @@ const HIDDEN_KEY = 'hanzo.hidden-tiers'
 /** The tiers this reader has chosen to hide, and the toggle that sets them.
  *
  * Entitlement is one question (`useTiers`), what you want to see is another. A
- * reader who may see a beta room can still put it away — the choice is theirs and
+ * reader who may see a beta app can still put it away — the choice is theirs and
  * lives with them, in this browser, never on the server. It starts empty: you see
  * what you are entitled to until you say otherwise. */
 export function useHidden(): [Set<Tier>, (tier: Tier) => void] {

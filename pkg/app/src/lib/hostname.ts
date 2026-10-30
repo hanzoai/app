@@ -12,7 +12,7 @@ import { useSyncExternalStore } from 'react'
  */
 const NEVER = () => () => {}
 
-export function useHost(): string {
+export function useHostname(): string {
   return useSyncExternalStore(
     NEVER,
     () => window.location.hostname,

@@ -3,7 +3,7 @@
 // Support mode: a SuperAdmin steps into any organization to see what it sees.
 //
 // Everything here is IAM's. The list of every organization is the chooser's
-// (Orgs.tsx `Everyone`), IAM's organization list, which answers a SuperAdmin
+// (Gate.tsx `Everyone`), IAM's organization list, which answers a SuperAdmin
 // every organization and anyone else only their own; the step in and the step
 // out are IAM's `assume` and `release`, which answer the operator's own token
 // re-scoped and record each step in the organization's audit log
@@ -17,7 +17,7 @@ import { Button } from '@hanzo/ui'
 import { useHydrated } from './lib/hydrated'
 import { abandon, assumed, named, support } from './lib/session'
 
-/** The banner rides above the room's sheets. gui carries a `calc()` to the page unchanged; its types only name custom properties. */
+/** The banner rides above the shell's sheets. gui carries a `calc()` to the page unchanged; its types only name custom properties. */
 const BANNER = 'calc(var(--z-modal) + 30)' as `var(--${string})`
 
 /**
