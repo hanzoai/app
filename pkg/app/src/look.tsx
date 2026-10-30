@@ -71,14 +71,12 @@ export function Look() {
   const handleApplyFont = () => {
     if (!customFont.trim()) return
     const font = customFont.trim()
-    if (font.startsWith('http://') || font.startsWith('https://')) {
-      injectCustomFont({ family: 'CustomBrandFont', url: font, isStylesheet: true })
-      applyFontFamily('heading', 'CustomBrandFont, sans-serif')
-      applyFontFamily('sans', 'CustomBrandFont, sans-serif')
-    } else {
-      applyFontFamily('heading', `${font}, sans-serif`)
-      applyFontFamily('sans', `${font}, sans-serif`)
-    }
+    // The Arabic slot stays first, as in design's own stacks: a custom face
+    // sets the Latin, and the reader's Arabic companion still sets the Arabic.
+    const family = font.startsWith('http://') || font.startsWith('https://') ? 'CustomBrandFont' : font
+    if (family === 'CustomBrandFont') injectCustomFont({ family, url: font, isStylesheet: true })
+    applyFontFamily('heading', `var(--font-arabic), ${family}, sans-serif`)
+    applyFontFamily('sans', `var(--font-arabic), ${family}, sans-serif`)
     setFontApplied(true)
     setTimeout(() => setFontApplied(false), 2500)
   }
