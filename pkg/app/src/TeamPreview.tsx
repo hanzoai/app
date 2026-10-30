@@ -607,6 +607,8 @@ function Panel({ org, supervised, onMode, asks, done, handoffs, onOpen }: { org:
   const { t } = useI18n()
   const clock = useClock()
   const mission = MISSIONS[org]
+  // The four steps shown: the last two done, then what is next.
+  const from = mission ? Math.max(0, Math.min(done.length - 2, mission.steps.length - 4)) : 0
   const agents = ORGS.find((o) => o.id === org)?.agents.filter((a) => LIMITS[a]).slice(0, 3) ?? []
   return (
     <YStack flex={1} minH={0} overflow="hidden" gap={10} p={12} bg="$sunken" $platform-web={FOOT}>
@@ -663,7 +665,7 @@ function Panel({ org, supervised, onMode, asks, done, handoffs, onOpen }: { org:
         >
           <Progress done={done.length} total={mission.steps.length} />
           <YStack gap={5}>
-            {mission.steps.slice(0, 4).map((step, i) => (
+            {mission.steps.map((step, i) => ({ step, i })).slice(from, from + 4).map(({ step, i }) => (
               <XStack key={step} items="center" gap={8}>
                 <Tick done={done.includes(i)} />
                 <Text flex={1} minW={0} fontSize="$1" color={done.includes(i) ? '$ink' : '$soft'} numberOfLines={1}>
