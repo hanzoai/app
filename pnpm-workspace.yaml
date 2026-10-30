@@ -36,7 +36,7 @@ catalog:
   '@hanzo/iam': 0.21.35
   '@hanzo/logo': 1.0.26
   '@hanzo/personas': 1.0.5
-  '@hanzo/ui': 8.29.26
+  '@hanzo/ui': 8.29.40
   '@hanzo/usage': 0.1.18
   '@hanzo/studio': 0.1.0
   '@hanzo/tabs': github:hanzo-inc/tabs

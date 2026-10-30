@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useI18n } from '@hanzo/i18n/react'
-import { Activity, ArrowUpRight } from 'lucide-react'
-import { Anchor, Button, Popover, PopoverContent, PopoverTrigger, Progress, Text, XStack, YStack } from '@hanzo/ui'
+import { ArrowUpRight } from 'lucide-react'
+import { Anchor, Button, Popover, PopoverContent, PopoverTrigger, Progress, SizableText, Text, XStack, YStack } from '@hanzo/ui'
 import { ComposerStatusProvider } from '@hanzo/ui/chat'
 import { UsageMeter } from '@hanzo/ui/product/UsageMeter'
 import type { UseLimits } from '@hanzo/ui/product/useLimits'
@@ -81,13 +81,26 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
   return (
     <Popover open={open} onOpenChange={toggle} placement="top-end">
       <PopoverTrigger asChild>
-        <Button type="button" variant="ghost" size="sm" px="$2" minW={32} height={32} hitSlop={6}
-          aria-label={t('Context, tokens and plan usage')} data-slot="composer-usage">
-          <Activity size={15} aria-hidden />
-          <Text fontSize="$1" color={highest !== null && highest >= 95 ? '$bad' : '$soft'}>
+        {/* A word in the quiet line under the composer (composer-status), as its neighbours are. */}
+        <XStack
+          render="button"
+          {...{ type: 'button' }}
+          items="center"
+          height={28}
+          px={5}
+          rounded={8}
+          bg="transparent"
+          hoverStyle={{ bg: '$hover' }}
+          transition="quickest"
+          cursor="pointer"
+          $max-sm={{ height: 36 }}
+          aria-label={t('Context, tokens and plan usage')}
+          data-slot="composer-usage"
+        >
+          <SizableText size="$3" color={highest !== null && highest >= 95 ? '$bad' : '$soft'}>
             {percent !== null ? `${percent}%` : highest !== null ? `${Math.round(highest)}%` : t('Usage')}
-          </Text>
-        </Button>
+          </SizableText>
+        </XStack>
       </PopoverTrigger>
       <PopoverContent solid width={360} maxW="calc(100vw - 24px)" maxH="min(680px, calc(100dvh - 100px))" overflowY="auto" aria-label={t('Context, tokens and plan usage')} data-slot="composer-usage-panel">
         <YStack gap="$4" minW={0}>

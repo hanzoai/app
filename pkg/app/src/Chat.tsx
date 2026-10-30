@@ -28,7 +28,7 @@
 // belongs in the thread where the reader can see it, not in a caption that
 // pre-emptively refuses on the gateway's behalf.
 
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isolate, phrase } from "@hanzo/i18n";
 import { useI18n } from "@hanzo/i18n/react";
 import { billed, detail, familyOf, planRequired, plainly, refused } from "./failure";
@@ -67,7 +67,7 @@ import { refused as worded, speech, useDictation, useTalk, useVoice } from "@han
 import { Check, Clock, FileText, Ghost, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, X } from "lucide-react";
 import { FREE, ENSO } from "./lib/ai";
 import { openThread, useOpen } from "./open";
-import { Beside, Framed } from "./Shell";
+import { Beside } from "./Shell";
 import { SEED, look, useSections, useSites, type Mark } from "./RightPane";
 import { Share } from "./Share";
 import { ConversationMenu, ThreadMore, useThreadList, type Thread } from "./thread";
@@ -822,8 +822,6 @@ function Thread({
   // never resets Dev's.
   const [chatPrefs, setChatPrefs] = useChatPreferences();
   const ai = useAi();
-  // In the app's frame the composer floats on the pane as a pane of its own.
-  const framed = useContext(Framed);
   const opened = useOpen();
   const { thread: open, open: reopen, agents: room, openAgent, seat, emptied, aside, showAside, showSettings } = opened;
   // What the conversation carries beside its words (@hanzo/build `useCarry`):
@@ -1767,9 +1765,11 @@ function Thread({
       // (the defaults @hanzo/ui and @hanzo/build each call ASK), said here so both are the reader's.
       label: t("Ask anything"),
       placeholder: t("Type / for skills"),
-      // At the thread's measure, and in the app's frame floating on the pane as a pane of its own.
+      // At the thread's measure.
       column: true,
-      framed,
+      // Private: the frame drops its ground and dashes its edge (@hanzo/ui ≥ 8.29.40); the
+      // toggled ghost in the head and this frame are the whole of what says it.
+      forgetful,
       // A file or an image pasted into the field is held like a picked one;
       // words paste as words.
       field: {
@@ -1897,21 +1897,7 @@ function Thread({
       onLanguage: speakIn,
       talk,
       // While nothing has been said: what is worth doing next.
-      starters:
-        said.length === 0
-          ? forgetful
-            ? (
-              <XStack items="center" justify="center" gap="$2" py="$2" px="$3" rounded="$3" bg="var(--white-05)" borderWidth={1} borderColor="$borderColor">
-                <Ghost size={14} strokeWidth={1.75} color="var(--primary)" />
-                <Text fontSize="$2" color="$soft">
-                  {t("Private chat is active. Messages are temporary and won't be saved.")}
-                </Text>
-              </XStack>
-            )
-            : !anonymous
-              ? <Suggestions rows={hints.rows} onAct={hint} onDismiss={hints.dismiss} />
-              : undefined
-          : undefined,
+      starters: said.length === 0 && !anonymous && !forgetful ? <Suggestions rows={hints.rows} onAct={hint} onDismiss={hints.dismiss} /> : undefined,
   };
 
   return (
