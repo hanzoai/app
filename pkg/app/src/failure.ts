@@ -1,14 +1,14 @@
 'use client'
 
-// What to tell a reader when a room's store does not answer.
+// What to tell a reader when an app's store does not answer.
 //
-// The rooms used to print the error they caught, which on a store that is down
+// The apps used to print the error they caught, which on a store that is down
 // reads "mount /v1/s3: no instance running". That says nothing a reader can act
 // on — it names a mount and an instance, neither of which is theirs — and it
 // puts the shape of the estate on a public page. The detail is still in the
 // network tab, where the person who can act on it is looking.
 //
-// ONE FUNCTION, because every room owes the same three answers and three copies
+// ONE FUNCTION, because every app owes the same three answers and three copies
 // would drift into three vocabularies for one event.
 
 import { refusalOf, type Refusal } from '@hanzo/ui/product/limits'
@@ -23,7 +23,7 @@ import { english, type Say } from '@hanzo/i18n'
  * 0.6.16 added a table answering 503 with "The service is not running right
  * now.", which reads the same to a person and matches none of the patterns
  * below, so every downed store fell through to the flat "Could not read" and
- * the rooms stopped saying that nothing had been lost. Reading the status first
+ * the apps stopped saying that nothing had been lost. Reading the status first
  * is what makes this survive the next rewording.
  */
 const status = (e: unknown): number | null => {
@@ -62,7 +62,7 @@ export const refused = (error: unknown): boolean => {
 /**
  * A sentence about `subject` — "your drive", "this board" — naming what a
  * reader can do next. Never the caught text: an error written for an operator
- * is not an answer for a reader. A room passes its `t`, and the subject through
+ * is not an answer for a reader. An app passes its `t`, and the subject through
  * it (`say(e, t('this board'), 'read', t)`), so the whole sentence is the reader's.
  */
 export function say(error: unknown, subject: string, act: 'read' | 'save' = 'read', t: Say = english): string {
@@ -86,7 +86,7 @@ export function say(error: unknown, subject: string, act: 'read' | 'save' = 'rea
  *
  * A gateway that refuses over credit, a context that ran long, a model nobody
  * serves — each of those is the reader's own situation, stated by the only
- * thing that knows it, and translating them away would leave a room saying
+ * thing that knows it, and translating them away would leave an app saying
  * nothing where it could have said the one useful thing. A gateway that is not
  * there, or one that refused the account, is the estate talking to itself; that
  * half is replaced.

@@ -1,17 +1,17 @@
 'use client'
 
-// Settings: the sidebar's second level, and the pane it opens in the room.
+// Settings: the sidebar's second level, and the pane it opens in the shell.
 //
 // TWO PARTS, ONE TAXONOMY. `SettingsList` is the rail's list — the shell swaps
 // its own rows for these and back. `SettingsPane` (SettingsPane.tsx) is what
-// fills the room while a row is chosen, loaded only then: it carries the plan,
-// the usage panel, the model picker and the catalog, none of which a room's
+// fills the pane while a row is chosen, loaded only then: it carries the plan,
+// the usage panel, the model picker and the catalog, none of which an app's
 // first screen draws. Both read `GROUPS`, so the list can only offer a row the
 // pane can draw.
 //
 // Which row is open is the shell's `showSettings` value and nothing here: a
 // pane deep in the tree asks for Channels through the same store, and the rail
-// and the room read that one answer.
+// and the pane read that one answer.
 //
 // Every section that has a screen RENDERS IT HERE. Account, billing and usage
 // are not links out to hanzo.id, billing.hanzo.ai and platform.hanzo.ai, because
@@ -140,7 +140,7 @@ export const FIRST = ROWS[0].id
  * The rail's second level: every settings row, grouped.
  *
  * It renders `SidebarItem` rather than a shape of its own so a settings row and
- * a room row are the same row — the list under it changes, the column does not.
+ * an app's row are the same row — the list under it changes, the column does not.
  *
  * `aria-current="true"` is stated rather than left to `active`, which publishes
  * `page`. A settings row is the current item in a set, not the current page;
@@ -154,11 +154,11 @@ export function SettingsList({
 }: {
   /** The open row's id. */
   active: string
-  /** The rail's own filter, narrowing these rows the way it narrows the rooms. */
+  /** The rail's own filter, narrowing these rows the way it narrows an app's list. */
   filter: string
   /** Chosen. The shell decides what a row with an `href` does. */
   onPick: (row: Row) => void
-  /** Back to the rooms. */
+  /** Back to the shell's own rows. */
   onBack: () => void
 }) {
   const { t } = useI18n();

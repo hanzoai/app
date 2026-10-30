@@ -15,7 +15,7 @@
 //
 // The panel's tabs, their order and the open one are kept per conversation by
 // @hanzo/build (`useDeck`, scope `chat:<channel>`); the frame owns the column
-// it stands in (`Beside` in `Shell.tsx`).
+// it stands in (`Side` in `Shell.tsx`).
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useI18n } from '@hanzo/i18n/react'
@@ -178,7 +178,7 @@ const Note = ({ children }: { children: ReactNode }) => (
  * one write path that turns skills, plugins and connectors into callable tools.
  * Services are `GET /v1/connection/providers`, connected by the
  * device flow their cards declare. One panel, not flyouts: it hangs off the
- * right edge of the window, where a submenu has no room to open.
+ * right edge of the window, where a submenu has no space to open.
  */
 function Add({ at }: { at: string }) {
   const { t } = useI18n()

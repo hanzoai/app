@@ -19,7 +19,7 @@
  * did not come from a response.
  *
  * The failure carries `status` because that is what `workspace/failure.ts`
- * reads first, so a refusal here already speaks the vocabulary every room uses.
+ * reads first, so a refusal here already speaks the vocabulary every app uses.
  * A second Refusal class would be a second vocabulary for the same event.
  */
 
@@ -241,7 +241,7 @@ export function transient(e: unknown): boolean {
  * What a read of the tier leaves held, and the tier the next read falls back
  * on. A read that answers is the tier. One that fails for a moment
  * (`transient`) keeps the tier this organization was last read at, so a reader
- * is not swapped out of a room they pay for by a re-read that did not answer
+ * is not swapped out of an app they pay for by a re-read that did not answer
  * (the gate reads again on focus and on return). Billing's refusal, or a
  * failure with nothing read for it yet, holds nothing and says why, which keeps
  * every gate shut; a refusal also forgets the tier read before it, so no later
@@ -261,7 +261,7 @@ export function hold(
 /**
  * The tier and the refusal held for `org`, and nothing for any other: what was
  * read for the organization a reader just left is never the one they are in,
- * so a switch from a paid organization to a team on Free shows no room while
+ * so a switch from a paid organization to a team on Free shows no app while
  * the new one is read.
  */
 export function standing(held: Held | null, org: string | null): { tier: Tier | null; wrong: unknown } {
@@ -310,8 +310,8 @@ export function useTier(enabled = true, org: string | null = null): {
  * The token's `orgs` claim names an organization and the reader's role in it
  * and says nothing of its kind; IAM keeps that on the row (`isPersonal`), and
  * `GET /v1/iam/organizations` answers the rows the caller belongs to. `null`
- * until it is answered for this organization. A refusal reads as `false`, so a
- * room that needs a plan goes on asking for one.
+ * until it is answered for this organization. A refusal reads as `false`, so an
+ * app that needs a plan goes on asking for one.
  */
 export function usePersonal(org: string | null, enabled = true): boolean | null {
   const [read, setRead] = useState<{ org: string; personal: boolean } | null>(null)

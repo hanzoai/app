@@ -18,7 +18,7 @@ vi.mock('@hanzo/build', () => {
 })
 vi.mock('@hanzo/iam/react', () => ({ useIam: () => ({ user: { name: 'Ada', email: 'ada@acme.dev' }, accessToken: 't' }) }))
 vi.mock('./host', () => ({
-  useRooms: () => ({ router: { push: (to: string) => void routed.push(to), replace: (to: string) => void routed.push(to) }, path: '/chat' }),
+  useHost: () => ({ router: { push: (to: string) => void routed.push(to), replace: (to: string) => void routed.push(to) }, path: '/chat' }),
   useLook: () => ({ pref: {}, set: () => {} }),
 }))
 vi.mock('./lib/signout', () => ({ useSignOut: () => () => {} }))

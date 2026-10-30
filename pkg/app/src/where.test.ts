@@ -14,7 +14,7 @@ describe('addresses', () => {
 })
 
 describe('brand', () => {
-  test("the rooms print the host's product name, hanzo.ai's until a host states its own", () => {
+  test("the apps print the host's product name, hanzo.ai's until a host states its own", () => {
     configure({ brand: undefined })
     expect(brand()).toBe('Hanzo AI')
     configure({ brand: 'Hanzo Team' })

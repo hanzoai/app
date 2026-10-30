@@ -238,7 +238,7 @@ const connectors = (body: unknown): Hit[] =>
     .filter((s) => str(s.id))
     .map((s) => ({ id: str(s.id), label: str(s.name) || str(s.id), keywords: [str(s.url)] }))
 
-export function Palette({
+export function Search({
   onClose,
   go,
   actions: frame = [],

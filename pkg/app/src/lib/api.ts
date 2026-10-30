@@ -9,7 +9,7 @@
  *
  * THE LOCAL CASE IS THE WHOLE POINT. api.hanzo.ai admits an origin by allowlist
  * and by an https, portless DNS proof; localhost satisfies neither, so a
- * credentialed read to an ABSOLUTE address fails its preflight and the room
+ * credentialed read to an ABSOLUTE address fails its preflight and the app
  * draws as though the org owned nothing. `next.config.mjs` proxies `/v1` for
  * exactly this, but a caller with an absolute default never reaches a rewrite.
  * Same-origin on the dev server is what makes the proxy do its job.

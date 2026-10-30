@@ -188,7 +188,7 @@ export function useThreadActions() {
 /** A conversation's title as drawn; `untitled` is the reader's word for none. */
 const titleOf = (t: Thread, untitled?: string) => tidy(t.title, 80, untitled)
 
-/** A conversation's own address, whole: the app at `/?chat=<id>` (lib/host `talk`), wherever the rooms are drawn. */
+/** A conversation's own address, whole: the app at `/?chat=<id>` (lib/host `talk`), wherever the apps are drawn. */
 export const href = (id: string): string => new URL(site(talk(id)), window.location.href).href
 
 /** Opens a conversation in a tab of its own. */
@@ -275,8 +275,8 @@ const own = (row: Element | null): HTMLElement | null => row?.querySelector<HTML
  * long-press opens it at the point, a row's ⋯ hangs it from itself. Its one
  * child holds the rows (`ThreadRow`). `threads` are the list's conversations by
  * id, `active` the one the pane holds (what the keys act on with no menu open),
- * and `onGone` runs after that one is deleted — the room moves to a new chat —
- * defaulting to emptying the room. `onSchedule`, where the list's host can say
+ * and `onGone` runs after that one is deleted — the pane moves to a new chat —
+ * defaulting to emptying the pane. `onSchedule`, where the list's host can say
  * what the conversation asks, adds Schedule…: the conversation's question as a
  * task that runs itself.
  */
@@ -295,7 +295,7 @@ export function ConversationMenu({
 }) {
   const { t } = useI18n()
   const act = useThreadActions()
-  // The conversation the pane holds NOW: a delete answered after the reader moved on leaves the room they moved to.
+  // The conversation the pane holds NOW: a delete answered after the reader moved on leaves the conversation they moved to.
   const holds = useRef(active)
   holds.current = active
   // The list's own element, for the row after one deleted.

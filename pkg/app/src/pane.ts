@@ -3,15 +3,15 @@
 // What a conversation is holding for its next message, PER CONVERSATION: the
 // files on their way to the workspace and why any were refused. The panel's
 // tabs are @hanzo/build's (`useDeck`), kept per conversation under the same key
-// (`channel`).
+// (`conversation`).
 //
 // The store lives outside React for the reason `open.ts` gives: the router
-// mounts the rooms, so anything kept inside one is destroyed by a route change.
+// mounts the apps, so anything kept inside one is destroyed by a route change.
 // It is NOT written down: a file picked off the reader's own disk is an object
 // URL, which the browser revokes with the document that minted it, so a kept
 // row would come back as a name pointing at nothing.
 //
-// ONE WAY IN FOR A FILE. The composer's paperclip, a drop on the room, a paste
+// ONE WAY IN FOR A FILE. The composer's paperclip, a drop on the pane, a paste
 // into the field and the Sources tab's `+` all call `hold`, so a file goes up by
 // one road (`lib/files`: straight to the org's workspace, in parts when it is
 // large), shows as a chip over the field and a row under Sources at once, and
@@ -67,17 +67,17 @@ const BARE: Pane = { held: [], refused: null }
  * The conversation a pane belongs to.
  *
  * THREE FIELDS AND NOT ONE, because `open.ts` already refuses to conflate them:
- * an inbox room arrives over a transport and is keyed by it, a thread is a
- * conversation the org has recorded, and an agent is who you are talking to
- * before a thread exists. Prefixed so a room called `x` and a thread called `x`
- * cannot land on one entry. `new` is a room nobody has spoken in yet.
+ * a channel is keyed by where it lives, a thread is a conversation the org has
+ * recorded, and an agent is who you are talking to before a thread exists.
+ * Prefixed so a channel called `x` and a thread called `x` cannot land on one
+ * entry. `new` is a conversation nobody has spoken in yet.
  */
-export function channel(open: {
-  room: string | null
+export function conversation(open: {
+  channel: string | null
   thread: string | null
   agent: string | null
 }): string {
-  if (open.room) return `room:${open.room}`
+  if (open.channel) return `channel:${open.channel}`
   if (open.thread) return `thread:${open.thread}`
   if (open.agent) return `agent:${open.agent}`
   return 'new'

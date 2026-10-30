@@ -36,7 +36,7 @@ import { Bar } from './progress'
 import { Card, Go, INK, Quiet, Row, SOFT, CHOSEN } from './card'
 import { Talk } from './Talk'
 import { useMe } from './roster'
-import { roomKey, teamKey, useTeamRooms } from './rooms'
+import { fromKey, teamKey, useChannels } from './channels'
 import { invite, apps, projects } from './lib/home'
 import { BAD } from './lib/mix'
 
@@ -64,7 +64,7 @@ const GROUNDS = (mode: Mode): boolean => mode === 'news' || mode === 'research'
 /**
  * Ask, however the host answers.
  *
- * The default sends the question to /chat, which is the one room on this site
+ * The default sends the question to /chat, which is the one app on this site
  * that reads a question off the address (`?q=`, the name every Hanzo surface
  * takes). A host that already HAS the thread — the chat pane, where this home
  * belongs — passes its own `send` instead and nothing navigates.
@@ -74,9 +74,9 @@ export interface HomeProps {
 }
 
 /**
- * A ROOM IS READ HERE. Home is the org's room: the rail's channels and direct
+ * A CHANNEL IS READ HERE. Home is the org's app: the rail's channels and direct
  * messages open in this pane (`Talk`), keyed `team:<space>/<id>` in the
- * selection slot and in the address, and the Rooms card below lists them and
+ * selection slot and in the address, and the Channels card below lists them and
  * opens a new one. What other networks carry in stays in the Inbox, under its
  * own key.
  */
@@ -90,14 +90,14 @@ export function Home({ ask }: HomeProps) {
   // closed, it draws nothing — so a second instance beside the shell's costs a
   // component and no pixels, and there is still ONE directory in the codebase.
   const [directory, setDirectory] = useState(false)
-  const { room, openRoom } = useOpen()
-  const held = useTeamRooms()
+  const { channel, openChannel } = useOpen()
+  const held = useChannels()
 
   const here = MODES.find((m) => m.id === mode) ?? MODES[0]
   const grounded = GROUNDS(mode)
 
-  const at = roomKey(room)
-  if (at) return <Open at={at} rooms={held} back={() => openRoom(null)} />
+  const at = fromKey(channel)
+  if (at) return <Open at={at} channels={held} back={() => openChannel(null)} />
 
   const send = () => {
     const question = draft.trim()
@@ -213,7 +213,7 @@ export function Home({ ask }: HomeProps) {
         py="$8"
       >
         <Grid columns={{ min: 260, max: 3 }} gap={12}>
-          <Rooms {...held} />
+          <Channels {...held} />
           <Projects />
           <Chats />
           <Next onConnect={() => setDirectory(true)} />
@@ -229,33 +229,33 @@ export function Home({ ask }: HomeProps) {
 }
 
 /**
- * The open room, in place of the question and the cards.
+ * The open channel, in place of the question and the cards.
  *
- * The key names a space and an id; the org's list answers which room that is.
- * The ladder is the one every card climbs: the session first, because that is
- * the state that never resolves, then the refusal, then the read, then a key no
- * room answers to — a shared link to a room this reader cannot see.
+ * The key names a space and an id; the org's list answers which channel that
+ * is. The ladder is the one every card climbs: the session first, because that
+ * is the state that never resolves, then the refusal, then the read, then a key
+ * no channel answers to — a shared link to a channel this reader cannot see.
  */
 function Open({
   at,
-  rooms,
+  channels,
   back,
 }: {
   at: { space: string; id: string }
-  rooms: ReturnType<typeof useTeamRooms>
+  channels: ReturnType<typeof useChannels>
   back: () => void
 }) {
   const { t } = useI18n()
   const { isAuthenticated, isLoading } = useIam()
-  const found = rooms.rooms?.find((one) => one.space === at.space && one.id === at.id)
-  if (found) return <Talk key={teamKey(found)} room={found} />
-  const reading = isLoading || (isAuthenticated && rooms.rooms === null && !rooms.wrong)
+  const found = channels.channels?.find((one) => one.space === at.space && one.id === at.id)
+  if (found) return <Talk key={teamKey(found)} channel={found} />
+  const reading = isLoading || (isAuthenticated && channels.channels === null && !channels.wrong)
   const line = reading
     ? t('Reading the channel.')
     : !isAuthenticated
       ? t('Sign in to read this channel.')
-      : rooms.wrong
-        ? say(rooms.wrong, t('this channel'), 'read', t)
+      : channels.wrong
+        ? say(channels.wrong, t('this channel'), 'read', t)
         : t('That channel is not here.')
   return (
     <YStack flex={1} items="center" justify="center" p="$6" gap="$3">
@@ -279,17 +279,17 @@ function Open({
    ────────────────────────────────────────────────────────────────────────── */
 
 /**
- * The org's rooms, and the way to open one.
+ * The org's channels, and the way to open one.
  *
- * The list is the read the rail makes (`useTeamRooms`), so the two cannot
- * disagree about what the org has. A new room is posted with the reader as its
- * first member — the platform adds nobody on its own — in the space of the
- * org's first room, which is the space an org with one has; an org with none
+ * The list is the read the rail makes (`useChannels`), so the two cannot
+ * disagree about what the org has. A new channel is posted with the reader as
+ * its first member — the platform adds nobody on its own — in the space of the
+ * org's first channel, which is the space an org with one has; an org with none
  * leaves it unsaid. The row the platform answers with is opened at once.
  */
-function Rooms({ rooms, wrong, open }: ReturnType<typeof useTeamRooms>) {
+function Channels({ channels, wrong, open }: ReturnType<typeof useChannels>) {
   const { t } = useI18n()
-  const { openRoom } = useOpen()
+  const { openChannel } = useOpen()
   const me = useMe()
   const [naming, setNaming] = useState(false)
   const [name, setName] = useState('')
@@ -302,10 +302,10 @@ function Rooms({ rooms, wrong, open }: ReturnType<typeof useTeamRooms>) {
     setOpening(true)
     setRefused(null)
     try {
-      const made = await open({ name: wanted, space: rooms?.[0]?.space, members: [me] })
+      const made = await open({ name: wanted, space: channels?.[0]?.space, members: [me] })
       setName('')
       setNaming(false)
-      openRoom(teamKey(made))
+      openChannel(teamKey(made))
     } catch (e) {
       setRefused(plainly(e, t('this channel'), t))
     } finally {
@@ -314,18 +314,18 @@ function Rooms({ rooms, wrong, open }: ReturnType<typeof useTeamRooms>) {
   }
 
   return (
-    <Card kind="rooms" icon={<Hash size={14} aria-hidden />} title={t('Channels')}>
-      {rooms === null ? (
+    <Card kind="channels" icon={<Hash size={14} aria-hidden />} title={t('Channels')}>
+      {channels === null ? (
         <Waiting wrong={wrong} subject={t('your channels')} />
-      ) : rooms.length === 0 ? (
+      ) : channels.length === 0 ? (
         <Quiet>{t('No channels yet.')}</Quiet>
       ) : (
         <YStack gap="$1">
-          {rooms.slice(0, 6).map((one) => (
+          {channels.slice(0, 6).map((one) => (
             <Row
               key={teamKey(one)}
               icon={one.direct ? <AtSign size={12} aria-hidden /> : <Hash size={12} aria-hidden />}
-              onPress={() => openRoom(teamKey(one))}
+              onPress={() => openChannel(teamKey(one))}
             >
               {one.name || t('Direct message')}
             </Row>
@@ -385,7 +385,7 @@ function Rooms({ rooms, wrong, open }: ReturnType<typeof useTeamRooms>) {
         </YStack>
       ) : (
         <Row icon={<Plus size={12} aria-hidden />} onPress={() => setNaming(true)}>
-          {t('New room')}
+          {t('New channel')}
         </Row>
       )}
     </Card>

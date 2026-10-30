@@ -5,8 +5,8 @@
 // The composer's `+` › Agents (`useAgentShelf`) lists the org's agents, the
 // default cast first: the core team hanzoai/personas publishes (team.ts), drawn
 // for an org that keeps no row of its own for a member. Picking one adds it to
-// the conversation that is open, and the reply comes back in each voice in the
-// room; picking it again lets it out. The page does not move. Create agent and
+// the conversation that is open, and the reply comes back in each voice in
+// it; picking it again lets it out. The page does not move. Create agent and
 // Browse personas open the sheet (`Hire`, mounted once by `AgentMaker`); Manage
 // agents is Dev's Customize › Agents.
 //
@@ -21,7 +21,7 @@
 import { phrase, pieces, type Say } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { useRooms } from './host'
+import { useHost } from './host'
 import { ArrowLeft, Camera, Check, Plus, Sparkles, Upload, Users } from 'lucide-react'
 import { generateImages } from '@hanzo/ai'
 import { useAgents, useModels } from '@hanzo/ai/react'
@@ -74,7 +74,7 @@ export function useCrew(): ReturnType<typeof useAgents> {
   return agents
 }
 
-/** The house crew's names, which a reply may be split by even after one has left the room. */
+/** The house crew's names, which a reply may be split by even after one has left the conversation. */
 export const HOUSE: readonly string[] = TEAM.map((one) => one.name)
 
 /** Two names for one agent differ only in case ("Dev" and "dev"). */
@@ -103,14 +103,14 @@ export function make(how: 'new' | 'persona' | null): void {
  */
 export function AgentMaker() {
   const how = useSyncExternalStore(listen, () => making, () => null)
-  const { agents: room, openAgent } = useOpen()
+  const { agents: cast, openAgent } = useOpen()
   if (!how) return null
   return (
     <Hire
       start={how === 'persona'}
       onClose={() => make(null)}
       onMade={(name) => {
-        if (!room.some((there) => same(there, name))) openAgent(name)
+        if (!cast.some((there) => same(there, name))) openAgent(name)
       }}
     />
   )
@@ -123,15 +123,15 @@ export function AgentMaker() {
 export function useAgentShelf(): Shelf {
   const { t } = useI18n()
   const { agents, loading, error } = useCrew()
-  const { agents: room, openAgent } = useOpen()
-  const pathed = useRooms().path !== null
+  const { agents: cast, openAgent } = useOpen()
+  const pathed = useHost().path !== null
   return {
     rows: ordered(agents).map((one) => ({
       id: one.name,
       label: called(one.name),
       icon: <Face src={one.avatar} emoji={(one as { emoji?: string }).emoji} name={one.name} size={16} />,
       note: member(one.name)?.role ?? (one as { description?: string }).description,
-      on: room.some((there) => same(there, one.name)),
+      on: cast.some((there) => same(there, one.name)),
     })),
     pick: (id) => openAgent(called(id)),
     loading,
@@ -153,8 +153,8 @@ export function useAgentShelf(): Shelf {
 export function Crew({ to }: { to?: string } = {}) {
   const { t } = useI18n()
   const { agents } = useCrew()
-  const { agents: room, openAgent, withAgents } = useOpen()
-  const { router, route } = useRooms()
+  const { agents: cast, openAgent, withAgents } = useOpen()
+  const { router, route } = useHost()
   const here = route
   const [hiring, setHiring] = useState(false)
 
@@ -184,7 +184,7 @@ export function Crew({ to }: { to?: string } = {}) {
       >
         {ordered(agents).map((one) => {
           const name = called(one.name)
-          const on = room.some((there) => there.toLowerCase() === one.name.toLowerCase())
+          const on = cast.some((there) => there.toLowerCase() === one.name.toLowerCase())
           return (
             <Box
               key={one.id || one.name}

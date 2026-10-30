@@ -1,6 +1,6 @@
 'use client'
 
-// The Bots Room.
+// The Bots app.
 //
 // Bots are autonomous workers for your organization: each has a model,
 // instructions, tools, and a record of everything it has accomplished.
@@ -279,7 +279,7 @@ export function Bots() {
     [activeRoster, shown, picked],
   )
 
-  // Its record and its work, re-read after anything this room does to it —
+  // Its record and its work, re-read after anything this app does to it —
   // the platform's answer is the only account of what happened.
   const refresh = useCallback(async () => {
     if (!client || !bot) return
@@ -615,7 +615,7 @@ export function Bots() {
                 {t('24/7')}
               </Button>
               {/* A session is the row every runner hangs its activity off — the
-                  CLI's outer agent, hanzo.bot, this room. Opening one from here
+                  CLI's outer agent, hanzo.bot, this app. Opening one from here
                   registers it; a machine attaching to it is a separate act, and
                   until one does, a command sent to it comes back `forwarded:
                   false` and the card says so. */}

@@ -25,7 +25,7 @@ overrides:
 minimumReleaseAge: 0
 
 catalog:
-  '@hanzo/ai': 0.6.23
+  '@hanzo/ai': 0.7.0
   '@hanzo/appearance': 0.2.12
   '@hanzo/build': 0.2.84
   '@hanzo/composer': 0.2.0

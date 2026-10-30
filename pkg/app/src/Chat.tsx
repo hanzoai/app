@@ -9,12 +9,12 @@
 // WHO CAN SEND: an account. `/v1/agents/chat` answers a signed-out caller
 // "a validated principal is required" — measured on production, with and
 // without the publishable key the bundle ships and with a browser's own Origin
-// — so a visitor's first message comes back refused however the room is drawn.
-// The room says that in the reader's words and offers the way past it; what it
+// — so a visitor's first message comes back refused however the pane is drawn.
+// The pane says that in the reader's words and offers the way past it; what it
 // must not do is describe an account they do not have.
 //
 // The free MODEL is a separate question and still exists: `anonymous` opens on
-// the free pool, so what changes at sign-in is the menu, not the room.
+// the free pool, so what changes at sign-in is the menu, not the conversation.
 //
 // The FREE lane is about PRICE, not identity: a free turn spends no balance and
 // is data-shared in exchange. That choice is made once, at onboarding, where
@@ -42,8 +42,8 @@ import {
 import { Chat as ChatSurface, EFFORTS, Failure, MEASURE, Parts, useFamilies, words, type ComposerProps, type Said } from "@hanzo/ui/chat";
 import { carriedIn, carrying, compose, partsOf, said as told, weigh } from "./lib/attach";
 import { download, dropped, fileOf, pct, readable, refOf, retrieve, type Api, type FileRef, type WorkFile } from "./lib/files";
-import { channel, drop, hold, landed, localOf, spend, take, usePane, useWorkFile, type Held, type Via } from "./pane";
-import { Face, brief as roomBrief, join, roleOf, roomTurn, roster as rosterLine, rosterOf, speakers, speaksOf, voiceOf } from "./cast";
+import { conversation, drop, hold, landed, localOf, spend, take, usePane, useWorkFile, type Held, type Via } from "./pane";
+import { Face, brief as castBrief, join, roleOf, castTurn, roster as rosterLine, rosterOf, speakers, speaksOf, voiceOf } from "./cast";
 import { cleanForSpeech, speakAgent } from "./speech";
 import { AgentMaker, HOUSE, useAgentShelf, useCrew } from "./crew";
 import { called } from "./team";
@@ -54,7 +54,7 @@ import { useIam, useIamToken } from "@hanzo/iam/react";
 import { bearer, hasSession, named, org } from "./lib/session";
 import { api } from "./lib/api";
 import { app, dev, go } from "./lib/host";
-import { useRooms } from "./host";
+import { useHost } from "./host";
 import { chats, house, paidPlan, paused, setCreditsAfterAllowance, useLimits } from "./lib/limits";
 import { LimitedBanner } from "@hanzo/ui/product/LimitedBanner";
 import type { LimitAction } from "@hanzo/ui/product/limits";
@@ -66,7 +66,7 @@ import { refused as worded, speech, useDictation, useTalk, useVoice } from "@han
 import { Check, Clock, FileText, Ghost, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, X } from "lucide-react";
 import { FREE, ENSO } from "./lib/ai";
 import { openThread, useOpen } from "./open";
-import { Beside, Framed } from "./Shell";
+import { Side, Framed } from "./Shell";
 import { SEED, look, useSections, useSites, type Mark } from "./RightPane";
 import { Share } from "./Share";
 import { ConversationMenu, ThreadMore, useThreadList, type Thread } from "./thread";
@@ -158,7 +158,7 @@ function useOpening(): { text: string; thread: string | null } {
     const asked = url.searchParams.get("q");
     // A conversation carried in from hanzo.chat. The free chat records the thread
     // under the reader's own account and sends its id, never the transcript; this
-    // room opens that thread once the reader is signed in. Struck from the bar
+    // pane opens that thread once the reader is signed in. Struck from the bar
     // like `?q=`, for the same reasons.
     const carried = url.searchParams.get("thread");
     if (asked !== null || carried !== null) {
@@ -207,18 +207,18 @@ export function Chat() {
     if (carried && settled && signedIn) openThread(carried);
   }, [carried, settled, signedIn]);
 
-  // The client is the SHELL's — one per room, so the thread and the roster share
+  // The client is the SHELL's — one per shell, so the thread and the roster share
   // a session rather than each minting its own. `Thread` is therefore only ever
   // mounted under the provider the shell already put above it.
   //
-  // ONE room, for everyone. `anonymous` changes which models are on offer and
+  // ONE pane, for everyone. `anonymous` changes which models are on offer and
   // nothing else — the composer and the transcript are the same components
   // either way, because a visitor is having the same conversation.
   //
   // The conversations are NOT drawn here. `Threads` is the list and the shell
-  // owns the column it sits in — one sidebar for six rooms, already built, and a
+  // owns the column it sits in — one sidebar for six apps, already built, and a
   // second one in this pane would be two designs for one job. This file draws
-  // the conversation; the shell draws the room.
+  // the conversation; the shell draws the frame.
   return <Thread initial={opening} anonymous={settled && !signedIn} />;
 }
 
@@ -226,7 +226,7 @@ export function Chat() {
  * The same conversation, embedded in a page that is not /chat.
  *
  * R8: there were TWO live chat surfaces, so /models mounts this one and the
- * second is gone. The data-share choice is made once at onboarding; this room
+ * second is gone. The data-share choice is made once at onboarding; this view
  * does not ask again when a message is sent. It carries no
  * heading of its own: the host page already has one, and a second `<h1>` is the
  * defect that took the landings off /chat and /dev.
@@ -272,8 +272,8 @@ const message = (): string => `Ask ${brand()}`;
 /** The panel offers no kinds of its own in Chat: its tabs are pages. */
 const NONE: readonly Kind[] = [];
 
-/** The id the room's system turn is held under in the thread. */
-const ROOM = "room";
+/** The id the conversation's system turn is held under in the thread. */
+const CAST = "cast";
 
 /** The models that route a turn rather than name the one that answers it. */
 const ROUTERS = new Set(["enso", "enso-auto", "enso-free", "hanzo/enso", "auto", "free"]);
@@ -281,10 +281,10 @@ const ROUTERS = new Set(["enso", "enso-auto", "enso-free", "hanzo/enso", "auto",
 /** The id of the turn drawn in the thread when a turn is refused. */
 const FAILED = "failed";
 
-/** The turns with the room's system turn first, or without one for an empty room. */
+/** The turns with the conversation's system turn first, or without one for an empty cast. */
 function seated(turns: ChatMessage[], turn: string | null): ChatMessage[] {
-  const rest = turns.filter((one) => one.id !== ROOM);
-  return turn ? [{ id: ROOM, role: "system", content: turn }, ...rest] : rest;
+  const rest = turns.filter((one) => one.id !== CAST);
+  return turn ? [{ id: CAST, role: "system", content: turn }, ...rest] : rest;
 }
 
 /** An answer that came back with nothing in it. */
@@ -299,14 +299,14 @@ interface Failed {
 }
 
 /**
- * The agents a question speaks to: those it names, or the whole room when it
- * names nobody — the rule the room's brief gives the model (cast.tsx `brief`).
+ * The agents a question speaks to: those it names, or the whole cast when it
+ * names nobody — the rule the cast's brief gives the model (cast.tsx `brief`).
  */
-export function addressed(question: string, room: string[]): string[] {
-  const named = room.filter((name) =>
+export function addressed(question: string, cast: string[]): string[] {
+  const named = cast.filter((name) =>
     new RegExp(`(^|[^\\p{L}\\p{N}])${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^\\p{L}\\p{N}])`, "iu").test(question),
   );
-  return named.length ? named : room;
+  return named.length ? named : cast;
 }
 
 /**
@@ -492,7 +492,7 @@ const THUMB = 48;
  * A PICTURE SHOWS ITSELF and a PDF shows a tile, each with its name and size
  * beside it; any other kind is a chip of its name. Nothing is filled behind
  * them: a hairline on whatever they sit on, so a file reads alike over the
- * composer and inside a turn's bubble, in a light room and a dark one. A second
+ * composer and inside a turn's bubble, on a light page and a dark one. A second
  * fill on the bubble's was the darker grey that read as a stain. The word for
  * how far a file has got shows only while it is getting there — a picture of
  * the file already says it is attached — and `data-state` keeps the index's own
@@ -776,7 +776,7 @@ function Plan({ onPress }: { onPress: () => void }) {
  * answer, because listing a paid model to someone with no balance is an offer
  * that fails at send. Everything else — the transcript, the composer — is
  * identical, which is the point: signing in later changes the models on the
- * menu, not the room.
+ * menu, not the conversation.
  */
 function Thread({
   placeholder = message(),
@@ -824,10 +824,10 @@ function Thread({
   // In the app's frame the composer floats on the pane as a pane of its own.
   const framed = useContext(Framed);
   const opened = useOpen();
-  const { thread: open, open: reopen, agents: room, openAgent, seat, emptied, aside, showAside, showSettings } = opened;
+  const { thread: open, open: reopen, agents: cast, openAgent, seat, emptied, aside, showAside, showSettings } = opened;
   // What the conversation carries beside its words (@hanzo/build `useCarry`):
   // the skills picked from `+`, what Hanzo remembers and the mode, said at the
-  // end of the room's system turn so every request carries them.
+  // end of the conversation's system turn so every request carries them.
   // What the plugins act on — the draft and the files held for the next message —
   // read when they act, so it is lent through a ref filled further down.
   const lent = useRef<{ draft: string; setDraft: (x: string) => void; attach: (f: File[]) => void }>({ draft: "", setDraft: () => {}, attach: () => {} });
@@ -861,9 +861,9 @@ function Thread({
   const mine = open ? listing.threads.find((t) => t.id === open) : undefined;
   const alone = useMemo(() => new Map(mine ? [[mine.id, mine]] : []), [mine]);
   // The conversation's key in `pane.ts`, the one the column beside it reads.
-  const at = channel(opened);
+  const at = conversation(opened);
   // The first of them: what a surface that addresses one person reads.
-  const withWhom = room[0] ?? null;
+  const withWhom = cast[0] ?? null;
   // THE SIDE PANEL (@hanzo/build `Panel`), the one Dev's runs open too: shut
   // until the reader opens it or a preview lands (`see`, a link that frames),
   // kept per conversation with its tabs, so a chat opens as it was left and
@@ -922,12 +922,12 @@ function Thread({
    * already has a place for who is speaking, and this is it.
    */
   // THE COLUMN'S OWN LIST, because that is what draws the faces beside this
-  // room. `useAgent` asks the API for one agent BY REF and an agent is
+  // conversation. `useAgent` asks the API for one agent BY REF and an agent is
   // addressed here by the name a reader picked, so it answers null for every
   // row whose id is not its name — which is why the hero had no picture and no
   // sentence for an agent the column had just drawn a memoji for.
   const { agents: roster, loading: gathering } = useCrew();
-  // THE HANDLE A NAME IS FILED UNDER. The room holds the names a person reads
+  // THE HANDLE A NAME IS FILED UNDER. The cast holds the names a person reads
   // ("Dev"); the platform files a core member under its lower-case handle
   // ("dev"), so a read goes out under the org's own spelling.
   const handle = useCallback(
@@ -936,19 +936,19 @@ function Thread({
   );
   const { agent: read, loading: reading } = useAgent(withWhom && !gathering ? handle(withWhom) : null);
   // THIS agent's record only: the hook keeps the last agent's row while it reads
-  // the next, so a row whose name is not the one in the room is not theirs.
+  // the next, so a row whose name is not the one in the conversation is not theirs.
   const persona = read && withWhom && read.name?.toLowerCase() === withWhom.toLowerCase() ? read : null;
   // Until the record answers, the model they are pinned to is unknown, so a send
   // waits for it rather than going out on the reader's own model.
   const resolving = Boolean(withWhom) && (gathering || reading);
   const resolvingNow = useRef(resolving);
   resolvingNow.current = resolving;
-  // THE ROOM'S FACES, by name: what the column's own list says each one looks
+  // THE CAST'S FACES, by name: what the column's own list says each one looks
   // like, which is what the header, the hero and a reply's byline all draw.
   const faces = useMemo(() => {
     const rows = Array.isArray(roster) ? roster : [];
-    return Object.fromEntries(room.map((name) => [name, rows.find((one) => one.name.toLowerCase() === name.toLowerCase())]));
-  }, [roster, room]);
+    return Object.fromEntries(cast.map((name) => [name, rows.find((one) => one.name.toLowerCase() === name.toLowerCase())]));
+  }, [roster, cast]);
   const mate = withWhom ? faces[withWhom] : undefined;
   // ONE SPELLING PER AGENT. A core member is named as hanzoai/personas names
   // them whatever the org's handle ("des" is Des, `called`); any other agent is
@@ -956,23 +956,23 @@ function Thread({
   // is named again once they do, and its row, picture and brief are the org's.
   useEffect(() => {
     const rows = Array.isArray(roster) ? roster : [];
-    const named = room.map((name) => called(rows.find((one) => one.name.toLowerCase() === name.toLowerCase())?.name ?? name));
-    if (named.some((name, i) => name !== room[i])) seat(named);
-  }, [roster, room, seat]);
-  // WHO A REPLY MAY NAME: the room, the org's agents and the house crew. A turn
-  // said while someone was in the room stays split by speaker after they leave.
+    const named = cast.map((name) => called(rows.find((one) => one.name.toLowerCase() === name.toLowerCase())?.name ?? name));
+    if (named.some((name, i) => name !== cast[i])) seat(named);
+  }, [roster, cast, seat]);
+  // WHO A REPLY MAY NAME: the cast, the org's agents and the house crew. A turn
+  // said while someone was in the conversation stays split by speaker after they leave.
   const known = useMemo(
-    () => [...new Set([...room, ...(Array.isArray(roster) ? roster.map((one) => called(one.name)) : []), ...HOUSE])],
-    [room, roster],
+    () => [...new Set([...cast, ...(Array.isArray(roster) ? roster.map((one) => called(one.name)) : []), ...HOUSE])],
+    [cast, roster],
   );
-  // EVERYONE ELSE IN THE ROOM. `useAgent` reads the first by ref; the rest are
+  // EVERYONE ELSE IN THE CONVERSATION. `useAgent` reads the first by ref; the rest are
   // read here once each and kept, so a member who steps out and back in does
   // not cost a second read. A name the platform does not hold reads null and
   // falls to what the cast says of them.
   const [briefs, setBriefs] = useState<Record<string, string | null>>({});
   const asked = useRef(new Set<string>());
   useEffect(() => {
-    for (const name of room) {
+    for (const name of cast) {
       const ref = handle(name);
       if (name === withWhom || asked.current.has(ref)) continue;
       asked.current.add(ref);
@@ -984,8 +984,8 @@ function Thread({
           setBriefs((all) => ({ ...all, [name]: null }));
         });
     }
-  }, [ai, room, withWhom, handle]);
-  // THE SYSTEM TURN: one brief as it is, or the whole room. The org's row
+  }, [ai, cast, withWhom, handle]);
+  // THE SYSTEM TURN: one brief as it is, or the whole cast. The org's row
   // speaks for an agent it holds — the cloud keeps a core member's row in step
   // with hanzoai/personas, and an agent the org made under the same name keeps
   // its own brief — and a core member the org holds no row for speaks as
@@ -993,17 +993,17 @@ function Thread({
   // gets Feynman rather than the house model.
   const brief = useMemo(
     () =>
-      roomBrief(
-        room.map((name) => ({
+      castBrief(
+        cast.map((name) => ({
           name,
           says: (name === withWhom ? persona?.instructions?.trim() : briefs[name]) || speaksOf(name) || null,
         })),
       ),
-    [room, withWhom, persona?.instructions, briefs],
+    [cast, withWhom, persona?.instructions, briefs],
   );
   // AN AGENT BRINGS ITS OWN MODEL. It is a field on the row, so choosing one
   // for them would be answering a question they have already answered. The
-  // default for plain chats lives in Settings, so this room has no second model
+  // default for plain chats lives in Settings, so this pane has no second model
   // control that can drift from it.
   //
   // NAMED, THEN CHECKED AGAINST WHAT THE GATEWAY SERVES. `enso` is the house
@@ -1012,7 +1012,7 @@ function Thread({
   // round as a completion for a model nobody has, which the round returns as a
   // bare "not found", after it has already recorded the question. `served`
   // keeps the house name where it is served and otherwise falls to the first
-  // model that is, so a room on any catalogue can be spoken to.
+  // model that is, so a conversation on any catalogue can be spoken to.
   // A SPEECH MODEL NEVER ANSWERS A CHAT TURN. The catalog lists the
   // transcriber and the voice beside the chat models; one that names its
   // outputs and names no text (`chats`) is neither offered nor fallen back to.
@@ -1042,7 +1042,7 @@ function Thread({
   const sent = anonymous ? FREE : wanted;
   const model = persona?.model || (rowOf(sent) ? sent : served(models, sent));
   // THE PLAN'S USAGE (lib/limits.ts), kept current by every chat answer's
-  // headers and read again whenever a send settles, below. The room draws no
+  // headers and read again whenever a send settles, below. The pane draws no
   // bars and no near note — those live on Settings → Usage. It says something
   // only once the reader is turned away: a reply answered from a free model, or
   // a refusal.
@@ -1052,7 +1052,7 @@ function Thread({
   const banner = pause ? paused(pause, limits?.plan ?? "", (id) => nameOf(id, listed), Date.now(), t) : null;
   // EVERY MODEL IS CHOSEN, never asked for: one the plan does not cover still
   // picks, and the gateway answers it with the policy's refusal or from Enso,
-  // which the room then shows. A turn the gateway refuses `plan_required`
+  // which the pane then shows. A turn the gateway refuses `plan_required`
   // opens the upgrade, titled with the model.
   const free = useFree(!anonymous) && !held;
   const [ask, setAsk] = useState<Ask | null>(null);
@@ -1090,11 +1090,11 @@ function Thread({
   // fetch for one, and fetching anyway would race a live conversation to
   // replace it with the server's copy mid-sentence.
   const written = useRef(new Set<string>());
-  // The room each thread last recorded, by thread, as the names joined.
+  // The cast each thread last recorded, by thread, as the names joined.
   const recorded = useRef(new Map<string, string>());
 
   // A conversation that has just been written down becomes the OPEN one, so the
-  // rail marks the room the reader is standing in. Only on the mint, which is
+  // rail marks the conversation the reader is standing in. Only on the mint, which is
   // `kept` changing: when the reader opens another Recent, `open` moves first and
   // `kept` follows it a render later (the hook takes `thread` in an effect), and
   // reopening the stale `kept` then sent the two chasing each other until React
@@ -1119,21 +1119,21 @@ function Thread({
   const apply = useRef(set as React.Dispatch<React.SetStateAction<ChatMessage[]>>);
   apply.current = set as React.Dispatch<React.SetStateAction<ChatMessage[]>>;
 
-  // THE ROOM'S SYSTEM TURN: who is in the conversation (`roster`), then how each
-  // of them talks. It is the first turn every request carries and it follows the room, so
+  // THE CONVERSATION'S SYSTEM TURN: who is in the conversation (`roster`), then how each
+  // of them talks. It is the first turn every request carries and it follows the cast, so
   // pressing a face adds them to the conversation that is open rather than
   // starting another; the turns already said stay where they are.
-  const turn = useMemo(() => [roomTurn(room, brief), carry.text].filter(Boolean).join("\n\n") || null, [room, brief, carry.text]);
+  const turn = useMemo(() => [castTurn(cast, brief), carry.text].filter(Boolean).join("\n\n") || null, [cast, brief, carry.text]);
   const turnNow = useRef(turn);
   turnNow.current = turn;
-  const roomNow = useRef(room);
-  roomNow.current = room;
+  const castNow = useRef(cast);
+  castNow.current = cast;
   useEffect(() => {
     apply.current((held) => seated(held, turn));
   }, [turn]);
 
-  // A NEW CONVERSATION holds the room's turn and nothing else: on arrival, on
-  // "New chat" (`emptied` counts the presses, so a press on an empty room still
+  // A NEW CONVERSATION holds the cast's turn and nothing else: on arrival, on
+  // "New chat" (`emptied` counts the presses, so a press on an empty conversation still
   // lands), and when the open thread is left for none.
   useEffect(() => {
     if (open) return;
@@ -1143,10 +1143,10 @@ function Thread({
   // A RECENT THAT OPENS. `threads.get` answers null for an id this caller may
   // not read — the route replies 200 with no messages rather than 404 — so an
   // empty transcript is read as absent instead of drawn as a real but blank
-  // conversation. The last roster turn it holds names its room, which is seated
+  // conversation. The last roster turn it holds names its cast, which is seated
   // as it arrives; a thread that never recorded one has nobody in it.
   //
-  // Its own effect, apart from the room's turn: a character arriving while the
+  // Its own effect, apart from the cast's turn: a character arriving while the
   // read is out must not abort it.
   useEffect(() => {
     if (!open) return;
@@ -1168,14 +1168,14 @@ function Thread({
           if (held) names = held;
         }
         recorded.current.set(open, names.join("\n"));
-        // The room already seated keeps its briefs; another is seated by name
+        // The cast already seated keeps its briefs; another is seated by name
         // and its briefs follow as they are read.
-        const same = names.join("\n") === roomNow.current.join("\n");
+        const same = names.join("\n") === castNow.current.join("\n");
         seat(names);
         apply.current(
           seated(
             turns.filter((one) => !(one.role === "system" && rosterOf(one.content))),
-            same ? turnNow.current : roomTurn(names, null),
+            same ? turnNow.current : castTurn(names, null),
           ),
         );
       })
@@ -1183,25 +1183,25 @@ function Thread({
     return () => stop.abort();
   }, [ai, open, seat]);
 
-  // WHO IS IN THE CONVERSATION IS KEPT WITH IT. A thread records its room as a
+  // WHO IS IN THE CONVERSATION IS KEPT WITH IT. A thread records its cast as a
   // roster turn when it is first written down with somebody in it, and again
-  // whenever the room changes; reopening it — after a reload, on another
+  // whenever the cast changes; reopening it — after a reload, on another
   // device — seats the same faces. The briefs are not recorded: they are read
-  // fresh from the agents each time the room is seated.
+  // fresh from the agents each time the cast is seated.
   useEffect(() => {
     if (!open || anonymous) return;
-    const now = room.join("\n");
+    const now = cast.join("\n");
     const was = recorded.current.get(open);
     if (was === now) return;
     // A thread read back from the store is seated by the read above; until it
     // lands there is nothing to compare against.
     if (was === undefined && !written.current.has(open)) return;
     recorded.current.set(open, now);
-    if (was === undefined && room.length === 0) return;
-    void ai.threads.record([{ role: "system", content: rosterLine(room) }], open).catch(() => {
+    if (was === undefined && cast.length === 0) return;
+    void ai.threads.record([{ role: "system", content: rosterLine(cast) }], open).catch(() => {
       recorded.current.delete(open);
     });
-  }, [ai, open, room, anonymous]);
+  }, [ai, open, cast, anonymous]);
 
   // `send` is read through a ref and NEVER through a dependency array. Its
   // identity changes on every `setMessages` — `useChat` closes over `messages` —
@@ -1215,7 +1215,7 @@ function Thread({
   // it.
   const [draft, setDraft] = useState("");
   // FILES WITH THE NEXT MESSAGE, held by `pane.ts` for this conversation: the
-  // paperclip, a drop anywhere on the room, a paste into the field and the
+  // paperclip, a drop anywhere on the pane, a paste into the field and the
   // column's `+` all go through its one `hold`, so the chips here and the rows
   // under Sources are one list. Each goes to the org's workspace and is indexed
   // there; the turn carries it by reference (lib/attach), with the passages
@@ -1261,14 +1261,14 @@ function Thread({
 
   // WHILE THE MIC IS OPEN, A FINISHED REPLY IS READ ALOUD by the platform's
   // voice, through the conversation's own mouth so speaking over it stops it.
-  // A room's reply is read part by part, each in its speaker's cast voice.
+  // A reply from the cast is read part by part, each in its speaker's cast voice.
   const wasStreaming = useRef(false);
   useEffect(() => {
     if (wasStreaming.current && !chat.streaming && voice.open) {
       const msgs = chat.messages;
       const lastMsg = msgs[msgs.length - 1];
       if (lastMsg && lastMsg.role === "assistant" && typeof lastMsg.content === "string") {
-        const parts = room.length > 1 ? speakers(lastMsg.content, room) : [{ who: withWhom, text: lastMsg.content }];
+        const parts = cast.length > 1 ? speakers(lastMsg.content, cast) : [{ who: withWhom, text: lastMsg.content }];
         // A part spoken over ends the reading rather than handing on to the next.
         void (async () => {
           for (const part of parts) {
@@ -1279,7 +1279,7 @@ function Thread({
       }
     }
     wasStreaming.current = chat.streaming;
-  }, [chat.streaming, voice.open, voice.say, chat.messages, withWhom, room]);
+  }, [chat.streaming, voice.open, voice.say, chat.messages, withWhom, cast]);
 
   // A SEND THAT WAITS ONE RENDER. `send` closes over the turns it was rendered
   // with, so a send that first tidies the thread is held here and made from the
@@ -1468,7 +1468,7 @@ function Thread({
   // WHAT WAS SAID, which is not everything the thread holds. The persona rides
   // as a system turn so the wire carries it; drawing it would print a character
   // brief in the transcript as though somebody had typed it, and would make a
-  // room nobody has spoken in look like a conversation already under way.
+  // conversation nobody has spoken in look like one already under way.
   const said = useMemo(
     () => chat.messages.filter((m) => m.role !== "system"),
     [chat.messages],
@@ -1482,9 +1482,9 @@ function Thread({
       title: tidy(initialText || t("New chat")),
       created: Date.now(),
       updated: Date.now(),
-      room: room.length ? room : [],
+      cast: cast.length ? cast : [],
     };
-  }, [mine, open, said, t, room]);
+  }, [mine, open, said, t, cast]);
 
   const currentThreadMap = useMemo(() => {
     const map = new Map(alone);
@@ -1644,7 +1644,7 @@ function Thread({
   const failure = (question: ChatMessage) => {
     const failed = failures[question.id];
     const text = words(question.content as Said);
-    const whom = addressed(text, room);
+    const whom = addressed(text, cast);
     const wrong = failed?.error ?? null;
     const how = wrong ? refusalOf(wrong) : null;
     // A BILLING REFUSAL is said in the gateway's words; its way past —
@@ -1716,7 +1716,7 @@ function Thread({
   // Dev, from the Summary's Create file or site: a move inside the app where the
   // host's app reads the path (hanzo.ai), else Dev on hanzo.ai, as the shell's
   // Dev place goes from a host without it (hanzo.team).
-  const pathed = useRooms().path !== null;
+  const pathed = useHost().path !== null;
   const create = () => (pathed ? go(app("")) : window.location.assign(dev()));
   const sections = useSections({ at, said, held: files, deck, onCreate: create });
 
@@ -1734,15 +1734,15 @@ function Thread({
     },
   };
 
-  // THE COMPOSER'S SLOTS (@hanzo/ui/chat): this room hands it what it carries,
+  // THE COMPOSER'S SLOTS (@hanzo/ui/chat): this pane hands it what it carries,
   // and the composer draws the rest the way the person's setting says.
   // What pressing a suggestion does, at once: open what it names, send its prompt
-  // here (the room is a new chat while one shows), hand its run to Dev, or make
+  // here (the pane is a new chat while one shows), hand its run to Dev, or make
   // its scheduled task and show it in Scheduled tasks.
   const hint = (a: Act, row?: Hint) => {
     handleHint(a, row, { reopen, submit, target, setPrepWrong, t });
   };
-  // A chat a suggestion in Dev left for this room is sent once the room is a new
+  // A chat a suggestion in Dev left for this pane is sent once the pane is a new
   // chat: the address's own conversation let go of, nothing said yet.
   const [handed] = useState(() => ({ prompt: anonymous ? "" : taken("send") }));
   useEffect(() => {
@@ -1850,13 +1850,13 @@ function Thread({
             research: { on: carry.gear.gear.research, set: (on) => carry.gear.set({ research: on }) },
             memory: { on: carry.gear.gear.memory, set: (on) => carry.gear.set({ memory: on }) },
           },
-      // Who is in the room, then what the conversation carries, as chips after `+`.
+      // Who is in the conversation, then what it carries, as chips after `+`.
       carried: [
-        ...room.map((name) => ({
+        ...cast.map((name) => ({
           id: `agent:${name}`,
           label: name,
           icon: <Face src={faces[name]?.avatar} emoji={faces[name]?.emoji} name={name} size={16} />,
-          onRemove: () => seat(room.filter((one) => one !== name)),
+          onRemove: () => seat(cast.filter((one) => one !== name)),
         })),
         ...(anonymous ? [] : carry.on),
       ],
@@ -1921,7 +1921,7 @@ function Thread({
       height="100%"
       minH={0}
       position="relative"
-      data-slot="chat-room"
+      data-slot="conversation"
       // A LINK IN AN ANSWER OPENS IN A TAB beside the conversation when the tab
       // can show it — a site or preview we host — and in a browser tab of its
       // own otherwise, as a modified click always does.
@@ -2010,7 +2010,7 @@ function Thread({
         data-tauri-drag-region="deep"
         onMouseDown={dragWindow}
         onDoubleClick={toggleWindowMaximize}
-        $max-md={!mine && !room.length ? { display: 'none' } : undefined}
+        $max-md={!mine && !cast.length ? { display: 'none' } : undefined}
       >
         <XStack items="center" gap="$2" minW={0}>
           {mine ? (
@@ -2019,15 +2019,15 @@ function Thread({
             </Text>
           ) : null}
           {/* WHO IS AT THE OTHER END, or nothing at all.
-              `withWhom || "Jobs"` put a name and a photograph on a room the
+              `withWhom || "Jobs"` put a name and a photograph on a conversation the
               reader had chosen nobody for — the same defect the empty state
               below already fixed once, still standing up here. The badge beside
               it read "VIP · AI" for everyone, which is not a fact about any
               agent: no row carries a tier, so there is nothing to draw. */}
-          {room.length ? (
+          {cast.length ? (
             // EVERYONE IN THE CONVERSATION, each with the control that lets
             // them out. The strip under the composer adds and removes the same
-            // people; either place changes the one room. The row scrolls
+            // people; either place changes the one cast. The row scrolls
             // sideways on a narrow screen rather than pushing the header's
             // controls off it, and a phone shows faces without names.
             <XStack
@@ -2040,7 +2040,7 @@ function Thread({
               // The row scrolls without drawing a bar; gui types no `scrollbarWidth`.
               $platform-web={{ scrollbarWidth: "none" }}
             >
-              {room.map((name) => (
+              {cast.map((name) => (
                 <XStack
                   key={name}
                   role="listitem"
@@ -2155,11 +2155,11 @@ function Thread({
       </XStack>
 
       {/* The frame owns the column on a laptop; this is what Chat puts in it.
-          On a phone the panel is a sheet over the room instead. */}
+          On a phone the panel is a sheet over the pane instead. */}
       {wide && aside !== null ? (
-        <Beside>
+        <Side>
           <Panel side={deck} kinds={NONE} onHide={() => setPanel(false)} label={t("Tabs")} {...browsing} />
-        </Beside>
+        </Side>
       ) : null}
       {!wide && panel ? <Panel side={deck} kinds={NONE} sheet onHide={() => setPanel(false)} label={t("Tabs")} {...browsing} /> : null}
 
@@ -2213,13 +2213,13 @@ function Thread({
               );
           }
           // WHILE THE ANSWER HAS NO WORDS YET: who is answering (the agents the
-          // question addresses, or the whole room when it names nobody), and the
+          // question addresses, or the whole cast when it names nobody), and the
           // model's reasoning as it streams (`reasoning` on the turn), dimmed and
           // cut to its last lines.
           const thought = turn.role === "assistant" && !said && chat.streaming ? ((turn as { reasoning?: string }).reasoning ?? "").trim() : "";
-          if (turn.role === "assistant" && !said && chat.streaming && (room.length || thought)) {
+          if (turn.role === "assistant" && !said && chat.streaming && (cast.length || thought)) {
             const q = [...shown].reverse().find((one) => one.role === "user");
-            const whom = room.length ? addressed(words(q?.content as Said), room) : [];
+            const whom = cast.length ? addressed(words(q?.content as Said), cast) : [];
             return (
               <YStack gap="$1" data-slot="thinking">
                 <Text fontSize="$2" color="$soft">
@@ -2241,7 +2241,7 @@ function Thread({
               </YStack>
             );
           }
-          // A ROOM'S ANSWER IS SEVERAL PEOPLE'S. Each opens a line with their
+          // A CAST'S ANSWER IS SEVERAL PEOPLE'S. Each opens a line with their
           // name, as the brief asks, so each is drawn under their own face and
           // read in their own voice. A reply that names nobody is drawn whole.
           const parts = turn.role === "assistant" ? speakers(said, known) : null;
@@ -2251,8 +2251,8 @@ function Thread({
             const at = shown.findIndex((one) => one.id === turn.id);
             const q = shown.slice(0, at).reverse().find((one) => one.role === "user");
             const silent =
-              room.length > 1 && !(chat.streaming && at === shown.length - 1)
-                ? addressed(words(q?.content as Said), room).filter(
+              cast.length > 1 && !(chat.streaming && at === shown.length - 1)
+                ? addressed(words(q?.content as Said), cast).filter(
                     (name) => !parts.some((part) => part.who?.toLowerCase() === name.toLowerCase()),
                   )
                 : [];
@@ -2318,10 +2318,10 @@ function Thread({
                   chosen nobody a 160px photograph of somebody — and the heading
                   under it said their name. A fresh /chat is not a conversation
                   with anyone yet. */}
-              {room.length > 1 ? (
+              {cast.length > 1 ? (
                 <XStack items="center" justify="center" mb="$4">
-                  {room.map((name, i) => (
-                    <Box key={name} marginInlineStart={i ? -16 : 0} rounded={40} borderWidth={2} borderColor="$background" z={room.length - i}>
+                  {cast.map((name, i) => (
+                    <Box key={name} marginInlineStart={i ? -16 : 0} rounded={40} borderWidth={2} borderColor="$background" z={cast.length - i}>
                       <Face src={faces[name]?.avatar} emoji={faces[name]?.emoji} name={name} size={72} />
                     </Box>
                   ))}
@@ -2345,7 +2345,7 @@ function Thread({
               {/* A face for an agent with no picture at all — the glyph it
                   picked, or its initial. The block above draws the picture when
                   there is one, so only one of the two ever stands here. */}
-              {room.length === 1 && !portrait ? (
+              {cast.length === 1 && !portrait ? (
                 <Box mb="$3">
                   <Face emoji={mate?.emoji ?? persona?.emoji} name={withWhom} size={72} />
                 </Box>
@@ -2360,7 +2360,7 @@ function Thread({
                 text="center"
                 mb="$1"
               >
-                {join(room, t) || heading || (firstName ? t("What’s up, {name}?", { name: firstName }) : t("What’s up?"))}
+                {join(cast, t) || heading || (firstName ? t("What’s up, {name}?", { name: firstName }) : t("What’s up?"))}
               </Text>
 
               {/* WHAT THE AGENT ROW SAYS ABOUT ITSELF, and only that. The
@@ -2370,7 +2370,7 @@ function Thread({
                   here, not read from anywhere: a claim about an identifiable
                   person, shipped in the bundle, that nobody they name has seen.
                   A persona with no description gets a name and no sentence. */}
-              {room.length === 1 && (mate?.description ?? persona?.description) ? (
+              {cast.length === 1 && (mate?.description ?? persona?.description) ? (
                 <Text
                   fontSize="$3"
                   color="$soft"

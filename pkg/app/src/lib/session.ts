@@ -30,7 +30,7 @@ const KEYS = [ACCESS, REFRESH, `${PREFIX}id_token`, EXPIRES]
  * The store the SDK keeps the session in: the host's (`configure({ session })`,
  * Hanzo Desktop's keychain, where no token reaches the webview's localStorage),
  * else this page's localStorage. Only the SDK's own keys are read from it; the
- * rooms' own choices (the organization, the person) stay in localStorage.
+ * apps' own choices (the organization, the person) stay in localStorage.
  */
 function tokens(): Storage {
   return where().session ?? window.localStorage
@@ -412,7 +412,7 @@ export function org(): string | null {
     const mine = orgs()
     const chosen = window.localStorage.getItem(`${PREFIX}current_org`)
     if (chosen && mine.includes(chosen)) return chosen
-    // ONE ORGANIZATION IS NOT A CHOICE. Answering null here until `Orgs` had
+    // ONE ORGANIZATION IS NOT A CHOICE. Answering null here until `Gate` had
     // recorded a pick meant every single-organization reader began UNSCOPED:
     // the client was built without X-Org-Id, the pick fired the event a moment
     // later, and useAi rebuilt the client — so every hook restarted after first
@@ -457,7 +457,7 @@ export const PICKED = 'hanzo:org:picked'
 
 /**
  * Work in this organization from now on: the SDK's selection, noted as picked
- * and announced. Noted here, so a choice made anywhere — the rooms' gate, the
+ * and announced. Noted here, so a choice made anywhere — the shell's gate, the
  * app's account menu — is one the gate does not ask for again.
  */
 export function pick(o: string): void {
@@ -470,10 +470,10 @@ export function pick(o: string): void {
   window.dispatchEvent(new Event(ORG))
 }
 
-/** Fired on `window` to open the organization chooser over the room. */
+/** Fired on `window` to open the organization chooser over the shell. */
 export const CHOOSE = 'hanzo:org:choose'
 
-/** Open the chooser (`Orgs`): every organization of the person's, and every one for a SuperAdmin. */
+/** Open the chooser (`Gate`): every organization of the person's, and every one for a SuperAdmin. */
 export function choose(): void {
   window.dispatchEvent(new Event(CHOOSE))
 }
@@ -506,7 +506,7 @@ export function assumed(): string | null {
  * (hanzoai/iam internal/oidc/masquerade.go). The answer is kept where the SDK
  * keeps the session, with its own expiry, so every request made from here on
  * carries it and the SDK's next refresh ends support mode by itself. The page
- * reloads so every room reads under it.
+ * reloads so every app reads under it.
  */
 export async function support(org: string | null): Promise<void> {
   const token = bearer()

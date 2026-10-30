@@ -31,14 +31,14 @@ vi.mock('@hanzo/build', () => ({
   nav: () => [{ id: 'work', label: 'Work', links: [{ id: 'new', label: 'New run', onPress: made }, { id: 'projects', label: 'Projects' }] }],
 }))
 
-import { Top } from './Top'
+import { Bar } from './Bar'
 import type { Place } from './lib/host'
 
-const host = { go: () => {} } as unknown as Parameters<typeof Top>[0]['host']
+const host = { go: () => {} } as unknown as Parameters<typeof Bar>[0]['host']
 const calls: string[] = []
-const top = (mode: Place['mode'], places?: Parameters<typeof Top>[0]['places']) =>
+const top = (mode: Place['mode'], places?: Parameters<typeof Bar>[0]['places']) =>
   renderToStaticMarkup(
-    createElement(Top, {
+    createElement(Bar, {
       host,
       mode,
       places,

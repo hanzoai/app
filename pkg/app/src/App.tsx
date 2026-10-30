@@ -5,15 +5,15 @@
 // and Studio, @hanzo/studio's `<Studio>` the same way, its places (`nav`) in the
 // sidebar where Dev's stand for Dev.
 //
-//   OUTER  the rail (Rail.tsx) and the sidebar beside it (Column.tsx), on the
+//   OUTER  the rail (Rail.tsx) and the sidebar beside it (Sidebar.tsx), on the
 //          window's floor, with the window's bar above them where the host has
 //          no browser around it (`bar`).
 //   INNER  the content, cut as one rounded panel inset from the window's edges
 //          and from the sidebar by the gutter (`--pane-gap`): Chat's
-//          conversation with its tabs beside it (Paned), or Dev's builder.
+//          conversation with its tabs beside it (Split), or Dev's builder.
 //
 // The rail moves between the modes; the sidebar holds the mode's name, the
-// search (the palette, Palette.tsx), New, Dev's places and the reader's
+// search (the palette, Search.tsx), New, Dev's places and the reader's
 // Recents. The address says the mode, as a path (lib/host `talk`, `app`,
 // `place`): `/` and `/chat` are Chat on a new conversation, `/chat/<id>` one of
 // the reader's, and a path under `/dev` is Dev: `/dev/run/<id>` a run, `/dev/projects/<org>/<repo>` a project; a path
@@ -22,11 +22,11 @@
 // this one component for every path under each.
 //
 // Every host draws this: hanzo.ai at `/`, `/chat`, `/dev` and `/studio`, and the desktop
-// app as its main window. The host mounts IamProvider and `<Rooms>` with its
+// app as its main window. The host mounts IamProvider and `<Host>` with its
 // router and the path, and draws this only for a signed-in reader; what a
 // stranger sees is the host's.
 //
-// THE ORGANIZATION COMES FIRST (Orgs.tsx), and the app mounts it itself, so no
+// THE ORGANIZATION COMES FIRST (Gate.tsx), and the app mounts it itself, so no
 // host draws the app without it: a reader with none makes one and a reader
 // with several picks one. No plan is asked for here: that is the workspace's,
 // on its own host (hanzo.team) and behind its front door.
@@ -70,22 +70,22 @@ import { nav as places } from '@hanzo/studio'
 import { useAi } from './lib/ai'
 import { Chat } from './Chat'
 import { UsageProvider } from './Usage'
-import { Column } from './Column'
+import { Sidebar } from './Sidebar'
 import { Learning } from './Learning'
 import { isPlans, leave, useDevHost } from './dev'
-import { Orgs } from './Orgs'
-import { useRooms } from './host'
+import { Gate } from './Gate'
+import { useHost } from './host'
 import { useKept } from './kept'
 import { Mark, raised, Rail, Toggle } from './Rail'
 import { Layer, Lift, RAISED, useDrawer } from './Drawer'
 import { empty, openThread, showSettings, useOpen } from './open'
-import { Paned } from './Shell'
-import { Palette } from './Palette'
+import { Split } from './Shell'
+import { Search } from './Search'
 import { summons } from './seek'
 import { floor, pane } from './ground'
 import { pick } from './lib/session'
 import { app, go, hosted, place, settings, studio, talk, TERMINALS, visit, type Place } from './lib/host'
-import { Top } from './Top'
+import { Bar } from './Bar'
 import { FOOT, HEIGHT, TOP, useView } from './view'
 import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowControls'
 
@@ -107,7 +107,7 @@ const HOME: Place = { mode: 'chat', thread: null }
  * lights over the page there), and `drag`, the attributes the host's shell
  * reads as the region that moves the window.
  */
-export interface Bar {
+export interface Titlebar {
   inset?: number
   drag?: Record<string, unknown>
   controls?: React.ReactNode
@@ -120,7 +120,7 @@ export interface Bar {
  * window. Betas stands alone, as Tabs does: the rail and the pane, no sidebar.
  */
 export interface Hosted {
-  bar?: Bar
+  bar?: Titlebar
   betas?: React.ReactNode
 }
 
@@ -138,9 +138,9 @@ const typing = (e: KeyboardEvent): boolean => {
 
 export function App({ bar, betas }: Hosted = {}) {
   return (
-    <Orgs>
+    <Gate>
       <Window bar={bar} betas={betas} />
-    </Orgs>
+    </Gate>
   )
 }
 
@@ -176,7 +176,7 @@ function Window({ bar, betas }: Hosted) {
     [dev, depart, exit],
   )
   const { client } = useAi()
-  const { router, path } = useRooms()
+  const { router, path } = useHost()
   const here = path ?? '/'
   const at = place(here) ?? HOME
   const mode = at.mode
@@ -372,7 +372,6 @@ function Window({ bar, betas }: Hosted) {
           ) : null}
           <XStack
             ref={drawer.pane}
-            data-room=""
             data-app={mode}
             data-slot="frame"
             {...(bar ? null : floor)}
@@ -398,7 +397,7 @@ function Window({ bar, betas }: Hosted) {
             {/* Tabs and Betas stand alone: no sidebar beside them. */}
             {closed || alone ? null : (
               <YStack $max-md={{ display: 'none' }}>
-                <Column host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} onSeek={seek} onBack={back} places={sidebar} />
+                <Sidebar host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} onSeek={seek} onBack={back} places={sidebar} />
               </YStack>
             )}
             <YStack
@@ -415,12 +414,12 @@ function Window({ bar, betas }: Hosted) {
               $max-md={{ marginInlineStart: 0, pb: `max(var(--pane-gap), ${FOOT})` }}
             >
               {/* A phone has no rail and no sidebar: its bar opens them as a drawer and switches Chat and Dev. */}
-              {bar ? null : <Top host={host} mode={mode} places={sidebar} open={drawer.state !== 'shut'} go={move} onMenu={drawer.open} onChat={toChat} onDev={toDev} />}
+              {bar ? null : <Bar host={host} mode={mode} places={sidebar} open={drawer.state !== 'shut'} go={move} onMenu={drawer.open} onChat={toChat} onDev={toDev} />}
               <XStack data-slot="panes" display="grid" gridTemplateColumns="1fr" width="100%" height="100%" minW={0} minH={0}>
                 {mode === 'chat' ? (
-                  <Paned framed>
+                  <Split framed>
                     <Chat />
-                  </Paned>
+                  </Split>
                 ) : mode === 'tabs' ? (
                   <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
                     <Suspense fallback={null}>
@@ -467,7 +466,7 @@ function Window({ bar, betas }: Hosted) {
                   <Rail host={host} mode={mode} at={where} inside={inside} open onChat={toChat} onDev={toDev} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />
                 </YStack>
                 <YStack flex={1} minW={0}>
-                  <Column
+                  <Sidebar
                     host={host}
                     mode={mode}
                     thread={thread}
@@ -482,7 +481,7 @@ function Window({ bar, betas }: Hosted) {
               </XStack>
             </Layer>
           )}
-          {finding ? <Palette go={move} onClose={found} mode={mode} host={host} /> : null}
+          {finding ? <Search go={move} onClose={found} mode={mode} host={host} /> : null}
           {learning ? <Learning open onClose={() => setLearning(false)} /> : null}
         </YStack>
           </UsageProvider>

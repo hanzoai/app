@@ -152,7 +152,7 @@ export function useBetas(): {
 
 /**
  * Whether this page is served from a developer's own machine, where every app
- * opens: a room nobody can open is a room nobody can work on. The ORIGIN, which
+ * opens: an app nobody can open is an app nobody can work on. The ORIGIN, which
  * no deployment can acquire by configuration.
  */
 function here(): boolean {

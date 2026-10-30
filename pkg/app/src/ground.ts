@@ -6,7 +6,7 @@
  * first paper rung's lit edge and drop — the second's 15px drop and the floor's
  * strong glass read as a gradient through a translucent pane, so both stay one
  * rung down. The fill is the caller's rung: `--pane-fill`
- * in the app's frame, `sheet(1)`/`sheet(2)` where a pane lies in a room.
+ * in the app's frame, `sheet(1)`/`sheet(2)` where a pane lies in the shell.
  *
  * The drop is a prop and not `sheet(2)`'s `elevation-2` class, whose shadow is
  * `!important`: a Dev run's pane steps aside for the two panes inside it by

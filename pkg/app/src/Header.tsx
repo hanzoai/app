@@ -74,7 +74,7 @@ function useMoved(): boolean {
 /** The notch's inset. gui carries a CSS function to the page unchanged; its types only name custom properties. */
 const NOTCH = 'env(safe-area-inset-top)' as `var(--${string})`
 
-export function Chrome({ back, account }: { back?: ReactNode; account?: ReactNode }) {
+export function Header({ back, account }: { back?: ReactNode; account?: ReactNode }) {
   const { t, dir } = useI18n()
   const { user, isAuthenticated } = useIam()
   const signOut = useSignOut()

@@ -11,7 +11,7 @@
 //
 // The bell is the org's run activity (@hanzo/build `useSessions`): the runs
 // that moved last, each one press from its page.
-// The search opens the palette (Palette.tsx; ⌘K / Ctrl+K from anywhere).
+// The search opens the palette (Search.tsx; ⌘K / Ctrl+K from anywhere).
 //
 // Dev's places are @hanzo/build's `own`: New run, Projects, Issues, Templates.
 // A place the rail holds (Library, Scheduled tasks, Customize) takes the sidebar
@@ -34,9 +34,9 @@ import { ArrowLeft, Bell, Search, Sparkles, SquarePen } from 'lucide-react'
 import { DOTS, Gutter, library, NEW, own, tabs, useScheduled, useSessions, type Host } from '@hanzo/build'
 import { tidy } from './lib/title'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
-import { Sidebar, SidebarIconButton, SidebarItem, StatusDot, type RailLink } from '@hanzo/ui/chat'
+import { Sidebar as Base, SidebarIconButton, SidebarItem, StatusDot, type RailLink } from '@hanzo/ui/chat'
 import { useId, type ReactNode } from 'react'
-import { Made } from './Me'
+import { Made } from './Account'
 import { Recents } from './Recents'
 import { MARK, raised, type Raised } from './Rail'
 import { Setup } from './Setup'
@@ -123,7 +123,7 @@ function Activity({ host }: { host: Host }) {
   )
 }
 
-export function Column({
+export function Sidebar({
   host,
   mode,
   thread,
@@ -196,7 +196,7 @@ export function Column({
       height="100%"
       width={drawer ? undefined : 'var(--span)'}
     >
-      <Sidebar
+      <Base
         data-slot="app-rail"
         role="navigation"
         aria-label={brand()}
@@ -362,7 +362,7 @@ export function Column({
           </YStack>
         ) : null}
         {foot}
-      </Sidebar>
+      </Base>
       {drawer ? null : (
         // In the gutter between the sidebar and the pane, the side panel's handle on this edge:
         // the column is pinned to the start, the window's left, or its right read right to left.

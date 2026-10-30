@@ -1,6 +1,6 @@
-// The controls and surfaces the Bots room is drawn from, as gui props.
+// The controls and surfaces the Bots app is drawn from, as gui props.
 //
-// The room and its runtime pane spelled the same tab, field and label twice
+// The app and its runtime pane spelled the same tab, field and label twice
 // each; they are stated once here and spread where they are drawn. Each is a
 // plain prop object, so a call site adds to one and never needs a style.
 
@@ -41,10 +41,10 @@ export const LABEL = {
   render: 'h3', fontSize: '$1', fontWeight: '600', letterSpacing: 0.6, color: FAINT, textTransform: 'uppercase',
 } as const
 
-/** A sentence the room says when it has nothing else to draw. */
+/** A sentence the app says when it has nothing else to draw. */
 export const NOTE = { render: 'p', px: 12, py: 10, fontSize: '$2', lineHeight: '1.3rem', color: DIM } as const
 
-/** One line, cut with an ellipsis where it runs out of room. */
+/** One line, cut with an ellipsis where it runs out of space. */
 export const CLIP = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } as const
 
 /** What a run printed: a bounded block of mono that scrolls. */

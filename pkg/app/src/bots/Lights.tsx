@@ -5,7 +5,7 @@ import { XStack, YStack } from '@hanzo/gui'
 /**
  * A window's head: three rings, not three colours. Red, amber and green are
  * another company's mark, and nothing here closes, minimises or zooms, so the
- * shape alone says "window". The Bots room, its capture and the template
+ * shape alone says "window". The Bots app, its capture and the template
  * cards wear it (components/bots/Bots.tsx, components/home/Shot.tsx,
  * components/home/Templates.tsx).
  */

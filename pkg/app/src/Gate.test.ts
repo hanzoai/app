@@ -41,7 +41,7 @@ vi.mock('@hanzo/iam/react', () => ({ useIam: () => state.iam }))
 vi.mock('./waiting', () => ({ Waiting: () => null }))
 vi.mock('./lib/destination', () => ({ LOGIN: '/login', enter: () => {} }))
 vi.mock('./lib/ai', () => ({ useAi: () => ({ client: null }) }))
-vi.mock('./lib/hostname', () => ({ useHost: () => state.host }))
+vi.mock('./lib/hostname', () => ({ useHostname: () => state.host }))
 vi.mock('./lib/hydrated', () => ({ useHydrated: () => true }))
 vi.mock('./lib/api', () => ({ api: () => 'https://api.hanzo.ai' }))
 vi.mock('./lib/signout', () => ({ useSignOut: () => () => {} }))
@@ -73,19 +73,19 @@ vi.mock('./lib/invite', () => ({ createInvitation: async () => '', inviteLink: (
 vi.mock('./lib/intent', () => ({ countSignup: () => {} }))
 vi.mock('./lib/tags', () => ({ track: () => {} }))
 vi.mock('./lib/mix', () => ({ BAD: 'red', mix: () => '' }))
-// The focused pages' bar has its own tests (Chrome.test.ts); here it is only where it stands.
-vi.mock('./Chrome', () => ({ Chrome: () => createElement('header', { 'data-slot': 'masthead' }) }))
+// The focused pages' bar has its own tests (Header.test.ts); here it is only where it stands.
+vi.mock('./Header', () => ({ Header: () => createElement('header', { 'data-slot': 'masthead' }) }))
 // The accounts section has its own tests (Accounts.test.ts); here it is only where it stands.
 vi.mock('./Accounts', () => ({ Accounts: () => createElement('section', { 'aria-label': 'Accounts' }) }))
-vi.mock('./host', () => ({ useRooms: () => ({ router: { replace: () => {} } }) }))
+vi.mock('./host', () => ({ useHost: () => ({ router: { replace: () => {} } }) }))
 vi.mock('./where', () => ({ brand: () => 'Hanzo AI', site: (p: string) => p, where: () => state.where }))
 
-const { Orgs } = await import('./Orgs')
+const { Gate } = await import('./Gate')
 
-/** The gate's markup over a composer, the room it holds. */
-const drawn = () => renderToStaticMarkup(createElement(Orgs, null, createElement('textarea', { 'aria-label': 'Ask anything' })))
+/** The gate's markup over a composer, the app it holds. */
+const drawn = () => renderToStaticMarkup(createElement(Gate, null, createElement('textarea', { 'aria-label': 'Ask anything' })))
 
-/** The room's wrapper, as drawn. */
+/** The app's wrapper, as drawn. */
 const held = (html: string) => html.match(/<div data-slot="held"[^>]*>/)?.[0] ?? ''
 
 describe('the organization gate', () => {
@@ -105,7 +105,7 @@ describe('the organization gate', () => {
     expect(drawn()).not.toContain('data-slot="masthead"')
   })
 
-  test('while the session settles, the room under the veil is inert and hidden', () => {
+  test('while the session settles, the app under the veil is inert and hidden', () => {
     state.iam = { isAuthenticated: false, isLoading: true, accessToken: '' }
     const html = drawn()
     expect(html).toContain('<textarea')
@@ -113,13 +113,13 @@ describe('the organization gate', () => {
     expect(held(html)).toContain('aria-hidden="true"')
   })
 
-  test('off the front door the room opens before any plan is read, and nothing holds it', () => {
+  test('off the front door the app opens before any plan is read, and nothing holds it', () => {
     const html = drawn()
     expect(held(html)).toBe('<div data-slot="held">')
     expect(html).toContain('<textarea')
   })
 
-  test('off the front door a team on Free opens the room: no plan stands in front of Chat', () => {
+  test('off the front door a team on Free opens the app: no plan stands in front of Chat', () => {
     state.tier = { tier: { name: 'free' } }
     state.personal = false
     const html = drawn()
@@ -128,7 +128,7 @@ describe('the organization gate', () => {
     expect(html).not.toContain('nothing in it works')
   })
 
-  test('on the workspace\'s host a team on Free is asked for the plan, and not drawn the room', () => {
+  test('on the workspace\'s host a team on Free is asked for the plan, and not drawn the app', () => {
     state.host = 'hanzo.team'
     state.tier = { tier: { name: 'free' } }
     state.personal = false
@@ -137,7 +137,7 @@ describe('the organization gate', () => {
     expect(held(html)).toBe('')
   })
 
-  test('on the workspace\'s host a live plan opens the room', () => {
+  test('on the workspace\'s host a live plan opens the app', () => {
     state.host = 'hanzo.team'
     state.tier = { tier: { name: 'dev' } }
     expect(held(drawn())).toBe('<div data-slot="held">')
@@ -148,25 +148,25 @@ describe('the organization gate', () => {
       state.where = { team: true }
     })
 
-    test('while the tier is read, the room under the veil is inert and hidden', () => {
+    test('while the tier is read, the app under the veil is inert and hidden', () => {
       const html = drawn()
       expect(held(html)).toContain('inert=""')
       expect(held(html)).toContain('aria-hidden="true"')
     })
 
-    test('while a Free organization is read for its kind, the room is inert', () => {
+    test('while a Free organization is read for its kind, the app is inert', () => {
       state.tier = { tier: { name: 'free' } }
       expect(held(drawn())).toContain('inert=""')
     })
 
-    test('a live plan opens the room, in the same place, and nothing holds it', () => {
+    test('a live plan opens the app, in the same place, and nothing holds it', () => {
       state.tier = { tier: { name: 'dev' } }
       const html = drawn()
       expect(held(html)).toBe('<div data-slot="held">')
       expect(html).toContain('<textarea')
     })
 
-    test('a team on Free is not drawn the room at all', () => {
+    test('a team on Free is not drawn the app at all', () => {
       state.tier = { tier: { name: 'free' } }
       state.personal = false
       const html = drawn()

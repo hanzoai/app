@@ -96,7 +96,7 @@ function Lines() {
 }
 
 /** One side of the pill. */
-function Side({ value, children }: { value: Place['mode']; children: string }) {
+function Segment({ value, children }: { value: Place['mode']; children: string }) {
   return (
     <ToggleGroupItem
       value={value}
@@ -116,7 +116,7 @@ function Side({ value, children }: { value: Place['mode']; children: string }) {
   )
 }
 
-export function Top({
+export function Bar({
   host,
   mode,
   places,
@@ -171,8 +171,8 @@ export function Top({
       </XStack>
       <XStack data-slot="bar-mode" {...GLASS} height={LINE} p="$1" items="center" justifySelf="center">
         <ToggleGroup type="single" aria-label={t('App')} value={mode === 'chat' || mode === 'dev' ? mode : ''} disableDeactivation onValueChange={(v) => (v === 'chat' ? onChat() : v === 'dev' ? onDev() : undefined)}>
-          <Side value="chat">{t('Chat')}</Side>
-          <Side value="dev">Dev</Side>
+          <Segment value="chat">{t('Chat')}</Segment>
+          <Segment value="dev">Dev</Segment>
         </ToggleGroup>
       </XStack>
       {/* A mode with nothing to make (Betas) has no New: the bar keeps its menu and Chat | Dev. */}

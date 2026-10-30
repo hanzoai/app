@@ -47,11 +47,11 @@ vi.mock('./lib/accounts', async (original) => ({ ...(await original<typeof impor
 vi.mock('./lib/signout', () => ({ useSignOut: () => async () => {} }))
 vi.mock('./where', () => ({ brand: () => 'Hanzo AI', site: (p: string) => p }))
 
-const { Chrome } = await import('./Chrome')
+const { Header } = await import('./Header')
 const { I18nProvider } = await import('@hanzo/i18n/react')
 const { default: fr } = await import('@hanzo/i18n/catalogs/fr-FR.json')
 
-const drawn = (back?: ReactNode, account?: ReactNode) => renderToStaticMarkup(createElement(Chrome, account === undefined ? { back } : { back, account }))
+const drawn = (back?: ReactNode, account?: ReactNode) => renderToStaticMarkup(createElement(Header, account === undefined ? { back } : { back, account }))
 
 describe('the focused pages\' bar', () => {
   beforeEach(() => {
@@ -118,7 +118,7 @@ describe('the focused pages\' bar', () => {
     expect(fr['Log out']).not.toBe('Log out')
     const at = document.createElement('div')
     const root = createRoot(at)
-    await act(async () => root.render(createElement(I18nProvider, { userId: 'bob', initialLocale: 'fr-FR' }, createElement(Chrome))))
+    await act(async () => root.render(createElement(I18nProvider, { userId: 'bob', initialLocale: 'fr-FR' }, createElement(Header))))
     await vi.waitFor(() => expect(at.innerHTML.match(new RegExp(`>${fr['Log out']}<`, 'g'))).toHaveLength(1))
     expect(at.innerHTML).toContain(`aria-label="${fr['Account']}"`)
     expect(at.innerHTML).not.toContain('>Log out<')
@@ -135,7 +135,7 @@ describe('the bar\'s ground', () => {
     const host = document.createElement('div')
     document.body.append(host)
     const root = createRoot(host)
-    await act(async () => root.render(createElement(Chrome, {})))
+    await act(async () => root.render(createElement(Header, {})))
     expect(html()).toContain('data-scrolled="false"')
     expect(html()).toContain('data-bg="transparent"')
 
@@ -180,7 +180,7 @@ describe('the bar\'s other accounts', () => {
     const host = document.createElement('div')
     document.body.append(host)
     const root = createRoot(host)
-    await act(async () => root.render(createElement(Chrome, {})))
+    await act(async () => root.render(createElement(Header, {})))
     const press = async (text: string) => {
       const button = [...host.querySelectorAll('button')].find((b) => b.textContent?.includes(text))
       expect(button, text).toBeTruthy()
@@ -201,7 +201,7 @@ describe('the way home', () => {
     const host = document.createElement('div')
     document.body.append(host)
     const root = createRoot(host)
-    await act(async () => root.render(createElement(Chrome, {})))
+    await act(async () => root.render(createElement(Header, {})))
     const home = host.querySelector<HTMLAnchorElement>('a[data-slot="home"]')!
     expect(home.getAttribute('data-lit')).toBe('false')
     const point = async (type: string, pointerType: string) =>

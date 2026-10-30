@@ -49,13 +49,13 @@ vi.mock('./lib/org', () => ({ createOrg: async () => '', say: String }))
 vi.mock('./dev', () => ({ leave: left }))
 vi.mock('./open', () => ({ showSettings: settings }))
 
-import { Me, upgrade } from './Me'
+import { Account, upgrade } from './Account'
 
 /** The account menu, open, as its rows. */
 function menu(accountOpen = false) {
   rows.length = 0
   const host = { api: '', token: () => null, org: 'acme', person: { name: 'Ada', email: 'ada@acme.dev', avatar: '' }, signOut: () => {} }
-  renderToStaticMarkup(createElement(Me, { host, onOrg: () => {}, defaultAccountOpen: accountOpen }))
+  renderToStaticMarkup(createElement(Account, { host, onOrg: () => {}, defaultAccountOpen: accountOpen }))
   return [...rows]
 }
 

@@ -6,7 +6,7 @@
 // and Betas, the list of every app in beta; none of it in Studio), and the
 // account at the foot. It
 // is how the app moves between its products; a phone, which has no rail,
-// switches Chat and Dev in its bar (Top.tsx).
+// switches Chat and Dev in its bar (Bar.tsx).
 //
 // Studio is the app's third mode (@hanzo/studio at /studio), each of the three
 // opened where the reader left it.
@@ -18,7 +18,7 @@
 // conversations, Dev its own places (@hanzo/build `own`: New run, Projects,
 // Issues, Templates) and its runs, Studio its own; Library, Scheduled tasks and
 // Customize (@hanzo/build's Artifacts, Automations and Customize) each their
-// own (Column.tsx); Settings is the site's pages at /settings, beside the app
+// own (Sidebar.tsx); Settings is the site's pages at /settings, beside the app
 // (lib/host.ts `settings`). Nothing on the rail is listed inside Dev: one level
 // of the app a place, each lit while the reader is on it.
 //
@@ -31,7 +31,7 @@
 // and Forward (App.tsx `bar`), and its rail starts with Chat. A phone has no
 // rail: its menu (Drawer.tsx) lists the places as rows (`rows`) under the mode's
 // own — Studio, Tabs, then More, which Library, Scheduled tasks and Customize
-// lead there. Chat and Dev are the phone's bar's (Top.tsx), and the account is
+// lead there. Chat and Dev are the phone's bar's (Bar.tsx), and the account is
 // the menu's foot.
 
 import { useI18n } from '@hanzo/i18n/react'
@@ -45,7 +45,7 @@ import { BetasDialog, useBetas } from './Betas'
 import { out } from './help'
 import { BETAS } from './lib/betas'
 import { HOSTED_APPS } from './lib/hosted'
-import { Me } from './Me'
+import { Account } from './Account'
 import { BAND } from './ground'
 import { app, hosted, WORKSPACE, type Place } from './lib/host'
 
@@ -268,7 +268,7 @@ export function Rail({
       aria-label={t('Products')}
       width={RAIL}
       flex={1}
-      // The first mark centred on the head band beside it (BAND), the account on the sidebar's foot (Column's `pb`).
+      // The first mark centred on the head band beside it (BAND), the account on the sidebar's foot (Sidebar's `pb`).
       pt={(BAND - MARK) / 2}
       pb="$2"
       gap={4}
@@ -341,7 +341,7 @@ export function Rail({
         />
       ) : null}
       <YStack flex={1} />
-      <Me host={host} narrow onOrg={onOrg} />
+      <Account host={host} narrow onOrg={onOrg} />
     </YStack>
   )
 }

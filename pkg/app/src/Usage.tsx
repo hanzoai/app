@@ -12,7 +12,7 @@ import { showSettings } from './open'
 import { hasSession, org, subject, bearer, scope } from './lib/session'
 import { fetchCloudUsage, type CloudUsageOverview } from '@hanzo/usage'
 import { api } from './lib/api'
-import { useRooms } from './host'
+import { useHost } from './host'
 import { tokensOf, type Tokens } from './lib/tokens'
 import { payPage } from './lib/pay'
 import { useLimits } from './lib/limits'
@@ -25,7 +25,7 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
   const [open, setOpen] = useState(false)
   const currentOrg = org()
   const identity = `${currentOrg}:${subject()}`
-  const { path } = useRooms()
+  const { path } = useHost()
   const run = path?.match(/^\/dev\/run\/([^/]+)/)?.[1]
   const [account, setAccount] = useState<{ key: string; data?: CloudUsageOverview; error?: string } | null>(null)
   const [runUsage, setRunUsage] = useState<{ key: string; value: Tokens } | null>(null)

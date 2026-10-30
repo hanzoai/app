@@ -21,7 +21,7 @@ vi.mock('@hanzo/ui/chat', () => ({
 vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s, dir: 'ltr' }) }))
 vi.mock('./Betas', () => ({ BetasDialog: () => null, useBetas: () => ({ open: (id: string) => state.opened.has(id) }) }))
 vi.mock('./help', () => ({ out: (href: string) => state.went.push(href) }))
-vi.mock('./Me', () => ({ Me: () => null }))
+vi.mock('./Account', () => ({ Account: () => null }))
 
 const { Rail } = await import('./Rail')
 

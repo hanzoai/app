@@ -1,4 +1,4 @@
-// The ramp this room is drawn in.
+// The ramp this app is drawn in.
 //
 // Greyscale, because nothing on this screen is a category: a Bot is not red and
 // a session is not green. What used to stand here was seven personas each given
@@ -10,9 +10,9 @@
 //
 // ROLES, NOT VALUES. These were seven literals — black ground, white ink, white
 // at four opacities — which reads right in dark by coincidence and cannot
-// retune. On the light theme the room came out an island: the rail and the
+// retune. On the light theme the app came out an island: the rail and the
 // column beside it followed the page while everything these painted stayed
-// night, which is also what a screenshot of the room then carried onto the
+// night, which is also what a screenshot of the app then carried onto the
 // landing. Naming the role hands the decision to @hanzo/design, which tunes
 // both grounds already.
 //

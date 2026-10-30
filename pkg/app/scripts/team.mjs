@@ -1,4 +1,4 @@
-// What the rooms read from @hanzo/personas, from the pinned package.
+// What the apps read from @hanzo/personas, from the pinned package.
 //
 // The core team: each member as markdown (team/<id>.md), written to
 // src/team.gen.ts as strings, so no host needs an asset loader. Every member

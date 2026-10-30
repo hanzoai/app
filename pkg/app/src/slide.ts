@@ -11,7 +11,7 @@
 // line runs, so the same numbers close an LTR drawer pulled left and an RTL one
 // pulled right.
 
-/** The pane left in sight at the end edge while the menu is open, px: a thumb's 44 and room around it. */
+/** The pane left in sight at the end edge while the menu is open, px: a thumb's 44 and space around it. */
 export const STRIP = 64
 
 /** The menu's widest, px: a phone held sideways, or a small tablet, keeps the menu a menu. */

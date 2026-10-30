@@ -3,11 +3,11 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
 // The drawing libraries and the platform are not under test. The org's agents
-// are whatever `org` holds, the open conversation seats `room` and a pick asks
+// are whatever `org` holds, the open conversation seats `cast` and a pick asks
 // `seated` (open.ts toggles); a press of Manage records where it went.
-const { org, room, seated, went } = vi.hoisted(() => ({
+const { org, cast, seated, went } = vi.hoisted(() => ({
   org: { agents: [] as { id: string; name: string; avatar?: string }[], error: null as Error | null },
-  room: [] as string[],
+  cast: [] as string[],
   seated: [] as string[],
   went: [] as string[],
 }))
@@ -19,9 +19,9 @@ vi.mock('@hanzo/ui', async () => {
 })
 vi.mock('./cast', () => ({ Face: () => null }))
 vi.mock('./lib/ai', () => ({ useAi: () => ({ client: null }) }))
-vi.mock('./host', () => ({ useRooms: () => ({ path: '/chat' }) }))
+vi.mock('./host', () => ({ useHost: () => ({ path: '/chat' }) }))
 vi.mock('./lib/host', () => ({ app: (at: string) => `/dev/${at.slice(2)}`, go: (to: string) => went.push(to) }))
-vi.mock('./open', () => ({ useOpen: () => ({ agents: room, openAgent: (name: string) => seated.push(name) }) }))
+vi.mock('./open', () => ({ useOpen: () => ({ agents: cast, openAgent: (name: string) => seated.push(name) }) }))
 vi.mock('@hanzo/ai/react', () => ({
   useAgents: () => ({ agents: org.agents, loading: false, error: org.error, reload: () => {}, create: async () => ({}) }),
   useModels: () => ({ models: [] }),
@@ -44,7 +44,7 @@ function shelf(): Shelf {
 const on = (s: Shelf) => s.rows.filter((r) => r.on).map((r) => r.label)
 
 afterEach(() => {
-  room.length = 0
+  cast.length = 0
   seated.length = 0
   org.agents = []
   org.error = null
@@ -72,7 +72,7 @@ describe('the Agents shelf', () => {
 
   test('marks who the open conversation holds, whatever the case, and a pick toggles the agent by the name a reader sees', () => {
     org.agents = [{ id: 'agent_dev', name: 'dev' }, { id: 'agent_ops', name: 'ops' }]
-    room.push('Dev', 'OPS')
+    cast.push('Dev', 'OPS')
     const s = shelf()
     expect(on(s)).toEqual(['Dev', 'ops'])
     s.pick('dev')

@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react'
 import { useIam, useOrganizations } from '@hanzo/iam/react'
 import { useAi } from './lib/ai'
 
-/** One member of the org: a person, or an agent standing in the rooms. */
+/** One member of the org: a person, or an agent standing in the channels. */
 export interface Member {
   /** The account a message names as its author. */
   id: string
@@ -79,7 +79,7 @@ export const memberOf = (members: Member[] | null, id: string): Member | undefin
 
 /**
  * The reader's own account, from the userinfo the session holds. OIDC names it
- * `sub`, and team's account id is that same uuid — so it is the id a room's
+ * `sub`, and team's account id is that same uuid — so it is the id a channel's
  * members list and a message's author carry for this reader.
  */
 export function useMe(): string | null {

@@ -6,13 +6,13 @@
 // each field the way that one does — who is signed in, the organizations they
 // belong to and the one they work in, the theme, where the address is, and how
 // to leave. The name drawn at the top left is Hanzo Dev: this host is the
-// dev agent. Chat, on the rooms shell, is Hanzo AI.
+// dev agent. Chat, on the shell, is Hanzo AI.
 //
 // THE ADDRESS IS A PATH. Dev is /dev, and every place the builder shows is a
 // path under it in the builder's real-path grammar (lib/host.ts `app`, `place`;
 // @hanzo/build/route `href`, `parse`): a run, a screen, a Customize tab, the
 // plans and a project all survive a reload, and Back steps through them. The
-// host hands the rooms the path (`<Rooms path>`); a move is a native history
+// host hands the apps the path (`<Host path>`); a move is a native history
 // entry, which the Next router folds into `usePathname`, so reading the address
 // and moving it are one path.
 //
@@ -20,7 +20,7 @@
 // pages (lib/host.ts `settings`). A builder section the builder moves to
 // (`go`) and a link it opens (`open`) reach that page through the host's router
 // (`visit`); a pane that asks for Settings (`showSettings`, open.ts) is App's to
-// answer, where the phone's menu is. The rooms' shell draws its own Settings
+// answer, where the phone's menu is. The shell draws its own Settings
 // pane; the app has none.
 //
 // THE PLANS ARE THE PAY SITE'S. Every way the app reaches the plans — the
@@ -32,7 +32,7 @@
 // where a plan is bought.
 
 import { useMemo } from 'react'
-import { useLook, useRooms } from './host'
+import { useLook, useHost } from './host'
 import { useIam } from '@hanzo/iam/react'
 import { useSignOut } from './lib/signout'
 import { administers, path, route, type Host } from '@hanzo/build'
@@ -84,7 +84,7 @@ const at = (pathname: string | null): string => {
 export function useDevHost(): Host {
   const { user, accessToken } = useIam()
   const logout = useSignOut()
-  const { router, path: pathname } = useRooms()
+  const { router, path: pathname } = useHost()
   const here = path(route(at(pathname)))
   const look = useLook()
 
@@ -119,7 +119,7 @@ export function useDevHost(): Host {
       path: here,
       go: (to, how) => (isPlans(to) ? leave('here') : visit(router, app(to), how?.replace)),
       links: LINKS,
-      // The sidebar lists Settings' sections and Customize's tabs (Column.tsx), and Customize › Agents offers the cast.
+      // The sidebar lists Settings' sections and Customize's tabs (Sidebar.tsx), and Customize › Agents offers the cast.
       sections: true,
       cast: CAST,
       // An address of the app moves the app, another of this site moves in the

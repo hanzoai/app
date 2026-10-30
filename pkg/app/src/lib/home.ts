@@ -52,8 +52,8 @@ export interface App {
  * control and its verb are the same thing again.
  *
  * A PATH, not a URL. It is a page of this app, so it is reached the way every
- * other page of this app is, and the three doors that offer it (the empty
- * room's tile, the Create menu, the sidebar's row) all read this one line.
+ * other page of this app is, and the three doors that offer it (Home's Team
+ * tile, the Create menu, the sidebar's row) all read this one line.
  */
 export const invite = (): string => site(settings('members'))
 

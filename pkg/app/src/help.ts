@@ -1,4 +1,4 @@
-// The Help menu's pages and the app's keys, as data: the account menu (Me.tsx)
+// The Help menu's pages and the app's keys, as data: the account menu (Account.tsx)
 // draws both, its shortcuts dialog renders KEYS, and a spec reads them as they
 // are. No React, so a spec reads it as it is.
 
@@ -46,7 +46,7 @@ export interface Key {
 /**
  * Every key the app answers, in the order a reader looks for them. Each is
  * handled where it acts: App.tsx (⌘K, ⌘, and, in a window, Back and Forward),
- * Me.tsx (⌘/), @hanzo/build's panel (⌘.), the composer (Enter, ⌘U), chord.ts
+ * Account.tsx (⌘/), @hanzo/build's panel (⌘.), the composer (Enter, ⌘U), chord.ts
  * (the conversation's chords, spelled by `said` so the two cannot drift).
  */
 export const KEYS: Key[] = [

@@ -4,15 +4,15 @@
 // which run.
 //
 // THIS LIVES OUTSIDE REACT, and that is the whole point. The selection used to
-// be `useState` inside `Workspace`, which the router MOUNTS — so `router.push`
-// between two rooms unmounted the component holding the selection and the
-// reader arrived in an empty room. "One level up, where both can reach it" was
+// be `useState` inside `Shell`, which the router MOUNTS — so `router.push`
+// between two apps unmounted the component holding the selection and the
+// reader arrived in an empty pane. "One level up, where both can reach it" was
 // right about the rail and the pane and one level too low for the router: a
 // value that must outlive a route change cannot be stored inside a component
 // the route change destroys.
 //
 // A module is above every component, so the router cannot reach it. It resets
-// on a real page load, which is correct — a fresh document is a fresh room.
+// on a real page load, which is correct — a fresh document is a fresh selection.
 
 import { useSyncExternalStore } from 'react'
 
@@ -30,22 +30,24 @@ export interface Open {
   session: string | null
   openSession: (id: string | null) => void
   /**
-   * The open inbox room's key ("<channel> <roomId>"), or null for none.
+   * The open channel's key — `net:<key>` for one that arrived over a transport
+   * (conversations.ts `netKey`), `team:<space>/<id>` for a team channel
+   * (channels.ts `teamKey`) — or null for none.
    *
-   * A third field for the same reason there is a second: a room arrives over
-   * Slack or iMessage and is keyed by its transport, so it is not a thread id
-   * and cannot share the field with one. `useInbox` derives rooms from the page
-   * it holds, so this key is only meaningful against that page.
+   * A third field for the same reason there is a second: a channel that arrives
+   * over Slack or iMessage is keyed by its transport, so it is not a thread id
+   * and cannot share the field with one. `useInbox` derives those channels from
+   * the page it holds, so such a key is only meaningful against that page.
    */
-  room: string | null
-  openRoom: (key: string | null) => void
+  channel: string | null
+  openChannel: (key: string | null) => void
   /** The open drive bucket, or null for the list of them. */
   bucket: string | null
   openBucket: (name: string | null) => void
   /** The Settings pane a surface has asked for, or null. */
   settings: string | null
   showSettings: (pane: string | null) => void
-  /** What is open beside the room, by name, or null for nothing. */
+  /** What is open beside the pane, by name, or null for nothing. */
   aside: string | null
   showAside: (pane: string | null) => void
   /** Who the chat is with, in the order they were pressed; empty for the plain model. */
@@ -54,16 +56,16 @@ export interface Open {
   agent: string | null
   /** Adds a character to the open conversation, or lets one out who is already in it; null empties it. */
   openAgent: (name: string | null) => void
-  /** The room a stored conversation names, set as it is read back; the conversation stays open. */
+  /** The cast a stored conversation names, set as it is read back; the conversation stays open. */
   seat: (names: string[]) => void
-  /** The room outright: a roster row opens a chat with that one character. */
+  /** The cast outright: a roster row opens a chat with that one character. */
   withAgents: (names: string[]) => void
   /**
-   * How many times the room has been emptied.
+   * How many times the conversation has been emptied.
    *
    * A COUNTER AND NOT A FLAG, because the fact is an EVENT and the state it
-   * asks for is one the room may already be in. "New chat" nulls the thread,
-   * and on a room whose thread is already null that is not a change — so the
+   * asks for is one the conversation may already be in. "New chat" nulls the thread,
+   * and on a pane whose thread is already null that is not a change — so the
    * pane's effect never re-ran and the button did nothing at all. A number that
    * only ever goes up is the smallest thing two components can agree happened.
    */
@@ -74,14 +76,14 @@ export interface Open {
 interface Selection {
   thread: string | null
   session: string | null
-  room: string | null
+  channel: string | null
   bucket: string | null
   emptied: number
   /**
    * The Settings pane a surface has asked for, or null.
    *
    * A pane deep in the tree cannot reach the shell's own state, and the thing
-   * it wants is not a route — Settings opens OVER the room rather than instead
+   * it wants is not a route — Settings opens OVER the pane rather than instead
    * of it. So the request lands here, where both can see it, for the same
    * reason the open thread does.
    */
@@ -93,19 +95,19 @@ interface Selection {
    * A separate field from `session` for the reason `session` is separate from
    * `thread`: a run is something an agent is DOING and this is who you are
    * talking to. One value holding either would be a string whose meaning
-   * depends on which room is mounted.
+   * depends on which app is mounted.
    *
-   * A LIST AND NOT A NAME, because a room holds more than one: pressing a
+   * A LIST AND NOT A NAME, because a conversation holds more than one: pressing a
    * second face adds them beside the first rather than replacing them, and
-   * the thread's system turn says who is in the room and how each speaks.
+   * the thread's system turn says who is in the conversation and how each speaks.
    */
   agents: string[]
   /**
-   * What is open BESIDE the room, by name, or null for nothing.
+   * What is open BESIDE the pane, by name, or null for nothing.
    *
    * A NAME AND NOT A FLAG, because the column holds a different thing depending
    * on what was asked for — the work behind an answer, a preview of what a run
-   * built — and a boolean leaves the room to guess which of those it is drawing.
+   * built — and a boolean leaves the pane to guess which of those it is drawing.
    * Null is shut.
    *
    * It lives here rather than in the frame for the reason `settings` does: the
@@ -117,11 +119,11 @@ interface Selection {
 
 /** The prerender's selection, and the initial one. A stable reference: React
  *  compares snapshots by identity, so returning a fresh object every read is an
- *  infinite render rather than an empty room. */
+ *  infinite render rather than an empty pane. */
 const EMPTY: Selection = {
   thread: null,
   session: null,
-  room: null,
+  channel: null,
   bucket: null,
   emptied: 0,
   settings: null,
@@ -166,7 +168,7 @@ function set(next: Selection): void {
   if (
     next.thread === selection.thread &&
     next.session === selection.session &&
-    next.room === selection.room &&
+    next.channel === selection.channel &&
     next.bucket === selection.bucket &&
     next.emptied === selection.emptied &&
     next.settings === selection.settings &&
@@ -179,7 +181,7 @@ function set(next: Selection): void {
   for (const listener of listeners) listener()
 }
 
-/** Opens a thread, or empties the room with null. */
+/** Opens a thread, or empties the pane with null. */
 export function openThread(id: string | null): void {
   set({ ...selection, thread: id })
 }
@@ -189,9 +191,9 @@ export function openSession(id: string | null): void {
   set({ ...selection, session: id })
 }
 
-/** Opens an inbox room, or empties the pane with null. */
-export function openRoom(key: string | null): void {
-  set({ ...selection, room: key })
+/** Opens a channel, or empties the pane with null. */
+export function openChannel(key: string | null): void {
+  set({ ...selection, channel: key })
 }
 
 /** Opens a bucket, or returns to the list of them with null. */
@@ -201,8 +203,8 @@ export function openBucket(name: string | null): void {
 
 /**
  * Adds a character to the open conversation, or lets one out who is already in
- * it; null empties the room. The conversation stays open: the room's system
- * turn changes for the turns that follow, and Chat records the new room with
+ * it; null empties the cast. The conversation stays open: its system
+ * turn changes for the turns that follow, and Chat records the new cast with
  * the thread (`roster` in cast.tsx).
  */
 export function openAgent(name: string | null): void {
@@ -215,7 +217,7 @@ export function openAgent(name: string | null): void {
   set({ ...selection, agents })
 }
 
-/** The room a stored conversation names, as it is read back. The thread stays open. */
+/** The cast a stored conversation names, as it is read back. The thread stays open. */
 export function seat(names: string[]): void {
   set({ ...selection, agents: names.filter((one, i) => names.findIndex((other) => same(other, one)) === i) })
 }
@@ -223,12 +225,12 @@ export function seat(names: string[]): void {
 /** Two handles name one character when they differ only in case ("Des" and "des"). */
 const same = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase()
 
-/** The room outright — a roster row opens a chat with that one character. */
+/** The cast outright — a roster row opens a chat with that one character. */
 export function withAgents(names: string[]): void {
   set({ ...selection, agents: [...new Set(names)], thread: null, emptied: selection.emptied + 1 })
 }
 
-/** Opens one pane beside the room, or shuts the column with null. */
+/** Opens one view beside the pane, or shuts the column with null. */
 export function showAside(pane: string | null): void {
   set({ ...selection, aside: pane })
 }
@@ -238,7 +240,7 @@ export function showSettings(pane: string | null): void {
   set({ ...selection, settings: pane })
 }
 
-/** Empties the room: no thread, nobody seated, and a fresh count so the pane
+/** Empties the conversation: no thread, nobody seated, and a fresh count so the pane
  *  hears it even when there was nothing to leave. "New chat" is this. */
 export function empty(): void {
   set({ ...selection, thread: null, agents: [], emptied: selection.emptied + 1 })
@@ -251,8 +253,8 @@ export function useOpen(): Open {
     open: openThread,
     session: current.session,
     openSession,
-    room: current.room,
-    openRoom,
+    channel: current.channel,
+    openChannel,
     bucket: current.bucket,
     openBucket,
     settings: current.settings,

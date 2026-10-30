@@ -11,7 +11,7 @@
 // `move` writes the property on the element and nothing else; `keep` is where
 // React and storage learn the width, once per drag, key or double-click.
 //
-// Storage is read in a layout effect, not during render: the rooms are
+// Storage is read in a layout effect, not during render: the apps are
 // prerendered, and a render that reads storage draws different HTML on the
 // server and the client. A layout effect runs before the browser paints, so a
 // kept width is on screen from the first frame and the column never jumps.

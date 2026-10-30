@@ -41,7 +41,7 @@ import { Check, Minus, Plus, X } from 'lucide-react'
 import { Waiting } from './waiting'
 import { LOGIN, enter } from './lib/destination'
 import { useAi } from './lib/ai'
-import { useHost } from './lib/hostname'
+import { useHostname } from './lib/hostname'
 import { useHydrated } from './lib/hydrated'
 import { api } from './lib/api'
 import { usePersonal, useTier } from './lib/tier'
@@ -54,9 +54,9 @@ import { createInvitation, inviteLink, setOrganizationProfile } from './lib/invi
 import { createOrg, say } from './lib/org'
 import { countSignup } from './lib/intent'
 import { BAD, mix } from './lib/mix'
-import { useRooms } from './host'
+import { useHost } from './host'
 import { Accounts } from './Accounts'
-import { Chrome } from './Chrome'
+import { Header } from './Header'
 import { site, where } from './where'
 
 /** A template to set up once the organization is live. */
@@ -64,14 +64,14 @@ const SETUP = 'hanzo:org:template'
 
 interface Template { slug: string; title?: string; name?: string; category?: string; description?: string }
 
-/** Checkout for a plan, coming back to this room. */
+/** Checkout for a plan, coming back to this page. */
 function checkout(plan: SubscriptionPlan): string {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://hanzo.ai'
   const path = typeof window !== 'undefined' ? window.location.pathname : '/chat'
   return checkoutUrl(plan.id, `${origin}${path}`)
 }
 
-export function Orgs({
+export function Gate({
   children,
   front = false,
   forward,
@@ -89,7 +89,7 @@ export function Orgs({
   const { isAuthenticated, isLoading, accessToken } = useIam()
   const { Landing, Signup, team } = where()
   // The front door's own flow: naming a team, inviting it, the per-seat plan —
-  // at hanzo.ai's Home and /start, and in every room of hanzo.team.
+  // at hanzo.ai's Home and /start, and in every app of hanzo.team.
   const door = front || signup || Boolean(team)
   const arriving = useArrival(door, hydrated, isLoading, isAuthenticated)
   const members = useMemo(() => claimed(), [accessToken]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -106,11 +106,11 @@ export function Orgs({
   }, [accessToken])
   const [picked, setPicked] = useState(false)
   // The team being set up in this page. Once its name is taken the setup owns
-  // the screen until checkout, whatever `Orgs` reads of the new organization.
+  // the screen until checkout, whatever `Gate` reads of the new organization.
   const [founding, setFounding] = useState<string | null>(null)
   // The workspace asks for the plan, on its host and behind its front door, and
   // only there is it read: nowhere else does it decide anything.
-  const onTeam = workspace(useHost())
+  const onTeam = workspace(useHostname())
   const asks = door || onTeam
   const { tier, wrong, reload } = useTier(Boolean(asks && isAuthenticated && current), current)
   // A plan is live when billing READ one for this organization and it is not the free rung.
@@ -119,7 +119,7 @@ export function Orgs({
   // its kind: a team is offered the plan, a personal one is offered a team.
   const free = door && Boolean(tier) && !live
   const personal = usePersonal(current, free)
-  // A SuperAdmin IAM stepped into this organization sees its rooms whatever its
+  // A SuperAdmin IAM stepped into this organization sees its apps whatever its
   // plan: support is there to see what the organization has, and what it spends
   // is billed to the operator's own books, never the organization's.
   const supporting = Boolean(current) && assumed() === current
@@ -147,7 +147,7 @@ export function Orgs({
     }
   }, [reload])
 
-  // The chooser over the room, asked for from the account menu (session.ts `choose`).
+  // The chooser over the app, asked for from the account menu (session.ts `choose`).
   const [choosing, setChoosing] = useState(false)
   useEffect(() => {
     const ask = () => setChoosing(true)
@@ -162,7 +162,7 @@ export function Orgs({
   }, [])
 
   // The organization a link arrives for. hanzo.ai opens the workspace at
-  // `?signin&org=<the org it is working in>` (Me.tsx); once signed in, an org
+  // `?signin&org=<the org it is working in>` (Account.tsx); once signed in, an org
   // the token's `orgs` names is chosen and the parameter leaves the address, the
   // way `?signin` does. An org the token does not name is ignored.
   useEffect(() => {
@@ -202,18 +202,18 @@ export function Orgs({
   // NOTHING PRODUCT-SHAPED IS IN THE EXPORTED MARKUP. This branch is what the
   // static file holds and what hydration's first render must agree with, so
   // whatever it returns is what a reader sees before any answer exists. It used
-  // to return the room, which put the whole paid interface on disk: the browser
+  // to return the app, which put the whole paid interface on disk: the browser
   // painted it from the file, the SDK settled, billing answered, and only then
   // did the ask appear over the top of a product the reader had already been
   // shown. The veil is the same element in both renders, so there is no
   // mismatch and there is nothing to see. Home at `/` ships the host's Landing
   // instead, which is what a stranger there is shown and what a crawler reads.
   if (!hydrated) return front && Landing ? <Landing /> : <Veil />
-  // Past hydration the room keeps its place in the tree in every branch that
+  // Past hydration the app keeps its place in the tree in every branch that
   // draws it — `Held`, the veil AFTER it — so a token refresh mid-session never
   // remounts what the reader had open. The veil is unconditional now: it was
   // hung only when a token was already in hand, which left a visitor arriving
-  // without one looking at the room while the SDK decided. Under it the room is
+  // without one looking at the app while the SDK decided. Under it the app is
   // inert: it takes no key or press until the gate has decided.
   if (isLoading) return front && Landing && !hasSession() && !arriving ? <Landing /> : <><Held veiled>{children}</Held><Veil /></>
   if (arriving && !isAuthenticated) return <SignIn to={LOGIN} />
@@ -224,15 +224,15 @@ export function Orgs({
     return door ? <Start onFounded={setFounding} first /> : <Create />
   }
   if (!current || (members.length > 1 && !picked)) return <Pick members={members} current={current} onPick={choose} />
-  // Asked for over an open room, the room keeps its place under the chooser and closing it goes back.
+  // Asked for over an open app, the app keeps its place under the chooser and closing it goes back.
   if (choosing) return <><Held veiled>{children}</Held><Pick members={members} current={current} onPick={choose} onClose={() => setChoosing(false)} /></>
   if (open) return forward ? <Forward to={forward} /> : <><Held veiled={false}>{children}</Held></>
   // IN THE WORKSPACE NOTHING OPENS WITHOUT A LIVE PLAN. Every branch here
-  // used to hand the room over when the answer was anything but a plain
+  // used to hand the app over when the answer was anything but a plain
   // "free": an error of any kind, a read still in flight, a document with no
   // plan in it. Each was a way in without paying — a refusal, a slow network,
   // or devtools blocking one request all read as permission. The default is the
-  // ask, and the room is the exception rather than the fallback.
+  // ask, and the app is the exception rather than the fallback.
   if (!tier && !wrong) return <><Held veiled>{children}</Held><Veil /></>
   if (free && personal === null) return <><Held veiled>{children}</Held><Veil /></>
   const swap = () => setPicked(false)
@@ -246,7 +246,7 @@ export function Orgs({
     return <Plan org={current} members={members} onSwitch={swap} />
   }
   // The workspace's host off its front door: no live plan, or none read, does
-  // not open the room.
+  // not open the app.
   return <Subscribe org={current} members={members} onSwitch={swap} />
 }
 
@@ -278,7 +278,7 @@ function useArrival(door: boolean, hydrated: boolean, isLoading: boolean, isAuth
 
 // ── the screens ────────────────────────────────────────────────────────────────
 
-/** Every screen here is one sheet over the room, ten above its modals, and the create dialog ten above that.
+/** Every screen here is one sheet over the app, ten above its modals, and the create dialog ten above that.
  *  gui carries a `calc()` to the page unchanged; its types only name custom properties. */
 const SHEET = 'calc(var(--z-modal) + 10)' as `var(--${string})`
 const DIALOG = 'calc(var(--z-modal) + 20)' as `var(--${string})`
@@ -302,14 +302,14 @@ const FIELD = {
 
 /**
  * The sheet every screen stands on: the whole viewport, scrolling, its column
- * centred, under the focused pages' one bar (`Chrome`) once someone is signed
+ * centred, under the focused pages' one bar (`Header`) once someone is signed
  * in. "Signing you in" stands alone.
  */
 function Page({ label, children }: { label: string; children: ReactNode }) {
   const { isAuthenticated } = useIam()
   return (
     <YStack position="fixed" inset={0} z={SHEET} overflowY="auto" bg="var(--background)" role="region" aria-label={label}>
-      {isAuthenticated ? <Chrome /> : null}
+      {isAuthenticated ? <Header /> : null}
       <YStack pt={TOP} px={20} pb={48}>
         {children}
       </YStack>
@@ -347,13 +347,13 @@ function Heading({ title, lede, lead }: { title: ReactNode; lede?: ReactNode; le
   )
 }
 
-/** The room, held back until the organization is known. */
+/** The app, held back until the organization is known. */
 function Veil() {
   return <View aria-hidden position="fixed" inset={0} z={SHEET} bg="var(--background)" />
 }
 
 /**
- * The room, in the one place every branch that draws it puts it. Under the veil
+ * The app, in the one place every branch that draws it puts it. Under the veil
  * it is inert and hidden from assistive technology, so what the veil covers
  * takes no focus, key or press: a team on Free cannot type and send before its
  * ask is drawn. It lays out as its children do.
@@ -368,7 +368,7 @@ function Held({ veiled, children }: { veiled: boolean; children: ReactNode }) {
 
 /** An open organization, sent on. */
 function Forward({ to }: { to: string }) {
-  const { router } = useRooms()
+  const { router } = useHost()
   useEffect(() => router.replace(to), [router, to])
   return <Veil />
 }
@@ -389,7 +389,7 @@ const FREE_TIER = 'free'
 /**
  * Whether a failed tier read is OUR fault. A 5xx or a network error is an
  * outage; a 401, 403 or 404 is an answer, and an answer that is not a paid plan
- * is not a reason to open the room.
+ * is not a reason to open the app.
  */
 function outage(wrong: unknown): boolean {
   const status = (wrong as { status?: number } | null)?.status
@@ -399,10 +399,10 @@ function outage(wrong: unknown): boolean {
 /**
  * SIGNED OUT IS A TRIP TO SIGN IN, and nothing else.
  *
- * IAM owns every credential, so this room draws no form of its own: it sends
+ * IAM owns every credential, so this gate draws no form of its own: it sends
  * the reader to this site's sign-in (destination.ts `enter`), which asks
  * hanzo.id for a session first and draws IAM's form only when there is none.
- * `Room` wrote the address down on mount, so the sign-in returns to this room,
+ * `Shell` wrote the address down on mount, so the sign-in returns to this page,
  * `?q=` included.
  */
 function SignIn({ to }: { to?: string }) {
@@ -463,9 +463,9 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
   const { t } = useI18n()
   const team = usePlan('team')
   // The personal ladder, Free first. hanzo.team offers no personal organization:
-  // every room there runs on a paid plan.
+  // every app there runs on a paid plan.
   const ladder = usePlans('personal')
-  const alone = !workspace(useHost())
+  const alone = !workspace(useHostname())
   const [rung, setRung] = useState<string | null>(null)
   const chosen = ladder.find((p) => p.id === rung) ?? ladder.find((p) => !p.priceMonthly) ?? ladder[0] ?? null
   const personal = priced(chosen)
@@ -930,7 +930,7 @@ function Pick({
   members: string[]
   current: string | null
   onPick: (o: string) => void
-  /** Opened over a room the reader is in: closing goes back to it. */
+  /** Opened over an app the reader is in: closing goes back to it. */
   onClose?: () => void
 }) {
   // IAM's verdict as it signed it into the token (authz `Claims.Sudo`). It only
@@ -1125,8 +1125,8 @@ function Everyone({ q, skip }: { q: string; skip: string[] }) {
  * display name then written on the row (lib/invite.ts `setOrganizationProfile`).
  * The token in hand predates it, so it is refreshed, and the organization opens on
  * a load: @hanzo/iam's `useOrganizations` reads the token once per mount, and an
- * instance the room mounts on the old token writes its home (the token's first
- * org) back over the pick, which left the room unscoped after one request.
+ * instance the app mounts on the old token writes its home (the token's first
+ * org) back over the pick, which left the app unscoped after one request.
  */
 function Found({ onClose }: { onClose: () => void }) {
   const { sdk } = useIam()
@@ -1536,7 +1536,7 @@ function Start({
   )
 }
 
-/** Where a checkout from the setup returns: the rooms' Home, on this origin. */
+/** Where a checkout from the setup returns: Home, on this origin. */
 const home = (): string => `${window.location.origin}${where().home}`
 
 /**
@@ -1559,7 +1559,7 @@ function Plan({
   org: string
   members: string[]
   onSwitch?: () => void
-  /** Billing could not be READ. The room still does not open, and the reader is told it is ours to fix. */
+  /** Billing could not be READ. The app still does not open, and the reader is told it is ours to fix. */
   outage?: boolean
   onRetry?: () => void
   /** The seats the setup already knows it needs. */

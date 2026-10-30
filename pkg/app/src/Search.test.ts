@@ -46,7 +46,7 @@ vi.mock('./Betas', () => ({ useBetas: () => ({ open: () => false }) }))
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { path } from '@hanzo/build/route'
-import { actions, Palette, places } from './Palette'
+import { actions, Search, places } from './Search'
 import { app, settings, talk } from './lib/host'
 import type { Host } from '@hanzo/build'
 
@@ -132,7 +132,7 @@ describe('The palette', () => {
     // hanzo.team's Shell mounts it with no host: it draws, and the runs it asks
     // for are nobody's rather than a read of a host that is not there.
     asked.length = 0
-    expect(() => renderToStaticMarkup(createElement(Palette, { onClose: () => {}, go: () => {} }))).not.toThrow()
+    expect(() => renderToStaticMarkup(createElement(Search, { onClose: () => {}, go: () => {} }))).not.toThrow()
     expect(asked).toHaveLength(1)
     expect(asked[0]).toMatchObject({ api: '', person: null })
   })

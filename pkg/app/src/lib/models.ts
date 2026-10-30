@@ -1,5 +1,5 @@
 /**
- * What a provider and a model are CALLED — the few naming rules the rooms draw
+ * What a provider and a model are CALLED — the few naming rules the apps draw
  * with. The catalogue itself (prices, contexts, the serving list) is the host's.
  */
 import { getOrgAndSlug } from './path'
