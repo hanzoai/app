@@ -688,8 +688,9 @@ channel (name, topic, who is in it, the huddle), the messages with their cards
 options), reactions and threads, who is typing, and the composer. A thread
 stands beside the channel from 1000px of the preview's own width and over it
 below; below 560px (or `phone`) it is the phone app: the orgs and the channels
-as a strip under the channel's name (each with its count, the open one kept in
-view), and the rail and the column a drawer. It always lays itself out by its
+under the channel's name, the channels wrapping rather than scrolling so every
+one is on screen and none passes the edge (each with its count), and the rail
+and the column a drawer, drawn only while it is open. It always lays itself out by its
 own width.
 
 The day is `src/workday.ts`, data and nothing else: thirteen scenes, 162

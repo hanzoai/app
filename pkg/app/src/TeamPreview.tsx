@@ -33,7 +33,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useI18n } from '@hanzo/i18n/react'
-import { Avatar as Monogram, Text, View, XStack, YStack, type GuiElement } from '@hanzo/ui'
+import { Avatar as Monogram, Text, View, XStack, YStack } from '@hanzo/ui'
 import { Face } from './cast'
 import { md, useHost, usePlay, useStage, useStill, type PreviewProps } from './preview'
 import { DAY, HOME, ORGS, SCENE, STILL, agent, channelOf, frame, orgOf, pace, who, type Card, type Mark, type Message } from './workday'
@@ -548,7 +548,7 @@ function Dots() {
  */
 export function TeamPreview(props: PreviewProps) {
   const { compact, phone } = props
-  const { t, dir } = useI18n()
+  const { t } = useI18n()
   const still = useStill()
   const { box, seen, width, visible, held, hold } = useStage()
   const { live, end } = useHost(props)
@@ -571,9 +571,6 @@ export function TeamPreview(props: PreviewProps) {
     loop.current = !driven
   }, [driven])
 
-  // The phone's channel strip keeps the open channel in view, scrolling itself and never the page.
-  const strip = useRef<GuiElement>(null)
-
   const lines = useMemo(() => (opened ? (SCENE[opened] ?? pace([{ kind: 'open', room: opened, time: 9 * 60 }])) : DAY), [opened])
   const run = seen && !still
   const at = usePlay(lines, run, replay, { visible, held, loop, live, end })
@@ -582,12 +579,6 @@ export function TeamPreview(props: PreviewProps) {
   const f = useMemo(() => frame(lines, upto), [lines, upto])
 
   const here = f.room
-  useEffect(() => {
-    const row = strip.current as unknown as HTMLElement | null
-    const chip = row?.querySelector<HTMLElement>('[aria-pressed="true"]')
-    if (!row || !chip) return
-    row.scrollTo({ left: chip.offsetLeft - (row.clientWidth - chip.offsetWidth) / 2, behavior: still ? 'auto' : 'smooth' })
-  }, [here, still])
   const o = orgOf(here)
   const channel = channelOf(here)
   const topic = o.channels.find((c) => c.id === channel)?.topic ?? ''
@@ -889,17 +880,18 @@ export function TeamPreview(props: PreviewProps) {
           </XStack>
         </XStack>
 
-        {/* The phone's switcher: every organization, then this one's channels, each with what is unread. */}
+        {/* The phone's switcher: every organization, then this one's channels, each with what is unread.
+            The channels wrap rather than scroll, so every one is on screen and none passes the edge. */}
         <YStack {...md(desk, { display: 'none' })} gap={8} pt={10} pb={8} borderBottomWidth={1} borderColor="$edge">
-          <XStack items="center" gap={10} px={12} $platform-web={{ overflowX: 'auto', scrollbarWidth: 'none' }}>
+          <XStack items="center" gap={10} px={12}>
             {ORGS.map((x) => (
               <Tile key={x.id} org={x} on={x.id === o.id} n={x.id === o.id ? 0 : waiting(x.id)} size="lg" onPress={() => go(HOME[x.id])} />
             ))}
-            <Text key={o.id} data-motion="rise" fontSize="$3" fontWeight="700" color="$ink" numberOfLines={1} marginInlineStart={4}>
+            <Text key={o.id} data-motion="rise" flex={1} minW={0} fontSize="$3" fontWeight="700" color="$ink" numberOfLines={1} marginInlineStart={4}>
               {o.name}
             </Text>
           </XStack>
-          <XStack ref={strip} gap={6} px={12} $platform-web={{ overflowX: 'auto', scrollbarWidth: 'none' }}>
+          <XStack flexWrap="wrap" gap={6} px={12}>
             {o.channels.map((c) => {
               const room = `${o.id}/${c.id}`
               const on = room === here
@@ -952,32 +944,28 @@ export function TeamPreview(props: PreviewProps) {
           </YStack>
         ) : null}
 
-        {/* The phone's drawer: the rail and the workspace's column over the channel. */}
-        <XStack
-          aria-hidden={!drawer}
-          position="absolute"
-          t={0}
-          b={0}
-          insetInlineStart={0}
-          width="88%"
-          maxW={340}
-          bg="var(--background)"
-          borderColor="$edge"
-          borderInlineEndWidth={1}
-          boxShadow="0 24px 60px -24px color-mix(in srgb, var(--pure-black) 60%, transparent)"
-          pointerEvents={drawer ? 'auto' : 'none'}
-          {...md(desk, { display: 'none' })}
-          $platform-web={{
-            transform: drawer ? 'none' : `translateX(calc((100% + 32px) * ${dir === 'rtl' ? 1 : -1}))`,
-            transition: still ? 'none' : 'transform 320ms cubic-bezier(0.2, 0.7, 0.2, 1)',
-            visibility: drawer ? 'visible' : 'hidden',
-          }}
-        >
-          {rail}
-          <YStack flex={1} minW={0} bg="$sunken">
-            {column}
-          </YStack>
-        </XStack>
+        {/* The phone's drawer: the rail and the workspace's column over the channel, drawn only while open. */}
+        {drawer && desk !== true ? (
+          <XStack
+            data-motion="rise"
+            position="absolute"
+            t={0}
+            b={0}
+            insetInlineStart={0}
+            width="88%"
+            maxW={340}
+            bg="var(--background)"
+            borderColor="$edge"
+            borderInlineEndWidth={1}
+            boxShadow="0 24px 60px -24px color-mix(in srgb, var(--pure-black) 60%, transparent)"
+            {...md(desk, { display: 'none' })}
+          >
+            {rail}
+            <YStack flex={1} minW={0} bg="$sunken">
+              {column}
+            </YStack>
+          </XStack>
+        ) : null}
       </YStack>
 
       {side && roomy ? (
