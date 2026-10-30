@@ -113,7 +113,7 @@ import { enter, LOGIN } from './lib/destination';
 import { first } from './lib/first';
 import { BAD } from "./lib/mix";
 import { brand } from './where'
-import { BAND, HEAD, TOUCH_HEAD, inPane } from './ground'
+import { BAND, HEAD, INSET, TOUCH_HEAD, inPane } from './ground'
 import { UsageControl } from './Usage'
 import { shared, useChatPreferences } from './lib/chatPreferences'
 import { handleHint } from './hint'
@@ -2010,7 +2010,9 @@ function Thread({
         items="center"
         gap="$3"
         paddingInlineStart="$4"
-        paddingInlineEnd="$2"
+        // The last mark's centre INSET from the pane's end edge, as the rail's first is from the
+        // window's start: the edge's 1px, then half the 32px mark.
+        paddingInlineEnd={INSET - 1 - 16}
         shrink={0}
         data-tauri-drag-region="deep"
         onMouseDown={dragWindow}

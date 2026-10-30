@@ -729,8 +729,11 @@ reference captures; outer window, inner panel):
   the pane's head `inPane(HEAD)` (2px less, for the pane's 1px top edge), so the
   title, its bell and search, and the pane head's icons share the toggle's
   centre. A touch screen's 44px marks take `TOUCH_HEAD`. A phone's bar and the
-  drawer's title row stay `BAND` (52). hanzo.ai `e2e/gates/opening.spec.ts`
-  measures every centre to 0.5px.
+  drawer's title row stay `BAND` (52). The two top corners mirror each other
+  (`INSET`, 22): the rail's first mark is centred 22px from the window's start
+  edge (the rail is `2 * INSET` wide) and the pane head's last mark 22px from
+  the pane's end edge. hanzo.ai `e2e/gates/opening.spec.ts` measures every
+  centre to 0.5px.
 - **An empty chat is one pair in the middle of the pane** from a tablet up:
   @hanzo/ui Chat `center` (rows `1fr auto auto 1fr`) with the opening at its own
   height; a phone keeps the composer at the foot over the keyboard. Private is a
