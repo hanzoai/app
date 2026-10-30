@@ -52,7 +52,6 @@ vi.mock('./lib/tier', () => ({
 vi.mock('./lib/session', () => ({
   CHOOSE: 'hanzo:org:choose',
   ORG: 'hanzo:org',
-  PICKED: 'hanzo:org:picked',
   assumed: () => null,
   bearer: () => 't',
   hasSession: () => true,
@@ -179,6 +178,14 @@ describe('the organization gate', () => {
     beforeEach(() => {
       state.orgs = ['acme', 'webby-ai']
       state.org = null
+    })
+
+    test('several organizations and the browser works in one of them: no chooser, the app opens in it', () => {
+      state.org = 'webby-ai'
+      const html = drawn()
+      expect(html).not.toContain('>Choose an organization<')
+      expect(held(html)).toBe('<div data-slot="held">')
+      expect(html).toContain('<textarea')
     })
 
     test('several organizations and none chosen: each of the reader\'s is a row, with its slug and the role the token signs', () => {

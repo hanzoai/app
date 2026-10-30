@@ -45,7 +45,7 @@ import { useHostname } from './lib/hostname'
 import { useHydrated } from './lib/hydrated'
 import { api } from './lib/api'
 import { usePersonal, useTier } from './lib/tier'
-import { CHOOSE, ORG, PICKED, assumed, bearer, hasSession, org, orgs as claimed, pick, renew, role, scope, superAdmin, support } from './lib/session'
+import { CHOOSE, ORG, assumed, bearer, hasSession, org, orgs as claimed, pick, renew, role, scope, superAdmin, support } from './lib/session'
 import { matches, refusal, slugify } from './lib/orgname'
 import { team as workspace } from './lib/host'
 import { checkoutUrl, money } from './lib/pay'
@@ -104,7 +104,6 @@ export function Gate({
       window.removeEventListener('storage', on)
     }
   }, [accessToken])
-  const [picked, setPicked] = useState(false)
   // The team being set up in this page. Once its name is taken the setup owns
   // the screen until checkout, whatever `Gate` reads of the new organization.
   const [founding, setFounding] = useState<string | null>(null)
@@ -126,13 +125,6 @@ export function Gate({
   const open = !asks || live || supporting
   const { client } = useAi()
 
-  useEffect(() => {
-    try {
-      setPicked(Boolean(localStorage.getItem(PICKED)))
-    } catch {
-      setPicked(true)
-    }
-  }, [accessToken])
 
   // Back from checkout: the plan may be live now.
   useEffect(() => {
@@ -157,7 +149,6 @@ export function Gate({
 
   const choose = useCallback((o: string) => {
     pick(o)
-    setPicked(true)
     setChoosing(false)
   }, [])
 
@@ -174,11 +165,6 @@ export function Gate({
     window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
     if (members.includes(asked)) choose(asked)
   }, [door, hydrated, isLoading, isAuthenticated, members, choose])
-
-  // One organization is not a choice.
-  useEffect(() => {
-    if (members.length === 1 && !picked) choose(members[0])
-  }, [members, picked, choose])
 
   // The template chosen at creation, set up once the organization opens.
   useEffect(() => {
@@ -223,9 +209,15 @@ export function Gate({
     if (front && Landing) return <Landing member />
     return door ? <Start onFounded={setFounding} first /> : <Create />
   }
-  if (!current || (members.length > 1 && !picked)) return <Pick members={members} current={current} onPick={choose} />
-  // Asked for over an open app, the app keeps its place under the chooser and closing it goes back.
-  if (choosing) return <><Held veiled>{children}</Held><Pick members={members} current={current} onPick={choose} onClose={() => setChoosing(false)} /></>
+  // The organization this browser works in is the choice (session.ts `org`: the
+  // SDK's selection when the token names it, else the person's only one). Only a
+  // browser working in none of the person's is asked, so a sign-in goes straight
+  // to the app in the organization the person last worked in, and the account
+  // menu switches it (`choosing`).
+  if (!current) return <Pick members={members} current={current} onPick={choose} />
+  // Asked for over an open app, the app keeps its place under the chooser and closing it goes back;
+  // asked for from a plan's page (`swap`), the chooser stands alone, since that app is not open.
+  if (choosing) return <>{open ? <Held veiled>{children}</Held> : null}<Pick members={members} current={current} onPick={choose} onClose={() => setChoosing(false)} /></>
   if (open) return forward ? <Forward to={forward} /> : <><Held veiled={false}>{children}</Held></>
   // IN THE WORKSPACE NOTHING OPENS WITHOUT A LIVE PLAN. Every branch here
   // used to hand the app over when the answer was anything but a plain
@@ -235,7 +227,7 @@ export function Gate({
   // ask, and the app is the exception rather than the fallback.
   if (!tier && !wrong) return <><Held veiled>{children}</Held><Veil /></>
   if (free && personal === null) return <><Held veiled>{children}</Held><Veil /></>
-  const swap = () => setPicked(false)
+  const swap = () => setChoosing(true)
   if (door) {
     // A billing OUTAGE is ours; the plan is still the condition.
     if (!tier) return <Plan org={current} members={members} onSwitch={swap} outage={outage(wrong)} onRetry={reload} />
@@ -531,7 +523,6 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
       const made = (await r.json()) as { org?: string }
       try {
         if (template) localStorage.setItem(SETUP, template)
-        localStorage.setItem(PICKED, '1')
       } catch {
         /* the next load re-derives both */
       }

@@ -275,8 +275,14 @@ Paths below are under `pkg/app`.
   and IAM's own switch). The rail's column stays from a tablet up with the
   sidebar open too: then the sidebar lists the places and the rail keeps the
   orgs. A phone keeps its tab bar of places; its orgs are the chooser's.
-- The chooser is `Gate.tsx` `Pick`: on arrival with several orgs and none picked,
-  or over the app when `choose()` fires (the account menu's All organizations).
+- The chooser is `Gate.tsx` `Pick`: on arrival only when this browser works in
+  none of the person's orgs (`org()`: the SDK's selection when the token names
+  it, else the only one), or over the app when `choose()` fires (the account
+  menu's All organizations, a plan page's Switch organization). The org a
+  browser works in IS the choice: there is no separate "picked" flag, which a
+  sign-out emptied while the selection stood, so every sign-in of a person in
+  several orgs met the chooser on the way to the app with their org already
+  ticked (owner, 2026-10-30).
   Rows are the token's orgs with IAM's rows beside them (`GET
   /v1/iam/organizations`: the first page carries all of one's own) — the mark
   (@hanzo/ui `Avatar`: IAM's avatar, emoji or logo, else the initial in the

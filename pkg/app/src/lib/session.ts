@@ -452,18 +452,14 @@ export function renew(): void {
 /** Fired on `window` when the organization this browser works in changes. */
 export const ORG = 'hanzo:org'
 
-/** This person picked an organization in this browser. `own()` clears it with the person. */
-export const PICKED = 'hanzo:org:picked'
-
 /**
- * Work in this organization from now on: the SDK's selection, noted as picked
- * and announced. Noted here, so a choice made anywhere — the shell's gate, the
- * app's account menu — is one the gate does not ask for again.
+ * Work in this organization from now on: the SDK's selection, announced. A choice
+ * made anywhere (the shell's gate, the app's account menu) is the one `org()`
+ * answers, so the gate does not ask for it again.
  */
 export function pick(o: string): void {
   try {
     window.localStorage.setItem(`${PREFIX}current_org`, o)
-    window.localStorage.setItem(PICKED, '1')
   } catch {
     /* the choice lives only in this page */
   }
