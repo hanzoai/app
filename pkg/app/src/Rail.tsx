@@ -46,11 +46,11 @@ import { out } from './help'
 import { BETAS } from './lib/betas'
 import { HOSTED_APPS } from './lib/hosted'
 import { Me } from './Me'
-import { HEAD, TOUCH_HEAD } from './ground'
+import { HEAD, INSET, TOUCH_HEAD } from './ground'
 import { app, hosted, WORKSPACE, type Place } from './lib/host'
 
 /** The rail's width, px. */
-export const RAIL = 44
+export const RAIL = 2 * INSET
 
 /** A mark, px: a 36px square on a 44px pitch. */
 export const MARK = 36

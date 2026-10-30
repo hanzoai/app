@@ -9,12 +9,12 @@
 # root, env prod), the same machine identity every other workflow here uses.
 name: Publish
 
-# THE 0.2 LINE, one release: @hanzo/app 0.2.59 under the dist-tag `v0.2`, so
+# THE 0.2 LINE, one release: @hanzo/app 0.2.60 under the dist-tag `v0.2`, so
 # hosts still on the 0.2 wire take the chat fix while 0.3.x stays `latest`.
-# This branch is deleted once it has published; the tag v0.2.59 is the receipt.
+# This branch is deleted once it has published; the tag v0.2.60 is the receipt.
 on:
   push:
-    branches: [release-0.2.59]
+    branches: [release-0.2.60]
 
 concurrency:
   group: publish-0.2

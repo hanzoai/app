@@ -39,6 +39,14 @@ export const HEAD = 36
 export const TOUCH_HEAD = 44
 
 /**
+ * A corner mark's centre from its edge, px: the rail's first mark from the
+ * window's start edge (the rail is twice this wide), and the pane head's last
+ * mark from the pane's end edge, so the two top corners mirror each other
+ * (owner, 2026-10-30: "top left / top right").
+ */
+export const INSET = 22
+
+/**
  * A row INSIDE a pane is 2px shorter than the row it lines up with: the pane's
  * 1px top edge sets its content 1px down, so its centre stays on the line.
  */
