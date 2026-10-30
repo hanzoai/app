@@ -268,6 +268,8 @@ export function Rail({
       aria-label={t('Products')}
       width={RAIL}
       flex={1}
+      // As tall as the window and no taller: its marks scroll inside it (below), never the page.
+      minH={0}
       // The first mark stands at the pane's top edge, one head row high (HEAD), the account on the sidebar's foot (Column's `pb`).
       pt={(HEAD - MARK) / 2}
       pb="$2"
@@ -281,6 +283,9 @@ export function Rail({
           <Toggle open={open} onPress={toggle} />
         </YStack>
       ) : null}
+      {/* The marks take what the toggle and the account leave, and scroll there: a short window
+          with every product's mark scrolled the whole page and put the account below the fold. */}
+      <YStack data-slot="rail-marks" flex={1} minH={0} overflowY="auto" overflowX="hidden" items="center" gap={4} width="100%" $platform-web={{ scrollbarWidth: 'none' }}>
       <Mark label={t('Chat')} on={mode === 'chat'} onPress={onChat} data-slot="rail-chat">
         <MessageSquare size={18} aria-hidden />
       </Mark>
@@ -340,7 +345,7 @@ export function Rail({
           items={rest}
         />
       ) : null}
-      <YStack flex={1} />
+      </YStack>
       <Me host={host} narrow onOrg={onOrg} />
     </YStack>
   )
