@@ -674,6 +674,37 @@ reference captures; outer window, inner panel):
   channels; "room" is a name in the code only (the package, `Room`, `rooms.ts`,
   `useRooms`, the `rooms` card kind), kept for the @hanzo/apps rename.
 
+## Previews: `@hanzo/app/TeamPreview`, `@hanzo/app/preview`
+
+`TeamPreview` is Hanzo Team drawn in gui props and playing, laid out the way a
+team chat is read: the organizations a person belongs to down the far left (one
+active, "+" under them), the workspace's column (its name, Channels with unread
+counts, Direct messages with who is here, the org's Agents), the channel (name,
+topic, its agents' faces, Huddle), the messages with files, reactions and
+threads, and the composer. The script is friends and their agents building
+together: at Acme, des posts the plan cards and dev ships; the switcher flips to
+Friday Club, where maya sets up a board. Pressing an org or a channel opens it
+and plays its own exchange; from then on nothing loops over the reader. People
+wear initials (a person with no picture), agents the cast's portraits (`Face`).
+Every word is `phrase`/`t()`.
+
+hanzo.team's landing opens on it, and hanzo.ai's hero plays it after its own
+scene: one component for both hosts, which is why it lives here.
+
+`@hanzo/app/preview` is the clock every product preview plays on (hanzo.ai's
+BotPreview too): `usePlay` (a script of beats, each `wait` ms after the last,
+played while on screen, paused under the pointer, looped after `REST`),
+`useStage` (seen, visible, held, its own width), `useStill` (reduced motion: the
+whole script, still, and nothing plays), and what a host passes,
+`PreviewProps`:
+
+- `play` (default true; false holds the frame it is on);
+- `onEnd` (the script's end; the last frame then holds, and a new key replays it;
+  never under reduced motion);
+- `compact` (fills the box it is given, a device's screen, and lays itself out by
+  its own width: the desktop app from 600px, the phone's below);
+- `phone` (the phone app whatever the width).
+
 ## The palette
 
 ONE search (Palette.tsx, its decisions in seek.ts): the sidebar's search,
