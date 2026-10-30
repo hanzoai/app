@@ -31,14 +31,14 @@ export const REST = 4200
 /**
  * Where a preview stands: whether it has been on screen (`seen`), whether it is
  * now (`visible`), whether the pointer is over it (`held`, kept by the `hold`
- * handlers the preview spreads on its box), and how wide it is (`width`, 0
- * until measured), which is how a preview decides its own layout wherever it
- * is placed.
+ * handlers the preview spreads on its box), and how wide and tall it is
+ * (`width`, `height`, 0 until measured), which is how a preview decides its own
+ * layout wherever it is placed.
  */
 export function useStage() {
   const box = useRef<GuiElement>(null)
   const [seen, setSeen] = useState(false)
-  const [width, setWidth] = useState(0)
+  const [{ width, height }, setSize] = useState({ width: 0, height: 0 })
   const visible = useRef(false)
   const held = useRef(false)
   useEffect(() => {
@@ -52,7 +52,7 @@ export function useStage() {
       { threshold: 0.25 },
     )
     io.observe(el)
-    const fit = new ResizeObserver(([e]) => setWidth(Math.round(e?.contentRect.width ?? 0)))
+    const fit = new ResizeObserver(([e]) => setSize({ width: Math.round(e?.contentRect.width ?? 0), height: Math.round(e?.contentRect.height ?? 0) }))
     fit.observe(el)
     return () => {
       io.disconnect()
@@ -60,7 +60,7 @@ export function useStage() {
     }
   }, [])
   const hold = useMemo(() => ({ onPointerEnter: () => void (held.current = true), onPointerLeave: () => void (held.current = false) }), [])
-  return { box, seen, width, visible, held, hold }
+  return { box, seen, width, height, visible, held, hold }
 }
 
 /**

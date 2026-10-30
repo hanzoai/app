@@ -27,14 +27,14 @@ export type Mark = 'thumbs' | 'heart' | 'flame' | 'rocket' | 'eyes' | 'laugh' | 
 
 export type Card =
   /** A pull request: under review, its checks passed, merged. */
-  | { kind: 'pr'; repo: string; number: number; title: string; add: number; del: number; state: 'review' | 'passed' | 'merged' }
+  | { kind: 'pr'; repo: string; number: number; title: string; add: number; del: number; state: 'review' | 'passed' | 'merged'; reviewer?: string }
   /** A reply drafted for a person to approve: an email or a support answer. */
-  | { kind: 'draft'; to: string; body: string; sent?: boolean }
+  | { kind: 'draft'; to: string; body: string; sent?: boolean; approver?: string }
   | { kind: 'file'; name: string; type: 'doc' | 'deck' | 'sheet' | 'image'; detail?: string }
   | { kind: 'meeting'; title: string; when: string }
   | { kind: 'list'; title: string; items: string[]; done?: number[] }
   /** A question an agent stops to ask, with its answers; `picked` once a person answers. */
-  | { kind: 'ask'; options: string[]; picked?: number }
+  | { kind: 'ask'; options: string[]; picked?: number; asks?: string }
   /** Design directions side by side, one picked. */
   | { kind: 'options'; file: string; options: string[]; picked?: number }
 
@@ -52,6 +52,8 @@ export type Event = Base &
     | { kind: 'thread'; to: string | null }
     /** A huddle starts in a room with these people, or ends (`who: []`). */
     | { kind: 'huddle'; room: string; who: string[] }
+    /** A step of an org's mission is done. */
+    | { kind: 'step'; org: string; n: number }
   )
 export type Beat = Event & { wait: number }
 
@@ -163,6 +165,25 @@ export const ORGS: Org[] = [
   },
 ]
 
+/** What each organization is working toward this week: a title and its steps, done as the day goes. */
+export const MISSIONS: Record<string, { title: string; steps: string[] }> = {
+  acme: {
+    title: phrase('Launch on Thursday'),
+    steps: [
+      phrase('Fix the double charge'),
+      phrase('Answer the Safari ticket'),
+      phrase('Clear the inbox'),
+      phrase('Deck, model and intros'),
+      phrase('Sign off the plan cards'),
+      phrase('Book the designer interviews'),
+      phrase('Publish the launch post'),
+    ],
+  },
+  orbit: { title: phrase('Ship 2.4'), steps: [phrase('Land the retry fix'), phrase('Document how retries back off'), phrase('Audit dependencies'), phrase('Tag the release')] },
+  friday: { title: phrase('A recipe app by Sunday'), steps: [phrase('Set up the board'), phrase('Search by ingredient'), phrase('Pick a logo'), phrase('Book game night')] },
+  lab: { title: phrase('A first prototype'), steps: [phrase('Boot it'), phrase('Plan a week with it'), phrase('Write up what broke')] },
+}
+
 export const orgOf = (room: string) => ORGS.find((o) => o.id === room.split('/')[0]) ?? ORGS[0]
 export const channelOf = (room: string) => room.split('/')[1] ?? 'general'
 
@@ -244,6 +265,8 @@ const react = (to: string, mark: Mark, n: number): Event => ({ kind: 'react', to
 const reply = (to: string, who: string, text: string): Event => ({ kind: 'reply', to, who, text })
 const card = (to: string, patch: Partial<Card>): Event => ({ kind: 'card', to, patch })
 const thread = (to: string | null): Event => ({ kind: 'thread', to })
+/** A step of an org's mission is done. */
+const step = (org: string, n: number): Event => ({ kind: 'step', org, n })
 /** A message that arrives in another room while this one is open: it goes unread, and it is the next room's first line. */
 const elsewhere = (room: string, who: string, text: string, more: { id?: string; card?: Card } = {}): Event => ({ kind: 'say', room, who, text, ...more })
 
@@ -262,9 +285,10 @@ const ORBIT = room('orbit/contributors', hm(9, 4), (r) => [
   r.typing('dev'),
   r.say('dev', phrase('Glad it helped. I opened a follow-up so the docs say how retries back off.'), {
     id: 'followup',
-    card: { kind: 'pr', repo: 'orbit/orbit', number: 1187, title: phrase('Docs: how retries back off'), add: 42, del: 6, state: 'review' },
+    card: { kind: 'pr', repo: 'orbit/orbit', number: 1187, title: phrase('Docs: how retries back off'), add: 42, del: 6, state: 'review', reviewer: 'priya' },
   }),
   react('upstream', 'heart', 4),
+  step('orbit', 0),
   elsewhere('friday/side-project', 'omar', phrase("Tonight's build still on?")),
 ])
 
@@ -285,7 +309,7 @@ const ENG = room('acme/eng', hm(9, 12), (r) => [
   r.typing('dev'),
   r.say('dev', phrase('Pull request is up. A new test presses Pay twice and expects one charge.'), {
     id: 'pr',
-    card: { kind: 'pr', repo: 'acme/web', number: 482, title: phrase('Disable Pay while a charge is pending'), add: 18, del: 3, state: 'review' },
+    card: { kind: 'pr', repo: 'acme/web', number: 482, title: phrase('Disable Pay while a charge is pending'), add: 18, del: 3, state: 'review', reviewer: 'theo' },
   }),
   thread('pr'),
   reply('pr', 'theo', phrase('Reviewing. Could the button show a spinner too? A grey button looks broken.')),
@@ -299,6 +323,7 @@ const ENG = room('acme/eng', hm(9, 12), (r) => [
   r.typing('dev'),
   card('pr', { state: 'merged' }),
   r.say('dev', phrase('Merged and deployed. Checkout is live with the fix.')),
+  step('acme', 0),
   r.say('mina', phrase('Pressed Pay four times on purpose. Charged once.'), { id: 'tried' }),
   react('tried', 'party', 3),
   r.say('sam', phrase('Pressing Pay twice is no longer a personality trait we support.'), { id: 'trait' }),
@@ -311,7 +336,7 @@ const SUPPORT = room('acme/support', hm(10, 4), (r) => [
   r.typing('su'),
   r.say('su', phrase('Drafted a reply.'), {
     id: 'answer',
-    card: { kind: 'draft', to: phrase('Ticket #1042'), body: phrase('Sorry about the blank invoices. Safari blocks the download; this link opens them now, and a fix ships today.') },
+    card: { kind: 'draft', to: phrase('Ticket #1042'), body: phrase('Sorry about the blank invoices. Safari blocks the download; this link opens them now, and a fix ships today.'), approver: 'nia' },
   }),
   r.say('nia', phrase("Warmer first line, please. And let's not blame Safari in writing.")),
   r.typing('su'),
@@ -326,6 +351,7 @@ const SUPPORT = room('acme/support', hm(10, 4), (r) => [
   react('links', 'laugh', 3),
   r.say('su', phrase('The customer wrote back: “That was fast. Thank you.”'), { id: 'thanks' }),
   react('thanks', 'heart', 5),
+  step('acme', 1),
   elsewhere('acme/inbox', 'opera', phrase('Morning sort is done.'), {
     id: 'sort',
     card: {
@@ -338,7 +364,7 @@ const SUPPORT = room('acme/support', hm(10, 4), (r) => [
 
 /** Email: the agent triages and drafts, a person approves a batch, a lawyer catches a clause. */
 const INBOX = room('acme/inbox', hm(10, 41), (r) => [
-  r.say('opera', phrase('Six replies are drafted in your voice. Approve them as a batch?'), { id: 'batch', card: { kind: 'ask', options: [phrase('Approve all'), phrase('One by one')] } }),
+  r.say('opera', phrase('Six replies are drafted in your voice. Approve them as a batch?'), { id: 'batch', card: { kind: 'ask', options: [phrase('Approve all'), phrase('One by one')], asks: 'ada' } }),
   r.typing('ada'),
   card('batch', { picked: 0 }),
   r.say('ada', phrase('Approve all. You know how I write by now.')),
@@ -349,9 +375,10 @@ const INBOX = room('acme/inbox', hm(10, 41), (r) => [
   react('clause', 'eyes', 2),
   r.say('ada', phrase('Good catch. Ask for one, nicely.')),
   r.typing('opera'),
-  r.say('opera', phrase('Drafted.'), { id: 'renewal', card: { kind: 'draft', to: phrase('The vendor, about our renewal'), body: phrase('Happy to renew. Could we make the term one year, with the option to extend?') } }),
+  r.say('opera', phrase('Drafted.'), { id: 'renewal', card: { kind: 'draft', to: phrase('The vendor, about our renewal'), body: phrase('Happy to renew. Could we make the term one year, with the option to extend?'), approver: 'ada' } }),
   r.say('ada', phrase('Nicely done. Send.')),
   card('renewal', { sent: true }),
+  step('acme', 2),
   r.say('opera', phrase('Sent. The inbox is at zero, except for the newsletter you keep meaning to read.'), { id: 'zero' }),
   react('zero', 'laugh', 2),
   elsewhere('acme/fundraise', 'zoe', phrase('@fin we need a seed deck by Friday.')),
@@ -365,6 +392,7 @@ const FUNDRAISE = room('acme/fundraise', hm(11, 20), (r) => [
   r.typing('fin'),
   r.say('fin', phrase('Deck v1 is in Drive.'), { id: 'deck', card: { kind: 'file', name: 'Acme seed deck.pdf', type: 'deck', detail: phrase('12 slides') } }),
   r.say('fin', phrase('And the model.'), { id: 'model', card: { kind: 'file', name: 'Acme model.xlsx', type: 'sheet', detail: phrase('Three scenarios, sources linked') } }),
+  r.say('fin', phrase('@sal the deck is ready for the intros.')),
   r.say('zoe', phrase('Slide 4 says “synergy”. Remove it with prejudice.')),
   r.typing('fin'),
   r.say('fin', phrase('Removed. Slide 4 now says what the product does.'), { id: 'synergy' }),
@@ -387,6 +415,7 @@ const FUNDRAISE = room('acme/fundraise', hm(11, 20), (r) => [
   r.say('theo', phrase('Prep doc?')),
   r.typing('fin'),
   r.say('fin', phrase('In the deck folder: the questions they are likely to ask, with our answers.')),
+  step('acme', 3),
   elsewhere('acme/design', 'sam', phrase('@des the plan cards feel crowded.')),
 ])
 
@@ -402,6 +431,7 @@ const DESIGN = room('acme/design', hm(13, 15), (r) => [
   r.typing('dev'),
   r.say('dev', phrase('Picked it up. It will be on the preview link in ten minutes.'), { id: 'handoff' }),
   react('handoff', 'heart', 3),
+  step('acme', 4),
   elsewhere('acme/hiring', 'huma', phrase('Designer role: the shortlist is ready, with a note on each.'), {
     id: 'shortlist',
     card: { kind: 'list', title: phrase('Shortlist'), items: [phrase('Product designer, strong systems work'), phrase('Brand designer, moving to product'), phrase('Design engineer, ships in code')] },
@@ -416,6 +446,7 @@ const HIRING = room('acme/hiring', hm(14, 2), (r) => [
   r.say('mina', phrase('Thank you for respecting weekends.'), { id: 'weekends' }),
   react('weekends', 'heart', 4),
   r.say('des', phrase('One screen, two hours, no trick questions.')),
+  step('acme', 5),
   elsewhere('acme/launch', 'mark', phrase('The launch post is drafted.'), { id: 'post', card: { kind: 'file', name: 'launch-post.md', type: 'doc', detail: phrase('Draft') } }),
 ])
 
@@ -425,9 +456,10 @@ const LAUNCH = room('acme/launch', hm(15, 30), (r) => [
   r.typing('mark'),
   r.say('mark', phrase('Cut to three paragraphs. Paragraph four is now a footnote nobody will read either.'), { id: 'cut' }),
   react('cut', 'laugh', 5),
+  r.say('mark', phrase('@lang can you take it into Japanese and Spanish?')),
   r.typing('lang'),
   r.say('lang', phrase('Translated into Japanese and Spanish. The terms match the glossary.')),
-  r.say('mana', phrase('Everything is done but the docs pass.'), {
+  r.say('mana', phrase('Everything is done but the docs pass. @doc it is yours.'), {
     id: 'checklist',
     card: { kind: 'list', title: phrase('Launch checklist'), items: [phrase('Launch post'), phrase('Translations'), phrase('Pricing page'), phrase('Docs pass'), phrase('Status page')], done: [0, 1, 2, 4] },
   }),
@@ -440,6 +472,7 @@ const LAUNCH = room('acme/launch', hm(15, 30), (r) => [
   r.say('mark', phrase('Posted. It is live.'), { id: 'live' }),
   react('live', 'rocket', 8),
   react('live', 'party', 6),
+  step('acme', 6),
   r.huddle(),
   elsewhere('acme/general', 'vi', phrase("Today's notes are ready."), {
     id: 'notes',
@@ -469,15 +502,18 @@ const SIDE = room('friday/side-project', hm(19, 10), (r) => [
     id: 'board',
     card: { kind: 'list', title: phrase('Board'), items: [phrase('Sign-in'), phrase('Save a recipe'), phrase("Search by what's in the fridge")] },
   }),
+  step('friday', 0),
   r.say('jun', phrase("I'll take search. @dev pair with me?")),
   r.typing('dev'),
   r.say('dev', phrase('Pairing. Search works on ingredients now: “leftover pizza” returns pizza.'), { id: 'pizza' }),
   card('board', { done: [2] }),
+  step('friday', 1),
   react('pizza', 'laugh', 4),
   r.say('leo', phrase('Bringing snacks and opinions.')),
   r.typing('art'),
   r.say('art', phrase('Logo sketches, in case anyone wants a logo before a product.'), { id: 'logos', card: { kind: 'file', name: 'logo-sketches.png', type: 'image', detail: phrase('Three options') } }),
   react('logos', 'heart', 5),
+  step('friday', 2),
   elsewhere('friday/game-night', 'omar', phrase('Game night Thursday?')),
 ])
 
@@ -490,6 +526,7 @@ const GAME = room('friday/game-night', hm(19, 42), (r) => [
   r.typing('vi'),
   r.say('vi', phrase('Accepted. I will be fair.')),
   react('forever', 'laugh', 3),
+  step('friday', 3),
 ])
 
 /** Rooms the day does not pass through, played when a reader opens them. */
@@ -559,6 +596,7 @@ export function pace(events: Event[]): Beat[] {
     else if (before.kind === 'huddle') wait = 1600
     else if (before.kind === 'thread') wait = 1100
     else if (before.kind === 'react') wait = 1000
+    else if (before.kind === 'step') wait = 1200
     return { ...e, wait }
   })
 }
@@ -594,7 +632,23 @@ export interface Frame {
   /** The message whose thread stands beside the channel. */
   thread: string | null
   huddle: Record<string, string[]>
+  /** The steps of each org's mission done so far. */
+  steps: Record<string, number[]>
+  /** Work handed from one teammate to another by a mention, newest last. */
+  handoffs: Handoff[]
 }
+
+/** One teammate handing work to another by mentioning them. */
+export interface Handoff {
+  from: string
+  to: string
+  room: string
+  time: number
+  text: string
+}
+
+/** The handoffs a frame keeps: the newest. */
+const HANDOFFS = 8
 
 /** How many messages a room keeps on screen: the oldest leave the top. */
 const KEEP = 14
@@ -611,6 +665,8 @@ export function frame(events: Event[], at: number): Frame {
   }
   const unread: Record<string, number> = { ...UNREAD }
   const huddle: Record<string, string[]> = {}
+  const steps: Record<string, number[]> = {}
+  const handoffs: Handoff[] = []
   let view = (events.find((e) => e.kind === 'open') as Extract<Event, { kind: 'open' }> | undefined)?.room ?? 'acme/eng'
   let clock = hm(9, 0)
   let thread: string | null = null
@@ -630,6 +686,7 @@ export function frame(events: Event[], at: number): Frame {
         const m: Message = { id: e.id ?? `${e.room}@${i}`, who: e.who, text: e.text, time: clock, card: e.card, reactions: [], replies: [] }
         seat(e.room).push(m)
         where.set(m.id, m)
+        for (const [, to] of e.text.matchAll(/@([a-z]+)/g)) if (to !== e.who && (to in AGENTS || to in PEOPLE)) handoffs.push({ from: e.who, to, room: e.room, time: clock, text: e.text })
         if (e.room !== view) unread[e.room] = (unread[e.room] ?? 0) + 1
         break
       }
@@ -662,9 +719,57 @@ export function frame(events: Event[], at: number): Frame {
       case 'huddle':
         huddle[e.room] = e.who
         break
+      case 'step':
+        steps[e.org] = [...new Set([...(steps[e.org] ?? []), e.n])]
+        break
     }
   })
   seat(view)
   for (const id of Object.keys(rooms)) rooms[id] = rooms[id].slice(-KEEP)
-  return { room: view, rooms, unread, typing, thread, huddle }
+  return { room: view, rooms, unread, typing, thread, huddle, steps, handoffs: handoffs.slice(-HANDOFFS) }
+}
+
+/** Something an agent left for a person: a reply to send, a question to answer, a pull request to review, or (supervised) a step to approve. */
+export interface Ask {
+  id: string
+  room: string
+  /** The person it waits on. */
+  who: string
+  /** What the agent asked for, as a phrase with `{what}` filled from the card. */
+  say: string
+  what: string
+}
+
+/**
+ * What waits on a person in a frame. Always: a draft not yet sent, a question
+ * not yet answered, a pull request still under review. Supervised, also every
+ * agent's work a person has not answered yet in its room: an agent asks before
+ * each tool, connector or site (the app's Manual approval).
+ */
+export function waiting(f: Frame, supervised: boolean): Ask[] {
+  const out: Ask[] = []
+  for (const [room, list] of Object.entries(f.rooms)) {
+    list.forEach((m, i) => {
+      const c = m.card
+      if (c?.kind === 'draft' && !c.sent) out.push({ id: m.id, room, who: c.approver ?? 'ada', say: phrase('Send the reply to {what}'), what: c.to })
+      else if (c?.kind === 'ask' && c.picked === undefined) out.push({ id: m.id, room, who: c.asks ?? 'ada', say: phrase('Answer: {what}'), what: m.text })
+      else if (c?.kind === 'pr' && c.state === 'review') out.push({ id: m.id, room, who: c.reviewer ?? 'theo', say: phrase('Review {what}'), what: `#${c.number}` })
+      else if (supervised && c && agent(m.who) && !list.slice(i + 1).some((n) => !agent(n.who))) {
+        const owner = orgOf(room).people[0]
+        out.push({ id: m.id, room, who: owner, say: phrase('Approve {what}'), what: c.kind === 'file' ? c.name : c.kind === 'meeting' || c.kind === 'list' ? c.title : m.text })
+      }
+    })
+  }
+  return out
+}
+
+/** Each agent's spending limits, as the agent's settings hold them: a weekly cap and the most one task may spend (sample values). */
+export const LIMITS: Record<string, { week: number; task: number }> = {
+  dev: { week: 60, task: 8 },
+  su: { week: 20, task: 2 },
+  opera: { week: 20, task: 2 },
+  fin: { week: 30, task: 5 },
+  sal: { week: 25, task: 3 },
+  des: { week: 40, task: 6 },
+  mark: { week: 20, task: 3 },
 }

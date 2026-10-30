@@ -738,6 +738,28 @@ copies `assets/` into its public root). Every word is `phrase`/`t()`; names,
 channels, files and repositories stay as written, and nothing on the screen is
 a measurement.
 
+From 1000px of its own width a column stands beside the channel (a thread takes
+its place while one is open): **How agents act** (the approval mode, Autonomous
+or Supervised, which the reader can flip: the app's Auto and Manual, "pauses
+only for anything risky" against "asks before each tool, connector or site";
+spending limits hold either way), **Needs a person** (`waiting`: a draft not
+sent, a question not answered, a pull request under review, and, supervised,
+every agent's work no person has answered yet in its room), the org's
+**mission** (`MISSIONS`, its steps done by `step` events, a bar and "n of m"),
+**Handoffs** (every mention one teammate makes of another, newest first, with
+its time) and the agents' **spending limits** (`LIMITS`, a weekly cap and the
+most one task may spend, as an agent's settings hold them; docs "Budgets").
+Narrower, the mode, the count and the mission sit in a row over the composer; a
+phone preview shorter than 560px (a landing's card) leaves the channels and
+that row to the drawer.
+
+`TeamStory` is the story both pages tell around it, told once: `TEAM` (the
+heading, the lede, the line on handoffs, "Talk to us", the note that the
+preview is sample data, "How it works" and its three points with where each
+leads, the close) and `TeamPoints`, `TeamNote` to draw them. hanzo.team's
+landing and hanzo.ai/team each set it in their own chrome; every sentence is
+something the product does.
+
 hanzo.team's landing and hanzo.ai's /team open on it, and hanzo.ai's hero plays
 it in its cycle: one component for every host, which is why it lives here.
 

@@ -30,13 +30,18 @@ import {
   SquarePen,
   ThumbsUp,
   X,
+  CornerDownRight,
+  ShieldCheck,
+  Target,
+  Wallet,
+  UserRound,
   type LucideIcon,
 } from 'lucide-react'
 import { useI18n } from '@hanzo/i18n/react'
 import { Avatar as Monogram, Text, View, XStack, YStack } from '@hanzo/ui'
 import { Face } from './cast'
 import { md, useHost, usePlay, useStage, useStill, type PreviewProps } from './preview'
-import { DAY, HOME, ORGS, SCENE, STILL, agent, channelOf, frame, orgOf, pace, who, type Card, type Mark, type Message } from './workday'
+import { DAY, HOME, LIMITS, MISSIONS, ORGS, SCENE, STILL, agent, channelOf, frame, orgOf, pace, waiting, who, type Ask, type Card, type Handoff, type Mark, type Message } from './workday'
 
 /**
  * Hanzo Team, playing: a working day in the workspace, laid out the way a team
@@ -89,6 +94,8 @@ const ME = 'ada'
 const DESK = 560
 /** The workspace's column: narrower while the preview is. */
 const breadth = (width: number) => (width && width < 700 ? 176 : width && width < 820 ? 200 : 232)
+/** How tall a phone's preview must be to list the channels under the orgs (a short one, a landing's card, leaves them to the drawer). */
+const LIST = 560
 /** How wide the preview must be for the channel's header to show who is in it. */
 const FACES = 900
 
@@ -528,6 +535,188 @@ function Tile({ org, on, n, size, onPress }: { org: { id: string; name: string }
   )
 }
 
+/** One of the panel's boxes: a title (and what stands at its end), then what it holds. */
+function Box({ icon: Icon, title, aside, children }: { icon: LucideIcon; title: string; aside?: ReactNode; children: ReactNode }) {
+  return (
+    <YStack gap={8} p={12} rounded={12} borderWidth={1} borderColor="$edge" bg="$panel" $platform-web={{ borderRadius: '12px' }}>
+      <XStack items="center" gap={6}>
+        <Icon size={13} color="var(--foreground)" aria-hidden />
+        <Text flex={1} minW={0} fontSize="$1" fontWeight="700" color="$ink" numberOfLines={1}>
+          {title}
+        </Text>
+        {aside}
+      </XStack>
+      {children}
+    </YStack>
+  )
+}
+
+/**
+ * The approval mode, as the app's settings hold it: autonomous (agents run
+ * tools on their own and stop for anything risky) or supervised (they ask
+ * before each tool, connector or site). Spending limits hold either way.
+ */
+function Mode({ supervised, onSet, small = false }: { supervised: boolean; onSet: (supervised: boolean) => void; small?: boolean }) {
+  const { t } = useI18n()
+  return (
+    <XStack role="radiogroup" aria-label={t('How agents act')} p={2} gap={2} rounded={9999} borderWidth={1} borderColor="$edge" bg="$background" self="flex-start" $platform-web={{ borderRadius: '9999px' }}>
+      {[
+        { on: false, label: t('Autonomous') },
+        { on: true, label: t('Supervised') },
+      ].map((m) => {
+        const active = m.on === supervised
+        return (
+          <XStack
+            key={m.label}
+            render={<button type="button" role="radio" aria-checked={active} onClick={() => onSet(m.on)} />}
+            px={small ? 9 : 11}
+            height={small ? 24 : 26}
+            items="center"
+            rounded={9999}
+            borderWidth={0}
+            bg={active ? '$ink' : 'transparent'}
+            cursor="pointer"
+            focusVisibleStyle={ROW.focusVisibleStyle}
+            $platform-web={{ borderRadius: '9999px', transition: 'background-color 200ms ease' }}
+          >
+            <Text fontSize={small ? 11 : '$1'} fontWeight="600" color={active ? '$background' : '$soft'}>
+              {m.label}
+            </Text>
+          </XStack>
+        )
+      })}
+    </XStack>
+  )
+}
+
+/** A bar of how much of a whole is done. */
+function Progress({ done, total }: { done: number; total: number }) {
+  return (
+    <View height={6} rounded={9999} bg="$raised" overflow="hidden" $platform-web={{ borderRadius: '9999px' }}>
+      <View height="100%" width={`${total ? Math.round((done / total) * 100) : 0}%`} bg="$ink" rounded={9999} $platform-web={{ borderRadius: '9999px', transition: 'width 600ms cubic-bezier(0.2, 0.7, 0.2, 1)' }} />
+    </View>
+  )
+}
+
+/**
+ * The column beside the channel, from 1000px of the preview's own width: how
+ * agents act here, what waits on a person, the org's mission and how far it
+ * has come, who handed what to whom, and the agents' spending limits.
+ */
+function Panel({ org, supervised, onMode, asks, done, handoffs, onOpen }: { org: string; supervised: boolean; onMode: (supervised: boolean) => void; asks: Ask[]; done: number[]; handoffs: Handoff[]; onOpen: (room: string) => void }) {
+  const { t } = useI18n()
+  const clock = useClock()
+  const mission = MISSIONS[org]
+  const agents = ORGS.find((o) => o.id === org)?.agents.filter((a) => LIMITS[a]).slice(0, 3) ?? []
+  return (
+    <YStack flex={1} minH={0} overflow="hidden" gap={10} p={12} bg="$sunken" $platform-web={FOOT}>
+      <Box icon={ShieldCheck} title={t('How agents act')}>
+        <Mode supervised={supervised} onSet={onMode} />
+        <Text fontSize="$1" lineHeight={16} color="$soft">
+          {supervised ? t('Agents ask before each tool, connector or site. Spending limits stay on.') : t('Agents run tools on their own and stop for anything risky. Spending limits stay on.')}
+        </Text>
+      </Box>
+      <Box
+        icon={UserRound}
+        title={t('Needs a person')}
+        aside={
+          <Text key={asks.length} data-motion="rise" fontSize="$1" fontWeight="700" color="$ink" data-i18n-ltr>
+            {asks.length}
+          </Text>
+        }
+      >
+        {asks.length ? (
+          asks.slice(0, 3).map((a) => (
+            <XStack
+              key={a.id}
+              data-motion="rise"
+              render={<button type="button" aria-label={t('Open #{channel}', { channel: channelOf(a.room) })} onClick={() => onOpen(a.room)} />}
+              items="center"
+              gap={8}
+              p={4}
+              rounded={8}
+              bg="transparent"
+              {...ROW}
+              $platform-web={{ borderRadius: '8px', textAlign: 'start' }}
+            >
+              <Avatar id={a.who} size={20} />
+              <Text flex={1} minW={0} fontSize="$1" lineHeight={16} color="$ink" numberOfLines={2}>
+                {t(a.say, { what: t(a.what) })}
+              </Text>
+            </XStack>
+          ))
+        ) : (
+          <Text fontSize="$1" color="$soft">
+            {t('Nothing right now.')}
+          </Text>
+        )}
+      </Box>
+      {mission ? (
+        <Box
+          icon={Target}
+          title={t(mission.title)}
+          aside={
+            <Text fontSize="$1" color="$soft" data-i18n-ltr>
+              {t('{done} of {total}', { done: done.length, total: mission.steps.length })}
+            </Text>
+          }
+        >
+          <Progress done={done.length} total={mission.steps.length} />
+          <YStack gap={5}>
+            {mission.steps.slice(0, 4).map((step, i) => (
+              <XStack key={step} items="center" gap={8}>
+                <Tick done={done.includes(i)} />
+                <Text flex={1} minW={0} fontSize="$1" color={done.includes(i) ? '$ink' : '$soft'} numberOfLines={1}>
+                  {t(step)}
+                </Text>
+              </XStack>
+            ))}
+          </YStack>
+        </Box>
+      ) : null}
+      <Box icon={CornerDownRight} title={t('Handoffs')}>
+        {handoffs.length ? (
+          [...handoffs]
+            .reverse()
+            .slice(0, 4)
+            .map((h) => (
+              <XStack key={`${h.time}/${h.from}/${h.to}`} data-motion="rise" items="center" gap={6}>
+                <Avatar id={h.from} size={18} />
+                <CornerDownRight size={11} color="var(--muted-foreground)" aria-hidden data-i18n-mirror />
+                <Avatar id={h.to} size={18} />
+                <Text flex={1} minW={0} fontSize="$1" color="$ink" numberOfLines={1}>
+                  {t('{from} to {to}', { from: who(h.from).name, to: who(h.to).name })}
+                </Text>
+                <Text fontSize={11} color="$faint" data-i18n-ltr>
+                  {clock(h.time)}
+                </Text>
+              </XStack>
+            ))
+        ) : (
+          <Text fontSize="$1" color="$soft">
+            {t('No handoffs yet today.')}
+          </Text>
+        )}
+      </Box>
+      {agents.length ? (
+        <Box icon={Wallet} title={t('Spending limits')}>
+          {agents.map((a) => (
+            <XStack key={a} items="center" gap={8}>
+              <Avatar id={a} size={18} />
+              <Text flex={1} minW={0} fontSize="$1" color="$ink" numberOfLines={1}>
+                {who(a).name}
+              </Text>
+              <Text fontSize={11} color="$soft" data-i18n-ltr>
+                {t('{week} a week · {task} a task', { week: `$${LIMITS[a].week}`, task: `$${LIMITS[a].task}` })}
+              </Text>
+            </XStack>
+          ))}
+        </Box>
+      ) : null}
+    </YStack>
+  )
+}
+
 /** Three dots that take turns, beside who is typing. */
 function Dots() {
   return (
@@ -550,7 +739,7 @@ export function TeamPreview(props: PreviewProps) {
   const { compact, phone } = props
   const { t } = useI18n()
   const still = useStill()
-  const { box, seen, width, visible, held, hold } = useStage()
+  const { box, seen, width, height, visible, held, hold } = useStage()
   const { live, end } = useHost(props)
   // It always lays itself out by its own width, so it fits a page's column, a
   // hero's half and a device's screen alike; the window decides only before it
@@ -566,6 +755,8 @@ export function TeamPreview(props: PreviewProps) {
   const [hand, setHand] = useState<Record<string, Partial<Card>>>({})
   const [threadHand, setThreadHand] = useState<string | null | undefined>(undefined)
   const [drawer, setDrawer] = useState(false)
+  // How agents act: autonomous (the app's Auto approval) or supervised (Manual).
+  const [supervised, setSupervised] = useState(false)
 
   useEffect(() => {
     loop.current = !driven
@@ -589,8 +780,12 @@ export function TeamPreview(props: PreviewProps) {
   const huddle = f.huddle[here] ?? []
   const unread = (room: string) => (room === here || read.includes(room) ? 0 : (f.unread[room] ?? 0))
   /** What is unread across an org's channels. */
-  const waiting = (org: string) => ORGS.find((x) => x.id === org)?.channels.reduce((n, c) => n + unread(`${org}/${c.id}`), 0) ?? 0
+  const news = (org: string) => ORGS.find((x) => x.id === org)?.channels.reduce((n, c) => n + unread(`${org}/${c.id}`), 0) ?? 0
   const members = [...o.people.slice(0, 2), ...o.agents.slice(0, 2)]
+  const asks = waiting(f, supervised).filter((a) => orgOf(a.room).id === o.id)
+  const done = f.steps[o.id] ?? []
+  const handoffs = f.handoffs.filter((h) => orgOf(h.room).id === o.id)
+  const mission = MISSIONS[o.id]
 
   /** The reader takes over: nothing loops over what they set. */
   const go = (room: string) => {
@@ -626,7 +821,7 @@ export function TeamPreview(props: PreviewProps) {
               bg="$ink"
               $platform-web={{ borderRadius: '9999px', transition: still ? 'none' : 'height 260ms ease' }}
             />
-            <Tile org={x} on={on} n={on ? 0 : waiting(x.id)} size="xl" onPress={() => go(HOME[x.id])} />
+            <Tile org={x} on={on} n={on ? 0 : news(x.id)} size="xl" onPress={() => go(HOME[x.id])} />
           </XStack>
         )
       })}
@@ -819,7 +1014,7 @@ export function TeamPreview(props: PreviewProps) {
       gridTemplateColumns="minmax(0, 1fr)"
       {...md(desk, {
         height: compact ? '100%' : 640,
-        gridTemplateColumns: `60px ${breadth(width)}px minmax(0, 1fr)${roomy && parent ? ' 300px' : ''}`,
+        gridTemplateColumns: `60px ${breadth(width)}px minmax(0, 1fr)${roomy ? ' 290px' : ''}`,
       })}
       $platform-web={{ textAlign: 'start' }}
     >
@@ -885,13 +1080,13 @@ export function TeamPreview(props: PreviewProps) {
         <YStack {...md(desk, { display: 'none' })} gap={8} pt={10} pb={8} borderBottomWidth={1} borderColor="$edge">
           <XStack items="center" gap={10} px={12}>
             {ORGS.map((x) => (
-              <Tile key={x.id} org={x} on={x.id === o.id} n={x.id === o.id ? 0 : waiting(x.id)} size="lg" onPress={() => go(HOME[x.id])} />
+              <Tile key={x.id} org={x} on={x.id === o.id} n={x.id === o.id ? 0 : news(x.id)} size="lg" onPress={() => go(HOME[x.id])} />
             ))}
             <Text key={o.id} data-motion="rise" flex={1} minW={0} fontSize="$3" fontWeight="700" color="$ink" numberOfLines={1} marginInlineStart={4}>
               {o.name}
             </Text>
           </XStack>
-          <XStack flexWrap="wrap" gap={6} px={12}>
+          <XStack flexWrap="wrap" gap={6} px={12} display={height && height < LIST ? 'none' : 'flex'}>
             {o.channels.map((c) => {
               const room = `${o.id}/${c.id}`
               const on = room === here
@@ -935,6 +1130,29 @@ export function TeamPreview(props: PreviewProps) {
             </>
           ) : null}
         </XStack>
+        {/* Where there is no room for the panel: how agents act, what waits on a person, the mission's progress. */}
+        {roomy || (height && height < LIST) ? null : (
+          <XStack flexWrap="wrap" items="center" gap={8} px={12} pb={8}>
+            <Mode supervised={supervised} onSet={setSupervised} small />
+            <XStack items="center" gap={6} px={10} height={28} rounded={9999} borderWidth={1} borderColor={asks.length ? '$ink' : '$edge'} $platform-web={{ borderRadius: '9999px' }}>
+              <UserRound size={12} color="var(--foreground)" aria-hidden />
+              <Text key={asks.length} data-motion="rise" fontSize={11} fontWeight="600" color="$ink">
+                {asks.length ? t('{count} need a person', { count: asks.length }) : t('Nothing needs a person')}
+              </Text>
+            </XStack>
+            {mission ? (
+              <XStack items="center" gap={6} px={10} height={28} rounded={9999} borderWidth={1} borderColor="$edge" $platform-web={{ borderRadius: '9999px' }}>
+                <Target size={12} color="var(--foreground)" aria-hidden />
+                <Text fontSize={11} fontWeight="600" color="$ink" data-i18n-ltr>
+                  {t('{done} of {total}', { done: done.length, total: mission.steps.length })}
+                </Text>
+                <View width={36}>
+                  <Progress done={done.length} total={mission.steps.length} />
+                </View>
+              </XStack>
+            ) : null}
+          </XStack>
+        )}
         {composer(t('Message #{channel}', { channel }))}
 
         {/* The thread over the channel, where it cannot stand beside it. */}
@@ -968,9 +1186,9 @@ export function TeamPreview(props: PreviewProps) {
         ) : null}
       </YStack>
 
-      {side && roomy ? (
+      {roomy ? (
         <YStack minW={0} minH={0} borderColor="$edge" borderInlineStartWidth={1}>
-          {side}
+          {side ?? <Panel org={o.id} supervised={supervised} onMode={setSupervised} asks={asks} done={done} handoffs={handoffs} onOpen={go} />}
         </YStack>
       ) : null}
     </View>
