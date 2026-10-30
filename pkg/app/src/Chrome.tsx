@@ -17,9 +17,10 @@
  * pill whose 12px of padding the bar takes back with a -12px start margin, the
  * shape hanzo.ai's own bar gives it. So the name's first letter is at the gutter
  * on every page of every host, the focused ones and the marketing ones alike.
- * Under a pointer or keyboard focus the pill takes the soft outline a section's
- * label wears (`--border-strong`) and an arrow opens before the name: this goes
- * back to the site.
+ * Under a pointer or keyboard focus the pill takes the bar's one highlight, the
+ * `$hover` ground and no outline or border, as every control on hanzo.ai's bar
+ * does, and an arrow opens before the name: this goes back to the site.
+ * Keyboard focus keeps its ring as well.
  *
  * Being another account, and adding one, write this page down first
  * (destination.ts `rememberDestination`), so the sign-in that follows comes back
@@ -48,8 +49,8 @@ const HEIGHT = 60
 const GUTTER = 'var(--page-gutter, 20px)'
 /** The name's pill: its padding, which the bar takes back so the name's first letter is at the gutter. */
 const PAD = 12
-/** The pill lit: the soft outline a section's label wears, on no ground. */
-const OUTLINE = 'inset 0 0 0 1px var(--border-strong)'
+/** The pill lit: the bar's one highlight, a ground and no outline. */
+const LIT = '$hover'
 /** The arrow that opens before the name, and the space after it. */
 const CUE = 14
 const CUE_GAP = 6
@@ -224,7 +225,7 @@ function Home() {
       rounded={999}
       color="var(--foreground)"
       textDecorationLine="none"
-      boxShadow={lit ? OUTLINE : 'none'}
+      bg={lit ? LIT : 'transparent'}
       focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor', outlineOffset: 2 }}
       transition="quickest"
       data-tauri-drag-region="deep"

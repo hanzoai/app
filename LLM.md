@@ -281,9 +281,11 @@ Paths below are under `pkg/app`.
   its name, so the name's first letter stands at the gutter on every page of
   every host: 20 / 30.7 / 57.6 / 72px at 390 / 768 / 1440 / 1800, measured
   against hanzo.ai's `/` (owner, 2026-10-29: "all the same wordmark alignment").
-  Under a mouse or pen, and under keyboard focus, the pill takes the soft
-  outline a section's label wears (`--border-strong`, no ground) and lucide's
-  arrow opens before the name (`data-lit`): this goes back to the site. A
+  Under a mouse or pen, and under keyboard focus, the pill takes the one
+  highlight every control on hanzo.ai's bar takes, the `$hover` ground with no
+  outline or border (owner, 2026-10-29: "don't do an outline, just a background
+  highlight"), and lucide's arrow opens before the name (`data-lit`): this goes
+  back to the site. Keyboard focus keeps its ring as well. A
   finger's tap navigates and does not light it. hanzo-inc/pay draws its own
   bar to the same measure (`.pay-bar`, `.pay-mark`). Then the host's `back`;
   at the end a host's own account control when it hands one in (`account`;

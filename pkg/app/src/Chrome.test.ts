@@ -196,7 +196,7 @@ describe('the bar\'s other accounts', () => {
 })
 
 describe('the way home', () => {
-  test('a mouse over the name lights it (the outline and the arrow); leaving puts it out; a finger never lights it', async () => {
+  test('a mouse over the name lights it (the highlight and the arrow); leaving puts it out; a finger never lights it', async () => {
     state.iam = { isAuthenticated: false, user: null }
     const host = document.createElement('div')
     document.body.append(host)
