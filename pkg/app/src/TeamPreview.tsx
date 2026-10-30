@@ -1,223 +1,74 @@
 'use client'
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { AtSign, ChevronDown, Flame, Hash, Headphones, Heart, Image as Picture, MessageSquareText, Mic, Plus, SendHorizontal, Smile, SquarePen, ThumbsUp, type LucideIcon } from 'lucide-react'
-import { phrase } from '@hanzo/i18n'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  AtSign,
+  CalendarCheck,
+  Check,
+  ChevronDown,
+  Eye,
+  FileSpreadsheet,
+  FileText,
+  Flame,
+  GitMerge,
+  GitPullRequest,
+  Hash,
+  Headphones,
+  Heart,
+  Image as Picture,
+  Laugh,
+  Mail,
+  Menu,
+  Mic,
+  PartyPopper,
+  Plus,
+  Presentation,
+  Rocket,
+  Search,
+  SendHorizontal,
+  Smile,
+  SquarePen,
+  ThumbsUp,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 import { useI18n } from '@hanzo/i18n/react'
-import { Text, View, XStack, YStack } from '@hanzo/ui'
+import { Avatar as Monogram, Text, View, XStack, YStack, type GuiElement } from '@hanzo/ui'
 import { Face } from './cast'
-import { md, useDesk, useHost, usePlay, useStage, useStill, type Beat, type PreviewProps } from './preview'
+import { md, useHost, usePlay, useStage, useStill, type PreviewProps } from './preview'
+import { DAY, HOME, ORGS, SCENE, STILL, agent, channelOf, frame, orgOf, pace, who, type Card, type Mark, type Message } from './workday'
 
 /**
- * Hanzo Team, playing: the workspace as these rooms draw it, laid out the way
- * a team chat is read. hanzo.team's landing opens on it, and hanzo.ai's hero
- * plays it after its own scene; one component, both hosts. Far left, the organizations a
- * person belongs to, one active, with "+" under them; then the workspace's
- * column: its name, Channels, Direct messages with who is here, and the org's
- * Agents; then the channel, its topic and who is in it, the messages, and the
- * composer.
+ * Hanzo Team, playing: a working day in the workspace, laid out the way a team
+ * chat is read. hanzo.team's landing and hanzo.ai's /team open on it, and
+ * hanzo.ai's hero plays it in its cycle; one component for every host.
  *
- * The script is friends and their agents building together: at Acme, Zoe puts
- * the pricing page up, Sam asks des for the plan cards, des posts the work, a
- * reaction lands, dev ships it; then the switcher flips to Friday Club, where
- * friends start a recipe app and maya sets up the board. It plays while on
- * screen and the pointer is elsewhere, and loops. Pressing an org or a channel
- * opens it and plays its own exchange; from then on nothing loops over the
- * reader.
+ * Far left, the organizations a person belongs to (one active, "+" under them,
+ * the reader at the foot); then the workspace's column: its name, Channels
+ * (bold and counted when unread), Direct messages with who is here, and the
+ * org's Agents; then the channel: its name and topic, who is in it, the huddle,
+ * the messages with their cards, reactions and threads, who is typing, and the
+ * composer. A thread opens beside the channel when there is room, over it when
+ * not.
  *
- * A reader who asked for less motion, the server and the first paint get Acme's
- * #launch whole, still. People wear their initials, as the rooms draw a person
- * with no picture; agents wear the cast's portraits (`Face`). Every
- * word is sample copy written here, through `phrase`/`t()`; a name, a channel
- * and a file stay as written.
+ * The day is `./workday`: more than five minutes of people and agents working
+ * together before it plays again. It plays while on screen and the pointer is
+ * elsewhere. Pressing an org or a channel plays that room's own scene, an
+ * agent's question or a draft answers a press, and from then on the reader
+ * drives: nothing loops over them. A reader who asked for less motion, the
+ * server and the first paint get one whole frame: #eng with the pull request
+ * merged.
+ *
+ * People wear their initials (`Face`, as the app draws a person with no
+ * picture); agents wear the crew's memoji, `/memoji/<id>.svg`, from this
+ * package's assets. The chrome is monochrome; the faces carry the colour.
  */
 
-type Who = { name: string; agent?: boolean }
-const WHO: Record<string, Who> = {
-  ada: { name: 'Ada Park' },
-  sam: { name: 'Sam Ortiz' },
-  mina: { name: 'Mina Chen' },
-  theo: { name: 'Theo Brandt' },
-  zoe: { name: 'Zoe Iyer' },
-  des: { name: 'des', agent: true },
-  dev: { name: 'dev', agent: true },
-  maya: { name: 'maya', agent: true },
-  vi: { name: 'vi', agent: true },
-}
-
 /** A reaction's mark: monochrome, as the rest of the chrome. */
-const MARKS: Record<string, LucideIcon> = { flame: Flame, heart: Heart, thumbs: ThumbsUp }
+const MARKS: Record<Mark, LucideIcon> = { thumbs: ThumbsUp, heart: Heart, flame: Flame, rocket: Rocket, eyes: Eye, laugh: Laugh, party: PartyPopper, check: Check }
 
-type Line = Beat &
-  (
-    | { kind: 'say'; who: string; text: string; replies?: number; file?: string }
-    | { kind: 'typing'; who: string }
-    /** A reaction lands on the message before it. */
-    | { kind: 'react'; mark: string; count: number }
-    /** The switcher flips to another organization, on its own channel. */
-    | { kind: 'org'; org: string }
-    | { kind: 'rest' }
-  )
-
-type Channel = { id: string; topic: string; unread?: number }
-type Org = { id: string; name: string; mark: string; channels: Channel[]; people: string[]; agents: string[] }
-
-const ORGS: Org[] = [
-  {
-    id: 'acme',
-    name: 'Acme',
-    mark: 'A',
-    channels: [
-      { id: 'general', topic: phrase('Everything Acme') },
-      { id: 'launch', topic: phrase('Shipping the pricing page this week') },
-      { id: 'design', topic: phrase('Screens, mocks and taste'), unread: 2 },
-    ],
-    people: ['zoe', 'sam', 'ada'],
-    agents: ['des', 'dev'],
-  },
-  {
-    id: 'friday',
-    name: 'Friday Club',
-    mark: 'F',
-    channels: [
-      { id: 'side-project', topic: phrase('Building a recipe app, for fun') },
-      { id: 'game-night', topic: phrase('Who is in this week'), unread: 5 },
-    ],
-    people: ['mina', 'theo', 'ada'],
-    agents: ['maya', 'vi'],
-  },
-  {
-    id: 'lab',
-    name: 'Night Lab',
-    mark: 'N',
-    channels: [
-      { id: 'general', topic: phrase('Late ideas, early prototypes') },
-      { id: 'ideas', topic: phrase('Half-baked, on purpose'), unread: 1 },
-    ],
-    people: ['theo', 'zoe'],
-    agents: ['vi', 'dev'],
-  },
-]
-const org = (id: string) => ORGS.find((o) => o.id === id) ?? ORGS[0]
-/** The channel each org opens on. */
-const HOME: Record<string, string> = { acme: 'launch', friday: 'side-project', lab: 'general' }
-
-const ACME: Line[] = [
-  { kind: 'say', who: 'zoe', text: phrase('Pricing page is on the preview link. Tear it apart.'), replies: 3, wait: 600 },
-  { kind: 'say', who: 'sam', text: phrase('Love it. @des can the plan cards line up?'), wait: 1500 },
-  { kind: 'typing', who: 'des', wait: 1200 },
-  { kind: 'say', who: 'des', text: phrase('Done. Every price sits on one baseline now.'), file: 'plan-cards.png', wait: 1100 },
-  { kind: 'react', mark: 'flame', count: 3, wait: 1300 },
-  { kind: 'say', who: 'ada', text: phrase('@dev ship it when the checks pass.'), wait: 1300 },
-  { kind: 'typing', who: 'dev', wait: 1200 },
-  { kind: 'say', who: 'dev', text: phrase('Checks passed. It is live.'), wait: 1000 },
-  { kind: 'react', mark: 'thumbs', count: 4, wait: 1000 },
-]
-const FRIDAY: Line[] = [
-  { kind: 'say', who: 'mina', text: phrase('Who is in for the recipe app tonight?'), wait: 700 },
-  { kind: 'say', who: 'theo', text: phrase('In. @maya can you set up the board?'), wait: 1400 },
-  { kind: 'typing', who: 'maya', wait: 1200 },
-  { kind: 'say', who: 'maya', text: phrase('Board is ready: sign-in, recipes and search, a card each.'), wait: 1000 },
-  { kind: 'react', mark: 'heart', count: 5, wait: 1100 },
-  { kind: 'say', who: 'ada', text: phrase('Bringing snacks.'), replies: 2, wait: 1300 },
-]
-/** What each room says when it is opened by hand. */
-const ROOMS: Record<string, Line[]> = {
-  'acme/launch': ACME,
-  'acme/general': [
-    { kind: 'say', who: 'ada', text: phrase('Standup moved to 10 today.'), wait: 300 },
-    { kind: 'say', who: 'zoe', text: phrase('Works for me.'), wait: 900 },
-    { kind: 'react', mark: 'thumbs', count: 2, wait: 800 },
-  ],
-  'acme/design': [
-    { kind: 'say', who: 'sam', text: phrase('@des a darker hover on the cards?'), wait: 300 },
-    { kind: 'typing', who: 'des', wait: 800 },
-    { kind: 'say', who: 'des', text: phrase('Tried it. The mock is in Drive, side by side with the old one.'), file: 'hover.png', wait: 1000 },
-  ],
-  'friday/side-project': FRIDAY,
-  'friday/game-night': [
-    { kind: 'say', who: 'theo', text: phrase('Game night Thursday?'), wait: 300 },
-    { kind: 'say', who: 'mina', text: phrase('Yes. @vi can you find a time that works for all of us?'), wait: 1000 },
-    { kind: 'typing', who: 'vi', wait: 800 },
-    { kind: 'say', who: 'vi', text: phrase('Thursday at 8 works for everyone. It is on your calendars.'), wait: 1000 },
-  ],
-  'lab/general': [
-    { kind: 'say', who: 'zoe', text: phrase('What if the app planned the week for you?'), wait: 300 },
-    { kind: 'typing', who: 'dev', wait: 800 },
-    { kind: 'say', who: 'dev', text: phrase('I can have a first version running by morning.'), wait: 1000 },
-    { kind: 'react', mark: 'flame', count: 2, wait: 900 },
-  ],
-  'lab/ideas': [
-    { kind: 'say', who: 'theo', text: phrase('A bot that waters the plants.'), wait: 300 },
-    { kind: 'say', who: 'zoe', text: phrase('Filed under someday.'), wait: 1000 },
-  ],
-}
-/** The whole script: Acme's launch, then the switch to Friday Club. */
-const SCRIPT: Line[] = [...ACME, { kind: 'org', org: 'friday', wait: 2600 }, ...FRIDAY, { kind: 'rest', wait: 2600 }]
-
-/** A reaction under a message: its mark and how many. */
-function Reaction({ mark, count }: { mark: string; count: number }) {
-  const Mark = MARKS[mark] ?? Heart
-  return (
-    <XStack data-motion="rise" items="center" gap={4} px={8} py={2} rounded={9999} borderWidth={1} borderColor="$ink" bg="$hover" $platform-web={{ borderRadius: '9999px' }}>
-      <Mark size={12} color="var(--foreground)" aria-hidden />
-      <Text fontSize="$1" color="$ink" data-i18n-ltr>
-        {count}
-      </Text>
-    </XStack>
-  )
-}
-
-/** One message: the face, the name (an agent tagged), the words, a file, its reactions and its thread. */
-function Message({ who, file, replies, reactions, children }: { who: string; file?: string; replies?: number; reactions: { mark: string; count: number }[]; children: ReactNode }) {
-  const { t } = useI18n()
-  const w = WHO[who]
-  return (
-    <XStack data-motion="rise" gap={10} items="flex-start">
-      <Face name={w.name} size={32} person={!w.agent} />
-      <YStack flex={1} minW={0} gap={4}>
-        <XStack items="center" gap={6}>
-          <Text fontSize="$2" fontWeight="700" color="$ink" numberOfLines={1}>
-            {w.name}
-          </Text>
-          {w.agent ? (
-            <Text fontSize={10} lineHeight={14} px={6} rounded={6} bg="$hover" color="$soft" $platform-web={{ borderRadius: '6px' }}>
-              {t('Agent')}
-            </Text>
-          ) : null}
-        </XStack>
-        <Text fontSize="$2" lineHeight="$3" color="$ink">
-          {children}
-        </Text>
-        {file ? (
-          <XStack self="flex-start" items="center" gap={8} mt={2} px={10} py={8} rounded={10} borderWidth={1} borderColor="$edge" bg="$panel" $platform-web={{ borderRadius: '10px' }}>
-            <XStack width={34} height={26} rounded={6} items="center" justify="center" bg="$raised" $platform-web={{ borderRadius: '6px' }}>
-              <Picture size={14} color="var(--muted-foreground)" aria-hidden />
-            </XStack>
-            <Text fontFamily="$mono" fontSize="$1" color="$soft" data-i18n-ltr>
-              {file}
-            </Text>
-          </XStack>
-        ) : null}
-        {reactions.length ? (
-          <XStack gap={6} mt={2}>
-            {reactions.map((r, i) => (
-              <Reaction key={i} mark={r.mark} count={r.count} />
-            ))}
-          </XStack>
-        ) : null}
-        {replies ? (
-          <XStack items="center" gap={6} mt={2}>
-            <MessageSquareText size={13} color="var(--foreground)" aria-hidden />
-            <Text fontSize="$1" fontWeight="600" color="$ink">
-              {t('{count} replies', { count: replies })}
-            </Text>
-          </XStack>
-        ) : null}
-      </YStack>
-    </XStack>
-  )
-}
+/** A file's mark, by what it is. */
+const FILES: Record<Extract<Card, { kind: 'file' }>['type'], LucideIcon> = { doc: FileText, deck: Presentation, sheet: FileSpreadsheet, image: Picture }
 
 /** A button drawn as one of the workspace's rows: the press, the hover, the focus ring. */
 const ROW = {
@@ -227,196 +78,740 @@ const ROW = {
   focusVisibleStyle: { outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)', outlineOffset: -2 },
 } as const
 
-/** A dot that says someone is here now. */
-function Here() {
-  return <View width={7} height={7} rounded={9999} bg="var(--state-online)" shrink={0} $platform-web={{ borderRadius: '9999px' }} />
+/** The fade a list takes where it runs out of room. */
+const TOP = { maskImage: 'linear-gradient(to bottom, transparent, black 48px)', WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 48px)' } as const
+const FOOT = { maskImage: 'linear-gradient(to bottom, black 82%, transparent)', WebkitMaskImage: 'linear-gradient(to bottom, black 82%, transparent)' } as const
+
+/** The reader, at the rail's foot. */
+const ME = 'ada'
+
+/** How wide the preview must be to draw the workspace's column (below: the phone app). */
+const DESK = 560
+/** The workspace's column: narrower while the preview is. */
+const breadth = (width: number) => (width && width < 700 ? 176 : width && width < 820 ? 200 : 232)
+/** How wide the preview must be for the channel's header to show who is in it. */
+const FACES = 900
+
+/** "1 reply", "3 replies". */
+const replies = (t: ReturnType<typeof useI18n>['t'], n: number) => (n === 1 ? t('1 reply') : t('{count} replies', { count: n }))
+/** How wide it must be for a thread to stand beside the channel rather than over it. */
+const ROOM = 1000
+
+/** A person's initials or an agent's memoji. */
+function Avatar({ id, size }: { id: string; size: number }) {
+  if (!agent(id)) return <Face name={who(id).name} size={size} person />
+  return (
+    <View
+      render={<img src={`/memoji/${id}.svg`} alt="" width={size} height={size} loading="lazy" decoding="async" />}
+      width={size}
+      height={size}
+      shrink={0}
+      rounded={9999}
+      display="block"
+      $platform-web={{ borderRadius: '9999px' }}
+    />
+  )
+}
+
+/** A dot that says someone is here now; hollow when away, pulsing while they work. */
+function Here({ away, busy }: { away?: boolean; busy?: boolean }) {
+  return (
+    <View
+      data-motion={busy ? 'pulse' : undefined}
+      width={8}
+      height={8}
+      shrink={0}
+      rounded={9999}
+      borderWidth={away ? 1.5 : 0}
+      borderColor="$soft"
+      bg={away ? 'transparent' : 'var(--state-online)'}
+      $platform-web={{ borderRadius: '9999px' }}
+    />
+  )
+}
+
+/** A line of a message with its mentions set apart: `@dev` reads as the agent's name. */
+function Said({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/(@[a-z]+)/).map((part, i) =>
+        /^@[a-z]+$/.test(part) ? (
+          <Text key={i} render="span" fontWeight="600" color="$ink" bg="$raised" px={3} rounded={4} $platform-web={{ borderRadius: '4px' }}>
+            {`@${who(part.slice(1)).name}`}
+          </Text>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  )
+}
+
+/** The frame every card in a message stands in. */
+function Frame({ children }: { children: ReactNode }) {
+  return (
+    <YStack data-motion="rise" self="flex-start" width="100%" maxW={420} mt={4} gap={8} p={12} rounded={12} borderWidth={1} borderColor="$edge" bg="$panel" $platform-web={{ borderRadius: '12px' }}>
+      {children}
+    </YStack>
+  )
+}
+
+/** A small round state: a check once done, an empty ring before. */
+function Tick({ done }: { done: boolean }) {
+  return (
+    <XStack
+      width={16}
+      height={16}
+      shrink={0}
+      rounded={9999}
+      items="center"
+      justify="center"
+      borderWidth={1}
+      borderColor={done ? '$ink' : '$edge'}
+      bg={done ? '$ink' : 'transparent'}
+      $platform-web={{ borderRadius: '9999px', transition: 'background-color 260ms ease, border-color 260ms ease' }}
+    >
+      {done ? <Check size={10} strokeWidth={3} color="var(--background)" aria-hidden /> : null}
+    </XStack>
+  )
+}
+
+/** A pill-shaped control a card offers; inked once it is the answer. */
+function Choice({ on, faded, label, onPress }: { on: boolean; faded: boolean; label: string; onPress: () => void }) {
+  return (
+    <XStack
+      render={<button type="button" aria-pressed={on} onClick={onPress} />}
+      items="center"
+      gap={6}
+      px={12}
+      py={5}
+      rounded={9999}
+      borderWidth={1}
+      borderColor={on ? '$ink' : '$edge'}
+      bg={on ? '$ink' : 'transparent'}
+      opacity={faded ? 0.5 : 1}
+      cursor="pointer"
+      hoverStyle={{ borderColor: '$ink' }}
+      focusVisibleStyle={ROW.focusVisibleStyle}
+      $platform-web={{ borderRadius: '9999px', transition: 'background-color 240ms ease, border-color 240ms ease, opacity 240ms ease' }}
+    >
+      {on ? <Check size={12} color="var(--background)" strokeWidth={2.6} aria-hidden /> : null}
+      <Text fontSize="$1" fontWeight="500" color={on ? '$background' : '$ink'}>
+        {label}
+      </Text>
+    </XStack>
+  )
+}
+
+/** What a message carries: a pull request, a draft, a file, a meeting, a list, a question, design options. */
+function Attachment({ card, onPick }: { card: Card; onPick: (patch: Partial<Card>) => void }) {
+  const { t } = useI18n()
+  switch (card.kind) {
+    case 'pr': {
+      const merged = card.state === 'merged'
+      const Mark = merged ? GitMerge : GitPullRequest
+      const state = merged ? t('Merged') : card.state === 'passed' ? t('Checks passed') : t('Review requested')
+      return (
+        <Frame>
+          <XStack items="center" gap={8}>
+            <Mark size={15} color="var(--foreground)" aria-hidden />
+            <Text fontFamily="$mono" fontSize="$1" color="$soft" data-i18n-ltr>
+              {`${card.repo} #${card.number}`}
+            </Text>
+          </XStack>
+          <Text fontSize="$2" lineHeight="$3" fontWeight="600" color="$ink">
+            {t(card.title)}
+          </Text>
+          <XStack items="center" gap={10} flexWrap="wrap">
+            <Text fontFamily="$mono" fontSize="$1" color="$soft" data-i18n-ltr>
+              {`+${card.add} −${card.del}`}
+            </Text>
+            <XStack
+              key={card.state}
+              data-motion="rise"
+              items="center"
+              gap={5}
+              px={8}
+              py={2}
+              rounded={9999}
+              borderWidth={1}
+              borderColor={card.state === 'review' ? '$edge' : '$ink'}
+              bg={merged ? '$ink' : 'transparent'}
+              $platform-web={{ borderRadius: '9999px' }}
+            >
+              {card.state === 'review' ? null : <Check size={11} strokeWidth={3} color={merged ? 'var(--background)' : 'var(--foreground)'} aria-hidden />}
+              <Text fontSize={11} lineHeight={16} fontWeight="600" color={merged ? '$background' : '$ink'}>
+                {state}
+              </Text>
+            </XStack>
+          </XStack>
+        </Frame>
+      )
+    }
+    case 'draft':
+      return (
+        <Frame>
+          <XStack items="center" gap={8}>
+            <Mail size={14} color="var(--foreground)" aria-hidden />
+            <Text flex={1} minW={0} fontSize="$1" color="$soft" numberOfLines={1}>
+              {t('To: {to}', { to: t(card.to) })}
+            </Text>
+            <Text fontSize={11} fontWeight="600" color={card.sent ? '$ink' : '$soft'}>
+              {card.sent ? t('Sent') : t('Draft')}
+            </Text>
+          </XStack>
+          <Text key={card.body} data-motion="rise" fontSize="$2" lineHeight="$3" color="$ink">
+            {t(card.body)}
+          </Text>
+          {card.sent ? null : (
+            <XStack gap={8}>
+              <Choice on={false} faded={false} label={t('Send')} onPress={() => onPick({ sent: true })} />
+            </XStack>
+          )}
+        </Frame>
+      )
+    case 'file': {
+      const Mark = FILES[card.type]
+      return (
+        <Frame>
+          <XStack items="center" gap={10}>
+            <XStack width={36} height={36} shrink={0} rounded={8} items="center" justify="center" bg="$raised" $platform-web={{ borderRadius: '8px' }}>
+              <Mark size={17} color="var(--foreground)" aria-hidden />
+            </XStack>
+            <YStack flex={1} minW={0}>
+              <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1} data-i18n-ltr>
+                {card.name}
+              </Text>
+              {card.detail ? (
+                <Text fontSize="$1" color="$soft" numberOfLines={1}>
+                  {t(card.detail)}
+                </Text>
+              ) : null}
+            </YStack>
+          </XStack>
+        </Frame>
+      )
+    }
+    case 'meeting':
+      return (
+        <Frame>
+          <XStack items="center" gap={10}>
+            <XStack width={36} height={36} shrink={0} rounded={8} items="center" justify="center" bg="$ink" $platform-web={{ borderRadius: '8px' }}>
+              <CalendarCheck size={17} color="var(--background)" aria-hidden />
+            </XStack>
+            <YStack flex={1} minW={0}>
+              <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>
+                {t(card.title)}
+              </Text>
+              <Text fontSize="$1" lineHeight={16} color="$soft">
+                {t('{when} · on everyone’s calendar', { when: t(card.when) })}
+              </Text>
+            </YStack>
+          </XStack>
+        </Frame>
+      )
+    case 'list':
+      return (
+        <Frame>
+          <Text fontSize="$1" fontWeight="700" color="$ink">
+            {t(card.title)}
+          </Text>
+          <YStack gap={6}>
+            {card.items.map((item, i) => (
+              <XStack key={item} items="center" gap={8}>
+                {card.done ? <Tick done={card.done.includes(i)} /> : <View width={5} height={5} shrink={0} rounded={9999} bg="$soft" mx={5} $platform-web={{ borderRadius: '9999px' }} />}
+                <Text flex={1} minW={0} fontSize="$2" lineHeight="$2" color="$ink">
+                  {t(item)}
+                </Text>
+              </XStack>
+            ))}
+          </YStack>
+        </Frame>
+      )
+    case 'ask':
+      return (
+        <Frame>
+          <XStack gap={8} flexWrap="wrap">
+            {card.options.map((o, i) => (
+              <Choice key={o} on={card.picked === i} faded={card.picked !== undefined && card.picked !== i} label={t(o)} onPress={() => onPick({ picked: i })} />
+            ))}
+          </XStack>
+        </Frame>
+      )
+    case 'options':
+      return (
+        <Frame>
+          <Text fontFamily="$mono" fontSize="$1" color="$soft" data-i18n-ltr>
+            {card.file}
+          </Text>
+          <XStack gap={8}>
+            {card.options.map((o, i) => {
+              const on = card.picked === i
+              return (
+                <YStack
+                  key={o}
+                  render={<button type="button" aria-pressed={on} aria-label={t('Option {name}', { name: o })} onClick={() => onPick({ picked: i })} />}
+                  flex={1}
+                  gap={5}
+                  p={8}
+                  rounded={8}
+                  borderWidth={on ? 2 : 1}
+                  borderColor={on ? '$ink' : '$edge'}
+                  bg="$background"
+                  opacity={card.picked !== undefined && !on ? 0.55 : 1}
+                  cursor="pointer"
+                  focusVisibleStyle={ROW.focusVisibleStyle}
+                  $platform-web={{ borderRadius: '8px', transition: 'opacity 240ms ease, border-color 240ms ease' }}
+                >
+                  <XStack items="center" justify="space-between">
+                    <Text fontSize="$1" fontWeight="700" color="$ink" data-i18n-ltr>
+                      {o}
+                    </Text>
+                    {on ? <Check size={12} strokeWidth={3} color="var(--foreground)" aria-hidden /> : null}
+                  </XStack>
+                  <XStack gap={4}>
+                    {[0, 1, 2].map((c) => (
+                      <YStack key={c} flex={1} gap={3} p={4} rounded={4} borderWidth={1} borderColor="$edge" $platform-web={{ borderRadius: '4px' }}>
+                        <View height={4} width="70%" rounded={2} bg="$raised" />
+                        {Array.from({ length: i ? 2 : 4 }, (_, k) => (
+                          <View key={k} height={3} width="90%" rounded={2} bg="$hover" />
+                        ))}
+                      </YStack>
+                    ))}
+                  </XStack>
+                </YStack>
+              )
+            })}
+          </XStack>
+        </Frame>
+      )
+  }
+}
+
+/** The reactions under a message; a count that changes lands again. */
+function Reactions({ list }: { list: Message['reactions'] }) {
+  return (
+    <XStack gap={6} mt={4} flexWrap="wrap">
+      {list.map((r) => {
+        const Mark = MARKS[r.mark]
+        return (
+          <XStack key={`${r.mark}:${r.n}`} data-motion="rise" items="center" gap={4} px={8} py={2} rounded={9999} borderWidth={1} borderColor="$edge" bg="$hover" $platform-web={{ borderRadius: '9999px' }}>
+            <Mark size={12} color="var(--foreground)" aria-hidden />
+            <Text fontSize="$1" fontWeight="600" color="$ink" data-i18n-ltr>
+              {r.n}
+            </Text>
+          </XStack>
+        )
+      })}
+    </XStack>
+  )
+}
+
+/** A message's name line: the name, an agent's tag, the time. */
+function Byline({ id, time }: { id: string; time: string }) {
+  const { t } = useI18n()
+  return (
+    <XStack items="center" gap={6} minW={0}>
+      <Text fontSize="$2" fontWeight="700" color="$ink" numberOfLines={1}>
+        {who(id).name}
+      </Text>
+      {agent(id) ? (
+        <Text fontSize={10} lineHeight={15} fontWeight="600" px={5} rounded={4} bg="$raised" color="$soft" $platform-web={{ borderRadius: '4px' }}>
+          {t('Agent')}
+        </Text>
+      ) : null}
+      <Text fontSize={11} color="$faint" data-i18n-ltr>
+        {time}
+      </Text>
+    </XStack>
+  )
+}
+
+/** "9:41 AM", in the reader's language, for a minute of the sample day. */
+function useClock() {
+  const { locale } = useI18n()
+  const time = useMemo(() => new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' }), [locale])
+  return (minute: number) => time.format(new Date(2026, 9, 29, Math.floor(minute / 60), minute % 60))
+}
+
+/** One message: the face (or nothing, under the same author's last), the words, its card, reactions and thread. */
+function Post({ m, grouped, onThread, onPick }: { m: Message; grouped: boolean; onThread?: () => void; onPick: (patch: Partial<Card>) => void }) {
+  const { t } = useI18n()
+  const clock = useClock()
+  const last = m.replies[m.replies.length - 1]
+  const faces = [...new Set(m.replies.map((r) => r.who))].slice(0, 3)
+  return (
+    <XStack data-motion="rise" gap={10} items="flex-start" pt={grouped ? 0 : 8}>
+      <View width={34} shrink={0} items="center">
+        {grouped ? null : <Avatar id={m.who} size={34} />}
+      </View>
+      <YStack flex={1} minW={0} gap={2}>
+        {grouped ? null : <Byline id={m.who} time={clock(m.time)} />}
+        <Text fontSize="$2" lineHeight="$3" color="$ink">
+          <Said text={t(m.text)} />
+        </Text>
+        {m.card ? <Attachment card={m.card} onPick={onPick} /> : null}
+        {m.reactions.length ? <Reactions list={m.reactions} /> : null}
+        {m.replies.length ? (
+          <XStack
+            render={<button type="button" onClick={onThread} aria-label={t('Open the thread: {replies}', { replies: replies(t, m.replies.length) })} />}
+            self="flex-start"
+            items="center"
+            gap={6}
+            mt={4}
+            px={4}
+            py={3}
+            rounded={8}
+            bg="transparent"
+            {...ROW}
+            $platform-web={{ borderRadius: '8px' }}
+          >
+            <XStack>
+              {faces.map((f, i) => (
+                <View key={f} marginInlineStart={i ? -5 : 0} rounded={9999} borderWidth={1.5} borderColor="var(--background)" $platform-web={{ borderRadius: '9999px' }}>
+                  <Avatar id={f} size={18} />
+                </View>
+              ))}
+            </XStack>
+            <Text fontSize="$1" fontWeight="700" color="$ink">
+              {replies(t, m.replies.length)}
+            </Text>
+            <Text fontSize="$1" color="$faint" numberOfLines={1}>
+              {last ? t('Last reply {time}', { time: clock(last.time) }) : null}
+            </Text>
+          </XStack>
+        ) : null}
+      </YStack>
+    </XStack>
+  )
+}
+
+/** A count of what is unread, inked. */
+function Count({ n }: { n: number }) {
+  return (
+    <Text key={n} data-motion="rise" fontSize={10} lineHeight={16} minW={18} px={5} rounded={9999} bg="$ink" color="$background" fontWeight="700" text="center" $platform-web={{ borderRadius: '9999px' }} data-i18n-ltr>
+      {n}
+    </Text>
+  )
 }
 
 /**
- * Hanzo Team's workspace, playing. From 768px the switcher and the workspace's
- * column stand beside the channel; on a phone the channel fills the window, the
- * org's mark flips to the next org and the channel's name opens the column as a
+ * An organization's tile: its initial in its own hue, as the app's org chooser
+ * draws it (@hanzo/ui `Avatar`, seeded on the org's id). The active one wears a
+ * ring in that hue; the others what is unread there.
+ */
+function Tile({ org, on, n, size, onPress }: { org: { id: string; name: string }; on: boolean; n: number; size: 'xl' | 'lg'; onPress: () => void }) {
+  const { t } = useI18n()
+  return (
+    <XStack
+      render={<button type="button" aria-pressed={on} aria-label={n ? t('Open {org}, {count} unread', { org: org.name, count: n }) : t('Open {org}', { org: org.name })} onClick={onPress} />}
+      position="relative"
+      shrink={0}
+      p={2}
+      rounded={10}
+      borderWidth={2}
+      borderColor={on ? '$ink' : 'transparent'}
+      bg="transparent"
+      cursor="pointer"
+      opacity={on ? 1 : 0.8}
+      hoverStyle={{ opacity: 1 }}
+      focusVisibleStyle={ROW.focusVisibleStyle}
+      $platform-web={{ borderRadius: '10px', transition: 'opacity 200ms ease, border-color 260ms ease' }}
+    >
+      <Monogram size={size} shape="rounded" name={org.name} colorSeed={org.id} variant={on ? 'outline' : 'soft'} />
+      {n ? (
+        <View position="absolute" t={-7} insetInlineEnd={-8}>
+          <Count n={n} />
+        </View>
+      ) : null}
+    </XStack>
+  )
+}
+
+/** Three dots that take turns, beside who is typing. */
+function Dots() {
+  return (
+    <XStack gap={3} aria-hidden>
+      {['0ms', '200ms', '400ms'].map((delay) => (
+        <View key={delay} data-motion="pulse" width={4} height={4} rounded={9999} bg="$soft" $platform-web={{ borderRadius: '9999px', animationDelay: delay }} />
+      ))}
+    </XStack>
+  )
+}
+
+/**
+ * Hanzo Team's workspace, playing. From 600px of its own width it is the
+ * desktop app (the rail, the workspace's column, the channel); narrower, or
+ * told `phone`, the phone app: the channel, with the rail and the column as a
  * drawer. A host (the landing's hero) can pause it, hear when it ends, and fit
  * it to a device's screen (`PreviewProps`).
  */
 export function TeamPreview(props: PreviewProps) {
-  const { compact } = props
+  const { compact, phone } = props
   const { t, dir } = useI18n()
   const still = useStill()
   const { box, seen, width, visible, held, hold } = useStage()
   const { live, end } = useHost(props)
-  const desk = useDesk(width, props)
+  // It always lays itself out by its own width, so it fits a page's column, a
+  // hero's half and a device's screen alike; the window decides only before it
+  // is measured (the server's render and the first paint).
+  const desk = phone ? false : width ? width >= DESK : null
+  const roomy = desk !== false && width >= ROOM
   const [driven, setDriven] = useState(false)
   const loop = useRef(true)
   const [replay, setReplay] = useState(0)
-  // The room the reader opened by hand, and the channels they have read.
-  const [opened, setOpened] = useState<{ org: string; channel: string } | null>(null)
+  // The room the reader opened, the rooms they have read, and what they set by hand.
+  const [opened, setOpened] = useState<string | null>(null)
   const [read, setRead] = useState<string[]>([])
+  const [hand, setHand] = useState<Record<string, Partial<Card>>>({})
+  const [threadHand, setThreadHand] = useState<string | null | undefined>(undefined)
   const [drawer, setDrawer] = useState(false)
 
   useEffect(() => {
     loop.current = !driven
   }, [driven])
 
-  const key = opened ? `${opened.org}/${opened.channel}` : 'script'
-  const lines = opened ? (ROOMS[key] ?? ACME) : SCRIPT
-  const at = usePlay(lines, seen && !still, replay, { visible, held, loop, live, end })
-  const shown = lines.slice(0, at)
-  const last = shown[shown.length - 1]
+  // The phone's channel strip keeps the open channel in view, scrolling itself and never the page.
+  const strip = useRef<GuiElement>(null)
 
-  // Where the script stands: the last org it switched to, on that org's channel.
-  const flip = [...shown].reverse().find((l) => l.kind === 'org')
-  const here = opened?.org ?? (flip?.kind === 'org' ? flip.org : 'acme')
-  const channel = opened?.channel ?? HOME[here]
-  const o = org(here)
-  const next = ORGS[(ORGS.indexOf(o) + 1) % ORGS.length]
+  const lines = useMemo(() => (opened ? (SCENE[opened] ?? pace([{ kind: 'open', room: opened, time: 9 * 60 }])) : DAY), [opened])
+  const run = seen && !still
+  const at = usePlay(lines, run, replay, { visible, held, loop, live, end })
+  // Before it plays, and under reduced motion, the day stands at its still frame.
+  const upto = opened || run ? at : STILL
+  const f = useMemo(() => frame(lines, upto), [lines, upto])
+
+  const here = f.room
+  useEffect(() => {
+    const row = strip.current as unknown as HTMLElement | null
+    const chip = row?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    if (!row || !chip) return
+    row.scrollTo({ left: chip.offsetLeft - (row.clientWidth - chip.offsetWidth) / 2, behavior: still ? 'auto' : 'smooth' })
+  }, [here, still])
+  const o = orgOf(here)
+  const channel = channelOf(here)
   const topic = o.channels.find((c) => c.id === channel)?.topic ?? ''
-  // The messages since the last switch, each with the reactions that landed on it.
-  const since = flip ? shown.slice(shown.indexOf(flip) + 1) : shown
-  const messages: { line: Extract<Line, { kind: 'say' }>; reactions: { mark: string; count: number }[] }[] = []
-  for (const l of since) {
-    if (l.kind === 'say') messages.push({ line: l, reactions: [] })
-    else if (l.kind === 'react' && messages.length) messages[messages.length - 1].reactions.push({ mark: l.mark, count: l.count })
-  }
+  const messages = (f.rooms[here] ?? []).map((m) => (hand[m.id] && m.card ? { ...m, card: { ...m.card, ...hand[m.id] } as Card } : m))
+  const thread = threadHand === undefined ? f.thread : threadHand
+  const parent = thread ? messages.find((m) => m.id === thread) : undefined
+  const typing = f.typing
+  const huddle = f.huddle[here] ?? []
+  const unread = (room: string) => (room === here || read.includes(room) ? 0 : (f.unread[room] ?? 0))
+  /** What is unread across an org's channels. */
+  const waiting = (org: string) => ORGS.find((x) => x.id === org)?.channels.reduce((n, c) => n + unread(`${org}/${c.id}`), 0) ?? 0
+  const members = [...o.people.slice(0, 2), ...o.agents.slice(0, 2)]
 
-  const go = (next: string, room = HOME[next]) => {
+  /** The reader takes over: nothing loops over what they set. */
+  const go = (room: string) => {
     setDriven(true)
     setDrawer(false)
-    setOpened({ org: next, channel: room })
-    setRead((r) => [...r, `${next}/${room}`])
+    setThreadHand(undefined)
+    setOpened(room)
+    setRead((r) => (r.includes(room) ? r : [...r, room]))
     setReplay((n) => n + 1)
   }
-  const unread = (orgId: string, c: Channel) => (c.unread && !read.includes(`${orgId}/${c.id}`) && !(orgId === here && c.id === channel) ? c.unread : 0)
+  const pick = (id: string) => (patch: Partial<Card>) => {
+    setDriven(true)
+    setHand((h) => ({ ...h, [id]: { ...h[id], ...patch } }))
+  }
+  const openThread = (id: string | null) => {
+    setDriven(true)
+    setThreadHand(id)
+  }
 
-  /** The organizations a person belongs to: the active one marked, "+" under them. */
-  const switcher = (
-    <YStack items="center" gap={10} py={12} width={60} height="100%" shrink={0} borderColor="$edge" borderInlineEndWidth={1} bg="$sunken">
+  /** The organizations a person belongs to: the active one marked, "+" under them, the reader at the foot. */
+  const rail = (
+    <YStack items="center" gap={12} py={12} width={60} height="100%" shrink={0} borderColor="$edge" borderInlineEndWidth={1} bg="$sunken">
       {ORGS.map((x) => {
-        const on = x.id === here
-        const waiting = !on && x.channels.some((c) => unread(x.id, c) > 0)
+        const on = x.id === o.id
         return (
           <XStack key={x.id} position="relative" items="center" justify="center">
             <View
               position="absolute"
-              insetInlineStart={-12}
+              insetInlineStart={-8}
               width={4}
               height={on ? 28 : 0}
               rounded={9999}
               bg="$ink"
               $platform-web={{ borderRadius: '9999px', transition: still ? 'none' : 'height 260ms ease' }}
             />
-            <XStack
-              render={<button type="button" aria-pressed={on} aria-label={t('Open {org}', { org: x.name })} onClick={() => go(x.id)} />}
-              width={36}
-              height={36}
-              rounded={10}
-              items="center"
-              justify="center"
-              bg={on ? '$ink' : '$raised'}
-              borderWidth={0}
-              cursor="pointer"
-              focusVisibleStyle={ROW.focusVisibleStyle}
-              $platform-web={{ borderRadius: '10px', transition: still ? 'none' : 'background-color 260ms ease' }}
-            >
-              <Text fontSize="$3" fontWeight="700" color={on ? '$background' : '$ink'} data-i18n-ltr>
-                {x.mark}
-              </Text>
-            </XStack>
-            {waiting ? (
-              <View position="absolute" t={-2} insetInlineEnd={-2} width={10} height={10} rounded={9999} bg="$ink" borderWidth={2} borderColor="$sunken" $platform-web={{ borderRadius: '9999px' }} />
-            ) : null}
+            <Tile org={x} on={on} n={on ? 0 : waiting(x.id)} size="xl" onPress={() => go(HOME[x.id])} />
           </XStack>
         )
       })}
-      <XStack width={36} height={36} rounded={10} items="center" justify="center" borderWidth={1} borderColor="$edge" $platform-web={{ borderRadius: '10px' }}>
-        <Plus size={16} color="var(--muted-foreground)" aria-hidden />
+      <XStack width={32} height={32} rounded={8} items="center" justify="center" borderWidth={1} borderColor="$edge" $platform-web={{ borderRadius: '8px' }}>
+        <Plus size={15} color="var(--muted-foreground)" aria-hidden />
       </XStack>
+      <View flex={1} />
+      <View position="relative">
+        <Avatar id={ME} size={30} />
+        <View position="absolute" b={-1} insetInlineEnd={-1} rounded={9999} borderWidth={2} borderColor="$sunken" $platform-web={{ borderRadius: '9999px' }}>
+          <Here />
+        </View>
+      </View>
     </YStack>
   )
 
-  /** The workspace's column: its name, the channels, the people and the agents. */
+  const heading = (label: string) => (
+    <XStack items="center" gap={4} px={8} pt={12} pb={3}>
+      <ChevronDown size={12} color="var(--muted-foreground)" aria-hidden />
+      <Text fontSize="$1" fontWeight="600" color="$soft">
+        {label}
+      </Text>
+    </XStack>
+  )
+
+  /** The workspace's column: its name, search, the channels, the direct messages and the agents. */
   const column = (
-    <YStack key={here} data-motion="rise" minH={0} overflow="hidden" gap={2} px={8} py={10}>
-      <XStack items="center" gap={6} px={6} pb={10}>
-        <Text fontSize="$3" fontWeight="700" color="$ink" numberOfLines={1}>
+    <YStack key={o.id} data-motion="rise" flex={1} minH={0} overflow="hidden" px={8} py={10} $platform-web={FOOT}>
+      <XStack items="center" gap={6} px={8} pb={10}>
+        <Text fontSize="$4" fontWeight="700" color="$ink" numberOfLines={1}>
           {o.name}
         </Text>
         <ChevronDown size={14} color="var(--muted-foreground)" aria-hidden />
         <View flex={1} />
-        <SquarePen size={15} color="var(--muted-foreground)" aria-hidden />
+        <XStack width={28} height={28} rounded={8} items="center" justify="center" bg="$raised" $platform-web={{ borderRadius: '8px' }}>
+          <SquarePen size={14} color="var(--foreground)" aria-hidden />
+        </XStack>
       </XStack>
-      <Text fontSize="$1" color="$soft" px={6} pt={4} pb={2}>
-        {t('Channels')}
-      </Text>
+      <XStack items="center" gap={6} mx={4} mb={4} px={10} height={28} rounded={8} borderWidth={1} borderColor="$edge" $platform-web={{ borderRadius: '8px' }}>
+        <Search size={12} color="var(--muted-foreground)" aria-hidden />
+        <Text fontSize="$1" color="$faint" numberOfLines={1}>
+          {t('Search {org}', { org: o.name })}
+        </Text>
+      </XStack>
+      {heading(t('Channels'))}
       {o.channels.map((c) => {
-        const on = c.id === channel
-        const n = unread(here, c)
+        const room = `${o.id}/${c.id}`
+        const on = room === here
+        const n = unread(room)
         return (
           <XStack
             key={c.id}
-            render={<button type="button" aria-pressed={on} aria-label={t('Open #{channel}', { channel: c.id })} onClick={() => go(here, c.id)} />}
+            render={<button type="button" aria-pressed={on} aria-label={t('Open #{channel}', { channel: c.id })} onClick={() => go(room)} />}
             items="center"
             gap={6}
-            px={8}
-            py={5}
+            px={10}
+            py={4}
             rounded={8}
             bg={on ? '$raised' : 'transparent'}
             {...ROW}
             $platform-web={{ borderRadius: '8px', textAlign: 'start' }}
           >
             <Hash size={13} color={on || n ? 'var(--foreground)' : 'var(--muted-foreground)'} aria-hidden />
-            <Text flex={1} minW={0} fontSize="$2" fontWeight={on || n ? '700' : '400'} color={on || n ? '$ink' : '$soft'} numberOfLines={1} data-i18n-ltr>
+            <Text flex={1} minW={0} fontSize="$2" lineHeight={20} fontWeight={on || n ? '700' : '400'} color={on || n ? '$ink' : '$soft'} numberOfLines={1} data-i18n-ltr>
               {c.id}
             </Text>
-            {n ? (
-              <Text fontSize={10} lineHeight={16} minW={18} px={5} rounded={9999} bg="$ink" color="$background" fontWeight="700" text="center" $platform-web={{ borderRadius: '9999px' }} data-i18n-ltr>
-                {n}
-              </Text>
-            ) : null}
+            {n ? <Count n={n} /> : null}
           </XStack>
         )
       })}
-      <Text fontSize="$1" color="$soft" px={6} pt={10} pb={2}>
-        {t('Direct messages')}
-      </Text>
-      {o.people.map((p) => (
-        <XStack key={p} items="center" gap={8} px={8} py={4}>
-          <Face name={WHO[p].name} size={24} person />
+      {heading(t('Direct messages'))}
+      {o.people.map((p, i) => (
+        <XStack key={p} items="center" gap={8} px={10} py={3}>
+          <Avatar id={p} size={20} />
           <Text flex={1} minW={0} fontSize="$2" color="$soft" numberOfLines={1}>
-            {WHO[p].name}
+            {who(p).name}
           </Text>
-          <Here />
+          <Here away={i === o.people.length - 1} busy={typing?.who === p} />
         </XStack>
       ))}
-      <Text fontSize="$1" color="$soft" px={6} pt={10} pb={2}>
-        {t('Agents')}
-      </Text>
+      {heading(t('Agents'))}
       {o.agents.map((a) => (
-        <XStack key={a} items="center" gap={8} px={8} py={4}>
-          <Face name={WHO[a].name} size={24} />
+        <XStack key={a} items="center" gap={8} px={10} py={3}>
+          <Avatar id={a} size={20} />
           <Text flex={1} minW={0} fontSize="$2" color="$soft" numberOfLines={1}>
-            {WHO[a].name}
+            {t('{name} · {role}', { name: who(a).name, role: t(who(a).role ?? '') })}
           </Text>
-          {last?.kind === 'typing' && last.who === a ? <View data-motion="pulse" width={7} height={7} rounded={9999} bg="var(--state-online)" $platform-web={{ borderRadius: '9999px' }} /> : <Here />}
+          <Here busy={typing?.who === a} />
         </XStack>
       ))}
     </YStack>
   )
 
-  const title = (opens: boolean) => (
-    <>
-      <XStack items="center" gap={4}>
-        <Hash size={14} color="var(--foreground)" aria-hidden />
+  const title = (
+    <YStack flex={1} minW={0}>
+      <XStack items="center" gap={3}>
+        <Hash size={15} color="var(--foreground)" aria-hidden />
         <Text fontSize="$3" fontWeight="700" color="$ink" numberOfLines={1} data-i18n-ltr>
           {channel}
         </Text>
-        {opens ? <ChevronDown size={14} color="var(--muted-foreground)" aria-hidden /> : null}
+        <ChevronDown size={13} color="var(--muted-foreground)" aria-hidden />
       </XStack>
       <Text fontSize="$1" color="$soft" numberOfLines={1}>
         {t(topic)}
       </Text>
-    </>
+    </YStack>
   )
+
+  /** A conversation's messages, the oldest leaving the top; a run of one author's lines shares one face. */
+  const list = (items: Message[], threads: boolean) => (
+    <YStack flex={1} minH={0} overflow="hidden" justify="flex-end" gap={6} px={16} pt={8} pb={4} $platform-web={TOP}>
+      {items.map((m, i) => {
+        const before = items[i - 1]
+        const grouped = !!before && before.who === m.who && !before.card && !before.replies.length && m.time - before.time < 5
+        return <Post key={m.id} m={m} grouped={grouped} onThread={threads ? () => openThread(m.id) : undefined} onPick={pick(m.id)} />
+      })}
+    </YStack>
+  )
+
+  const composer = (placeholder: string) => (
+    <YStack mx={12} mb={12} gap={8} px={12} py={10} rounded={12} borderWidth={1} borderColor="$edge" bg="$panel" $platform-web={{ borderRadius: '12px' }}>
+      <Text fontSize="$2" color="$faint" numberOfLines={1}>
+        {placeholder}
+      </Text>
+      <XStack items="center" gap={12}>
+        <Plus size={15} color="var(--muted-foreground)" aria-hidden />
+        <AtSign size={15} color="var(--muted-foreground)" aria-hidden />
+        <Smile size={15} color="var(--muted-foreground)" aria-hidden />
+        <Mic size={15} color="var(--muted-foreground)" aria-hidden />
+        <View flex={1} />
+        <SendHorizontal size={15} color="var(--muted-foreground)" aria-hidden data-i18n-mirror />
+      </XStack>
+    </YStack>
+  )
+
+  /** The thread a message started: the message, its replies, a reply box. */
+  const side = parent ? (
+    <YStack key={parent.id} flex={1} minH={0} bg="var(--background)">
+      <XStack items="center" gap={8} px={14} minH={52} borderBottomWidth={1} borderColor="$edge">
+        <YStack flex={1} minW={0}>
+          <Text fontSize="$3" fontWeight="700" color="$ink">
+            {t('Thread')}
+          </Text>
+          <Text fontSize="$1" color="$soft" data-i18n-ltr>
+            {`#${channel}`}
+          </Text>
+        </YStack>
+        <XStack
+          render={<button type="button" aria-label={t('Close the thread')} onClick={() => openThread(null)} />}
+          width={28}
+          height={28}
+          rounded={8}
+          items="center"
+          justify="center"
+          bg="transparent"
+          {...ROW}
+          $platform-web={{ borderRadius: '8px' }}
+        >
+          <X size={15} color="var(--muted-foreground)" aria-hidden />
+        </XStack>
+      </XStack>
+      <YStack flex={1} minH={0} overflow="hidden" justify="flex-end" gap={6} px={14} pt={8} pb={4} $platform-web={TOP}>
+        <Post m={{ ...parent, replies: [] }} grouped={false} onPick={pick(parent.id)} />
+        <XStack items="center" gap={8} py={6}>
+          <Text fontSize="$1" color="$soft">
+            {replies(t, parent.replies.length)}
+          </Text>
+          <View flex={1} height={1} bg="$edge" />
+        </XStack>
+        {parent.replies.map((r, i) => (
+          <Post key={i} m={{ id: `${parent.id}/${i}`, who: r.who, text: r.text, time: r.time, reactions: [], replies: [] }} grouped={false} onPick={() => undefined} />
+        ))}
+      </YStack>
+      {composer(t('Reply…'))}
+    </YStack>
+  ) : null
 
   return (
     <View
@@ -431,113 +826,141 @@ export function TeamPreview(props: PreviewProps) {
       overflow="hidden"
       bg="var(--background)"
       gridTemplateColumns="minmax(0, 1fr)"
-      {...md(desk, { height: compact ? '100%' : 600, gridTemplateColumns: '60px 220px minmax(0, 1fr)' })}
+      {...md(desk, {
+        height: compact ? '100%' : 640,
+        gridTemplateColumns: `60px ${breadth(width)}px minmax(0, 1fr)${roomy && parent ? ' 300px' : ''}`,
+      })}
       $platform-web={{ textAlign: 'start' }}
     >
       <YStack display="none" {...md(desk, { display: 'flex' })} minH={0}>
-        {switcher}
+        {rail}
       </YStack>
-      <YStack display="none" {...md(desk, { display: 'flex' })} minH={0} borderColor="$edge" borderInlineEndWidth={1}>
+      <YStack display="none" {...md(desk, { display: 'flex' })} minH={0} borderColor="$edge" borderInlineEndWidth={1} bg="$sunken">
         {column}
       </YStack>
 
-      {/* The channel: its name and topic, who is in it, the messages and the composer. */}
+      {/* The channel: its name and topic, who is in it, the huddle, the messages and the composer. */}
       <YStack minW={0} minH={0} position="relative">
-        <XStack items="center" gap={10} px={14} py={10} minH={52} borderBottomWidth={1} borderColor="$edge">
+        <XStack items="center" gap={10} px={14} minH={52} borderBottomWidth={1} borderColor="$edge">
           <XStack {...md(desk, { display: 'none' })}>
             <XStack
-              render={<button type="button" aria-label={t('Open {org}', { org: next.name })} onClick={() => go(next.id)} />}
-              width={30}
-              height={30}
-              shrink={0}
+              render={<button type="button" aria-expanded={drawer} aria-label={t('Channels in {org}', { org: o.name })} onClick={() => setDrawer(!drawer)} />}
+              width={32}
+              height={32}
               rounded={8}
               items="center"
               justify="center"
-              bg="$ink"
-              borderWidth={0}
-              cursor="pointer"
+              bg="transparent"
+              {...ROW}
               $platform-web={{ borderRadius: '8px' }}
             >
-              <Text fontSize="$2" fontWeight="700" color="$background" data-i18n-ltr>
-                {o.mark}
-              </Text>
+              <Menu size={17} color="var(--foreground)" aria-hidden />
             </XStack>
           </XStack>
-          {/* The channel's name and topic; on a phone the name opens the column. */}
-          <YStack flex={1} minW={0} display="none" {...md(desk, { display: 'flex' })}>
-            {title(false)}
-          </YStack>
-          <YStack
-            flex={1}
-            minW={0}
-            render={<button type="button" aria-expanded={drawer} aria-label={t('Channels in {org}', { org: o.name })} onClick={() => setDrawer(!drawer)} />}
-            borderWidth={0}
-            bg="transparent"
-            p={0}
-            cursor="pointer"
-            {...md(desk, { display: 'none' })}
-            $platform-web={{ textAlign: 'start' }}
-          >
-            {title(true)}
-          </YStack>
-          <XStack display="none" {...md(desk, { display: 'flex' })}>
-            {o.agents.map((p, i) => (
+          {title}
+          <XStack display="none" {...(width >= FACES ? { display: 'flex' } : {})} items="center">
+            {members.map((p, i) => (
               <View key={p} marginInlineStart={i ? -6 : 0} rounded={9999} borderWidth={2} borderColor="var(--background)" $platform-web={{ borderRadius: '9999px' }}>
-                <Face name={WHO[p].name} size={24} />
+                <Avatar id={p} size={22} />
               </View>
             ))}
+            <Text fontSize="$1" color="$soft" marginInlineStart={6} data-i18n-ltr>
+              {o.people.length + o.agents.length}
+            </Text>
           </XStack>
-          <XStack items="center" gap={6} px={10} py={5} rounded={8} borderWidth={1} borderColor="$edge" $platform-web={{ borderRadius: '8px' }}>
-            <Headphones size={14} color="var(--foreground)" aria-hidden />
-            <Text display="none" {...md(desk, { display: 'flex' })} fontSize="$1" color="$ink">
-              {t('Huddle')}
+          <XStack
+            key={huddle.length ? 'on' : 'off'}
+            data-motion="rise"
+            items="center"
+            gap={6}
+            px={10}
+            height={30}
+            rounded={8}
+            borderWidth={1}
+            borderColor={huddle.length ? '$ink' : '$edge'}
+            bg={huddle.length ? '$ink' : 'transparent'}
+            $platform-web={{ borderRadius: '8px' }}
+          >
+            {huddle.length ? <View data-motion="pulse" width={7} height={7} rounded={9999} bg="var(--state-online)" $platform-web={{ borderRadius: '9999px' }} /> : null}
+            <Headphones size={14} color={huddle.length ? 'var(--background)' : 'var(--foreground)'} aria-hidden />
+            <Text display="none" {...md(desk, { display: 'flex' })} fontSize="$1" fontWeight="600" color={huddle.length ? '$background' : '$ink'}>
+              {huddle.length ? t('Huddle · {count}', { count: huddle.length }) : t('Huddle')}
             </Text>
           </XStack>
         </XStack>
 
-        <YStack
-          flex={1}
-          minH={0}
-          overflow="hidden"
-          justify="flex-end"
-          gap={14}
-          px={16}
-          py={14}
-          $platform-web={{ maskImage: 'linear-gradient(to bottom, transparent, black 56px)', WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 56px)' }}
-        >
-          {messages.map(({ line, reactions }) => (
-            <Message key={`${here}/${line.text}`} who={line.who} file={line.file} replies={line.replies} reactions={reactions}>
-              {t(line.text)}
-            </Message>
-          ))}
-        </YStack>
-
-        <Text fontSize="$1" color="$soft" px={16} minH={18}>
-          {last?.kind === 'typing' ? t('{name} is typing…', { name: WHO[last.who].name }) : ''}
-        </Text>
-        <YStack mx={12} mb={12} mt={4} gap={8} px={12} py={10} rounded={12} borderWidth={1} borderColor="$edge" bg="$panel" $platform-web={{ borderRadius: '12px' }}>
-          <Text fontSize="$2" color="$faint" numberOfLines={1}>
-            {t('Message #{channel}', { channel })}
-          </Text>
-          <XStack items="center" gap={12}>
-            <Plus size={15} color="var(--muted-foreground)" aria-hidden />
-            <AtSign size={15} color="var(--muted-foreground)" aria-hidden />
-            <Smile size={15} color="var(--muted-foreground)" aria-hidden />
-            <Mic size={15} color="var(--muted-foreground)" aria-hidden />
-            <View flex={1} />
-            <SendHorizontal size={15} color="var(--muted-foreground)" aria-hidden data-i18n-mirror />
+        {/* The phone's switcher: every organization, then this one's channels, each with what is unread. */}
+        <YStack {...md(desk, { display: 'none' })} gap={8} pt={10} pb={8} borderBottomWidth={1} borderColor="$edge">
+          <XStack items="center" gap={10} px={12} $platform-web={{ overflowX: 'auto', scrollbarWidth: 'none' }}>
+            {ORGS.map((x) => (
+              <Tile key={x.id} org={x} on={x.id === o.id} n={x.id === o.id ? 0 : waiting(x.id)} size="lg" onPress={() => go(HOME[x.id])} />
+            ))}
+            <Text key={o.id} data-motion="rise" fontSize="$3" fontWeight="700" color="$ink" numberOfLines={1} marginInlineStart={4}>
+              {o.name}
+            </Text>
+          </XStack>
+          <XStack ref={strip} gap={6} px={12} $platform-web={{ overflowX: 'auto', scrollbarWidth: 'none' }}>
+            {o.channels.map((c) => {
+              const room = `${o.id}/${c.id}`
+              const on = room === here
+              const n = unread(room)
+              return (
+                <XStack
+                  key={c.id}
+                  render={<button type="button" aria-pressed={on} aria-label={t('Open #{channel}', { channel: c.id })} onClick={() => go(room)} />}
+                  shrink={0}
+                  items="center"
+                  gap={5}
+                  px={10}
+                  height={28}
+                  rounded={9999}
+                  borderWidth={1}
+                  borderColor={on ? '$ink' : '$edge'}
+                  bg={on ? '$ink' : 'transparent'}
+                  cursor="pointer"
+                  focusVisibleStyle={ROW.focusVisibleStyle}
+                  $platform-web={{ borderRadius: '9999px' }}
+                >
+                  <Text fontSize="$1" fontWeight={on || n ? '700' : '500'} color={on ? '$background' : n ? '$ink' : '$soft'} data-i18n-ltr>
+                    {`#${c.id}`}
+                  </Text>
+                  {n && !on ? <Count n={n} /> : null}
+                </XStack>
+              )
+            })}
           </XStack>
         </YStack>
 
-        {/* The phone's drawer: the switcher and the column over the channel. */}
+        {list(messages, true)}
+
+        <XStack items="center" gap={6} px={18} minH={20}>
+          {typing && typing.room === here ? (
+            <>
+              <Dots />
+              <Text fontSize="$1" color="$soft" numberOfLines={1}>
+                {t('{name} is typing…', { name: who(typing.who).name })}
+              </Text>
+            </>
+          ) : null}
+        </XStack>
+        {composer(t('Message #{channel}', { channel }))}
+
+        {/* The thread over the channel, where it cannot stand beside it. */}
+        {side && !roomy ? (
+          <YStack data-motion="rise" position="absolute" t={0} b={0} insetInlineEnd={0} width="100%" maxW={420} borderColor="$edge" borderInlineStartWidth={1} bg="var(--background)" boxShadow="0 24px 60px -24px color-mix(in srgb, var(--pure-black) 60%, transparent)">
+            {side}
+          </YStack>
+        ) : null}
+
+        {/* The phone's drawer: the rail and the workspace's column over the channel. */}
         <XStack
           aria-hidden={!drawer}
           position="absolute"
           t={0}
           b={0}
           insetInlineStart={0}
-          width="86%"
-          maxW={320}
+          width="88%"
+          maxW={340}
           bg="var(--background)"
           borderColor="$edge"
           borderInlineEndWidth={1}
@@ -550,12 +973,18 @@ export function TeamPreview(props: PreviewProps) {
             visibility: drawer ? 'visible' : 'hidden',
           }}
         >
-          {switcher}
-          <YStack flex={1} minW={0}>
+          {rail}
+          <YStack flex={1} minW={0} bg="$sunken">
             {column}
           </YStack>
         </XStack>
       </YStack>
+
+      {side && roomy ? (
+        <YStack minW={0} minH={0} borderColor="$edge" borderInlineStartWidth={1}>
+          {side}
+        </YStack>
+      ) : null}
     </View>
   )
 }

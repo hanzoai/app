@@ -676,20 +676,56 @@ reference captures; outer window, inner panel):
 
 ## Previews: `@hanzo/app/TeamPreview`, `@hanzo/app/preview`
 
-`TeamPreview` is Hanzo Team drawn in gui props and playing, laid out the way a
-team chat is read: the organizations a person belongs to down the far left (one
-active, "+" under them), the workspace's column (its name, Channels with unread
-counts, Direct messages with who is here, the org's Agents), the channel (name,
-topic, its agents' faces, Huddle), the messages with files, reactions and
-threads, and the composer. The script is friends and their agents building
-together: at Acme, des posts the plan cards and dev ships; the switcher flips to
-Friday Club, where maya sets up a board. Pressing an org or a channel opens it
-and plays its own exchange; from then on nothing loops over the reader. People
-wear initials (a person with no picture), agents the cast's portraits (`Face`).
-Every word is `phrase`/`t()`.
+`TeamPreview` is Hanzo Team drawn in gui props and playing a working day,
+laid out the way a team chat is read: the organizations a person belongs to
+down the far left, each its initial in its own hue (@hanzo/ui `Avatar` seeded on
+the org's id, as the org chooser draws it; the active one ringed, the others
+counting what is unread there; "+" under them, the reader at the foot), the
+workspace's column (its name, search, Channels bold and counted when unread,
+Direct messages with who is here, the org's Agents with their roles), the
+channel (name, topic, who is in it, the huddle), the messages with their cards
+(a pull request, a draft, a file, a meeting, a list, a question, design
+options), reactions and threads, who is typing, and the composer. A thread
+stands beside the channel from 1000px of the preview's own width and over it
+below; below 560px (or `phone`) it is the phone app: the orgs and the channels
+as a strip under the channel's name (each with its count, the open one kept in
+view), and the rail and the column a drawer. It always lays itself out by its
+own width.
 
-hanzo.team's landing opens on it, and hanzo.ai's hero plays it after its own
-scene: one component for both hosts, which is why it lives here.
+The day is `src/workday.ts`, data and nothing else: thirteen scenes, 162
+events, 6.4 minutes before it plays again (`LENGTH`; `workday.test.ts` holds it
+over five). Four organizations: Acme (a sample company, nine channels), Orbit
+(an open-source project Acme's people maintain with others), Friday Club
+(friends) and Night Lab. The morning hops across three of them in under thirty
+seconds (the test holds it): Acme's #general, Orbit thanking Dev for a fix that
+landed upstream, friends planning tonight's build, and back to Acme's #eng. Then
+at Acme a bug becomes a pull request that is reviewed, passes and merges
+(#eng); Su drafts a support reply that Nia warms up (#support); Opera sorts the
+inbox and Ada approves a batch, Law catches a renewal clause (#inbox); Fin
+builds the deck and the model, Sal sends four intros and books a meeting
+(#fundraise); Des shows two directions and hands off to Dev (#design); Huma
+books interviews (#hiring); Mark's post is cut and translated, the checklist
+closes in a huddle, and it goes live (#launch); Vi closes the day (#general).
+Then the switcher flips to Friday Club, where friends build a recipe app and
+Vi books game night. A message to a room out of view leaves it unread, and that
+is what the next room is opened by. `pace` derives every wait from what came
+before (the reading time of a message and its card, the typing, a room just
+opened), and `frame` folds the events up to a beat into the whole screen, so
+the component keeps no script state and every room holds at most 14 messages.
+
+Pressing an org or a channel plays that room's own scene (`SCENE`); a draft's
+Send, a question's answer and a design option answer a press; a thread opens
+from its reply count. From the first press nothing loops over the reader. A
+reader who asked for less motion, the server and the first paint get `STILL`:
+#eng with the pull request merged, its thread and reactions, #support waiting.
+People wear their initials (`Face`); agents wear the crew's memoji,
+`/memoji/<id>.svg`, which this package ships in `assets/memoji` (every host
+copies `assets/` into its public root). Every word is `phrase`/`t()`; names,
+channels, files and repositories stay as written, and nothing on the screen is
+a measurement.
+
+hanzo.team's landing and hanzo.ai's /team open on it, and hanzo.ai's hero plays
+it in its cycle: one component for every host, which is why it lives here.
 
 `@hanzo/app/preview` is the clock every product preview plays on (hanzo.ai's
 BotPreview too): `usePlay` (a script of beats, each `wait` ms after the last,
