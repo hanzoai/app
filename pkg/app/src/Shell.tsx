@@ -1643,8 +1643,6 @@ export function Split({
               borderColor: "var(--edge, var(--white-06))",
             })}
         ref={split.main}
-        // inline-style: the pane hidden while the column takes its space, written by a drag too (useSplit).
-        style={split.mainStyle}
         width="100%"
         height="100%"
         minW={0}
@@ -1667,8 +1665,6 @@ export function Split({
           // In the frame the gutter stands between the pane and this column.
           marginInlineStart={framed ? "var(--pane-gap)" : undefined}
           ref={split.aside}
-          // inline-style: the width a drag rewrites on the element itself, and full screen (useSplit).
-          style={split.asideStyle}
           position="relative"
           shrink={0}
           minH={0}
@@ -2259,8 +2255,7 @@ function Frame({
     <Sidebar
       ref={side.ref}
       // A phone's sheet is never wider than 280, whatever the laptop kept.
-      // inline-style: `--span`, the width a drag rewrites on the element itself (span.ts); no prop sets a variable.
-      style={side.style}
+      {...side.props}
       $md={{ width: "var(--span)" }}
       $max-md={{ width: "100%", maxW: 280 }}
       {...sheet(0)}

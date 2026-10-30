@@ -1,7 +1,7 @@
 {
   "name": "@hanzo/glass",
-  "version": "0.1.0",
-  "description": "Liquid glass and specular refraction styling for Hanzo UI widgets.",
+  "version": "0.1.1",
+  "description": "Liquid glass and specular refraction for Hanzo UI widgets, as @hanzo/gui props.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -11,6 +11,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./LiquidGlass": {
+      "types": "./dist/LiquidGlass.d.ts",
+      "import": "./dist/LiquidGlass.js",
+      "default": "./dist/LiquidGlass.js"
     }
   },
   "license": "Apache-2.0 OR MIT",
@@ -24,9 +29,11 @@
     "@types/react": "catalog:",
     "react": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@hanzo/gui": "catalog:"
   },
   "peerDependencies": {
-    "react": ">=19.0.0"
+    "react": ">=19.0.0",
+    "@hanzo/gui": "^8.3.5"
   }
 }

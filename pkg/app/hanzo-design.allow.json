@@ -1,8 +1,8 @@
 {
   "_": "What the apps still owe the design system, per hanzo-design-lint rule. It may only SHRINK — a fix deletes its own exemption in the same commit, and a violation written today fails the build. `pnpm lint:design` is the gate.",
-  "_zero": "Every rule not listed is ZERO. inline-style is zero because the few style objects nothing else can express say why in a comment beginning `inline-style:` — --span written by a drag (Sidebar, Shell) and design's serif face that gui cannot name (Upgrade).",
+  "_zero": "Every rule not listed is ZERO, inline-style with no exception (owner, 2026-10-22): there is no style object and no `inline-style:` comment. A column's kept width is gui's own class (`--span`, span.ts) and a drag writes it on the element; the drawer's slide is gui props whose transform reads the distance the drag writes; @hanzo/build's useSplit (0.2.90) writes its settled column itself; the upgrade title is `$serif` (@hanzo/ui 8.29.33); the editor's file is a gui Text that renders the textarea.",
   "_raw-color": "raw-color is what a token cannot hold: the third-party marks and brand hexes ProviderMark and network.tsx draw (vendor logos, byte for byte), and the cast's portrait grounds — content, not chrome.",
-  "_unresolved": "The 4 are reads of --span, set inline by the component that reads it — a name this linter cannot see rather than one nothing declares.",
+  "_unresolved": "The 2 are reads of --span (Sidebar, Shell), which span.ts declares as a gui class on the element that reads it — a name this linter cannot see rather than one nothing declares.",
   "raw-color": 38,
-  "unresolved-token": 3
+  "unresolved-token": 2
 }

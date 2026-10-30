@@ -39,7 +39,7 @@
 
 import { useI18n } from '@hanzo/i18n/react'
 import { Text, XStack, YStack, useMedia } from '@hanzo/gui'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { axis, OPEN, pull, settle, sign, type State } from './slide'
 
 /** A press that moves the app: told whether it should take the menu's place in history. */
@@ -65,26 +65,30 @@ export interface Drawer {
   pane: (node: unknown) => void
   /** The menu's layer. */
   layer: (node: unknown) => void
-  /** The pane's slide, for its `style`: null while shut, so nothing is transformed and nothing is raised. */
-  slide: CSSProperties | null
+  /** The pane's slide, gui props to spread on it: null while shut, so nothing is transformed and nothing is raised. */
+  slide: typeof SLIDE | null
 }
 
 /**
- * The pane's offset as a transform: `--drawer-way` the end side's sign,
- * `--drawer-at` the distance, both written on the pane by the drawer (a drag
- * rewrites the distance every frame, no React commit). Its start corners round.
+ * The pane while the menu is out: raised over the floor, opaque, its start
+ * corners round and its edge drawn, and offset as a transform: `--drawer-way`
+ * the end side's sign, `--drawer-at` the distance, both written on the pane by
+ * the drawer (a drag rewrites the distance every frame, no React commit).
+ * Spread on the pane after its floor; `Lift` is its fill.
  */
 const SLIDE = {
   position: 'relative',
-  zIndex: 'var(--z-raised)',
+  z: 'var(--z-raised)',
   overflow: 'hidden',
-  backgroundColor: 'var(--pane-solid)',
-  transform: 'translateX(calc(var(--drawer-way, 1) * var(--drawer-at, 0px)))',
+  bg: 'var(--pane-solid)',
   borderStartStartRadius: 'var(--radius-composer)',
   borderEndStartRadius: 'var(--radius-composer)',
   boxShadow: '0 0 0 1px var(--border-strong), var(--shadow-floating)',
-  willChange: 'transform',
-} as CSSProperties
+  '$platform-web': {
+    transform: 'translateX(calc(var(--drawer-way, 1) * var(--drawer-at, 0px)))',
+    willChange: 'transform',
+  },
+} as const
 
 /** The slide's motion: the system's base duration on its entrance curve. */
 const MOTION = 'transform var(--duration-base) var(--ease-emphasis)'
@@ -348,17 +352,6 @@ export function useDrawer(): Drawer {
     slide: state === 'shut' ? null : SLIDE,
   }
 }
-
-/**
- * The pane while the menu is out: raised over the floor, its edge drawn and a
- * drop falling on the menu, clipped to its corners. Spread on the pane beside
- * `slide`; `Lift` is its fill.
- */
-export const RAISED = {
-  z: 'var(--z-raised)',
-  overflow: 'hidden',
-  boxShadow: '0 0 0 1px var(--pane-edge), var(--shadow-floating)',
-} as const
 
 /**
  * The raised pane's fill: the pane's own material composited opaque, a step

@@ -29,10 +29,10 @@ describe('liquid glass engine', () => {
     expect(decoded).toContain('result="displacedB"')
   })
 
-  it('produces expected ios widget glass styles', () => {
-    expect(IOS_WIDGET_GLASS.borderRadius).toBe(9999)
-    expect(IOS_WIDGET_GLASS.backdropFilter).toContain('blur(24px)')
-    expect(IOS_WIDGET_GLASS.backdropFilter).toContain('saturate(190%)')
+  it('produces the ios widget glass as gui props', () => {
+    expect(IOS_WIDGET_GLASS.rounded).toBe(9999)
+    expect(IOS_WIDGET_GLASS['$platform-web'].backdropFilter).toContain('blur(24px)')
+    expect(IOS_WIDGET_GLASS['$platform-web'].backdropFilter).toContain('saturate(190%)')
     expect(IOS_WIDGET_GLASS.boxShadow).toContain('inset 0 1px 1px')
   })
 
@@ -43,8 +43,9 @@ describe('liquid glass engine', () => {
       blur: 30,
       saturate: 200,
     })
-    expect(custom.borderRadius).toBe(16)
-    expect(custom.backgroundColor).toBe('rgba(0,0,0,0.5)')
-    expect(custom.backdropFilter).toBe('blur(30px) saturate(200%) contrast(102%)')
+    expect(custom.rounded).toBe(16)
+    expect(custom.bg).toBe('rgba(0,0,0,0.5)')
+    expect(custom['$platform-web'].backdropFilter).toBe('blur(30px) saturate(200%) contrast(102%)')
+    expect(custom['$platform-web'].WebkitBackdropFilter).toBe(custom['$platform-web'].backdropFilter)
   })
 })

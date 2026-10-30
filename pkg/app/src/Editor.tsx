@@ -192,9 +192,9 @@ export function Editor({ filePath, fileName, onClose, onAskInChat }: EditorProps
             bg="$panel"
             borderRightWidth={1}
             borderColor="$borderColor"
-            // inline-style: user-select is needed to prevent selection of line numbers
-            style={{ userSelect: 'none' }}
             overflow="hidden"
+            // The numbers are not part of the file, so a selection never takes them.
+            $platform-web={{ userSelect: 'none' }}
             items="flex-end"
           >
             {Array.from({ length: Math.min(lineCount, 5000) }).map((_, i) => (
@@ -210,32 +210,31 @@ export function Editor({ filePath, fileName, onClose, onAskInChat }: EditorProps
             ))}
           </YStack>
 
-          {/* Textarea Code Editor */}
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            spellCheck={false}
-            autoCapitalize="off"
-            autoComplete="off"
-            autoCorrect="off"
-            // inline-style: raw textarea styling for code editing
-            style={{
-              flex: 1,
-              height: '100%',
-              backgroundColor: 'transparent',
-              color: 'var(--foreground)',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-              fontSize: 'var(--text-sm)',
-              lineHeight: '20px',
-              padding: '12px 16px',
-              border: 'none',
-              outline: 'none',
-              resize: 'none',
-              whiteSpace: 'pre',
-              overflowWrap: 'normal',
-              overflowX: 'auto',
-              overflowY: 'auto',
-            }}
+          {/* The file, in the face and on the line its numbers are set in. */}
+          <Text
+            render={
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                spellCheck={false}
+                autoCapitalize="off"
+                autoComplete="off"
+                autoCorrect="off"
+              />
+            }
+            flex={1}
+            height="100%"
+            bg="transparent"
+            color="var(--foreground)"
+            fontFamily="$mono"
+            fontSize="$2"
+            lineHeight={20}
+            py={12}
+            px={16}
+            borderWidth={0}
+            outlineStyle="none"
+            whiteSpace="pre"
+            $platform-web={{ resize: 'none', overflowWrap: 'normal', overflowX: 'auto', overflowY: 'auto' }}
           />
         </XStack>
       )}
