@@ -717,10 +717,12 @@ channel (name, topic, who is in it, the huddle), the messages with their cards
 (a pull request, a draft, a file, a meeting, a list, a question, design
 options), reactions and threads, who is typing, and the composer. A thread
 stands beside the channel from 1000px of the preview's own width and over it
-below; below 560px (or `phone`) it is the phone app: the orgs and the channels
-under the channel's name, the channels wrapping rather than scrolling so every
-one is on screen and none passes the edge (each with its count), and the rail
-and the column a drawer, drawn only while it is open. It always lays itself out by its
+below; below 560px (or `phone`) it is the phone app: the orgs stay a narrow rail
+at the far left beside the conversation, the open org's channels wrap under its
+name rather than scroll (so every one is on screen and none passes the edge,
+each with its count), and the column of people and agents is a drawer, drawn
+only while it is open. Never more than two agents' faces side by side (the
+channel's members: two people and one agent; a thread: two faces). It always lays itself out by its
 own width.
 
 The day is `src/workday.ts`, data and nothing else: thirteen scenes, 162

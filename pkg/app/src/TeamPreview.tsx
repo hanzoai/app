@@ -446,7 +446,7 @@ function Post({ m, grouped, onThread, onPick }: { m: Message; grouped: boolean; 
   const { t } = useI18n()
   const clock = useClock()
   const last = m.replies[m.replies.length - 1]
-  const faces = [...new Set(m.replies.map((r) => r.who))].slice(0, 3)
+  const faces = [...new Set(m.replies.map((r) => r.who))].slice(0, 2)
   return (
     <XStack data-motion="rise" gap={10} items="flex-start" pt={grouped ? 0 : 8}>
       <View width={34} shrink={0} items="center">
@@ -783,7 +783,8 @@ export function TeamPreview(props: PreviewProps) {
   const unread = (id: string) => (id === here || read.includes(id) ? 0 : (f.unread[id] ?? 0))
   /** What is unread across an org's channels. */
   const news = (org: string) => ORGS.find((x) => x.id === org)?.channels.reduce((n, c) => n + unread(`${org}/${c.id}`), 0) ?? 0
-  const members = [...o.people.slice(0, 2), ...o.agents.slice(0, 2)]
+  // Two people and one agent: never more than two agents side by side anywhere in the preview.
+  const members = [...o.people.slice(0, 2), ...o.agents.slice(0, 1)]
   const asks = waiting(f, supervised).filter((a) => orgOf(a.channel).id === o.id)
   const done = f.steps[o.id] ?? []
   const handoffs = f.handoffs.filter((h) => orgOf(h.channel).id === o.id)
@@ -807,9 +808,9 @@ export function TeamPreview(props: PreviewProps) {
     setThreadHand(id)
   }
 
-  /** The organizations a person belongs to: the active one marked, "+" under them, the reader at the foot. */
-  const rail = (
-    <YStack items="center" gap={12} py={12} width={60} height="100%" shrink={0} borderColor="$edge" borderInlineEndWidth={1} bg="$sunken">
+  /** The organizations a person belongs to, far left as in a team chat: the active one marked, "+" under them, the reader at the foot. */
+  const railOf = (size: 'xl' | 'lg', w: number) => (
+    <YStack items="center" gap={size === 'xl' ? 12 : 10} py={12} width={w} height="100%" shrink={0} borderColor="$edge" borderInlineEndWidth={1} bg="$sunken">
       {ORGS.map((x) => {
         const on = x.id === o.id
         return (
@@ -823,7 +824,7 @@ export function TeamPreview(props: PreviewProps) {
               bg="$ink"
               $platform-web={{ borderRadius: '9999px', transition: still ? 'none' : 'height 260ms ease' }}
             />
-            <Tile org={x} on={on} n={on ? 0 : news(x.id)} size="xl" onPress={() => go(HOME[x.id])} />
+            <Tile org={x} on={on} n={on ? 0 : news(x.id)} size={size} onPress={() => go(HOME[x.id])} />
           </XStack>
         )
       })}
@@ -832,13 +833,14 @@ export function TeamPreview(props: PreviewProps) {
       </XStack>
       <View flex={1} />
       <View position="relative">
-        <Avatar id={ME} size={30} />
+        <Avatar id={ME} size={size === 'xl' ? 30 : 26} />
         <View position="absolute" b={-1} insetInlineEnd={-1} rounded={9999} borderWidth={2} borderColor="$sunken" $platform-web={{ borderRadius: '9999px' }}>
           <Here />
         </View>
       </View>
     </YStack>
   )
+  const rail = railOf('xl', 60)
 
   const heading = (label: string) => (
     <XStack items="center" gap={4} px={8} pt={12} pb={3}>
@@ -1013,13 +1015,17 @@ export function TeamPreview(props: PreviewProps) {
       height={compact ? '100%' : 620}
       overflow="hidden"
       bg="var(--background)"
-      gridTemplateColumns="minmax(0, 1fr)"
+      gridTemplateColumns="52px minmax(0, 1fr)"
       {...md(desk, {
         height: compact ? '100%' : 640,
         gridTemplateColumns: `60px ${breadth(width)}px minmax(0, 1fr)${wide ? ' 290px' : ''}`,
       })}
       $platform-web={{ textAlign: 'start' }}
     >
+      {/* The phone's rail: the organizations stay at the far left beside the conversation. */}
+      <YStack display="flex" {...md(desk, { display: 'none' })} minH={0}>
+        {railOf('lg', 52)}
+      </YStack>
       <YStack display="none" {...md(desk, { display: 'flex' })} minH={0}>
         {rail}
       </YStack>
@@ -1077,17 +1083,12 @@ export function TeamPreview(props: PreviewProps) {
           </XStack>
         </XStack>
 
-        {/* The phone's switcher: every organization, then this one's channels, each with what is unread.
-            The channels wrap rather than scroll, so every one is on screen and none passes the edge. */}
-        <YStack {...md(desk, { display: 'none' })} gap={8} pt={10} pb={8} borderBottomWidth={1} borderColor="$edge">
-          <XStack items="center" gap={10} px={12}>
-            {ORGS.map((x) => (
-              <Tile key={x.id} org={x} on={x.id === o.id} n={x.id === o.id ? 0 : news(x.id)} size="lg" onPress={() => go(HOME[x.id])} />
-            ))}
-            <Text key={o.id} data-motion="rise" flex={1} minW={0} fontSize="$3" fontWeight="700" color="$ink" numberOfLines={1} marginInlineStart={4}>
-              {o.name}
-            </Text>
-          </XStack>
+        {/* The phone's channels, under the open org's name, each with what is unread. They wrap
+            rather than scroll, so every one is on screen and none passes the edge. */}
+        <YStack {...md(desk, { display: 'none' })} gap={8} pt={8} pb={8} borderBottomWidth={1} borderColor="$edge">
+          <Text key={o.id} data-motion="rise" px={12} fontSize="$2" fontWeight="700" color="$ink" numberOfLines={1}>
+            {o.name}
+          </Text>
           <XStack flexWrap="wrap" gap={6} px={12} display={height && height < LIST ? 'none' : 'flex'}>
             {o.channels.map((c) => {
               const id = `${o.id}/${c.id}`
@@ -1164,7 +1165,7 @@ export function TeamPreview(props: PreviewProps) {
           </YStack>
         ) : null}
 
-        {/* The phone's drawer: the rail and the workspace's column over the channel, drawn only while open. */}
+        {/* The phone's drawer: the workspace's column (its channels, people and agents) over the channel, beside the rail, drawn only while open. */}
         {drawer && desk !== true ? (
           <XStack
             data-motion="rise"
@@ -1180,7 +1181,6 @@ export function TeamPreview(props: PreviewProps) {
             boxShadow="0 24px 60px -24px color-mix(in srgb, var(--pure-black) 60%, transparent)"
             {...md(desk, { display: 'none' })}
           >
-            {rail}
             <YStack flex={1} minW={0} bg="$sunken">
               {column}
             </YStack>

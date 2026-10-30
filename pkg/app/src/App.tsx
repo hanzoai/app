@@ -402,12 +402,13 @@ function Window({ bar, betas }: Hosted) {
             )}
             <YStack
               data-slot="stage"
-              display="grid"
-              gridTemplateRows={bar ? '1fr' : 'auto minmax(0, 1fr)'}
-              // The rest of the row beside the rail and the sidebar. At width 100% it was the whole row
-              // again, and a View does not shrink, so the pane stood past the window's edge.
+              // A column: the phone's bar, then the panes taking the rest. Not a grid of `auto` and
+              // `1fr` rows: from md the bar is display none, which leaves the grid, so the panes were
+              // placed in the `auto` row and stood their content's height, and Dev's pane, which
+              // scrolls inside, collapsed to its border (Projects drew blank). The rest of the row
+              // beside the rail and the sidebar, never width 100%: a View does not shrink, so at the
+              // row's full width again the pane stood past the window's edge.
               flex={1}
-              height="100%"
               minW={0}
               minH={0}
               marginInlineStart={closed || alone ? 0 : 'var(--pane-gap)'}
@@ -415,7 +416,8 @@ function Window({ bar, betas }: Hosted) {
             >
               {/* A phone has no rail and no sidebar: its bar opens them as a drawer and switches Chat and Dev. */}
               {bar ? null : <Bar host={host} mode={mode} places={sidebar} open={drawer.state !== 'shut'} go={move} onMenu={drawer.open} onChat={toChat} onDev={toDev} />}
-              <XStack data-slot="panes" display="grid" gridTemplateColumns="1fr" width="100%" height="100%" minW={0} minH={0}>
+              {/* The stage's rest, one cell: a pane scrolls inside it rather than growing past it. */}
+              <XStack data-slot="panes" flex={1} display="grid" gridTemplateColumns="minmax(0, 1fr)" gridTemplateRows="minmax(0, 1fr)" minW={0} minH={0}>
                 {mode === 'chat' ? (
                   <Split framed>
                     <Chat />
