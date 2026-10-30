@@ -1099,7 +1099,7 @@ function Thread({
   // `kept` changing: when the reader opens another Recent, `open` moves first and
   // `kept` follows it a render later (the hook takes `thread` in an effect), and
   // reopening the stale `kept` then sent the two chasing each other until React
-  // stopped the page (#185).
+  // stopped the page (React error 185).
   const minted = useRef(kept);
   useEffect(() => {
     if (kept === minted.current) return;

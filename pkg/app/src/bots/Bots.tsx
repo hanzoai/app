@@ -172,7 +172,7 @@ const EXAMPLE_ACTIONS: Record<string, ComputerAction> = {
   'Code Reviewer': {
     title: 'Computer',
     status: 'Done',
-    summary: 'Analyzed pull request #142 for architectural consistency, security considerations, and edge cases.',
+    summary: 'Analyzed pull request 142 for architectural consistency, security considerations, and edge cases.',
     tasks: [
       'Verified zero memory leaks and confirmed strict typing',
       'Validated test suite passes across all target environments',
