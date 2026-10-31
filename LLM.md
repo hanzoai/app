@@ -127,6 +127,10 @@ repository or a site from any surface.
   /v1/connection`, whose list is `connections`). It follows both ways, so a
   Disconnect on Projects reads in Setup, and Setup's Disconnect lets go of the
   reader's own link first, else the org's App accounts (an org admin's).
+  A GitHub change is said on the window as `hanzo:github` (`GITHUB_CHANGED`):
+  Setup says it after its Disconnect and its connect popup, and reads again on
+  hearing it. @hanzo/build's Projects and Settings say and hear the same name,
+  so neither needs a reload to see the other's change.
 
 ## Rules the apps keep
 
