@@ -44,6 +44,57 @@ export const PLUGIN_KEY = 'hanzo.onboarding.plugin'
 /** Where plugins and connectors live: Dev's Customize. */
 const PLUGINS = '-/customize/plugins'
 
+/** What GET /v1/provider (the org's providers) and GET /v1/connection (the reader's own) say is connected. */
+export interface Linked {
+  /** Provider ids connected, by either. */
+  ids: Set<string>
+  /** Google addresses either names. */
+  google: string[]
+  /** GitHub, as Projects reads it: the org's App, or the reader's own link (`github-user`). */
+  github: boolean
+  /** The reader's own GitHub link: theirs to drop, where the org's App is an org admin's. */
+  own: boolean
+  /** Both answered, so a provider missing from them is not connected. */
+  whole: boolean
+}
+
+/** Null when neither answered. /v1/connection lists `connections`; nothing else is read from it. */
+export function linked(providersData: unknown, connectionsData: unknown): Linked | null {
+  const providers = (providersData as { providers?: unknown } | null)?.providers
+  const connections = (connectionsData as { connections?: unknown } | null)?.connections
+  const fromProviders = Array.isArray(providers) ? (providers as Record<string, unknown>[]) : null
+  const fromConnections = Array.isArray(connections) ? (connections as Record<string, unknown>[]) : null
+  if (!fromProviders && !fromConnections) return null
+
+  const ids = new Set<string>()
+  const google: string[] = []
+  const address = (id: string, account: unknown) => {
+    if (id === 'google' && typeof account === 'string' && account.trim()) google.push(account.trim().toLowerCase())
+  }
+  for (const p of fromProviders ?? []) {
+    if (!p.connected) continue
+    const id = String(p.id)
+    ids.add(id)
+    address(id, (p.connection as Record<string, unknown> | undefined)?.account)
+  }
+  for (const c of fromConnections ?? []) {
+    const id = String(c.provider)
+    ids.add(id)
+    address(id, c.account)
+  }
+  const own = ids.has('github-user')
+  return {
+    ids,
+    google,
+    github: own || ids.has('github') || ids.has('github-copilot'),
+    own,
+    whole: Boolean(fromProviders && fromConnections),
+  }
+}
+
+/** Where Disconnect lets go of GitHub: the reader's own link, or the org's App accounts. */
+export const leaving = (own: boolean) => (own ? '/v1/provider/github/user/disconnect' : '/v1/provider/github/disconnect')
+
 /** Inline Slack Mark */
 function SlackMark({ size = 18 }: { size?: number }) {
   return (
@@ -79,6 +130,7 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   // A first press on Disconnect asks; the second lets go of GitHub.
   const [dropping, setDropping] = useState(false)
+  const [githubOwn, setGithubOwn] = useState(false)
   const [syncTurn, setSyncTurn] = useState(0)
 
   const signed = isAuthenticated && Boolean(accessToken)
@@ -126,47 +178,18 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
       fetch(`${api()}/v1/tool/mcp/servers`, { headers: auth })
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null),
-    ]).then(([integrationsData, connectorsData, pluginsData, serversData]) => {
+    ]).then(([integrationsData, connectionsData, pluginsData, serversData]) => {
       if (!live) return
       // A plugin the org built, or an MCP server it added: Customize's own lists.
       const built = Array.isArray(pluginsData?.plugins) ? pluginsData.plugins.length : 0
       const added = Array.isArray(serversData?.servers) ? serversData.servers.length : 0
       if (built + added > 0) setPluginDone(true)
-      const providers = Array.isArray(integrationsData?.providers)
-        ? (integrationsData.providers as Record<string, unknown>[])
-        : null
-      const connectors = Array.isArray(connectorsData?.connectors)
-        ? (connectorsData.connectors as Record<string, unknown>[])
-        : null
 
-      if (!providers && !connectors) return
+      const found = linked(integrationsData, connectionsData)
+      if (!found) return
+      const connectedSet = found.ids
+      const discoveredGoogleAccounts = found.google
 
-      const connectedSet = new Set<string>()
-      const discoveredGoogleAccounts: string[] = []
-
-      if (providers) {
-        for (const p of providers) {
-          if (p.connected) {
-            const id = String(p.id)
-            connectedSet.add(id)
-            const conn = p.connection as Record<string, unknown> | undefined
-            if (id === 'google' && typeof conn?.account === 'string' && conn.account.trim()) {
-              discoveredGoogleAccounts.push(conn.account.trim().toLowerCase())
-            }
-          }
-        }
-      }
-      if (connectors) {
-        for (const c of connectors) {
-          const prov = String(c.provider)
-          connectedSet.add(prov)
-          if (prov === 'google' && typeof c.account === 'string' && c.account.trim()) {
-            discoveredGoogleAccounts.push(c.account.trim().toLowerCase())
-          }
-        }
-      }
-
-      const remoteGithub = connectedSet.has('github') || connectedSet.has('github-copilot')
       const remoteSlack = connectedSet.has('slack')
       const remoteGoogle =
         connectedSet.has('google') ||
@@ -174,7 +197,10 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
         connectedSet.has('google-drive') ||
         connectedSet.has('google-calendar')
 
-      if (remoteGithub) setGithubDone(true)
+      // GitHub follows what is connected, both ways, so a Disconnect on Projects
+      // reads here too; a half answer only ever adds it.
+      if (found.whole || found.github) setGithubDone(found.github)
+      if (found.whole || found.own) setGithubOwn(found.own)
       if (remoteSlack) setSlackDone(true)
       if (remoteGoogle) setGoogleDone(true)
       if (discoveredGoogleAccounts.length > 0) {
@@ -320,7 +346,8 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
       setStep(slackDone ? 3 : 2)
     })
 
-  // Let go of the org's GitHub accounts, so another can be connected. The platform
+  // Let go of GitHub, so another account can be connected, as Projects does: the
+  // reader's own link first, else the org's GitHub accounts. For those the platform
   // also removes its App from an account no other organization uses, so the next
   // connect is a fresh install. An org admin's act: anyone else is told so.
   const handleDisconnectGithub = async () => {
@@ -331,14 +358,14 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
     setBusy('github')
     setErrorMsg(null)
     try {
-      const res = await fetch(`${api()}/v1/provider/github/disconnect`, {
+      const res = await fetch(`${api()}${leaving(githubOwn)}`, {
         method: 'POST',
         headers: { ...scope(), 'Content-Type': 'application/json' },
         body: '{}',
       })
       if (!res.ok) {
         setErrorMsg(
-          res.status === 403
+          res.status === 403 && !githubOwn
             ? t('Only an organization admin can disconnect GitHub.')
             : t('Could not disconnect {provider} right now. Please try again.', { provider: 'GitHub' }),
         )

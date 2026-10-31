@@ -89,7 +89,7 @@ vi.mock('./host', () => ({
   useHost: () => ({ path: null }),
 }))
 
-import { Setup } from './Setup'
+import { Setup, leaving, linked } from './Setup'
 import { GOOGLE_KEY, GOOGLE_ACCOUNTS_KEY, GOOGLE_WORKSPACE_SCOPES, buildGoogleWorkspaceAuthorizeUrl } from './lib/gmail'
 
 describe('Setup 1-2-3 in-app onboarding', () => {
@@ -209,5 +209,55 @@ describe('Setup 1-2-3 in-app onboarding', () => {
     store.set('hanzo.onboarding.later', true)
     const html = renderToStaticMarkup(createElement(Setup))
     expect(html).toBe('')
+  })
+})
+
+// GitHub as Projects reads it: the org's App, or the reader's own link. The
+// answers are the platform's shapes, as hanzo.ai read them.
+describe('what Setup reads as connected', () => {
+  const own = { connections: [{ id: 'github-user:default', provider: 'github-user', label: 'default', account: 'octo' }] }
+  const none = { providers: [{ id: 'github', connected: false }, { id: 'slack', connected: false }] }
+
+  test('the reader’s own GitHub link is GitHub connected, theirs to drop', () => {
+    const found = linked(none, own)
+    expect(found?.github).toBe(true)
+    expect(found?.own).toBe(true)
+    expect(found?.whole).toBe(true)
+  })
+
+  test('the org’s App is GitHub connected, and not the reader’s own', () => {
+    const found = linked({ providers: [{ id: 'github', connected: true }] }, { connections: [] })
+    expect(found?.github).toBe(true)
+    expect(found?.own).toBe(false)
+  })
+
+  test('with both answered and nothing connected, GitHub is not connected', () => {
+    const found = linked(none, { connections: [] })
+    expect(found?.github).toBe(false)
+    expect(found?.whole).toBe(true)
+  })
+
+  test('one answer alone is not whole, so it cannot say GitHub is gone', () => {
+    expect(linked(none, null)?.whole).toBe(false)
+    expect(linked(null, own)?.github).toBe(true)
+    expect(linked(null, null)).toBeNull()
+  })
+
+  test('/v1/connection is read by its connections; a connectors list is not', () => {
+    expect(linked(null, { connectors: [{ provider: 'github-user' }] })).toBeNull()
+  })
+
+  test('Slack and Google addresses come from either answer', () => {
+    const found = linked(
+      { providers: [{ id: 'slack', connected: true }, { id: 'google', connected: true, connection: { account: 'Z@Hanzo.ai ' } }] },
+      { connections: [{ provider: 'google', account: 'me@gmail.com' }] },
+    )
+    expect(found?.ids.has('slack')).toBe(true)
+    expect(found?.google).toEqual(['z@hanzo.ai', 'me@gmail.com'])
+  })
+
+  test('Disconnect lets go of the reader’s own link, else the org’s App accounts', () => {
+    expect(leaving(true)).toBe('/v1/provider/github/user/disconnect')
+    expect(leaving(false)).toBe('/v1/provider/github/disconnect')
   })
 })

@@ -122,6 +122,11 @@ repository or a site from any surface.
   Workspace is the private beta `workspace` (lib/betas): its connect is drawn
   only where `opens('workspace')` lets the reader in, until Google verifies the
   Drive and Gmail scopes; nobody else meets the unverified-app screen.
+- Setup's GitHub is Projects' GitHub (`linked`): the org's App (`GET
+  /v1/provider`) or the reader's own link (`github-user` in `GET
+  /v1/connection`, whose list is `connections`). It follows both ways, so a
+  Disconnect on Projects reads in Setup, and Setup's Disconnect lets go of the
+  reader's own link first, else the org's App accounts (an org admin's).
 
 ## Rules the apps keep
 
