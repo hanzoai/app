@@ -95,6 +95,15 @@ export function linked(providersData: unknown, connectionsData: unknown): Linked
 /** Where Disconnect lets go of GitHub: the reader's own link, or the org's App accounts. */
 export const leaving = (own: boolean) => (own ? '/v1/provider/github/user/disconnect' : '/v1/provider/github/disconnect')
 
+/**
+ * Said on the window when GitHub's connection changes, here or on Projects and
+ * Settings (@hanzo/build, which says and hears the same name), so each reads it
+ * again without a reload. Setup hears its own word too.
+ */
+export const GITHUB_CHANGED = 'hanzo:github'
+
+const changed = () => window.dispatchEvent(new Event(GITHUB_CHANGED))
+
 /** Inline Slack Mark */
 function SlackMark({ size = 18 }: { size?: number }) {
   return (
@@ -216,7 +225,8 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
     }
   }, [signed, syncTurn])
 
-  // Listen for postMessage completion from /auth/callback popup and focus/visibility return
+  // Listen for postMessage completion from /auth/callback popup, focus/visibility return,
+  // and GitHub changed on this page (here, on Projects or in Settings)
   useEffect(() => {
     if (typeof window === 'undefined') return
     const onMessage = (ev: MessageEvent) => {
@@ -241,14 +251,17 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
       }
     }
     const onFocus = () => setSyncTurn((n) => n + 1)
+    const onGithub = () => setSyncTurn((n) => n + 1)
 
     window.addEventListener('message', onMessage)
     document.addEventListener('visibilitychange', onReturn)
     window.addEventListener('focus', onFocus)
+    window.addEventListener(GITHUB_CHANGED, onGithub)
     return () => {
       window.removeEventListener('message', onMessage)
       document.removeEventListener('visibilitychange', onReturn)
       window.removeEventListener('focus', onFocus)
+      window.removeEventListener(GITHUB_CHANGED, onGithub)
     }
   }, [signed, googleAccounts])
 
@@ -271,11 +284,13 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
       return
     }
     // The return page hands the answer back and closes the popup (lib/oauth);
-    // a popup closed without one still re-reads what is connected.
+    // a popup closed without one still re-reads what is connected. GitHub's is
+    // said on the page, so Projects reads it too.
     awaitAnswer(popup, provider, (answer) => {
       if (answer?.ok) onDone()
       else if (answer) setErrorMsg(t('Could not connect {provider} right now. Please try again.', { provider: label }))
-      setSyncTurn((n) => n + 1)
+      if (provider === 'github') changed()
+      else setSyncTurn((n) => n + 1)
     })
   }
 
@@ -373,7 +388,8 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
       }
       setGithubDone(false)
       setStep(1)
-      setSyncTurn((n) => n + 1)
+      // Projects reads it again, and so does this card.
+      changed()
     } catch {
       setErrorMsg(t('Could not disconnect {provider} right now. Please try again.', { provider: 'GitHub' }))
     } finally {

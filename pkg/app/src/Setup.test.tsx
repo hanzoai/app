@@ -1,6 +1,12 @@
-import { createElement, type ReactNode, type ReactElement } from 'react'
+// @vitest-environment happy-dom
+// A DOM, so Setup's effects run where a test mounts it (what it reads, and
+// GitHub changing on the page); the rest draw it to markup once.
+import { act, createElement, type ReactNode, type ReactElement } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+
+;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const { part, store } = vi.hoisted(() => {
   type Part = {
@@ -89,7 +95,7 @@ vi.mock('./host', () => ({
   useHost: () => ({ path: null }),
 }))
 
-import { Setup, leaving, linked } from './Setup'
+import { GITHUB_CHANGED, Setup, leaving, linked } from './Setup'
 import { GOOGLE_KEY, GOOGLE_ACCOUNTS_KEY, GOOGLE_WORKSPACE_SCOPES, buildGoogleWorkspaceAuthorizeUrl } from './lib/gmail'
 
 describe('Setup 1-2-3 in-app onboarding', () => {
@@ -259,5 +265,80 @@ describe('what Setup reads as connected', () => {
   test('Disconnect lets go of the reader’s own link, else the org’s App accounts', () => {
     expect(leaving(true)).toBe('/v1/provider/github/user/disconnect')
     expect(leaving(false)).toBe('/v1/provider/github/disconnect')
+  })
+})
+
+// Projects and Settings (@hanzo/build) say a GitHub change on the window as
+// `hanzo:github`, and hear it; Setup says and hears the same name.
+describe('GitHub changed on the page', () => {
+  const answers: Record<string, unknown> = {
+    '/v1/provider': { providers: [{ id: 'github', connected: false }] },
+    '/v1/connection': { connections: [{ provider: 'github-user', account: 'octo' }] },
+  }
+  let calls: { path: string; method: string }[]
+  let root: Root
+  let box: HTMLElement
+
+  beforeEach(() => {
+    store.clear()
+    calls = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: { method?: string }) => {
+        const path = url.replace('https://api.hanzo.ai', '')
+        calls.push({ path, method: init?.method ?? 'GET' })
+        return { ok: true, status: 200, json: async () => answers[path] ?? {} }
+      }),
+    )
+    box = document.createElement('div')
+    document.body.appendChild(box)
+    root = createRoot(box)
+  })
+
+  afterEach(() => {
+    act(() => root.unmount())
+    box.remove()
+    vi.unstubAllGlobals()
+  })
+
+  const reads = () => calls.filter((c) => c.path === '/v1/connection').length
+  const settle = () =>
+    act(async () => {
+      for (let i = 0; i < 5; i++) await new Promise((r) => setTimeout(r, 0))
+    })
+
+  test('Setup reads GitHub again when Projects says it changed', async () => {
+    expect(GITHUB_CHANGED).toBe('hanzo:github')
+    act(() => root.render(createElement(Setup)))
+    await settle()
+    expect(reads()).toBe(1)
+    act(() => {
+      window.dispatchEvent(new Event('hanzo:github'))
+    })
+    await settle()
+    expect(reads()).toBe(2)
+  })
+
+  test('Setup’s Disconnect says GitHub changed, so Projects reads it again, and Setup does too', async () => {
+    store.set('hanzo.onboarding.github', true)
+    store.set('hanzo.onboarding.step', 1)
+    const heard: string[] = []
+    const hear = (e: Event) => heard.push(e.type)
+    window.addEventListener(GITHUB_CHANGED, hear)
+    try {
+      act(() => root.render(createElement(Setup)))
+      await settle()
+      const off = () => Array.from(box.querySelectorAll('button')).find((b) => /disconnect/i.test(b.textContent ?? ''))!
+      // The first press asks; the second lets go of the reader's own link.
+      act(() => off().click())
+      expect(heard).toEqual([])
+      act(() => off().click())
+      await settle()
+      expect(calls).toContainEqual({ path: '/v1/provider/github/user/disconnect', method: 'POST' })
+      expect(heard).toEqual(['hanzo:github'])
+      expect(reads()).toBe(2)
+    } finally {
+      window.removeEventListener(GITHUB_CHANGED, hear)
+    }
   })
 })
