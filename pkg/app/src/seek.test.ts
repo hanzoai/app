@@ -98,6 +98,11 @@ describe('the key that opens it', () => {
     expect(summons(press('k', { metaKey: true, target: { tagName: 'TEXTAREA' } as unknown as EventTarget }))).toBe(true)
   })
 
+  test('not a press the page already answered: a composer with commands of its own keeps it', () => {
+    expect(summons(press('k', { ctrlKey: true, defaultPrevented: true }))).toBe(false)
+    expect(summons(press('k', { metaKey: true, defaultPrevented: true, target: { tagName: 'TEXTAREA' } as unknown as EventTarget }))).toBe(false)
+  })
+
   test('not K alone, not with Shift or Alt, not a held key, not mid-composition', () => {
     expect(summons(press('k'))).toBe(false)
     expect(summons(press('k', { metaKey: true, shiftKey: true }))).toBe(false)

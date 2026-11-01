@@ -18,6 +18,8 @@ export interface Press {
   shiftKey: boolean
   repeat?: boolean
   isComposing?: boolean
+  /** Something on the page already answered the press. */
+  defaultPrevented?: boolean
   target: EventTarget | null
 }
 
