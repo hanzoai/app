@@ -138,7 +138,8 @@ export function billed(error: unknown): Refusal | null {
   return refusalOf((error as { body?: unknown } | null)?.body, code)
 }
 
-function ours(href: unknown): string | undefined {
+/** The address, when it is an https page on hanzo.ai or one of its hosts: the only kind a refusal may send the reader to. */
+export function ours(href: unknown): string | undefined {
   if (typeof href !== 'string') return undefined
   try {
     const url = new URL(href)
