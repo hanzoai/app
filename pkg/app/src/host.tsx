@@ -20,10 +20,11 @@
  * with `configure()`, in a module its root imports, before anything renders.
  *
  * The ROUTER, the path and the route change as the page moves, so they ride
- * React context, and an app reads them with `useHost()`.
+ * React context, and an app reads them with `useHost()`. So does `upgrade`, a
+ * host that draws its own plans in place of the checkout (`useUpgrade`).
  */
 
-import { createContext, useContext, type AnchorHTMLAttributes, type ComponentType, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, type AnchorHTMLAttributes, type ComponentType, type ReactNode } from 'react'
 import { useIam, useOrganizations } from '@hanzo/iam/react'
 import { useAppearance } from '@hanzo/appearance'
 import { api } from './lib/api'
@@ -45,6 +46,12 @@ interface Moving {
   path: string | null
   route: string
   Link: Link
+  /**
+   * The host's own plans, drawn in place: given, every upgrade press in the apps
+   * calls it and leaves nothing (`useUpgrade`); absent, a press opens the
+   * checkout. A stable function, as `router` is.
+   */
+  upgrade?: () => void
 }
 
 export interface HostProps extends Omit<Moving, 'path'> {
@@ -69,6 +76,23 @@ const Context = createContext<Moving>({
 
 /** The router, the route and the link the host mounted the apps with. */
 export const useHost = (): Moving => useContext(Context)
+
+/**
+ * An upgrade press: the host's plans where it draws its own (`upgrade`), else
+ * the checkout at `address` (lib/pay `payUrl`), in this tab, or in place of
+ * this page with `replace`.
+ */
+export function useUpgrade(): (address: string, replace?: boolean) => void {
+  const { upgrade } = useHost()
+  return useCallback(
+    (address: string, replace = false) => {
+      if (upgrade) upgrade()
+      else if (replace) window.location.replace(address)
+      else window.location.assign(address)
+    },
+    [upgrade],
+  )
+}
 
 /** The org in scope, by the id the appearance layers are keyed on. */
 export function useOrg(): { id?: string; name?: string } {
@@ -104,6 +128,6 @@ export function Look() {
   return null
 }
 
-export function Host({ router, path = null, route, Link, children }: HostProps) {
-  return <Context.Provider value={{ router, path, route, Link }}>{children}</Context.Provider>
+export function Host({ router, path = null, route, Link, upgrade, children }: HostProps) {
+  return <Context.Provider value={{ router, path, route, Link, upgrade }}>{children}</Context.Provider>
 }

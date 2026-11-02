@@ -418,7 +418,8 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
         role="region"
         aria-label={t('Onboarding (1-2-3)')}
         gap="$2.5"
-        p="$3"
+        // A row's own inset: the card stands inside the sidebar's rows (Sidebar), so its title keeps its words.
+        p="$2"
         rounded="$4"
         borderWidth={1}
         borderColor="$borderColor"

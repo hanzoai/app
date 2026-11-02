@@ -38,6 +38,7 @@ import { bearer, org, pick } from './lib/session'
 import { usePref } from './pref'
 import { Experimental } from './experimental'
 import { site } from './where'
+import { useUpgrade } from './host'
 import { named, ROWS } from './Settings'
 
 /** A choice among a few: a hairline edge and a corner. The fill and the edge's
@@ -102,6 +103,7 @@ function Pane({ id, note }: { id: string; note?: string }) {
  */
 function Model() {
   const { t } = useI18n()
+  const press = useUpgrade()
   const { models: served } = useModels()
   const models = useMemo(() => parseModels(served).filter((m) => m.class !== 'premium'), [served])
   // The one choice Chat and Dev share (@hanzo/build): changed here, changed in both composers.
@@ -280,7 +282,7 @@ function Model() {
 
         {!paid ? (
           <XStack pt="$1">
-            <Button size="sm" variant="outline" onClick={() => window.location.assign(site('/pricing'))}>
+            <Button size="sm" variant="outline" onClick={() => press(site('/pricing'))}>
               <Sparkles size={14} color="var(--primary)" aria-hidden />
               {t('Upgrade to unlock advanced model controls')}
             </Button>

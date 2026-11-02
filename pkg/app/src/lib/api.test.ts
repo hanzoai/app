@@ -111,16 +111,33 @@ describe('the checkout a page sends a buyer to', () => {
     for (const host of ['hanzo.ai', 'www.hanzo.ai', 'cloud.hanzo.ai', 'hanzo.bot', 'dev.hanzo.ai']) {
       at(host)
       expect(billing(), host).toBe('https://hanzo.ai/pay')
-      expect(payUrl('/cart', { plan: 'pro' }), host).toBe('https://hanzo.ai/pay/cart?plan=pro')
     }
     at('app-dev.hanzo.ai')
     expect(billing()).toBe('https://app-dev.hanzo.ai/pay')
-    expect(payUrl('/', {})).toBe('https://app-dev.hanzo.ai/pay')
-    expect(payUrl('/cart', { plan: 'pro' })).toBe('https://app-dev.hanzo.ai/pay/cart?plan=pro')
-    expect(term(payUrl('/cart', { plan: 'pro' }), 'year')).toBe('https://app-dev.hanzo.ai/pay/cart?plan=pro&interval=year')
   })
 
-  test('the prerender has no window and answers production', () => {
+  test('a page on the checkout’s own origin writes its path: the press stays on the origin it is on', () => {
+    at('hanzo.ai')
+    expect(payUrl('/', {})).toBe('/pay')
+    expect(payUrl('/cart', { returnUrl: 'https://hanzo.ai/chat' })).toBe('/pay/cart?returnUrl=https%3A%2F%2Fhanzo.ai%2Fchat')
+    expect(term(payUrl('/cart', { plan: 'pro' }), 'year')).toBe('/pay/cart?plan=pro&interval=year')
+    at('app-dev.hanzo.ai')
+    expect(payUrl('/', {})).toBe('/pay')
+    expect(payUrl('/cart', { plan: 'pro' })).toBe('/pay/cart?plan=pro')
+    expect(term(payUrl('/cart', { plan: 'pro' }), 'year')).toBe('/pay/cart?plan=pro&interval=year')
+  })
+
+  test('any other origin writes the whole address, a lookalike included', () => {
+    for (const host of ['www.hanzo.ai', 'cloud.hanzo.ai', 'hanzo.bot', 'hanzo.chat', 'hanzo.ai.evil.com']) {
+      at(host)
+      expect(payUrl('/', {}), host).toBe('https://hanzo.ai/pay')
+      expect(payUrl('/cart', { plan: 'pro' }), host).toBe('https://hanzo.ai/pay/cart?plan=pro')
+      expect(term(payUrl('/cart', { plan: 'pro' }), 'year'), host).toBe('https://hanzo.ai/pay/cart?plan=pro&interval=year')
+    }
+  })
+
+  test('the prerender has no window and answers production, whole', () => {
     expect(billing()).toBe('https://hanzo.ai/pay')
+    expect(payUrl('/cart', { plan: 'pro' })).toBe('https://hanzo.ai/pay/cart?plan=pro')
   })
 })

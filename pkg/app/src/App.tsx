@@ -74,7 +74,7 @@ import { Sidebar } from './Sidebar'
 import { Learning } from './Learning'
 import { isPlans, leave, useDevHost } from './dev'
 import { Gate } from './Gate'
-import { useHost } from './host'
+import { useHost, useUpgrade } from './host'
 import { useKept } from './kept'
 import { Mark, raised, Rail, Toggle } from './Rail'
 import { Layer, Lift, useDrawer } from './Drawer'
@@ -206,9 +206,10 @@ function Window({ bar, betas }: Hosted) {
   const asked = at.mode === 'chat' ? at.thread : null
   const { thread, settings: wanted } = useOpen()
   const plans = where !== null && isPlans(where)
+  const press = useUpgrade()
   useEffect(() => {
-    if (plans) leave('app')
-  }, [plans])
+    if (plans) leave('app', press)
+  }, [plans, press])
 
   // An address names Chat's conversation, a conversation just begun writes its
   // id back, and one emptied (New chat, wherever it was pressed) leaves for /chat.

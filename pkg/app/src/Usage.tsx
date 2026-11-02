@@ -12,7 +12,7 @@ import { showSettings } from './open'
 import { hasSession, org, subject, bearer, scope } from './lib/session'
 import { fetchCloudUsage, type CloudUsageOverview } from '@hanzo/usage'
 import { api } from './lib/api'
-import { useHost } from './host'
+import { useHost, useUpgrade } from './host'
 import { tokensOf, type Tokens } from './lib/tokens'
 import { payPage } from './lib/pay'
 import { useLimits } from './lib/limits'
@@ -26,6 +26,7 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
   const currentOrg = org()
   const identity = `${currentOrg}:${subject()}`
   const { path } = useHost()
+  const press = useUpgrade()
   const run = path?.match(/^\/dev\/run\/([^/]+)/)?.[1]
   const [account, setAccount] = useState<{ key: string; data?: CloudUsageOverview; error?: string } | null>(null)
   const [runUsage, setRunUsage] = useState<{ key: string; value: Tokens } | null>(null)
@@ -130,7 +131,7 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
             {answered && !limits ? <Button type="button" size="sm" variant="link" onClick={usage.reload}>{t('Retry')}</Button> : null}
           </YStack>
           <XStack gap="$3" justify="space-between" flexWrap="wrap">
-            <Button asChild size="sm"><Anchor href={payPage('/cart')} data-slot="composer-upgrade">{t('Upgrade plan')}</Anchor></Button>
+            <Button size="sm" data-slot="composer-upgrade" onPress={() => press(payPage('/cart'))}>{t('Upgrade plan')}</Button>
             <Button asChild size="sm" variant="outline"><Anchor href={payPage('/amount/card')} data-slot="composer-buy-credits">{t('Buy credits')}</Anchor></Button>
           </XStack>
         </YStack>

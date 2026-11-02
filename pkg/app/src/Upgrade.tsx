@@ -18,6 +18,7 @@ import { org } from './lib/session'
 import { useTier } from './lib/tier'
 import { charge, quote, saving, term, usePlan, type Interval } from './lib/plans'
 import { payUrl } from './lib/pay'
+import { useHost } from './host'
 import { site } from './where'
 
 /** What the reader reached for: a model by its name, and the checkout a refusal named. */
@@ -55,7 +56,14 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
   const { t } = useI18n()
   const { plan } = usePlan('personal')
   const [cycle, setCycle] = useState<Interval>('month')
-  const shown = ask !== null && plan !== null
+  // A host that draws its own plans (host.tsx `upgrade`) takes the ask, and this dialog is never drawn.
+  const { upgrade } = useHost()
+  useEffect(() => {
+    if (!ask || !upgrade) return
+    upgrade()
+    onClose()
+  }, [ask, upgrade, onClose])
+  const shown = ask !== null && plan !== null && !upgrade
   // The plan is shown to a reader who reached for it: GA4's view_item.
   useEffect(() => {
     if (shown && plan)
@@ -66,7 +74,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shown])
-  if (!plan) return null
+  if (!plan || upgrade) return null
 
   const save = saving(plan)
   const interval: Interval = save === null ? 'month' : cycle

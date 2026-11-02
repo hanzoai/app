@@ -106,7 +106,7 @@ import {
 } from "@hanzogui/shell";
 import { useHydrated } from "./lib/hydrated";
 import { useHostname } from "./lib/hostname";
-import { useHost } from "./host";
+import { useHost, useUpgrade } from "./host";
 import { Gate } from "./Gate";
 import { link } from "./lib/tags";
 import { useAi } from "./lib/ai";
@@ -2189,6 +2189,8 @@ function Frame({
    * the palette's, which is why they are not here.
    */
   const onApex = apex(useHostname());
+  // The host's plans, or the checkout, coming back here.
+  const press = useUpgrade();
   const places = useMemo(
     () => [CHAT, ...PLACES].filter((place) => shows(place, tiers, hidden, onApex)),
     [tiers, hidden, onApex],
@@ -2460,7 +2462,7 @@ function Frame({
               <SidebarItem
                 icon={<Sparkles size={15} aria-hidden color="var(--primary)" />}
                 onPress={() => {
-                  window.location.assign(payUrl("/cart", { returnUrl: window.location.href }));
+                  press(payUrl("/cart", { returnUrl: window.location.href }));
                   dismiss();
                 }}
               >
@@ -2691,7 +2693,7 @@ function Frame({
             <Box
               {...TAP}
               render="button"
-              onClick={() => window.location.assign(payUrl("/cart", { returnUrl: window.location.href }))}
+              onClick={() => press(payUrl("/cart", { returnUrl: window.location.href }))}
               display="flex"
               items="center"
               justify="center"

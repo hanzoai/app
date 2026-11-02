@@ -36,7 +36,7 @@ vi.mock('./Sidebar', () => ({ Sidebar: stub('app-column') }))
 vi.mock('./Learning', () => ({ Learning: () => null }))
 vi.mock('./dev', () => ({ isPlans: () => false, leave: () => {}, useDevHost: () => ({ go: () => {}, path: '', token: () => '' }) }))
 vi.mock('./Gate', () => ({ Gate: through }))
-vi.mock('./host', () => ({ useHost: () => ({ router: { back: () => {}, forward: () => {}, push: () => {} }, path: state.path }) }))
+vi.mock('./host', () => ({ useHost: () => ({ router: { back: () => {}, forward: () => {}, push: () => {} }, path: state.path }), useUpgrade: () => () => {} }))
 vi.mock('./kept', () => ({ useKept: () => [false, () => {}] }))
 vi.mock('./Rail', () => ({ Mark: () => null, raised: () => null, Rail: stub('rail'), Toggle: () => null }))
 vi.mock('./Drawer', () => ({

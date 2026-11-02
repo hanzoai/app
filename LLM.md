@@ -36,6 +36,18 @@ configure({ session: keychain })
 </Host>
 ```
 
+A host that draws its own plans in place passes `upgrade` on `Host` (a stable
+function). Every upgrade press in the apps goes through `useUpgrade`
+(host.tsx): the sidebar's and the shell's Upgrade plan, Chat's header, the
+bar's Upgrade, the account menu's Get Pro and its plans row, Dev's plans
+(`leave`), the composer's usage, Settings' model controls; and Chat's paywall
+(Upgrade.tsx) hands its ask to the host instead of drawing its dialog. Given,
+a press calls it and the page goes nowhere; absent, it opens what it names:
+the checkout (lib/pay `payUrl`, which writes `/pay/...` on hanzo.ai itself and
+the whole `https://hanzo.ai/pay/...` from any other origin), or /pricing from
+Settings. `Host` and not `App`,
+because the shell's presses are drawn outside `App`.
+
 The app's addresses are paths (lib/host.ts, "The app's addresses" below): Chat
 is `/chat[/<id>]`, Dev `/dev[/<place>]`, Studio `/studio[/<place>]`
 (@hanzo/studio's `route`: `c/<id>`, `library`, `explore`, `activity`).
@@ -657,6 +669,14 @@ reference captures; outer window, inner panel):
   ⌘K / Ctrl+K from anywhere), New chat or Dev's places, then Pinned and
   Recents as plain 14px titles on a 31px pitch — no dates, no icons; a run's
   state is a dot at its end. The Recents view menu stands at the heading's end.
+- The sidebar's foot, under Recents' own fill: the cards (Made, Setup) stand
+  inside a row's inset (`ROW.px`), so their edges are the rows' words and marks,
+  16px in on both sides, and Setup's padding is that inset too; one `$2` gap
+  above the cards and one above the foot row. The foot row (Upgrade plan, a
+  mark high) and the rail's account stand on the pane's bottom edge (Sidebar
+  and Rail `pb` 0, beside the rail and in the drawer alike), as the title row
+  and the rail's first mark stand on its top (owner, 2026-11-01: "align perfect
+  symmetrical").
 - The account menu (Account.tsx) is the one account menu: the rail's face draws it
   for Chat, Dev and Studio, and the shell's sidebar foot for every other app
   (`Who`, the host's person, org, api, token and sign-out). @hanzo/ui's

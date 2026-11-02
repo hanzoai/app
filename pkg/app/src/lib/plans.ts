@@ -34,7 +34,7 @@ import { useEffect, useMemo, useState } from "react";
 import { where } from "../where";
 import { api } from "./api";
 import { org } from "./session";
-import { billing, checkoutUrl, dollars, money, payUrl } from "./pay";
+import { billing, checkoutUrl, dollars, local, money, payUrl } from "./pay";
 import { english, type Say } from "@hanzo/i18n";
 
 /** A row exactly as GET /v1/billing/plans returns it. */
@@ -95,13 +95,14 @@ export type Interval = "month" | "year";
  * A checkout address for a term: a year adds `interval=year`, a month leaves the
  * address as it is. pay reads the parameter; until it sells a year, its cart
  * states the monthly charge, and the buyer reads that before paying. A relative
- * address is read against the pay site, where every checkout is.
+ * address is read against the pay site, where every checkout is, and written
+ * back as payUrl writes one (`local`).
  */
 export function term(href: string, interval: Interval): string {
   if (interval === "month") return href;
   const url = new URL(href, billing());
   url.searchParams.set("interval", "year");
-  return url.toString();
+  return local(url.toString());
 }
 
 /**

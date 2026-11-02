@@ -18,9 +18,12 @@ const { part, menu } = vi.hoisted(() => {
     role?: string
     /** A sidebar row's: lit, as @hanzo/ui's SidebarItem marks it. */
     active?: boolean
+    /** The foot's padding and the cards' inset, kept as attributes for the foot's test. */
+    pb?: number | string
+    px?: number | string
   }
-  const part = ({ children, render, icon, label, 'aria-label': named, 'aria-current': current, 'data-slot': slot, role, active }: Part) => {
-    const attrs = { 'data-slot': slot, 'aria-label': label ?? named, 'aria-current': current ?? (active ? 'page' : undefined), role }
+  const part = ({ children, render, icon, label, 'aria-label': named, 'aria-current': current, 'data-slot': slot, role, active, pb, px }: Part) => {
+    const attrs = { 'data-slot': slot, 'aria-label': label ?? named, 'aria-current': current ?? (active ? 'page' : undefined), role, 'data-pb': pb, 'data-px': px }
     const kids = [icon, children].filter((k) => k != null)
     if (isValidElement(render)) return cloneElement(render, attrs, ...kids)
     return createElement(typeof render === 'string' ? render : 'div', attrs, ...kids)
@@ -62,7 +65,7 @@ vi.mock('@hanzo/build', () => {
 })
 vi.mock('./Account', () => ({ Made: () => null, Account: () => createElement('div', { 'data-slot': 'me' }) }))
 vi.mock('./Recents', () => ({ Recents: () => createElement('div', { 'data-slot': 'recents' }) }))
-vi.mock('./Setup', () => ({ Setup: () => null }))
+vi.mock('./Setup', () => ({ Setup: () => createElement('div', { 'data-slot': 'setup' }) }))
 vi.mock('./span', () => ({ useSpan: () => ({ ref: null, style: {}, span: 272, move: () => {}, keep: () => {} }) }))
 
 import { Sidebar } from './Sidebar'
@@ -244,6 +247,17 @@ describe('the sidebar', () => {
     const html = column('chat')
     expect(html).toContain('Nothing new')
     expect(html).not.toContain('Notification settings')
+  })
+
+  test('the foot: the cards stand in a row’s inset, and the foot row stands on the foot the rail’s account does', () => {
+    const html = column('chat')
+    const inset = html.match(/data-slot="app-new"[^>]*data-px="([^"]+)"/)![1]
+    expect(html, 'the card’s edges are the rows’ words and marks').toContain(`data-px="${inset}"><div data-slot="setup">`)
+    // Beside the rail and in the drawer the column's foot is the rail's: the Upgrade row and the account share a line.
+    const foot = rail('chat').match(/data-slot="rail"[^>]*data-pb="([^"]+)"/)![1]
+    expect(html.match(/data-slot="app-rail"[^>]*data-pb="([^"]+)"/)![1]).toBe(foot)
+    const drawer = renderToStaticMarkup(createElement(Sidebar, { host, mode: 'chat', thread: null, go: noop, onShut: noop, onBack: noop, drawer: true }))
+    expect(drawer.match(/data-slot="app-rail"[^>]*data-pb="([^"]+)"/)![1]).toBe(foot)
   })
 
   test('the search is the palette, in every mode: the sidebar holds no field of its own', () => {

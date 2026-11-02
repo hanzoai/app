@@ -270,9 +270,10 @@ export function Rail({
       flex={1}
       // As tall as the window and no taller: its marks scroll inside it (below), never the page.
       minH={0}
-      // The first mark stands at the pane's top edge, one head row high (HEAD), the account on the sidebar's foot (Sidebar's `pb`).
+      // The first mark stands at the pane's top edge, one head row high (HEAD), and the account at its bottom
+      // edge, on the sidebar's foot row (Sidebar's `pb`).
       pt={(HEAD - MARK) / 2}
-      pb="$2"
+      pb={0}
       gap={4}
       shrink={0}
       items="center"

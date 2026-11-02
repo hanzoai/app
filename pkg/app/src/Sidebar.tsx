@@ -46,6 +46,7 @@ import { useSpan } from './span'
 import { useFree } from './Upgrade'
 import { talk, type Place } from './lib/host'
 import { payUrl } from './lib/pay'
+import { useUpgrade } from './host'
 import { brand, wordmark } from './where'
 import { dragWindow, toggleWindowMaximize } from './WindowControls'
 import { BAND, HEAD as LINE, TOUCH_HEAD } from './ground'
@@ -182,6 +183,9 @@ export function Sidebar({
     empty()
     go(talk())
   }
+  // The host's plans, or the checkout, coming back here.
+  const press = useUpgrade()
+  const upgrade = () => press(payUrl('/cart', { returnUrl: window.location.href }))
 
   return (
     <YStack
@@ -204,8 +208,9 @@ export function Sidebar({
         {...FILL}
         px="$2"
         pt={drawer ? 'var(--pane-gap)' : 0}
-        // In the drawer the menu's own foot padding is the gap; its foot row stands on it.
-        pb={drawer ? 0 : '$2'}
+        // The foot row stands on the column's foot, as the rail's account does on the rail's (Rail's `pb`):
+        // beside the rail, the pane's bottom edge, as the head row stands on its top; in the drawer, the menu's foot.
+        pb={0}
         gap="$0"
       >
         {at ? (
@@ -339,7 +344,9 @@ export function Sidebar({
         {/* Recents fills the column; where there are none the foot is still pushed to the column's foot, on the rail's line. */}
         {mode === 'studio' || mode === 'tabs' || mode === 'beta' || mode === 'hosted' || at ? <YStack flex={1} minH={0} /> : <Recents host={host} mode={mode} thread={thread} onOpen={open} onNew={create} />}
         {at ? null : (
-          <YStack gap="$2" pt="$2" shrink={0}>
+          // The cards stand inside a row's own inset, so their edges are the rows' words and marks,
+          // the same on both sides; one gap above them, as above the foot row.
+          <YStack gap="$2" pt="$2" px={ROW.px} shrink={0}>
             <Made />
             <Setup go={go} />
           </YStack>
@@ -356,8 +363,8 @@ export function Sidebar({
                     <Sparkles size={16} aria-hidden color="var(--primary)" />
                   </XStack>
                 }
-                onPress={() => window.location.assign(payUrl('/cart', { returnUrl: window.location.href }))}
-                {...keys(() => window.location.assign(payUrl('/cart', { returnUrl: window.location.href })))}
+                onPress={upgrade}
+                {...keys(upgrade)}
               >
                 <Text fontSize="$3" color="$ink">{t('Upgrade plan')}</Text>
               </SidebarItem>

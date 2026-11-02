@@ -91,6 +91,7 @@ import { list } from './lib/list'
 import { choose, org as current, orgs, renew, reopen, scope, superAdmin } from './lib/session'
 import { ENTRY, settings } from './lib/host'
 import { leave } from './dev'
+import { useUpgrade } from './host'
 import { payUrl } from './lib/pay'
 import { asked, KEYS, legal, out, pages } from './help'
 import { showSettings } from './open'
@@ -304,7 +305,9 @@ export function Account({
   // A personal plan is bought for the personal organization, beside any business one.
   // The plans row's name (a phrase of `upgrade`'s).
   const plans = upgrade(read.value?.label?.name)
-  const getPro = () => (personal ? window.location.assign(payUrl('/cart', { org: personal.name, returnUrl: window.location.href })) : window.location.assign(payUrl('/cart', { returnUrl: window.location.href })))
+  // The host's plans, or the checkout for the personal organization where there is one, coming back here.
+  const press = useUpgrade()
+  const getPro = () => press(payUrl('/cart', { org: personal?.name, returnUrl: window.location.href }))
   const apple = mac()
 
   useEffect(() => {
@@ -423,7 +426,7 @@ export function Account({
             </DropdownMenuSubTrigger>
             {account ? (
               <DropdownMenuSubContent minW={240} maxW="calc(100vw - 16px)" pointerEvents="auto">
-                <Meter read={read} onPlans={() => leave('here')} onBilling={() => (setOpen(false), showSettings('billing'))} />
+                <Meter read={read} onPlans={() => leave('here', press)} onBilling={() => (setOpen(false), showSettings('billing'))} />
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => showSettings('account')}>
                   <Line icon={<CircleUserRound size={16} aria-hidden />}>{t('Profile')}</Line>
@@ -491,7 +494,7 @@ export function Account({
           </DropdownMenuItem>
 
           {/* 3. Upgrade / Plan */}
-          <DropdownMenuItem onSelect={() => leave('here')}>
+          <DropdownMenuItem onSelect={() => leave('here', press)}>
             <Line icon={<Sparkles size={16} aria-hidden />}>{t(plans)}</Line>
           </DropdownMenuItem>
           <DropdownMenuSeparator />

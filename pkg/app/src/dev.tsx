@@ -32,7 +32,7 @@
 // where a plan is bought.
 
 import { useMemo } from 'react'
-import { useLook, useHost } from './host'
+import { useLook, useHost, useUpgrade } from './host'
 import { useIam } from '@hanzo/iam/react'
 import { useSignOut } from './lib/signout'
 import { administers, path, route, type Host } from '@hanzo/build'
@@ -60,15 +60,14 @@ export const isPlans = (to: string): boolean => path(route(to)) === PLANS
 
 /**
  * Leaves for the plans on the pay site (`/pay/cart`), for the organization in
- * use. `from` is the page to come back to once paid: this one, or Dev when the
- * address itself named the plans, which is replaced rather than returned to so
- * Back and the pay site's return both land in the app.
+ * use, through the press (host.tsx `useUpgrade`): the host's own plans where it
+ * draws them. `from` is the page to come back to once paid: this one, or Dev
+ * when the address itself named the plans, which is replaced rather than
+ * returned to so Back and the pay site's return both land in the app.
  */
-export function leave(from: 'here' | 'app'): void {
+export function leave(from: 'here' | 'app', press: (address: string, replace?: boolean) => void): void {
   const back = from === 'here' ? window.location.href : `${window.location.origin}${app('')}`
-  const to = payUrl('/cart', { org: org(), returnUrl: back })
-  if (from === 'here') window.location.assign(to)
-  else window.location.replace(to)
+  press(payUrl('/cart', { org: org(), returnUrl: back }), from === 'app')
 }
 
 /** The person's theme, when they have chosen one the builder can name. */
@@ -87,6 +86,7 @@ export function useDevHost(): Host {
   const { router, path: pathname } = useHost()
   const here = path(route(at(pathname)))
   const look = useLook()
+  const press = useUpgrade()
 
   // The token's claims change only when the token does: a sign-in, a refresh.
   const memberships = useMemo(() => orgs(), [accessToken]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -117,7 +117,7 @@ export function useDevHost(): Host {
       person: { name, email, avatar },
       admin: administers(bearer(), scoped),
       path: here,
-      go: (to, how) => (isPlans(to) ? leave('here') : visit(router, app(to), how?.replace)),
+      go: (to, how) => (isPlans(to) ? leave('here', press) : visit(router, app(to), how?.replace)),
       links: LINKS,
       // The sidebar lists Settings' sections and Customize's tabs (Sidebar.tsx), and Customize › Agents offers the cast.
       sections: true,
@@ -141,6 +141,6 @@ export function useDevHost(): Host {
       signIn: () => enter(),
       signOut: () => void logout(),
     }),
-    [scoped, memberships, look.pref.theme, look.set, name, email, avatar, here, router, logout],
+    [scoped, memberships, look.pref.theme, look.set, name, email, avatar, here, router, logout, press],
   )
 }

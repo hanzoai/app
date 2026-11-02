@@ -54,7 +54,7 @@ import { useIam, useIamToken } from "@hanzo/iam/react";
 import { bearer, hasSession, named, org } from "./lib/session";
 import { api } from "./lib/api";
 import { app, dev, go } from "./lib/host";
-import { useHost } from "./host";
+import { useHost, useUpgrade } from "./host";
 import { chats, house, paidPlan, paused, setCreditsAfterAllowance, useLimits } from "./lib/limits";
 import { LimitedBanner } from "@hanzo/ui/product/LimitedBanner";
 import type { LimitAction } from "@hanzo/ui/product/limits";
@@ -1054,6 +1054,8 @@ function Thread({
   // opens the upgrade, titled with the model.
   const free = useFree(!anonymous) && !held;
   const [ask, setAsk] = useState<Ask | null>(null);
+  // The host's plans, or the checkout for the organization in use, coming back here.
+  const press = useUpgrade();
   // KEEPING THE CONVERSATION is the reader's account, not this pane's choice:
   // the store is per-org, so a signed-in reader has somewhere for it to go and
   // an anonymous one does not. `thread` names the conversation being continued
@@ -2088,7 +2090,7 @@ function Thread({
               rounded="$4"
               cursor="pointer"
               hoverStyle={{ bg: 'var(--white-10)' }}
-              onPress={() => window.location.assign(payUrl('/cart', { org: org(), returnUrl: window.location.href }))}
+              onPress={() => press(payUrl('/cart', { org: org(), returnUrl: window.location.href }))}
               aria-label={t("Upgrade plan")}
             >
               <Sparkles size={13} color="var(--primary)" aria-hidden />

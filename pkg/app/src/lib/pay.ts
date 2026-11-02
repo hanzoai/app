@@ -18,7 +18,8 @@ import { org } from "./session";
  * lands on marketing. /pay takes `?plan=`, `?interval=`, `?returnUrl=` and
  * `?org=`, and comes back. Every "add credit" and "billing" link reads this one
  * address. Absolute, because this export also serves cloud.hanzo.ai and
- * hanzo.bot, and the checkout lives on hanzo.ai.
+ * hanzo.bot, and the checkout lives on hanzo.ai; a page on hanzo.ai itself
+ * writes its path (`local`).
  */
 export const BILLING_URL = "https://hanzo.ai/pay";
 
@@ -67,8 +68,18 @@ export function payUrl(path: string, query: Record<string, string | null | undef
   for (const [k, v] of Object.entries(query)) if (v) q.set(k, v);
   const s = q.toString();
   const at = billing();
-  if (path === "/" && !s) return at;
-  return `${at}${path}${s ? `?${s}` : ""}`;
+  return local(path === "/" && !s ? at : `${at}${path}${s ? `?${s}` : ""}`);
+}
+
+/**
+ * A checkout address as the page in front of us writes it: its path on the
+ * checkout's own origin (hanzo.ai's /pay from hanzo.ai), whole from any other
+ * (hanzo.chat, cloud.hanzo.ai, the desktop app). The prerender has no page, so
+ * it writes the whole address.
+ */
+export function local(url: string): string {
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  return origin && url.startsWith(`${origin}/`) ? url.slice(origin.length) : url;
 }
 
 export const dollars = (n: number) => `$${n.toFixed(2)}`;

@@ -94,7 +94,7 @@ describe('the account menu', () => {
 
   test('Upgrade plan leaves for the plans on the pay site', () => {
     press('Upgrade plan')
-    expect(left).toHaveBeenCalledWith('here')
+    expect(left).toHaveBeenCalledWith('here', expect.any(Function))
   })
 
   test('the plans row is named by the plan the organization is on', () => {
