@@ -96,6 +96,9 @@ export function find<T extends Hit>(query: string, recent: T[], idle: Group<T>[]
     .map((x) => x.g)
 }
 
-/** Whether a key press opens the palette: ⌘K or Ctrl+K, once a press, from anywhere, a field included. */
+/**
+ * Whether a key press opens the palette: ⌘K or Ctrl+K, once a press, from anywhere, a field included,
+ * unless something on the page already answered it (Dev's composer opens its own commands and claims it).
+ */
 export const summons = (e: Press): boolean =>
-  (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && !e.repeat && !e.isComposing && (e.key ?? '').toLowerCase() === 'k'
+  !e.defaultPrevented && (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && !e.repeat && !e.isComposing && (e.key ?? '').toLowerCase() === 'k'

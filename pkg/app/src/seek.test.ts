@@ -106,4 +106,8 @@ describe('the key that opens it', () => {
     expect(summons(press('k', { metaKey: true, isComposing: true }))).toBe(false)
     expect(summons(press('j', { metaKey: true }))).toBe(false)
   })
+
+  test('not a press something on the page already answered: Dev’s composer opens its own commands', () => {
+    expect(summons(press('k', { ctrlKey: true, defaultPrevented: true }))).toBe(false)
+  })
 })
