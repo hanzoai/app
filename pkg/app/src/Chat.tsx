@@ -1664,7 +1664,7 @@ function Thread({
     // plan's cap answers the same until it resets, so it offers no Try again.
     const bill = wrong ? billed(wrong) : null;
     const resign = !bill && !!wrong && (refused(wrong) || /audience not allowed|invalid access token/i.test(wrong.message));
-    const lift = free ? planRequired(wrong) : null;
+    const lift = free && !bill ? planRequired(wrong) : null;
     const said = !failed
       ? t("No answer came back for this question.")
       : failed.stalled
