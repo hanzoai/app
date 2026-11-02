@@ -22,7 +22,7 @@ export default function Terminals() {
           {t('The machines could not be read: {error}', { error: fleet.error })}
         </Text>
       ) : null}
-      <Workspace hosts={fleet.hosts} mint={fleet.mint} onLaunch={fleet.launch} />
+      <Workspace hosts={fleet.hosts} mint={fleet.mint} onLaunch={fleet.launch} agent={fleet.agent} />
     </YStack>
   )
 }
