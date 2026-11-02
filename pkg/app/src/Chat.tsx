@@ -1046,8 +1046,11 @@ function Thread({
   // a refusal.
   const held = paidPlan(limits);
   const pause = notice && (notice.fallback || notice.refused) ? notice : null;
-  // The banner's words and ways: the plan by name, when it comes back, and the two ways on.
-  const banner = pause ? paused(pause, limits?.plan ?? "", (id) => nameOf(id, listed), Date.now(), t) : null;
+  // The banner's words and ways (lib/limits `paused`): usage reached, when it resets, and the ways on.
+  // Try again later puts it away until another notice comes.
+  const [shut, setShut] = useState<string | null>(null);
+  const which = pause ? `${pause.reason}:${pause.resets_at ?? ""}:${pause.fallback ?? ""}` : null;
+  const banner = pause && which !== shut ? paused(pause, limits?.plan ?? "", (id) => nameOf(id, listed), Date.now(), t) : null;
   // EVERY MODEL IS CHOSEN, never asked for: one the plan does not cover still
   // picks, and the gateway answers it with the policy's refusal or from Enso,
   // which the pane then shows. A turn the gateway refuses `plan_required`
@@ -1077,7 +1080,9 @@ function Thread({
     },
     ...(open ? { thread: open } : {}),
     onError: (e) => {
-      const needs = planRequired(e);
+      // A billing refusal's ways are the banner over the composer, Upgrade to
+      // continue first, so only a model the plan lacks opens the plans here.
+      const needs = billed(e) ? null : planRequired(e);
       if (needs && free) setAsk({ ...needs, model: nameOf(model, listed) });
     },
   });
@@ -1360,7 +1365,7 @@ function Thread({
     void latest.current(text);
   }, []);
 
-  // THE WAYS PAST A PAUSE, as the server sends them. A page opens; Continue
+  // THE WAYS PAST A PAUSE. The upgrade opens the plans over the app; a page opens; Continue
   // with credits turns the org's choice on and asks the last question again on
   // the model the reader picked; a switch moves the picker. A refusal of the
   // write (only an org admin may make it) is said under the banner.
@@ -1368,6 +1373,15 @@ function Thread({
   const act = useCallback(
     (a: LimitAction) => {
       setActWrong("");
+      if (a.kind === "later") {
+        setShut(which);
+        return;
+      }
+      // The upgrade opens the plans here, over the app (./Upgrade.tsx), on the plan the server named.
+      if (a.kind === "upgrade") {
+        setAsk({ href: a.url });
+        return;
+      }
       if (a.kind === "switch") {
         if (a.model) mind.pick(a.model);
         return;
@@ -1388,7 +1402,7 @@ function Thread({
     },
     // `mind.pick` is rebuilt each render; the handler follows it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [reread, speak, failures, mind.model, listed, t],
+    [reread, speak, failures, mind.model, listed, t, which],
   );
 
   // A TURN THAT NEVER SPEAKS IS STOPPED. A stream that stays open with nothing
@@ -1667,7 +1681,7 @@ function Thread({
               ? t("{model} is unavailable right now.", { model: familyOf(model) || nameOf(model, listed) })
               : plainly(wrong, t("this conversation"), t);
     return (
-      <Failure retryLabel={t("Try again")} onRetry={resign || lift || bill?.code === "free_plan_cap" ? undefined : () => speak(text, question.id)}>
+      <Failure retryLabel={t("Try again")} onRetry={resign || lift || bill?.code === "free_plan_cap" || bill?.code === "allowance_spent" ? undefined : () => speak(text, question.id)}>
         <YStack gap="$2">
           <Text fontSize="$3" color="$ink">
             {whom.length ? `${t("No answer from {names}.", { names: join(whom, t) })} ` : ""}

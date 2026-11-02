@@ -9,11 +9,12 @@
  * bearer is the subject and `X-Org-Id` the organization this browser works in.
  */
 
-import { label, said, spent, ways, when } from '@hanzo/build/plan'
+import { ways } from '@hanzo/build/plan'
 import { useLimits as useHeld, type UseLimits } from '@hanzo/ui/product/useLimits'
 import { paidPlan, type LimitAction, type LimitNotice } from '@hanzo/ui/product/limits'
 import { english, type Say } from '@hanzo/i18n'
 import { api } from './api'
+import { payUrl } from './pay'
 import { scope } from './session'
 
 /** Reads the limits as whoever holds the bearer, in this browser's organization. */
@@ -58,14 +59,39 @@ export const spendShown = ({ limits, answered }: Pick<UseLimits, 'limits' | 'ans
 export { paidPlan }
 
 /**
+ * When a spent allowance or window comes back, on the reader's own clock: the
+ * time alone when that is today where the reader is ("5:00 PM"), else the date
+ * with it ("Nov 3, 5:00 PM"). Never UTC's: the server sends an instant
+ * (`resets_at`, RFC 3339) and the words are the reader's. `zone` is the
+ * browser's own unless a caller names one; '' for no instant.
+ */
+export function resets(iso: string, now: number = Date.now(), locale?: string, zone?: string): string {
+  const at = iso ? Date.parse(iso) : NaN
+  if (Number.isNaN(at)) return ''
+  const day = (instant: number) => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(instant)
+  const time: Intl.DateTimeFormatOptions = { timeZone: zone, hour: 'numeric', minute: '2-digit' }
+  return new Intl.DateTimeFormat(locale, day(at) === day(now) ? time : { ...time, month: 'short', day: 'numeric' }).format(at)
+}
+
+/**
+ * The refusals that are usage spent until a reset: a paid plan's included
+ * usage, its request window, the Free plan's cap and its allowance's window.
+ * The windows are what Ultra has none of (`WINDOWS`).
+ */
+const SPENT = new Set(['plan_allowance_used', 'usage_cap_exceeded', 'free_plan_cap', 'allowance_spent'])
+const WINDOWS = new Set(['usage_cap_exceeded', 'free_plan_cap', 'allowance_spent'])
+
+/**
  * What the banner over the composer says once the reader is turned away, and
- * the ways on. A spent allowance is said by the plan's name and when it comes
- * back — `Your Max 20x plan’s included premium model usage is used until 5:00
- * PM.` — and a spent request window the same way; any other refusal in the
- * server's own words. The ways are @hanzo/build's `ways`: continue with credits
- * where the org holds some, else add credits; then the upgrade. What this module
- * says goes through `t`; the spent allowance's sentence and the ways' labels are
- * @hanzo/build's own.
+ * the ways on, or null when it says nothing. Usage spent until a reset reads
+ * `Usage reached. Resets at 5:00 PM.` (`resets`: the
+ * reader's clock, never a ceiling), with three ways: the upgrade (the server's
+ * own, else pay's plans, coming back here), credits (the server's Continue with
+ * credits where the org holds some, else pay's amount step to add some, coming
+ * back here), and Try again later, which the host takes as putting the banner
+ * away. An Ultra reader is never told of a spent window: Ultra has none. Any
+ * other refusal is the server's own words and ways (@hanzo/build `ways`).
+ * Everything said goes through `t`.
  */
 export function paused(
   n: LimitNotice,
@@ -73,21 +99,23 @@ export function paused(
   name: (id: string) => string = (id) => id,
   now: number = Date.now(),
   t: Say = english,
-): { message: string; actions: LimitAction[] } {
-  const l = label(plan)
-  const until = when(n.resets_at ?? '', now)
+): { message: string; actions: LimitAction[] } | null {
   const on = n.fallback ? t(' You’re chatting on {model}.', { model: name(n.fallback) }) : ''
-  const used = (): string => {
-    if (l) return until ? t('Your {plan} plan’s requests are used until {until}.', { plan: said(l), until }) : t('Your {plan} plan’s requests are used.', { plan: said(l) })
-    return until ? t('Your plan’s requests are used until {until}.', { until }) : t('Your plan’s requests are used.')
+  if (!SPENT.has(n.reason) && (n.reason || n.classes.length === 0)) return { message: n.message, actions: ways(n.actions, t) }
+  if (WINDOWS.has(n.reason) && /^ultra\b/i.test(plan)) return null
+  const time = resets(n.resets_at ?? '', now)
+  const message = (time ? t('Usage reached. Resets at {time}.', { time }) : t('Usage reached.')) + on
+  const here = typeof window === 'undefined' ? undefined : window.location.href
+  const upgrade = n.actions.find((a) => a.kind === 'upgrade')
+  const credits = n.actions.find((a) => a.kind === 'credits')
+  return {
+    message,
+    actions: [
+      { kind: 'upgrade', label: t('Upgrade to continue'), url: upgrade?.url ?? payUrl('/cart', { returnUrl: here }) },
+      credits ?? { kind: 'topup', label: t('Add credits'), url: payUrl('/amount/card', { returnUrl: here }) },
+      { kind: 'later', label: t('Try again later') },
+    ],
   }
-  const message =
-    n.reason === 'plan_allowance_used' || (!n.reason && n.classes.length > 0)
-      ? spent(l, n.classes, n.resets_at ?? '', now) + on
-      : n.reason === 'usage_cap_exceeded'
-        ? used() + on
-        : n.message
-  return { message, actions: ways(n.actions) }
 }
 
 /** Whether a catalog family is one of Hanzo's chat families, Enso or Zen, whose turns carry the live web. */
