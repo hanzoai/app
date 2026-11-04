@@ -40,7 +40,7 @@ import {
 import type { AiClient, Thread, ThreadChange } from '@hanzo/ai'
 export type { Thread }
 import { useAi } from '@hanzo/ai/react'
-import { Archive, ArchiveRestore, Clock, ExternalLink, Link2, MoreHorizontal, Pencil, Pin, PinOff, Share2, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, CheckSquare, Clock, ExternalLink, FolderInput, Link2, MoreHorizontal, Pencil, Pin, PinOff, Share2, Trash2, X } from 'lucide-react'
 import {
   Button,
   ContextMenu,
@@ -211,7 +211,7 @@ const DANGER = BAD
 
 const mac = (): boolean => typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent)
 
-type Dialogue = 'rename' | 'delete' | 'share'
+type Dialogue = 'rename' | 'delete' | 'share' | 'organize'
 
 /** What a row needs of the list's menu. */
 interface Menus {
@@ -219,6 +219,22 @@ interface Menus {
   aim: (t: Thread, from: HTMLElement) => void
   /** The conversation whose menu is open, or null. */
   open: string | null
+  /** Currently multi-selected conversation IDs. */
+  selected: Set<string>
+  /** Anchor conversation ID for Shift-click range selection. */
+  anchorRef: { current: string | null }
+  /** Drag-select start conversation ID. */
+  dragStartRef: { current: string | null }
+  /** Whether the current mouse gesture performed a drag selection. */
+  didDragSelectRef: { current: boolean }
+  /** Active conversation ID. */
+  active: string | null
+  /** Select all conversations between fromId and toId in DOM order. */
+  selectRange: (fromId: string, toId: string, additive?: boolean) => void
+  /** Toggle a single conversation in the multi-selection. */
+  toggleSelect: (id: string) => void
+  /** Clear multi-selection. */
+  clearSelect: () => void
 }
 
 const Rows = createContext<Menus | null>(null)
@@ -302,6 +318,153 @@ export function ConversationMenu({
   const list = useId()
   const [menu, setMenu] = useState<'point' | 'dots' | null>(null)
   const [dialogue, setDialogue] = useState<Dialogue | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(() => new Set())
+  const [organizeGroup, setOrganizeGroup] = useState('')
+  const anchorRef = useRef<string | null>(active)
+  const dragStartRef = useRef<string | null>(null)
+  const didDragSelectRef = useRef<boolean>(false)
+
+  const orderedIds = useCallback((): string[] => {
+    const root = typeof document !== 'undefined' ? document.querySelector(`[data-menu="${list}"]`) : null
+    if (!root) return [...threads.keys()]
+    return [...root.querySelectorAll('[data-thread]')].map((el) => el.getAttribute('data-thread') ?? '').filter(Boolean)
+  }, [list, threads])
+
+  const selectRange = useCallback(
+    (fromId: string, toId: string, additive = false) => {
+      const ids = orderedIds()
+      const a = ids.indexOf(fromId)
+      const b = ids.indexOf(toId)
+      if (a < 0 || b < 0) return
+      const [lo, hi] = a <= b ? [a, b] : [b, a]
+      const slice = ids.slice(lo, hi + 1)
+      setSelected((prev) => {
+        const next = additive ? new Set(prev) : new Set<string>()
+        for (const id of slice) next.add(id)
+        return next
+      })
+    },
+    [orderedIds],
+  )
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const clearSelect = useCallback(() => {
+    setSelected((prev) => (prev.size ? new Set() : prev))
+  }, [])
+
+  useEffect(() => {
+    setSelected((prev) => {
+      if (!prev.size) return prev
+      const next = new Set([...prev].filter((id) => threads.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+  }, [threads])
+
+  useEffect(() => {
+    const up = () => {
+      dragStartRef.current = null
+    }
+    window.addEventListener('mouseup', up)
+    return () => window.removeEventListener('mouseup', up)
+  }, [])
+
+  const selectedThreads = useMemo(
+    () => [...selected].map((id) => threads.get(id)).filter((th): th is Thread => Boolean(th)),
+    [selected, threads],
+  )
+
+  const batchRemove = useCallback(
+    (targets: Thread[]) => {
+      if (!targets.length) return
+      setSelected(new Set())
+      setMenu(null)
+      setDialogue(null)
+      const removingActive = Boolean(holds.current && targets.some((th) => th.id === holds.current))
+      void Promise.all(targets.map((th) => act.remove(th))).then(() => {
+        if (removingActive) onGone()
+      })
+    },
+    [act, onGone],
+  )
+
+  const batchArchive = useCallback(
+    (targets: Thread[]) => {
+      if (!targets.length) return
+      const allArchived = targets.every((th) => th.archived)
+      setSelected(new Set())
+      setMenu(null)
+      void Promise.all(targets.map((th) => (Boolean(th.archived) === allArchived ? act.archive(th) : Promise.resolve(true))))
+    },
+    [act],
+  )
+
+  const batchPin = useCallback(
+    (targets: Thread[]) => {
+      if (!targets.length) return
+      const allPinned = targets.every((th) => th.pinned)
+      setSelected(new Set())
+      setMenu(null)
+      void Promise.all(targets.map((th) => (Boolean(th.pinned) === allPinned ? act.pin(th) : Promise.resolve(true))))
+    },
+    [act],
+  )
+
+  const batchOrganize = useCallback(
+    (targets: Thread[], groupName: string) => {
+      const cleanGroup = groupName.trim()
+      if (!targets.length || !cleanGroup) return
+      setSelected(new Set())
+      setMenu(null)
+      setDialogue(null)
+      setOrganizeGroup('')
+      const untitledWord = t('Untitled')
+      void Promise.all(
+        targets.map((th) => {
+          const base = titleOf(th, untitledWord).replace(/^\[[^\]]+\]\s*/, '')
+          const nextTitle = `[${cleanGroup}] ${base}`.slice(0, 80)
+          return act.rename(th, nextTitle)
+        }),
+      )
+    },
+    [act, t],
+  )
+
+  useEffect(() => {
+    if (!selected.size) return
+    const onKey = (e: KeyboardEvent) => {
+      if (dialogue !== null) return
+      const el = document.activeElement as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        clearSelect()
+        return
+      }
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault()
+        batchRemove(selectedThreads)
+        return
+      }
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'a' || e.key === 'A')) {
+        const inSidebar = el?.closest?.('[data-slot="app-column"], [data-menu]')
+        if (inSidebar || selected.size > 0) {
+          e.preventDefault()
+          setSelected(new Set(orderedIds()))
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selected.size, selectedThreads, dialogue, clearSelect, batchRemove, orderedIds])
+
   // The conversation the menu or a dialog acts on, by id, read from the list so
   // it is current; the last one read stands in once the list lets it go (a
   // closing Delete dialog still names it).
@@ -329,7 +492,13 @@ export function ConversationMenu({
   const point = (e: { target: EventTarget | null }) => {
     const row = (e.target as Element | null)?.closest?.('[data-thread]') ?? null
     pointed.current = row ? (threads.get(row.getAttribute('data-thread') ?? '') ?? null) : null
-    if (pointed.current) from.current = own(row)
+    if (pointed.current) {
+      from.current = own(row)
+      if (selected.size > 1 && !selected.has(pointed.current.id)) {
+        const pid = pointed.current.id
+        setSelected((prev) => new Set([...prev, pid]))
+      }
+    }
   }
 
   // A menu shut by Escape, a choice or a press outside gives focus back where it
@@ -364,48 +533,208 @@ export function ConversationMenu({
   }
   useEffect(() => listen(keys), [])
 
-  const rows = useMemo<Menus>(() => ({ aim, open: menu ? aimed : null }), [aim, menu, aimed])
+  const rows = useMemo<Menus>(
+    () => ({
+      aim,
+      open: menu ? aimed : null,
+      selected,
+      anchorRef,
+      dragStartRef,
+      didDragSelectRef,
+      active,
+      selectRange,
+      toggleSelect,
+      clearSelect,
+    }),
+    [aim, menu, aimed, selected, active, selectRange, toggleSelect, clearSelect],
+  )
 
   // The menu is named by its conversation: gui would name it by its trigger, the
   // list itself for a right-click, and the ⋯ for the other.
   const untitled = t('Untitled')
-  const title = subject ? titleOf(subject, untitled) : undefined
+  const isMultiMenu = selectedThreads.length > 1 && (!subject || selected.has(subject.id))
+  const title = isMultiMenu ? t('{n} chats selected', { n: selectedThreads.length }) : subject ? titleOf(subject, untitled) : undefined
   const apple = mac()
-  const entries: Entry[] = subject
+  const allPinned = selectedThreads.length > 0 && selectedThreads.every((th) => th.pinned)
+  const allArchived = selectedThreads.length > 0 && selectedThreads.every((th) => th.archived)
+  const entries: Entry[] = isMultiMenu
     ? [
         {
-          key: 'rename',
-          label: t('Rename'),
-          icon: <Pencil size={16} aria-hidden />,
-          shortcut: said('rename', apple),
-          keys: named('rename'),
-          run: () => ask('rename', subject),
+          key: 'batch-pin',
+          label: t(allPinned ? 'Unpin {n} chats' : 'Pin {n} chats', { n: selectedThreads.length }),
+          icon: allPinned ? <PinOff size={16} aria-hidden /> : <Pin size={16} aria-hidden />,
+          run: () => batchPin(selectedThreads),
         },
         {
-          key: 'pin',
-          label: t(subject.pinned ? 'Unpin' : 'Pin'),
-          icon: subject.pinned ? <PinOff size={16} aria-hidden /> : <Pin size={16} aria-hidden />,
-          shortcut: said('pin', apple),
-          keys: named('pin'),
-          run: () => void act.pin(subject),
+          key: 'batch-archive',
+          label: t(allArchived ? 'Unarchive {n} chats' : 'Archive {n} chats', { n: selectedThreads.length }),
+          icon: allArchived ? <ArchiveRestore size={16} aria-hidden /> : <Archive size={16} aria-hidden />,
+          run: () => batchArchive(selectedThreads),
         },
-        { key: 'share', label: t('Share…'), icon: <Share2 size={16} aria-hidden />, run: () => ask('share', subject) },
-        ...(onSchedule ? [{ key: 'schedule', label: t('Schedule…'), icon: <Clock size={16} aria-hidden />, run: () => onSchedule(subject) }] : []),
-        { key: 'copy', label: t('Copy link'), icon: <Link2 size={16} aria-hidden />, run: () => void copy(subject.id, t) },
-        { key: 'tab', label: t('Open in new tab'), icon: <ExternalLink size={16} aria-hidden />, run: () => away(subject.id) },
         {
-          key: 'archive',
-          label: t(subject.archived ? 'Unarchive' : 'Archive'),
-          icon: subject.archived ? <ArchiveRestore size={16} aria-hidden /> : <Archive size={16} aria-hidden />,
-          run: () => void act.archive(subject),
+          key: 'batch-organize',
+          label: t('Organize {n} chats…', { n: selectedThreads.length }),
+          icon: <FolderInput size={16} aria-hidden />,
+          run: () => {
+            setMenu(null)
+            setDialogue('organize')
+          },
+        },
+        {
+          key: 'batch-select-all',
+          label: t('Select all ({n})', { n: threads.size }),
+          icon: <CheckSquare size={16} aria-hidden />,
+          shortcut: apple ? '⌘A' : 'Ctrl+A',
+          run: () => setSelected(new Set(orderedIds())),
+        },
+        {
+          key: 'batch-clear',
+          label: t('Clear selection'),
+          icon: <X size={16} aria-hidden />,
+          shortcut: 'Esc',
+          run: () => clearSelect(),
         },
         { key: 'gone', line: true },
-        { key: 'delete', label: t('Delete'), icon: <Trash2 size={16} color={DANGER} aria-hidden />, destructive: true, run: () => ask('delete', subject) },
+        {
+          key: 'batch-delete',
+          label: t('Delete {n} chats', { n: selectedThreads.length }),
+          icon: <Trash2 size={16} color={DANGER} aria-hidden />,
+          shortcut: '⌫',
+          destructive: true,
+          run: () => batchRemove(selectedThreads),
+        },
       ]
-    : []
+    : subject
+      ? [
+          {
+            key: 'rename',
+            label: t('Rename'),
+            icon: <Pencil size={16} aria-hidden />,
+            shortcut: said('rename', apple),
+            keys: named('rename'),
+            run: () => ask('rename', subject),
+          },
+          {
+            key: 'pin',
+            label: t(subject.pinned ? 'Unpin' : 'Pin'),
+            icon: subject.pinned ? <PinOff size={16} aria-hidden /> : <Pin size={16} aria-hidden />,
+            shortcut: said('pin', apple),
+            keys: named('pin'),
+            run: () => void act.pin(subject),
+          },
+          { key: 'share', label: t('Share…'), icon: <Share2 size={16} aria-hidden />, run: () => ask('share', subject) },
+          ...(onSchedule ? [{ key: 'schedule', label: t('Schedule…'), icon: <Clock size={16} aria-hidden />, run: () => onSchedule(subject) }] : []),
+          { key: 'copy', label: t('Copy link'), icon: <Link2 size={16} aria-hidden />, run: () => void copy(subject.id, t) },
+          { key: 'tab', label: t('Open in new tab'), icon: <ExternalLink size={16} aria-hidden />, run: () => away(subject.id) },
+          {
+            key: 'archive',
+            label: t(subject.archived ? 'Unarchive' : 'Archive'),
+            icon: subject.archived ? <ArchiveRestore size={16} aria-hidden /> : <Archive size={16} aria-hidden />,
+            run: () => void act.archive(subject),
+          },
+          { key: 'gone', line: true },
+          { key: 'delete', label: t('Delete'), icon: <Trash2 size={16} color={DANGER} aria-hidden />, destructive: true, run: () => ask('delete', subject) },
+        ]
+      : []
 
   return (
     <Rows.Provider value={rows}>
+      {selectedThreads.length > 1 ? (
+        <XStack
+          data-slot="batch-bar"
+          items="center"
+          justify="space-between"
+          gap="$1.5"
+          px="$2"
+          py="$1.5"
+          mb="$1.5"
+          rounded="$3"
+          bg="$raised"
+          borderWidth={1}
+          borderColor="$borderColor"
+        >
+          <SizableText size="$1" fontWeight="600" color="$ink" numberOfLines={1}>
+            {t('{n} selected', { n: selectedThreads.length })}
+          </SizableText>
+          <XStack items="center" gap="$1">
+            <XStack
+              render="button"
+              aria-label={t(allPinned ? 'Unpin selected' : 'Pin selected')}
+              {...({ title: t(allPinned ? 'Unpin selected' : 'Pin selected') } as object)}
+              width={26}
+              height={26}
+              rounded="$2"
+              items="center"
+              justify="center"
+              cursor="pointer"
+              hoverStyle={{ bg: '$hover' }}
+              onPress={() => batchPin(selectedThreads)}
+            >
+              {allPinned ? <PinOff size={14} aria-hidden /> : <Pin size={14} aria-hidden />}
+            </XStack>
+            <XStack
+              render="button"
+              aria-label={t(allArchived ? 'Unarchive selected' : 'Archive selected')}
+              {...({ title: t(allArchived ? 'Unarchive selected' : 'Archive selected') } as object)}
+              width={26}
+              height={26}
+              rounded="$2"
+              items="center"
+              justify="center"
+              cursor="pointer"
+              hoverStyle={{ bg: '$hover' }}
+              onPress={() => batchArchive(selectedThreads)}
+            >
+              {allArchived ? <ArchiveRestore size={14} aria-hidden /> : <Archive size={14} aria-hidden />}
+            </XStack>
+            <XStack
+              render="button"
+              aria-label={t('Organize selected')}
+              {...({ title: t('Organize / group selected chats') } as object)}
+              width={26}
+              height={26}
+              rounded="$2"
+              items="center"
+              justify="center"
+              cursor="pointer"
+              hoverStyle={{ bg: '$hover' }}
+              onPress={() => setDialogue('organize')}
+            >
+              <FolderInput size={14} aria-hidden />
+            </XStack>
+            <XStack
+              render="button"
+              aria-label={t('Delete selected')}
+              {...({ title: t('Delete selected (Backspace / Delete)') } as object)}
+              width={26}
+              height={26}
+              rounded="$2"
+              items="center"
+              justify="center"
+              cursor="pointer"
+              hoverStyle={{ bg: '$hover' }}
+              onPress={() => batchRemove(selectedThreads)}
+            >
+              <Trash2 size={14} color={DANGER} aria-hidden />
+            </XStack>
+            <XStack
+              render="button"
+              aria-label={t('Clear selection')}
+              {...({ title: t('Clear selection (Esc)') } as object)}
+              width={24}
+              height={24}
+              rounded="$2"
+              items="center"
+              justify="center"
+              cursor="pointer"
+              hoverStyle={{ bg: '$hover' }}
+              onPress={clearSelect}
+            >
+              <X size={13} aria-hidden />
+            </XStack>
+          </XStack>
+        </XStack>
+      ) : null}
       <DropdownMenu open={menu === 'dots'} onOpenChange={(open) => setMenu(open ? 'dots' : null)}>
         <ContextMenu
           // Held here as well as inside gui's ContextMenu, so the keys can shut it.
@@ -477,6 +806,40 @@ export function ConversationMenu({
         }}
       />
       <ShareDialog thread={subject?.id ?? null} open={dialogue === 'share'} onOpenChange={shut} onCloseAutoFocus={after} />
+      <Dialog open={dialogue === 'organize'} onOpenChange={shut}>
+        <DialogContent maxW={440} rounded="$6" gap="$3" onCloseAutoFocus={after}>
+          <DialogTitle>{t('Organize {n} chats', { n: selectedThreads.length })}</DialogTitle>
+          <SizableText size="$2" color="$soft">
+            {t('Group and tag the selected chats under a shared project or topic label.')}
+          </SizableText>
+          <Input
+            autoFocus
+            value={organizeGroup}
+            onChangeText={setOrganizeGroup}
+            placeholder={t('e.g. Research, Architecture, Q4 Launch')}
+            aria-label={t('Group or project name')}
+            maxLength={40}
+            onKeyDown={(e: { key?: string; keyCode?: number; nativeEvent?: { isComposing?: boolean } }) => {
+              if (e.key === 'Enter' && !e.nativeEvent?.isComposing && e.keyCode !== 229 && organizeGroup.trim()) {
+                batchOrganize(selectedThreads, organizeGroup)
+              }
+            }}
+          />
+          <XStack gap="$2" justify="flex-end">
+            <Button size="sm" variant="outline" rounded={999} onPress={() => shut(false)}>
+              {t('Cancel')}
+            </Button>
+            <Button
+              size="sm"
+              rounded={999}
+              disabled={!organizeGroup.trim()}
+              onPress={() => batchOrganize(selectedThreads, organizeGroup)}
+            >
+              {t('Apply to {n} chats', { n: selectedThreads.length })}
+            </Button>
+          </XStack>
+        </DialogContent>
+      </Dialog>
     </Rows.Provider>
   )
 }
@@ -539,8 +902,9 @@ export function ThreadRow({
   const id = useId()
   // What the ⋯ is for, said after its name: the row's title.
   const about = useId()
+  const isSelected = menus.selected.has(thread.id)
   // The ⋯ and the age share one place: whichever shows, the other gives way.
-  const shown = active || menus.open === thread.id || focused
+  const shown = active || isSelected || menus.open === thread.id || focused
   // gui types these handlers by React Native's event; on the web they carry the DOM's.
   const aim = (e: unknown) => menus.aim(thread, (e as MouseEvent<HTMLElement>).currentTarget)
   // A new tab for the row itself, never for its ⋯.
@@ -550,18 +914,67 @@ export function ThreadRow({
       {...(listed ? { role: 'listitem' } : null)}
       position="relative"
       group
+      rounded="$4"
+      bg={isSelected ? '$hover' : undefined}
+      $platform-web={{ userSelect: 'none' }}
+      borderLeftWidth={isSelected ? 2 : 0}
+      borderColor={isSelected ? '$ink' : 'transparent'}
       data-thread={thread.id}
+      data-selected={isSelected ? '' : undefined}
       data-pinned={thread.pinned ? '' : undefined}
       onClickCapture={(press: unknown) => {
         const e = press as MouseEvent<HTMLElement>
-        if (!(e.metaKey || e.ctrlKey) || onDots(e.target)) return
-        e.preventDefault()
-        e.stopPropagation()
-        away(thread.id)
+        if (onDots(e.target)) return
+        if (menus.didDragSelectRef.current) {
+          e.preventDefault()
+          e.stopPropagation()
+          menus.didDragSelectRef.current = false
+          menus.anchorRef.current = thread.id
+          return
+        }
+        if (e.shiftKey) {
+          e.preventDefault()
+          e.stopPropagation()
+          const anchor = menus.anchorRef.current || menus.active || thread.id
+          menus.selectRange(anchor, thread.id, e.metaKey || e.ctrlKey)
+          return
+        }
+        if (e.metaKey || e.ctrlKey) {
+          e.preventDefault()
+          e.stopPropagation()
+          menus.toggleSelect(thread.id)
+          menus.anchorRef.current = thread.id
+          return
+        }
+        menus.anchorRef.current = thread.id
+        if (menus.selected.size > 0) {
+          menus.clearSelect()
+        }
       }}
       onMouseDown={(e: MouseEvent<HTMLElement>) => {
         // The middle button's own autoscroll would start here.
-        if (e.button === 1) e.preventDefault()
+        if (e.button === 1) {
+          e.preventDefault()
+          return
+        }
+        if (e.button !== 0 || onDots(e.target)) return
+        menus.dragStartRef.current = thread.id
+        menus.didDragSelectRef.current = false
+        if (e.shiftKey) {
+          e.preventDefault()
+          window.getSelection?.()?.removeAllRanges?.()
+          const anchor = menus.anchorRef.current || menus.active || thread.id
+          menus.selectRange(anchor, thread.id, e.metaKey || e.ctrlKey)
+        }
+      }}
+      onMouseEnter={(enter: unknown) => {
+        const e = enter as MouseEvent<HTMLElement>
+        if (!menus.dragStartRef.current || e.buttons !== 1) return
+        if (menus.dragStartRef.current !== thread.id || menus.didDragSelectRef.current) {
+          menus.didDragSelectRef.current = true
+          window.getSelection?.()?.removeAllRanges?.()
+          menus.selectRange(menus.dragStartRef.current, thread.id, e.metaKey || e.ctrlKey)
+        }
       }}
       onMouseUp={(e: MouseEvent<HTMLElement>) => {
         if (e.button !== 1 || onDots(e.target)) return

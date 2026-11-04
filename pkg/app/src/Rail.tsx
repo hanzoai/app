@@ -207,6 +207,7 @@ export function Rail({
   onOrg: (org: string) => void
 }) {
   const { t, dir } = useI18n()
+  const anon = host.person === null
   const here = mode === 'dev' ? raised(at) : null
   const to = (p: string) => () => go(app(p))
   // The products on hosts of their own, behind More; on a phone the raised places lead it.
@@ -316,7 +317,7 @@ export function Rail({
         <FlaskConical size={18} aria-hidden />
       </Mark>
       {betasDialog}
-      {rest.length ? (
+      {!anon && rest.length ? (
         <DropdownMenu
           // Toward the content: right of the rail, left of it right to left.
           placement={dir === 'rtl' ? 'left-start' : 'right-start'}
@@ -346,7 +347,7 @@ export function Rail({
         />
       ) : null}
       </YStack>
-      <Account host={host} narrow onOrg={onOrg} />
+      {anon ? null : <Account host={host} narrow onOrg={onOrg} />}
     </YStack>
   )
 }

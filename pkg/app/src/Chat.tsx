@@ -1243,6 +1243,21 @@ function Thread({
   useAttach(at, via);
   // "Schedule this": the prompt the dialog opens on, or null while it is shut.
   const [plan, setPlan] = useState<string | null>(null);
+  const [anonPluginsOpen, setAnonPluginsOpen] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onPrompt = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ text?: string }>).detail;
+      if (detail?.text) setDraft(detail.text);
+    };
+    const onPlugins = () => setAnonPluginsOpen(true);
+    window.addEventListener("hanzo:anon-prompt", onPrompt);
+    window.addEventListener("hanzo:anon-plugins", onPlugins);
+    return () => {
+      window.removeEventListener("hanzo:anon-prompt", onPrompt);
+      window.removeEventListener("hanzo:anon-plugins", onPlugins);
+    };
+  }, []);
   // A file the reader keeps from this conversation goes to their Library under it.
   const keepOne = useCallback(
     (url: string, id: string, name: string, type: string) => keepFile(ai, { id, name, type, url, thread: kept ?? open }),
@@ -1994,7 +2009,11 @@ function Thread({
           research: { on: carry.gear.gear.research, set: (on: boolean) => carry.gear.set({ research: on }) },
         };
         return anonymous
-          ? commonPlus
+          ? {
+              ...commonPlus,
+              skills: carry.skills,
+              plugins: carry.plugins,
+            }
           : {
               ...commonPlus,
               agents: agentShelf,
@@ -2012,10 +2031,10 @@ function Thread({
           icon: <Face src={faces[name]?.avatar} emoji={faces[name]?.emoji} name={name} size={16} />,
           onRemove: () => seat(cast.filter((one) => one !== name)),
         })),
-        ...(anonymous ? [] : carry.on),
+        ...carry.on,
       ],
-      slash: anonymous ? undefined : carry.skills,
-      at: anonymous ? undefined : carry.plugins,
+      slash: carry.skills,
+      at: carry.plugins,
       // The mode is Auto or Manual approval, the one Settings keeps; the person
       // turns the pill on in Settings → Appearance, and it is off until they do.
       mode: anonymous
@@ -2274,7 +2293,33 @@ function Thread({
         </XStack>
 
         <XStack data-slot="conversation-controls" data-tauri-drag-region="false" items="center" gap={4} shrink={0}>
-          {free ? (
+          {anonymous ? (
+            <XStack items="center" gap="$2">
+              <Button
+                size="xs"
+                variant="outline"
+                rounded={9999}
+                px="$3"
+                data-slot="header-login"
+                onPress={() => {
+                  if (typeof window !== "undefined") window.location.assign("/login?next=%2Fchat");
+                }}
+              >
+                {t("Log in")}
+              </Button>
+              <Button
+                size="xs"
+                rounded={9999}
+                px="$3"
+                data-slot="header-signup"
+                onPress={() => {
+                  if (typeof window !== "undefined") window.location.assign("/signup?next=%2Fchat");
+                }}
+              >
+                {t("Sign up for free")}
+              </Button>
+            </XStack>
+          ) : free ? (
             <Button
               size="xs"
               variant="outline"
@@ -2593,6 +2638,75 @@ function Thread({
       </YStack>
       <AgentMaker />
       {carry.dialog}
+      <Dialog open={anonPluginsOpen} onOpenChange={setAnonPluginsOpen}>
+        <DialogContent maxW={480} width="100%" gap="$3" data-slot="anon-plugins-dialog">
+          <DialogTitle>{t("Plugins & Skills")}</DialogTitle>
+          <Text fontSize="$2" color="$soft">
+            {t("Enable plugins and skills for this conversation, or type / and @ in the composer.")}
+          </Text>
+          <YStack maxH={320} overflow="scroll" gap="$1.5">
+            {carry.plugins.rows.map((p) => (
+              <XStack
+                key={`plugin:${p.id}`}
+                render="button"
+                onPress={() => carry.plugins.pick(p.id)}
+                items="center"
+                justify="space-between"
+                p="$2.5"
+                rounded="$3"
+                borderWidth={1}
+                borderColor={p.on ? "$ink" : "$borderColor"}
+                bg={p.on ? "$hover" : "transparent"}
+                hoverStyle={{ bg: "$hover" }}
+                cursor="pointer"
+              >
+                <XStack items="center" gap="$2.5" minW={0} flex={1}>
+                  {p.icon}
+                  <YStack minW={0} flex={1}>
+                    <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>
+                      {p.label}
+                    </Text>
+                    {p.note ? (
+                      <Text fontSize="$1" color="$soft" numberOfLines={1}>
+                        {p.note}
+                      </Text>
+                    ) : null}
+                  </YStack>
+                </XStack>
+                <Text fontSize="$1" fontWeight="600" color={p.on ? "$ink" : "$soft"}>
+                  {p.on ? t("On") : t("Plugin")}
+                </Text>
+              </XStack>
+            ))}
+            {carry.skills.rows.slice(0, 24).map((s) => (
+              <XStack
+                key={`skill:${s.id}`}
+                render="button"
+                onPress={() => carry.skills.pick(s.id)}
+                items="center"
+                justify="space-between"
+                p="$2"
+                rounded="$3"
+                borderWidth={1}
+                borderColor={s.on ? "$ink" : "$borderColor"}
+                bg={s.on ? "$hover" : "transparent"}
+                hoverStyle={{ bg: "$hover" }}
+                cursor="pointer"
+              >
+                <XStack items="center" gap="$2" minW={0} flex={1}>
+                  {s.icon}
+                  <Text fontSize="$2" color="$ink" numberOfLines={1}>
+                    /{s.label}
+                  </Text>
+                </XStack>
+                <Text fontSize="$1" fontWeight="600" color={s.on ? "$ink" : "$soft"}>
+                  {s.on ? t("On") : t("Skill")}
+                </Text>
+              </XStack>
+            ))}
+          </YStack>
+        </DialogContent>
+      </Dialog>
       <Upgrade ask={ask} onClose={() => setAsk(null)} />
       {/* The banner is drawn, not announced: this region stays mounted, so the
           message it is handed is what a screen reader hears. */}

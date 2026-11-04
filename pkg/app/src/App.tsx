@@ -260,8 +260,12 @@ function Window({ bar, betas }: Hosted) {
   useEffect(() => {
     if (!wanted) return
     showSettings(null)
+    if (!host.token?.() && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('hanzo:anon-settings'))
+      return
+    }
     move(settings(wanted))
-  }, [wanted, move])
+  }, [wanted, move, host])
 
   // The app's keys.
   useEffect(() => {
@@ -275,6 +279,10 @@ function Window({ bar, betas }: Hosted) {
       const mod = e.metaKey || e.ctrlKey
       if (mod && !e.shiftKey && !e.altKey && e.key === ',') {
         e.preventDefault()
+        if (!host.token?.() && typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('hanzo:anon-settings'))
+          return
+        }
         move(settings())
         return
       }

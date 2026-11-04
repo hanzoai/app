@@ -270,7 +270,7 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
   const activeStep = step === 1 || step === 2 || step === 3 ? step : 1
 
   // Dismissed on another machine is dismissed here: the account answers before the card draws.
-  if (!known || (later && !modalOpen)) return null
+  if (!signed || !known || (later && !modalOpen)) return null
 
   const openOAuthPopup = (
     authorizeUrl: string,

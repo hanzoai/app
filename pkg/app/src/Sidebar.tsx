@@ -27,15 +27,17 @@
 // Its words go through `t`; Dev's places and the places' rows are
 // @hanzo/build's own labels, drawn as the package names them.
 
-import { phrase } from '@hanzo/i18n'
+import { locales, phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
-import { Text, XStack, YStack } from '@hanzo/gui'
-import { ArrowLeft, Bell, Search, Sparkles, SquarePen } from 'lucide-react'
-import { DOTS, Gutter, library, NEW, own, tabs, useScheduled, useSessions, type Host } from '@hanzo/build'
+import { SizableText, Text, XStack, YStack } from '@hanzo/gui'
+import { ArrowLeft, Bell, CircleHelp, Image as ImageMark, Languages, Monitor, Moon, Palette, Puzzle, Search, Settings, Sparkles, SquarePen, Sun } from 'lucide-react'
+import { DOTS, Gutter, library, NEW, own, tabs, useLanguage, useScheduled, useSessions, type Host } from '@hanzo/build'
+
+type Theme = NonNullable<Host['theme']>
 import { tidy } from './lib/title'
-import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
+import { Button, Dialog, DialogContent, DialogTitle, DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { Sidebar as Base, SidebarIconButton, SidebarItem, StatusDot, type RailLink } from '@hanzo/ui/chat'
-import { useId, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { Made } from './Account'
 import { Recents } from './Recents'
 import { MARK, raised, type Raised } from './Rail'
@@ -158,7 +160,15 @@ export function Sidebar({
   places?: { id: string; label: string; links: RailLink[] }[]
 }) {
   const { t, dir } = useI18n()
-  const free = useFree(Boolean(host.token?.()))
+  const anon = host.person === null
+  const free = useFree(Boolean(host.token?.())) || anon
+  const [anonSettingsOpen, setAnonSettingsOpen] = useState(false)
+  useEffect(() => {
+    if (!anon || typeof window === 'undefined') return
+    const onOpen = () => setAnonSettingsOpen(true)
+    window.addEventListener('hanzo:anon-settings', onOpen)
+    return () => window.removeEventListener('hanzo:anon-settings', onOpen)
+  }, [anon])
   // The desktop sidebar and a phone's drawer can both be in the page: each names its own group labels.
   const uid = useId()
   const span = useSpan(SPAN, WIDTH, FLOOR, CEIL)
@@ -250,25 +260,27 @@ export function Sidebar({
             <Text flex={1} minW={0} fontSize={drawer ? 20 : 18} lineHeight={24} fontWeight={drawer ? '700' : '600'} color="$ink" numberOfLines={1}>
               {wordmark(mode)}
             </Text>
-            {drawer ? null : <Activity host={host} />}
-            <SidebarIconButton
-              label={t('Search')}
-              data-tauri-drag-region="false"
-              onPress={onSeek}
-              aria-haspopup="dialog"
-              {...(drawer
-                ? {
-                    width: 40,
-                    height: 40,
-                    rounded: 9999,
-                    borderWidth: 1,
-                    borderColor: 'var(--border-strong)',
-                    bg: 'var(--pane-fill)',
-                  }
-                : HEAD)}
-            >
-              <Search size={drawer ? 18 : 16} aria-hidden />
-            </SidebarIconButton>
+            {drawer || anon ? null : <Activity host={host} />}
+            {anon ? null : (
+              <SidebarIconButton
+                label={t('Search')}
+                data-tauri-drag-region="false"
+                onPress={onSeek}
+                aria-haspopup="dialog"
+                {...(drawer
+                  ? {
+                      width: 40,
+                      height: 40,
+                      rounded: 9999,
+                      borderWidth: 1,
+                      borderColor: 'var(--border-strong)',
+                      bg: 'var(--pane-fill)',
+                    }
+                  : HEAD)}
+              >
+                <Search size={drawer ? 18 : 16} aria-hidden />
+              </SidebarIconButton>
+            )}
           </XStack>
         )}
         {mode === 'chat' ? (
@@ -292,6 +304,62 @@ export function Sidebar({
                 <Text fontSize="$3" color="$ink">{t('New chat')}</Text>
               </SidebarItem>
             </YStack>
+            {anon ? (
+              <>
+                <YStack role="listitem">
+                  <SidebarItem
+                    data-slot="app-images"
+                    {...ROW}
+                    bg="transparent"
+                    hoverStyle={{ bg: '$hover' }}
+                    icon={
+                      <XStack width={20} height={20} items="center" justify="center" shrink={0}>
+                        <ImageMark size={16} aria-hidden />
+                      </XStack>
+                    }
+                    onPress={() => {
+                      create()
+                      if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('hanzo:anon-prompt', { detail: { text: t('Create an image of ') } }))
+                      }
+                    }}
+                    {...keys(() => {
+                      create()
+                      if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('hanzo:anon-prompt', { detail: { text: t('Create an image of ') } }))
+                      }
+                    })}
+                  >
+                    <Text fontSize="$3" color="$ink">{t('Images')}</Text>
+                  </SidebarItem>
+                </YStack>
+                <YStack role="listitem">
+                  <SidebarItem
+                    data-slot="app-plugins"
+                    {...ROW}
+                    bg="transparent"
+                    hoverStyle={{ bg: '$hover' }}
+                    icon={
+                      <XStack width={20} height={20} items="center" justify="center" shrink={0}>
+                        <Puzzle size={16} aria-hidden />
+                      </XStack>
+                    }
+                    onPress={() => {
+                      if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('hanzo:anon-plugins'))
+                      }
+                    }}
+                    {...keys(() => {
+                      if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('hanzo:anon-plugins'))
+                      }
+                    })}
+                  >
+                    <Text fontSize="$3" color="$ink">{t('Plugins')}</Text>
+                  </SidebarItem>
+                </YStack>
+              </>
+            ) : null}
           </YStack>
         ) : (
           <YStack data-slot="app-places" shrink={0}>
@@ -337,14 +405,112 @@ export function Sidebar({
         )}
         {rail}
         {/* Recents fills the column; where there are none the foot is still pushed to the column's foot, on the rail's line. */}
-        {mode === 'studio' || mode === 'tabs' || mode === 'beta' || mode === 'hosted' || at ? <YStack flex={1} minH={0} /> : <Recents host={host} mode={mode} thread={thread} onOpen={open} onNew={create} />}
-        {at ? null : (
+        {anon || mode === 'studio' || mode === 'tabs' || mode === 'beta' || mode === 'hosted' || at ? <YStack flex={1} minH={0} /> : <Recents host={host} mode={mode} thread={thread} onOpen={open} onNew={create} />}
+        {anon ? (
+          <YStack data-slot="anon-foot" gap="$2" pt="$2" shrink={0}>
+            <YStack role="list" gap={2}>
+              <YStack role="listitem">
+                <SidebarItem
+                  data-slot="anon-pricing"
+                  {...ROW}
+                  bg="transparent"
+                  hoverStyle={{ bg: '$hover' }}
+                  icon={
+                    <XStack width={20} height={20} items="center" justify="center" shrink={0}>
+                      <Sparkles size={16} aria-hidden />
+                    </XStack>
+                  }
+                  onPress={() => {
+                    if (typeof window !== 'undefined') window.location.assign('/pricing')
+                  }}
+                  {...keys(() => {
+                    if (typeof window !== 'undefined') window.location.assign('/pricing')
+                  })}
+                >
+                  <Text fontSize="$3" color="$ink">{t('See plans and pricing')}</Text>
+                </SidebarItem>
+              </YStack>
+              <YStack role="listitem">
+                <SidebarItem
+                  data-slot="anon-help"
+                  {...ROW}
+                  bg="transparent"
+                  hoverStyle={{ bg: '$hover' }}
+                  icon={
+                    <XStack width={20} height={20} items="center" justify="center" shrink={0}>
+                      <CircleHelp size={16} aria-hidden />
+                    </XStack>
+                  }
+                  onPress={() => {
+                    if (typeof window !== 'undefined') window.open('https://docs.hanzo.ai', '_blank', 'noopener,noreferrer')
+                  }}
+                  {...keys(() => {
+                    if (typeof window !== 'undefined') window.open('https://docs.hanzo.ai', '_blank', 'noopener,noreferrer')
+                  })}
+                >
+                  <Text fontSize="$3" color="$ink">{t('Help')}</Text>
+                </SidebarItem>
+              </YStack>
+              <YStack role="listitem">
+                <SidebarItem
+                  data-slot="anon-settings"
+                  {...ROW}
+                  bg="transparent"
+                  hoverStyle={{ bg: '$hover' }}
+                  icon={
+                    <XStack width={20} height={20} items="center" justify="center" shrink={0}>
+                      <Settings size={16} aria-hidden />
+                    </XStack>
+                  }
+                  onPress={() => setAnonSettingsOpen(true)}
+                  {...keys(() => setAnonSettingsOpen(true))}
+                >
+                  <Text fontSize="$3" color="$ink">{t('Settings')}</Text>
+                </SidebarItem>
+              </YStack>
+            </YStack>
+            <YStack data-slot="anon-tailored" gap="$2.5" pt="$3" pb="$1" px="$2" borderTopWidth={1} borderColor="$borderColor">
+              <Text fontSize={14} lineHeight={19} fontWeight="700" color="$ink">
+                {t('Get responses tailored to you')}
+              </Text>
+              <Text fontSize={12} lineHeight={17} color="$soft">
+                {t('Log in to get answers based on saved chats, plus create images and upload files.')}
+              </Text>
+              <XStack gap="$2" pt="$0.5">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  flex={1}
+                  rounded={9999}
+                  data-slot="column-login"
+                  onPress={() => {
+                    if (typeof window !== 'undefined') window.location.assign('/login?next=%2Fchat')
+                  }}
+                >
+                  {t('Log in')}
+                </Button>
+                <Button
+                  size="sm"
+                  flex={1}
+                  rounded={9999}
+                  data-slot="column-signup"
+                  onPress={() => {
+                    if (typeof window !== 'undefined') window.location.assign('/signup?next=%2Fchat')
+                  }}
+                >
+                  {t('Sign up for free')}
+                </Button>
+              </XStack>
+            </YStack>
+            <AnonSettingsDialog open={anonSettingsOpen} onOpenChange={setAnonSettingsOpen} host={host} />
+          </YStack>
+        ) : at ? null : (
           <YStack gap="$2" pt="$2" shrink={0}>
             <Made />
             <Setup go={go} />
           </YStack>
         )}
-        {free ? (
+        {!anon && free ? (
           <YStack role="list" gap={2} shrink={0} pt="$2">
             {/* A mark's height, centred: the rail's account beside it stands on the same line. */}
             <YStack role="listitem" minH={MARK} justify="center">
@@ -382,5 +548,140 @@ export function Sidebar({
         />
       )}
     </YStack>
+  )
+}
+
+function AnonSettingsDialog({
+  open,
+  onOpenChange,
+  host,
+}: {
+  open: boolean
+  onOpenChange: (next: boolean) => void
+  host: Host
+}) {
+  const { t, locale, setLocale } = useI18n()
+  const [tab, setTab] = useState<'appearance' | 'language'>('appearance')
+  const themeVal: Theme = host.theme ?? 'system'
+  const setThemeVal = (next: Theme) => host.chooseTheme?.(next)
+  const target = useMemo(() => ({ api: host.api, token: host.token, org: host.org }), [host.api, host.token, host.org])
+  const [spoken, speakIn] = useLanguage(target)
+  const currentLang = spoken || locale || 'en'
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent maxW={580} width="100%" p="$0" overflow="hidden" data-slot="anon-settings-dialog">
+        <XStack minH={340} width="100%">
+          <YStack width={180} p="$3" gap="$1" borderRightWidth={1} borderColor="$borderColor" bg="$panel" shrink={0}>
+            <DialogTitle>
+              <SizableText size="$3" fontWeight="600" color="$ink" px="$2" py="$1.5">
+                {t('Settings')}
+              </SizableText>
+            </DialogTitle>
+            <SidebarItem
+              {...ROW}
+              active={tab === 'appearance'}
+              icon={
+                <XStack width={18} height={18} items="center" justify="center" shrink={0}>
+                  <Palette size={15} aria-hidden />
+                </XStack>
+              }
+              onPress={() => setTab('appearance')}
+            >
+              <Text fontSize="$2" color={tab === 'appearance' ? '$ink' : '$soft'}>
+                {t('Appearance')}
+              </Text>
+            </SidebarItem>
+            <SidebarItem
+              {...ROW}
+              active={tab === 'language'}
+              icon={
+                <XStack width={18} height={18} items="center" justify="center" shrink={0}>
+                  <Languages size={15} aria-hidden />
+                </XStack>
+              }
+              onPress={() => setTab('language')}
+            >
+              <Text fontSize="$2" color={tab === 'language' ? '$ink' : '$soft'}>
+                {t('Language')}
+              </Text>
+            </SidebarItem>
+          </YStack>
+          <YStack flex={1} p="$4" gap="$4" minW={0}>
+            {tab === 'appearance' ? (
+              <YStack gap="$3">
+                <YStack gap="$1">
+                  <Text fontSize="$4" fontWeight="600" color="$ink">
+                    {t('Appearance')}
+                  </Text>
+                  <Text fontSize="$2" color="$soft">
+                    {t('Choose how Hanzo looks on your device.')}
+                  </Text>
+                </YStack>
+                <XStack gap="$2" flexWrap="wrap">
+                  {(
+                    [
+                      { id: 'light' as const, label: t('Light'), icon: <Sun size={15} aria-hidden /> },
+                      { id: 'dark' as const, label: t('Dark'), icon: <Moon size={15} aria-hidden /> },
+                      { id: 'system' as const, label: t('System'), icon: <Monitor size={15} aria-hidden /> },
+                    ]
+                  ).map((opt) => {
+                    const active = themeVal === opt.id
+                    return (
+                      <Button
+                        key={opt.id}
+                        size="sm"
+                        variant={active ? 'primary' : 'outline'}
+                        gap="$2"
+                        onPress={() => setThemeVal(opt.id)}
+                      >
+                        {opt.icon}
+                        {opt.label}
+                      </Button>
+                    )
+                  })}
+                </XStack>
+              </YStack>
+            ) : (
+              <YStack gap="$3">
+                <YStack gap="$1">
+                  <Text fontSize="$4" fontWeight="600" color="$ink">
+                    {t('Language')}
+                  </Text>
+                  <Text fontSize="$2" color="$soft">
+                    {t('Choose the language used across the interface and voice.')}
+                  </Text>
+                </YStack>
+                <YStack maxH={220} overflow="scroll" gap="$1">
+                  {locales.map((loc) => {
+                    const active = currentLang === loc.code
+                    return (
+                      <SidebarItem
+                        key={loc.code}
+                        {...ROW}
+                        active={active}
+                        onPress={() => {
+                          void setLocale?.(loc.code)
+                          speakIn(loc.code)
+                        }}
+                      >
+                        <XStack flex={1} items="center" justify="space-between">
+                          <Text fontSize="$2" color="$ink">
+                            {loc.name}
+                          </Text>
+                          <Text fontSize="$1" color="$soft">
+                            {loc.englishName}
+                          </Text>
+                        </XStack>
+                      </SidebarItem>
+                    )
+                  })}
+                </YStack>
+              </YStack>
+            )}
+          </YStack>
+        </XStack>
+      </DialogContent>
+    </Dialog>
   )
 }

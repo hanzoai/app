@@ -107,3 +107,6 @@ export function Look() {
 export function Host({ router, path = null, route, Link, children }: HostProps) {
   return <Context.Provider value={{ router, path, route, Link }}>{children}</Context.Provider>
 }
+
+export { Host as Rooms, useHost as useRooms }
+export type { HostProps as RoomsProps }

@@ -27,7 +27,7 @@ minimumReleaseAge: 0
 catalog:
   '@hanzo/ai': 0.7.0
   '@hanzo/appearance': 0.2.13
-  '@hanzo/build': 0.2.90
+  '@hanzo/build': https://github.com/hanzoai/build/releases/download/v0.2.103/hanzo-build-0.2.103.tgz
   '@hanzo/composer': 0.2.0
   '@hanzo/design': 0.5.39
   '@hanzo/event': 0.3.56
@@ -36,7 +36,7 @@ catalog:
   '@hanzo/iam': 0.21.35
   '@hanzo/logo': 1.0.26
   '@hanzo/personas': 1.0.5
-  '@hanzo/ui': 8.29.45
+  '@hanzo/ui': https://github.com/hanzoai/ui/releases/download/v8.29.47/hanzo-ui-8.29.47.tgz
   '@hanzo/usage': 0.1.18
   '@hanzo/studio': 0.1.0
   '@hanzo/tabs': github:hanzo-inc/tabs

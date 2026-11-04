@@ -10,8 +10,8 @@
  */
 export { configure, where, site, brand } from './where'
 export type { Addresses } from './where'
-export { Host, Look, useHost, useLook, useOrg } from './host'
-export type { Router, Link, HostProps } from './host'
+export { Host, Look, Rooms, useHost, useLook, useOrg, useRooms } from './host'
+export type { Router, Link, HostProps, RoomsProps } from './host'
 export * from './lib/local-fs'
 // Desktop UI loads through @hanzo/app/WindowControls and @hanzo/app/Editor; keep the root usable
 // by Node tools without loading @hanzo/ui and React Native.

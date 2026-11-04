@@ -97,6 +97,7 @@ export function useDevHost(): Host {
   const name = u?.displayName || u?.name || claimed?.name || ''
   const email = u?.email || claimed?.email || ''
   const avatar = typeof u?.avatar === 'string' && u.avatar.startsWith('https://') ? u.avatar : ''
+  const signedIn = Boolean(accessToken || bearer() || u)
 
   return useMemo<Host>(
     () => ({
@@ -114,7 +115,7 @@ export function useDevHost(): Host {
       },
       theme: theme(look.pref.theme),
       chooseTheme: (t) => look.set({ theme: theme(t) }),
-      person: { name, email, avatar },
+      person: signedIn ? { name, email, avatar } : null,
       admin: administers(bearer(), scoped),
       path: here,
       go: (to, how) => (isPlans(to) ? leave('here') : visit(router, app(to), how?.replace)),
@@ -141,6 +142,6 @@ export function useDevHost(): Host {
       signIn: () => enter(),
       signOut: () => void logout(),
     }),
-    [scoped, memberships, look.pref.theme, look.set, name, email, avatar, here, router, logout],
+    [scoped, memberships, look.pref.theme, look.set, signedIn, name, email, avatar, here, router, logout],
   )
 }

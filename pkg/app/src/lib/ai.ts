@@ -28,7 +28,6 @@ import { ORG, bearer, hasSession, org } from './session'
 import { createAiClient, type AiClient } from '@hanzo/ai'
 import { observed } from './served'
 import { researched } from './web'
-import { where } from '../where'
 
 /**
  * The tenant a signed-out turn is recorded against: the publishable key IAM
@@ -148,7 +147,7 @@ export function useAi(): Ai {
         ...base(),
       })
     }
-    return createAiClient({ fetch: wire, publishableKey: where().key ?? '', ...base() })
+    return createAiClient({ fetch: wire, ...base() })
   }, [account, sdk, scoped])
 
   return { client, model: account ? ENSO : FREE, free: !account, ready }
