@@ -1450,13 +1450,7 @@ function Thread({
       }),
     [],
   );
-  const byline = (id: string) => {
-    const heard = servedBy[id];
-    // A router named back as itself says nothing about who answered.
-    if (!heard || (heard.served === heard.asked && ROUTERS.has(heard.asked))) return null;
-    const fell = heard.asked && heard.asked !== heard.served && !ROUTERS.has(heard.asked);
-    return <Served served={heard.served} asked={fell ? heard.asked : undefined} />;
-  };
+  const byline = (_id: string) => null;
 
   // LISTEN reads a part in its speaker's cast voice, through the platform.
   const listen = useCallback(
@@ -1470,6 +1464,81 @@ function Thread({
     const a = lead(artifacts(text));
     return a ? () => see(a) : undefined;
   };
+  const threadActions = useThreadActions();
+  const [customTitle, setCustomTitle] = useState("");
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    setCustomTitle("");
+    setEditingTitle(false);
+  }, [open, emptied]);
+  useEffect(() => {
+    if (editingTitle && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  }, [editingTitle]);
+  const [sketchOpen, setSketchOpen] = useState(false);
+  const [sketchColor, setSketchColor] = useState("#2dd4bf");
+  const sketchCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const sketchDrawingRef = useRef(false);
+  const clearSketch = useCallback(() => {
+    const canvas = sketchCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.fillStyle = "#18181b";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }, []);
+  useEffect(() => {
+    if (sketchOpen) {
+      window.setTimeout(() => clearSketch(), 20);
+    }
+  }, [sketchOpen, clearSketch]);
+  const attachSketch = useCallback(() => {
+    const canvas = sketchCanvasRef.current;
+    if (!canvas) return;
+    canvas.toBlob((blobData) => {
+      if (!blobData) return;
+      const file = new File([blobData], `sketch-${Date.now()}.png`, { type: "image/png" });
+      void hold(at, [file], via);
+      setSketchOpen(false);
+    }, "image/png");
+  }, [at, via]);
+  const redoTurn = useCallback(
+    (turnId: string, action?: { mode: "retry" | "think" | "web" | "prompt"; prompt?: string }) => {
+      const list = turns.current;
+      const aIdx = list.findIndex((m) => m.id === turnId);
+      const searchSlice = aIdx >= 0 ? list.slice(0, aIdx) : list;
+      let uIdx = -1;
+      for (let i = searchSlice.length - 1; i >= 0; i -= 1) {
+        if (searchSlice[i]?.role === "user") {
+          uIdx = i;
+          break;
+        }
+      }
+      const q = uIdx >= 0 ? searchSlice[uIdx] : [...list].reverse().find((m) => m.role === "user");
+      if (!q) return;
+      const rawQ = typeof q.content === "string" ? told(q.content).text : words(q.content as Said);
+      if (action?.mode === "think") {
+        setChatPrefs({ effort: "xhigh" });
+        const next = shared("xhigh");
+        if (next) mind.pace(next);
+      } else if (action?.mode === "web") {
+        carry.gear.set({ research: true });
+      }
+      const nextPrompt =
+        action?.mode === "prompt" && action?.prompt
+          ? `${rawQ}\n\n(${action.prompt})`
+          : action?.mode === "web"
+            ? `${rawQ}\n\n(Search the web for current information.)`
+            : rawQ;
+      apply.current((held) => (uIdx >= 0 ? held.slice(0, uIdx) : held.filter((m) => m.id !== turnId && m.id !== q.id)));
+      setQueued(nextPrompt);
+    },
+    [setChatPrefs, mind, carry.gear],
+  );
 
   // WHAT AN ANSWER MAKES IS KEPT IN THE LIBRARY as it finishes (keep.ts): the
   // answer that just stopped, once the conversation it belongs to has an id.
@@ -1505,14 +1574,65 @@ function Thread({
   const currentThread = useMemo<Thread>(() => {
     const firstText = said[0]?.content;
     const initialText = typeof firstText === "string" ? firstText : Array.isArray(firstText) ? (firstText[0] as { text?: string })?.text : "";
-    return mine ?? {
+    const base = mine ?? {
       id: open || "active-chat",
-      title: tidy(initialText || t("New chat")),
+      title: tidy(initialText || t("Untitled")),
       created: Date.now(),
       updated: Date.now(),
       cast: cast.length ? cast : [],
     };
-  }, [mine, open, said, t, cast]);
+    return customTitle.trim() ? { ...base, title: customTitle.trim() } : base;
+  }, [mine, open, said, t, cast, customTitle]);
+
+  const shownTitle = useMemo(() => {
+    if (customTitle.trim()) return customTitle.trim();
+    if (mine?.title) return tidy(mine.title);
+    if (said.length > 0) return tidy(currentThread.title);
+    return t("Untitled");
+  }, [customTitle, mine?.title, said.length, currentThread.title, t]);
+
+  const commitTitle = useCallback(() => {
+    const next = titleDraft.trim();
+    setEditingTitle(false);
+    if (!next || next === shownTitle) return;
+    setCustomTitle(next);
+    const targetId = mine?.id || kept || open;
+    if (targetId && !anonymous && !forgetful) {
+      const baseThread = mine ?? { ...currentThread, id: targetId };
+      void threadActions.rename(baseThread, next);
+    }
+  }, [titleDraft, shownTitle, mine, kept, open, anonymous, forgetful, currentThread, threadActions]);
+
+  const branchTurn = useCallback(
+    (turnId: string) => {
+      const list = turns.current;
+      const aIdx = list.findIndex((m) => m.id === turnId);
+      const sliced = aIdx >= 0 ? list.slice(0, aIdx + 1) : list.slice();
+      const branchedTitle = `${shownTitle.replace(/\s*\(Branch\)$/i, "")} (Branch)`;
+      setCustomTitle(branchedTitle);
+      apply.current(sliced);
+      if (!anonymous && !forgetful) {
+        const toRecord = sliced
+          .filter((m) => m.role === "user" || m.role === "assistant")
+          .map((m) => ({
+            role: m.role as "user" | "assistant",
+            content: typeof m.content === "string" ? m.content : words(m.content as Said),
+          }));
+        if (toRecord.length) {
+          void ai.threads
+            .record(toRecord)
+            .then((newId) => {
+              if (newId) {
+                reopen(newId);
+                void ai.threads.update(newId, { title: branchedTitle }).catch(() => {});
+              }
+            })
+            .catch(() => {});
+        }
+      }
+    },
+    [shownTitle, anonymous, forgetful, ai, reopen],
+  );
 
   const currentThreadMap = useMemo(() => {
     const map = new Map(alone);
@@ -1875,17 +1995,57 @@ function Thread({
         ) : undefined,
       // THE `+`: files (the Sources tab's "Attach files", one press closer),
       // who is in the conversation, the skills, and the two switches.
-      plus: anonymous
-        ? { upload: () => take(at, via) }
-        : {
-            upload: () => take(at, via),
-            agents: agentShelf,
-            skills: carry.skills,
-            design: carry.design,
-            plugins: carry.plugins,
-            research: { on: carry.gear.gear.research, set: (on) => carry.gear.set({ research: on }) },
-            memory: { on: carry.gear.gear.memory, set: (on) => carry.gear.set({ memory: on }) },
+      plus: (() => {
+        const focusField = () => {
+          window.setTimeout(() => {
+            const el = document.querySelector('[data-slot="composer-field"], textarea');
+            if (el instanceof HTMLElement) el.focus();
+          }, 40);
+        };
+        const commonPlus = {
+          upload: () => take(at, via),
+          library: () => {
+            if (!anonymous) go("/library");
+            else take(at, via);
           },
+          createImage: () => {
+            setDraft((prev) => (prev.trim() ? prev : t("Create an image of ")));
+            focusField();
+          },
+          browserTabs: () => {
+            if (!deck.tabs.length) {
+              deck.open({ kind: PAGE, title: t("New tab"), url: "" });
+            }
+            setPanel(true);
+          },
+          webSearch: () => {
+            carry.gear.set({ research: true });
+            setDraft((prev) => (prev.trim() ? prev : t("Search the web for ")));
+            focusField();
+          },
+          sketch: () => setSketchOpen(true),
+          thinking: {
+            on: (chatPrefs.effort || "high") === "xhigh",
+            set: (on: boolean) => {
+              const eff = on ? "xhigh" : "high";
+              setChatPrefs({ effort: eff });
+              const next = shared(eff);
+              if (next) mind.pace(next);
+            },
+          },
+          research: { on: carry.gear.gear.research, set: (on: boolean) => carry.gear.set({ research: on }) },
+        };
+        return anonymous
+          ? commonPlus
+          : {
+              ...commonPlus,
+              agents: agentShelf,
+              skills: carry.skills,
+              design: carry.design,
+              plugins: carry.plugins,
+              memory: { on: carry.gear.gear.memory, set: (on: boolean) => carry.gear.set({ memory: on }) },
+            };
+      })(),
       // Who is in the conversation, then what it carries, as chips after `+`.
       carried: [
         ...cast.map((name) => ({
@@ -2042,11 +2202,76 @@ function Thread({
         $max-md={!mine && !cast.length ? { display: 'none' } : undefined}
       >
         <XStack items="center" gap="$2" minW={0}>
-          {mine ? (
-            <Text fontSize={15} lineHeight={20} color="$ink" numberOfLines={1} shrink={1} minW={0}>
-              {tidy(mine.title)}
-            </Text>
-          ) : null}
+          {editingTitle ? (
+            <input
+              ref={titleInputRef}
+              type="text"
+              data-slot="conversation-title-input"
+              data-tauri-drag-region="false"
+              aria-label={t("Chat title")}
+              value={titleDraft}
+              autoFocus
+              maxLength={200}
+              onMouseDown={(e) => e.stopPropagation()}
+              onDoubleClick={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onBlur={commitTitle}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitTitle();
+                } else if (e.key === "Escape") {
+                  e.preventDefault();
+                  setEditingTitle(false);
+                }
+              }}
+              style={{
+                fontSize: "15px",
+                lineHeight: "20px",
+                fontWeight: 500,
+                color: "var(--color, var(--foreground))",
+                background: "var(--surface-1, rgba(255,255,255,0.06))",
+                border: "1px solid var(--border-strong, var(--border))",
+                borderRadius: "6px",
+                padding: "2px 8px",
+                marginLeft: "-8px",
+                outline: "none",
+                minWidth: "160px",
+                maxWidth: "360px",
+                width: `${Math.min(360, Math.max(160, (titleDraft.length + 2) * 8))}px`,
+                fontFamily: "inherit",
+              }}
+            />
+          ) : (
+            <XStack
+              data-slot="conversation-title"
+              data-tauri-drag-region="false"
+              items="center"
+              gap="$1.5"
+              px="$2"
+              py="$1"
+              mx="$-2"
+              rounded="$3"
+              minW={0}
+              shrink={1}
+              cursor="pointer"
+              hoverStyle={{ bg: "$hover" }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onDoubleClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                setTitleDraft(shownTitle);
+                setEditingTitle(true);
+              }}
+              title={t("Click to rename")}
+            >
+              <Text fontSize={15} lineHeight={20} fontWeight="500" color={mine || said.length > 0 || customTitle ? "$ink" : "$soft"} numberOfLines={1} shrink={1} minW={0}>
+                {shownTitle}
+              </Text>
+            </XStack>
+          )}
           {/* WHO IS AT THE OTHER END, or nothing at all.
               `withWhom || "Jobs"` put a name and a photograph on a conversation the
               reader had chosen nobody for — the same defect the empty state
@@ -2298,7 +2523,16 @@ function Thread({
                         </XStack>
                       ) : null}
                       <Prose text={part.text} />
-                      {part.text ? <Reply text={part.text} listen={listen(part.who ?? withWhom ?? undefined)} onOpen={opener(part.text)} /> : null}
+                      {part.text ? (
+                        <Reply
+                          text={part.text}
+                          title={shownTitle}
+                          listen={listen(part.who ?? withWhom ?? undefined)}
+                          onOpen={opener(part.text)}
+                          onRedo={(act) => redoTurn(turn.id, act)}
+                          onBranch={() => branchTurn(turn.id)}
+                        />
+                      ) : null}
                     </YStack>
                   ))}
                   {silent.length ? (
@@ -2317,7 +2551,16 @@ function Thread({
                     `Reply`): copy the markdown as written, listen in the
                     speaker's voice, and open what it wrote in the side panel.
                     Only an answer, and only one with words in it. */}
-                {turn.role === "assistant" && said ? <Reply text={said} listen={listen(withWhom ?? undefined)} onOpen={opener(said)} /> : null}
+                {turn.role === "assistant" && said ? (
+                  <Reply
+                    text={said}
+                    title={shownTitle}
+                    listen={listen(withWhom ?? undefined)}
+                    onOpen={opener(said)}
+                    onRedo={(act) => redoTurn(turn.id, act)}
+                    onBranch={() => branchTurn(turn.id)}
+                  />
+                ) : null}
                 {turn.role === "assistant" && said ? byline(turn.id) : null}
                 {turn.role === "user" && said && !anonymous ? <Plan onPress={() => setPlan(said)} /> : null}
               </YStack>
