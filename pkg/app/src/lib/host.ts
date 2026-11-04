@@ -275,6 +275,8 @@ export function leaves(address: string): boolean {
   return APPS.includes(path)
 }
 
+export { APPS as ROOMS, leaves as room }
+
 /**
  * Where an address belongs when it is asked for on `hostname`: on a `guest`
  * alias, the same address on hanzo.ai, because every app signs in and a guest

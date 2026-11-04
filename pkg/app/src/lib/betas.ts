@@ -21,6 +21,8 @@
  */
 
 import { phrase } from '@hanzo/i18n'
+import { CHANGED } from './optin'
+import { superAdmin } from './session'
 
 export const GROUPS = ['Business', 'Data', 'Agents', 'Build & run', 'Security', 'Creative', 'Models'] as const
 
@@ -110,4 +112,59 @@ export const key = (id: string): string => `beta.${id}`
  * GET /v1/flag/platform answered for them; `sudo` is a SuperAdmin (who sees every
  * app) or a page served off a developer's own machine. Nothing else opens one.
  */
-export const opens = (id: string, flags: Record<string, boolean>, sudo: boolean): boolean => sudo || flags[key(id)] === true
+export const opens = (id: string, flags: Record<string, boolean>, sudo: boolean): boolean => {
+  const override = getAdminBetaFlag(id)
+  if (override !== null) return override
+  const all = getAdminBetaAll()
+  if (all === 'on') return true
+  if (all === 'off') return false
+  return sudo || flags[key(id)] === true
+}
+
+const ADMIN_BETA_ALL_KEY = 'hanzo.beta.admin.all'
+const ADMIN_BETA_FLAG_PREFIX = 'hanzo.beta.admin.flag.'
+
+export function hanzoAdmin(): boolean {
+  return superAdmin()
+}
+
+export function getAdminBetaAll(): 'on' | 'off' | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const v = window.localStorage.getItem(ADMIN_BETA_ALL_KEY)
+    return v === 'on' || v === 'off' ? v : null
+  } catch {
+    return null
+  }
+}
+
+export function setAdminBetaAll(val: 'on' | 'off' | null): void {
+  if (typeof window === 'undefined') return
+  try {
+    if (val === null) window.localStorage.removeItem(ADMIN_BETA_ALL_KEY)
+    else window.localStorage.setItem(ADMIN_BETA_ALL_KEY, val)
+    for (const b of BETAS) {
+      window.localStorage.removeItem(`${ADMIN_BETA_FLAG_PREFIX}${b.id}`)
+    }
+    window.dispatchEvent(new CustomEvent(CHANGED))
+  } catch {}
+}
+
+export function getAdminBetaFlag(id: string): boolean | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const v = window.localStorage.getItem(`${ADMIN_BETA_FLAG_PREFIX}${id}`)
+    return v === '1' ? true : v === '0' ? false : null
+  } catch {
+    return null
+  }
+}
+
+export function setAdminBetaFlag(id: string, enabled: boolean | null): void {
+  if (typeof window === 'undefined') return
+  try {
+    if (enabled === null) window.localStorage.removeItem(`${ADMIN_BETA_FLAG_PREFIX}${id}`)
+    else window.localStorage.setItem(`${ADMIN_BETA_FLAG_PREFIX}${id}`, enabled ? '1' : '0')
+    window.dispatchEvent(new CustomEvent(CHANGED))
+  } catch {}
+}

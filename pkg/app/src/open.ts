@@ -41,6 +41,9 @@ export interface Open {
    */
   channel: string | null
   openChannel: (key: string | null) => void
+  /** Alias for `channel` for callers using the legacy `room` name. */
+  room: string | null
+  openRoom: (key: string | null) => void
   /** The open drive bucket, or null for the list of them. */
   bucket: string | null
   openBucket: (name: string | null) => void
@@ -255,6 +258,8 @@ export function useOpen(): Open {
     openSession,
     channel: current.channel,
     openChannel,
+    room: current.channel,
+    openRoom: openChannel,
     bucket: current.bucket,
     openBucket,
     settings: current.settings,
@@ -270,3 +275,5 @@ export function useOpen(): Open {
     empty,
   }
 }
+
+export { openChannel as openRoom }

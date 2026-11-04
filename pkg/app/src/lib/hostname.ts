@@ -19,3 +19,5 @@ export function useHostname(): string {
     () => '',
   )
 }
+
+export { useHostname as useHost }
