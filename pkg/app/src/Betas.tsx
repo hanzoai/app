@@ -30,6 +30,7 @@ import { useIam } from '@hanzo/iam/react'
 import { Button, Dialog, DialogContent, DialogTitle, Text, XStack, YStack } from '@hanzo/ui'
 import { api } from './lib/api'
 import { BETAS, GROUPS, opens, type Beta, type Group } from './lib/betas'
+import { useHydrated } from './lib/hydrated'
 import { bearer, scope, superAdmin } from './lib/session'
 import { hosted } from './lib/host'
 import { CHANGED, optin } from './lib/optin'
@@ -109,26 +110,31 @@ export function useBetas(): {
 } {
   const { t } = useI18n()
   const { accessToken } = useIam()
-  const [sudo, setSudo] = useState(false)
-  const [local, setLocal] = useState(false)
-  // Facts only the browser holds arrive after mount, so the first render
-  // matches the HTML it hydrates.
-  useEffect(() => setLocal(here()), [])
-  useEffect(() => setSudo(superAdmin()), [accessToken])
+  const hydrated = useHydrated()
+  const [adminRev, setAdminRev] = useState(0)
+  const local = hydrated && here()
+  const sudo = hydrated && superAdmin()
   const token = accessToken ? bearer() ?? '' : ''
   const now = useSyncExternalStore(subscribe, () => held, () => null)
   useEffect(() => {
     if (token && (!held || held.token !== token || Date.now() - held.at > FRESH)) void read(token)
   }, [token])
-  // A change of the opt-in changes what the cloud opens: read it all again.
+  // A change of the opt-in or admin beta override changes what opens: read it all again.
   useEffect(() => {
-    if (!token) return
-    const again = () => void read(token)
+    const again = () => {
+      setAdminRev((n) => n + 1)
+      if (token) void read(token)
+    }
     window.addEventListener(CHANGED, again)
-    return () => window.removeEventListener(CHANGED, again)
+    window.addEventListener('storage', again)
+    return () => {
+      window.removeEventListener(CHANGED, again)
+      window.removeEventListener('storage', again)
+    }
   }, [token])
   const said = token && now?.token === token ? now.said : NONE
-  const open = useCallback((id: string) => opens(id, said.flags, sudo || local), [said, sudo, local])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const open = useCallback((id: string) => opens(id, said.flags, sudo, local), [said, sudo, local, adminRev])
   const asked = useCallback((id: string) => said.asked.includes(id), [said])
   const promoted = useCallback((id: string) => said.public.includes(id), [said])
   const request = useCallback(

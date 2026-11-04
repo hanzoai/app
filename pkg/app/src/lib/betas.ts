@@ -22,7 +22,7 @@
 
 import { phrase } from '@hanzo/i18n'
 import { CHANGED } from './optin'
-import { superAdmin } from './session'
+import { home, named, orgs, superAdmin } from './session'
 
 export const GROUPS = ['Business', 'Data', 'Agents', 'Build & run', 'Security', 'Creative', 'Models'] as const
 
@@ -79,6 +79,7 @@ export const BETAS: readonly Beta[] = [
   { id: 'crawl', name: 'Crawl', line: phrase('Turn a website into clean Markdown'), group: 'Data', href: `${PLATFORM}/crawl` },
   { id: 'workspace', name: 'Google Workspace', line: phrase('Drive, Docs, Sheets, Gmail and Calendar for the assistant, read and write'), group: 'Data' },
 
+  { id: 'flow', name: 'Flow', line: phrase('Visual node-graph canvas for agents, RAG pipelines and workflows'), group: 'Agents', href: '/flow' },
   { id: 'operative', name: 'Operative', line: phrase('A desktop in a container, driven by a model'), group: 'Agents' },
   { id: 'tasks', name: 'Tasks', line: phrase('Durable execution for long-running work'), group: 'Agents', href: `${PLATFORM}/tasks` },
 
@@ -94,6 +95,7 @@ export const BETAS: readonly Beta[] = [
   { id: 'authz', name: 'Authz', line: phrase('Fine-grained authorization, Zanzibar style'), group: 'Security', href: `${PLATFORM}/authz` },
   { id: 'hsm', name: 'HSM', line: phrase('Hardware-backed keys across cloud KMSs'), group: 'Security', href: `${PLATFORM}/hsm` },
 
+  { id: 'studio', name: 'Studio', line: phrase('AI cinema director, camera motion rig and multi-shot timeline'), group: 'Creative', href: '/studio' },
   { id: 'koma', name: 'Koma', line: phrase('Cinematic video with character continuity and shot-level control'), group: 'Creative' },
   { id: 'iro', name: 'Iro', line: phrase('High-fidelity images, creative direction and consistent visual assets'), group: 'Creative' },
   { id: 'mori', name: 'Mori', line: phrase('3D assets, materials, environments and spatially consistent scenes'), group: 'Creative' },
@@ -112,20 +114,33 @@ export const key = (id: string): string => `beta.${id}`
  * GET /v1/flag/platform answered for them; `sudo` is a SuperAdmin (who sees every
  * app) or a page served off a developer's own machine. Nothing else opens one.
  */
-export const opens = (id: string, flags: Record<string, boolean>, sudo: boolean): boolean => {
+export const opens = (id: string, flags: Record<string, boolean>, sudo: boolean, local = false): boolean => {
   const override = getAdminBetaFlag(id)
   if (override !== null) return override
   const all = getAdminBetaAll()
   if (all === 'on') return true
   if (all === 'off') return false
-  return sudo || flags[key(id)] === true
+  if (flags?.[key(id)] === true) return true
+  if (local) return true
+  if (id === 'studio' || id === 'flow') return false
+  return Boolean(sudo)
 }
 
-const ADMIN_BETA_ALL_KEY = 'hanzo.beta.admin.all'
-const ADMIN_BETA_FLAG_PREFIX = 'hanzo.beta.admin.flag.'
+const ADMIN_BETA_ALL_KEY = 'hz_beta_admin_all'
+const ADMIN_BETA_FLAG_PREFIX = 'hz_beta_admin_flag_'
+const HANZO_ADMIN_ORGS = new Set(['admin', 'hanzo', 'hanzoai', 'hanzo-inc', 'hanzo-apps', 'platform'])
 
 export function hanzoAdmin(): boolean {
-  return superAdmin()
+  if (typeof window === 'undefined') return false
+  if (superAdmin()) return true
+  const h = home()
+  if (h && HANZO_ADMIN_ORGS.has(h.toLowerCase())) return true
+  for (const o of orgs()) {
+    if (HANZO_ADMIN_ORGS.has(o.toLowerCase())) return true
+  }
+  const email = (named()?.email ?? '').trim().toLowerCase()
+  if (email.endsWith('@hanzo.ai') || email.endsWith('@hanzo.team') || email.endsWith('@hanzo.inc')) return true
+  return false
 }
 
 export function getAdminBetaAll(): 'on' | 'off' | null {

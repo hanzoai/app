@@ -81,7 +81,20 @@ export const where = (): Addresses => addresses
 export const brand = (): string => addresses.brand ?? 'Hanzo AI'
 
 /** The product's name in each mode of the app: the host's brand in Chat (Hanzo AI, Hanzo Team), Hanzo Dev in Dev. */
-export const wordmark = (mode: 'chat' | 'dev' | 'studio' | 'tabs' | 'beta' | 'hosted'): string => (mode === 'dev' ? 'Hanzo Dev' : mode === 'studio' ? 'Hanzo Studio' : mode === 'tabs' ? 'Hanzo Tabs' : mode === 'beta' ? 'Hanzo Betas' : brand())
+export const wordmark = (mode: 'chat' | 'dev' | 'studio' | 'design' | 'flow' | 'tabs' | 'beta' | 'hosted'): string =>
+  mode === 'dev'
+    ? 'Hanzo Dev'
+    : mode === 'studio'
+      ? 'Hanzo Studio'
+      : mode === 'design'
+        ? 'Hanzo Design'
+        : mode === 'flow'
+          ? 'Hanzo Flow'
+          : mode === 'tabs'
+            ? 'Hanzo Tabs'
+            : mode === 'beta'
+              ? 'Hanzo Betas'
+              : brand()
 
 /** A page of the app's own, from wherever the apps are mounted. */
 export const site = (path: string): string => `${addresses.site}${path}`

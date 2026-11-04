@@ -64,6 +64,8 @@ export const DEV = '/dev'
  * hanzo.ai/studio, whose page draws the app for a signed-in reader.
  */
 export const STUDIO = '/studio'
+export const DESIGN = '/design'
+export const FLOW = '/flow'
 
 /**
  * Tabs: the terminals on the reader's linked machines and sandboxes, tiled
@@ -90,6 +92,10 @@ const inside = (id: string): boolean => BETAS.some((b) => b.id === id && b.embed
 
 /** Studio at an address of its own (@hanzo/studio `route`): '' is New, /studio. */
 export const studio = (at: string): string => (at ? `${STUDIO}/${at.replace(/^\/+/, '')}` : STUDIO)
+/** Design at an address of its own (@hanzo/studio `route`): '' is New, /design. */
+export const design = (at: string): string => (at ? `${DESIGN}/${at.replace(/^\/+/, '')}` : DESIGN)
+/** Flow at an address of its own (@hanzo/studio `FlowStudio`): '' is New, /flow. */
+export const flow = (at: string): string => (at ? `${FLOW}/${at.replace(/^\/+/, '')}` : FLOW)
 
 /** Chat on a conversation, or /chat itself for a new one. */
 export const talk = (id?: string | null): string => (id ? `${CHAT}/${encodeURIComponent(id)}` : CHAT)
@@ -135,7 +141,15 @@ export function app(at: string): string {
 }
 
 /** A place in the app: Chat on a conversation or none, or Dev at a builder address. */
-export type Place = { mode: 'chat'; thread: string | null } | { mode: 'dev'; at: string } | { mode: 'studio'; at: string } | { mode: 'tabs' } | { mode: 'beta' } | { mode: 'hosted'; id: string }
+export type Place =
+  | { mode: 'chat'; thread: string | null }
+  | { mode: 'dev'; at: string }
+  | { mode: 'studio'; at: string }
+  | { mode: 'design'; at: string }
+  | { mode: 'flow'; at: string }
+  | { mode: 'tabs' }
+  | { mode: 'beta' }
+  | { mode: 'hosted'; id: string }
 
 /** /chat/shared is a page of its own, where a chat shared by link is read (lib/share.ts). */
 const SHARED = 'shared'
@@ -146,6 +160,8 @@ export function place(pathname: string): Place | null {
   if (p === CHAT) return { mode: 'chat', thread: null }
   if (p === DEV || p.startsWith(`${DEV}/`)) return { mode: 'dev', at: path(parse(p.slice(DEV.length))) }
   if (p === STUDIO || p.startsWith(`${STUDIO}/`)) return { mode: 'studio', at: p.slice(STUDIO.length + 1) }
+  if (p === DESIGN || p.startsWith(`${DESIGN}/`)) return { mode: 'design', at: p.slice(DESIGN.length + 1) }
+  if (p === FLOW || p.startsWith(`${FLOW}/`)) return { mode: 'flow', at: p.slice(FLOW.length + 1) }
   if (p === TERMINALS) return { mode: 'tabs' }
   if (p === BETA) return { mode: 'beta' }
   if (p.startsWith(`${HOSTED}/`)) {
@@ -169,6 +185,8 @@ export function page(pathname: string): string {
   if (at.mode === 'chat') return at.thread ? `${CHAT}/:id` : CHAT
   if (at.mode === 'tabs') return TERMINALS
   if (at.mode === 'studio') return STUDIO
+  if (at.mode === 'design') return DESIGN
+  if (at.mode === 'flow') return FLOW
   if (at.mode === 'beta') return BETA
   if (at.mode === 'hosted') return `${HOSTED}/:id`
   const r = route(at.at)
@@ -241,7 +259,7 @@ export function remember(mode: Place['mode']): void {
 export function resume(): string {
   try {
     const kept = window.localStorage.getItem(MODE)
-    return kept === 'dev' ? DEV : kept === 'studio' ? STUDIO : kept === 'tabs' ? TERMINALS : CHAT
+    return kept === 'dev' ? DEV : kept === 'studio' ? STUDIO : kept === 'design' ? DESIGN : kept === 'flow' ? FLOW : kept === 'tabs' ? TERMINALS : CHAT
   } catch {
     return CHAT
   }

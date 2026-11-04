@@ -35,7 +35,7 @@
 // the menu's foot.
 
 import { useI18n } from '@hanzo/i18n/react'
-import { Clock, Code2, Compass, Ellipsis, FlaskConical, Library, MessageSquare, PanelLeft, Puzzle, Sparkles, SquareTerminal, Users, WandSparkles } from 'lucide-react'
+import { Clapperboard, Clock, Code2, Compass, Ellipsis, FlaskConical, Library, MessageSquare, PanelLeft, Puzzle, Sparkles, SquareTerminal, Users, WandSparkles } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Text, XStack, YStack } from '@hanzo/gui'
 import { route, type Host } from '@hanzo/build'
@@ -179,6 +179,7 @@ export function Rail({
   rows = false,
   onChat,
   onDev,
+  onDesign,
   onStudio,
   onTabs,
   go,
@@ -196,9 +197,10 @@ export function Rail({
   inside?: string | null
   /** Listed as rows in a phone's menu rather than marks down the window's edge. */
   rows?: boolean
-  /** To Chat, Dev and Studio, each where the reader left it. */
+  /** To Chat, Dev, Design and Studio, each where the reader left it. */
   onChat: () => void
   onDev: () => void
+  onDesign?: () => void
   onStudio: () => void
   onTabs: () => void
   /** Moves the app to an address of this page. */
@@ -212,11 +214,11 @@ export function Rail({
   const to = (p: string) => () => go(app(p))
   // The products on hosts of their own, behind More; on a phone the raised places lead it.
   // Studio offers no Team, so on a laptop it draws no More.
-  const team = mode !== 'studio'
+  const team = mode !== 'studio' && mode !== 'design'
   const { open: opened } = useBetas()
   const [betas, setBetas] = useState(false)
   // The apps in beta this reader may open, each where it lives; those that draw inside the app have marks of their own.
-  const granted = BETAS.filter((b) => b.href && b.embed === undefined && opened(b.id))
+  const granted = BETAS.filter((b) => b.href && b.embed === undefined && b.id !== 'studio' && opened(b.id))
   const apps = HOSTED_APPS.filter((a) => opened(a.id))
   // A link out of the app, or a place in it.
   const reach = (address: string) => (address.startsWith('/') ? go(address) : out(address))
@@ -232,7 +234,7 @@ export function Rail({
     ...(team
       ? [
           { key: 'team', label: 'Team', icon: <Users size={16} aria-hidden />, onSelect: () => out(WORKSPACE) },
-          ...granted.map((b) => ({ key: `beta-${b.id}`, label: b.name, icon: <Sparkles size={16} aria-hidden />, onSelect: () => out(b.href as string) })),
+          ...granted.map((b) => ({ key: `beta-${b.id}`, label: b.name, icon: <Sparkles size={16} aria-hidden />, onSelect: () => reach(b.href as string) })),
           { type: 'separator' as const, key: 'betas-rule' },
           { key: 'betas', label: t('Betas'), icon: <FlaskConical size={16} aria-hidden />, onSelect: () => go('/beta') },
           { key: 'market', label: t('Explore on hanzo.market'), icon: <Compass size={16} aria-hidden />, onSelect: () => out('https://hanzo.market') },
@@ -245,8 +247,13 @@ export function Rail({
       <YStack data-slot="places" render="nav" aria-label={t('Products')} pt="$2" shrink={0}>
         <YStack role="list" gap={2}>
           <YStack role="listitem">
-            <Row label="Studio" on={mode === 'studio'} onPress={onStudio} data-slot="place-studio" icon={<WandSparkles size={16} aria-hidden />} />
+            <Row label="Design" on={mode === 'design'} onPress={onDesign} data-slot="place-design" icon={<WandSparkles size={16} aria-hidden />} />
           </YStack>
+          {opened('studio') ? (
+            <YStack role="listitem">
+              <Row label="Studio" on={mode === 'studio'} onPress={onStudio} data-slot="place-studio" icon={<Clapperboard size={16} aria-hidden />} />
+            </YStack>
+          ) : null}
           <YStack role="listitem">
             <Row label="Tabs" on={mode === 'tabs'} onPress={onTabs} data-slot="place-tabs" icon={<SquareTerminal size={16} aria-hidden />} />
           </YStack>
@@ -284,7 +291,7 @@ export function Rail({
           <Toggle open={open} onPress={toggle} />
         </YStack>
       ) : null}
-      {/* The marks take what the toggle and the account leave, and scroll there: a short window
+      {/* The marks take what the toggle and the account leave, and scroll inside it: a short window
           with every product's mark scrolled the whole page and put the account below the fold. */}
       <YStack data-slot="rail-marks" flex={1} minH={0} overflowY="auto" overflowX="hidden" items="center" gap={4} width="100%" $platform-web={{ scrollbarWidth: 'none' }}>
       <Mark label={t('Chat')} on={mode === 'chat'} onPress={onChat} data-slot="rail-chat">
@@ -293,9 +300,14 @@ export function Rail({
       <Mark label="Dev" on={mode === 'dev' && !here} onPress={onDev} data-slot="rail-dev">
         <Code2 size={18} aria-hidden />
       </Mark>
-      <Mark label="Studio" on={mode === 'studio'} onPress={onStudio} data-slot="rail-studio">
+      <Mark label="Design" on={mode === 'design'} onPress={onDesign} data-slot="rail-design">
         <WandSparkles size={18} aria-hidden />
       </Mark>
+      {opened('studio') ? (
+        <Mark label="Studio" on={mode === 'studio'} onPress={onStudio} data-slot="rail-studio">
+          <Clapperboard size={18} aria-hidden />
+        </Mark>
+      ) : null}
       <Mark label="Tabs" on={mode === 'tabs'} onPress={onTabs} data-slot="rail-tabs">
         <SquareTerminal size={18} aria-hidden />
       </Mark>

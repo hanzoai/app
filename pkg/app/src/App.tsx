@@ -62,10 +62,12 @@
 
 import { useI18n } from '@hanzo/i18n/react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, RefreshCw } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Clapperboard, RefreshCw, Workflow } from 'lucide-react'
 import { AiProvider } from '@hanzo/ai/react'
 import { XStack, YStack } from '@hanzo/gui'
+import { Button, Text } from '@hanzo/ui'
 import { Builder, HostProvider, PrefsProvider, route, tabs, type Host } from '@hanzo/build'
+import * as studioPkg from '@hanzo/studio'
 import { nav as places } from '@hanzo/studio'
 import { useAi } from './lib/ai'
 import { Chat } from './Chat'
@@ -84,13 +86,28 @@ import { Search } from './Search'
 import { summons } from './seek'
 import { floor, pane } from './ground'
 import { pick } from './lib/session'
-import { app, go, hosted, place, settings, studio, talk, TERMINALS, visit, type Place } from './lib/host'
+import { Ask, useBetas } from './Betas'
+import { BETAS } from './lib/betas'
+import { app, design, flow, go, hosted, place, settings, studio, talk, TERMINALS, visit, type Place } from './lib/host'
 import { Bar } from './Bar'
 import { FOOT, HEIGHT, TOP, useView } from './view'
 import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowControls'
 
+const directorNav = (studioPkg as { directorNav?: typeof places }).directorNav ?? places
+const flowNav = (studioPkg as { flowNav?: typeof places }).flowNav ?? places
+
 /** Studio, fetched the first time the reader stands in it. */
 const Studio = lazy(() => import('@hanzo/studio').then((m) => ({ default: m.Studio })))
+const DirectorStudio = lazy(() =>
+  import('@hanzo/studio').then((m) => ({
+    default: (m as unknown as { DirectorStudio?: React.ComponentType<{ host: Host }> }).DirectorStudio ?? m.Studio,
+  })),
+)
+const FlowStudio = lazy(() =>
+  import('@hanzo/studio').then((m) => ({
+    default: (m as unknown as { FlowStudio?: React.ComponentType<{ host: Host }> }).FlowStudio ?? m.Studio,
+  })),
+)
 /** Tabs, the same way: the terminals on the reader's machines (Terminals.tsx). */
 const Terminals = lazy(() => import('./Terminals'))
 /** The apps in beta that draw inside the app (lib/hosted), fetched when one is opened at /apps/<id>. */
@@ -128,7 +145,7 @@ export interface Hosted {
 const BAR = 40
 
 /** Where each mode was last, so the rail goes back to it. */
-const last = { chat: '', dev: '', studio: '', tabs: '' }
+const last = { chat: '', dev: '', studio: '', design: '', flow: '', tabs: '' }
 
 /** Whether a key press is the reader typing, where the app's keys are the field's. */
 const typing = (e: KeyboardEvent): boolean => {
@@ -180,26 +197,32 @@ function Window({ bar, betas }: Hosted) {
   const here = path ?? '/'
   const at = place(here) ?? HOME
   const mode = at.mode
+  const { open: betaOpen } = useBetas()
+  const blockedBeta = (mode === 'studio' || mode === 'flow') && !betaOpen(mode)
   // Tabs, Betas and the hosted apps are their panes alone: no sidebar beside them, and no Dev places in a phone's menu.
-  const alone = mode === 'tabs' || mode === 'beta' || mode === 'hosted'
+  const alone = mode === 'tabs' || mode === 'beta' || mode === 'hosted' || blockedBeta
   // The hosted app the address names (lib/hosted), for the rail to light.
   const inside = at.mode === 'hosted' ? at.id : null
   const where = at.mode === 'dev' ? at.at : null
-  // Studio's host: Dev's, at Studio's address, its moves under /studio, and
-  // another organization opening Studio's New in it.
-  const made = at.mode === 'studio' ? at.at : ''
+  // Studio, Design & Flow host: Dev's, at Studio's (/studio), Design's (/design) or Flow's (/flow) address.
+  const inDesign = at.mode === 'design'
+  const inStudio = at.mode === 'studio'
+  const inFlow = at.mode === 'flow'
+  const made = inDesign || inStudio || inFlow ? at.at : ''
+  const modeRoute = inDesign ? design : inFlow ? flow : studio
+  const modeName = inDesign ? 'Hanzo Design' : inFlow ? 'Hanzo Flow' : 'Hanzo Studio'
   const maker = useMemo<Host>(
     () => ({
       ...host,
-      name: 'Hanzo Studio',
+      name: modeName,
       path: made,
-      go: (to, how) => depart((replace) => go(studio(to), replace || how?.replace)),
+      go: (to, how) => depart((replace) => go(modeRoute(to), replace || how?.replace)),
       chooseOrg: (next) => {
         pick(next)
-        window.location.assign(studio(''))
+        window.location.assign(modeRoute(''))
       },
     }),
-    [host, made, depart],
+    [host, modeName, modeRoute, made, depart],
   )
   // A run floats two panes of its own, so the pane it stands in is not cut.
   const run = where !== null && route(where).kind === 'run'
@@ -301,14 +324,15 @@ function Window({ bar, betas }: Hosted) {
   const back = () => move(away.current || app(''))
   const toChat = () => move(last.chat || talk())
   const toDev = () => move(last.dev || app(''))
+  const toDesign = () => move(last.design || design(''))
   const toStudio = () => move(last.studio || studio(''))
   const toTabs = () => move(TERMINALS)
   // Another organization: picked, and the app opened in it at the mode's New.
   const org = (o: string) => {
     pick(o)
-    window.location.assign(mode === 'dev' ? app('') : mode === 'studio' ? studio('') : mode === 'tabs' ? TERMINALS : inside ? hosted(inside) : talk())
+    window.location.assign(mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'flow' ? flow('') : mode === 'studio' ? studio('') : mode === 'tabs' ? TERMINALS : inside ? hosted(inside) : talk())
   }
-  const sidebar = mode === 'beta' || mode === 'hosted' ? [] : mode === 'studio' ? places(maker, (p) => maker.go(p)) : mode === 'dev' && raised(where) === 'customize'
+  const sidebar = mode === 'beta' || mode === 'hosted' ? [] : mode === 'design' ? places(maker, (p) => maker.go(p)) : mode === 'flow' ? flowNav(maker, (p) => maker.go(p)) : mode === 'studio' ? directorNav(maker, (p) => maker.go(p)) : mode === 'dev' && raised(where) === 'customize'
     ? tabs(host, (p) => host.go(p), t).map((group) => ({ ...group, links: [...group.links, {
       id: 'learning', label: t('Learning'), active: learning, icon: <RefreshCw size={16} aria-hidden />,
       onPress: () => { shut(); setLearning(true) },
@@ -398,7 +422,7 @@ function Window({ bar, betas }: Hosted) {
           >
             {drawer.slide ? <Lift /> : null}
             <YStack height="100%" $max-md={{ display: 'none' }}>
-              <Rail host={host} mode={mode} at={where} inside={inside} open={!closed} toggle={bar ? undefined : flip} onChat={toChat} onDev={toDev} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />
+              <Rail host={host} mode={mode} at={where} inside={inside} open={!closed} toggle={bar ? undefined : flip} onChat={toChat} onDev={toDev} onDesign={toDesign} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />
             </YStack>
             {/* Tabs and Betas stand alone: no sidebar beside them. */}
             {closed || alone ? null : (
@@ -447,13 +471,75 @@ function Window({ bar, betas }: Hosted) {
                       <Terminals />
                     </Suspense>
                   </YStack>
-                ) : mode === 'studio' ? (
+                ) : mode === 'design' ? (
                   <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
                     <YStack flex={1} minH={0} height="100%">
                       <Suspense fallback={null}>
                         <Studio host={maker} rail={false} />
                       </Suspense>
                     </YStack>
+                  </YStack>
+                ) : mode === 'flow' ? (
+                  <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                    {blockedBeta ? (
+                      <YStack data-slot="hosted-request" flex={1} minH={0} items="center" justify="center" p="$6">
+                        <YStack width="100%" maxW={440} gap="$4">
+                          <XStack items="center" gap="$3">
+                            <XStack width={44} height={44} rounded="$4" bg="$hover" items="center" justify="center" shrink={0}>
+                              <Workflow size={22} aria-hidden />
+                            </XStack>
+                            <YStack gap={2} minW={0}>
+                              <XStack items="center" gap="$2">
+                                <Text fontSize="$6" fontWeight="600" color="$ink">Flow</Text>
+                                <Text fontSize="$1" color="$quiet" px="$2" py={2} rounded="$2" bg="$hover">{t('Beta')}</Text>
+                              </XStack>
+                              <Text fontSize="$3" color="$quiet">{BETAS.find((b) => b.id === 'flow')?.line ?? 'Visual workflows and multi-agent pipelines.'}</Text>
+                            </YStack>
+                          </XStack>
+                          <XStack items="center" gap="$2" pt="$1">
+                            <Ask beta={BETAS.find((b) => b.id === 'flow')!} go={move} />
+                            <Button variant="ghost" size="sm" onPress={() => move('/beta')}>{t('All betas')}</Button>
+                          </XStack>
+                        </YStack>
+                      </YStack>
+                    ) : (
+                      <YStack flex={1} minH={0} height="100%">
+                        <Suspense fallback={null}>
+                          <FlowStudio host={maker} />
+                        </Suspense>
+                      </YStack>
+                    )}
+                  </YStack>
+                ) : mode === 'studio' ? (
+                  <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                    {blockedBeta ? (
+                      <YStack data-slot="hosted-request" flex={1} minH={0} items="center" justify="center" p="$6">
+                        <YStack width="100%" maxW={440} gap="$4">
+                          <XStack items="center" gap="$3">
+                            <XStack width={44} height={44} rounded="$4" bg="$hover" items="center" justify="center" shrink={0}>
+                              <Clapperboard size={22} aria-hidden />
+                            </XStack>
+                            <YStack gap={2} minW={0}>
+                              <XStack items="center" gap="$2">
+                                <Text fontSize="$6" fontWeight="600" color="$ink">Studio</Text>
+                                <Text fontSize="$1" color="$quiet" px="$2" py={2} rounded="$2" bg="$hover">{t('Beta')}</Text>
+                              </XStack>
+                              <Text fontSize="$3" color="$quiet">{BETAS.find((b) => b.id === 'studio')?.line ?? 'Director Studio for AI film, video, and creative production.'}</Text>
+                            </YStack>
+                          </XStack>
+                          <XStack items="center" gap="$2" pt="$1">
+                            <Ask beta={BETAS.find((b) => b.id === 'studio')!} go={move} />
+                            <Button variant="ghost" size="sm" onPress={() => move('/beta')}>{t('All betas')}</Button>
+                          </XStack>
+                        </YStack>
+                      </YStack>
+                    ) : (
+                      <YStack flex={1} minH={0} height="100%">
+                        <Suspense fallback={null}>
+                          <DirectorStudio host={maker} />
+                        </Suspense>
+                      </YStack>
+                    )}
                   </YStack>
                 ) : at.mode === 'hosted' ? (
                   <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
@@ -484,7 +570,7 @@ function Window({ bar, betas }: Hosted) {
             <Layer drawer={drawer} top={bar ? BAR : 0}>
               <XStack flex={1} minH={0}>
                 <YStack data-slot="drawer-rail" shrink={0} pt="$2">
-                  <Rail host={host} mode={mode} at={where} inside={inside} open onChat={toChat} onDev={toDev} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />
+                  <Rail host={host} mode={mode} at={where} inside={inside} open onChat={toChat} onDev={toDev} onDesign={toDesign} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />
                 </YStack>
                 <YStack flex={1} minW={0}>
                   <Sidebar

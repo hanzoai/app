@@ -66,7 +66,7 @@ import { empty, openThread, withAgents } from './open'
 import { useThreadList } from './thread'
 import { useSignOut } from './lib/signout'
 import { choose } from './lib/session'
-import { app, hosted, paged, settings, studio, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
+import { app, design, hosted, paged, settings, studio, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
 import { BETAS } from './lib/betas'
 import { useBetas } from './Betas'
 import { tidy } from './lib/title'
@@ -115,6 +115,7 @@ export function places(host: Host | undefined, go: (address: string) => void, t:
   const top: Action[] = [
     { id: 'chat', label: t('Chat'), icon: <MessageSquare {...ICON} />, run: () => go(talk()) },
     { id: 'dev', label: 'Dev', icon: <Code2 {...ICON} />, run: () => go(app('')) },
+    { id: 'design', label: 'Design', icon: <WandSparkles {...ICON} />, run: () => go(design('')) },
     { id: 'studio', label: 'Studio', icon: <WandSparkles {...ICON} />, run: () => go(studio('')) },
     { id: 'tabs', label: 'Tabs', icon: <SquareTerminal {...ICON} />, run: () => go(TERMINALS) },
     ...(host ? [{ id: 'team', label: 'Team', icon: <Users {...ICON} />, keywords: ['workspace'], run: () => out(WORKSPACE) }] : []),
@@ -268,20 +269,22 @@ export function Search({
   const { open: opened } = useBetas()
 
   const groups = useMemo<CommandMenuGroup[]>(() => {
-    const { top, deep } = places(host, go, t)
+    const { top: allTop, deep: allDeep } = places(host, go, t)
+    const top = allTop.filter((a) => a.id !== 'studio' || opened('studio'))
+    const deep = allDeep.filter((a) => !a.id.startsWith('studio-') || opened('studio'))
     const swap = (a: Action) => frame.find((b) => b.id === a.id) ?? a
     // The apps in beta this reader may open, each where it lives (the rail's More).
-    const granted: Action[] = BETAS.filter((b) => b.href && opened(b.id)).map((b) => ({
+    const granted: Action[] = BETAS.filter((b) => b.href && b.id !== 'studio' && opened(b.id)).map((b) => ({
       id: `beta-${b.id}`,
       label: b.name,
       icon: <Sparkles {...ICON} />,
       where: t('Beta'),
       keywords: ['beta', b.line],
       // One that draws inside the app opens there; any other at its own host.
-      run: () => (b.embed !== undefined ? go(hosted(b.id)) : out(b.href as string)),
+      run: () => (b.embed !== undefined ? go(hosted(b.id)) : (b.href as string).startsWith('/') ? go(b.href as string) : out(b.href as string)),
     }))
     const here = [...top.map(swap), ...frame.filter((b) => !top.some((a) => a.id === b.id)), ...granted]
-    const doing = actions(host, go, () => void signOut(), () => (setQuery(''), setKeys(true)), t)
+    const doing = actions(host, go, () => void signOut(), () => (setQuery(''), setKeys(true)), t).filter((a) => a.id !== 'new-creation' || opened('studio'))
     const untitled = t('Untitled')
     const chats: Action[] = threads.map((c) => ({
       id: `chat-${c.id}`,
