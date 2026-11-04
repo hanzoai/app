@@ -192,14 +192,14 @@ const titleOf = (t: Thread, untitled?: string) => tidy(t.title, 80, untitled)
 export const href = (id: string): string => new URL(site(talk(id)), window.location.href).href
 
 /** Opens a conversation in a tab of its own. */
-const away = (id: string): void => {
-  window.open(href(id), '_blank', 'noopener')
+const away = (id: string, toUrl: (id: string) => string = href): void => {
+  window.open(toUrl(id), '_blank', 'noopener')
 }
 
 /** Puts a conversation's address on the clipboard. */
-async function copy(id: string, t: Say): Promise<void> {
+async function copy(id: string, t: Say, toUrl: (id: string) => string = href): Promise<void> {
   try {
-    await navigator.clipboard.writeText(href(id))
+    await navigator.clipboard.writeText(toUrl(id))
     toast.success(t('Link copied'))
   } catch {
     toast.error(t('The browser would not copy the link.'))
@@ -241,6 +241,8 @@ interface Menus {
   toggleSelect: (id: string) => void
   /** Clear multi-selection. */
   clearSelect: () => void
+  /** Address builder for Copy link / Open in new tab. */
+  hrefOf: (id: string) => string
 }
 
 const Rows = createContext<Menus | null>(null)
@@ -310,6 +312,8 @@ export function ConversationMenu({
   onGone = empty,
   onSchedule,
   customActions,
+  hrefOf = href,
+  primary = true,
   children,
 }: {
   threads: Map<string, Thread>
@@ -317,6 +321,8 @@ export function ConversationMenu({
   onGone?: () => void
   onSchedule?: (t: Thread) => void
   customActions?: ThreadActions
+  hrefOf?: (id: string) => string
+  primary?: boolean
   children: ReactElement
 }) {
   const { t } = useI18n()
@@ -416,6 +422,27 @@ export function ConversationMenu({
       window.removeEventListener('mouseup', onUp)
     }
   }, [list, selectRange])
+
+  useEffect(() => {
+    const onSelectEvent = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ mode?: 'toggle' | 'all' | 'clear' }>).detail
+      if (detail?.mode === 'clear') {
+        clearSelect()
+        return
+      }
+      if (detail?.mode === 'all') {
+        setSelectMode(true)
+        setSelected(new Set(orderedIds()))
+        return
+      }
+      setSelectMode((v) => {
+        if (v) setSelected(new Set())
+        return !v
+      })
+    }
+    window.addEventListener('hanzo:recents-select', onSelectEvent)
+    return () => window.removeEventListener('hanzo:recents-select', onSelectEvent)
+  }, [clearSelect, orderedIds])
 
   const selectedThreads = useMemo(
     () => [...selected].map((id) => threads.get(id)).filter((th): th is Thread => Boolean(th)),
@@ -593,8 +620,9 @@ export function ConversationMenu({
       selectRange,
       toggleSelect,
       clearSelect,
+      hrefOf,
     }),
-    [aim, menu, aimed, selected, selecting, active, selectRange, toggleSelect, clearSelect],
+    [aim, menu, aimed, selected, selecting, active, selectRange, toggleSelect, clearSelect, hrefOf],
   )
 
   // The menu is named by its conversation: gui would name it by its trigger, the
@@ -676,8 +704,8 @@ export function ConversationMenu({
           },
           { key: 'share', label: t('Share…'), icon: <Share2 size={16} aria-hidden />, run: () => ask('share', subject) },
           ...(onSchedule ? [{ key: 'schedule', label: t('Schedule…'), icon: <Clock size={16} aria-hidden />, run: () => onSchedule(subject) }] : []),
-          { key: 'copy', label: t('Copy link'), icon: <Link2 size={16} aria-hidden />, run: () => void copy(subject.id, t) },
-          { key: 'tab', label: t('Open in new tab'), icon: <ExternalLink size={16} aria-hidden />, run: () => away(subject.id) },
+          { key: 'copy', label: t('Copy link'), icon: <Link2 size={16} aria-hidden />, run: () => void copy(subject.id, t, hrefOf) },
+          { key: 'tab', label: t('Open in new tab'), icon: <ExternalLink size={16} aria-hidden />, run: () => away(subject.id, hrefOf) },
           {
             key: 'archive',
             label: t(subject.archived ? 'Unarchive' : 'Archive'),
@@ -691,7 +719,7 @@ export function ConversationMenu({
 
   return (
     <Rows.Provider value={rows}>
-      {selecting ? (
+      {(primary && selecting) || (!primary && selected.size > 0) ? (
         <YStack
           data-slot="batch-bar"
           gap="$1.5"
@@ -1077,7 +1105,7 @@ export function ThreadRow({
       onMouseUp={(e: MouseEvent<HTMLElement>) => {
         if (e.button !== 1 || onDots(e.target)) return
         e.preventDefault()
-        away(thread.id)
+        away(thread.id, menus.hrefOf)
       }}
     >
       {menus.selecting ? (

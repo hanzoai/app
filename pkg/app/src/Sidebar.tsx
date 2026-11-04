@@ -376,6 +376,7 @@ export function Sidebar({
                     <YStack key={link.id} role="listitem">
                       <SidebarItem
                         {...ROW}
+                        data-place-id={link.id}
                         {...(link.id === NEW ? { 'data-slot': 'app-new' } : {})}
                         active={link.active}
                         icon={
@@ -405,7 +406,7 @@ export function Sidebar({
         )}
         {rail}
         {/* Recents fills the column; where there are none the foot is still pushed to the column's foot, on the rail's line. */}
-        {anon || (mode !== 'chat' && mode !== 'dev') || at ? <YStack flex={1} minH={0} /> : <Recents host={host} mode={mode} thread={thread} onOpen={open} onNew={create} />}
+        {anon || at ? <YStack flex={1} minH={0} /> : <Recents host={host} mode={mode === 'dev' ? 'dev' : 'chat'} thread={thread} onOpen={open} onNew={create} />}
         {anon ? (
           <YStack data-slot="anon-foot" gap="$2" pt="$2" shrink={0}>
             <YStack role="list" gap={2}>

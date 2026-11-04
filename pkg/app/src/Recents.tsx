@@ -11,12 +11,14 @@
 import { useI18n } from '@hanzo/i18n/react'
 import { useEffect, useId, useMemo, useRef, type ReactNode } from 'react'
 import { ScrollView, SizableText, XStack, YStack } from '@hanzo/gui'
-import { ListFilter } from 'lucide-react'
+import { CheckSquare, ListFilter } from 'lucide-react'
 import type { Thread } from '@hanzo/ai'
 import { DOTS, route, useSessions, type Host } from '@hanzo/build'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { SidebarItem, StatusDot } from '@hanzo/ui/chat'
 import { useKept } from './kept'
+import { app } from './lib/host'
+import { site } from './where'
 import { arrange, chats, MENUS, PINNED, PLAIN, runs, SINCE, UNFILED, UNTITLED, UNTITLED_RUN, viewOf, type Mode, type Option, type Recent, type View } from './recent'
 import type { Say } from '@hanzo/i18n'
 import { ConversationMenu, ThreadRow, useThreadList, type ThreadActions } from './thread'
@@ -40,7 +42,18 @@ function items(mode: Mode, view: View, set: (v: View) => void, t: Say): NonNulla
   const parts = [section('status', t('Status'), m.status), section('since', t('Last activity'), SINCE), section('group', t('Group by'), m.group), section('sort', t('Sort by'), m.sort)].filter(
     (p) => p.length,
   )
-  return parts.flatMap((p, i) => (i ? [{ type: 'separator' as const, key: `sep-${i}` }, ...p] : p))
+  const base = parts.flatMap((p, i) => (i ? [{ type: 'separator' as const, key: `sep-${i}` }, ...p] : p))
+  return [
+    ...base,
+    { type: 'separator' as const, key: 'sep-select' },
+    {
+      key: 'select-multiple',
+      label: t('Select multiple'),
+      onSelect: () => {
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('hanzo:recents-select'))
+      },
+    },
+  ]
 }
 
 const Note = ({ children }: { children: string }) => (
@@ -214,6 +227,7 @@ function Runs({ host, view, keep, onOpen }: { host: Host; view: View; keep: (v: 
       held={run}
       onNew={() => host.go('')}
       customActions={devActions}
+      hrefOf={(id) => new URL(site(app(id)), window.location.href).href}
     />
   )
 }
@@ -231,6 +245,7 @@ function List({
   held = null,
   onNew,
   customActions,
+  hrefOf,
 }: {
   mode: Mode
   rows: Recent[]
@@ -248,6 +263,8 @@ function List({
   onNew?: () => void
   /** Custom actions for non-Chat threads (e.g. Dev runs). */
   customActions?: ThreadActions
+  /** Address builder for Copy link / Open in new tab. */
+  hrefOf?: (id: string) => string
 }) {
   const { t } = useI18n()
   const label = useId()
@@ -350,7 +367,32 @@ function List({
           </XStack>
         ) : null}
       </XStack>
-      {lead ? menu : null}
+      <XStack items="center" gap={2}>
+        {lead && rows.length > 0 ? (
+          <XStack
+            render="button"
+            aria-label={t('Select multiple')}
+            {...({ title: t('Select multiple') } as object)}
+            width={26}
+            height={26}
+            rounded="$2"
+            items="center"
+            justify="center"
+            cursor="pointer"
+            opacity={0}
+            $group-hover={{ opacity: 1 }}
+            focusStyle={{ opacity: 1 }}
+            $touchable={{ opacity: 1 }}
+            hoverStyle={{ bg: '$hover' }}
+            onPress={() => {
+              if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('hanzo:recents-select'))
+            }}
+          >
+            <CheckSquare size={13} aria-hidden />
+          </XStack>
+        ) : null}
+        {lead ? menu : null}
+      </XStack>
     </XStack>
   )
 
@@ -367,10 +409,10 @@ function List({
   )
   // Each list of conversations holds its own menu (thread.tsx): the view menu
   // in the Recents heading between them is a menu of its own, never inside one.
-  const menus = (rows: ReactNode) =>
+  const menus = (rows: ReactNode, primary = true) =>
     threads ? (
       // Held while the list empties, so a dialog its last row opened closes in place.
-      <ConversationMenu threads={threads} active={held} onGone={onNew} customActions={customActions}>
+      <ConversationMenu threads={threads} active={held} onGone={onNew} customActions={customActions} hrefOf={hrefOf} primary={primary}>
         <YStack>{rows}</YStack>
       </ConversationMenu>
     ) : (
@@ -410,12 +452,13 @@ function List({
                 <YStack role="list" aria-label={t(PINNED)} gap={1}>
                   {pinned.rows.map(row)}
                 </YStack>,
+                !loose.length,
               )}
             </YStack>
           ) : null}
           <YStack role="listitem" gap={1}>
             {heading(t('Recents'), label, true)}
-            {loose.length ? menus(rest) : rest}
+            {loose.length ? menus(rest, true) : rest}
           </YStack>
         </YStack>
       </ScrollView>

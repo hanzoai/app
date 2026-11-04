@@ -79,7 +79,8 @@ import {
 } from "@hanzo/ai/react";
 import type { Thread } from "@hanzo/ai";
 import { PINNED } from "./recent";
-import { ConversationMenu, ThreadRow, useThreadList } from "./thread";
+import { ConversationMenu, ThreadRow, useThreadList, type ThreadActions } from "./thread";
+import { useKept } from "./kept";
 import { Box, Shortcut, XStack, YStack, Text } from "@hanzo/ui";
 // THE PAPER LADDER. `sheet(n)` is a fill AND the light on it, published as a
 // pair by @hanzo/design, so a surface asks for a HEIGHT instead of composing a
@@ -794,9 +795,17 @@ function Projects({
   filter: string;
   onPick?: (slug: string) => void;
 }) {
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
   const { client } = useAi();
-  const [starred] = useStarred('projects');
+  const [starred, toggleStar] = useStarred('projects');
+  const [meta, setMeta] = useKept<Record<string, { title?: string; archived?: boolean; deleted?: boolean }>>('hanzo.projects.meta', {});
+  const metaRef = useRef(meta);
+  metaRef.current = meta;
+  const patchMeta = (id: string, patch: { title?: string; archived?: boolean; deleted?: boolean }) => {
+    const next = { ...(metaRef.current ?? {}), [id]: { ...(metaRef.current?.[id] ?? {}), ...patch } };
+    metaRef.current = next;
+    setMeta(next);
+  };
   const [rows, setRows] = useState<{ id: string; name: string; slug?: string }[] | null>(null);
   // A REFUSAL IS NOT A PROJECT LIST. The catch below wrote `hanzo`, `zoolabs`
   // and `lux` into the rail — three orgs this reader may have nothing to do
@@ -822,12 +831,50 @@ function Projects({
     };
   }, [client]);
 
-  const list = Array.isArray(rows) ? rows : [];
-  const found = list.filter((r) => matches(r.name, filter));
+  const list = (Array.isArray(rows) ? rows : []).filter((r) => !meta?.[r.id]?.deleted && !meta?.[r.id]?.archived);
+  const found = list.filter((r) => matches(meta?.[r.id]?.title || r.name, filter));
   const shown = [
     ...found.filter((r) => starred.has(r.id)),
     ...found.filter((r) => !starred.has(r.id)),
   ];
+  const byId = useMemo(
+    () =>
+      new Map<string, Thread>(
+        shown.map((r) => [
+          r.id,
+          {
+            id: r.id,
+            title: meta?.[r.id]?.title || r.name,
+            updatedAt: new Date().toISOString(),
+            pinned: starred.has(r.id),
+            archived: Boolean(meta?.[r.id]?.archived),
+          },
+        ]),
+      ),
+    [shown, meta, starred],
+  );
+  const bySlug = useMemo(() => new Map(shown.map((r) => [r.id, r.slug || r.name])), [shown]);
+  const projectActions = useMemo<ThreadActions>(
+    () => ({
+      pin: async (th: Thread) => {
+        toggleStar(th.id);
+        return true;
+      },
+      archive: async (th: Thread) => {
+        patchMeta(th.id, { archived: !th.archived });
+        return true;
+      },
+      rename: async (th: Thread, title: string) => {
+        if (title.trim()) patchMeta(th.id, { title: title.trim() });
+        return true;
+      },
+      remove: async (th: Thread) => {
+        patchMeta(th.id, { deleted: true });
+        return true;
+      },
+    }),
+    [toggleStar],
+  );
 
   return (
     <>
@@ -841,22 +888,43 @@ function Projects({
         <Note>{t("No project matches “{filter}”.", { filter })}</Note>
       ) : null}
 
-      {shown.map((one) => (
-        <YStack key={one.id} gap="$0.5">
-          <SidebarItem
-            icon={
-              starred.has(one.id) ? (
-                <Star size={13} fill="currentColor" aria-hidden />
-              ) : (
-                <FolderOpen size={13} aria-hidden />
-              )
-            }
-            onPress={() => onPick?.(one.slug || one.name)}
-          >
-            {one.name}
-          </SidebarItem>
+      <ConversationMenu
+        threads={byId}
+        customActions={projectActions}
+        hrefOf={(id) => new URL(dev(bySlug.get(id) || id), window.location.href).href}
+        primary={false}
+      >
+        <YStack>
+          {shown.map((one) => {
+            const th = byId.get(one.id);
+            const item = (
+              <SidebarItem
+                data-project={one.slug || one.name}
+                {...(dir === "rtl" ? { pl: "$8", $touchable: { pl: 52 } } : { pr: "$8", $touchable: { pr: 52 } })}
+                icon={
+                  starred.has(one.id) ? (
+                    <Star size={13} fill="currentColor" aria-hidden />
+                  ) : (
+                    <FolderOpen size={13} aria-hidden />
+                  )
+                }
+                onPress={() => onPick?.(one.slug || one.name)}
+              >
+                {meta?.[one.id]?.title || one.name}
+              </SidebarItem>
+            );
+            return th ? (
+              <ThreadRow key={one.id} t={th} listed={false}>
+                {item}
+              </ThreadRow>
+            ) : (
+              <YStack key={one.id} gap="$0.5">
+                {item}
+              </YStack>
+            );
+          })}
         </YStack>
-      ))}
+      </ConversationMenu>
     </>
   );
 }

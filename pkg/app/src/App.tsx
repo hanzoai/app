@@ -92,6 +92,7 @@ import { app, design, flow, go, hosted, place, settings, studio, talk, TERMINALS
 import { Bar } from './Bar'
 import { FOOT, HEIGHT, TOP, useView } from './view'
 import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowControls'
+import { AppContextMenu } from './ContextMenu'
 
 const directorNav = (studioPkg as { directorNav?: typeof places }).directorNav ?? places
 const flowNav = (studioPkg as { flowNav?: typeof places }).flowNav ?? places
@@ -590,6 +591,18 @@ function Window({ bar, betas }: Hosted) {
           )}
           {finding ? <Search go={move} onClose={found} mode={mode} host={host} /> : null}
           {learning ? <Learning open onClose={() => setLearning(false)} /> : null}
+          <AppContextMenu
+            host={host}
+            mode={mode}
+            closed={closed}
+            onToggleSidebar={flip}
+            onSeek={seek}
+            onNewChat={() => {
+              empty()
+              move(talk())
+            }}
+            go={move}
+          />
         </YStack>
           </UsageProvider>
         </PrefsProvider>
