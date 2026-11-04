@@ -19,7 +19,7 @@ import { SidebarItem, StatusDot } from '@hanzo/ui/chat'
 import { useKept } from './kept'
 import { arrange, chats, MENUS, PINNED, PLAIN, runs, SINCE, UNFILED, UNTITLED, UNTITLED_RUN, viewOf, type Mode, type Option, type Recent, type View } from './recent'
 import type { Say } from '@hanzo/i18n'
-import { ConversationMenu, ThreadRow, useThreadList } from './thread'
+import { ConversationMenu, ThreadRow, useThreadList, type ThreadActions } from './thread'
 
 /** The menu's items: each section a heading and its options (recent.ts's phrases, drawn through `t`), the one in force checked. */
 function items(mode: Mode, view: View, set: (v: View) => void, t: Say): NonNullable<DropdownMenuProps['items']> {
@@ -107,9 +107,22 @@ function Chats({
   )
 }
 
+type RunMeta = { title?: string; pinned?: boolean; archived?: boolean; deleted?: boolean }
+
 /** Dev's Recents: the org's coding runs alone. */
 function Runs({ host, view, keep, onOpen }: { host: Host; view: View; keep: (v: View) => void; onOpen: (r: Recent) => void }) {
   const store = useSessions(host)
+  const [meta, setMeta] = useKept<Record<string, RunMeta>>('hanzo.dev.runs.meta', {})
+  const metaRef = useRef(meta)
+  metaRef.current = meta
+  const patchMeta = (id: string, patch: Partial<RunMeta>) => {
+    const next = {
+      ...(metaRef.current ?? {}),
+      [id]: { ...(metaRef.current?.[id] ?? {}), ...patch },
+    }
+    metaRef.current = next
+    setMeta(next)
+  }
   const r = route(host.path)
   const run = r.kind === 'run' ? r.id : null
   // A run this list has not seen is one just begun: read the store again, once for it.
@@ -120,7 +133,73 @@ function Runs({ host, view, keep, onOpen }: { host: Host; view: View; keep: (v: 
     asked.current.add(run)
     reload()
   }, [run, store.loading, store.value, reload])
-  const rows = useMemo(() => runs(store.value), [store.value])
+  const visibleSessions = useMemo(
+    () =>
+      store.value
+        .filter((s) => !meta?.[s.id]?.deleted)
+        .filter((s) => (view.status === 'archived' ? Boolean(meta?.[s.id]?.archived) : !meta?.[s.id]?.archived))
+        .map((s) => ({
+          ...s,
+          title: meta?.[s.id]?.title || s.title,
+          status: view.status === 'archived' ? 'archived' : s.status,
+          pinned: Boolean(meta?.[s.id]?.pinned),
+        })),
+    [store.value, meta, view.status],
+  )
+  const rows = useMemo(() => runs(visibleSessions), [visibleSessions])
+  const byId = useMemo(
+    () =>
+      new Map<string, Thread>(
+        visibleSessions.map((s) => [
+          s.id,
+          {
+            id: s.id,
+            title: s.title || UNTITLED_RUN,
+            updatedAt: s.updatedAt || s.createdAt,
+            pinned: Boolean(s.pinned),
+            archived: Boolean(meta?.[s.id]?.archived),
+          },
+        ]),
+      ),
+    [visibleSessions, meta],
+  )
+  const devActions = useMemo<ThreadActions>(
+    () => ({
+      pin: async (t: Thread) => {
+        patchMeta(t.id, { pinned: !t.pinned })
+        return true
+      },
+      archive: async (t: Thread) => {
+        patchMeta(t.id, { archived: !t.archived })
+        return true
+      },
+      rename: async (t: Thread, next: string) => {
+        const title = next.trim()
+        if (!title || title === (t.title ?? '')) return true
+        patchMeta(t.id, { title })
+        const tok = host.token?.()
+        void fetch(`${host.api}/v1/agent/sessions/${encodeURIComponent(t.id)}`, {
+          method: 'PATCH',
+          headers: {
+            ...(tok ? { Authorization: `Bearer ${tok}` } : {}),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ title }),
+        }).catch(() => {})
+        return true
+      },
+      remove: async (t: Thread) => {
+        patchMeta(t.id, { deleted: true })
+        const tok = host.token?.()
+        void fetch(`${host.api}/v1/agent/sessions/${encodeURIComponent(t.id)}`, {
+          method: 'DELETE',
+          headers: tok ? { Authorization: `Bearer ${tok}` } : {},
+        }).catch(() => {})
+        return true
+      },
+    }),
+    [host],
+  )
   return (
     <List
       mode="dev"
@@ -131,6 +210,10 @@ function Runs({ host, view, keep, onOpen }: { host: Host; view: View; keep: (v: 
       reading={store.loading && !store.value.length}
       error={store.error}
       onOpen={onOpen}
+      threads={byId}
+      held={run}
+      onNew={() => host.go('')}
+      customActions={devActions}
     />
   )
 }
@@ -147,6 +230,7 @@ function List({
   threads,
   held = null,
   onNew,
+  customActions,
 }: {
   mode: Mode
   rows: Recent[]
@@ -162,6 +246,8 @@ function List({
   held?: string | null
   /** Moves the pane to a new conversation: where it goes when the one it holds is deleted. */
   onNew?: () => void
+  /** Custom actions for non-Chat threads (e.g. Dev runs). */
+  customActions?: ThreadActions
 }) {
   const { t } = useI18n()
   const label = useId()
@@ -200,7 +286,12 @@ function List({
     )
     if (one)
       return (
-        <ThreadRow key={r.id} t={one} active={open(r)}>
+        <ThreadRow
+          key={r.id}
+          t={one}
+          active={open(r)}
+          aside={r.kind === 'dev' ? <StatusDot status={DOTS[r.status as keyof typeof DOTS] ?? 'idle'} /> : undefined}
+        >
           {item}
         </ThreadRow>
       )
@@ -279,7 +370,7 @@ function List({
   const menus = (rows: ReactNode) =>
     threads ? (
       // Held while the list empties, so a dialog its last row opened closes in place.
-      <ConversationMenu threads={threads} active={held} onGone={onNew}>
+      <ConversationMenu threads={threads} active={held} onGone={onNew} customActions={customActions}>
         <YStack>{rows}</YStack>
       </ConversationMenu>
     ) : (

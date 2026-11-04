@@ -113,7 +113,7 @@ export function chats(threads: { id: string; title?: string; updatedAt?: string;
 }
 
 /** Dev's runs as rows. */
-export function runs(sessions: { id: string; title: string; status: string; project?: string; repo?: string; createdAt: string; updatedAt: string }[]): Recent[] {
+export function runs(sessions: { id: string; title: string; status: string; project?: string; repo?: string; createdAt: string; updatedAt: string; pinned?: boolean }[]): Recent[] {
   return sessions.map((r) => ({
     kind: 'dev',
     id: r.id,
@@ -122,6 +122,7 @@ export function runs(sessions: { id: string; title: string; status: string; proj
     began: r.createdAt,
     status: r.status,
     project: r.project || r.repo?.split('/').pop() || '',
+    ...(r.pinned ? { pinned: true } : {}),
   }))
 }
 

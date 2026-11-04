@@ -40,7 +40,7 @@ import {
 import type { AiClient, Thread, ThreadChange } from '@hanzo/ai'
 export type { Thread }
 import { useAi } from '@hanzo/ai/react'
-import { Archive, ArchiveRestore, CheckSquare, Clock, ExternalLink, FolderInput, Link2, MoreHorizontal, Pencil, Pin, PinOff, Share2, Trash2, X } from 'lucide-react'
+import { Archive, ArchiveRestore, Check, CheckSquare, Clock, ExternalLink, FolderInput, Link2, MoreHorizontal, Pencil, Pin, PinOff, Share2, Trash2, X } from 'lucide-react'
 import {
   Button,
   ContextMenu,
@@ -221,10 +221,16 @@ interface Menus {
   open: string | null
   /** Currently multi-selected conversation IDs. */
   selected: Set<string>
+  /** Whether iOS-style selection mode is active. */
+  selecting: boolean
+  /** Enter or exit iOS-style selection mode. */
+  setSelectMode: (v: boolean) => void
   /** Anchor conversation ID for Shift-click range selection. */
   anchorRef: { current: string | null }
   /** Drag-select start conversation ID. */
   dragStartRef: { current: string | null }
+  /** Drag-select start Y coordinate. */
+  dragStartYRef: { current: number }
   /** Whether the current mouse gesture performed a drag selection. */
   didDragSelectRef: { current: boolean }
   /** Active conversation ID. */
@@ -296,21 +302,26 @@ const own = (row: Element | null): HTMLElement | null => row?.querySelector<HTML
  * what the conversation asks, adds Schedule…: the conversation's question as a
  * task that runs itself.
  */
+export type ThreadActions = ReturnType<typeof useThreadActions>
+
 export function ConversationMenu({
   threads,
   active = null,
   onGone = empty,
   onSchedule,
+  customActions,
   children,
 }: {
   threads: Map<string, Thread>
   active?: string | null
   onGone?: () => void
   onSchedule?: (t: Thread) => void
+  customActions?: ThreadActions
   children: ReactElement
 }) {
   const { t } = useI18n()
-  const act = useThreadActions()
+  const defaultAct = useThreadActions()
+  const act = customActions ?? defaultAct
   // The conversation the pane holds NOW: a delete answered after the reader moved on leaves the conversation they moved to.
   const holds = useRef(active)
   holds.current = active
@@ -319,10 +330,13 @@ export function ConversationMenu({
   const [menu, setMenu] = useState<'point' | 'dots' | null>(null)
   const [dialogue, setDialogue] = useState<Dialogue | null>(null)
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
+  const [selectMode, setSelectMode] = useState(false)
   const [organizeGroup, setOrganizeGroup] = useState('')
   const anchorRef = useRef<string | null>(active)
   const dragStartRef = useRef<string | null>(null)
+  const dragStartYRef = useRef<number>(0)
   const didDragSelectRef = useRef<boolean>(false)
+  const selecting = selectMode || selected.size > 0
 
   const orderedIds = useCallback((): string[] => {
     const root = typeof document !== 'undefined' ? document.querySelector(`[data-menu="${list}"]`) : null
@@ -338,6 +352,7 @@ export function ConversationMenu({
       if (a < 0 || b < 0) return
       const [lo, hi] = a <= b ? [a, b] : [b, a]
       const slice = ids.slice(lo, hi + 1)
+      setSelectMode(true)
       setSelected((prev) => {
         const next = additive ? new Set(prev) : new Set<string>()
         for (const id of slice) next.add(id)
@@ -348,6 +363,7 @@ export function ConversationMenu({
   )
 
   const toggleSelect = useCallback((id: string) => {
+    setSelectMode(true)
     setSelected((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
@@ -357,6 +373,7 @@ export function ConversationMenu({
   }, [])
 
   const clearSelect = useCallback(() => {
+    setSelectMode(false)
     setSelected((prev) => (prev.size ? new Set() : prev))
   }, [])
 
@@ -369,12 +386,36 @@ export function ConversationMenu({
   }, [threads])
 
   useEffect(() => {
-    const up = () => {
+    const onMove = (e: PointerEvent) => {
+      const startId = dragStartRef.current
+      if (!startId) return
+      if ((e.buttons & 1) !== 1) {
+        dragStartRef.current = null
+        return
+      }
+      const dy = Math.abs(e.clientY - dragStartYRef.current)
+      const hit = typeof document !== 'undefined' ? document.elementFromPoint(e.clientX, e.clientY)?.closest?.('[data-thread]') : null
+      const hitId = hit?.getAttribute('data-thread') ?? null
+      const inThisList = hit ? Boolean(hit.closest(`[data-menu="${list}"]`)) : false
+      if (dy > 6 || (hitId && inThisList && hitId !== startId)) {
+        didDragSelectRef.current = true
+        window.getSelection?.()?.removeAllRanges?.()
+        const targetId = hitId && inThisList ? hitId : startId
+        selectRange(startId, targetId, e.metaKey || e.ctrlKey)
+      }
+    }
+    const onUp = () => {
       dragStartRef.current = null
     }
-    window.addEventListener('mouseup', up)
-    return () => window.removeEventListener('mouseup', up)
-  }, [])
+    window.addEventListener('pointermove', onMove, { passive: true })
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [list, selectRange])
 
   const selectedThreads = useMemo(
     () => [...selected].map((id) => threads.get(id)).filter((th): th is Thread => Boolean(th)),
@@ -384,6 +425,7 @@ export function ConversationMenu({
   const batchRemove = useCallback(
     (targets: Thread[]) => {
       if (!targets.length) return
+      setSelectMode(false)
       setSelected(new Set())
       setMenu(null)
       setDialogue(null)
@@ -399,6 +441,7 @@ export function ConversationMenu({
     (targets: Thread[]) => {
       if (!targets.length) return
       const allArchived = targets.every((th) => th.archived)
+      setSelectMode(false)
       setSelected(new Set())
       setMenu(null)
       void Promise.all(targets.map((th) => (Boolean(th.archived) === allArchived ? act.archive(th) : Promise.resolve(true))))
@@ -410,6 +453,7 @@ export function ConversationMenu({
     (targets: Thread[]) => {
       if (!targets.length) return
       const allPinned = targets.every((th) => th.pinned)
+      setSelectMode(false)
       setSelected(new Set())
       setMenu(null)
       void Promise.all(targets.map((th) => (Boolean(th.pinned) === allPinned ? act.pin(th) : Promise.resolve(true))))
@@ -421,6 +465,7 @@ export function ConversationMenu({
     (targets: Thread[], groupName: string) => {
       const cleanGroup = groupName.trim()
       if (!targets.length || !cleanGroup) return
+      setSelectMode(false)
       setSelected(new Set())
       setMenu(null)
       setDialogue(null)
@@ -538,42 +583,46 @@ export function ConversationMenu({
       aim,
       open: menu ? aimed : null,
       selected,
+      selecting,
+      setSelectMode,
       anchorRef,
       dragStartRef,
+      dragStartYRef,
       didDragSelectRef,
       active,
       selectRange,
       toggleSelect,
       clearSelect,
     }),
-    [aim, menu, aimed, selected, active, selectRange, toggleSelect, clearSelect],
+    [aim, menu, aimed, selected, selecting, active, selectRange, toggleSelect, clearSelect],
   )
 
   // The menu is named by its conversation: gui would name it by its trigger, the
   // list itself for a right-click, and the ⋯ for the other.
   const untitled = t('Untitled')
-  const isMultiMenu = selectedThreads.length > 1 && (!subject || selected.has(subject.id))
-  const title = isMultiMenu ? t('{n} chats selected', { n: selectedThreads.length }) : subject ? titleOf(subject, untitled) : undefined
+  const isMultiMenu = (selecting && selectedThreads.length > 0 && (!subject || selected.has(subject.id))) || (selectedThreads.length > 1 && (!subject || selected.has(subject.id)))
+  const title = isMultiMenu ? t('{n} selected', { n: selectedThreads.length }) : subject ? titleOf(subject, untitled) : undefined
   const apple = mac()
   const allPinned = selectedThreads.length > 0 && selectedThreads.every((th) => th.pinned)
   const allArchived = selectedThreads.length > 0 && selectedThreads.every((th) => th.archived)
+  const allSelected = threads.size > 0 && selected.size >= threads.size
   const entries: Entry[] = isMultiMenu
     ? [
         {
           key: 'batch-pin',
-          label: t(allPinned ? 'Unpin {n} chats' : 'Pin {n} chats', { n: selectedThreads.length }),
+          label: t(allPinned ? 'Unpin ({n})' : 'Pin ({n})', { n: selectedThreads.length }),
           icon: allPinned ? <PinOff size={16} aria-hidden /> : <Pin size={16} aria-hidden />,
           run: () => batchPin(selectedThreads),
         },
         {
           key: 'batch-archive',
-          label: t(allArchived ? 'Unarchive {n} chats' : 'Archive {n} chats', { n: selectedThreads.length }),
+          label: t(allArchived ? 'Unarchive ({n})' : 'Archive ({n})', { n: selectedThreads.length }),
           icon: allArchived ? <ArchiveRestore size={16} aria-hidden /> : <Archive size={16} aria-hidden />,
           run: () => batchArchive(selectedThreads),
         },
         {
           key: 'batch-organize',
-          label: t('Organize {n} chats…', { n: selectedThreads.length }),
+          label: t('Organize ({n})…', { n: selectedThreads.length }),
           icon: <FolderInput size={16} aria-hidden />,
           run: () => {
             setMenu(null)
@@ -582,14 +631,17 @@ export function ConversationMenu({
         },
         {
           key: 'batch-select-all',
-          label: t('Select all ({n})', { n: threads.size }),
+          label: allSelected ? t('Deselect All') : t('Select All ({n})', { n: threads.size }),
           icon: <CheckSquare size={16} aria-hidden />,
           shortcut: apple ? '⌘A' : 'Ctrl+A',
-          run: () => setSelected(new Set(orderedIds())),
+          run: () => {
+            if (allSelected) setSelected(new Set())
+            else setSelected(new Set(orderedIds()))
+          },
         },
         {
           key: 'batch-clear',
-          label: t('Clear selection'),
+          label: t('Done'),
           icon: <X size={16} aria-hidden />,
           shortcut: 'Esc',
           run: () => clearSelect(),
@@ -597,7 +649,7 @@ export function ConversationMenu({
         { key: 'gone', line: true },
         {
           key: 'batch-delete',
-          label: t('Delete {n} chats', { n: selectedThreads.length }),
+          label: t('Delete ({n})', { n: selectedThreads.length }),
           icon: <Trash2 size={16} color={DANGER} aria-hidden />,
           shortcut: '⌫',
           destructive: true,
@@ -639,101 +691,133 @@ export function ConversationMenu({
 
   return (
     <Rows.Provider value={rows}>
-      {selectedThreads.length > 1 ? (
-        <XStack
+      {selecting ? (
+        <YStack
           data-slot="batch-bar"
-          items="center"
-          justify="space-between"
           gap="$1.5"
-          px="$2"
-          py="$1.5"
-          mb="$1.5"
-          rounded="$3"
+          p="$2"
+          mb="$2"
+          rounded="$4"
           bg="$raised"
           borderWidth={1}
           borderColor="$borderColor"
+          $platform-web={{
+            backdropFilter: 'blur(16px)',
+            boxShadow: '0 6px 20px -4px rgba(0, 0, 0, 0.28)',
+          }}
         >
-          <SizableText size="$1" fontWeight="600" color="$ink" numberOfLines={1}>
-            {t('{n} selected', { n: selectedThreads.length })}
-          </SizableText>
-          <XStack items="center" gap="$1">
+          <XStack items="center" justify="space-between" px="$1">
+            <XStack
+              render="button"
+              cursor="pointer"
+              onPress={() => {
+                if (allSelected) setSelected(new Set())
+                else setSelected(new Set(orderedIds()))
+              }}
+              hoverStyle={{ opacity: 0.8 }}
+            >
+              <SizableText size="$1" fontWeight="600" style={{ color: '#0A84FF' }}>
+                {allSelected ? t('Deselect All') : t('Select All')}
+              </SizableText>
+            </XStack>
+            <SizableText size="$1" fontWeight="600" color="$ink" numberOfLines={1}>
+              {t('{n} Selected', { n: selectedThreads.length })}
+            </SizableText>
+            <XStack
+              render="button"
+              aria-label={t('Clear selection')}
+              cursor="pointer"
+              onPress={clearSelect}
+              hoverStyle={{ opacity: 0.8 }}
+            >
+              <SizableText size="$1" fontWeight="700" style={{ color: '#0A84FF' }}>
+                {t('Done')}
+              </SizableText>
+            </XStack>
+          </XStack>
+          <XStack items="center" justify="space-between" gap="$1" pt="$1" borderTopWidth={1} borderColor="$borderColor">
             <XStack
               render="button"
               aria-label={t(allPinned ? 'Unpin selected' : 'Pin selected')}
-              {...({ title: t(allPinned ? 'Unpin selected' : 'Pin selected') } as object)}
-              width={26}
-              height={26}
-              rounded="$2"
+              disabled={!selectedThreads.length}
+              opacity={selectedThreads.length ? 1 : 0.4}
+              flex={1}
+              height={28}
+              rounded="$3"
               items="center"
               justify="center"
-              cursor="pointer"
-              hoverStyle={{ bg: '$hover' }}
+              gap={4}
+              cursor={selectedThreads.length ? 'pointer' : 'default'}
+              hoverStyle={selectedThreads.length ? { bg: '$hover' } : undefined}
               onPress={() => batchPin(selectedThreads)}
             >
-              {allPinned ? <PinOff size={14} aria-hidden /> : <Pin size={14} aria-hidden />}
+              {allPinned ? <PinOff size={13} aria-hidden /> : <Pin size={13} aria-hidden />}
+              <SizableText size="$1" fontWeight="500" color="$ink">
+                {t(allPinned ? 'Unpin' : 'Pin')}
+              </SizableText>
             </XStack>
             <XStack
               render="button"
               aria-label={t(allArchived ? 'Unarchive selected' : 'Archive selected')}
-              {...({ title: t(allArchived ? 'Unarchive selected' : 'Archive selected') } as object)}
-              width={26}
-              height={26}
-              rounded="$2"
+              disabled={!selectedThreads.length}
+              opacity={selectedThreads.length ? 1 : 0.4}
+              flex={1}
+              height={28}
+              rounded="$3"
               items="center"
               justify="center"
-              cursor="pointer"
-              hoverStyle={{ bg: '$hover' }}
+              gap={4}
+              cursor={selectedThreads.length ? 'pointer' : 'default'}
+              hoverStyle={selectedThreads.length ? { bg: '$hover' } : undefined}
               onPress={() => batchArchive(selectedThreads)}
             >
-              {allArchived ? <ArchiveRestore size={14} aria-hidden /> : <Archive size={14} aria-hidden />}
+              {allArchived ? <ArchiveRestore size={13} aria-hidden /> : <Archive size={13} aria-hidden />}
+              <SizableText size="$1" fontWeight="500" color="$ink">
+                {t(allArchived ? 'Unarchive' : 'Archive')}
+              </SizableText>
             </XStack>
             <XStack
               render="button"
               aria-label={t('Organize selected')}
-              {...({ title: t('Organize / group selected chats') } as object)}
-              width={26}
-              height={26}
-              rounded="$2"
+              disabled={!selectedThreads.length}
+              opacity={selectedThreads.length ? 1 : 0.4}
+              flex={1}
+              height={28}
+              rounded="$3"
               items="center"
               justify="center"
-              cursor="pointer"
-              hoverStyle={{ bg: '$hover' }}
+              gap={4}
+              cursor={selectedThreads.length ? 'pointer' : 'default'}
+              hoverStyle={selectedThreads.length ? { bg: '$hover' } : undefined}
               onPress={() => setDialogue('organize')}
             >
-              <FolderInput size={14} aria-hidden />
+              <FolderInput size={13} aria-hidden />
+              <SizableText size="$1" fontWeight="500" color="$ink">
+                {t('Group')}
+              </SizableText>
             </XStack>
             <XStack
               render="button"
               aria-label={t('Delete selected')}
-              {...({ title: t('Delete selected (Backspace / Delete)') } as object)}
-              width={26}
-              height={26}
-              rounded="$2"
+              disabled={!selectedThreads.length}
+              opacity={selectedThreads.length ? 1 : 0.4}
+              flex={1}
+              height={28}
+              rounded="$3"
               items="center"
               justify="center"
-              cursor="pointer"
-              hoverStyle={{ bg: '$hover' }}
+              gap={4}
+              cursor={selectedThreads.length ? 'pointer' : 'default'}
+              hoverStyle={selectedThreads.length ? { bg: '$hover' } : undefined}
               onPress={() => batchRemove(selectedThreads)}
             >
-              <Trash2 size={14} color={DANGER} aria-hidden />
-            </XStack>
-            <XStack
-              render="button"
-              aria-label={t('Clear selection')}
-              {...({ title: t('Clear selection (Esc)') } as object)}
-              width={24}
-              height={24}
-              rounded="$2"
-              items="center"
-              justify="center"
-              cursor="pointer"
-              hoverStyle={{ bg: '$hover' }}
-              onPress={clearSelect}
-            >
-              <X size={13} aria-hidden />
+              <Trash2 size={13} color={DANGER} aria-hidden />
+              <SizableText size="$1" fontWeight="500" style={{ color: DANGER }}>
+                {t('Delete')}
+              </SizableText>
             </XStack>
           </XStack>
-        </XStack>
+        </YStack>
       ) : null}
       <DropdownMenu open={menu === 'dots'} onOpenChange={(open) => setMenu(open ? 'dots' : null)}>
         <ContextMenu
@@ -916,12 +1000,28 @@ export function ThreadRow({
       group
       rounded="$4"
       bg={isSelected ? '$hover' : undefined}
-      $platform-web={{ userSelect: 'none' }}
-      borderLeftWidth={isSelected ? 2 : 0}
-      borderColor={isSelected ? '$ink' : 'transparent'}
+      $platform-web={{
+        userSelect: 'none',
+        ...(isSelected ? { backgroundColor: 'rgba(10, 132, 255, 0.14)' } : null),
+      }}
       data-thread={thread.id}
       data-selected={isSelected ? '' : undefined}
       data-pinned={thread.pinned ? '' : undefined}
+      onPointerDownCapture={(down: unknown) => {
+        const e = down as MouseEvent<HTMLElement> & { pointerType?: string }
+        if (e.button !== 0 || onDots(e.target)) return
+        if (e.pointerType && e.pointerType !== 'mouse') return
+        menus.dragStartRef.current = thread.id
+        menus.dragStartYRef.current = e.clientY
+        menus.didDragSelectRef.current = false
+      }}
+      onPointerUpCapture={(up: unknown) => {
+        const e = up as MouseEvent<HTMLElement>
+        if (onDots(e.target)) return
+        if (menus.didDragSelectRef.current || menus.selecting || e.shiftKey || e.metaKey || e.ctrlKey) {
+          e.stopPropagation()
+        }
+      }}
       onClickCapture={(press: unknown) => {
         const e = press as MouseEvent<HTMLElement>
         if (onDots(e.target)) return
@@ -939,7 +1039,7 @@ export function ThreadRow({
           menus.selectRange(anchor, thread.id, e.metaKey || e.ctrlKey)
           return
         }
-        if (e.metaKey || e.ctrlKey) {
+        if (e.metaKey || e.ctrlKey || menus.selecting) {
           e.preventDefault()
           e.stopPropagation()
           menus.toggleSelect(thread.id)
@@ -947,9 +1047,6 @@ export function ThreadRow({
           return
         }
         menus.anchorRef.current = thread.id
-        if (menus.selected.size > 0) {
-          menus.clearSelect()
-        }
       }}
       onMouseDown={(e: MouseEvent<HTMLElement>) => {
         // The middle button's own autoscroll would start here.
@@ -959,6 +1056,7 @@ export function ThreadRow({
         }
         if (e.button !== 0 || onDots(e.target)) return
         menus.dragStartRef.current = thread.id
+        menus.dragStartYRef.current = e.clientY
         menus.didDragSelectRef.current = false
         if (e.shiftKey) {
           e.preventDefault()
@@ -982,7 +1080,47 @@ export function ThreadRow({
         away(thread.id)
       }}
     >
-      {children}
+      {menus.selecting ? (
+        <XStack
+          position="absolute"
+          insetInlineStart={6}
+          t={0}
+          b={0}
+          items="center"
+          justify="center"
+          pointerEvents="none"
+          z={2}
+          aria-hidden
+        >
+          <XStack
+            width={18}
+            height={18}
+            rounded={999}
+            items="center"
+            justify="center"
+            style={
+              isSelected
+                ? {
+                    backgroundColor: '#0A84FF',
+                    borderColor: '#0A84FF',
+                    borderWidth: 1.5,
+                    borderStyle: 'solid',
+                    boxShadow: '0 1px 3px rgba(10, 132, 255, 0.4)',
+                  }
+                : {
+                    backgroundColor: 'transparent',
+                    borderColor: 'var(--muted-foreground)',
+                    borderWidth: 1.5,
+                    borderStyle: 'solid',
+                    opacity: 0.65,
+                  }
+            }
+          >
+            {isSelected ? <Check size={11} strokeWidth={3} color="#ffffff" aria-hidden /> : null}
+          </XStack>
+        </XStack>
+      ) : null}
+      {menus.selecting ? <YStack paddingInlineStart={22}>{children}</YStack> : children}
       <Text id={about} display="none">
         {titleOf(thread, t('Untitled'))}
       </Text>
