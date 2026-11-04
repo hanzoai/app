@@ -47,7 +47,7 @@ import { Face, brief as castBrief, join, roleOf, castTurn, roster as rosterLine,
 import { cleanForSpeech, speakAgent } from "./speech";
 import { AgentMaker, HOUSE, useAgentShelf, useCrew } from "./crew";
 import { called } from "./team";
-import { Anchor, Box, Button, Text, Tooltip, TooltipContent, TooltipTrigger, View, VisuallyHidden, XStack, YStack } from "@hanzo/ui";
+import { Anchor, Box, Button, Dialog, DialogContent, DialogTitle, Input, Text, Tooltip, TooltipContent, TooltipTrigger, View, VisuallyHidden, XStack, YStack } from "@hanzo/ui";
 import { useMedia } from "@hanzo/gui";
 import { given, tidy } from "./lib/title";
 import { useIam, useIamToken } from "@hanzo/iam/react";
@@ -69,7 +69,7 @@ import { openThread, useOpen } from "./open";
 import { Side } from "./Shell";
 import { SEED, look, useSections, useSites, type Mark } from "./RightPane";
 import { Share } from "./Share";
-import { ConversationMenu, ThreadMore, useThreadList, type Thread } from "./thread";
+import { ConversationMenu, ThreadMore, useThreadActions, useThreadList, type Thread } from "./thread";
 import { Schedule } from "./Schedule";
 import { keepFile, useAttach, useKeep } from "./keep";
 import { dragWindow, toggleWindowMaximize } from "./WindowControls";
@@ -1468,44 +1468,10 @@ function Thread({
   const [customTitle, setCustomTitle] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
-  const titleInputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
     setCustomTitle("");
     setEditingTitle(false);
   }, [open, emptied]);
-  useEffect(() => {
-    if (editingTitle && titleInputRef.current) {
-      titleInputRef.current.focus();
-      titleInputRef.current.select();
-    }
-  }, [editingTitle]);
-  const [sketchOpen, setSketchOpen] = useState(false);
-  const [sketchColor, setSketchColor] = useState("#2dd4bf");
-  const sketchCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const sketchDrawingRef = useRef(false);
-  const clearSketch = useCallback(() => {
-    const canvas = sketchCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.fillStyle = "#18181b";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }, []);
-  useEffect(() => {
-    if (sketchOpen) {
-      window.setTimeout(() => clearSketch(), 20);
-    }
-  }, [sketchOpen, clearSketch]);
-  const attachSketch = useCallback(() => {
-    const canvas = sketchCanvasRef.current;
-    if (!canvas) return;
-    canvas.toBlob((blobData) => {
-      if (!blobData) return;
-      const file = new File([blobData], `sketch-${Date.now()}.png`, { type: "image/png" });
-      void hold(at, [file], via);
-      setSketchOpen(false);
-    }, "image/png");
-  }, [at, via]);
   const redoTurn = useCallback(
     (turnId: string, action?: { mode: "retry" | "think" | "web" | "prompt"; prompt?: string }) => {
       const list = turns.current;
@@ -1996,12 +1962,6 @@ function Thread({
       // THE `+`: files (the Sources tab's "Attach files", one press closer),
       // who is in the conversation, the skills, and the two switches.
       plus: (() => {
-        const focusField = () => {
-          window.setTimeout(() => {
-            const el = document.querySelector('[data-slot="composer-field"], textarea');
-            if (el instanceof HTMLElement) el.focus();
-          }, 40);
-        };
         const commonPlus = {
           upload: () => take(at, via),
           library: () => {
@@ -2010,7 +1970,6 @@ function Thread({
           },
           createImage: () => {
             setDraft((prev) => (prev.trim() ? prev : t("Create an image of ")));
-            focusField();
           },
           browserTabs: () => {
             if (!deck.tabs.length) {
@@ -2021,9 +1980,8 @@ function Thread({
           webSearch: () => {
             carry.gear.set({ research: true });
             setDraft((prev) => (prev.trim() ? prev : t("Search the web for ")));
-            focusField();
           },
-          sketch: () => setSketchOpen(true),
+          sketch: () => take(at, via),
           thinking: {
             on: (chatPrefs.effort || "high") === "xhigh",
             set: (on: boolean) => {
@@ -2203,51 +2161,33 @@ function Thread({
       >
         <XStack items="center" gap="$2" minW={0}>
           {editingTitle ? (
-            <input
-              ref={titleInputRef}
-              type="text"
+            <Input
               data-slot="conversation-title-input"
-              data-tauri-drag-region="false"
               aria-label={t("Chat title")}
               value={titleDraft}
               autoFocus
               maxLength={200}
-              onMouseDown={(e) => e.stopPropagation()}
-              onDoubleClick={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-              onChange={(e) => setTitleDraft(e.target.value)}
+              size="sm"
+              minW={160}
+              maxW={360}
+              onChangeText={setTitleDraft}
               onBlur={commitTitle}
-              onKeyDown={(e) => {
-                e.stopPropagation();
+              onKeyDown={(e: { key?: string; preventDefault?: () => void; stopPropagation?: () => void }) => {
+                e.stopPropagation?.();
                 if (e.key === "Enter") {
-                  e.preventDefault();
+                  e.preventDefault?.();
                   commitTitle();
                 } else if (e.key === "Escape") {
-                  e.preventDefault();
+                  e.preventDefault?.();
                   setEditingTitle(false);
                 }
-              }}
-              style={{
-                fontSize: "15px",
-                lineHeight: "20px",
-                fontWeight: 500,
-                color: "var(--color, var(--foreground))",
-                background: "var(--surface-1, rgba(255,255,255,0.06))",
-                border: "1px solid var(--border-strong, var(--border))",
-                borderRadius: "6px",
-                padding: "2px 8px",
-                marginLeft: "-8px",
-                outline: "none",
-                minWidth: "160px",
-                maxWidth: "360px",
-                width: `${Math.min(360, Math.max(160, (titleDraft.length + 2) * 8))}px`,
-                fontFamily: "inherit",
               }}
             />
           ) : (
             <XStack
+              render="button"
               data-slot="conversation-title"
-              data-tauri-drag-region="false"
+              aria-label={shownTitle}
               items="center"
               gap="$1.5"
               px="$2"
@@ -2258,14 +2198,10 @@ function Thread({
               shrink={1}
               cursor="pointer"
               hoverStyle={{ bg: "$hover" }}
-              onMouseDown={(e) => e.stopPropagation()}
-              onDoubleClick={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation();
+              onPress={() => {
                 setTitleDraft(shownTitle);
                 setEditingTitle(true);
               }}
-              title={t("Click to rename")}
             >
               <Text fontSize={15} lineHeight={20} fontWeight="500" color={mine || said.length > 0 || customTitle ? "$ink" : "$soft"} numberOfLines={1} shrink={1} minW={0}>
                 {shownTitle}
