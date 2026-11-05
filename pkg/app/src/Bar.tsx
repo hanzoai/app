@@ -103,12 +103,22 @@ function Segment({ value, children }: { value: Place['mode']; children: string }
       value={value}
       size="sm"
       width={SEGMENT}
-      height={26}
+      height={24}
+      maxH={24}
+      minH={0}
+      p={0}
+      px={0}
+      py={0}
+      m={0}
+      borderWidth={0}
+      overflow="hidden"
+      boxSizing="border-box"
       rounded={9999}
       bg="transparent"
       borderColor="transparent"
+      style={{ WebkitAppearance: 'none', appearance: 'none', lineHeight: 1 }}
       hoverStyle={{ bg: '$hover' }}
-      activeStyle={{ bg: '$raised', borderColor: 'transparent' }}
+      activeStyle={{ bg: '$raised', borderColor: 'transparent', borderWidth: 0 }}
     >
       <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>
         {children}
@@ -170,7 +180,7 @@ export function Bar({
           <Lines />
         </Round>
       </XStack>
-      <XStack data-slot="bar-mode" {...GLASS} height={LINE} p="$1" items="center" justifySelf="center">
+      <XStack data-slot="bar-mode" {...GLASS} height={LINE} p="$1" overflow="hidden" boxSizing="border-box" items="center" justifySelf="center">
         <ToggleGroup type="single" aria-label={t('App')} value={mode === 'chat' || mode === 'dev' ? mode : ''} disableDeactivation onValueChange={(v) => (v === 'chat' ? onChat() : v === 'dev' ? onDev() : undefined)}>
           <Segment value="chat">{t('Chat')}</Segment>
           <Segment value="dev">Dev</Segment>
