@@ -43,8 +43,16 @@ const CHAT = /\/v1\/chat\/(?:completions|public)(?:[?#]|$)/
 /** A fetch that tells `onServed` listeners which model answered each completion. */
 export function observed(base: typeof fetch): typeof fetch {
   return async (input, init) => {
-    const res = await base(input, init)
+    let res = await base(input, init)
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+    if (COMPLETION.test(url) && res.status === 503 && !init?.signal?.aborted) {
+      const peek = (await res.clone().json().catch(() => null)) as { error?: { code?: unknown }; code?: unknown } | null
+      const code = peek?.error?.code ?? peek?.code
+      if (code === 'usage_unavailable' || code === 'balance_unavailable') {
+        await new Promise((r) => setTimeout(r, 600))
+        if (!init?.signal?.aborted) res = await base(input, init)
+      }
+    }
     // The plan's usage rides every chat answer and every refusal: the limits
     // hear both before anything else reads the body.
     if (CHAT.test(url)) observe(res)

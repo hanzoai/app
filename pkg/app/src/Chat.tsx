@@ -383,6 +383,7 @@ export function refusalOf(error: Error): { wallet: boolean; visitor: boolean; pr
     visitor: has("public_allowance_spent"),
     provider:
       !has("balance_unavailable") &&
+      !has("usage_unavailable") &&
       !has("insufficient_balance") &&
       (has("providers_exhausted") || (typeof status === "number" && status >= 500)),
   };
