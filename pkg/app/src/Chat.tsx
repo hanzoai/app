@@ -151,7 +151,7 @@ function synthesizeAnonReply(prompt: string): string {
   const q = prompt.trim();
   const lower = q.toLowerCase();
   if (lower.includes("beta") || lower.includes("join") || lower.includes("access") || lower.includes("waitlist")) {
-    return `You can join and explore **Hanzo Beta** right now:\n\n1. **Sign in or create a free account** at [hanzo.ai/signup](/signup) to unlock **10× daily usage** and instant access to open betas.\n2. **Open the Betas portal** at [hanzo.ai/beta](/beta) (or from the left rail once signed in) to apply for early access to **Hanzo Studio**, **Design**, **Flow**, and **Operative** computer-use agents.\n3. **Upgrade anytime** to **Pro (3×)**, **Dev (5×)**, **Max (15×)**, or **Ultra (25×)** for priority beta access.`;
+    return `You can join and explore **Hanzo Beta** right now:\n\n1. **Sign in or create a free account** at [hanzo.ai/signup](/signup) for instant access to open betas.\n2. **Open the Betas portal** at [hanzo.ai/beta](/beta) (or from the left rail once signed in) to apply for early access to **Hanzo Studio**, **Design**, **Flow**, and **Operative** computer-use agents.\n3. **Upgrade anytime** to **Go**, **Pro**, **Dev**, **Max**, or **Ultra** for priority beta access.`;
   }
   if (lower.includes("majorana") || lower.includes("quantum") || lower.includes("qubit") || lower.includes("decoherence")) {
     return `**Majorana zero modes (MZMs)** protect quantum information topologically rather than locally:\n\n1. **Non-Local Fermionic Parity**: Two spatially separated Majorana quasiparticles $\\gamma_1$ and $\\gamma_2$ form a single Dirac fermion operator $c = (\\gamma_1 + i\\gamma_2)/2$. Because the occupation state $|0\\rangle$ or $|1\\rangle$ is delocalized across the wire ends, local electromagnetic noise cannot flip the parity.\n2. **Non-Abelian Braiding**: Quantum gates are executed by braiding vortices in 2D $p+ip$ superconductors, producing unitary matrices determined by knot topology.\n3. **Exponential Suppression**: Residual energy splitting scales as $\\exp(-L/\\xi)$, where $L$ is wire separation and $\\xi$ is superconducting coherence length.`;
@@ -2854,11 +2854,11 @@ function Thread({
         <DialogContent maxW={480} rounded="$6" gap="$3.5">
           <DialogTitle>{t("Sign in to continue chatting")}</DialogTitle>
           <Text fontSize="$3" color="$soft" lineHeight="$4">
-            {t("You have used your 3 free anonymous preview turns. Sign in or create a free Hanzo account to save this conversation and unlock 10× daily usage.")}
+            {t("Sign in or create a free Hanzo account to save this conversation and continue chatting.")}
           </Text>
           <YStack gap="$2" pt="$1">
             <Button variant="primary" size="lg" width="100%" onPress={() => window.location.assign("/signup?next=%2Fchat")}>
-              {t("Create Free Account — 10× Daily Usage")}
+              {t("Create Free Account")}
             </Button>
             <Button variant="outline" size="default" width="100%" onPress={() => enter(LOGIN)}>
               {t("Sign In")}
@@ -2871,12 +2871,10 @@ function Thread({
             <XStack gap="$2" flexWrap="wrap">
               {(
                 [
-                  ["Pro · 3×", "$20/mo"],
-                  ["Dev · 5×", "$50/mo"],
-                  ["Max · 15×", "$100/mo"],
-                  ["Ultra · 25×", "$200/mo"],
+                  ["Go", "Pro"],
+                  ["Dev", "Max"],
                 ] as const
-              ).map(([label, price]) => (
+              ).flat().map((label) => (
                 <XStack
                   key={label}
                   render="button"
@@ -2886,22 +2884,19 @@ function Thread({
                     window.location.hash = "#pricing";
                   }}
                   flex={1}
-                  minW={96}
+                  minW={88}
                   px="$2.5"
                   py="$2"
                   rounded="$4"
                   borderWidth={1}
                   borderColor="$borderColor"
                   items="center"
-                  justify="space-between"
+                  justify="center"
                   cursor="pointer"
                   hoverStyle={{ bg: "$hover" }}
                 >
                   <Text fontSize="$2" fontWeight="600" color="$ink">
                     {label}
-                  </Text>
-                  <Text fontSize="$1" fontFamily="$mono" color="$soft">
-                    {price}
                   </Text>
                 </XStack>
               ))}
