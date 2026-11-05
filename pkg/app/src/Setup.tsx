@@ -424,6 +424,8 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
         borderColor="$borderColor"
         bg="$raised"
         width="100%"
+        maxW="100%"
+        minW={0}
         overflow="hidden"
       >
         {/* Header with Step Dots & Controls */}

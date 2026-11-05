@@ -19,9 +19,10 @@ const { part, stub, state, through } = vi.hoisted(() => {
 })
 
 vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s }) }))
-vi.mock('lucide-react', () => ({ ArrowLeft: () => null, ArrowRight: () => null, RefreshCw: () => null }))
+vi.mock('lucide-react', () => ({ ArrowLeft: () => null, ArrowRight: () => null, Clapperboard: () => null, RefreshCw: () => null, Sparkles: () => null, Workflow: () => null }))
 vi.mock('@hanzo/ai/react', () => ({ AiProvider: through }))
 vi.mock('@hanzo/gui', () => ({ XStack: part, YStack: part }))
+vi.mock('@hanzo/ui', () => ({ Button: part, Text: part }))
 vi.mock('@hanzo/build', () => ({
   Builder: stub('builder'),
   HostProvider: through,
@@ -29,7 +30,7 @@ vi.mock('@hanzo/build', () => ({
   route: () => ({ kind: 'home' }),
   tabs: () => [],
 }))
-vi.mock('@hanzo/studio', () => ({ nav: () => [{ id: 'studio', links: [] }], Studio: stub('studio') }))
+vi.mock('@hanzo/studio', () => ({ nav: () => [{ id: 'studio', links: [] }], directorNav: () => [{ id: 'studio', links: [] }], flowNav: () => [{ id: 'flow', links: [] }], Studio: stub('studio') }))
 vi.mock('./lib/ai', () => ({ useAi: () => ({ client: null }) }))
 vi.mock('./Chat', () => ({ Chat: stub('chat') }))
 vi.mock('./Sidebar', () => ({ Sidebar: stub('app-column') }))
@@ -61,7 +62,10 @@ vi.mock('./Shell', () => ({ Split: through }))
 vi.mock('./Search', () => ({ Search: () => null }))
 vi.mock('./seek', () => ({ summons: () => false }))
 vi.mock('./ground', () => ({ floor: {}, pane: () => ({}) }))
-vi.mock('./lib/session', () => ({ pick: () => {} }))
+vi.mock('./lib/session', () => ({ org: () => null, pick: () => {} }))
+vi.mock('./lib/pay', () => ({ payUrl: (p: string) => p }))
+vi.mock('./Upgrade', () => ({ useFree: () => false }))
+vi.mock('./ContextMenu', () => ({ AppContextMenu: () => null }))
 vi.mock('./lib/host', () => ({
   TERMINALS: '/tabs',
   app: (at: string) => `/dev/${at}`,
@@ -77,7 +81,7 @@ vi.mock('./lib/host', () => ({
 vi.mock('./Bar', () => ({ Bar: stub('app-bar') }))
 vi.mock('./view', () => ({ FOOT: 0, HEIGHT: '100dvh', TOP: 0, useView: () => () => {} }))
 vi.mock('./WindowControls', () => ({ dragWindow: () => {}, toggleWindowMaximize: () => {}, WindowControls: () => null }))
-vi.mock('./Betas', () => ({ BetasPane: stub('betas-pane') }))
+vi.mock('./Betas', () => ({ Ask: () => null, BetasPane: stub('betas-pane'), useBetas: () => ({ open: () => true }) }))
 vi.mock('./Hosted', () => ({ HostedPane: ({ id }: { id: string }) => createElement('div', { 'data-slot': 'hosted-pane', 'data-id': id }) }))
 
 import { App } from './App'

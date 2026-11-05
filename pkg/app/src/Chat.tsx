@@ -72,6 +72,7 @@ import { Share } from "./Share";
 import { ConversationMenu, ThreadMore, useThreadActions, useThreadList, type Thread } from "./thread";
 import { Schedule } from "./Schedule";
 import { keepFile, useAttach, useKeep } from "./keep";
+import { useKept } from "./kept";
 import { dragWindow, toggleWindowMaximize } from "./WindowControls";
 import {
   artifacts,
@@ -113,7 +114,7 @@ import { enter, LOGIN } from './lib/destination';
 import { first } from './lib/first';
 import { BAD } from "./lib/mix";
 import { brand } from './where'
-import { BAND, HEAD, INSET, TOUCH_HEAD, inPane } from './ground'
+import { BAND, INSET } from './ground'
 import { UsageControl } from './Usage'
 import { shared, useChatPreferences } from './lib/chatPreferences'
 import { handleHint } from './hint'
@@ -846,6 +847,8 @@ function Thread({
   // pick of one Dev offers too moves Dev's, where it is made, and opening Chat
   // never resets Dev's.
   const [chatPrefs, setChatPrefs] = useChatPreferences();
+  const [sidebarClosed] = useKept('hanzo.build.rail', false);
+  const [summaryOpen, setSummaryOpen] = useKept('hanzo.chat.summary', false);
   const ai = useAi();
   const opened = useOpen();
   const { thread: open, open: reopen, agents: cast, openAgent, seat, emptied, aside, showAside, showSettings } = opened;
@@ -2273,10 +2276,10 @@ function Thread({
           Summary, and the tabs beside it. */}
       <XStack
         data-slot="conversation-head"
-        // On the rail's line from a tablet up (HEAD, less the pane's edge); a phone's own bar is BAND.
+        // On the rail's line from a tablet up; a phone's own bar is BAND.
         height={BAND}
-        $md={{ height: inPane(HEAD) }}
-        $touchable={{ height: inPane(TOUCH_HEAD) }}
+        $md={{ height: 48 }}
+        $touchable={{ height: 48 }}
         display="grid"
         gridTemplateColumns="minmax(0, 1fr) auto"
         items="center"
@@ -2324,7 +2327,6 @@ function Thread({
               gap="$1.5"
               px="$2"
               py="$1"
-              mx="$-2"
               rounded="$3"
               minW={0}
               shrink={1}
@@ -2447,25 +2449,26 @@ function Thread({
                 </Button>
               </XStack>
             </XStack>
-          ) : free ? (
-            <Button
-              size="xs"
-              variant="outline"
+          ) : free && (sidebarClosed || !media.md) ? (
+            <XStack
+              render="button"
               data-slot="header-upgrade"
-              gap="$1.5"
-              px="$2.5"
-              py="$1"
-              rounded="$4"
-              cursor="pointer"
-              hoverStyle={{ bg: 'var(--white-10)' }}
-              onPress={() => window.location.assign(payUrl('/cart', { org: org(), returnUrl: window.location.href }))}
               aria-label={t("Upgrade plan")}
+              items="center"
+              gap="$1.5"
+              px="$2"
+              py="$1"
+              rounded="$3"
+              bg="transparent"
+              cursor="pointer"
+              hoverStyle={{ bg: "$hover" }}
+              onPress={() => window.location.assign(payUrl('/cart', { org: org(), returnUrl: window.location.href }))}
             >
-              <Sparkles size={13} color="var(--primary)" aria-hidden />
-              <Text fontSize="$1" fontWeight="600" color="$ink">
+              <Sparkles size={14} color="var(--muted-foreground)" aria-hidden />
+              <Text fontSize={15} lineHeight={20} fontWeight="500" color="$soft" numberOfLines={1}>
                 {t("Upgrade plan")}
               </Text>
-            </Button>
+            </XStack>
           ) : null}
           {open ? <Share thread={open} /> : null}
           {said.length > 0 ? (
@@ -2502,7 +2505,14 @@ function Thread({
             </Tooltip>
           )}
           <XStack $max-md={{ display: 'none' }}>
-            <Summary sections={sections} onOpen={() => setPanel(true)} label={t("Summary")} />
+            <Summary
+              sections={sections}
+              onOpen={() => setPanel(true)}
+              label={t("Summary")}
+              docked={media.md}
+              open={summaryOpen}
+              onOpenChange={setSummaryOpen}
+            />
           </XStack>
           {/* THE TABS' OWN CONTROL, at the header's end while they are shut;
               open, the strip beside the conversation holds it. Its mark is
@@ -2522,7 +2532,8 @@ function Thread({
       ) : null}
       {!wide && panel ? <Panel side={deck} kinds={NONE} sheet onHide={() => setPanel(false)} label={t("Tabs")} {...browsing} /> : null}
 
-      <YStack data-slot="talk" flex={1} minH={0}>
+      <XStack flex={1} minH={0} minW={0}>
+        <YStack data-slot="talk" flex={1} minH={0} minW={0}>
         <ChatSurface
           {...chat}
           messages={shown}
@@ -2759,7 +2770,11 @@ function Thread({
           column={{ maxW: MEASURE }}
           composer={composer}
         />
-      </YStack>
+        </YStack>
+        {media.md && summaryOpen ? (
+          <Summary sections={sections} onOpen={() => setPanel(true)} label={t("Summary")} pane />
+        ) : null}
+      </XStack>
       <AgentMaker />
       {carry.dialog}
       <Dialog open={anonPluginsOpen} onOpenChange={setAnonPluginsOpen}>

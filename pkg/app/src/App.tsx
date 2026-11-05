@@ -62,7 +62,7 @@
 
 import { useI18n } from '@hanzo/i18n/react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, Clapperboard, RefreshCw, Workflow } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Clapperboard, RefreshCw, Sparkles, Workflow } from 'lucide-react'
 import { AiProvider } from '@hanzo/ai/react'
 import { XStack, YStack } from '@hanzo/gui'
 import { Button, Text } from '@hanzo/ui'
@@ -85,7 +85,9 @@ import { Split } from './Shell'
 import { Search } from './Search'
 import { summons } from './seek'
 import { floor, pane } from './ground'
-import { pick } from './lib/session'
+import { org as currentOrg, pick } from './lib/session'
+import { payUrl } from './lib/pay'
+import { useFree } from './Upgrade'
 import { Ask, useBetas } from './Betas'
 import { BETAS } from './lib/betas'
 import { app, design, flow, go, hosted, place, settings, studio, talk, TERMINALS, visit, type Place } from './lib/host'
@@ -204,6 +206,7 @@ function Window({ bar, betas }: Hosted) {
     [dev, depart, exit],
   )
   const { client } = useAi()
+  const free = useFree(Boolean(host.token?.()))
   const { router, path } = useHost()
   const here = path ?? '/'
   const at = place(here) ?? HOME
@@ -597,7 +600,30 @@ function Window({ bar, betas }: Hosted) {
                     )}
                   </YStack>
                 ) : (
-                  <YStack render="main" data-slot="pane" {...(run ? null : { ...pane(), overflow: 'hidden' })} flex={1} minW={0} minH={0}>
+                  <YStack render="main" data-slot="pane" {...(run ? null : { ...pane(), overflow: 'hidden' })} position="relative" flex={1} minW={0} minH={0}>
+                    {!plans && !run && !inPlace && closed && free && host.person !== null ? (
+                      <XStack position="absolute" t={8} r={12} z={5} items="center" $max-md={{ display: 'none' }}>
+                        <XStack
+                          render="button"
+                          data-slot="header-upgrade"
+                          aria-label={t('Upgrade plan')}
+                          items="center"
+                          gap="$1.5"
+                          px="$2"
+                          py="$1"
+                          rounded="$3"
+                          bg="transparent"
+                          cursor="pointer"
+                          hoverStyle={{ bg: '$hover' }}
+                          onPress={() => window.location.assign(payUrl('/cart', { org: currentOrg(), returnUrl: window.location.href }))}
+                        >
+                          <Sparkles size={14} color="var(--muted-foreground)" aria-hidden />
+                          <Text fontSize={15} lineHeight={20} fontWeight="500" color="$soft" numberOfLines={1}>
+                            {t('Upgrade plan')}
+                          </Text>
+                        </XStack>
+                      </XStack>
+                    ) : null}
                     {plans ? null : <Builder host={host} rail={false} />}
                   </YStack>
                 )}
