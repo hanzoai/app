@@ -71,6 +71,35 @@ function checkout(plan: SubscriptionPlan): string {
   return checkoutUrl(plan.id, `${origin}${path}`)
 }
 
+/** Whether the current /chat navigation is an anonymous preview session. */
+function isAnonChat(): boolean {
+  if (typeof window === 'undefined' || hasSession()) return false
+  if (window.location.pathname !== '/chat') return false
+  const win = window as unknown as { __hanzoAnonChat?: boolean }
+  const q = new URLSearchParams(window.location.search)
+  if (
+    q.get('skip') === 'login' ||
+    q.get('anon') === 'true' ||
+    q.has('skip') ||
+    Boolean(q.get('q')?.trim()) ||
+    Boolean(win.__hanzoAnonChat)
+  ) {
+    win.__hanzoAnonChat = true
+    return true
+  }
+  try {
+    if (
+      sessionStorage.getItem('hanzo.anon.try') === '1' ||
+      Boolean(sessionStorage.getItem('hanzo.build.prompt')?.trim()) ||
+      Boolean(sessionStorage.getItem('hz_prompt')?.trim())
+    ) {
+      win.__hanzoAnonChat = true
+      return true
+    }
+  } catch {}
+  return false
+}
+
 export function Gate({
   children,
   front = false,
@@ -194,6 +223,20 @@ export function Gate({
   // shown. The veil is the same element in both renders, so there is no
   // mismatch and there is nothing to see. Home at `/` ships the host's Landing
   // instead, which is what a stranger there is shown and what a crawler reads.
+  const [anonChat, setAnonChat] = useState(isAnonChat)
+  useEffect(() => {
+    const sync = () => {
+      if (isAnonChat()) setAnonChat(true)
+    }
+    sync()
+    window.addEventListener('popstate', sync)
+    window.addEventListener('hz:anon-chat', sync)
+    return () => {
+      window.removeEventListener('popstate', sync)
+      window.removeEventListener('hz:anon-chat', sync)
+    }
+  }, [])
+
   if (!hydrated) return front && Landing ? <Landing /> : <Veil />
   // Past hydration the app keeps its place in the tree in every branch that
   // draws it — `Held`, the veil AFTER it — so a token refresh mid-session never
@@ -201,9 +244,9 @@ export function Gate({
   // hung only when a token was already in hand, which left a visitor arriving
   // without one looking at the app while the SDK decided. Under it the app is
   // inert: it takes no key or press until the gate has decided.
-  if (isLoading) return front && Landing && !hasSession() && !arriving ? <Landing /> : <><Held veiled>{children}</Held><Veil /></>
+  if (isLoading) return (anonChat || isAnonChat()) && !hasSession() ? <><Held veiled={false}>{children}</Held></> : front && Landing && !hasSession() && !arriving ? <Landing /> : <><Held veiled>{children}</Held><Veil /></>
   if (arriving && !isAuthenticated) return <SignIn to={LOGIN} />
-  if (!isAuthenticated) return front && Landing ? <Landing /> : signup && Signup ? <Signup /> : <SignIn />
+  if (!isAuthenticated) return (anonChat || isAnonChat()) ? <><Held veiled={false}>{children}</Held></> : front && Landing ? <Landing /> : signup && Signup ? <Signup /> : <SignIn />
   if (founding) return <Start founded={founding} onFounded={setFounding} first={members.length === 0} />
   if (members.length === 0) {
     if (front && Landing) return <Landing member />

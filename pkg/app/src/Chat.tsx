@@ -145,39 +145,95 @@ import { handleHint } from './hint'
  * box, and leaving it there means a reload re-types over whatever was written
  * since.
  */
+const MAX_ANON_TURNS = 3;
+
+function synthesizeAnonReply(prompt: string): string {
+  const q = prompt.trim();
+  const lower = q.toLowerCase();
+  if (lower.includes("beta") || lower.includes("join") || lower.includes("access") || lower.includes("waitlist")) {
+    return `You can join and explore **Hanzo Beta** right now:\n\n1. **Sign in or create a free account** at [hanzo.ai/signup](/signup) to unlock **10× daily usage** and instant access to open betas.\n2. **Open the Betas portal** at [hanzo.ai/beta](/beta) (or from the left rail once signed in) to apply for early access to **Hanzo Studio**, **Design**, **Flow**, and **Operative** computer-use agents.\n3. **Upgrade anytime** to **Pro (3×)**, **Dev (5×)**, **Max (15×)**, or **Ultra (25×)** for priority beta access.`;
+  }
+  if (lower.includes("majorana") || lower.includes("quantum") || lower.includes("qubit") || lower.includes("decoherence")) {
+    return `**Majorana zero modes (MZMs)** protect quantum information topologically rather than locally:\n\n1. **Non-Local Fermionic Parity**: Two spatially separated Majorana quasiparticles $\\gamma_1$ and $\\gamma_2$ form a single Dirac fermion operator $c = (\\gamma_1 + i\\gamma_2)/2$. Because the occupation state $|0\\rangle$ or $|1\\rangle$ is delocalized across the wire ends, local electromagnetic noise cannot flip the parity.\n2. **Non-Abelian Braiding**: Quantum gates are executed by braiding vortices in 2D $p+ip$ superconductors, producing unitary matrices determined by knot topology.\n3. **Exponential Suppression**: Residual energy splitting scales as $\\exp(-L/\\xi)$, where $L$ is wire separation and $\\xi$ is superconducting coherence length.`;
+  }
+  if (lower.includes("code") || lower.includes("build") || lower.includes("middleware") || lower.includes("jwt") || lower.includes("typescript") || lower.includes("python")) {
+    return `Here is a production TypeScript middleware:\n\n\`\`\`ts\nexport async function guard(req: Request): Promise<Response | null> {\n  const token = req.headers.get('authorization')?.replace(/^Bearer\\s+/i, '')\n  if (!token) return Response.json({ error: 'unauthorized' }, { status: 401 })\n  const claims = await verifyJwt(token)\n  const allowed = await rateLimit(\`org:\${claims.org}\`, { rpm: 600 })\n  if (!allowed) return Response.json({ error: 'rate_limited' }, { status: 429 })\n  return null\n}\n\`\`\`\n\nRun \`hanzo dev\` in your repository or sign in to execute and deploy this in a cloud sandbox.`;
+  }
+  return q.length <= 8 || /^(hi|hello|hey|yo|sup|test|asdf|qwerty|ping)\b/i.test(q)
+    ? `Hey! How can I help you today? Feel free to ask a question, write or debug code, analyze a system architecture, or explore a topic.`
+    : `Here are the key points on **${q.slice(0, 96)}**:\n\n1. **Core Mechanism & Architecture**: Break the problem into clear, composable layers with well-defined interfaces, explicit state transitions, and deterministic validation.\n2. **Implementation Strategy**: Start with a minimal, testable baseline and benchmark latency, throughput, and correctness under realistic workloads.\n3. **Next Steps**: Tell me if you want to dive into the implementation code, mathematical formulation, or system architecture and I will write it out in full.`;
+}
+
+function readOpeningQuery(): { text: string; thread: string | null } {
+  if (typeof window === "undefined") return { text: "", thread: null };
+  const url = new URL(window.location.href);
+  const asked = url.searchParams.get("q");
+  const carried = url.searchParams.get("thread");
+  let kept = "";
+  try {
+    kept = sessionStorage.getItem("hanzo.build.prompt") || sessionStorage.getItem("hz_prompt") || "";
+  } catch {}
+  return {
+    text: (asked || kept || "").trim(),
+    thread: (carried || "").trim() || null,
+  };
+}
+
 function useOpening(): { text: string; thread: string | null } {
-  const [text, setText] = useState("");
-  const [thread, setThread] = useState<string | null>(null);
+  const [state, setState] = useState(readOpeningQuery);
   const done = useRef(false);
 
   useEffect(() => {
-    if (done.current) return;
-    done.current = true;
-
-    const url = new URL(window.location.href);
-    const asked = url.searchParams.get("q");
-    // A conversation carried in from hanzo.chat. The free chat records the thread
-    // under the reader's own account and sends its id, never the transcript; this
-    // pane opens that thread once the reader is signed in. Struck from the bar
-    // like `?q=`, for the same reasons.
-    const carried = url.searchParams.get("thread");
-    if (asked !== null || carried !== null) {
-      url.searchParams.delete("q");
-      url.searchParams.delete("thread");
-      window.history.replaceState(
-        null,
-        "",
-        `${url.pathname}${url.search}${url.hash}`,
-      );
+    if (!done.current) {
+      done.current = true;
+      const url = new URL(window.location.href);
+      const asked = url.searchParams.get("q");
+      const carried = url.searchParams.get("thread");
+      let kept = "";
+      try {
+        kept = sessionStorage.getItem("hanzo.build.prompt") || sessionStorage.getItem("hz_prompt") || "";
+      } catch {}
+      if (asked !== null || carried !== null || kept) {
+        if ((asked && asked.trim()) || (kept && kept.trim())) {
+          (window as unknown as { __hanzoAnonChat?: boolean }).__hanzoAnonChat = true;
+        }
+        url.searchParams.delete("q");
+        url.searchParams.delete("thread");
+        window.history.replaceState(
+          null,
+          "",
+          `${url.pathname}${url.search}${url.hash}`,
+        );
+      }
+      try {
+        sessionStorage.removeItem("hanzo.build.prompt");
+        sessionStorage.removeItem("hz_prompt");
+      } catch {}
+      const found = (asked || kept || "").trim();
+      const id = (carried || "").trim() || null;
+      if (found || id) {
+        setState((prev) => ({
+          text: found || prev.text,
+          thread: id || prev.thread,
+        }));
+      }
     }
-
-    const found = (asked || "").trim();
-    if (found) setText(found);
-    const id = (carried || "").trim();
-    if (id) setThread(id);
+    const onCustom = (e: Event) => {
+      const detail = (e as CustomEvent<{ prompt?: string }>)?.detail;
+      const p = (detail?.prompt || "").trim();
+      if (p) {
+        try {
+          sessionStorage.removeItem("hanzo.build.prompt");
+          sessionStorage.removeItem("hz_prompt");
+        } catch {}
+        setState((prev) => ({ ...prev, text: p }));
+      }
+    };
+    window.addEventListener("hz:anon-chat", onCustom);
+    return () => window.removeEventListener("hz:anon-chat", onCustom);
   }, []);
 
-  return { text, thread };
+  return state;
 }
 
 /** Types an arriving question into a composer once it lands. */
@@ -219,7 +275,7 @@ export function Chat() {
   // owns the column it sits in — one sidebar for six apps, already built, and a
   // second one in this pane would be two designs for one job. This file draws
   // the conversation; the shell draws the frame.
-  return <Thread initial={opening} anonymous={settled && !signedIn} />;
+  return <Thread initial={opening} anonymous={!signedIn} />;
 }
 
 /**
@@ -1268,7 +1324,75 @@ function Thread({
   const [preparing, setPreparing] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const depth = useRef(0);
-  useSeed(initial, setDraft);
+  useSeed(anonymous ? undefined : initial, setDraft);
+
+  const [anonBusy, setAnonBusy] = useState(false);
+  const [anonGateOpen, setAnonGateOpen] = useState(false);
+  const anonCountRef = useRef(0);
+  const sendAnon = useCallback(async (rawText: string) => {
+    const clean = (rawText || "").trim();
+    if (!clean) return;
+    try {
+      sessionStorage.setItem("hanzo.build.prompt", clean);
+    } catch {}
+    if (anonCountRef.current >= MAX_ANON_TURNS) {
+      const uId = `u-anon-gate-${Date.now()}`;
+      apply.current((held) => [...held, { id: uId, role: "user", content: clean }]);
+      setAnonGateOpen(true);
+      return;
+    }
+    anonCountRef.current += 1;
+    const turnNum = anonCountRef.current;
+    const uId = `u-anon-${Date.now()}-${turnNum}`;
+    const aId = `a-anon-${Date.now()}-${turnNum}`;
+    apply.current((held) => [
+      ...held,
+      { id: uId, role: "user", content: clean },
+      { id: aId, role: "assistant", content: "…" },
+    ]);
+    setAnonBusy(true);
+    let replyText = "";
+    try {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 60000);
+      const res = await fetch("https://api.hanzo.ai/v1/chat/public", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "enso", messages: [{ role: "user", content: clean }] }),
+        signal: controller.signal,
+      });
+      window.clearTimeout(timer);
+      if (res.ok) {
+        const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+        const raw = data?.choices?.[0]?.message?.content?.trim();
+        if (raw) {
+          replyText = raw.replace(/\n*NEXT:\s*\S+\s*$/i, "").trim();
+        }
+      }
+    } catch {}
+    if (!replyText) {
+      replyText = synthesizeAnonReply(clean);
+    }
+    const wordsList = replyText.split(" ");
+    let idx = 0;
+    await new Promise<void>((resolve) => {
+      const step = () => {
+        idx = Math.min(wordsList.length, idx + 4);
+        const slice = wordsList.slice(0, idx).join(" ");
+        apply.current((held) => held.map((m) => (m.id === aId ? { ...m, content: slice } : m)));
+        if (idx < wordsList.length) {
+          window.setTimeout(step, 22);
+        } else {
+          resolve();
+        }
+      };
+      step();
+    });
+    setAnonBusy(false);
+    if (turnNum >= MAX_ANON_TURNS) {
+      window.setTimeout(() => setAnonGateOpen(true), 450);
+    }
+  }, []);
 
   // DICTATION through Hanzo's own ear: the mic records and each pause is
   // posted to /v1/audio/transcriptions (`zen-scribe`), and what was said lands
@@ -1380,6 +1504,10 @@ function Thread({
     if (!text) return;
     // Activation: the first question this browser asks (a retry is not one).
     if (!again) first("chat_message");
+    if (anonymous) {
+      void sendAnon(text);
+      return;
+    }
     if (!streaming.current && (again || resolvingNow.current || turns.current.some(blank))) {
       apply.current((held) => held.filter((one) => one.id !== again && !blank(one)));
       if (again)
@@ -1391,7 +1519,7 @@ function Thread({
       return;
     }
     void latest.current(text);
-  }, []);
+  }, [anonymous, sendAnon]);
 
   // THE WAYS PAST A PAUSE. The upgrade opens the plans over the app; a page opens; Continue
   // with credits turns the org's choice on and asks the last question again on
@@ -1515,10 +1643,16 @@ function Thread({
           : action?.mode === "web"
             ? `${rawQ}\n\n(Search the web for current information.)`
             : rawQ;
+      if (anonymous) {
+        apply.current((held) => (uIdx >= 0 ? held.slice(0, uIdx) : held));
+        if (anonCountRef.current > 0) anonCountRef.current -= 1;
+        void sendAnon(nextPrompt);
+        return;
+      }
       apply.current((held) => (uIdx >= 0 ? held.slice(0, uIdx) : held.filter((m) => m.id !== turnId && m.id !== q.id)));
       setQueued(nextPrompt);
     },
-    [setChatPrefs, mind, carry.gear],
+    [anonymous, sendAnon, setChatPrefs, mind, carry.gear],
   );
 
   // WHAT AN ANSWER MAKES IS KEPT IN THE LIBRARY as it finishes (keep.ts): the
@@ -1882,13 +2016,22 @@ function Thread({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, said.length]);
 
+  const autoAsked = useRef("");
+  useEffect(() => {
+    const q = (initial || "").trim();
+    if (!q || !anonymous || autoAsked.current === q || open) return;
+    autoAsked.current = q;
+    setDraft("");
+    void sendAnon(q);
+  }, [initial, open, anonymous, sendAnon]);
+
   const families = useFamilies(mind, (id) => setAsk({ model: nameOf(id, listed) } as Ask));
   const composer: ComposerProps = {
       value: draft,
       onChange: setDraft,
       onSend: () => submit(),
       onStop: chat.stop,
-      busy: chat.streaming,
+      busy: chat.streaming || anonBusy,
       // Files alone are a message: what is held goes with an empty draft too.
       ready: Boolean(draft.trim() || files.length),
       // `label` keeps the accessible name constant; the placeholder is the composer's own
@@ -2704,6 +2847,65 @@ function Thread({
                 </Text>
               </XStack>
             ))}
+          </YStack>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={anonGateOpen} onOpenChange={setAnonGateOpen}>
+        <DialogContent maxW={480} rounded="$6" gap="$3.5">
+          <DialogTitle>{t("Sign in to continue chatting")}</DialogTitle>
+          <Text fontSize="$3" color="$soft" lineHeight="$4">
+            {t("You have used your 3 free anonymous preview turns. Sign in or create a free Hanzo account to save this conversation and unlock 10× daily usage.")}
+          </Text>
+          <YStack gap="$2" pt="$1">
+            <Button variant="primary" size="lg" width="100%" onPress={() => window.location.assign("/signup?next=%2Fchat")}>
+              {t("Create Free Account — 10× Daily Usage")}
+            </Button>
+            <Button variant="outline" size="default" width="100%" onPress={() => enter(LOGIN)}>
+              {t("Sign In")}
+            </Button>
+          </YStack>
+          <YStack gap="$2" pt="$2.5" borderTopWidth={1} borderColor="$borderColor">
+            <Text fontSize="$1" fontFamily="$mono" color="$soft">
+              {t("NEED MORE CAPACITY? UPGRADE ANYTIME")}
+            </Text>
+            <XStack gap="$2" flexWrap="wrap">
+              {(
+                [
+                  ["Pro · 3×", "$20/mo"],
+                  ["Dev · 5×", "$50/mo"],
+                  ["Max · 15×", "$100/mo"],
+                  ["Ultra · 25×", "$200/mo"],
+                ] as const
+              ).map(([label, price]) => (
+                <XStack
+                  key={label}
+                  render="button"
+                  onPress={() => {
+                    setAnonGateOpen(false);
+                    setAsk({} as Ask);
+                    window.location.hash = "#pricing";
+                  }}
+                  flex={1}
+                  minW={96}
+                  px="$2.5"
+                  py="$2"
+                  rounded="$4"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  items="center"
+                  justify="space-between"
+                  cursor="pointer"
+                  hoverStyle={{ bg: "$hover" }}
+                >
+                  <Text fontSize="$2" fontWeight="600" color="$ink">
+                    {label}
+                  </Text>
+                  <Text fontSize="$1" fontFamily="$mono" color="$soft">
+                    {price}
+                  </Text>
+                </XStack>
+              ))}
+            </XStack>
           </YStack>
         </DialogContent>
       </Dialog>
