@@ -16,10 +16,7 @@ export const pane = (fill = 'var(--pane-fill)') =>
   ({
     backgroundColor: fill,
     borderRadius: 'var(--pane-round)',
-    borderWidth: 1,
-    borderColor: 'var(--pane-edge)',
     backdropFilter: 'var(--pane-blur)',
-    boxShadow: 'var(--shadow-sheet-1)',
   }) as const
 
 /**
@@ -47,20 +44,14 @@ export const TOUCH_HEAD = 44
 export const INSET = 22
 
 /**
- * A row INSIDE a pane is 2px shorter than the row it lines up with: the pane's
- * 1px top edge sets its content 1px down, so its centre stays on the line.
+ * A row INSIDE a pane shares the height of the row it lines up with.
  */
-export const inPane = (row: number): number => row - 2
+export const inPane = (row: number): number => row
 
 /**
  * THE FLOOR under the app's frame (app/_web.tsx, components/settings/Frame.tsx):
- * design's top light falling off down the window over the faint lamps of
- * `--pane-ground`. A straight fall rather than a radial glow, because at these
- * alphas a circle quantises into rings a blur makes plainer.
+ * clean minimal dark ground without a 3D top glass gradient.
  */
 export const floor = {
   backgroundColor: 'var(--pane-floor)',
-  backgroundImage: 'linear-gradient(to bottom, var(--glass), transparent), var(--pane-ground)',
-  backgroundSize: '100% 70%, auto',
-  backgroundRepeat: 'no-repeat',
 } as const

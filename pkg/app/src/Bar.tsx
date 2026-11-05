@@ -41,6 +41,7 @@ const SEGMENT = 56
 /** The glass the three are cut from. */
 const GLASS = {
   ...pane(),
+  borderWidth: 1,
   borderColor: 'var(--border-strong)',
   borderRadius: 9999,
   boxShadow: 'var(--shadow-sheet-1)',
