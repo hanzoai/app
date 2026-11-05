@@ -2450,17 +2450,32 @@ function Thread({
               >
                 {t("Log in")}
               </Button>
-              <Button
-                size="xs"
-                rounded={9999}
-                px="$3"
-                data-slot="header-signup"
-                onPress={() => {
-                  if (typeof window !== "undefined") window.location.assign("/signup?next=%2Fchat");
-                }}
-              >
-                {t("Sign up for free")}
-              </Button>
+              <XStack display="none" $sm={{ display: "flex" }}>
+                <Button
+                  size="xs"
+                  rounded={9999}
+                  px="$3"
+                  data-slot="header-signup"
+                  onPress={() => {
+                    if (typeof window !== "undefined") window.location.assign("/signup?next=%2Fchat");
+                  }}
+                >
+                  {t("Sign up for free")}
+                </Button>
+              </XStack>
+              <XStack display="flex" $sm={{ display: "none" }}>
+                <Button
+                  size="xs"
+                  rounded={9999}
+                  px="$3"
+                  data-slot="header-signup-compact"
+                  onPress={() => {
+                    if (typeof window !== "undefined") window.location.assign("/signup?next=%2Fchat");
+                  }}
+                >
+                  {t("Sign up")}
+                </Button>
+              </XStack>
             </XStack>
           ) : free ? (
             <Button

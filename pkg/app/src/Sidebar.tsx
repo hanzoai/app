@@ -30,7 +30,7 @@
 import { locales, phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { SizableText, Text, XStack, YStack } from '@hanzo/gui'
-import { ArrowLeft, Bell, CircleHelp, Image as ImageMark, Languages, Monitor, Moon, Palette, Puzzle, Search, Settings, Sparkles, SquarePen, Sun } from 'lucide-react'
+import { ArrowLeft, Bell, ChevronDown, ChevronUp, CircleHelp, Image as ImageMark, Languages, Monitor, Moon, Palette, Puzzle, Search, Settings, Sparkles, SquarePen, Sun } from 'lucide-react'
 import { DOTS, Gutter, library, NEW, own, tabs, useLanguage, useScheduled, useSessions, type Host } from '@hanzo/build'
 
 type Theme = NonNullable<Host['theme']>
@@ -40,7 +40,7 @@ import { Sidebar as Base, SidebarIconButton, SidebarItem, StatusDot, type RailLi
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { Made } from './Account'
 import { Recents } from './Recents'
-import { MARK, raised, type Raised } from './Rail'
+import { MARK, RAIL, raised, type Raised } from './Rail'
 import { Setup } from './Setup'
 import { ago, UNTITLED_RUN, type Recent } from './recent'
 import { empty } from './open'
@@ -74,6 +74,9 @@ const keys = (press: () => void) => ({
 
 /** A row of the sidebar: a pill on a 31px pitch, a thumb's 44 on a touch screen, lit where the reader is. */
 const ROW = { rounded: '$4', minH: 31, py: 0, px: '$2', $touchable: { minH: 44 } } as const
+
+/** A sidebar link row hugs its icon and label rather than stretching across the full column width. */
+const COMPACT_ROW = { ...ROW, self: 'flex-start', '$platform-web': { width: 'fit-content', maxWidth: '100%' } } as const
 
 /** The run activity behind the bell: the runs that moved last, newest first. */
 const RECENT = 6
@@ -163,11 +166,19 @@ export function Sidebar({
   const anon = host.person === null
   const free = useFree(Boolean(host.token?.())) || anon
   const [anonSettingsOpen, setAnonSettingsOpen] = useState(false)
+  const [tailoredOpen, setTailoredOpen] = useState(true)
+  const [tallEnoughForRailShift, setTallEnoughForRailShift] = useState(true)
   useEffect(() => {
     if (!anon || typeof window === 'undefined') return
     const onOpen = () => setAnonSettingsOpen(true)
+    const onResize = () => setTallEnoughForRailShift(window.innerHeight >= 520)
+    onResize()
     window.addEventListener('hanzo:anon-settings', onOpen)
-    return () => window.removeEventListener('hanzo:anon-settings', onOpen)
+    window.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('hanzo:anon-settings', onOpen)
+      window.removeEventListener('resize', onResize)
+    }
   }, [anon])
   // The desktop sidebar and a phone's drawer can both be in the page: each names its own group labels.
   const uid = useId()
@@ -204,6 +215,7 @@ export function Sidebar({
       minW={0}
       height="100%"
       width={drawer ? undefined : 'var(--span)'}
+      $platform-web={anon && !drawer ? { overflow: 'visible' } : undefined}
     >
       <Base
         data-slot="app-rail"
@@ -217,6 +229,7 @@ export function Sidebar({
         // In the drawer the menu's own foot padding is the gap; its foot row stands on it.
         pb={drawer ? 0 : '$2'}
         gap="$0"
+        $platform-web={anon && !drawer ? { overflow: 'visible' } : undefined}
       >
         {at ? (
           <XStack
@@ -285,11 +298,11 @@ export function Sidebar({
         )}
         {mode === 'chat' ? (
           <YStack role="list" gap={2} shrink={0}>
-            <YStack role="listitem">
+            <YStack role="listitem" self="flex-start">
               {/* Current while the pane holds a new conversation, and never lit: the reference lights the conversation open, not New. */}
               <SidebarItem
                 data-slot="app-new"
-                {...ROW}
+                {...COMPACT_ROW}
                 active={!thread}
                 bg="transparent"
                 hoverStyle={{ bg: '$hover' }}
@@ -306,10 +319,10 @@ export function Sidebar({
             </YStack>
             {anon ? (
               <>
-                <YStack role="listitem">
+                <YStack role="listitem" self="flex-start">
                   <SidebarItem
                     data-slot="app-images"
-                    {...ROW}
+                    {...COMPACT_ROW}
                     bg="transparent"
                     hoverStyle={{ bg: '$hover' }}
                     icon={
@@ -333,10 +346,10 @@ export function Sidebar({
                     <Text fontSize="$3" color="$ink">{t('Images')}</Text>
                   </SidebarItem>
                 </YStack>
-                <YStack role="listitem">
+                <YStack role="listitem" self="flex-start">
                   <SidebarItem
                     data-slot="app-plugins"
-                    {...ROW}
+                    {...COMPACT_ROW}
                     bg="transparent"
                     hoverStyle={{ bg: '$hover' }}
                     icon={
@@ -373,9 +386,9 @@ export function Sidebar({
                 ) : null}
                 <YStack role="list" aria-labelledby={i && g.label ? `${uid}-${g.id}` : undefined} aria-label={i && g.label ? undefined : g.label || (at ? t(TITLE[at]) : g.id)} gap={1}>
                   {g.links.map((link) => (
-                    <YStack key={link.id} role="listitem">
+                    <YStack key={link.id} role="listitem" self="flex-start">
                       <SidebarItem
-                        {...ROW}
+                        {...COMPACT_ROW}
                         data-place-id={link.id}
                         {...(link.id === NEW ? { 'data-slot': 'app-new' } : {})}
                         active={link.active}
@@ -408,12 +421,19 @@ export function Sidebar({
         {/* Recents fills the column; where there are none the foot is still pushed to the column's foot, on the rail's line. */}
         {anon || at ? <YStack flex={1} minH={0} /> : <Recents host={host} mode={mode === 'dev' ? 'dev' : 'chat'} thread={thread} onOpen={open} onNew={create} />}
         {anon ? (
-          <YStack data-slot="anon-foot" gap="$2" pt="$2" shrink={0}>
+          <YStack
+            data-slot="anon-foot"
+            gap="$2"
+            pt="$2"
+            shrink={0}
+            z={10}
+            marginInlineStart={!drawer && tallEnoughForRailShift ? -(RAIL - 8) : 0}
+          >
             <YStack role="list" gap={2}>
-              <YStack role="listitem">
+              <YStack role="listitem" self="flex-start">
                 <SidebarItem
                   data-slot="anon-pricing"
-                  {...ROW}
+                  {...COMPACT_ROW}
                   bg="transparent"
                   hoverStyle={{ bg: '$hover' }}
                   icon={
@@ -431,10 +451,10 @@ export function Sidebar({
                   <Text fontSize="$3" color="$ink">{t('See plans and pricing')}</Text>
                 </SidebarItem>
               </YStack>
-              <YStack role="listitem">
+              <YStack role="listitem" self="flex-start">
                 <SidebarItem
                   data-slot="anon-help"
-                  {...ROW}
+                  {...COMPACT_ROW}
                   bg="transparent"
                   hoverStyle={{ bg: '$hover' }}
                   icon={
@@ -452,10 +472,10 @@ export function Sidebar({
                   <Text fontSize="$3" color="$ink">{t('Help')}</Text>
                 </SidebarItem>
               </YStack>
-              <YStack role="listitem">
+              <YStack role="listitem" self="flex-start">
                 <SidebarItem
                   data-slot="anon-settings"
-                  {...ROW}
+                  {...COMPACT_ROW}
                   bg="transparent"
                   hoverStyle={{ bg: '$hover' }}
                   icon={
@@ -470,13 +490,32 @@ export function Sidebar({
                 </SidebarItem>
               </YStack>
             </YStack>
-            <YStack data-slot="anon-tailored" gap="$2.5" pt="$3" pb="$1" px="$2" borderTopWidth={1} borderColor="$borderColor">
-              <Text fontSize={14} lineHeight={19} fontWeight="700" color="$ink">
-                {t('Get responses tailored to you')}
-              </Text>
-              <Text fontSize={12} lineHeight={17} color="$soft">
-                {t('Log in to get answers based on saved chats, plus create images and upload files.')}
-              </Text>
+            <YStack data-slot="anon-tailored" gap="$2" pt="$2.5" pb="$1" px="$2" borderTopWidth={1} borderColor="$borderColor">
+              <XStack
+                render="button"
+                aria-expanded={tailoredOpen}
+                aria-label={t('Get responses tailored to you')}
+                items="center"
+                justify="space-between"
+                gap="$1.5"
+                cursor="pointer"
+                onPress={() => setTailoredOpen((v) => !v)}
+                hoverStyle={{ opacity: 0.85 }}
+              >
+                <Text fontSize={13} lineHeight={18} fontWeight="700" color="$ink" numberOfLines={1} flex={1}>
+                  {t('Get responses tailored to you')}
+                </Text>
+                {tailoredOpen ? (
+                  <ChevronDown size={14} aria-hidden color="var(--soft, var(--muted-foreground))" />
+                ) : (
+                  <ChevronUp size={14} aria-hidden color="var(--soft, var(--muted-foreground))" />
+                )}
+              </XStack>
+              {tailoredOpen ? (
+                <Text fontSize={12} lineHeight={17} color="$soft">
+                  {t('Log in to get answers based on saved chats, plus create images and upload files.')}
+                </Text>
+              ) : null}
               <XStack gap="$2" pt="$0.5">
                 <Button
                   size="sm"
@@ -499,7 +538,7 @@ export function Sidebar({
                     if (typeof window !== 'undefined') window.location.assign('/signup?next=%2Fchat')
                   }}
                 >
-                  {t('Sign up for free')}
+                  {t('Sign up')}
                 </Button>
               </XStack>
             </YStack>

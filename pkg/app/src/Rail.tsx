@@ -246,25 +246,31 @@ export function Rail({
     return (
       <YStack data-slot="places" render="nav" aria-label={t('Products')} pt="$2" shrink={0}>
         <YStack role="list" gap={2}>
-          <YStack role="listitem">
-            <Row label="Design" on={mode === 'design'} onPress={onDesign} data-slot="place-design" icon={<WandSparkles size={16} aria-hidden />} />
-          </YStack>
-          {opened('studio') ? (
+          {anon ? null : (
+            <YStack role="listitem">
+              <Row label="Design" on={mode === 'design'} onPress={onDesign} data-slot="place-design" icon={<WandSparkles size={16} aria-hidden />} />
+            </YStack>
+          )}
+          {!anon && opened('studio') ? (
             <YStack role="listitem">
               <Row label="Studio" on={mode === 'studio'} onPress={onStudio} data-slot="place-studio" icon={<Clapperboard size={16} aria-hidden />} />
             </YStack>
           ) : null}
-          <YStack role="listitem">
-            <Row label="Tabs" on={mode === 'tabs'} onPress={onTabs} data-slot="place-tabs" icon={<SquareTerminal size={16} aria-hidden />} />
-          </YStack>
+          {anon ? null : (
+            <YStack role="listitem">
+              <Row label="Tabs" on={mode === 'tabs'} onPress={onTabs} data-slot="place-tabs" icon={<SquareTerminal size={16} aria-hidden />} />
+            </YStack>
+          )}
           {apps.map((a) => (
             <YStack role="listitem" key={a.id}>
               <Row label={a.name} on={inside === a.id} onPress={() => go(hosted(a.id))} data-slot={`place-app-${a.id}`} icon={<a.icon size={16} aria-hidden />} />
             </YStack>
           ))}
-          <YStack role="listitem">
-            <DropdownMenu placement="bottom-start" minWidth={220} trigger={<Row label={t('More')} data-slot="place-more" aria-haspopup="menu" icon={<Ellipsis size={16} aria-hidden />} />} items={rest} />
-          </YStack>
+          {anon ? null : (
+            <YStack role="listitem">
+              <DropdownMenu placement="bottom-start" minWidth={220} trigger={<Row label={t('More')} data-slot="place-more" aria-haspopup="menu" icon={<Ellipsis size={16} aria-hidden />} />} items={rest} />
+            </YStack>
+          )}
         </YStack>
         {betasDialog}
       </YStack>
@@ -300,17 +306,21 @@ export function Rail({
       <Mark label="Dev" on={mode === 'dev' && !here} onPress={onDev} data-slot="rail-dev">
         <Code2 size={18} aria-hidden />
       </Mark>
-      <Mark label="Design" on={mode === 'design'} onPress={onDesign} data-slot="rail-design">
-        <WandSparkles size={18} aria-hidden />
-      </Mark>
-      {opened('studio') ? (
+      {anon ? null : (
+        <Mark label="Design" on={mode === 'design'} onPress={onDesign} data-slot="rail-design">
+          <WandSparkles size={18} aria-hidden />
+        </Mark>
+      )}
+      {!anon && opened('studio') ? (
         <Mark label="Studio" on={mode === 'studio'} onPress={onStudio} data-slot="rail-studio">
           <Clapperboard size={18} aria-hidden />
         </Mark>
       ) : null}
-      <Mark label="Tabs" on={mode === 'tabs'} onPress={onTabs} data-slot="rail-tabs">
-        <SquareTerminal size={18} aria-hidden />
-      </Mark>
+      {anon ? null : (
+        <Mark label="Tabs" on={mode === 'tabs'} onPress={onTabs} data-slot="rail-tabs">
+          <SquareTerminal size={18} aria-hidden />
+        </Mark>
+      )}
       {apps.map((a) => (
         <Mark key={a.id} label={a.name} on={inside === a.id} onPress={() => go(hosted(a.id))} data-slot={`rail-app-${a.id}`}>
           <a.icon size={18} aria-hidden />
@@ -325,9 +335,11 @@ export function Rail({
       <Mark label={t('Customize')} on={here === 'customize'} onPress={to(RAISED.customize)} data-slot="rail-customize">
         <Puzzle size={18} aria-hidden />
       </Mark>
-      <Mark label={t('Betas')} on={mode === 'beta'} onPress={() => go('/beta')} data-slot="rail-betas">
-        <FlaskConical size={18} aria-hidden />
-      </Mark>
+      {anon ? null : (
+        <Mark label={t('Betas')} on={mode === 'beta'} onPress={() => go('/beta')} data-slot="rail-betas">
+          <FlaskConical size={18} aria-hidden />
+        </Mark>
+      )}
       {betasDialog}
       {!anon && rest.length ? (
         <DropdownMenu
