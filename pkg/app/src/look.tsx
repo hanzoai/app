@@ -11,7 +11,7 @@ import { useState, useEffect } from 'react'
 import { phrase } from '@hanzo/i18n'
 import { LanguagePicker } from '@hanzo/i18n/react'
 import { useI18n } from '@hanzo/i18n/react'
-import { Box, Button, Input, Separator, Text, XStack, YStack } from '@hanzo/ui'
+import { Box, Button, Input, Text, XStack, YStack } from '@hanzo/ui'
 import { Appearance } from '@hanzo/appearance'
 import { useIam } from '@hanzo/iam/react'
 import { Check, Download, Laptop, Palette, Smartphone, Sparkles, Type, Upload } from 'lucide-react'
@@ -109,8 +109,6 @@ export function Look() {
       {/* Core Design Appearance */}
       <Appearance org={org.id} orgName={org.name || brand()} account={{ base: api(), token: accessToken ?? undefined }} />
 
-      <Separator />
-
       {/* Native Platform Profile */}
       <YStack gap="$2.5">
         <XStack items="center" gap="$2">
@@ -154,8 +152,6 @@ export function Look() {
         </YStack>
       </YStack>
 
-      <Separator />
-
       {/* Organization Themes & Designer Mods */}
       <YStack gap="$3">
         <XStack items="center" gap="$2">
@@ -198,7 +194,7 @@ export function Look() {
             </Text>
           </XStack>
           <Text fontSize="$2" color="$soft">
-            {t('Enter a font family name (e.g. "Geist", "Inter", "Cabinet Grotesk") or a webfont stylesheet URL.')}
+            {t('Enter a font family name (e.g. "Zen", "Inter", "Cabinet Grotesk") or a webfont stylesheet URL.')}
           </Text>
           <XStack gap="$2" items="center">
             <Input
@@ -242,8 +238,6 @@ export function Look() {
         </YStack>
       </YStack>
 
-      <Separator />
-
       {/* Language */}
       <YStack gap="$2">
         <Text fontSize="$4" fontWeight="600" color="$ink">
@@ -256,8 +250,6 @@ export function Look() {
           <LanguagePicker />
         </XStack>
       </YStack>
-
-      <Separator />
 
       {/* Tool & Action Approval (Auto vs Manual) */}
       <YStack gap="$2" data-slot="settings-approval-mode">
@@ -299,8 +291,6 @@ export function Look() {
           })}
         </XStack>
       </YStack>
-
-      <Separator />
 
       {/* Default Reasoning Effort */}
       <YStack gap="$2" data-slot="settings-reasoning-effort">

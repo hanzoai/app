@@ -141,10 +141,9 @@ describe('the rail', () => {
     expect(WORKSPACE).toBe('https://hanzo.team')
   })
 
-  test('More holds the apps in beta the reader may open, then Betas, the list of all of them', () => {
+  test('More holds the apps in beta the reader may open', () => {
     const html = rail('chat')
     expect(at(html, 'data-item="beta-finance"')).toBeGreaterThan(at(html, 'data-item="team"'))
-    expect(at(html, 'data-item="betas"')).toBeGreaterThan(at(html, 'data-item="beta-finance"'))
     expect(html, 'an app in beta the reader was not granted').not.toContain('data-item="beta-erp"')
   })
 
@@ -168,7 +167,7 @@ describe('a phone’s menu', () => {
     expect(html).toContain('data-slot="places"')
     expect(at(html, 'data-slot="place-design"')).toBeLessThan(at(html, 'data-slot="place-tabs"'))
     expect(at(html, 'data-slot="place-tabs"')).toBeLessThan(at(html, 'data-slot="place-more"'))
-    const more = ['library', 'scheduled', 'customize', 'team', 'beta-finance', 'betas'].map((k) => at(html, `data-item="${k}"`))
+    const more = ['library', 'scheduled', 'customize', 'team', 'beta-finance'].map((k) => at(html, `data-item="${k}"`))
     expect(more).toEqual([...more].sort((a, b) => a - b))
   })
 

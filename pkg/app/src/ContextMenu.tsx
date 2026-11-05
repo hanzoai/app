@@ -5,22 +5,33 @@ import { useI18n } from '@hanzo/i18n/react'
 import { SizableText, Text, XStack, YStack } from '@hanzo/gui'
 import { toast } from '@hanzo/ui'
 import {
+  Archive,
   CheckSquare,
+  Clock,
   Code2,
+  Copy,
   ExternalLink,
   FolderGit2,
   GitBranch,
+  Globe,
   Link2,
   MessageSquare,
   Moon,
   PanelLeft,
+  Pencil,
+  Pin,
   Play,
   Plus,
+  RotateCcw,
   Search,
   Settings,
+  Share2,
+  Sparkles,
   SquarePen,
   SquareTerminal,
   Sun,
+  Trash2,
+  Volume2,
   WandSparkles,
 } from 'lucide-react'
 import type { Host } from '@hanzo/build'
@@ -424,6 +435,129 @@ export function AppContextMenu({
         }
       }
 
+      // 5b. Chat turn / answer or active conversation surface (`[data-turn-id]`, `[data-slot="talk"]`, `[data-slot="conversation-head"]`)
+      if (!entries.length && mode === 'chat') {
+        const turnEl = target.closest('[data-turn-id]') as HTMLElement | null
+        const turnId = turnEl?.getAttribute('data-turn-id') ?? undefined
+        const turnRole = turnEl?.getAttribute('data-turn-role') ?? undefined
+        const inTalk = Boolean(
+          turnEl ||
+            target.closest('[data-slot="talk"], [data-slot="conversation-head"]'),
+        )
+        const hasTurns = Boolean(document.querySelector('[data-slot="talk"] [data-turn-id]'))
+        if (inTalk && (turnEl || hasTurns)) {
+          const dispatchChat = (action: string) => {
+            window.dispatchEvent(
+              new CustomEvent('hanzo:chat-context-action', {
+                detail: { action, turnId },
+              }),
+            )
+          }
+          if (turnId && turnRole === 'assistant') {
+            entries.push(
+              {
+                key: 'turn-copy',
+                label: t('Copy answer'),
+                icon: <Copy size={15} aria-hidden />,
+                run: () => dispatchChat('copy'),
+              },
+              {
+                key: 'turn-redo',
+                label: t('Regenerate'),
+                icon: <RotateCcw size={15} aria-hidden />,
+                run: () => dispatchChat('redo'),
+              },
+              {
+                key: 'turn-think',
+                label: t('Think harder'),
+                icon: <Sparkles size={15} aria-hidden />,
+                run: () => dispatchChat('think'),
+              },
+              {
+                key: 'turn-web',
+                label: t('Search web'),
+                icon: <Globe size={15} aria-hidden />,
+                run: () => dispatchChat('web'),
+              },
+              {
+                key: 'turn-branch',
+                label: t('Branch in new chat'),
+                icon: <GitBranch size={15} aria-hidden />,
+                run: () => dispatchChat('branch'),
+              },
+              {
+                key: 'turn-listen',
+                label: t('Read aloud'),
+                icon: <Volume2 size={15} aria-hidden />,
+                run: () => dispatchChat('listen'),
+              },
+              { key: 'sep-turn-conv', line: true },
+            )
+          } else if (turnId && turnRole === 'user') {
+            entries.push(
+              {
+                key: 'turn-copy-q',
+                label: t('Copy message'),
+                icon: <Copy size={15} aria-hidden />,
+                run: () => dispatchChat('copy'),
+              },
+              { key: 'sep-turn-q', line: true },
+            )
+          }
+          entries.push(
+            {
+              key: 'conv-rename',
+              label: t('Rename'),
+              icon: <Pencil size={15} aria-hidden />,
+              run: () => dispatchChat('rename'),
+            },
+            {
+              key: 'conv-pin',
+              label: t('Pin'),
+              icon: <Pin size={15} aria-hidden />,
+              run: () => dispatchChat('pin'),
+            },
+            {
+              key: 'conv-share',
+              label: t('Share…'),
+              icon: <Share2 size={15} aria-hidden />,
+              run: () => dispatchChat('share'),
+            },
+            {
+              key: 'conv-schedule',
+              label: t('Schedule…'),
+              icon: <Clock size={15} aria-hidden />,
+              run: () => dispatchChat('schedule'),
+            },
+            {
+              key: 'conv-copy-link',
+              label: t('Copy link'),
+              icon: <Link2 size={15} aria-hidden />,
+              run: () => void copyLink(window.location.pathname + window.location.search),
+            },
+            {
+              key: 'conv-open-tab',
+              label: t('Open in new tab'),
+              icon: <ExternalLink size={15} aria-hidden />,
+              run: () => openNewTab(window.location.pathname + window.location.search),
+            },
+            {
+              key: 'conv-archive',
+              label: t('Archive'),
+              icon: <Archive size={15} aria-hidden />,
+              run: () => dispatchChat('archive'),
+            },
+            { key: 'sep-conv-del', line: true },
+            {
+              key: 'conv-delete',
+              label: t('Delete'),
+              icon: <Trash2 size={15} aria-hidden />,
+              run: () => dispatchChat('delete'),
+            },
+          )
+        }
+      }
+
       // 6. Workspace / Stage surface (`[data-slot="stage"]`, `[data-slot="pane"]`, `[data-slot="frame"]`)
       if (!entries.length && target.closest('[data-slot="stage"], [data-slot="pane"], [data-slot="frame"]')) {
         entries.push(
@@ -566,13 +700,6 @@ export function AppContextMenu({
         boxShadow: '0 12px 32px -4px rgba(0, 0, 0, 0.36)',
       }}
     >
-      {state.title ? (
-        <XStack px="$2.5" py="$1" borderBottomWidth={1} borderColor="$borderColor" mb="$1">
-          <SizableText size="$1" fontWeight="600" color="$soft" numberOfLines={1}>
-            {state.title}
-          </SizableText>
-        </XStack>
-      ) : null}
       {state.entries.map((entry) =>
         'line' in entry ? (
           <XStack key={entry.key} height={1} bg="$borderColor" my="$1" mx="$1" role="separator" />

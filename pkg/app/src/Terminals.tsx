@@ -6,6 +6,7 @@
 // mints each pane's address. hanzo.ai/tabs draws it for a signed-in reader, the
 // way /studio draws Studio.
 
+import { useEffect } from 'react'
 import { Text, YStack } from '@hanzo/gui'
 import { useFleet, Workspace } from '@hanzo/tabs'
 import { useI18n } from '@hanzo/i18n/react'
@@ -15,6 +16,16 @@ import { bearer } from './lib/session'
 export default function Terminals() {
   const { t } = useI18n()
   const fleet = useFleet(bearer(), api())
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const lite = fleet.hosts.map((h) => ({ machine: h.machine, label: h.label, status: h.status, desktop: Boolean((h as { desktop?: boolean }).desktop) }))
+      window.localStorage.setItem('hanzo.tabs.fleet', JSON.stringify(lite))
+      window.dispatchEvent(new CustomEvent('hanzo:tabs-fleet', { detail: lite }))
+    } catch {
+      // ignore storage errors
+    }
+  }, [fleet.hosts])
   return (
     <YStack data-slot="terminals" flex={1} minH={0} minW={0}>
       {fleet.error ? (

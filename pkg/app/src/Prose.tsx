@@ -87,7 +87,8 @@ function inline(tokens: Token[] | undefined, tone: Tone, rung: Rung = BODY): Rea
             {...(t.title ? { title: t.title } : {})}
             fontSize={rung}
             color={INK}
-            textDecorationLine="underline"
+            textDecorationLine="none"
+            hoverStyle={{ textDecorationLine: 'none' }}
           >
             {inline(t.tokens, INK, rung)}
           </Anchor>

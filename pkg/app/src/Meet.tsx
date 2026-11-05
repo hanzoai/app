@@ -871,7 +871,7 @@ export function Meet() {
                     <Text
                       render={<a href="https://meet.hanzo.ai" target="_blank" rel="noopener noreferrer" />}
                       color="$ink"
-                      textDecorationLine="underline"
+                      textDecorationLine="none"
                     >
                       meet.hanzo.ai
                     </Text>

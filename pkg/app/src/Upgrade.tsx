@@ -64,7 +64,7 @@ function here(): string | undefined {
 }
 
 type Audience = 'personal' | 'business'
-type MultiplierTier = '2x' | '5x' | '10x'
+type MultiplierTier = '3x' | '5x' | '15x'
 
 interface MultiplierConfig {
   id: string
@@ -77,13 +77,13 @@ interface MultiplierConfig {
 }
 
 const MULTIPLIERS: Record<MultiplierTier, MultiplierConfig> = {
-  '2x': {
+  '3x': {
     id: 'pro-2x',
     name: 'Pro',
-    multiple: '2×',
+    multiple: '3×',
     price: 15,
     icon: Rocket,
-    subtitle: '2× more usage and higher limits for everyday builders.',
+    subtitle: '3× more usage and higher limits for everyday builders.',
     bots: 1,
   },
   '5x': {
@@ -95,13 +95,13 @@ const MULTIPLIERS: Record<MultiplierTier, MultiplierConfig> = {
     subtitle: '5× higher limits for autonomous coding agents.',
     bots: 1,
   },
-  '10x': {
+  '15x': {
     id: 'max-10x',
     name: 'Max',
-    multiple: '10×',
+    multiple: '15×',
     price: 95,
     icon: Crown,
-    subtitle: '10× limits for heavy continuous coding sessions.',
+    subtitle: '15× limits for heavy continuous coding sessions.',
     bots: 3,
   },
 }
@@ -109,7 +109,7 @@ const MULTIPLIERS: Record<MultiplierTier, MultiplierConfig> = {
 export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void }) {
   const { t } = useI18n()
   const [audience, setAudience] = useState<Audience>('personal')
-  const [multiplier, setMultiplier] = useState<MultiplierTier>('2x')
+  const [multiplier, setMultiplier] = useState<MultiplierTier>('3x')
   const [showAllPersonal, setShowAllPersonal] = useState(false)
   const [businessCycle, setBusinessCycle] = useState<Interval>('year')
   const [hashOpen, setHashOpen] = useState(false)
@@ -382,7 +382,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                         borderWidth={1}
                         borderColor="rgba(255, 255, 255, 0.1)"
                       >
-                        {(['2x', '5x', '10x'] as const).map((m) => (
+                        {(['3x', '5x', '15x'] as const).map((m) => (
                           <Box
                             key={m}
                             render="button"
@@ -572,7 +572,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                   </YStack>
                 </YStack>
 
-                {/* 3. Pro 2x ($15/mo) */}
+                {/* 3. Pro 3x ($15/mo) */}
                 <YStack
                   bg="rgba(255, 255, 255, 0.04)"
                   borderWidth={1.5}
@@ -585,10 +585,10 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                   <YStack gap="$2">
                     <XStack items="center" gap="$1.5">
                       <Rocket size={15} color="#38bdf8" aria-hidden />
-                      <Text fontSize={12} fontWeight="700" color="$ink">{t('Pro 2×')}</Text>
+                      <Text fontSize={12} fontWeight="700" color="$ink">{t('Pro 3×')}</Text>
                     </XStack>
                     <Text fontSize={18} fontWeight="700" color="$ink">{t('Pro')}</Text>
-                    <Text fontSize={12} color="var(--soft, #a1a1aa)" minH={32}>{t('2× limits for builders.')}</Text>
+                    <Text fontSize={12} color="var(--soft, #a1a1aa)" minH={32}>{t('3× limits for builders.')}</Text>
                     <Anchor href={proHref} onPress={() => handleBuy('pro-2x', 'Pro', 15)} bg="var(--primary)" rounded="$10" py="$1.5" px="$3" color="#ffffff" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
                       {t('Get Pro')}
                     </Anchor>
@@ -597,7 +597,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                       <Text fontSize={12} color="#8e8e8e">{t('/ mo')}</Text>
                     </XStack>
                     <YStack gap="$1.5" pt="$1">
-                      {[t('2× more usage than Go'), t('2× higher 5h limits'), t('1 custom Hanzo Bot'), t('Priority support')].map((f) => (
+                      {[t('3× more usage than Go'), t('3× higher 5h limits'), t('1 custom Hanzo Bot'), t('Priority support')].map((f) => (
                         <XStack key={f} items="center" gap="$1.5">
                           <Check size={13} color="#38bdf8" aria-hidden />
                           <Text fontSize={11} color="$ink">{f}</Text>
@@ -642,7 +642,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                   </YStack>
                 </YStack>
 
-                {/* 5. Max 10x ($95/mo) */}
+                {/* 5. Max 15x ($95/mo) */}
                 <YStack
                   bg="rgba(255, 255, 255, 0.02)"
                   borderWidth={1}
@@ -655,10 +655,10 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                   <YStack gap="$2">
                     <XStack items="center" gap="$1.5">
                       <Crown size={15} color="#fbbf24" aria-hidden />
-                      <Text fontSize={12} fontWeight="700" color="$ink">{t('Max 10×')}</Text>
+                      <Text fontSize={12} fontWeight="700" color="$ink">{t('Max 15×')}</Text>
                     </XStack>
                     <Text fontSize={18} fontWeight="700" color="$ink">{t('Max')}</Text>
-                    <Text fontSize={12} color="var(--soft, #a1a1aa)" minH={32}>{t('10× continuous limits.')}</Text>
+                    <Text fontSize={12} color="var(--soft, #a1a1aa)" minH={32}>{t('15× continuous limits.')}</Text>
                     <Anchor href={maxHref} onPress={() => handleBuy('max-10x', 'Max', 95)} bg="var(--primary)" rounded="$10" py="$1.5" px="$3" color="#ffffff" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
                       {t('Get Max')}
                     </Anchor>
@@ -667,7 +667,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                       <Text fontSize={12} color="#8e8e8e">{t('/ mo')}</Text>
                     </XStack>
                     <YStack gap="$1.5" pt="$1">
-                      {[t('10× more usage than Go'), t('10× higher 5h limits'), t('3 custom Hanzo Bots'), t('Dedicated support')].map((f) => (
+                      {[t('15× more usage than Go'), t('15× higher 5h limits'), t('3 custom Hanzo Bots'), t('Dedicated support')].map((f) => (
                         <XStack key={f} items="center" gap="$1.5">
                           <Check size={13} color="#fbbf24" aria-hidden />
                           <Text fontSize={11} color="$ink">{f}</Text>
@@ -988,7 +988,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                 fontSize={13}
                 fontWeight="600"
                 color="#388bfd"
-                hoverStyle={{ textDecorationLine: 'underline' }}
+                hoverStyle={{ textDecorationLine: 'none' }}
               >
                 {t('See Hanzo Enterprise')}
               </Anchor>

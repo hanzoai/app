@@ -35,7 +35,7 @@
 // the menu's foot.
 
 import { useI18n } from '@hanzo/i18n/react'
-import { Clapperboard, Clock, Code2, Compass, Ellipsis, FlaskConical, Library, MessageSquare, PanelLeft, Puzzle, Sparkles, SquareTerminal, Users, WandSparkles } from 'lucide-react'
+import { Bot, CircleHelp, Clapperboard, Clock, Code2, Compass, Ellipsis, FlaskConical, Library, MessageSquare, PanelLeft, Puzzle, Settings, Sparkles, SquareTerminal, Users, WandSparkles } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Text, XStack, YStack } from '@hanzo/gui'
 import { route, type Host } from '@hanzo/build'
@@ -233,11 +233,10 @@ export function Rail({
       : []),
     ...(team
       ? [
+          { key: 'bot', label: 'Bot', icon: <Bot size={16} aria-hidden />, onSelect: () => out('https://hanzo.bot') },
           { key: 'team', label: 'Team', icon: <Users size={16} aria-hidden />, onSelect: () => out(WORKSPACE) },
+          { key: 'market', label: t('Marketplace'), icon: <Compass size={16} aria-hidden />, onSelect: () => out('https://hanzo.market') },
           ...granted.map((b) => ({ key: `beta-${b.id}`, label: b.name, icon: <Sparkles size={16} aria-hidden />, onSelect: () => reach(b.href as string) })),
-          { type: 'separator' as const, key: 'betas-rule' },
-          { key: 'betas', label: t('Betas'), icon: <FlaskConical size={16} aria-hidden />, onSelect: () => go('/beta') },
-          { key: 'market', label: t('Explore on hanzo.market'), icon: <Compass size={16} aria-hidden />, onSelect: () => out('https://hanzo.market') },
         ]
       : []),
   ]
@@ -293,13 +292,13 @@ export function Rail({
       $touchable={{ pt: (TOUCH_HEAD - TOUCH) / 2 }}
     >
       {toggle ? (
-        <YStack pb={4}>
+        <YStack>
           <Toggle open={open} onPress={toggle} />
         </YStack>
       ) : null}
       {/* The marks take what the toggle and the account leave, and scroll inside it: a short window
           with every product's mark scrolled the whole page and put the account below the fold. */}
-      <YStack data-slot="rail-marks" flex={1} minH={0} overflowY="auto" overflowX="hidden" items="center" gap={4} width="100%" $platform-web={{ scrollbarWidth: 'none' }}>
+      <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden" items="center" gap={4} width="100%" $platform-web={{ scrollbarWidth: 'none' }}>
       <Mark label={t('Chat')} on={mode === 'chat'} onPress={onChat} data-slot="rail-chat">
         <MessageSquare size={18} aria-hidden />
       </Mark>
@@ -375,7 +374,41 @@ export function Rail({
         />
       ) : null}
       </YStack>
-      {anon ? null : <Account host={host} narrow onOrg={onOrg} />}
+      {anon ? (
+        <YStack gap={4} items="center" pb={4}>
+          <Mark
+            label={t('See plans and pricing')}
+            data-slot="anon-pricing"
+            onPress={() => {
+              if (typeof window !== 'undefined') window.location.assign('/pricing')
+            }}
+          >
+            <Sparkles size={18} aria-hidden />
+          </Mark>
+          <Mark
+            label={t('Help')}
+            data-slot="anon-help"
+            onPress={() => {
+              if (typeof window !== 'undefined') window.open('https://docs.hanzo.ai', '_blank', 'noopener,noreferrer')
+            }}
+          >
+            <CircleHelp size={18} aria-hidden />
+          </Mark>
+          <Mark
+            label={t('Settings')}
+            data-slot="anon-settings"
+            onPress={() => {
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('hanzo:anon-settings', { detail: { open: true } }))
+              }
+            }}
+          >
+            <Settings size={18} aria-hidden />
+          </Mark>
+        </YStack>
+      ) : (
+        <Account host={host} narrow onOrg={onOrg} />
+      )}
     </YStack>
   )
 }

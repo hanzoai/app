@@ -102,6 +102,7 @@ import {
   useOrganizations,
 } from "@hanzo/iam/react";
 import { Gutter, SideProvider, useSplit } from "@hanzo/build";
+import { restoreActiveMod } from "@hanzo/mod";
 import {
   HanzoMark,
 } from "@hanzogui/shell";
@@ -1700,6 +1701,7 @@ export function Split({
         render="main"
         data-slot="pane"
         gridArea="pane"
+        position="relative"
         {...(framed
           ? bare
             ? null
@@ -1724,6 +1726,52 @@ export function Split({
             </SideProvider>
           </Framed.Provider>
         )}
+        {!aside && !swap ? (
+          <YStack
+            data-slot="side-pull"
+            aria-label={t("Pull to open tabs")}
+            {...({ title: t("Drag to open split browser") } as object)}
+            position="absolute"
+            t={0}
+            b={0}
+            insetInlineEnd={0}
+            width={10}
+            z={10}
+            items="center"
+            justify="center"
+            cursor="col-resize"
+            display="none"
+            $lg={{ display: "flex" }}
+            style={{ touchAction: "none" }}
+            onDoubleClick={() => showAside("tasks")}
+            onPointerDown={(e: React.PointerEvent<HTMLElement>) => {
+              if (e.button !== 0) return;
+              e.preventDefault();
+              const target = e.currentTarget;
+              target.setPointerCapture?.(e.pointerId);
+              const startX = e.clientX;
+              const isRtl = document.documentElement.dir === "rtl";
+              let opened = false;
+              const onMove = (ev: PointerEvent) => {
+                if (opened) return;
+                const delta = isRtl ? ev.clientX - startX : startX - ev.clientX;
+                if (delta >= 16) {
+                  opened = true;
+                  cleanup();
+                  showAside("tasks");
+                }
+              };
+              const cleanup = () => {
+                target.removeEventListener("pointermove", onMove);
+                target.removeEventListener("pointerup", cleanup);
+                target.removeEventListener("pointercancel", cleanup);
+              };
+              target.addEventListener("pointermove", onMove);
+              target.addEventListener("pointerup", cleanup);
+              target.addEventListener("pointercancel", cleanup);
+            }}
+          />
+        ) : null}
       </YStack>
       {aside ? (
         <YStack
@@ -1742,7 +1790,12 @@ export function Split({
         >
           {split.grip ? (
             // In the gutter the frame leaves between the panes (an unframed split has none), measured inside the column's 1px edge.
-            <Gutter {...split.grip} label={t("Resize side panel")} inset={1} />
+            <Gutter
+              {...split.grip}
+              label={t("Resize side panel")}
+              gap={split.side.hidden ? 0 : undefined}
+              inset={split.side.hidden ? -4 : 1}
+            />
           ) : null}
           {/* The column above is the landmark; this is the box a view
               projects into, a container and not a second region. It carries the
@@ -2122,6 +2175,10 @@ function Frame({
   const orgState = useOrganizations();
   const { currentOrg, currentOrgId } = orgState;
   const [filter, setFilter] = useState("");
+
+  useEffect(() => {
+    restoreActiveMod(currentOrgId ?? undefined);
+  }, [currentOrgId]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {

@@ -458,7 +458,7 @@ function List({
           ) : null}
           <YStack role="listitem" gap={1}>
             {heading(t('Recents'), label, true)}
-            {loose.length ? menus(rest, true) : rest}
+            {menus(rest, true)}
           </YStack>
         </YStack>
       </ScrollView>

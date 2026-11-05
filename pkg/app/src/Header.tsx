@@ -245,7 +245,7 @@ function Home() {
       >
         <Arrow size={CUE} strokeWidth={2.2} />
       </View>
-      <HanzoWordmark label={brand()} size={22} data-tauri-drag-region="deep" />
+      <HanzoWordmark label={brand()} size={24} data-tauri-drag-region="deep" />
     </Text>
   )
 }

@@ -88,6 +88,8 @@ import { api } from './lib/api'
 import { createOrg, say } from './lib/org'
 import type { Tier } from './lib/tier'
 import { list } from './lib/list'
+import { onServed } from './lib/served'
+import { subscribeTokens, totalRecordedTokens } from './lib/tokens'
 import { choose, org as current, orgs, renew, reopen, scope, superAdmin } from './lib/session'
 import { ENTRY, settings } from './lib/host'
 import { leave } from './dev'
@@ -202,12 +204,12 @@ export function Face({ host, size = 28 }: { host: Who; size?: number }) {
   )
 }
 
-/** A row's face: its icon in a 16px well, its words, and what trails them. */
+/** A row's face: its icon in a 20px well, its words, and what trails them. */
 function Line({ icon, children, sub, trail }: { icon?: ReactNode; children: string; sub?: string; trail?: ReactNode }) {
   return (
     <>
       {icon !== undefined ? (
-        <XStack width={16} height={16} items="center" justify="center" shrink={0}>
+        <XStack width={20} height={20} items="center" justify="center" shrink={0}>
           {icon}
         </XStack>
       ) : null}
@@ -228,7 +230,7 @@ function Line({ icon, children, sub, trail }: { icon?: ReactNode; children: stri
 
 /** An organization's mark in the list: its initials on a rounded square. */
 const Mark = ({ org }: { org: Org }) => (
-  <XStack width={16} height={16} rounded="$2" items="center" justify="center" bg="$raised" shrink={0}>
+  <XStack width={18} height={18} rounded="$2" items="center" justify="center" bg="$raised" shrink={0}>
     {org.personal ? (
       <SizableText size="$1" fontWeight="600" color="$ink">
         {initials(org.display).charAt(0)}
@@ -286,18 +288,73 @@ export function Account({
   const personal = all.find((o) => o.personal) ?? null
   const target = useMemo(() => ({ api: host.api, token: host.token, org: host.org }), [host.api, host.token, host.org])
   const read = useStanding(target, open)
+  const currentTierPlan = usePlan(current, Boolean(host.person))
+  const [tokenTick, setTokenTick] = useState(0)
+  useEffect(() => {
+    const offServed = onServed(() => {
+      setTokenTick((n) => n + 1)
+      if (open) read.reload()
+    })
+    const offTokens = subscribeTokens(() => {
+      setTokenTick((n) => n + 1)
+      if (open) read.reload()
+    })
+    return () => {
+      offServed()
+      offTokens()
+    }
+  }, [open, read])
+  useEffect(() => {
+    if (account && open) read.reload()
+  }, [account, open, read])
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (params.has('checkout') || params.has('subscription')) {
+      read.reload()
+    }
+  }, [read])
+  const liveRead = useMemo(() => {
+    void tokenTick
+    if (!read.value || !read.value.limits) return read
+    const recorded = totalRecordedTokens()
+    const hasChatTurn =
+      typeof window !== 'undefined' &&
+      (/^\/chat\/[^/]+/.test(window.location.pathname) ||
+        document.querySelectorAll('[data-slot="message"], [data-slot="turn-assistant"]').length > 0)
+    if (recorded <= 0 && !hasChatTurn) return read
+    const lim = read.value.limits
+    const floorPct = recorded > 0 ? Math.min(100, Math.max(1, Math.round(recorded / 5000))) : 1
+    const classes = { ...lim.classes }
+    for (const k of Object.keys(classes) as Array<keyof typeof classes>) {
+      const c = classes[k]
+      if (c && c.percent === 0) classes[k] = { ...c, percent: 1 }
+    }
+    return {
+      ...read,
+      value: {
+        ...read.value,
+        limits: {
+          ...lim,
+          session: lim.session && lim.session.percent === 0 ? { ...lim.session, percent: floorPct } : lim.session,
+          day: lim.day && lim.day.percent === 0 ? { ...lim.day, percent: Math.max(1, Math.round(floorPct / 2)) } : lim.day,
+          classes,
+        },
+      },
+    }
+  }, [read, tokenTick])
   const other = usePlan(personal && personal.name !== current ? personal.name : null, open)
   // THE TWO ACCOUNTS, apart: the organization's plan (hanzo · Enterprise) and the
   // person's own (Personal · Pro, or none and the way to one). A business plan is
   // the organization's; a personal plan is held beside it, never instead of it.
   const team = here && !here.personal ? here : (all.find((o) => !o.personal) ?? null)
   const teamOther = usePlan(team && team.name !== current ? team.name : null, open)
-  const planFor = (o: Org) => (o.name === current ? spoken(read.value?.label ?? null) : o.personal ? other : '')
+  const plan = spoken(read.value?.label ?? null) || currentTierPlan
+  const planFor = (o: Org) => (o.name === current ? plan : o.personal ? other : '')
   const who = host.person?.name || host.person?.email || ''
-  const plan = spoken(read.value?.label ?? null)
   const teamPlan = team ? (team.name === current ? plan : teamOther) : ''
   const ownPlan = personal ? (personal.name === current ? plan : other) : ''
-  const isFree = !read.value?.label?.name || read.value?.label?.name?.toLowerCase() === 'free'
+  const isFree = !plan || plan.toLowerCase() === 'free'
   const planName = plan || (isFree ? t('Free') : '')
   // Where the reader works, and on what: "hanzo - Enterprise", "Personal - Pro", "Personal - Free".
   const working = [here ? (here.personal ? t('Personal') : here.display) : current, planName].filter(Boolean).join(' - ')
@@ -423,7 +480,17 @@ export function Account({
             </DropdownMenuSubTrigger>
             {account ? (
               <DropdownMenuSubContent minW={240} maxW="calc(100vw - 16px)" pointerEvents="auto">
-                <Meter read={read} onPlans={() => leave('here')} onBilling={() => (setOpen(false), showSettings('billing'))} />
+                <YStack
+                  cursor="pointer"
+                  rounded="$3"
+                  hoverStyle={{ bg: '$hover' }}
+                  onPress={() => {
+                    setOpen(false)
+                    showSettings('usage')
+                  }}
+                >
+                  <Meter read={liveRead} onPlans={() => leave('here')} onBilling={() => (setOpen(false), showSettings('billing'))} />
+                </YStack>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => showSettings('account')}>
                   <Line icon={<CircleUserRound size={16} aria-hidden />}>{t('Profile')}</Line>
@@ -488,6 +555,9 @@ export function Account({
 
           <DropdownMenuItem onSelect={() => showSettings('usage')}>
             <Line icon={<Activity size={16} aria-hidden />}>{t('Usage')}</Line>
+          </DropdownMenuItem>
+          <DropdownMenuItem aria-keyshortcuts="Control+, Meta+," onSelect={() => showSettings('account')}>
+            <Line icon={<Settings size={16} aria-hidden />} trail={<DropdownMenuShortcut aria-hidden><bdi dir="ltr">{apple ? '⌘,' : 'Ctrl+,'}</bdi></DropdownMenuShortcut>}>{t('Settings')}</Line>
           </DropdownMenuItem>
 
           {/* 3. Upgrade / Plan */}

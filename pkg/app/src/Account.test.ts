@@ -67,12 +67,12 @@ afterEach(() => {
 })
 
 describe('the account menu', () => {
-  test('reads top to bottom: the account icon, the organization switcher, Upgrade plan, Language, Help and Log out', () => {
-    expect(menu(false).map((r) => r.label)).toEqual(['Ada', 'acme · Free', 'Usage', 'Upgrade plan', 'Language', 'Help', 'Log out'])
+  test('reads top to bottom: the account icon, the organization switcher, Usage, Settings, Upgrade plan, Language, Help and Log out', () => {
+    expect(menu(false).map((r) => r.label)).toEqual(['Ada', 'acme · Free', 'Usage', 'Settings', 'Upgrade plan', 'Language', 'Help', 'Log out'])
   })
 
   test('the account icon collapses account options: Profile, Personalization, Settings, Beta', () => {
-    expect(menu(true).map((r) => r.label)).toEqual(['Ada', 'Profile', 'Personalization', 'Settings', 'Beta', 'acme · Free', 'Usage', 'Upgrade plan', 'Language', 'Help', 'Log out'])
+    expect(menu(true).map((r) => r.label)).toEqual(['Ada', 'Profile', 'Personalization', 'Settings', 'Beta', 'acme · Free', 'Usage', 'Settings', 'Upgrade plan', 'Language', 'Help', 'Log out'])
   })
 
   test("Beta opens the person's place on the waitlist, a page of the site", () => {

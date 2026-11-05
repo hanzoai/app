@@ -213,8 +213,8 @@ function Window({ bar, betas }: Hosted) {
   const mode = at.mode
   const { open: betaOpen } = useBetas()
   const blockedBeta = (mode === 'studio' || mode === 'flow') && !betaOpen(mode)
-  // Tabs, Betas and the hosted apps are their panes alone: no sidebar beside them, and no Dev places in a phone's menu.
-  const alone = mode === 'tabs' || mode === 'beta' || mode === 'hosted' || blockedBeta
+  // Every mode carries its sidebar beside the rail (or its title when it has no places of its own).
+  const alone = false
   // The hosted app the address names (lib/hosted), for the rail to light.
   const inside = at.mode === 'hosted' ? at.id : null
   const where = at.mode === 'dev' ? at.at : null
@@ -453,8 +453,38 @@ function Window({ bar, betas }: Hosted) {
             $max-md={{ p: 0 }}
           >
             {drawer.slide ? <Lift /> : null}
-            <YStack height="100%" $max-md={{ display: 'none' }}>
+            <YStack height="100%" position="relative" $max-md={{ display: 'none' }}>
               <Rail host={host} mode={mode} at={where} inside={inside} open={!closed} toggle={bar ? undefined : flip} onChat={toChat} onDev={toDev} onDesign={toDesign} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />
+              {closed ? (
+                <YStack
+                  data-slot="sidebar-reopen-edge"
+                  position="absolute"
+                  t={0}
+                  b={0}
+                  r={-4}
+                  width={8}
+                  z={20}
+                  cursor="ew-resize"
+                  onDoubleClick={() => setClosed(false)}
+                  onMouseDown={(down: unknown) => {
+                    const e = down as { clientX?: number; preventDefault?: () => void }
+                    const startX = e.clientX ?? 0
+                    const onMove = (mv: MouseEvent) => {
+                      if (Math.abs(mv.clientX - startX) > 12) {
+                        setClosed(false)
+                        window.removeEventListener('mousemove', onMove)
+                        window.removeEventListener('mouseup', onUp)
+                      }
+                    }
+                    const onUp = () => {
+                      window.removeEventListener('mousemove', onMove)
+                      window.removeEventListener('mouseup', onUp)
+                    }
+                    window.addEventListener('mousemove', onMove)
+                    window.addEventListener('mouseup', onUp)
+                  }}
+                />
+              ) : null}
             </YStack>
             {/* Tabs and Betas stand alone: no sidebar beside them. */}
             {closed || alone ? null : (
@@ -636,7 +666,7 @@ function Window({ bar, betas }: Hosted) {
             // the floor. New chat is the bar's, so the foot carries nothing of its own.
             <Layer drawer={drawer} top={bar ? BAR : 0}>
               <XStack flex={1} minH={0}>
-                <YStack data-slot="drawer-rail" shrink={0} pt="$2">
+                <YStack data-slot="drawer-rail" shrink={0} pt="calc(var(--pane-gap) + 8px)" $touchable={{ pt: 'calc(var(--pane-gap) + 4px)' }}>
                   <Rail host={host} mode={mode} at={where} inside={inside} open onChat={toChat} onDev={toDev} onDesign={toDesign} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />
                 </YStack>
                 <YStack flex={1} minW={0}>

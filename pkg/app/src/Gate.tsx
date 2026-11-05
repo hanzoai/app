@@ -1485,7 +1485,7 @@ function Start({
             <Text render="p" fontSize="$3" color="$soft">
               {t('Just you? Hanzo Chat is free for personal use at {link}.', {
                 link: (
-                  <Text render={<a href={site('/chat')} />} color="$ink" textDecorationLine="underline">
+                  <Text render={<a href={site('/chat')} />} color="$ink" textDecorationLine="none">
                     hanzo.ai/chat
                   </Text>
                 ),
@@ -1527,7 +1527,7 @@ function Start({
                           t('{email} invited. Their link: {link}', {
                             email,
                             link: (
-                              <Text render={<a href={s.link} />} color="$ink" textDecorationLine="underline">
+                              <Text render={<a href={s.link} />} color="$ink" textDecorationLine="none">
                                 {s.link}
                               </Text>
                             ),

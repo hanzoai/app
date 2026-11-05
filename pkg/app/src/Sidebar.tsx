@@ -30,7 +30,7 @@
 import { locales, phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { Text, XStack, YStack } from '@hanzo/gui'
-import { ArrowLeft, Bell, ChevronDown, ChevronUp, CircleHelp, Image as ImageMark, Puzzle, Search, Settings, Sparkles, SquarePen } from 'lucide-react'
+import { ArrowLeft, Bell, ChevronDown, ChevronUp, CircleHelp, Cloud, Globe, Image as ImageMark, Monitor, Puzzle, Search, Settings, Sparkles, SquarePen, SquareTerminal } from 'lucide-react'
 import { DOTS, Gutter, library, NEW, own, tabs, useLanguage, useScheduled, useSessions, type Host } from '@hanzo/build'
 
 type Theme = NonNullable<Host['theme']>
@@ -72,8 +72,8 @@ const keys = (press: () => void) => ({
   },
 })
 
-/** A row of the sidebar: a pill on a 31px pitch, a thumb's 44 on a touch screen, lit where the reader is. */
-const ROW = { rounded: '$4', minH: 31, py: 0, px: '$2', $touchable: { minH: 44 } } as const
+/** A row of the sidebar: a pill on a 36px pitch matching the rail's mark height, a thumb's 44 on a touch screen, lit where the reader is. */
+const ROW = { rounded: '$4', minH: MARK, py: 0, px: '$2', $touchable: { minH: 44 } } as const
 
 /** A sidebar link row hugs its icon and label rather than stretching across the full column width. */
 const COMPACT_ROW = { ...ROW, self: 'flex-start', '$platform-web': { width: 'fit-content', maxWidth: '100%' } } as const
@@ -86,6 +86,162 @@ const TITLE: Record<Raised, string> = { library: phrase('Library'), scheduled: p
 
 /** A header mark: a 16px glyph in a 32px target, a thumb's 44 on a touch screen. */
 const HEAD = { width: 32, height: 32, rounded: '$3', $touchable: { width: 44, height: 44 } } as const
+
+interface TabsFleetHost {
+  machine: string
+  label?: string
+  status?: string
+  desktop?: boolean
+}
+
+interface TabsSavedBind {
+  kind: string
+  shell?: { machine: string; name: string }
+  machine?: string
+  url?: string
+  want?: string
+}
+
+function dispatchTabsAction(detail: { kind: string; id?: string; machine?: string }) {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent('hanzo:tabs-action', { detail }))
+}
+
+function useTabsGroups(t: (key: string, params?: Record<string, string | number>) => string, active: boolean): { id: string; label: string; links: RailLink[] }[] {
+  const [fleet, setFleet] = useState<TabsFleetHost[]>([])
+  const [bind, setBind] = useState<Record<string, TabsSavedBind>>({})
+
+  useEffect(() => {
+    if (!active || typeof window === 'undefined') return
+    const readFromStorage = () => {
+      try {
+        const rawFleet = window.localStorage.getItem('hanzo.tabs.fleet')
+        if (rawFleet) {
+          const parsed = JSON.parse(rawFleet)
+          if (Array.isArray(parsed)) setFleet(parsed as TabsFleetHost[])
+        }
+      } catch {
+        // ignore
+      }
+      try {
+        const rawLayout = window.localStorage.getItem('hanzo.tabs.layout.v1')
+        if (rawLayout) {
+          const parsed = JSON.parse(rawLayout) as { bind?: Record<string, TabsSavedBind> }
+          if (parsed && parsed.bind && typeof parsed.bind === 'object') {
+            setBind(parsed.bind)
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    readFromStorage()
+    const onFleet = (e: Event) => {
+      const detail = (e as CustomEvent<TabsFleetHost[]>).detail
+      if (Array.isArray(detail)) setFleet(detail)
+    }
+    const onState = (e: Event) => {
+      const detail = (e as CustomEvent<{ bind?: Record<string, TabsSavedBind> }>).detail
+      if (detail?.bind) setBind(detail.bind)
+    }
+    window.addEventListener('hanzo:tabs-fleet', onFleet)
+    window.addEventListener('hanzo:tabs-state', onState)
+    window.addEventListener('storage', readFromStorage)
+    return () => {
+      window.removeEventListener('hanzo:tabs-fleet', onFleet)
+      window.removeEventListener('hanzo:tabs-state', onState)
+      window.removeEventListener('storage', readFromStorage)
+    }
+  }, [active])
+
+  return useMemo(() => {
+    if (!active) return []
+    const quickLinks: RailLink[] = [
+      {
+        id: 'new-terminal',
+        label: t('New terminal'),
+        icon: <SquareTerminal size={16} aria-hidden />,
+        onPress: () => dispatchTabsAction({ kind: 'shell' }),
+      },
+      {
+        id: 'new-desktop',
+        label: t('New desktop'),
+        icon: <Monitor size={16} aria-hidden />,
+        onPress: () => dispatchTabsAction({ kind: 'desktop' }),
+      },
+      {
+        id: 'new-browser',
+        label: t('New browser'),
+        icon: <Globe size={16} aria-hidden />,
+        onPress: () => dispatchTabsAction({ kind: 'page' }),
+      },
+      {
+        id: 'new-cloud',
+        label: t('New sandbox'),
+        icon: <Cloud size={16} aria-hidden />,
+        onPress: () => dispatchTabsAction({ kind: 'cloud' }),
+      },
+    ]
+
+    const sandboxLinks: RailLink[] =
+      fleet.length > 0
+        ? fleet.map((h) => ({
+            id: `sandbox-${h.machine}`,
+            label: h.label ? `${h.machine} · ${h.label}` : h.machine,
+            icon: h.desktop ? <Monitor size={16} aria-hidden /> : <Cloud size={16} aria-hidden />,
+            onPress: () => dispatchTabsAction({ kind: h.desktop ? 'desktop' : 'shell', machine: h.machine }),
+          }))
+        : [
+            {
+              id: 'sandbox-launch',
+              label: t('Launch cloud sandbox'),
+              icon: <Cloud size={16} aria-hidden />,
+              onPress: () => dispatchTabsAction({ kind: 'cloud' }),
+            },
+          ]
+
+    const recentLinks: RailLink[] = Object.entries(bind).map(([id, b]) => {
+      if (b.kind === 'screen') {
+        return {
+          id: `tab-${id}`,
+          label: b.machine ? `${t('Desktop')} · ${b.machine}` : t('Desktop'),
+          icon: <Monitor size={16} aria-hidden />,
+          onPress: () => dispatchTabsAction({ kind: 'focus', id }),
+        }
+      }
+      if (b.kind === 'page') {
+        let hostLabel = t('Browser')
+        if (b.url) {
+          try {
+            hostLabel = new URL(b.url).hostname || b.url
+          } catch {
+            hostLabel = b.url
+          }
+        }
+        return {
+          id: `tab-${id}`,
+          label: hostLabel,
+          icon: <Globe size={16} aria-hidden />,
+          onPress: () => dispatchTabsAction({ kind: 'focus', id }),
+        }
+      }
+      const machine = b.shell?.machine ?? b.machine
+      const name = b.shell?.name
+      return {
+        id: `tab-${id}`,
+        label: machine ? `${machine}${name ? ` (${name})` : ''}` : t('Terminal'),
+        icon: <SquareTerminal size={16} aria-hidden />,
+        onPress: () => dispatchTabsAction({ kind: 'focus', id }),
+      }
+    })
+
+    return [
+      { id: 'tabs-actions', label: '', links: quickLinks },
+      { id: 'sandboxes', label: t('Sandboxes'), links: sandboxLinks },
+      ...(recentLinks.length > 0 ? [{ id: 'recent-tabs', label: t('Open tabs'), links: recentLinks }] : []),
+    ]
+  }, [active, bind, fleet, t])
+}
 
 function Activity({ host }: { host: Host }) {
   const { t } = useI18n()
@@ -167,20 +323,28 @@ export function Sidebar({
   const free = useFree(Boolean(host.token?.())) || anon
   const [anonSettingsOpen, setAnonSettingsOpen] = useState(false)
   const [tailoredOpen, setTailoredOpen] = useState(true)
-  const [tallEnoughForRailShift, setTallEnoughForRailShift] = useState(true)
+  const [anonThreadTitle, setAnonThreadTitle] = useState('')
   useEffect(() => {
     if (!anon || typeof window === 'undefined') return
+    try {
+      const saved = window.sessionStorage.getItem('hanzo.anon.thread_title')
+      if (saved) setAnonThreadTitle(saved)
+    } catch {
+      // ignore
+    }
     const onOpen = (e: Event) => {
       const detail = (e as CustomEvent<{ open?: boolean }>).detail
       setAnonSettingsOpen(detail?.open ?? true)
     }
-    const onResize = () => setTallEnoughForRailShift(window.innerHeight >= 520)
-    onResize()
+    const onAnonThread = (e: Event) => {
+      const detail = (e as CustomEvent<{ title?: string }>).detail
+      setAnonThreadTitle(detail?.title ?? '')
+    }
     window.addEventListener('hanzo:anon-settings', onOpen)
-    window.addEventListener('resize', onResize)
+    window.addEventListener('hanzo:anon-thread', onAnonThread)
     return () => {
       window.removeEventListener('hanzo:anon-settings', onOpen)
-      window.removeEventListener('resize', onResize)
+      window.removeEventListener('hanzo:anon-thread', onAnonThread)
     }
   }, [anon])
   // The desktop sidebar and a phone's drawer can both be in the page: each names its own group labels.
@@ -191,15 +355,18 @@ export function Sidebar({
   const at = mode === 'dev' ? raised(host.path) : null
   // Each place the rail holds lists its own rows: Library its kinds and Upload, Scheduled tasks its tasks and New task.
   const scheduled = useScheduled(host, dev, at === 'scheduled')
+  const tabsGroups = useTabsGroups(t, mode === 'tabs')
   const groups =
     places ??
-    (at === 'customize'
-      ? tabs(host, dev, t)
-      : at === 'library'
-        ? library(host, dev, t)
-        : at === 'scheduled'
-          ? scheduled
-          : own(host, dev, t))
+    (mode === 'tabs'
+      ? tabsGroups
+      : at === 'customize'
+        ? tabs(host, dev, t)
+        : at === 'library'
+          ? library(host, dev, t)
+          : at === 'scheduled'
+            ? scheduled
+            : own(host, dev, t))
   const open = (row: Recent) => (row.kind === 'chat' ? go(talk(row.id)) : dev(row.id))
   const setAnonSettings = (next: boolean) => {
     setAnonSettingsOpen(next)
@@ -209,7 +376,15 @@ export function Sidebar({
   }
   // Chat's New; Dev's is the first of its places.
   const create = () => {
-    if (anon) setAnonSettings(false)
+    if (anon) {
+      setAnonSettings(false)
+      setAnonThreadTitle('')
+      try {
+        window.sessionStorage.removeItem('hanzo.anon.thread_title')
+      } catch {
+        // ignore
+      }
+    }
     empty()
     go(talk())
   }
@@ -269,7 +444,7 @@ export function Sidebar({
             data-slot="app-head"
             items="center"
             gap="$1"
-            paddingInlineStart="$2"
+            paddingInlineStart={4}
             paddingInlineEnd={2}
             // The phone's drawer lines up with its bar (BAND); beside the rail, with the rail's first mark (ground.ts HEAD).
             height={drawer ? BAND : LINE}
@@ -280,7 +455,7 @@ export function Sidebar({
             onMouseDown={dragWindow}
             onDoubleClick={toggleWindowMaximize}
           >
-            <Text flex={1} minW={0} fontSize={drawer ? 20 : 18} lineHeight={24} fontWeight={drawer ? '700' : '600'} color="$ink" numberOfLines={1}>
+            <Text flex={1} minW={0} fontSize={24} lineHeight={28} fontWeight="700" color="$ink" numberOfLines={1}>
               {wordmark(mode)}
             </Text>
             {drawer || anon ? null : <Activity host={host} />}
@@ -307,13 +482,13 @@ export function Sidebar({
           </XStack>
         )}
         {mode === 'chat' ? (
-          <YStack role="list" gap={2} shrink={0}>
+          <YStack role="list" gap={2} shrink={0} pt={drawer ? 0 : 4}>
             <YStack role="listitem" self="flex-start">
               {/* Current while the pane holds a new conversation, and never lit: the reference lights the conversation open, not New. */}
               <SidebarItem
                 data-slot="app-new"
                 {...COMPACT_ROW}
-                active={!thread && !anonSettingsOpen}
+                active={!thread && !anonSettingsOpen && !anonThreadTitle}
                 bg="transparent"
                 hoverStyle={{ bg: '$hover' }}
                 icon={
@@ -386,8 +561,8 @@ export function Sidebar({
               </>
             ) : null}
           </YStack>
-        ) : (
-          <YStack data-slot="app-places" shrink={0}>
+        ) : mode === 'beta' && !drawer ? null : (
+          <YStack data-slot="app-places" shrink={0} pt={drawer ? 0 : 4}>
             {groups.map((g, i) => (
               <YStack key={g.id} pt={i ? '$2' : 0}>
                 {/* The same quiet label Recents wears, so the sidebar reads as one list of headed parts. */}
@@ -431,7 +606,32 @@ export function Sidebar({
         )}
         {rail}
         {/* Recents fills the column; where there are none the foot is still pushed to the column's foot, on the rail's line. */}
-        {anon || at ? <YStack flex={1} minH={0} /> : <Recents host={host} mode={mode === 'dev' ? 'dev' : 'chat'} thread={thread} onOpen={open} onNew={create} />}
+        {mode === 'beta' && !drawer ? (
+          <YStack data-slot="beta-sidebar-slot" flex={1} minH={0} pt={4} />
+        ) : anon && mode === 'chat' && anonThreadTitle ? (
+          <YStack data-slot="recents" flex={1} minH={0} pt="$3">
+            <Text paddingInlineStart="$2" pb="$1" fontSize="$3" color="$soft">
+              {t('Recents')}
+            </Text>
+            <YStack role="list" gap={1}>
+              <YStack role="listitem">
+                <SidebarItem
+                  {...ROW}
+                  active={!anonSettingsOpen}
+                  onPress={() => setAnonSettings(false)}
+                >
+                  <Text fontSize="$3" color="$ink" numberOfLines={1}>
+                    {anonThreadTitle}
+                  </Text>
+                </SidebarItem>
+              </YStack>
+            </YStack>
+          </YStack>
+        ) : mode === 'hosted' || mode === 'beta' || anon || at ? (
+          <YStack flex={1} minH={0} />
+        ) : (
+          <Recents host={host} mode={mode === 'dev' ? 'dev' : 'chat'} thread={thread} onOpen={open} onNew={create} />
+        )}
         {anon ? (
           <YStack
             data-slot="anon-foot"
@@ -439,77 +639,8 @@ export function Sidebar({
             pt="$2"
             shrink={0}
             z={10}
-            marginInlineStart={!drawer && tallEnoughForRailShift ? -(RAIL - 8) : 0}
           >
-            <YStack role="list" gap={2}>
-              <YStack role="listitem" self="flex-start">
-                <SidebarItem
-                  data-slot="anon-pricing"
-                  {...COMPACT_ROW}
-                  bg="transparent"
-                  hoverStyle={{ bg: '$hover' }}
-                  icon={
-                    <XStack width={20} height={20} items="center" justify="center" shrink={0}>
-                      <Sparkles size={16} aria-hidden />
-                    </XStack>
-                  }
-                  onPress={() => {
-                    if (typeof window !== 'undefined') window.location.assign('/pricing')
-                  }}
-                  {...keys(() => {
-                    if (typeof window !== 'undefined') window.location.assign('/pricing')
-                  })}
-                >
-                  <Text fontSize="$3" color="$ink">{t('See plans and pricing')}</Text>
-                </SidebarItem>
-              </YStack>
-              <YStack role="listitem" self="flex-start">
-                <SidebarItem
-                  data-slot="anon-help"
-                  {...COMPACT_ROW}
-                  bg="transparent"
-                  hoverStyle={{ bg: '$hover' }}
-                  icon={
-                    <XStack width={20} height={20} items="center" justify="center" shrink={0}>
-                      <CircleHelp size={16} aria-hidden />
-                    </XStack>
-                  }
-                  onPress={() => {
-                    if (typeof window !== 'undefined') window.open('https://docs.hanzo.ai', '_blank', 'noopener,noreferrer')
-                  }}
-                  {...keys(() => {
-                    if (typeof window !== 'undefined') window.open('https://docs.hanzo.ai', '_blank', 'noopener,noreferrer')
-                  })}
-                >
-                  <Text fontSize="$3" color="$ink">{t('Help')}</Text>
-                </SidebarItem>
-              </YStack>
-              <YStack role="listitem" self="flex-start">
-                <SidebarItem
-                  data-slot="anon-settings"
-                  {...COMPACT_ROW}
-                  active={anonSettingsOpen}
-                  bg="transparent"
-                  hoverStyle={{ bg: '$hover' }}
-                  icon={
-                    <XStack width={20} height={20} items="center" justify="center" shrink={0}>
-                      <Settings size={16} aria-hidden />
-                    </XStack>
-                  }
-                  onPress={() => {
-                    if (drawer) onShut()
-                    setAnonSettings(true)
-                  }}
-                  {...keys(() => {
-                    if (drawer) onShut()
-                    setAnonSettings(true)
-                  })}
-                >
-                  <Text fontSize="$3" color="$ink">{t('Settings')}</Text>
-                </SidebarItem>
-              </YStack>
-            </YStack>
-            <YStack data-slot="anon-tailored" gap="$2" pt="$2.5" pb="$1" px="$2">
+            <YStack data-slot="anon-tailored" gap="$2" pt="$1" pb="$1" px="$2">
               <XStack
                 render="button"
                 aria-expanded={tailoredOpen}
@@ -562,13 +693,13 @@ export function Sidebar({
               </XStack>
             </YStack>
           </YStack>
-        ) : at ? null : (
+        ) : at || mode === 'beta' || mode === 'hosted' ? null : (
           <YStack gap="$2" pt="$2" shrink={0} minW={0} maxW="100%">
             <Made />
             <Setup go={go} />
           </YStack>
         )}
-        {!anon && free ? (
+        {!anon && free && (drawer || (mode !== 'beta' && mode !== 'hosted')) ? (
           <YStack role="list" gap={2} shrink={0} pt="$2">
             {/* A mark's height, centred: the rail's account beside it stands on the same line. */}
             <YStack role="listitem" minH={MARK} justify="center">
@@ -732,8 +863,7 @@ export function AnonSettingsPane({
           width={36}
           height={36}
           rounded={9999}
-          borderWidth={1}
-          borderColor="$borderColor"
+          borderWidth={0}
           items="center"
           justify="center"
           cursor="pointer"
@@ -755,7 +885,7 @@ export function AnonSettingsPane({
             {t('General')}
           </Text>
           <YStack rounded="$5" borderWidth={1} borderColor="$borderColor" bg="var(--white-03, $panel)" px="$4">
-            <XStack py="$3.5" items="center" justify="space-between" gap="$3" borderBottomWidth={1} borderColor="$borderColor">
+            <XStack py="$3.5" items="center" justify="space-between" gap="$3">
               <Text fontSize={14} color="$ink">
                 {t('Appearance')}
               </Text>
@@ -818,7 +948,7 @@ export function AnonSettingsPane({
             {t('Data controls')}
           </Text>
           <YStack rounded="$5" borderWidth={1} borderColor="$borderColor" bg="var(--white-03, $panel)" px="$4">
-            <XStack py="$3.5" items="center" justify="space-between" gap="$4" borderBottomWidth={1} borderColor="$borderColor">
+            <XStack py="$3.5" items="center" justify="space-between" gap="$4">
               <YStack flex={1} minW={0} gap="$1">
                 <Text fontSize={14} fontWeight="500" color="$ink">
                   {t('Improve the model for everyone')}
@@ -831,7 +961,7 @@ export function AnonSettingsPane({
                     fontSize={12}
                     lineHeight={18}
                     color="$ink"
-                    textDecorationLine="underline"
+                    textDecorationLine="none"
                   >
                     {t('Learn more')}
                   </Text>
@@ -848,7 +978,7 @@ export function AnonSettingsPane({
               />
             </XStack>
 
-            <XStack py="$3.5" items="center" justify="space-between" gap="$4" borderBottomWidth={1} borderColor="$borderColor">
+            <XStack py="$3.5" items="center" justify="space-between" gap="$4">
               <YStack flex={1} minW={0} gap="$1">
                 <Text fontSize={14} fontWeight="500" color="$ink">
                   {t('Personalize ads')}
@@ -868,7 +998,7 @@ export function AnonSettingsPane({
               />
             </XStack>
 
-            <XStack py="$3.5" items="center" justify="space-between" gap="$4" borderBottomWidth={1} borderColor="$borderColor">
+            <XStack py="$3.5" items="center" justify="space-between" gap="$4">
               <YStack flex={1} minW={0} gap="$1">
                 <Text fontSize={14} fontWeight="500" color="$ink">
                   {t('Marketing measurement')}

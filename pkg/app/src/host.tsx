@@ -77,6 +77,8 @@ export function useOrg(): { id?: string; name?: string } {
   return { id: one?.id || one?.name, name: one?.displayName || one?.name }
 }
 
+const INSTALL = { theme: 'system', accent: '#ffffff' } as const
+
 /**
  * The person's appearance — theme, type, spacing, corners, accent — resolved
  * for the org in scope and kept with their IAM account, so a choice made here
@@ -91,6 +93,7 @@ export function useLook() {
   return useAppearance({
     org: org.id,
     account: accessToken ? { base: api(), token: accessToken } : undefined,
+    install: INSTALL,
   })
 }
 

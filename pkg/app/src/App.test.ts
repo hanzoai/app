@@ -95,11 +95,11 @@ beforeEach(() => {
   state.drawer = 'shut'
 })
 
-describe('Betas stands alone, as Tabs does', () => {
-  test('Betas draws the rail and the pane, and no sidebar beside them', () => {
+describe('Betas and hosted apps keep the sidebar column', () => {
+  test('Betas draws the rail, the sidebar column (with no Dev places), and the pane', () => {
     const html = draw('/beta', createElement('div', { 'data-slot': 'portal' }))
     expect(html).toContain('data-slot="rail"')
-    expect(html).not.toContain('data-slot="app-column"')
+    expect(html).toContain('data-slot="app-column" data-places="0"')
   })
 
   test('a host’s betas is the whole pane, in place of the app’s own list', async () => {
@@ -115,7 +115,7 @@ describe('Betas stands alone, as Tabs does', () => {
     await new Promise((r) => setTimeout(r, 0))
     const html = draw('/beta')
     expect(html).toContain('data-slot="betas-pane"')
-    expect(html).not.toContain('data-slot="app-column"')
+    expect(html).toContain('data-slot="app-column" data-places="0"')
   })
 
   test('a phone’s bar and menu in Betas carry no Dev places', () => {
@@ -134,19 +134,19 @@ describe('Betas stands alone, as Tabs does', () => {
     expect(html).not.toContain('data-slot="drawer-chat"')
   })
 
-  test('Tabs is as it was: no sidebar beside its panes, and the bar’s places are Dev’s', () => {
+  test('Tabs draws the sidebar beside its panes', () => {
     const html = draw('/tabs')
-    expect(html).not.toContain('data-slot="app-column"')
+    expect(html).toContain('data-slot="app-column"')
     expect(html).toMatch(/data-slot="app-bar" data-places="none"/)
   })
 
-  test('a hosted app stands alone too: its pane and the rail, no sidebar, and the bar’s places are none of Dev’s', async () => {
+  test('a hosted app draws its pane, the rail, and the sidebar column with none of Dev’s places', async () => {
     draw('/apps/crm')
     await new Promise((r) => setTimeout(r, 0))
     const html = draw('/apps/crm')
     expect(html).toContain('data-slot="rail"')
     expect(html).toContain('data-slot="hosted-pane" data-id="crm"')
-    expect(html).not.toContain('data-slot="app-column"')
+    expect(html).toContain('data-slot="app-column" data-places="0"')
     expect(html).not.toContain('betas-pane')
   })
 

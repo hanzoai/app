@@ -337,7 +337,7 @@ export function CalScheduler() {
                   <Text
                     render={<a href="https://cal.hanzo.ai" target="_blank" rel="noopener noreferrer" />}
                     color="$ink"
-                    textDecorationLine="underline"
+                    textDecorationLine="none"
                   >
                     cal.hanzo.ai
                   </Text>

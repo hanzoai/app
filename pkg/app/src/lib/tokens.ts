@@ -27,6 +27,11 @@ const held = new Map<string, Tokens>()
 const listeners = new Set<() => void>()
 export const subscribeTokens = (f: () => void) => { listeners.add(f); return () => { listeners.delete(f) } }
 export const readTokens = (key: string) => held.get(key) ?? null
+export function totalRecordedTokens(): number {
+  let sum = 0
+  for (const v of held.values()) sum += v.total || 0
+  return sum
+}
 export function recordTokens(key: string, usage: Tokens): void {
   if (!key) return
   held.delete(key); held.set(key, usage)

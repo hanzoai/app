@@ -13,6 +13,8 @@ export {
   importMod,
   forkMod,
   applyMod,
+  restoreActiveMod,
+  clearActiveMod,
   saveOrgMod,
   getOrgMod,
   BUILTIN_MODS,

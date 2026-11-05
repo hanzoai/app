@@ -47,7 +47,7 @@ import { Face, brief as castBrief, join, roleOf, castTurn, roster as rosterLine,
 import { cleanForSpeech, speakAgent } from "./speech";
 import { AgentMaker, HOUSE, useAgentShelf, useCrew } from "./crew";
 import { called } from "./team";
-import { Anchor, Box, Button, Dialog, DialogContent, DialogTitle, Input, Text, Tooltip, TooltipContent, TooltipTrigger, View, VisuallyHidden, XStack, YStack } from "@hanzo/ui";
+import { Anchor, Box, Button, Dialog, DialogContent, DialogTitle, Input, Text, Tooltip, TooltipContent, TooltipTrigger, View, VisuallyHidden, XStack, YStack, toast } from "@hanzo/ui";
 import { useMedia } from "@hanzo/gui";
 import { given, tidy } from "./lib/title";
 import { useIam, useIamToken } from "@hanzo/iam/react";
@@ -65,11 +65,11 @@ import { onServed, type Served as Heard } from "./lib/served";
 import { refused as worded, speech, useDictation, useTalk, useVoice } from "@hanzo/voice";
 import { Check, FileText, Ghost, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, X } from "lucide-react";
 import { FREE, ENSO } from "./lib/ai";
-import { openThread, useOpen } from "./open";
+import { openThread, empty as emptyOpen, useOpen } from "./open";
 import { Side } from "./Shell";
 import { SEED, look, useSections, useSites, type Mark } from "./RightPane";
 import { Share } from "./Share";
-import { ConversationMenu, ThreadMore, useThreadActions, useThreadList, type Thread } from "./thread";
+import { ConversationMenu, useThreadActions, useThreadList, type Thread } from "./thread";
 import { Schedule } from "./Schedule";
 import { keepFile, useAttach, useKeep } from "./keep";
 import { useKept } from "./kept";
@@ -276,7 +276,7 @@ export function Chat() {
   // owns the column it sits in — one sidebar for six apps, already built, and a
   // second one in this pane would be two designs for one job. This file draws
   // the conversation; the shell draws the frame.
-  return <Thread initial={opening} anonymous={!signedIn} />;
+  return <Thread initial={opening} anonymous={!signedIn} settled={settled} />;
 }
 
 /**
@@ -309,6 +309,7 @@ export function Ask({
       placeholder={placeholder}
       initial={opening}
       anonymous={!signedIn}
+      settled
       heading={null}
     />
   );
@@ -809,11 +810,13 @@ function Thread({
   placeholder = message(),
   initial,
   anonymous = false,
+  settled = true,
   heading,
 }: {
   placeholder?: string;
   initial?: string;
   anonymous?: boolean;
+  settled?: boolean;
   /** The empty transcript's heading. `null` renders none — for a host page that
    *  already carries an `<h1>` of its own. */
   heading?: string | null;
@@ -848,7 +851,6 @@ function Thread({
   // never resets Dev's.
   const [chatPrefs, setChatPrefs] = useChatPreferences();
   const [sidebarClosed] = useKept('hanzo.build.rail', false);
-  const [summaryOpen, setSummaryOpen] = useKept('hanzo.chat.summary', false);
   const ai = useAi();
   const opened = useOpen();
   const { thread: open, open: reopen, agents: cast, openAgent, seat, emptied, aside, showAside, showSettings } = opened;
@@ -1297,7 +1299,7 @@ function Thread({
   const [preparing, setPreparing] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const depth = useRef(0);
-  useSeed(anonymous ? undefined : initial, setDraft);
+  useSeed(open ? initial : undefined, setDraft);
 
   const [anonBusy, setAnonBusy] = useState(false);
   const [anonGateOpen, setAnonGateOpen] = useState(false);
@@ -1307,6 +1309,9 @@ function Thread({
     if (!clean) return;
     try {
       sessionStorage.setItem("hanzo.build.prompt", clean);
+      const shortTitle = clean.length > 48 ? `${clean.slice(0, 47).trimEnd()}…` : clean;
+      sessionStorage.setItem("hanzo.anon.thread_title", shortTitle);
+      window.dispatchEvent(new CustomEvent("hanzo:anon-thread", { detail: { title: shortTitle } }));
     } catch {}
     if (anonCountRef.current >= MAX_ANON_TURNS) {
       const uId = `u-anon-gate-${Date.now()}`;
@@ -1727,6 +1732,89 @@ function Thread({
     if (!map.has(currentThread.id)) map.set(currentThread.id, currentThread);
     return map;
   }, [alone, currentThread]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onContextAction = (ev: Event) => {
+      const detail = (ev as CustomEvent<{
+        action: string;
+        turnId?: string;
+      }>).detail;
+      if (!detail?.action) return;
+      const turn = detail.turnId ? turns.current.find((m) => String(m.id) === detail.turnId) : undefined;
+      const turnText = turn
+        ? typeof turn.content === "string"
+          ? turn.content
+          : words(turn.content as Said)
+        : "";
+      switch (detail.action) {
+        case "copy":
+          if (turnText) {
+            void navigator.clipboard.writeText(turnText).then(
+              () => toast.success(t("Copied to clipboard")),
+              () => toast.error(t("Could not copy")),
+            );
+          }
+          break;
+        case "redo":
+          if (detail.turnId) redoTurn(detail.turnId, { mode: "retry" });
+          break;
+        case "think":
+          if (detail.turnId) redoTurn(detail.turnId, { mode: "think" });
+          break;
+        case "web":
+          if (detail.turnId) redoTurn(detail.turnId, { mode: "web" });
+          break;
+        case "branch":
+          if (detail.turnId) branchTurn(detail.turnId);
+          break;
+        case "listen":
+          if (turnText) listen(withWhom ?? undefined)(turnText, () => {});
+          break;
+        case "open-artifact": {
+          const fn = turnText ? opener(turnText) : undefined;
+          fn?.();
+          break;
+        }
+        case "rename":
+          if (shownTitle) {
+            setTitleDraft(shownTitle);
+            setEditingTitle(true);
+          }
+          break;
+        case "pin":
+          if (!anonymous && !forgetful && (mine || open)) {
+            void threadActions.pin(mine ?? currentThread);
+          }
+          break;
+        case "share": {
+          const shareBtn = document.querySelector<HTMLElement>('[data-slot="share"]');
+          shareBtn?.click();
+          break;
+        }
+        case "schedule":
+          if (!anonymous && !forgetful) setPlan(lastAsked());
+          break;
+        case "archive":
+          if (!anonymous && !forgetful && (mine || open)) {
+            void threadActions.archive(mine ?? currentThread);
+          }
+          break;
+        case "delete":
+          if (!anonymous && !forgetful && (mine || open)) {
+            void threadActions.remove(mine ?? currentThread).then((ok) => {
+              if (ok) emptyOpen();
+            });
+          } else {
+            apply.current([]);
+            emptyOpen();
+          }
+          break;
+      }
+    };
+    window.addEventListener("hanzo:chat-context-action", onContextAction);
+    return () => window.removeEventListener("hanzo:chat-context-action", onContextAction);
+  }, [anonymous, branchTurn, currentThread, forgetful, listen, mine, open, redoTurn, shownTitle, t, threadActions, withWhom]);
   // THE LIKENESS, WHERE ONE WAS DRAWN FOR THIS CHARACTER. `cast.tsx` is the one
   // table of who looks like what, and it says a name it does not hold "is not a
   // problem" — that name wears initials, never another character's face.
@@ -1992,11 +2080,15 @@ function Thread({
   const autoAsked = useRef("");
   useEffect(() => {
     const q = (initial || "").trim();
-    if (!q || !anonymous || autoAsked.current === q || open) return;
+    if (!q || !settled || autoAsked.current === q || open) return;
     autoAsked.current = q;
     setDraft("");
-    void sendAnon(q);
-  }, [initial, open, anonymous, sendAnon]);
+    if (anonymous) {
+      void sendAnon(q);
+    } else {
+      setQueued(q);
+    }
+  }, [initial, open, anonymous, settled, sendAnon]);
 
   const families = useFamilies(mind, (id) => setAsk({ model: nameOf(id, listed) } as Ask));
   const composer: ComposerProps = {
@@ -2276,6 +2368,7 @@ function Thread({
           Summary, and the tabs beside it. */}
       <XStack
         data-slot="conversation-head"
+        group
         // On the rail's line from a tablet up; a phone's own bar is BAND.
         height={BAND}
         $md={{ height: inPane(HEAD) }}
@@ -2470,12 +2563,9 @@ function Thread({
               </Text>
             </XStack>
           ) : null}
-          {open ? <Share thread={open} /> : null}
           {said.length > 0 ? (
             <ConversationMenu threads={currentThreadMap} active={open || currentThread.id} onSchedule={anonymous || forgetful ? undefined : () => setPlan(lastAsked())}>
-              <XStack>
-                <ThreadMore t={currentThread} />
-              </XStack>
+              <XStack />
             </ConversationMenu>
           ) : (
             // A ghost, nothing else: the icon says the state (filled while on), the
@@ -2504,18 +2594,14 @@ function Thread({
               <TooltipContent>{forgetful ? t("Private chat is on: this conversation is not saved") : t("Private chat")}</TooltipContent>
             </Tooltip>
           )}
-          {said.length > 0 ? (
-            <XStack $max-md={{ display: 'none' }}>
-              <Summary
-                sections={sections}
-                onOpen={() => setPanel(true)}
-                label={t("Summary")}
-                docked={media.md}
-                open={summaryOpen}
-                onOpenChange={setSummaryOpen}
-              />
-            </XStack>
-          ) : null}
+          {open ? <Share thread={open} /> : null}
+          <XStack $max-md={{ display: 'none' }}>
+            <Summary
+              sections={sections}
+              onOpen={() => setPanel(true)}
+              label={t("Summary")}
+            />
+          </XStack>
           {/* THE TABS' OWN CONTROL, at the header's end while they are shut;
               open, the strip beside the conversation holds it. Its mark is
               never the sidebar's: that toggle is the window's, at its top-left. */}
@@ -2630,7 +2716,7 @@ function Thread({
                     )
                   : [];
               return (
-                <YStack gap="$3">
+                <YStack gap="$3" data-turn-id={String(turn.id)} data-turn-role={turn.role}>
                   {parts.map((part, i) => (
                     <YStack key={i} gap="$1">
                       {part.who ? (
@@ -2664,7 +2750,7 @@ function Thread({
               );
             }
             return (
-              <YStack gap="$1">
+              <YStack gap="$1" data-turn-id={String(turn.id)} data-turn-role={turn.role}>
                 <Prose text={said} />
                 {/* UNDER AN ANSWER, the row Dev's answers have too (@hanzo/build
                     `Reply`): copy the markdown as written, listen in the
@@ -2773,9 +2859,6 @@ function Thread({
           composer={composer}
         />
         </YStack>
-        {media.md && summaryOpen && said.length > 0 ? (
-          <Summary sections={sections} onOpen={() => setPanel(true)} label={t("Summary")} pane />
-        ) : null}
       </XStack>
       <AgentMaker />
       {carry.dialog}

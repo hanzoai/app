@@ -129,7 +129,7 @@ export function Schedule({
             <SizableText size="$3" color="$ink" role="status">
               {t('Scheduled. {link}', {
                 link: (
-                  <Anchor href={site(app('-/automations'))} color="$ink" textDecorationLine="underline">
+                  <Anchor href={site(app('-/automations'))} color="$ink" textDecorationLine="none">
                     {t('See it in Scheduled tasks.')}
                   </Anchor>
                 ),

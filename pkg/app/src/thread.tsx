@@ -719,12 +719,66 @@ export function ConversationMenu({
 
   return (
     <Rows.Provider value={rows}>
+      <DropdownMenu open={menu === 'dots'} onOpenChange={(open) => setMenu(open ? 'dots' : null)}>
+        <ContextMenu
+          // Held here as well as inside gui's ContextMenu, so the keys can shut it.
+          open={menu === 'point'}
+          onOpenChange={(open, e) => {
+            if (!open) return setMenu((m) => (m === 'point' ? null : m))
+            // Not on a conversation: the browser's own menu answers.
+            if (!pointed.current) {
+              const ev = e as unknown as { target?: Element | null; clientX?: number; clientY?: number } | undefined
+              const row = ev?.target?.closest?.('[data-thread]') ?? (typeof document !== 'undefined' ? document.elementFromPoint?.(ev?.clientX ?? -1, ev?.clientY ?? -1)?.closest?.('[data-thread]') : null)
+              pointed.current = row ? (threads.get(row.getAttribute('data-thread') ?? '') ?? null) : null
+              if (!pointed.current) return e?.preventDefault?.()
+            }
+            setAimed(pointed.current.id)
+            setMenu('point')
+          }}
+        >
+          <ContextMenuTrigger
+            asChild
+            data-menu={list}
+            {...({
+              onContextMenuCapture: point,
+            } as object)}
+            onContextMenu={point}
+            onPointerDown={(e: { pointerType?: string; target: EventTarget | null }) => {
+              if (e.pointerType !== 'mouse') point(e)
+            }}
+          >
+            {children}
+          </ContextMenuTrigger>
+          <ContextMenuContent minW={220} onCloseAutoFocus={back} aria-labelledby={undefined} aria-label={title}>
+            {entries.map((one) =>
+              'line' in one ? (
+                <ContextMenuSeparator key={one.key} />
+              ) : (
+                <ContextMenuItem key={one.key} variant={one.destructive ? 'destructive' : 'default'} aria-keyshortcuts={one.keys} onSelect={one.run}>
+                  <Face entry={one} Shortcut={ContextMenuShortcut} />
+                </ContextMenuItem>
+              ),
+            )}
+          </ContextMenuContent>
+        </ContextMenu>
+        <DropdownMenuContent align="end" minW={220} onCloseAutoFocus={back} aria-labelledby={undefined} aria-label={title}>
+          {entries.map((one) =>
+            'line' in one ? (
+              <DropdownMenuSeparator key={one.key} />
+            ) : (
+              <DropdownMenuItem key={one.key} variant={one.destructive ? 'destructive' : 'default'} aria-keyshortcuts={one.keys} onSelect={one.run}>
+                <Face entry={one} Shortcut={DropdownMenuShortcut} />
+              </DropdownMenuItem>
+            ),
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
       {(primary && selecting) || (!primary && selected.size > 0) ? (
         <YStack
           data-slot="batch-bar"
           gap="$1.5"
           p="$2"
-          mb="$2"
+          mt="$2"
           rounded="$4"
           bg="$raised"
           borderWidth={1}
@@ -732,6 +786,11 @@ export function ConversationMenu({
           $platform-web={{
             backdropFilter: 'blur(16px)',
             boxShadow: '0 6px 20px -4px rgba(0, 0, 0, 0.28)',
+          }}
+          style={{
+            position: 'sticky',
+            bottom: 0,
+            zIndex: 5,
           }}
         >
           <XStack items="center" justify="space-between" px="$1">
@@ -744,7 +803,7 @@ export function ConversationMenu({
               }}
               hoverStyle={{ opacity: 0.8 }}
             >
-              <SizableText size="$1" fontWeight="600" style={{ color: '#0A84FF' }}>
+              <SizableText size="$1" fontWeight="600" color="$soft">
                 {allSelected ? t('Deselect All') : t('Select All')}
               </SizableText>
             </XStack>
@@ -758,12 +817,12 @@ export function ConversationMenu({
               onPress={clearSelect}
               hoverStyle={{ opacity: 0.8 }}
             >
-              <SizableText size="$1" fontWeight="700" style={{ color: '#0A84FF' }}>
+              <SizableText size="$1" fontWeight="700" color="$ink">
                 {t('Done')}
               </SizableText>
             </XStack>
           </XStack>
-          <XStack items="center" justify="space-between" gap="$1" pt="$1" borderTopWidth={1} borderColor="$borderColor">
+          <XStack items="center" justify="space-between" gap="$1" pt="$0.5">
             <XStack
               render="button"
               aria-label={t(allPinned ? 'Unpin selected' : 'Pin selected')}
@@ -847,64 +906,6 @@ export function ConversationMenu({
           </XStack>
         </YStack>
       ) : null}
-      <DropdownMenu open={menu === 'dots'} onOpenChange={(open) => setMenu(open ? 'dots' : null)}>
-        <ContextMenu
-          // Held here as well as inside gui's ContextMenu, so the keys can shut it.
-          open={menu === 'point'}
-          onOpenChange={(open, e) => {
-            if (!open) return setMenu((m) => (m === 'point' ? null : m))
-            // Not on a conversation: the browser's own menu answers.
-            if (!pointed.current) {
-              const ev = e as unknown as { target?: Element | null; clientX?: number; clientY?: number } | undefined
-              const row = ev?.target?.closest?.('[data-thread]') ?? (typeof document !== 'undefined' ? document.elementFromPoint?.(ev?.clientX ?? -1, ev?.clientY ?? -1)?.closest?.('[data-thread]') : null)
-              pointed.current = row ? (threads.get(row.getAttribute('data-thread') ?? '') ?? null) : null
-              if (!pointed.current) return
-            }
-            e?.preventDefault?.()
-            setAimed(pointed.current.id)
-            setMenu('point')
-          }}
-        >
-          <ContextMenuTrigger
-            asChild
-            data-menu={list}
-            {...({
-              onContextMenuCapture: (e: React.MouseEvent) => {
-                point(e)
-                if (pointed.current) e.preventDefault()
-              },
-            } as object)}
-            onContextMenu={point}
-            onPointerDown={(e: { pointerType?: string; target: EventTarget | null }) => {
-              if (e.pointerType !== 'mouse') point(e)
-            }}
-          >
-            {children}
-          </ContextMenuTrigger>
-          <ContextMenuContent minW={220} onCloseAutoFocus={back} aria-labelledby={undefined} aria-label={title}>
-            {entries.map((one) =>
-              'line' in one ? (
-                <ContextMenuSeparator key={one.key} />
-              ) : (
-                <ContextMenuItem key={one.key} variant={one.destructive ? 'destructive' : 'default'} aria-keyshortcuts={one.keys} onSelect={one.run}>
-                  <Face entry={one} Shortcut={ContextMenuShortcut} />
-                </ContextMenuItem>
-              ),
-            )}
-          </ContextMenuContent>
-        </ContextMenu>
-        <DropdownMenuContent align="end" minW={220} onCloseAutoFocus={back} aria-labelledby={undefined} aria-label={title}>
-          {entries.map((one) =>
-            'line' in one ? (
-              <DropdownMenuSeparator key={one.key} />
-            ) : (
-              <DropdownMenuItem key={one.key} variant={one.destructive ? 'destructive' : 'default'} aria-keyshortcuts={one.keys} onSelect={one.run}>
-                <Face entry={one} Shortcut={DropdownMenuShortcut} />
-              </DropdownMenuItem>
-            ),
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
       <Rename
         t={subject}
         open={dialogue === 'rename'}
@@ -1042,7 +1043,7 @@ export function ThreadRow({
       bg={isSelected ? '$hover' : undefined}
       $platform-web={{
         userSelect: 'none',
-        ...(isSelected ? { backgroundColor: 'rgba(10, 132, 255, 0.14)' } : null),
+        ...(isSelected ? { backgroundColor: 'rgba(255, 255, 255, 0.06)' } : null),
       }}
       data-thread={thread.id}
       data-selected={isSelected ? '' : undefined}
@@ -1079,11 +1080,17 @@ export function ThreadRow({
           menus.selectRange(anchor, thread.id, e.metaKey || e.ctrlKey)
           return
         }
-        if (e.metaKey || e.ctrlKey || menus.selecting) {
+        if (menus.selecting) {
           e.preventDefault()
           e.stopPropagation()
           menus.toggleSelect(thread.id)
           menus.anchorRef.current = thread.id
+          return
+        }
+        if (e.metaKey || e.ctrlKey) {
+          e.preventDefault()
+          e.stopPropagation()
+          away(thread.id, menus.hrefOf)
           return
         }
         menus.anchorRef.current = thread.id
@@ -1141,11 +1148,10 @@ export function ThreadRow({
             style={
               isSelected
                 ? {
-                    backgroundColor: '#0A84FF',
-                    borderColor: '#0A84FF',
+                    backgroundColor: 'var(--foreground)',
+                    borderColor: 'var(--foreground)',
                     borderWidth: 1.5,
                     borderStyle: 'solid',
-                    boxShadow: '0 1px 3px rgba(10, 132, 255, 0.4)',
                   }
                 : {
                     backgroundColor: 'transparent',
@@ -1156,7 +1162,7 @@ export function ThreadRow({
                   }
             }
           >
-            {isSelected ? <Check size={11} strokeWidth={3} color="#ffffff" aria-hidden /> : null}
+            {isSelected ? <Check size={11} strokeWidth={3} color="var(--background)" aria-hidden /> : null}
           </XStack>
         </XStack>
       ) : null}
@@ -1173,7 +1179,6 @@ export function ThreadRow({
           items="center"
           pointerEvents="none"
           opacity={shown ? 0 : 1}
-          $group-hover={{ opacity: 0 }}
           $touchable={{ opacity: 0 }}
         >
           {aside}
@@ -1196,10 +1201,10 @@ export function ThreadRow({
             justify="center"
             cursor="pointer"
             bg="transparent"
-            opacity={shown ? 1 : 0}
-            $group-hover={{ opacity: 1 }}
+            display="none"
             // A thumb's 44px on a touch screen (lib/tap.ts), centred on the row and over its edges.
-            $touchable={{ opacity: 1, minW: 44, minH: 44 }}
+            // On desktop, right-clicking the row opens the context menu directly without a "..." button.
+            $touchable={{ display: 'flex', opacity: 1, minW: 44, minH: 44 }}
             hoverStyle={{ bg: '$hover' }}
             // Before gui's own press handler, which opens the menu and stops there.
             onPointerDownCapture={aim}
@@ -1224,6 +1229,9 @@ export function ThreadMore({ t: thread }: { t: Thread }) {
   const { t } = useI18n()
   const menus = useContext(Rows)
   if (!menus) throw new Error('ThreadMore is drawn inside a ConversationMenu, which holds its menu.')
+  const [focused, setFocused] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const isOpen = menus.open === thread.id
   // gui types these handlers by React Native's event; on the web they carry the DOM's.
   const aim = (e: unknown) => menus.aim(thread, (e as MouseEvent<HTMLElement>).currentTarget)
   return (
@@ -1239,12 +1247,17 @@ export function ThreadMore({ t: thread }: { t: Thread }) {
         items="center"
         justify="center"
         cursor="pointer"
-        bg={menus.open === thread.id ? '$hover' : 'transparent'}
-        hoverStyle={{ bg: '$hover' }}
-        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+        bg={isOpen ? '$hover' : 'transparent'}
+        opacity={isOpen || focused || hovered ? 1 : 0}
+        hoverStyle={{ bg: '$hover', opacity: 1 }}
+        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor', opacity: 1 }}
         // Before gui's own press handler, which opens the menu and stops there.
         onPointerDownCapture={aim}
         onKeyDownCapture={aim}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
       >
         <MoreHorizontal size={16} aria-hidden />
       </XStack>
