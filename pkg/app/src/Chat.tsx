@@ -2161,7 +2161,7 @@ function Thread({
             },
           },
       // The model, only where the person turned the model selector on; the effort, always.
-      mind,
+      mind: anonymous ? null : mind,
       effort: {
         value: chatPrefs.effort || "high",
         set: (eff) => {
@@ -2171,9 +2171,9 @@ function Thread({
         },
         items: EFFORTS,
       },
-      // Chat keeps to the effort alone until the person asks for more: the family chips, the mode.
+      // Chat keeps to the effort alone until the person asks for more: the family chips, the mode, the model.
       chips: anonymous ? undefined : families,
-      defaults: { chips: false, mode: false },
+      defaults: { chips: false, mode: false, model: false },
       status: anonymous ? null : <UsageControl read={planUsage} context={{ model, window: rowOf(model)?.context_window, messages: chat.messages, draft, tools: !anonymous && carry.gear.gear.research && house(rowOf(model)?.family) ? WEB : undefined }} />,
       limits,
       onUpgrade: (id) => setAsk({ model: nameOf(id, listed) } as Ask),
