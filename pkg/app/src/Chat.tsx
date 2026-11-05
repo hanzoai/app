@@ -63,7 +63,7 @@ import { useHydrated } from "./lib/hydrated";
 import { base, served } from "./lib/ai";
 import { onServed, type Served as Heard } from "./lib/served";
 import { refused as worded, speech, useDictation, useTalk, useVoice } from "@hanzo/voice";
-import { Check, Clock, FileText, Ghost, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, X } from "lucide-react";
+import { Check, FileText, Ghost, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, X } from "lucide-react";
 import { FREE, ENSO } from "./lib/ai";
 import { openThread, useOpen } from "./open";
 import { Side } from "./Shell";
@@ -795,37 +795,6 @@ function Carried({
 }
 
 /**
- * "Schedule this" under a question: the quiet control that opens the dialog
- * which makes the question run itself (Schedule.tsx).
- */
-function Plan({ onPress }: { onPress: () => void }) {
-  const { t } = useI18n();
-  return (
-    <XStack justify="flex-end" data-slot="plan">
-      <XStack
-        render="button"
-        aria-label={t("Schedule this")}
-        onPress={onPress}
-        items="center"
-        gap="$1"
-        px="$1"
-        height={22}
-        rounded="$2"
-        cursor="pointer"
-        opacity={0.55}
-        hoverStyle={{ opacity: 1, bg: "$hover" }}
-        focusStyle={{ opacity: 1 }}
-      >
-        <Clock size={12} aria-hidden />
-        <Text fontSize="$1" color="$ink">
-          {t("Schedule this")}
-        </Text>
-      </XStack>
-    </XStack>
-  );
-}
-
-/**
  * The conversation. One component for a visitor and for an account.
  *
  * `anonymous` opens on the free pool and offers only what the free pool can
@@ -1127,7 +1096,7 @@ function Thread({
     params: {
       stream_options: { include_usage: true },
       reasoning_effort: chatPrefs.effort || 'high',
-      ...(!anonymous && house(rowOf(model)?.family) ? { tools: WEB } : {}),
+      ...(!anonymous && carry.gear.gear.research && house(rowOf(model)?.family) ? { tools: WEB } : {}),
     },
     ...(open ? { thread: open } : {}),
     onError: (e) => {
@@ -2204,7 +2173,7 @@ function Thread({
       // Chat keeps to the effort alone until the person asks for more: the family chips, the mode.
       chips: anonymous ? undefined : families,
       defaults: { chips: false, mode: false },
-      status: anonymous ? null : <UsageControl read={planUsage} context={{ model, window: rowOf(model)?.context_window, messages: chat.messages, draft, tools: !anonymous && house(rowOf(model)?.family) ? WEB : undefined }} />,
+      status: anonymous ? null : <UsageControl read={planUsage} context={{ model, window: rowOf(model)?.context_window, messages: chat.messages, draft, tools: !anonymous && carry.gear.gear.research && house(rowOf(model)?.family) ? WEB : undefined }} />,
       limits,
       onUpgrade: (id) => setAsk({ model: nameOf(id, listed) } as Ask),
       voice,
@@ -2313,8 +2282,8 @@ function Thread({
         gap="$3"
         paddingInlineStart="$4"
         // The last mark's centre INSET from the pane's end edge, as the rail's first is from the
-        // window's start: the edge's 1px, then half the 32px mark.
-        paddingInlineEnd={INSET - 1 - 16}
+        // window's start: half the 32px mark.
+        paddingInlineEnd={INSET - 16}
         shrink={0}
         data-tauri-drag-region="deep"
         onMouseDown={dragWindow}
@@ -2578,11 +2547,9 @@ function Thread({
             // A QUESTION THAT CARRIED PICTURES draws them beside its words.
             if (turn.role === "user" && Array.isArray(turn.content)) {
               const parts = partsOf(turn.content);
-              const asked = parts.flatMap((p) => (p.type === "text" ? [p.text] : [])).join("\n");
               return (
                 <YStack gap="$1">
                   <Parts parts={parts} prose={(text) => <Prose text={text} />} />
-                  {!anonymous && asked ? <Plan onPress={() => setPlan(asked)} /> : null}
                 </YStack>
               );
             }
@@ -2601,7 +2568,6 @@ function Thread({
                       onOpen={openFile}
                       onSave={anonymous ? undefined : (url, id, f) => keepOne(url, id, f.name, f.type)}
                     />
-                    {!anonymous && read.text ? <Plan onPress={() => setPlan(read.text)} /> : null}
                   </YStack>
                 );
             }
@@ -2701,7 +2667,6 @@ function Thread({
                   />
                 ) : null}
                 {turn.role === "assistant" && said ? byline(turn.id) : null}
-                {turn.role === "user" && said && !anonymous ? <Plan onPress={() => setPlan(said)} /> : null}
               </YStack>
             );
           }}
