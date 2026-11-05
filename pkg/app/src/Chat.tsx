@@ -114,7 +114,7 @@ import { enter, LOGIN } from './lib/destination';
 import { first } from './lib/first';
 import { BAD } from "./lib/mix";
 import { brand } from './where'
-import { BAND, INSET } from './ground'
+import { BAND, HEAD, inPane, INSET, TOUCH_HEAD } from './ground'
 import { UsageControl } from './Usage'
 import { shared, useChatPreferences } from './lib/chatPreferences'
 import { handleHint } from './hint'
@@ -1676,8 +1676,8 @@ function Thread({
     if (customTitle.trim()) return customTitle.trim();
     if (mine?.title) return tidy(mine.title);
     if (said.length > 0) return tidy(currentThread.title);
-    return t("Untitled");
-  }, [customTitle, mine?.title, said.length, currentThread.title, t]);
+    return "";
+  }, [customTitle, mine?.title, said.length, currentThread.title]);
 
   const commitTitle = useCallback(() => {
     const next = titleDraft.trim();
@@ -2278,13 +2278,13 @@ function Thread({
         data-slot="conversation-head"
         // On the rail's line from a tablet up; a phone's own bar is BAND.
         height={BAND}
-        $md={{ height: 48 }}
-        $touchable={{ height: 48 }}
+        $md={{ height: inPane(HEAD) }}
+        $touchable={{ height: inPane(TOUCH_HEAD) }}
         display="grid"
         gridTemplateColumns="minmax(0, 1fr) auto"
         items="center"
         gap="$3"
-        paddingInlineStart="$4"
+        paddingInlineStart={INSET - 8}
         // The last mark's centre INSET from the pane's end edge, as the rail's first is from the
         // window's start: half the 32px mark.
         paddingInlineEnd={INSET - 16}
@@ -2295,7 +2295,7 @@ function Thread({
         $max-md={!mine && !cast.length ? { display: 'none' } : undefined}
       >
         <XStack items="center" gap="$2" minW={0}>
-          {editingTitle ? (
+          {editingTitle && shownTitle && (sidebarClosed || !media.md) ? (
             <Input
               data-slot="conversation-title-input"
               aria-label={t("Chat title")}
@@ -2318,7 +2318,7 @@ function Thread({
                 }
               }}
             />
-          ) : (
+          ) : shownTitle && (sidebarClosed || !media.md) ? (
             <XStack
               render="button"
               data-slot="conversation-title"
@@ -2337,11 +2337,11 @@ function Thread({
                 setEditingTitle(true);
               }}
             >
-              <Text fontSize={15} lineHeight={20} fontWeight="500" color={mine || said.length > 0 || customTitle ? "$ink" : "$soft"} numberOfLines={1} shrink={1} minW={0}>
+              <Text fontSize={15} lineHeight={20} fontWeight="500" color="$ink" numberOfLines={1} shrink={1} minW={0}>
                 {shownTitle}
               </Text>
             </XStack>
-          )}
+          ) : null}
           {/* WHO IS AT THE OTHER END, or nothing at all.
               `withWhom || "Jobs"` put a name and a photograph on a conversation the
               reader had chosen nobody for — the same defect the empty state
@@ -2504,16 +2504,18 @@ function Thread({
               <TooltipContent>{forgetful ? t("Private chat is on: this conversation is not saved") : t("Private chat")}</TooltipContent>
             </Tooltip>
           )}
-          <XStack $max-md={{ display: 'none' }}>
-            <Summary
-              sections={sections}
-              onOpen={() => setPanel(true)}
-              label={t("Summary")}
-              docked={media.md}
-              open={summaryOpen}
-              onOpenChange={setSummaryOpen}
-            />
-          </XStack>
+          {said.length > 0 ? (
+            <XStack $max-md={{ display: 'none' }}>
+              <Summary
+                sections={sections}
+                onOpen={() => setPanel(true)}
+                label={t("Summary")}
+                docked={media.md}
+                open={summaryOpen}
+                onOpenChange={setSummaryOpen}
+              />
+            </XStack>
+          ) : null}
           {/* THE TABS' OWN CONTROL, at the header's end while they are shut;
               open, the strip beside the conversation holds it. Its mark is
               never the sidebar's: that toggle is the window's, at its top-left. */}
@@ -2771,7 +2773,7 @@ function Thread({
           composer={composer}
         />
         </YStack>
-        {media.md && summaryOpen ? (
+        {media.md && summaryOpen && said.length > 0 ? (
           <Summary sections={sections} onOpen={() => setPanel(true)} label={t("Summary")} pane />
         ) : null}
       </XStack>

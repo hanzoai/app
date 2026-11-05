@@ -27,7 +27,7 @@ minimumReleaseAge: 0
 catalog:
   '@hanzo/ai': 0.7.0
   '@hanzo/appearance': 0.2.13
-  '@hanzo/build': https://github.com/hanzoai/build/releases/download/v0.2.106/hanzo-build-0.2.106.tgz
+  '@hanzo/build': https://github.com/hanzoai/build/releases/download/v0.2.107/hanzo-build-0.2.107.tgz
   '@hanzo/composer': 0.2.0
   '@hanzo/design': 0.5.39
   '@hanzo/event': 0.3.56
