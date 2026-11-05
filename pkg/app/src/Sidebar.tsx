@@ -29,13 +29,13 @@
 
 import { locales, phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
-import { SizableText, Text, XStack, YStack } from '@hanzo/gui'
-import { ArrowLeft, Bell, ChevronDown, ChevronUp, CircleHelp, Image as ImageMark, Languages, Monitor, Moon, Palette, Puzzle, Search, Settings, Sparkles, SquarePen, Sun } from 'lucide-react'
+import { Text, XStack, YStack } from '@hanzo/gui'
+import { ArrowLeft, Bell, ChevronDown, ChevronUp, CircleHelp, Image as ImageMark, Puzzle, Search, Settings, Sparkles, SquarePen } from 'lucide-react'
 import { DOTS, Gutter, library, NEW, own, tabs, useLanguage, useScheduled, useSessions, type Host } from '@hanzo/build'
 
 type Theme = NonNullable<Host['theme']>
 import { tidy } from './lib/title'
-import { Button, Dialog, DialogContent, DialogTitle, DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
+import { Button, DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { Sidebar as Base, SidebarIconButton, SidebarItem, StatusDot, type RailLink } from '@hanzo/ui/chat'
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { Made } from './Account'
@@ -170,7 +170,10 @@ export function Sidebar({
   const [tallEnoughForRailShift, setTallEnoughForRailShift] = useState(true)
   useEffect(() => {
     if (!anon || typeof window === 'undefined') return
-    const onOpen = () => setAnonSettingsOpen(true)
+    const onOpen = (e: Event) => {
+      const detail = (e as CustomEvent<{ open?: boolean }>).detail
+      setAnonSettingsOpen(detail?.open ?? true)
+    }
     const onResize = () => setTallEnoughForRailShift(window.innerHeight >= 520)
     onResize()
     window.addEventListener('hanzo:anon-settings', onOpen)
@@ -198,8 +201,15 @@ export function Sidebar({
           ? scheduled
           : own(host, dev, t))
   const open = (row: Recent) => (row.kind === 'chat' ? go(talk(row.id)) : dev(row.id))
+  const setAnonSettings = (next: boolean) => {
+    setAnonSettingsOpen(next)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('hanzo:anon-settings', { detail: { open: next } }))
+    }
+  }
   // Chat's New; Dev's is the first of its places.
   const create = () => {
+    if (anon) setAnonSettings(false)
     empty()
     go(talk())
   }
@@ -303,7 +313,7 @@ export function Sidebar({
               <SidebarItem
                 data-slot="app-new"
                 {...COMPACT_ROW}
-                active={!thread}
+                active={!thread && !anonSettingsOpen}
                 bg="transparent"
                 hoverStyle={{ bg: '$hover' }}
                 icon={
@@ -358,11 +368,13 @@ export function Sidebar({
                       </XStack>
                     }
                     onPress={() => {
+                      setAnonSettings(false)
                       if (typeof window !== 'undefined') {
                         window.dispatchEvent(new CustomEvent('hanzo:anon-plugins'))
                       }
                     }}
                     {...keys(() => {
+                      setAnonSettings(false)
                       if (typeof window !== 'undefined') {
                         window.dispatchEvent(new CustomEvent('hanzo:anon-plugins'))
                       }
@@ -476,6 +488,7 @@ export function Sidebar({
                 <SidebarItem
                   data-slot="anon-settings"
                   {...COMPACT_ROW}
+                  active={anonSettingsOpen}
                   bg="transparent"
                   hoverStyle={{ bg: '$hover' }}
                   icon={
@@ -483,8 +496,14 @@ export function Sidebar({
                       <Settings size={16} aria-hidden />
                     </XStack>
                   }
-                  onPress={() => setAnonSettingsOpen(true)}
-                  {...keys(() => setAnonSettingsOpen(true))}
+                  onPress={() => {
+                    if (drawer) onShut()
+                    setAnonSettings(true)
+                  }}
+                  {...keys(() => {
+                    if (drawer) onShut()
+                    setAnonSettings(true)
+                  })}
                 >
                   <Text fontSize="$3" color="$ink">{t('Settings')}</Text>
                 </SidebarItem>
@@ -542,7 +561,6 @@ export function Sidebar({
                 </Button>
               </XStack>
             </YStack>
-            <AnonSettingsDialog open={anonSettingsOpen} onOpenChange={setAnonSettingsOpen} host={host} />
           </YStack>
         ) : at ? null : (
           <YStack gap="$2" pt="$2" shrink={0}>
@@ -591,137 +609,307 @@ export function Sidebar({
   )
 }
 
-function AnonSettingsDialog({
-  open,
-  onOpenChange,
-  host,
+function readAnonFlag(key: string, fallback = true): boolean {
+  if (typeof window === 'undefined') return fallback
+  try {
+    const raw = window.localStorage.getItem(key)
+    if (raw === '0' || raw === 'false') return false
+    if (raw === '1' || raw === 'true') return true
+  } catch {
+    // ignore storage errors
+  }
+  return fallback
+}
+
+function writeAnonFlag(key: string, value: boolean) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(key, value ? '1' : '0')
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function AnonSwitch({
+  checked,
+  onChange,
+  label,
+  slot,
 }: {
-  open: boolean
-  onOpenChange: (next: boolean) => void
+  checked: boolean
+  onChange: (next: boolean) => void
+  label: string
+  slot: string
+}) {
+  return (
+    <XStack
+      render="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      data-slot={slot}
+      width={40}
+      height={22}
+      p={2}
+      rounded={9999}
+      items="center"
+      cursor="pointer"
+      shrink={0}
+      bg={checked ? '#0285ff' : 'rgba(128, 128, 128, 0.35)'}
+      onPress={() => onChange(!checked)}
+      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+    >
+      <XStack
+        width={18}
+        height={18}
+        rounded={9999}
+        bg="#ffffff"
+        style={{
+          transform: checked ? 'translateX(18px)' : 'translateX(0px)',
+          transition: 'transform 150ms ease',
+        }}
+      />
+    </XStack>
+  )
+}
+
+export function AnonSettingsPane({
+  host,
+  onClose,
+}: {
   host: Host
+  onClose: () => void
 }) {
   const { t, locale, setLocale } = useI18n()
-  const [tab, setTab] = useState<'appearance' | 'language'>('appearance')
   const themeVal: Theme = host.theme ?? 'system'
   const setThemeVal = (next: Theme) => host.chooseTheme?.(next)
   const target = useMemo(() => ({ api: host.api, token: host.token, org: host.org }), [host.api, host.token, host.org])
   const [spoken, speakIn] = useLanguage(target)
+  const [autoLang, setAutoLang] = useState(() => !spoken)
   const currentLang = spoken || locale || 'en'
 
+  const [improveModel, setImproveModel] = useState(() => readAnonFlag('hanzo.anon.improve_model', true))
+  const [personalizeAds, setPersonalizeAds] = useState(() => readAnonFlag('hanzo.anon.personalize_ads', true))
+  const [marketingMeasurement, setMarketingMeasurement] = useState(() => readAnonFlag('hanzo.anon.marketing_measurement', true))
+  const [personalizedMarketing, setPersonalizedMarketing] = useState(() => readAnonFlag('hanzo.anon.personalized_marketing', true))
+
+  const themeLabel = themeVal === 'light' ? t('Light') : themeVal === 'dark' ? t('Dark') : t('System')
+  const langLabel = autoLang ? t('Auto-detect') : (locales.find((l) => l.code === currentLang)?.name ?? 'English')
+
+  const themeItems: NonNullable<DropdownMenuProps['items']> = [
+    { key: 'system', label: t('System'), onSelect: () => setThemeVal('system') },
+    { key: 'dark', label: t('Dark'), onSelect: () => setThemeVal('dark') },
+    { key: 'light', label: t('Light'), onSelect: () => setThemeVal('light') },
+  ]
+
+  const langItems: NonNullable<DropdownMenuProps['items']> = [
+    {
+      key: 'auto',
+      label: t('Auto-detect'),
+      onSelect: () => {
+        setAutoLang(true)
+      },
+    },
+    ...locales.map((loc) => ({
+      key: loc.code,
+      label: loc.name,
+      description: loc.englishName !== loc.name ? loc.englishName : undefined,
+      onSelect: () => {
+        setAutoLang(false)
+        void setLocale?.(loc.code)
+        speakIn(loc.code)
+      },
+    })),
+  ]
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent maxW={580} width="100%" p="$0" overflow="hidden" data-slot="anon-settings-dialog">
-        <XStack minH={340} width="100%">
-          <YStack width={180} p="$3" gap="$1" borderRightWidth={1} borderColor="$borderColor" bg="$panel" shrink={0}>
-            <DialogTitle>
-              <SizableText size="$3" fontWeight="600" color="$ink" px="$2" py="$1.5">
-                {t('Settings')}
-              </SizableText>
-            </DialogTitle>
-            <SidebarItem
-              {...ROW}
-              active={tab === 'appearance'}
-              icon={
-                <XStack width={18} height={18} items="center" justify="center" shrink={0}>
-                  <Palette size={15} aria-hidden />
-                </XStack>
-              }
-              onPress={() => setTab('appearance')}
-            >
-              <Text fontSize="$2" color={tab === 'appearance' ? '$ink' : '$soft'}>
+    <YStack data-slot="anon-settings-pane" flex={1} minW={0} minH={0} overflowY="auto" overflowX="hidden">
+      <XStack height={56} px="$4" items="center" justify="space-between" shrink={0}>
+        <XStack
+          render="button"
+          aria-label={t('Back')}
+          data-slot="anon-settings-back"
+          width={36}
+          height={36}
+          rounded={9999}
+          borderWidth={1}
+          borderColor="$borderColor"
+          items="center"
+          justify="center"
+          cursor="pointer"
+          hoverStyle={{ bg: '$hover' }}
+          onPress={onClose}
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+        >
+          <ArrowLeft size={16} aria-hidden data-i18n-mirror />
+        </XStack>
+        <Text fontSize={16} fontWeight="600" color="$ink">
+          {t('Settings')}
+        </Text>
+        <XStack width={36} height={36} />
+      </XStack>
+
+      <YStack width="100%" maxW={600} mx="auto" px="$4" py="$5" gap="$6">
+        <YStack gap="$2.5">
+          <Text fontSize={14} fontWeight="600" color="$ink">
+            {t('General')}
+          </Text>
+          <YStack rounded="$5" borderWidth={1} borderColor="$borderColor" bg="var(--white-03, $panel)" px="$4">
+            <XStack py="$3.5" items="center" justify="space-between" gap="$3" borderBottomWidth={1} borderColor="$borderColor">
+              <Text fontSize={14} color="$ink">
                 {t('Appearance')}
               </Text>
-            </SidebarItem>
-            <SidebarItem
-              {...ROW}
-              active={tab === 'language'}
-              icon={
-                <XStack width={18} height={18} items="center" justify="center" shrink={0}>
-                  <Languages size={15} aria-hidden />
-                </XStack>
-              }
-              onPress={() => setTab('language')}
-            >
-              <Text fontSize="$2" color={tab === 'language' ? '$ink' : '$soft'}>
+              <DropdownMenu
+                minWidth={160}
+                items={themeItems}
+                trigger={
+                  <XStack
+                    render="button"
+                    data-slot="anon-settings-appearance"
+                    items="center"
+                    gap="$1.5"
+                    px="$2.5"
+                    py="$1.5"
+                    rounded="$3"
+                    cursor="pointer"
+                    hoverStyle={{ bg: '$hover' }}
+                  >
+                    <Text fontSize={14} color="$ink">
+                      {themeLabel}
+                    </Text>
+                    <ChevronDown size={14} aria-hidden color="var(--soft, var(--muted-foreground))" />
+                  </XStack>
+                }
+              />
+            </XStack>
+
+            <XStack py="$3.5" items="center" justify="space-between" gap="$3">
+              <Text fontSize={14} color="$ink">
                 {t('Language')}
               </Text>
-            </SidebarItem>
+              <DropdownMenu
+                minWidth={200}
+                items={langItems}
+                trigger={
+                  <XStack
+                    render="button"
+                    data-slot="anon-settings-language"
+                    items="center"
+                    gap="$1.5"
+                    px="$2.5"
+                    py="$1.5"
+                    rounded="$3"
+                    cursor="pointer"
+                    hoverStyle={{ bg: '$hover' }}
+                  >
+                    <Text fontSize={14} color="$ink">
+                      {langLabel}
+                    </Text>
+                    <ChevronDown size={14} aria-hidden color="var(--soft, var(--muted-foreground))" />
+                  </XStack>
+                }
+              />
+            </XStack>
           </YStack>
-          <YStack flex={1} p="$4" gap="$4" minW={0}>
-            {tab === 'appearance' ? (
-              <YStack gap="$3">
-                <YStack gap="$1">
-                  <Text fontSize="$4" fontWeight="600" color="$ink">
-                    {t('Appearance')}
+        </YStack>
+
+        <YStack gap="$2.5">
+          <Text fontSize={14} fontWeight="600" color="$ink">
+            {t('Data controls')}
+          </Text>
+          <YStack rounded="$5" borderWidth={1} borderColor="$borderColor" bg="var(--white-03, $panel)" px="$4">
+            <XStack py="$3.5" items="center" justify="space-between" gap="$4" borderBottomWidth={1} borderColor="$borderColor">
+              <YStack flex={1} minW={0} gap="$1">
+                <Text fontSize={14} fontWeight="500" color="$ink">
+                  {t('Improve the model for everyone')}
+                </Text>
+                <Text fontSize={12} lineHeight={18} color="$soft">
+                  {t('Allow your content to be used to train our models, which makes Hanzo better for you and everyone who uses it. We take steps to protect your privacy.')}{' '}
+                  <Text
+                    render="a"
+                    {...({ href: '/privacy', target: '_blank', rel: 'noopener noreferrer' } as object)}
+                    fontSize={12}
+                    lineHeight={18}
+                    color="$ink"
+                    textDecorationLine="underline"
+                  >
+                    {t('Learn more')}
                   </Text>
-                  <Text fontSize="$2" color="$soft">
-                    {t('Choose how Hanzo looks on your device.')}
-                  </Text>
-                </YStack>
-                <XStack gap="$2" flexWrap="wrap">
-                  {(
-                    [
-                      { id: 'light' as const, label: t('Light'), icon: <Sun size={15} aria-hidden /> },
-                      { id: 'dark' as const, label: t('Dark'), icon: <Moon size={15} aria-hidden /> },
-                      { id: 'system' as const, label: t('System'), icon: <Monitor size={15} aria-hidden /> },
-                    ]
-                  ).map((opt) => {
-                    const active = themeVal === opt.id
-                    return (
-                      <Button
-                        key={opt.id}
-                        size="sm"
-                        variant={active ? 'primary' : 'outline'}
-                        gap="$2"
-                        onPress={() => setThemeVal(opt.id)}
-                      >
-                        {opt.icon}
-                        {opt.label}
-                      </Button>
-                    )
-                  })}
-                </XStack>
+                </Text>
               </YStack>
-            ) : (
-              <YStack gap="$3">
-                <YStack gap="$1">
-                  <Text fontSize="$4" fontWeight="600" color="$ink">
-                    {t('Language')}
-                  </Text>
-                  <Text fontSize="$2" color="$soft">
-                    {t('Choose the language used across the interface and voice.')}
-                  </Text>
-                </YStack>
-                <YStack maxH={220} overflow="scroll" gap="$1">
-                  {locales.map((loc) => {
-                    const active = currentLang === loc.code
-                    return (
-                      <SidebarItem
-                        key={loc.code}
-                        {...ROW}
-                        active={active}
-                        onPress={() => {
-                          void setLocale?.(loc.code)
-                          speakIn(loc.code)
-                        }}
-                      >
-                        <XStack flex={1} items="center" justify="space-between">
-                          <Text fontSize="$2" color="$ink">
-                            {loc.name}
-                          </Text>
-                          <Text fontSize="$1" color="$soft">
-                            {loc.englishName}
-                          </Text>
-                        </XStack>
-                      </SidebarItem>
-                    )
-                  })}
-                </YStack>
+              <AnonSwitch
+                checked={improveModel}
+                label={t('Improve the model for everyone')}
+                slot="anon-switch-improve"
+                onChange={(next) => {
+                  setImproveModel(next)
+                  writeAnonFlag('hanzo.anon.improve_model', next)
+                }}
+              />
+            </XStack>
+
+            <XStack py="$3.5" items="center" justify="space-between" gap="$4" borderBottomWidth={1} borderColor="$borderColor">
+              <YStack flex={1} minW={0} gap="$1">
+                <Text fontSize={14} fontWeight="500" color="$ink">
+                  {t('Personalize ads')}
+                </Text>
+                <Text fontSize={12} lineHeight={18} color="$soft">
+                  {t('Allow Hanzo to use your past chats, activity, and preferences to select ads. Ads may still be based on your current chat.')}
+                </Text>
               </YStack>
-            )}
+              <AnonSwitch
+                checked={personalizeAds}
+                label={t('Personalize ads')}
+                slot="anon-switch-ads"
+                onChange={(next) => {
+                  setPersonalizeAds(next)
+                  writeAnonFlag('hanzo.anon.personalize_ads', next)
+                }}
+              />
+            </XStack>
+
+            <XStack py="$3.5" items="center" justify="space-between" gap="$4" borderBottomWidth={1} borderColor="$borderColor">
+              <YStack flex={1} minW={0} gap="$1">
+                <Text fontSize={14} fontWeight="500" color="$ink">
+                  {t('Marketing measurement')}
+                </Text>
+                <Text fontSize={12} lineHeight={18} color="$soft">
+                  {t('These cookies help us measure the effectiveness of our marketing campaigns.')}
+                </Text>
+              </YStack>
+              <AnonSwitch
+                checked={marketingMeasurement}
+                label={t('Marketing measurement')}
+                slot="anon-switch-measurement"
+                onChange={(next) => {
+                  setMarketingMeasurement(next)
+                  writeAnonFlag('hanzo.anon.marketing_measurement', next)
+                }}
+              />
+            </XStack>
+
+            <XStack py="$3.5" items="center" justify="space-between" gap="$4">
+              <YStack flex={1} minW={0} gap="$1">
+                <Text fontSize={14} fontWeight="500" color="$ink">
+                  {t('Personalized marketing')}
+                </Text>
+                <Text fontSize={12} lineHeight={18} color="$soft">
+                  {t("This helps us personalize and measure Hanzo's own marketing on third-party platforms.")}
+                </Text>
+              </YStack>
+              <AnonSwitch
+                checked={personalizedMarketing}
+                label={t('Personalized marketing')}
+                slot="anon-switch-marketing"
+                onChange={(next) => {
+                  setPersonalizedMarketing(next)
+                  writeAnonFlag('hanzo.anon.personalized_marketing', next)
+                }}
+              />
+            </XStack>
           </YStack>
-        </XStack>
-      </DialogContent>
-    </Dialog>
+        </YStack>
+      </YStack>
+    </YStack>
   )
 }

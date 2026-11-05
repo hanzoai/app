@@ -111,33 +111,43 @@ const rows = (groups: { links: { id: string; label: string; icon?: ReactNode; on
  * named through `t`; a registry's rows keep the words its package wrote.
  */
 export function places(host: Host | undefined, go: (address: string) => void, t: Say = english): { top: Action[]; deep: Action[] } {
+  const anon = host?.person === null
   const builder = (p: string) => go(app(p))
   const top: Action[] = [
     { id: 'chat', label: t('Chat'), icon: <MessageSquare {...ICON} />, run: () => go(talk()) },
     { id: 'dev', label: 'Dev', icon: <Code2 {...ICON} />, run: () => go(app('')) },
-    { id: 'design', label: 'Design', icon: <WandSparkles {...ICON} />, run: () => go(design('')) },
-    { id: 'studio', label: 'Studio', icon: <WandSparkles {...ICON} />, run: () => go(studio('')) },
-    { id: 'tabs', label: 'Tabs', icon: <SquareTerminal {...ICON} />, run: () => go(TERMINALS) },
-    ...(host ? [{ id: 'team', label: 'Team', icon: <Users {...ICON} />, keywords: ['workspace'], run: () => out(WORKSPACE) }] : []),
-    ...(host ? rows(nav(host, builder, t).map((g) => ({ links: g.links.filter((l) => l.id !== NEW) })), '', 'dev') : []),
+    ...(!anon
+      ? [
+          { id: 'studio', label: 'Studio', icon: <WandSparkles {...ICON} />, run: () => go(studio('')) },
+          { id: 'tabs', label: 'Tabs', icon: <SquareTerminal {...ICON} />, run: () => go(TERMINALS) },
+          ...(host ? [{ id: 'team', label: 'Team', icon: <Users {...ICON} />, keywords: ['workspace'], run: () => out(WORKSPACE) }] : []),
+          ...(host ? rows(nav(host, builder, t).map((g) => ({ links: g.links.filter((l) => l.id !== NEW) })), '', 'dev') : []),
+        ]
+      : []),
     { id: 'settings', label: t('Settings'), icon: <Settings {...ICON} />, shortcut: ['Mod', ','], run: () => go(settings()) },
-    // The site's own pages, outside the app: the browser loads them.
-    { id: 'referral', label: t('Referral'), icon: <Gift {...ICON} />, keywords: ['invite', 'share'], run: () => window.location.assign(site('/referral')) },
-    { id: 'beta', label: t('Beta status'), icon: <FlaskConical {...ICON} />, keywords: ['waitlist'], run: () => window.location.assign(site('/beta/status')) },
+    ...(!anon
+      ? [
+          // The site's own pages, outside the app: the browser loads them.
+          { id: 'referral', label: t('Referral'), icon: <Gift {...ICON} />, keywords: ['invite', 'share'], run: () => window.location.assign(site('/referral')) },
+          { id: 'beta', label: t('Beta status'), icon: <FlaskConical {...ICON} />, keywords: ['waitlist'], run: () => window.location.assign(site('/beta/status')) },
+        ]
+      : []),
     ...pages()
       .filter((p) => p.key === 'help')
       .map((p) => ({ id: `help-${p.key}`, label: t(p.label), icon: <CircleHelp {...ICON} />, keywords: ['support', 'docs'], run: () => out(p.href) })),
   ]
   const help = t('Help')
   const deep: Action[] = [
-    ...(host
+    ...(host && !anon
       ? [
           ...rows(sections(host, builder, t).map((g) => ({ links: g.links.filter((l) => paged(l.id)) })), t('Settings'), 'settings'),
           ...rows(tabs(host, builder, t), t('Customize'), 'customize'),
           ...rows(library(host, builder, t).slice(1), t('Library'), 'library'),
           ...rows(made(host, (p) => go(studio(p))), 'Studio', 'studio').filter((a) => a.id !== `studio-${NEW}`),
         ]
-      : []),
+      : host && anon
+        ? [...rows(library(host, builder, t).slice(1), t('Library'), 'library')]
+        : []),
     ...[...pages(), ...legal()]
       .filter((p) => p.key !== 'help')
       .map((p) => ({ id: `help-${p.key}`, label: t(p.label), where: help, keywords: [help, 'Help'], run: () => out(p.href) })),
@@ -168,12 +178,13 @@ function tune(go: (address: string) => void) {
 
 /** The palette's actions, named through `t`; a host that cannot do one (no theme to change, no org to pick) is not offered it. */
 export function actions(host: Host | undefined, go: (address: string) => void, signOut: () => void, keys: () => void, t: Say = english): Action[] {
-  const upload = host ? library(host, (p) => go(app(p)), t)[0]?.links.find((l) => l.id === 'upload') : undefined
+  const anon = host?.person === null
+  const upload = host && !anon ? library(host, (p) => go(app(p)), t)[0]?.links.find((l) => l.id === 'upload') : undefined
   const list: (Action | false | undefined)[] = [
     { id: 'new-chat', label: t('New chat'), icon: <SquarePen {...ICON} />, run: () => (empty(), go(talk())) },
     { id: 'new-task', label: t('New Dev task'), icon: <Code2 {...ICON} />, keywords: ['run'], run: () => go(app('')) },
-    { id: 'new-creation', label: t('New Studio creation'), icon: <WandSparkles {...ICON} />, keywords: ['image', 'video'], run: () => go(studio('')) },
-    { id: 'new-scheduled', label: t('New scheduled task'), icon: <Clock {...ICON} />, keywords: ['automation'], run: () => go(app(written({ kind: 'automation', id: 'new' }))) },
+    !anon && { id: 'new-creation', label: t('New Studio creation'), icon: <WandSparkles {...ICON} />, keywords: ['image', 'video'], run: () => go(studio('')) },
+    !anon && { id: 'new-scheduled', label: t('New scheduled task'), icon: <Clock {...ICON} />, keywords: ['automation'], run: () => go(app(written({ kind: 'automation', id: 'new' }))) },
     !!upload && { id: 'upload', label: t('Upload'), icon: upload.icon, keywords: ['file', 'library'], run: () => upload.onPress?.() },
     { id: 'model', label: t('Switch model'), icon: <Sparkles {...ICON} />, keywords: ['model'], run: () => tune(go) },
     !!host?.chooseTheme && {
@@ -183,9 +194,9 @@ export function actions(host: Host | undefined, go: (address: string) => void, s
       keywords: ['dark', 'light', 'appearance'],
       run: () => host.chooseTheme?.(document.documentElement.classList.contains('dark') ? 'light' : 'dark'),
     },
-    !!host && { id: 'org', label: t('Switch organization'), icon: <Building2 {...ICON} />, keywords: ['org', 'team', 'workspace'], run: choose },
+    !!host && !anon && { id: 'org', label: t('Switch organization'), icon: <Building2 {...ICON} />, keywords: ['org', 'team', 'workspace'], run: choose },
     { id: 'keys', label: t('Keyboard shortcuts'), icon: <Keyboard {...ICON} />, stay: true, run: keys },
-    { id: 'logout', label: t('Log out'), icon: <LogOut {...ICON} data-i18n-mirror />, keywords: ['sign out'], run: signOut },
+    !anon && { id: 'logout', label: t('Log out'), icon: <LogOut {...ICON} data-i18n-mirror />, keywords: ['sign out'], run: signOut },
   ]
   return list.filter((a): a is Action => !!a)
 }

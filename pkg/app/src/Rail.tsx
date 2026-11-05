@@ -329,12 +329,16 @@ export function Rail({
       <Mark label={t('Library')} on={here === 'library'} onPress={to(RAISED.library)} data-slot="rail-library">
         <Library size={18} aria-hidden />
       </Mark>
-      <Mark label={t('Scheduled tasks')} on={here === 'scheduled'} onPress={to(RAISED.scheduled)} data-slot="rail-scheduled">
-        <Clock size={18} aria-hidden />
-      </Mark>
-      <Mark label={t('Customize')} on={here === 'customize'} onPress={to(RAISED.customize)} data-slot="rail-customize">
-        <Puzzle size={18} aria-hidden />
-      </Mark>
+      {anon ? null : (
+        <Mark label={t('Scheduled tasks')} on={here === 'scheduled'} onPress={to(RAISED.scheduled)} data-slot="rail-scheduled">
+          <Clock size={18} aria-hidden />
+        </Mark>
+      )}
+      {anon ? null : (
+        <Mark label={t('Customize')} on={here === 'customize'} onPress={to(RAISED.customize)} data-slot="rail-customize">
+          <Puzzle size={18} aria-hidden />
+        </Mark>
+      )}
       {anon ? null : (
         <Mark label={t('Betas')} on={mode === 'beta'} onPress={() => go('/beta')} data-slot="rail-betas">
           <FlaskConical size={18} aria-hidden />

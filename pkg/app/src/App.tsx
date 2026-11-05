@@ -72,7 +72,7 @@ import { nav as places } from '@hanzo/studio'
 import { useAi } from './lib/ai'
 import { Chat } from './Chat'
 import { UsageProvider } from './Usage'
-import { Sidebar } from './Sidebar'
+import { AnonSettingsPane, Sidebar } from './Sidebar'
 import { Learning } from './Learning'
 import { isPlans, leave, useDevHost } from './dev'
 import { Gate } from './Gate'
@@ -182,8 +182,18 @@ function Window({ bar, betas }: Hosted) {
   // The palette is open (the sidebar's search; ⌘K toggles it).
   const [finding, setFinding] = useState(false)
   const [learning, setLearning] = useState(false)
+  const [anonSettings, setAnonSettings] = useState(false)
   const found = useCallback(() => setFinding(false), [])
   const dev = useDevHost()
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onAnonSettings = (e: Event) => {
+      const detail = (e as CustomEvent<{ open?: boolean }>).detail
+      setAnonSettings(detail?.open ?? true)
+    }
+    window.addEventListener('hanzo:anon-settings', onAnonSettings)
+    return () => window.removeEventListener('hanzo:anon-settings', onAnonSettings)
+  }, [])
   // The builder's moves put the drawer away, in its place in the history; one to
   // a page outside the app (Settings) leaves it through the router.
   const host = useMemo<typeof dev>(
@@ -278,8 +288,23 @@ function Window({ bar, betas }: Hosted) {
    * the app; any other page of the site (Settings) is the router's, and leaves it.
    */
   const move = useCallback(
-    (address: string) => (place(address.split(/[?#]/)[0]) ? depart : exit)((replace) => visit(router, address, replace)),
-    [depart, exit, router],
+    (address: string) => {
+      const clean = address.split(/[?#]/)[0]
+      if (!host.token?.() && clean.startsWith('/settings')) {
+        shut()
+        setAnonSettings(true)
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('hanzo:anon-settings', { detail: { open: true } }))
+        }
+        return
+      }
+      setAnonSettings(false)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('hanzo:anon-settings', { detail: { open: false } }))
+      }
+      ;(place(clean) ? depart : exit)((replace) => visit(router, address, replace))
+    },
+    [depart, exit, router, host, shut],
   )
 
   // A pane asks for Settings — the account menu's rows, Chat's See usage: its
@@ -465,7 +490,19 @@ function Window({ bar, betas }: Hosted) {
                 minW={0}
                 minH={0}
               >
-                {mode === 'chat' ? (
+                {anonSettings && host.person === null ? (
+                  <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                    <AnonSettingsPane
+                      host={host}
+                      onClose={() => {
+                        setAnonSettings(false)
+                        if (typeof window !== 'undefined') {
+                          window.dispatchEvent(new CustomEvent('hanzo:anon-settings', { detail: { open: false } }))
+                        }
+                      }}
+                    />
+                  </YStack>
+                ) : mode === 'chat' ? (
                   <Split framed>
                     <Chat />
                   </Split>

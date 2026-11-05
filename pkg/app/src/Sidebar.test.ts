@@ -53,6 +53,7 @@ vi.mock('@hanzo/build', () => {
     Gutter: () => null,
     route,
     useSessions: () => ({ value: [], loading: false, error: null, reload: () => {} }),
+    useLanguage: () => ['', () => {}] as const,
     NEW: 'new',
     own: () => [group('work', 'Work', ['New run', 'Projects', 'Issues', 'Templates'])],
     tabs: () => [group('customize', '', ['Agents', 'Skills', 'Connectors', 'Plugins'])],
@@ -65,7 +66,7 @@ vi.mock('./Recents', () => ({ Recents: () => createElement('div', { 'data-slot':
 vi.mock('./Setup', () => ({ Setup: () => null }))
 vi.mock('./span', () => ({ useSpan: () => ({ ref: null, style: {}, span: 272, move: () => {}, keep: () => {} }) }))
 
-import { Sidebar } from './Sidebar'
+import { AnonSettingsPane, Sidebar } from './Sidebar'
 import { Rail } from './Rail'
 import { TABS, WORKSPACE, type Place } from './lib/host'
 
@@ -75,7 +76,7 @@ const noop = () => {}
 
 const column = (mode: Place['mode'], path = '') => renderToStaticMarkup(createElement(Sidebar, { host: hostAt(path), mode, thread: null, go: noop, onShut: noop, onBack: noop }))
 const rail = (mode: Place['mode'], toggle?: () => void, where: string | null = null) =>
-  renderToStaticMarkup(createElement(Rail, { host, mode, at: where, open: true, toggle, onChat: noop, onDev: noop, onStudio: noop, onTabs: noop, go: noop, onOrg: noop }))
+  renderToStaticMarkup(createElement(Rail, { host, mode, at: where, open: true, toggle, onChat: noop, onDev: noop, onDesign: noop, onStudio: noop, onTabs: noop, go: noop, onOrg: noop }))
 
 /** Where a string first stands in the markup, failing when it is absent. */
 const at = (html: string, s: string): number => {
@@ -85,13 +86,26 @@ const at = (html: string, s: string): number => {
 }
 
 describe('the rail', () => {
-  test('Chat, Dev, Studio, Tabs, Library, Scheduled tasks, Customize, then More, and the account at the foot', () => {
+  test('Chat, Dev, Design, Tabs, Library, Scheduled tasks, Customize, then More, and the account at the foot', () => {
     const html = rail('chat')
-    const order = ['Chat', 'Dev', 'Studio', 'Tabs', 'Library', 'Scheduled tasks', 'Customize', 'More'].map((n) => at(html, `aria-label="${n}"`))
+    const order = ['Chat', 'Dev', 'Design', 'Tabs', 'Library', 'Scheduled tasks', 'Customize', 'More'].map((n) => at(html, `aria-label="${n}"`))
     expect(order).toEqual([...order].sort((a, b) => a - b))
     expect(at(html, 'data-slot="me"')).toBeGreaterThan(order.at(-1)!)
     for (const place of ['Templates', 'Projects', 'Issues', 'Machines', 'Environments']) {
       expect(html, `${place} is Dev’s, listed in Dev’s sidebar alone`).not.toContain(`aria-label="${place}"`)
+    }
+  })
+
+  test('in anonymous mode (person === null), hides Design, Tabs, Scheduled tasks, Customize, and Betas on the rail', () => {
+    const anonHost = { ...host, person: null } as unknown as Parameters<typeof Sidebar>[0]['host']
+    const html = renderToStaticMarkup(
+      createElement(Rail, { host: anonHost, mode: 'chat', at: null, open: true, onChat: noop, onDev: noop, onDesign: noop, onStudio: noop, onTabs: noop, go: noop, onOrg: noop }),
+    )
+    for (const kept of ['Chat', 'Dev', 'Library']) {
+      expect(html).toContain(`aria-label="${kept}"`)
+    }
+    for (const hidden of ['Design', 'Studio', 'Tabs', 'Scheduled tasks', 'Customize', 'Betas', 'More']) {
+      expect(html).not.toContain(`aria-label="${hidden}"`)
     }
   })
 
@@ -147,12 +161,12 @@ describe('the rail', () => {
 
 describe('a phone’s menu', () => {
   const rows = (mode: Place['mode'], where: string | null = null) =>
-    renderToStaticMarkup(createElement(Rail, { host, mode, at: where, open: true, rows: true, onChat: noop, onDev: noop, onStudio: noop, onTabs: noop, go: noop, onOrg: noop }))
+    renderToStaticMarkup(createElement(Rail, { host, mode, at: where, open: true, rows: true, onChat: noop, onDev: noop, onDesign: noop, onStudio: noop, onTabs: noop, go: noop, onOrg: noop }))
 
-  test('lists the places as rows: Studio, Tabs, then More, which the rail’s own places lead', () => {
+  test('lists the places as rows: Design, Tabs, then More, which the rail’s own places lead', () => {
     const html = rows('chat')
     expect(html).toContain('data-slot="places"')
-    expect(at(html, 'data-slot="place-studio"')).toBeLessThan(at(html, 'data-slot="place-tabs"'))
+    expect(at(html, 'data-slot="place-design"')).toBeLessThan(at(html, 'data-slot="place-tabs"'))
     expect(at(html, 'data-slot="place-tabs"')).toBeLessThan(at(html, 'data-slot="place-more"'))
     const more = ['library', 'scheduled', 'customize', 'team', 'beta-finance', 'betas'].map((k) => at(html, `data-item="${k}"`))
     expect(more).toEqual([...more].sort((a, b) => a - b))
@@ -164,7 +178,7 @@ describe('a phone’s menu', () => {
   })
 
   test('lights the place the reader is in', () => {
-    expect(rows('studio')).toMatch(/data-slot="place-studio" aria-current="page"/)
+    expect(rows('design')).toMatch(/data-slot="place-design" aria-current="page"/)
     expect(rows('tabs')).toMatch(/data-slot="place-tabs" aria-current="page"/)
     expect(rows('chat')).not.toContain('aria-current="page"')
   })
@@ -251,6 +265,25 @@ describe('the sidebar', () => {
       const html = column(mode, '')
       expect(html).toContain('aria-label="Search"')
       expect(html).not.toContain('<input')
+    }
+  })
+
+  test('AnonSettingsPane renders simple General and Data controls preferences', () => {
+    const anonHost = { ...host, person: null } as unknown as Parameters<typeof Sidebar>[0]['host']
+    const html = renderToStaticMarkup(createElement(AnonSettingsPane, { host: anonHost, onClose: noop }))
+    expect(html).toContain('data-slot="anon-settings-pane"')
+    expect(html).toContain('data-slot="anon-settings-back"')
+    for (const text of [
+      'General',
+      'Appearance',
+      'Language',
+      'Data controls',
+      'Improve the model for everyone',
+      'Personalize ads',
+      'Marketing measurement',
+      'Personalized marketing',
+    ]) {
+      expect(html).toContain(text)
     }
   })
 })
