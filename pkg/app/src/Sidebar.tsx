@@ -509,7 +509,7 @@ export function Sidebar({
                 </SidebarItem>
               </YStack>
             </YStack>
-            <YStack data-slot="anon-tailored" gap="$2" pt="$2.5" pb="$1" px="$2" borderTopWidth={1} borderColor="$borderColor">
+            <YStack data-slot="anon-tailored" gap="$2" pt="$2.5" pb="$1" px="$2">
               <XStack
                 render="button"
                 aria-expanded={tailoredOpen}
