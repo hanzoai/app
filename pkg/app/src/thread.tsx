@@ -854,7 +854,13 @@ export function ConversationMenu({
           onOpenChange={(open, e) => {
             if (!open) return setMenu((m) => (m === 'point' ? null : m))
             // Not on a conversation: the browser's own menu answers.
-            if (!pointed.current) return e?.preventDefault()
+            if (!pointed.current) {
+              const ev = e as unknown as { target?: Element | null; clientX?: number; clientY?: number } | undefined
+              const row = ev?.target?.closest?.('[data-thread]') ?? (typeof document !== 'undefined' ? document.elementFromPoint?.(ev?.clientX ?? -1, ev?.clientY ?? -1)?.closest?.('[data-thread]') : null)
+              pointed.current = row ? (threads.get(row.getAttribute('data-thread') ?? '') ?? null) : null
+              if (!pointed.current) return
+            }
+            e?.preventDefault?.()
             setAimed(pointed.current.id)
             setMenu('point')
           }}
@@ -862,6 +868,12 @@ export function ConversationMenu({
           <ContextMenuTrigger
             asChild
             data-menu={list}
+            {...({
+              onContextMenuCapture: (e: React.MouseEvent) => {
+                point(e)
+                if (pointed.current) e.preventDefault()
+              },
+            } as object)}
             onContextMenu={point}
             onPointerDown={(e: { pointerType?: string; target: EventTarget | null }) => {
               if (e.pointerType !== 'mouse') point(e)

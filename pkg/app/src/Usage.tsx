@@ -130,8 +130,16 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
             {answered && !limits ? <Button type="button" size="sm" variant="link" onClick={usage.reload}>{t('Retry')}</Button> : null}
           </YStack>
           <XStack gap="$3" justify="space-between" flexWrap="wrap">
-            <Button asChild size="sm"><Anchor href={payPage('/cart')} data-slot="composer-upgrade">{t('Upgrade plan')}</Anchor></Button>
-            <Button asChild size="sm" variant="outline"><Anchor href={payPage('/amount/card')} data-slot="composer-buy-credits">{t('Buy credits')}</Anchor></Button>
+            <Button asChild size="sm">
+              <Anchor href={payPage('/cart')} data-slot="composer-upgrade" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', lineHeight: 'normal' }}>
+                {t('Upgrade plan')}
+              </Anchor>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Anchor href={payPage('/amount/card')} data-slot="composer-buy-credits" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', lineHeight: 'normal' }}>
+                {t('Buy credits')}
+              </Anchor>
+            </Button>
           </XStack>
         </YStack>
       </PopoverContent>
