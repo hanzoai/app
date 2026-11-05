@@ -218,14 +218,14 @@ export function Sidebar({
     <YStack
       data-slot="app-column"
       ref={drawer ? undefined : span.ref}
-      {...(drawer ? null : span.props)}
+      {...(drawer ? null : ({ '$platform-web': { '--span': `${span.span}px`, ...(anon ? { overflow: 'visible' } : null) } } as object))}
       position="relative"
       flex={drawer ? 1 : undefined}
       shrink={drawer ? 1 : 0}
       minW={0}
       height="100%"
-      width={drawer ? undefined : 'var(--span)'}
-      $platform-web={anon && !drawer ? { overflow: 'visible' } : undefined}
+      width={drawer ? undefined : `var(--span, ${WIDTH}px)`}
+      maxW={drawer ? undefined : `var(--span, ${WIDTH}px)`}
     >
       <Base
         data-slot="app-rail"
@@ -563,7 +563,7 @@ export function Sidebar({
             </YStack>
           </YStack>
         ) : at ? null : (
-          <YStack gap="$2" pt="$2" shrink={0}>
+          <YStack gap="$2" pt="$2" shrink={0} minW={0} maxW="100%">
             <Made />
             <Setup go={go} />
           </YStack>

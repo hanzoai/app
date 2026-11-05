@@ -45,11 +45,19 @@ export function useSpan(store: string, initial: number, floor: number, ceil: num
       // No store is the default width, which is a state and not a failure.
     }
   }, [store, floor, ceil])
+  useLayoutEffect(() => {
+    el.current?.style.setProperty('--span', `${span}px`)
+  }, [span])
   // Typed loosely because a gui stack hands its host element through a ref
   // typed for native too; on the web it is the element.
-  const ref = useCallback((node: unknown) => {
-    el.current = node instanceof HTMLElement ? node : null
-  }, [])
+  const ref = useCallback(
+    (node: unknown) => {
+      const next = node instanceof HTMLElement ? node : null
+      el.current = next
+      next?.style.setProperty('--span', `${span}px`)
+    },
+    [span],
+  )
   const move = useCallback((n: number) => {
     el.current?.style.setProperty('--span', `${n}px`)
   }, [])

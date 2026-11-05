@@ -141,7 +141,6 @@ export const settings = (section?: string | null): string => (section && paged(s
  */
 export function app(at: string): string {
   const r = route(at)
-  if (r.kind === 'artifacts') return r.of ? `${LIBRARY}/${r.of}` : LIBRARY
   const to = href(r)
   if (to === '/artifacts' || to.startsWith('/artifacts/')) return `${LIBRARY}${to.slice('/artifacts'.length)}`
   return r.kind === 'settings' && (to === SETTINGS || to.startsWith(`${SETTINGS}/`)) ? settings(r.section) : DEV + to
@@ -174,7 +173,7 @@ export function place(pathname: string): Place | null {
   if (p === LIBRARY || p.startsWith(`${LIBRARY}/`)) {
     const rest = p.slice(LIBRARY.length)
     const r = parse(`/artifacts${rest}`)
-    if (r.kind === 'artifacts') return { mode: 'dev', at: path(r) }
+    if (r.kind === 'screen' && r.screen === 'artifacts') return { mode: 'dev', at: path(r) }
     if (!rest) return { mode: 'dev', at: '-/artifacts' }
     return null
   }
@@ -204,7 +203,6 @@ export function page(pathname: string): string {
   if (at.mode === 'beta') return BETA
   if (at.mode === 'hosted') return `${HOSTED}/:id`
   const r = route(at.at)
-  if (r.kind === 'artifacts') return r.of ? `${LIBRARY}/${r.of}` : LIBRARY
   if (r.kind === 'run') return `${DEV}/run/:id`
   if (r.kind === 'repo') return `${DEV}/projects/:org/:repo`
   if (r.kind === 'project') return `${DEV}/projects/:slug`

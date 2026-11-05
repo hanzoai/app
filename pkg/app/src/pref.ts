@@ -17,7 +17,9 @@ import { scope } from './lib/session'
  * would flash (a card the person already dismissed) can wait for it.
  */
 export function usePref<T>(key: string, initial: T): [T, (v: T) => void, boolean] {
-  const signed = Boolean(scope().Authorization)
+  const auth = scope()
+  const signed = Boolean(auth.Authorization)
+  const k = authKey(auth)
   const [value, setValue] = useState<T>(() => local(key, initial))
   const [ready, setReady] = useState(!signed)
 
@@ -26,10 +28,26 @@ export function usePref<T>(key: string, initial: T): [T, (v: T) => void, boolean
     let live = true
     void held().then((doc) => {
       if (!live) return
-      if (doc) {
-        const next = key in doc ? (doc[key] as T) : initial
+      const wKey = `${auth.Authorization}:${key}`
+      if (written.has(wKey)) {
+        const next = written.get(wKey) as T
         setValue(next)
         keep(key, next)
+      } else if (doc) {
+        if (key in doc) {
+          const next = doc[key] as T
+          setValue(next)
+          keep(key, next)
+        } else {
+          const stored = local(key, initial)
+          if (stored !== initial) {
+            setValue(stored)
+            send({ [key]: stored })
+          } else {
+            setValue(initial)
+            keep(key, initial)
+          }
+        }
       }
       setReady(true)
     })
@@ -38,7 +56,7 @@ export function usePref<T>(key: string, initial: T): [T, (v: T) => void, boolean
     }
     // `initial` is a literal at every call site.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, signed])
+  }, [key, signed, k])
 
   const set = (v: T) => {
     setValue(v)
@@ -48,15 +66,23 @@ export function usePref<T>(key: string, initial: T): [T, (v: T) => void, boolean
   return [value, set, ready]
 }
 
+/** Keys written in this session so an in-flight GET /v1/pref never overwrites a newer write. */
+const written = new Map<string, unknown>()
+
+function authKey(auth: Record<string, string>): string {
+  return auth.Authorization ? `${auth.Authorization}:${auth['X-Org-Id'] ?? ''}` : ''
+}
+
 /** The document, read once per page and per credential, and shared by every key. */
 let read: { auth: string; doc: Promise<Record<string, unknown> | null> } | null = null
 
 function held(): Promise<Record<string, unknown> | null> {
   const auth = scope()
   if (!auth.Authorization) return Promise.resolve(null)
-  if (read?.auth !== auth.Authorization) {
+  const k = authKey(auth)
+  if (read?.auth !== k) {
     read = {
-      auth: auth.Authorization,
+      auth: k,
       doc: fetch(`${api()}/v1/pref`, { headers: auth })
         .then((r) => (r.ok ? (r.json() as Promise<{ prefs?: unknown }>) : null))
         .then((body) => (body && body.prefs && typeof body.prefs === 'object' ? (body.prefs as Record<string, unknown>) : body ? {} : null))
@@ -70,12 +96,17 @@ function held(): Promise<Record<string, unknown> | null> {
 export function send(patch: Record<string, unknown>): void {
   const auth = scope()
   if (!auth.Authorization) return
-  if (read?.auth === auth.Authorization) {
+  for (const [k, v] of Object.entries(patch)) {
+    written.set(`${auth.Authorization}:${k}`, v)
+  }
+  const key = authKey(auth)
+  if (read?.auth === key) {
     const was = read.doc
-    read = { auth: auth.Authorization, doc: was.then((doc) => ({ ...(doc ?? {}), ...patch })) }
+    read = { auth: key, doc: was.then((doc) => ({ ...(doc ?? {}), ...patch })) }
   }
   void fetch(`${api()}/v1/pref`, {
     method: 'PATCH',
+    keepalive: true,
     headers: { ...auth, 'Content-Type': 'application/json' },
     body: JSON.stringify(patch),
   }).catch(() => {})
