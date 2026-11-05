@@ -79,6 +79,11 @@ export const TERMINALS = '/tabs'
 export const BETA = '/beta'
 
 /**
+ * Library: everything a person made across Chat, Studio and Dev, at hanzo.ai/library.
+ */
+export const LIBRARY = '/library'
+
+/**
  * The apps in beta that stand inside the app (lib/hosted): /apps/<id>, one
  * pane for all of them, each the live host of the standalone app in a frame.
  */
@@ -136,7 +141,9 @@ export const settings = (section?: string | null): string => (section && paged(s
  */
 export function app(at: string): string {
   const r = route(at)
+  if (r.kind === 'artifacts') return r.of ? `${LIBRARY}/${r.of}` : LIBRARY
   const to = href(r)
+  if (to === '/artifacts' || to.startsWith('/artifacts/')) return `${LIBRARY}${to.slice('/artifacts'.length)}`
   return r.kind === 'settings' && (to === SETTINGS || to.startsWith(`${SETTINGS}/`)) ? settings(r.section) : DEV + to
 }
 
@@ -164,6 +171,13 @@ export function place(pathname: string): Place | null {
   if (p === FLOW || p.startsWith(`${FLOW}/`)) return { mode: 'flow', at: p.slice(FLOW.length + 1) }
   if (p === TERMINALS) return { mode: 'tabs' }
   if (p === BETA) return { mode: 'beta' }
+  if (p === LIBRARY || p.startsWith(`${LIBRARY}/`)) {
+    const rest = p.slice(LIBRARY.length)
+    const r = parse(`/artifacts${rest}`)
+    if (r.kind === 'artifacts') return { mode: 'dev', at: path(r) }
+    if (!rest) return { mode: 'dev', at: '-/artifacts' }
+    return null
+  }
   if (p.startsWith(`${HOSTED}/`)) {
     const id = p.slice(HOSTED.length + 1)
     return inside(id) ? { mode: 'hosted', id } : null
@@ -190,11 +204,14 @@ export function page(pathname: string): string {
   if (at.mode === 'beta') return BETA
   if (at.mode === 'hosted') return `${HOSTED}/:id`
   const r = route(at.at)
+  if (r.kind === 'artifacts') return r.of ? `${LIBRARY}/${r.of}` : LIBRARY
   if (r.kind === 'run') return `${DEV}/run/:id`
   if (r.kind === 'repo') return `${DEV}/projects/:org/:repo`
   if (r.kind === 'project') return `${DEV}/projects/:slug`
   if (r.kind === 'automation' && r.id !== 'new') return `${DEV}/automations/:id`
-  return DEV + href(r)
+  const to = href(r)
+  if (to === '/artifacts' || to.startsWith('/artifacts/')) return `${LIBRARY}${to.slice('/artifacts'.length)}`
+  return DEV + to
 }
 
 /** A repository on the forge, `<org>/<name>`. */

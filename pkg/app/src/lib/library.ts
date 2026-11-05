@@ -56,8 +56,10 @@ export interface Keep {
   height?: number
 }
 
-/** The most one save sends; the Library answers 413 past it. */
-export const MAX = 10 * 1024 * 1024
+/** The largest item sent inline in one JSON POST (10 MiB); larger items upload via presigned PUT. */
+export const INLINE = 10 * 1024 * 1024
+/** The most one save sends (2 GiB); the Library answers 413 past it. */
+export const MAX = 2 * 1024 * 1024 * 1024
 
 /** The key of the `index`th thing message `message` of `thread` made. */
 export const keyOf = (thread: string, message: string, index: number): string => `${thread}/${message}/${index}`
@@ -93,13 +95,38 @@ export function read(raw: unknown): Item | null {
 
 /** Keeps one thing from Chat in the reader's Library. */
 export async function save(api: Api, k: Keep): Promise<Item> {
+  const byteLen = typeof k.data === 'string' ? Math.floor((k.data.length * 3) / 4) : k.data.size
+  if (byteLen > MAX) throw new Error(`${k.name} is larger than 2 GB, the most the Library takes from Chat.`)
+  const meta: Record<string, unknown> = { name: k.name, mime: k.mime, source: 'chat', ref: k.ref, origin: k.origin, key: k.key }
+  if (k.preview) meta.preview = k.preview
+  if (k.width) meta.width = Math.round(k.width)
+  if (k.height) meta.height = Math.round(k.height)
+  if (byteLen > INLINE) {
+    const reserved = (await api.http.json<unknown>({ method: 'POST', path: '/v1/library', body: { ...meta, bytes: byteLen } })) as Record<string, unknown> | null
+    const id = typeof reserved?.id === 'string' ? reserved.id : ''
+    const upload = reserved?.upload && typeof reserved.upload === 'object' ? (reserved.upload as Record<string, unknown>) : null
+    const putUrl = typeof upload?.url === 'string' ? upload.url : ''
+    if (!id) throw new Error('The Library answered with no item.')
+    if (!putUrl) {
+      const existing = read(reserved)
+      if (existing) return existing
+      throw new Error('The Library did not return an upload URL.')
+    }
+    const headers: Record<string, string> = {}
+    if (upload?.headers && typeof upload.headers === 'object') {
+      for (const [hk, hv] of Object.entries(upload.headers as Record<string, unknown>)) {
+        if (typeof hv === 'string') headers[hk] = hv
+      }
+    }
+    const blob = typeof k.data === 'string' ? new Blob([Uint8Array.from(atob(k.data), (c) => c.charCodeAt(0))], { type: k.mime || 'application/octet-stream' }) : k.data
+    const putRes = await fetch(putUrl, { method: 'PUT', headers, body: blob })
+    if (!putRes.ok) throw new Error(`Upload failed (${putRes.status}).`)
+    const committed = read(await api.http.json<unknown>({ method: 'PATCH', path: `/v1/library/${encodeURIComponent(id)}`, body: { commit: true } }))
+    if (!committed) throw new Error('The Library answered with no item.')
+    return committed
+  }
   const data = typeof k.data === 'string' ? k.data : await base64(k.data)
-  if ((data.length * 3) / 4 > MAX) throw new Error(`${k.name} is larger than 10 MB, the most the Library takes from Chat.`)
-  const body: Record<string, unknown> = { name: k.name, mime: k.mime, data, source: 'chat', ref: k.ref, origin: k.origin, key: k.key }
-  if (k.preview) body.preview = k.preview
-  if (k.width) body.width = Math.round(k.width)
-  if (k.height) body.height = Math.round(k.height)
-  const got = read(await api.http.json<unknown>({ method: 'POST', path: '/v1/library', body }))
+  const got = read(await api.http.json<unknown>({ method: 'POST', path: '/v1/library', body: { ...meta, data } }))
   if (!got) throw new Error('The Library answered with no item.')
   return got
 }

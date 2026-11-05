@@ -24,7 +24,7 @@ describe('the app is two roots of paths', () => {
     expect(app('/-/projects/')).toBe('/dev/projects')
     expect(app('-/sync')).toBe('/dev/sync')
     expect(app('-/issues')).toBe('/dev/issues')
-    expect(app('-/artifacts')).toBe('/dev/artifacts')
+    expect(app('-/artifacts')).toBe('/library')
     expect(app('-/templates')).toBe('/dev/templates')
     expect(app('-/automations')).toBe('/dev/automations')
     expect(app(`-/automations/${FLOW}`)).toBe(`/dev/automations/${FLOW}`)

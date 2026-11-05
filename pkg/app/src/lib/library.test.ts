@@ -55,8 +55,8 @@ describe('save', () => {
   })
   test('refuses, without a request, bytes over what the Library takes', async () => {
     const { api, sent } = fake(ITEM)
-    const big = 'A'.repeat(Math.ceil((MAX * 4) / 3) + 8)
-    await expect(save(api, { name: 'big.bin', mime: 'application/octet-stream', data: big, ref: 't', origin: '/chat/t', key: 'k' })).rejects.toThrow(/10 MB/)
+    const big = { size: MAX + 1 } as unknown as Blob
+    await expect(save(api, { name: 'big.bin', mime: 'application/octet-stream', data: big, ref: 't', origin: '/chat/t', key: 'k' })).rejects.toThrow(/2 GB/)
     expect(sent).toHaveLength(0)
   })
   test('an answer that is not an item is an error, not an empty item', async () => {
