@@ -258,14 +258,17 @@ function Window({ bar, betas }: Hosted) {
 
   // The address moved under the drawer: it goes, and the history keeps the move.
   const drop = drawer.drop
-  useEffect(() => {
-    last[mode] = `${window.location.pathname}${window.location.search}`
-    drop()
-  }, [mode, here, drop])
   // Where the reader was before a place that takes the sidebar (Library, Scheduled
   // tasks, Customize): its Back returns there, Chat or Dev alike.
   const away = useRef('')
   const inPlace = mode === 'dev' && raised(where) !== null
+  useEffect(() => {
+    const devChat = where !== null && (route(where).kind === 'new' || route(where).kind === 'run')
+    if (!inPlace && (mode !== 'dev' || devChat)) {
+      last[mode] = `${window.location.pathname}${window.location.search}`
+    }
+    drop()
+  }, [mode, here, drop, inPlace, where])
   useEffect(() => {
     if (!inPlace) away.current = `${window.location.pathname}${window.location.search}`
   }, [inPlace, here])
@@ -324,7 +327,7 @@ function Window({ bar, betas }: Hosted) {
 
   const back = () => move(away.current || app(''))
   const toChat = () => move(last.chat || talk())
-  const toDev = () => move(last.dev || app(''))
+  const toDev = () => move(mode === 'dev' && !inPlace ? app('') : last.dev || app(''))
   const toDesign = () => move(last.design || design(''))
   const toStudio = () => move(last.studio || studio(''))
   const toTabs = () => move(TERMINALS)
