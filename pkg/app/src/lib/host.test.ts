@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 import { SECTIONS } from '@hanzo/build/route'
-import { app, BETA, CHAT, DEV, dev, page, paged, place, SETTINGS, settings, studio, talk, visit } from './host'
+import { app, BETA, CHAT, DEV, dev, follow, page, paged, place, SETTINGS, settings, studio, talk, visit } from './host'
 import { configure } from '../where'
 
 const RUN = `sess_${'0123456789abcdef'.repeat(2)}`
@@ -80,6 +80,24 @@ describe('the app is two roots of paths', () => {
     expect(router.replace).toHaveBeenCalledWith('/settings')
     expect(pushState).toHaveBeenCalledTimes(1)
     expect(replaceState).not.toHaveBeenCalled()
+    vi.unstubAllGlobals()
+  })
+
+  test("a plugin's move from Chat lands in Dev, wherever in Chat it was picked", () => {
+    const pushState = vi.fn()
+    const open = vi.fn()
+    for (const pathname of ['/', '/chat', `/chat/${THREAD}`]) {
+      vi.stubGlobal('window', { location: { pathname, search: '' }, history: { pushState, replaceState: vi.fn() }, open })
+      follow(RUN)
+      expect(pushState, pathname).toHaveBeenLastCalledWith(null, '', `/dev/run/${RUN}`)
+      follow('my-site')
+      expect(pushState, pathname).toHaveBeenLastCalledWith(null, '', '/dev/projects/my-site')
+      follow('-/customize/plugins')
+      expect(pushState, pathname).toHaveBeenLastCalledWith(null, '', '/dev/customize/plugins')
+    }
+    follow('https://github.com/hanzoai/cli/pull/1')
+    expect(open).toHaveBeenCalledWith('https://github.com/hanzoai/cli/pull/1', '_blank', 'noopener,noreferrer')
+    expect(pushState).toHaveBeenCalledTimes(9)
     vi.unstubAllGlobals()
   })
 
