@@ -9,9 +9,9 @@
 // and Chat's Status shows the archived ones apart.
 
 import { useI18n } from '@hanzo/i18n/react'
-import { useEffect, useId, useMemo, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ScrollView, SizableText, XStack, YStack } from '@hanzo/gui'
-import { CheckSquare, ListFilter } from 'lucide-react'
+import { CheckSquare, ChevronDown, ChevronRight, GitPullRequest, ListFilter } from 'lucide-react'
 import type { Thread } from '@hanzo/ai'
 import { DOTS, route, useSessions, type Host } from '@hanzo/build'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
@@ -268,6 +268,7 @@ function List({
 }) {
   const { t } = useI18n()
   const label = useId()
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
   const groups = arrange(rows, view)
   // A heading is authored (recent.ts's phrases), save a project's name in a list grouped by project.
   const head = (title: string) => (view.group === 'project' && title !== UNFILED && title !== PINNED ? title : t(title))
@@ -279,6 +280,13 @@ function List({
   // shows on hover and focus, a run's state is a dot at its end.
   const row = (r: Recent) => {
     const one = threads?.get(r.id)
+    const devAside =
+      r.kind === 'dev' ? (
+        <XStack items="center" gap="$1">
+          {r.pr ? <GitPullRequest size={13} color="var(--green-10, #22c55e)" aria-hidden /> : null}
+          <StatusDot status={DOTS[r.status as keyof typeof DOTS] ?? 'idle'} />
+        </XStack>
+      ) : undefined
     const item = (
       <SidebarItem
         data-kind={r.kind}
@@ -307,7 +315,7 @@ function List({
           key={r.id}
           t={one}
           active={open(r)}
-          aside={r.kind === 'dev' ? <StatusDot status={DOTS[r.status as keyof typeof DOTS] ?? 'idle'} /> : undefined}
+          aside={devAside}
         >
           {item}
         </ThreadRow>
@@ -317,7 +325,7 @@ function List({
         {item}
         {r.kind === 'dev' ? (
           <XStack position="absolute" insetInlineEnd="$2.5" t={0} b={0} items="center" pointerEvents="none">
-            <StatusDot status={DOTS[r.status as keyof typeof DOTS] ?? 'idle'} />
+            {devAside}
           </XStack>
         ) : null}
       </YStack>
@@ -419,22 +427,43 @@ function List({
       rows
     )
   const rest = loose.length
-    ? loose.map((g) =>
-        g.title ? (
-          <YStack key={g.title} gap={1} pt="$1">
-            <SizableText size="$1" color="$soft" px="$2" pb="$1">
-              {head(g.title)}
-            </SizableText>
-            <YStack role="list" aria-label={head(g.title)} gap={1}>
+    ? loose.map((g) => {
+        if (!g.title) {
+          return (
+            <YStack key="all" role="list" aria-label={t('All')} gap={1}>
               {g.rows.map(row)}
             </YStack>
+          )
+        }
+        const isShut = Boolean(collapsedGroups[g.title])
+        return (
+          <YStack key={g.title} gap={1} pt="$1">
+            <XStack
+              render="button"
+              aria-expanded={!isShut}
+              onPress={() => setCollapsedGroups((prev) => ({ ...prev, [g.title]: !prev[g.title] }))}
+              items="center"
+              gap="$1"
+              px="$2"
+              py="$0.5"
+              rounded="$2"
+              cursor="pointer"
+              hoverStyle={{ bg: '$hover' }}
+              self="flex-start"
+            >
+              <SizableText size="$1" color="$soft">
+                {head(g.title)}
+              </SizableText>
+              {isShut ? <ChevronRight size={11} opacity={0.6} aria-hidden /> : <ChevronDown size={11} opacity={0.6} aria-hidden />}
+            </XStack>
+            {isShut ? null : (
+              <YStack role="list" aria-label={head(g.title)} gap={1}>
+                {g.rows.map(row)}
+              </YStack>
+            )}
           </YStack>
-        ) : (
-          <YStack key="all" role="list" aria-label={t('All')} gap={1}>
-            {g.rows.map(row)}
-          </YStack>
-        ),
-      )
+        )
+      })
     : pinned
       ? null
       : note

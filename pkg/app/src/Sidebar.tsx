@@ -30,7 +30,7 @@
 import { locales, phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { Text, XStack, YStack } from '@hanzo/gui'
-import { ArrowLeft, Bell, ChevronDown, ChevronUp, CircleHelp, Cloud, Globe, Image as ImageMark, Monitor, Puzzle, Search, Settings, Sparkles, SquarePen, SquareTerminal } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Bell, ChevronDown, ChevronUp, CircleHelp, Cloud, Globe, Image as ImageMark, Monitor, Puzzle, Search, Settings, Sparkles, SquarePen, SquareTerminal } from 'lucide-react'
 import { DOTS, Gutter, library, NEW, own, tabs, useLanguage, useScheduled, useSessions, type Host } from '@hanzo/build'
 
 type Theme = NonNullable<Host['theme']>
@@ -719,6 +719,7 @@ export function Sidebar({
             </YStack>
           </YStack>
         ) : null}
+        <UpdatePill />
         {foot}
       </Base>
       {drawer ? null : (
@@ -737,6 +738,44 @@ export function Sidebar({
         />
       )}
     </YStack>
+  )
+}
+
+function UpdatePill() {
+  const { t } = useI18n()
+  const [available, setAvailable] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return Boolean((window as unknown as { __HANZO_UPDATE_AVAILABLE__?: boolean }).__HANZO_UPDATE_AVAILABLE__)
+  })
+  useEffect(() => {
+    const onUpdate = () => setAvailable(true)
+    window.addEventListener('hanzo:update-available', onUpdate)
+    return () => window.removeEventListener('hanzo:update-available', onUpdate)
+  }, [])
+  if (!available) return null
+  return (
+    <XStack
+      render="button"
+      data-slot="update-available"
+      onPress={() => window.location.reload()}
+      items="center"
+      justify="space-between"
+      px="$3"
+      py="$1.5"
+      mx="$1"
+      mt="$1.5"
+      rounded="$3"
+      bg="$hover"
+      borderWidth={1}
+      borderColor="$borderColor"
+      cursor="pointer"
+      hoverStyle={{ opacity: 0.9 }}
+    >
+      <Text fontSize="$2" fontWeight="500" color="$ink">
+        {t('Update available')}
+      </Text>
+      <ArrowRight size={13} aria-hidden />
+    </XStack>
   )
 }
 
