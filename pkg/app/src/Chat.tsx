@@ -57,6 +57,7 @@ import { app, dev, go } from "./lib/host";
 import { useHost } from "./host";
 import { chats, house, paidPlan, paused, setCreditsAfterAllowance, spends, ultra, useLimits } from "./lib/limits";
 import { LimitedBanner } from "@hanzo/ui/product/LimitedBanner";
+import { NeedMoreUsageBanner, NeedMoreUsageModal } from "./NeedMoreUsage";
 import type { LimitAction } from "@hanzo/ui/product/limits";
 import { WEB } from "./lib/web";
 import { useHydrated } from "./lib/hydrated";
@@ -1123,6 +1124,34 @@ function Thread({
   const [shut, setShut] = useState<string | null>(null);
   const which = pause ? `${kept ?? open ?? ""}:${chat.messages[chat.messages.length - 1]?.id ?? ""}` : null;
   const banner = which !== shut ? spent : null;
+  const isUsageLimitReached = Boolean(pause && (spends(pause.reason) || !pause.reason) && !ultra(limits));
+  const [needMoreUsageOpen, setNeedMoreUsageOpen] = useState(false);
+  const [simulatedResetAt, setSimulatedResetAt] = useState<string | null>(null);
+  const seenUsageLimit = useRef<string | null>(null);
+  useEffect(() => {
+    if (isUsageLimitReached && which && which !== shut && seenUsageLimit.current !== which) {
+      seenUsageLimit.current = which;
+      setNeedMoreUsageOpen(true);
+    }
+  }, [isUsageLimitReached, which, shut]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onNeedMore = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ resetsAt?: string }>).detail;
+      if (detail?.resetsAt) setSimulatedResetAt(detail.resetsAt);
+      setNeedMoreUsageOpen(true);
+    };
+    const onHash = () => {
+      if (window.location.hash === "#need-more-usage") setNeedMoreUsageOpen(true);
+    };
+    onHash();
+    window.addEventListener("hanzo:need-more-usage", onNeedMore);
+    window.addEventListener("hashchange", onHash);
+    return () => {
+      window.removeEventListener("hanzo:need-more-usage", onNeedMore);
+      window.removeEventListener("hashchange", onHash);
+    };
+  }, []);
   // A reset that comes while the banner stands is said when it comes: no time already passed.
   const [ticks, tick] = useState(0);
   useEffect(() => {
@@ -1875,7 +1904,14 @@ function Thread({
   const submit = (ask: string = draft) => {
     const text = ask.trim();
     if (preparing || (!text && !files.length)) return;
-    if (!carry.preparing) return deliver(text, "");
+    const isPrOrReview = /\b(pull request|pr\s*#?\d+|github\.com\/[^\s]+\/pull\/\d+|\/pull\/\d+|code[\s-]?review|ponytail|pony|review\s+(this\s+)?(pr|diff|patch|changes|commit))\b/i.test(text);
+    const ponyNote = isPrOrReview
+      ? 'Use the skill "code-review" (Ponytail Thermo-Nuclear Code Review + Code Judo): perform a rigorous multi-pass PR/diff review checking correctness, edge cases, race conditions, security, and maintainability.'
+      : "";
+    if (isPrOrReview && !carry.gear.gear.skills.includes("code-review")) {
+      carry.gear.toggle("skills", "code-review");
+    }
+    if (!carry.preparing) return deliver(text, ponyNote);
     setDraft("");
     setPrepWrong(null);
     void (async () => {
@@ -1888,7 +1924,7 @@ function Thread({
         const got = await carry.prep({ text, files: bytes, thread: open ?? "" }, new AbortController().signal);
         // An answer of a plugin's own (a deck) is the answer, whatever else was prepared.
         if (got.reply) return answered(text, got.reply);
-        deliver(text, got.system ?? "");
+        deliver(text, [got.system, ponyNote].filter(Boolean).join("\n\n"));
       } catch (e) {
         setPrepWrong(e instanceof Error ? e.message : String(e));
         setDraft(text);
@@ -2120,12 +2156,21 @@ function Thread({
       // WHAT GOES WITH THE MESSAGE, above the frame and at its width: the
       // pause and its ways past, one chip a file, and talk mode's words.
       head:
-        files.length || turnedAway || prepWrong || preparing || talk.open || talk.refusal || pause ? (
+        files.length || turnedAway || prepWrong || preparing || talk.open || talk.refusal || pause || simulatedResetAt ? (
           <>
             {/* TURNED AWAY: what is used and until when, the ways past it, and
                 the usage page — the shell's Settings pane, or the builder's
                 Usage (dev.tsx answers the request there). */}
-            {banner ? (
+            {(banner && isUsageLimitReached) || simulatedResetAt ? (
+              <NeedMoreUsageBanner
+                resetsAt={pause?.resets_at ?? simulatedResetAt}
+                fallbackModel={pause?.fallback ? nameOf(pause.fallback, listed) : null}
+                isUltra={ultra(limits)}
+                customMessage={banner?.message ?? null}
+                onGetMoreUsage={() => setNeedMoreUsageOpen(true)}
+                onSeeUsage={() => showSettings("usage")}
+              />
+            ) : banner ? (
               <LimitedBanner
                 message={banner.message}
                 actions={banner.actions}
@@ -2986,6 +3031,33 @@ function Thread({
         </DialogContent>
       </Dialog>
       <Upgrade ask={ask} onClose={() => setAsk(null)} />
+      <NeedMoreUsageModal
+        open={needMoreUsageOpen}
+        onClose={() => setNeedMoreUsageOpen(false)}
+        resetsAt={pause?.resets_at ?? simulatedResetAt}
+        onBuyCredits={async () => {
+          setActWrong("");
+          const hasCreditsReady = Boolean(pause?.actions?.some((a) => a.kind === "credits"));
+          await setCreditsAfterAllowance(true).catch(() => {});
+          if (hasCreditsReady) {
+            setNeedMoreUsageOpen(false);
+            reread();
+            const q = [...turns.current].reverse().find((m) => m.role === "user");
+            if (q) speak(words(q.content as Said), failures[q.id] ? q.id : undefined);
+            return;
+          }
+          const here = typeof window !== "undefined" ? window.location.href : undefined;
+          const url = payUrl("/amount/card", { org: org(), returnUrl: here });
+          setNeedMoreUsageOpen(false);
+          if (typeof window !== "undefined") window.location.assign(url);
+        }}
+        onSetupTeam={() => {
+          const here = typeof window !== "undefined" ? window.location.href : undefined;
+          const url = payUrl("/cart", { plan: "team", quantity: "5", org: org(), returnUrl: here });
+          setNeedMoreUsageOpen(false);
+          if (typeof window !== "undefined") window.location.assign(url);
+        }}
+      />
       {/* The banner is drawn, not announced: this region stays mounted, so the
           message it is handed is what a screen reader hears. */}
       <VisuallyHidden role="status" aria-live="polite" data-slot="limited-said">
