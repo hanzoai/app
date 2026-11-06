@@ -19,7 +19,7 @@ export default function Terminals() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     try {
-      const lite = fleet.hosts.map((h) => ({ machine: h.machine, label: h.label, status: h.status, desktop: Boolean((h as { desktop?: boolean }).desktop) }))
+      const lite = fleet.hosts.map((h) => ({ machine: h.machine, label: h.label, status: h.status, desktop: Boolean(h.screen) }))
       window.localStorage.setItem('hanzo.tabs.fleet', JSON.stringify(lite))
       window.dispatchEvent(new CustomEvent('hanzo:tabs-fleet', { detail: lite }))
     } catch {
