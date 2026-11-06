@@ -106,6 +106,7 @@ function Segment({ value, children }: { value: Place['mode']; children: string }
       height={24}
       maxH={24}
       minH={0}
+      $touchable={{ minH: 0 }}
       p={0}
       px={0}
       py={0}
