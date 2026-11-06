@@ -85,7 +85,7 @@ const INSTALL = { theme: 'system' } as const
  * follows them to every Hanzo origin. Every control that changes how the apps
  * look goes through this, and only this.
  */
-export function useLook() {
+export function useLook(): ReturnType<typeof useAppearance> {
   const { accessToken } = useIam()
   const org = useOrg()
   // Signed out there is no person to ask about, so IAM is not asked: a stranger
