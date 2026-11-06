@@ -606,10 +606,10 @@ export function Bots() {
               <Button
                 size="sm"
                 variant={always ? undefined : 'default'}
-                bg={always ? '#ffffff' : undefined}
-                color={always ? '#000000' : undefined}
-                borderColor={always ? '#ffffff' : undefined}
-                hoverStyle={always ? { bg: '#e5e5e5', borderColor: '#e5e5e5' } : undefined}
+                bg={always ? 'var(--primary)' : undefined}
+                color={always ? 'var(--primary-foreground)' : undefined}
+                borderColor={always ? 'var(--primary)' : undefined}
+                hoverStyle={always ? { bg: 'var(--primary-hover)', borderColor: 'var(--primary-hover)' } : undefined}
                 rounded={999}
                 title={t(always ? 'Run only when asked' : 'Keep this bot up on a schedule')}
                 data-hz="always"
@@ -625,10 +625,10 @@ export function Bots() {
                   false` and the card says so. */}
               <Button
                 size="sm"
-                bg="#ffffff"
-                color="#000000"
-                borderColor="#ffffff"
-                hoverStyle={{ bg: '#e5e5e5', borderColor: '#e5e5e5' }}
+                bg="var(--primary)"
+                color="var(--primary-foreground)"
+                borderColor="var(--primary)"
+                hoverStyle={{ bg: 'var(--primary-hover)', borderColor: 'var(--primary-hover)' }}
                 title={t('Open a session for this bot')}
                 data-hz="open"
                 onClick={async () => {
@@ -793,16 +793,16 @@ export function Bots() {
                   type="submit"
                   size="icon"
                   rounded={9999}
-                  bg={!bot || running || !draft.trim() ? SURFACE : '#ffffff'}
-                  color={!bot || running || !draft.trim() ? FAINT : '#000000'}
+                  bg={!bot || running || !draft.trim() ? SURFACE : 'var(--primary)'}
+                  color={!bot || running || !draft.trim() ? FAINT : 'var(--primary-foreground)'}
                   borderColor="transparent"
-                  hoverStyle={!bot || running || !draft.trim() ? undefined : { bg: '#e5e5e5' }}
+                  hoverStyle={!bot || running || !draft.trim() ? undefined : { bg: 'var(--primary-hover)' }}
                   title={t('Run this task')}
                   data-hz="run"
                   disabled={!bot || running || !draft.trim()}
                   aria-label={t('Run this task')}
                 >
-                  <Send size={16} color={!bot || running || !draft.trim() ? 'var(--text-tertiary)' : '#000000'} />
+                  <Send size={16} color={!bot || running || !draft.trim() ? 'var(--text-tertiary)' : 'var(--primary-foreground)'} />
                 </Button>
               </XStack>
               <Text render="p" mt={8} fontSize="$1" color={FAINT}>
@@ -964,10 +964,10 @@ function Hire({ onDone, onCancel }: { onDone: (a: Agent) => void | Promise<void>
         <Button
           type="submit"
           size="sm"
-          bg="#ffffff"
-          color="#000000"
-          borderColor="#ffffff"
-          hoverStyle={{ bg: '#e5e5e5', borderColor: '#e5e5e5' }}
+          bg="var(--primary)"
+          color="var(--primary-foreground)"
+          borderColor="var(--primary)"
+          hoverStyle={{ bg: 'var(--primary-hover)', borderColor: 'var(--primary-hover)' }}
           data-hz="keep"
           disabled={busy || !name.trim()}
           flex={1}

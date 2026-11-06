@@ -77,7 +77,7 @@ export function useOrg(): { id?: string; name?: string } {
   return { id: one?.id || one?.name, name: one?.displayName || one?.name }
 }
 
-const INSTALL = { theme: 'system', accent: '#ffffff' } as const
+const INSTALL = { theme: 'system' } as const
 
 /**
  * The person's appearance — theme, type, spacing, corners, accent — resolved

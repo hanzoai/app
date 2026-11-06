@@ -218,29 +218,29 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
           {/* Centered audience segmented toggle pill: [ Personal | Business ] */}
           <XStack
             items="center"
-            bg="rgba(255, 255, 255, 0.06)"
+            bg="var(--secondary)"
             p={3}
             rounded="$10"
             gap={2}
             mt="$2"
             borderWidth={1}
-            borderColor="rgba(255, 255, 255, 0.04)"
+            borderColor="var(--border)"
           >
             <Box
               render="button"
               onClick={() => setAudience('personal')}
-              bg={audience === 'personal' ? 'rgba(255, 255, 255, 0.14)' : 'transparent'}
+              bg={audience === 'personal' ? 'var(--card)' : 'transparent'}
               px="$3.5"
               py="$1.5"
               rounded="$10"
               borderWidth={0}
               cursor="pointer"
-              hoverStyle={audience === 'personal' ? {} : { bg: 'rgba(255, 255, 255, 0.06)' }}
+              hoverStyle={audience === 'personal' ? {} : { bg: '$hover' }}
             >
               <Text
                 fontSize={13}
                 fontWeight={audience === 'personal' ? '600' : '400'}
-                color={audience === 'personal' ? '#ffffff' : '#8e8e8e'}
+                color={audience === 'personal' ? '$ink' : '$soft'}
               >
                 {t('Personal')}
               </Text>
@@ -248,18 +248,18 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
             <Box
               render="button"
               onClick={() => setAudience('business')}
-              bg={audience === 'business' ? 'rgba(255, 255, 255, 0.14)' : 'transparent'}
+              bg={audience === 'business' ? 'var(--card)' : 'transparent'}
               px="$3.5"
               py="$1.5"
               rounded="$10"
               borderWidth={0}
               cursor="pointer"
-              hoverStyle={audience === 'business' ? {} : { bg: 'rgba(255, 255, 255, 0.06)' }}
+              hoverStyle={audience === 'business' ? {} : { bg: '$hover' }}
             >
               <Text
                 fontSize={13}
                 fontWeight={audience === 'business' ? '600' : '400'}
-                color={audience === 'business' ? '#ffffff' : '#8e8e8e'}
+                color={audience === 'business' ? '$ink' : '$soft'}
               >
                 {t('Business')}
               </Text>
@@ -375,19 +375,19 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                       {/* Multiplier pill switcher */}
                       <XStack
                         items="center"
-                        bg="rgba(0, 0, 0, 0.45)"
+                        bg="var(--secondary)"
                         p={2}
                         rounded="$10"
                         gap={1}
                         borderWidth={1}
-                        borderColor="rgba(255, 255, 255, 0.1)"
+                        borderColor="var(--border)"
                       >
                         {(['3x', '5x', '15x'] as const).map((m) => (
                           <Box
                             key={m}
                             render="button"
                             onClick={() => setMultiplier(m)}
-                            bg={multiplier === m ? 'rgba(255, 255, 255, 0.22)' : 'transparent'}
+                            bg={multiplier === m ? 'var(--card)' : 'transparent'}
                             px="$2"
                             py="$0.5"
                             rounded="$10"
@@ -397,7 +397,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                             <Text
                               fontSize={11}
                               fontWeight={multiplier === m ? '700' : '500'}
-                              color={multiplier === m ? '#ffffff' : '#8e8e8e'}
+                              color={multiplier === m ? '$ink' : '$soft'}
                             >
                               {m}
                             </Text>
@@ -554,7 +554,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                     </XStack>
                     <Text fontSize={18} fontWeight="700" color="$ink">{t('Everyday AI')}</Text>
                     <Text fontSize={12} color="var(--soft, #a1a1aa)" minH={32}>{t('More models & agents.')}</Text>
-                    <Anchor href={goHref} onPress={() => handleBuy('go', 'Go', 8)} bg="var(--primary)" rounded="$10" py="$1.5" px="$3" color="#ffffff" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
+                    <Anchor href={goHref} onPress={() => handleBuy('go', 'Go', 8)} bg="var(--primary)" rounded="$10" py="$1.5" px="$3" color="var(--primary-foreground)" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
                       {t('Get Go')}
                     </Anchor>
                     <XStack items="baseline" gap="$1">
@@ -589,7 +589,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                     </XStack>
                     <Text fontSize={18} fontWeight="700" color="$ink">{t('Pro')}</Text>
                     <Text fontSize={12} color="var(--soft, #a1a1aa)" minH={32}>{t('3× limits for builders.')}</Text>
-                    <Anchor href={proHref} onPress={() => handleBuy('pro-2x', 'Pro', 15)} bg="var(--primary)" rounded="$10" py="$1.5" px="$3" color="#ffffff" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
+                    <Anchor href={proHref} onPress={() => handleBuy('pro-2x', 'Pro', 15)} bg="var(--primary)" rounded="$10" py="$1.5" px="$3" color="var(--primary-foreground)" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
                       {t('Get Pro')}
                     </Anchor>
                     <XStack items="baseline" gap="$1">
@@ -624,7 +624,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                     </XStack>
                     <Text fontSize={18} fontWeight="700" color="$ink">{t('Dev')}</Text>
                     <Text fontSize={12} color="var(--soft, #a1a1aa)" minH={32}>{t('5× limits for agents.')}</Text>
-                    <Anchor href={devHref} onPress={() => handleBuy('dev-5x', 'Dev', 45)} bg="var(--primary)" rounded="$10" py="$1.5" px="$3" color="#ffffff" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
+                    <Anchor href={devHref} onPress={() => handleBuy('dev-5x', 'Dev', 45)} bg="var(--primary)" rounded="$10" py="$1.5" px="$3" color="var(--primary-foreground)" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
                       {t('Get Dev')}
                     </Anchor>
                     <XStack items="baseline" gap="$1">
@@ -659,7 +659,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                     </XStack>
                     <Text fontSize={18} fontWeight="700" color="$ink">{t('Max')}</Text>
                     <Text fontSize={12} color="var(--soft, #a1a1aa)" minH={32}>{t('15× continuous limits.')}</Text>
-                    <Anchor href={maxHref} onPress={() => handleBuy('max-10x', 'Max', 95)} bg="var(--primary)" rounded="$10" py="$1.5" px="$3" color="#ffffff" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
+                    <Anchor href={maxHref} onPress={() => handleBuy('max-10x', 'Max', 95)} bg="var(--primary)" rounded="$10" py="$1.5" px="$3" color="var(--primary-foreground)" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
                       {t('Get Max')}
                     </Anchor>
                     <XStack items="baseline" gap="$1">
@@ -694,7 +694,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                     </XStack>
                     <Text fontSize={18} fontWeight="700" color="$ink">{t('Frontier Scale')}</Text>
                     <Text fontSize={12} color="var(--soft, #a1a1aa)" minH={32}>{t('Unlimited intelligence.')}</Text>
-                    <Anchor href={ultraHref} onPress={() => handleBuy('ultra', 'Ultra', 195)} bg="rgba(255, 255, 255, 0.12)" rounded="$10" py="$1.5" px="$3" color="#ffffff" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
+                    <Anchor href={ultraHref} onPress={() => handleBuy('ultra', 'Ultra', 195)} bg="var(--secondary)" rounded="$10" py="$1.5" px="$3" color="$ink" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
                       {t('Get Ultra')}
                     </Anchor>
                     <XStack items="baseline" gap="$1">
@@ -834,17 +834,17 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
 
                     <XStack
                       items="center"
-                      bg="#212121"
+                      bg="var(--secondary)"
                       p={2}
                       rounded="$10"
                       gap={1}
                       borderWidth={1}
-                      borderColor="rgba(255, 255, 255, 0.08)"
+                      borderColor="var(--border)"
                     >
                       <Box
                         render="button"
                         onClick={() => setBusinessCycle('year')}
-                        bg={businessCycle === 'year' ? '#343434' : 'transparent'}
+                        bg={businessCycle === 'year' ? 'var(--card)' : 'transparent'}
                         px="$2.5"
                         py="$1"
                         rounded="$10"
@@ -854,7 +854,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                         <Text
                           fontSize={11}
                           fontWeight={businessCycle === 'year' ? '600' : '400'}
-                          color={businessCycle === 'year' ? '#ffffff' : '#8e8e8e'}
+                          color={businessCycle === 'year' ? '$ink' : '$soft'}
                         >
                           {t('Annual')}
                         </Text>
@@ -862,7 +862,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                       <Box
                         render="button"
                         onClick={() => setBusinessCycle('month')}
-                        bg={businessCycle === 'month' ? '#343434' : 'transparent'}
+                        bg={businessCycle === 'month' ? 'var(--card)' : 'transparent'}
                         px="$2.5"
                         py="$1"
                         rounded="$10"
@@ -872,7 +872,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                         <Text
                           fontSize={11}
                           fontWeight={businessCycle === 'month' ? '600' : '400'}
-                          color={businessCycle === 'month' ? '#ffffff' : '#8e8e8e'}
+                          color={businessCycle === 'month' ? '$ink' : '$soft'}
                         >
                           {t('Monthly')}
                         </Text>
@@ -914,9 +914,9 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
 
                   {/* In-card seat types comparison row */}
                   <YStack
-                    bg="rgba(0, 0, 0, 0.4)"
+                    bg="var(--secondary)"
                     borderWidth={1}
-                    borderColor="rgba(255, 255, 255, 0.08)"
+                    borderColor="var(--border)"
                     rounded="$4"
                     p="$3"
                     gap="$2"
