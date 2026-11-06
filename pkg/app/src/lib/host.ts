@@ -258,6 +258,17 @@ export function visit(router: Router, address: string, replace = false): void {
   else router.push(address)
 }
 
+/**
+ * Where a plugin picked outside Dev moves the app (@hanzo/build `Composer.go`):
+ * an address on another origin opens in a tab of its own, and anything else is a
+ * path of the builder's (a run's id, a project, a Customize tab), so it is Dev's
+ * address under `app`.
+ */
+export function follow(href: string): void {
+  if (/^https?:/.test(href)) window.open(href, '_blank', 'noopener,noreferrer')
+  else go(app(href))
+}
+
 /** Where this browser keeps the mode its reader was last in. */
 const MODE = 'hanzo.app.mode'
 

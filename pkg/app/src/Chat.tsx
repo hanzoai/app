@@ -53,7 +53,7 @@ import { given, tidy } from "./lib/title";
 import { useIam, useIamToken } from "@hanzo/iam/react";
 import { bearer, hasSession, named, org } from "./lib/session";
 import { api } from "./lib/api";
-import { app, dev, go } from "./lib/host";
+import { app, dev, follow, go } from "./lib/host";
 import { useHost } from "./host";
 import { chats, house, paidPlan, paused, setCreditsAfterAllowance, spends, ultra, useLimits } from "./lib/limits";
 import { LimitedBanner } from "@hanzo/ui/product/LimitedBanner";
@@ -867,7 +867,7 @@ function Thread({
     },
     setDraft: (x) => lent.current.setDraft(x),
     attach: (f) => lent.current.attach(f),
-    go: (href) => (/^https?:/.test(href) ? void window.open(href, "_blank", "noopener,noreferrer") : go(href)),
+    go: follow,
   }, CHAT_MODES);
   useEffect(() => {
     const wantedMode = chatPrefs.approvalMode || "auto";
