@@ -491,14 +491,15 @@ label, `SpeakButton`'s, Meet's status line).
 ## Models
 
 The model and the effort are ONE choice for Chat and Dev, kept in this browser
-by @hanzo/build (`useMind`, `hanzo.mind` = `{model, effort}`, Enso and High by
-default). The model is named under the composer, and its picker offered, only
+by @hanzo/build (`useMind`, `hanzo.mind` = `{model, effort}`, Enso Auto and Auto
+by default). The model is named under the composer, and its picker offered, only
 where the person turned the model selector on (`composing.model`,
 default off) — one setting for every composer, not a Chat preference: Settings →
 Appearance writes it (`@hanzo/appearance` `composing`) and `@hanzo/ui/chat`'s
 `Composer` reads it. The effort is always shown, in the composer's row: Chat's is
-the six steps (Auto, Low, Medium, High, XHigh, Max, sent as
-`reasoning_effort`); Dev's is @hanzo/build's (Auto, High, XHigh, Max — a coding
+@hanzo/ui's `EFFORTS`, sent as `reasoning_effort`, Auto by default
+(`DEFAULT_EFFORT`: the router decides; a default of `high` pinned every enso-auto
+turn to enso-max); Dev's is @hanzo/build's (Auto, High, XHigh, Max — a coding
 run takes low, medium or high, so Auto names none and the rest name high).
 Choosing one of Dev's four in Chat or Settings moves Dev's too (`shared`); Low
 and Medium are Chat's alone. On Free (`GET /v1/ai/limits` `plan` = `free`, and every

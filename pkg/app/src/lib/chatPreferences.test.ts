@@ -5,8 +5,8 @@ import { describe, expect, test, vi } from 'vitest'
 import { DEFAULT_EFFORT, getChatPreferences, setChatPreferences, shared } from './chatPreferences'
 
 describe('what Chat does', () => {
-  test('offers the composer’s six efforts, high by default', () => {
-    expect(DEFAULT_EFFORT).toBe('high')
+  test('offers the composer’s efforts, auto by default', () => {
+    expect(DEFAULT_EFFORT).toBe('auto')
     expect(EFFORTS.map((s) => s.id)).toEqual(['auto', 'low', 'medium', 'high', 'xhigh', 'max'])
     for (const step of EFFORTS) {
       expect(step.label.length).toBeGreaterThan(0)
@@ -21,7 +21,7 @@ describe('what Chat does', () => {
     expect(EFFORTS.map((s) => shared(s.id))).toEqual(['auto', null, null, 'high', 'xhigh', 'max'])
   })
 
-  test('migrates unversioned chatPreferences effort to high and persists chosen effort', () => {
+  test('resets an effort kept under an older default to auto, and persists a chosen effort', () => {
     const map = new Map<string, string>()
     const targets = new EventTarget()
     vi.stubGlobal('window', {
@@ -33,11 +33,11 @@ describe('what Chat does', () => {
       addEventListener: targets.addEventListener.bind(targets),
       removeEventListener: targets.removeEventListener.bind(targets),
     })
-    map.set('hanzo.chat.preferences', JSON.stringify({ effort: 'auto' }))
-    expect(getChatPreferences().effort).toBe('high')
+    map.set('hanzo.chat.preferences', JSON.stringify({ effortVersion: 3, effort: 'high' }))
+    expect(getChatPreferences().effort).toBe('auto')
     expect(getChatPreferences().approvalMode).toBe('auto')
-    setChatPreferences({ effort: 'xhigh', approvalMode: 'manual' })
-    expect(getChatPreferences().effort).toBe('xhigh')
+    setChatPreferences({ effort: 'low', approvalMode: 'manual' })
+    expect(getChatPreferences().effort).toBe('low')
     expect(getChatPreferences().approvalMode).toBe('manual')
     expect(map.get('hanzo.agent.autonomy')).toBe('supervised')
     setChatPreferences({ effort: 'max', approvalMode: 'auto', showLanguage: true })
@@ -51,7 +51,7 @@ describe('what Chat does', () => {
   test('keeps nothing of what the composer draws: that is the composer setting’s', () => {
     const map = new Map<string, string>()
     vi.stubGlobal('window', { localStorage: { getItem: (k: string) => map.get(k) ?? null, setItem: (k: string, v: string) => map.set(k, v) } })
-    map.set('hanzo.chat.preferences', JSON.stringify({ effortVersion: 3, showModelSelector: true, showTurboApproval: true }))
+    map.set('hanzo.chat.preferences', JSON.stringify({ effortVersion: 4, showModelSelector: true, showTurboApproval: true }))
     expect(Object.keys(getChatPreferences()).sort()).toEqual(['allowThirdPartyModels', 'approvalMode', 'effort', 'effortVersion', 'showLanguage'])
     vi.unstubAllGlobals()
   })

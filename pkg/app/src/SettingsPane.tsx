@@ -134,11 +134,11 @@ function Model() {
           {t('Default reasoning effort')}
         </Text>
         <Text fontSize="$2" color="$soft">
-          {t('Sets how deeply models think before answering. Defaults to High across all plans.')}
+          {t('Sets how deeply models think before answering. Defaults to Auto, where the router decides.')}
         </Text>
         <XStack gap="$2" pt="$1" flexWrap="wrap">
           {EFFORTS.map((step) => {
-            const active = (chatPrefs.effort || 'high') === step.id
+            const active = (chatPrefs.effort || 'auto') === step.id
             return (
               <Box
                 render={<button type="button" />}

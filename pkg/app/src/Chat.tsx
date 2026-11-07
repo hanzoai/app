@@ -1101,7 +1101,7 @@ function Thread({
     // world, in any language, is answered from what the web says now and streams.
     params: {
       stream_options: { include_usage: true },
-      reasoning_effort: chatPrefs.effort || 'high',
+      reasoning_effort: chatPrefs.effort || 'auto',
       ...(!anonymous && carry.gear.gear.research && house(rowOf(model)?.family) ? { tools: WEB } : {}),
     },
     ...(open ? { thread: open } : {}),
@@ -1637,8 +1637,8 @@ function Thread({
       if (!q) return;
       const rawQ = typeof q.content === "string" ? told(q.content).text : words(q.content as Said);
       if (action?.mode === "think") {
-        setChatPrefs({ effort: "xhigh" });
-        const next = shared("xhigh");
+        setChatPrefs({ effort: "max" });
+        const next = shared("max");
         if (next) mind.pace(next);
       } else if (action?.mode === "web") {
         carry.gear.set({ research: true });
@@ -2250,9 +2250,9 @@ function Thread({
           },
           sketch: () => take(at, via),
           thinking: {
-            on: (chatPrefs.effort || "high") === "xhigh",
+            on: chatPrefs.effort === "max",
             set: (on: boolean) => {
-              const eff = on ? "xhigh" : "high";
+              const eff = on ? "max" : "auto";
               setChatPrefs({ effort: eff });
               const next = shared(eff);
               if (next) mind.pace(next);
@@ -2302,7 +2302,7 @@ function Thread({
       // The model, only where the person turned the model selector on; the effort, always.
       mind: anonymous ? null : mind,
       effort: {
-        value: chatPrefs.effort || "high",
+        value: chatPrefs.effort || "auto",
         set: (eff) => {
           setChatPrefs({ effort: eff as typeof chatPrefs.effort });
           const next = shared(eff as typeof chatPrefs.effort);
