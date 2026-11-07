@@ -502,10 +502,10 @@ the six steps (Auto, Low, Medium, High, XHigh, Max, sent as
 run takes low, medium or high, so Auto names none and the rest name high).
 Choosing one of Dev's four in Chat or Settings moves Dev's too (`shared`); Low
 and Medium are Chat's alone. On Free (`GET /v1/ai/limits` `plan` = `free`, and every
-visitor) the choice is the catalog's free class alone: Enso Free by default,
-every other model listed with Upgrade, which opens the upgrade instead of
-picking. With the selector on, the composer draws `ModelPicker`'s quiet pill:
-the catalog
+visitor) a turn is sent on Enso Auto (`ENSO`; `served` lands any retired free id
+there); what the chip offers is @hanzo/build's `useMind` (`grants`), every other
+model listed with Upgrade, which opens the upgrade instead of picking. With the
+selector on, the composer draws `ModelPicker`'s quiet pill: the catalog
 (`GET /v1/models`, read once and shared with Dev): Hanzo's families first, then
 every maker. A listed pick is sent as picked; only a name the catalog does not
 list falls to `served`. A model's class and family are the catalog's fields,

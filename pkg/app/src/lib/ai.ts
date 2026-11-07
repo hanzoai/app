@@ -44,25 +44,18 @@ import { researched } from './web'
  * route and be refused; it is passed as `publishableKey` (SDK >= 0.6.13).
  */
 
-
-/** The gateway's own free pool: enso-free when logged out. */
-export const FREE = 'enso-free'
-
-/** Enso routes a signed-in turn: enso-auto when logged in. */
+/** Enso routes every turn, signed in or out: enso-auto. */
 export const ENSO = 'enso-auto'
 
 /**
  * The model that will actually ANSWER, given what the gateway serves: the one
- * asked for when the gateway serves it, else the free pool for a free turn,
- * else a house router (Enso or Zen), else the first model served. An id is read
- * by its own name; one the gateway does not serve is never relabelled.
+ * asked for when the gateway serves it, else a house router (Enso or Zen), else
+ * the first model served. An id is read by its own name; one the gateway does
+ * not serve is never relabelled.
  */
 export function served(models: { id: string }[], prefer: string): string {
   if (models.length === 0) return prefer || ENSO
   if (prefer && models.some((m) => m.id === prefer)) return prefer
-  if (prefer === FREE || prefer === 'free' || prefer?.includes('free')) {
-    return models.find((m) => m.id === FREE || m.id === 'zen-free')?.id ?? FREE
-  }
   const house =
     models.find((m) => m.id === ENSO || m.id === 'zen-auto' || m.id === 'enso' || m.id === 'zen') ??
     models.find((m) => m.id.startsWith('enso') || m.id.startsWith('zen'))
@@ -150,5 +143,5 @@ export function useAi(): Ai {
     return createAiClient({ fetch: wire, ...base() })
   }, [account, sdk, scoped])
 
-  return { client, model: account ? ENSO : FREE, free: !account, ready }
+  return { client, model: ENSO, free: !account, ready }
 }

@@ -13,8 +13,8 @@
 // The pane says that in the reader's words and offers the way past it; what it
 // must not do is describe an account they do not have.
 //
-// The free MODEL is a separate question and still exists: `anonymous` opens on
-// the free pool, so what changes at sign-in is the menu, not the conversation.
+// The MODEL is the same either way: `anonymous` opens on Enso Auto, as every
+// reader does, so what changes at sign-in is the menu, not the conversation.
 //
 // The FREE lane is about PRICE, not identity: a free turn spends no balance and
 // is data-shared in exchange. That choice is made once, at onboarding, where
@@ -65,7 +65,7 @@ import { base, served } from "./lib/ai";
 import { onServed, type Served as Heard } from "./lib/served";
 import { refused as worded, speech, useDictation, useTalk, useVoice } from "@hanzo/voice";
 import { Check, FileText, Ghost, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, X } from "lucide-react";
-import { FREE, ENSO } from "./lib/ai";
+import { ENSO } from "./lib/ai";
 import { openThread, empty as emptyOpen, useOpen } from "./open";
 import { Side } from "./Shell";
 import { SEED, look, useSections, useSites, type Mark } from "./RightPane";
@@ -335,7 +335,7 @@ const NONE: readonly Kind[] = [];
 const CAST = "cast";
 
 /** The models that route a turn rather than name the one that answers it. */
-const ROUTERS = new Set(["enso", "enso-auto", "enso-free", "hanzo/enso", "auto", "free"]);
+const ROUTERS = new Set(["enso", "enso-auto", "hanzo/enso", "auto"]);
 
 /** The id of the turn drawn in the thread when a turn is refused. */
 const FAILED = "failed";
@@ -801,7 +801,7 @@ function Carried({
 /**
  * The conversation. One component for a visitor and for an account.
  *
- * `anonymous` opens on the free pool and offers only what the free pool can
+ * `anonymous` opens on Enso Auto and offers only what the free lane can
  * answer, because listing a paid model to someone with no balance is an offer
  * that fails at send. Everything else — the transcript, the composer — is
  * identical, which is the point: signing in later changes the models on the
@@ -825,11 +825,10 @@ function Thread({
   /**
    * The model, and WHO decides it.
    *
-   * `useState(anonymous ? FREE : ENSO)` read the flag ONCE, on the first render
-   * — which is the render before hydration settles, where `anonymous` is always
-   * false. So every visitor opened on ENSO while the composer beside them said
-   * "Enso Free". A visitor was sending on the paid pool, because a state
-   * initialiser cannot see a value that arrives later.
+   * A state initialiser read the `anonymous` flag ONCE, on the first render —
+   * which is the render before hydration settles, where `anonymous` is always
+   * false — so a visitor sent on a model the composer beside them did not name,
+   * because a state initialiser cannot see a value that arrives later.
    *
    * A CHOICE, or the identity. `null` is "nobody has chosen", which is a
    * different fact from either model and the only one that can defer to a flag
@@ -1056,7 +1055,7 @@ function Thread({
   const listed = mind.models;
   const filteredListed = useMemo(() => {
     if (chatPrefs.allowThirdPartyModels) return listed;
-    return listed.filter((m) => isHouseModel(m) || m.id === ENSO || m.id === FREE);
+    return listed.filter((m) => isHouseModel(m) || m.id === ENSO);
   }, [listed, chatPrefs.allowThirdPartyModels]);
   const models = useMemo(() => filteredListed.filter(chats), [filteredListed]);
   // EVERY MODEL THE GATEWAY LISTS is offered here, through the one picker, and
@@ -1069,7 +1068,7 @@ function Thread({
   const wanted = mind.model;
   // A model the catalog lists is sent as picked, whatever it answers with; only
   // a name the catalog does not list falls to one that converses (`served`).
-  const sent = anonymous ? FREE : wanted;
+  const sent = anonymous ? ENSO : wanted;
   const model = persona?.model || (rowOf(sent) ? sent : served(models, sent));
   // THE PLAN'S USAGE (lib/limits.ts), kept current by every chat answer's
   // headers and read again whenever a send settles, below. The pane draws no
