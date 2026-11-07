@@ -8,9 +8,9 @@
  * Being one of them is the ordinary sign-in with a `login_hint` naming the person:
  * IAM continues as that account and nobody types anything. Adding another is the
  * sign-in with `prompt=login`, which asks for credentials and keeps the sessions
- * already held. Neither ends a session. Signing OUT is IAM's, and it ends every
- * session the browser holds (internal/oidc/logout.go), so no row here offers to
- * end just one.
+ * already held. Neither ends a session. Signing OUT is IAM's: this site's Log out
+ * ends every session the browser holds (internal/oidc/logout.go); IAM ends one
+ * alone only when told which (`logout_hint`), and no row here asks it to.
  *
  * Both go through the page's own IAM client (`useClient`), so the authorize
  * address is the one this site signs in at, and both write the page down first
