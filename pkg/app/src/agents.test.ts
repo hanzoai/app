@@ -19,8 +19,7 @@ describe('the default cast', () => {
     expect(TEAM.map((one) => one.seat)).toEqual(TEAM.map((_, i) => i + 1))
     expect(names(TEAM)).toEqual([
       'Vi', 'Fin', 'Dev', 'Mark', 'Opera', 'Des', 'Sal', 'Su', 'Cyber', 'Sci', 'Huma', 'Mana',
-      'Data', 'Lang', 'Ed', 'Art', 'Rev', 'Law', 'Mo', 'Biz', 'Mu', 'Doc', 'Gov', 'Cust',
-      'Com', 'IT', 'QA', 'Auto', 'Proc', 'Supply', 'Corp', 'Comp', 'Risk', 'Audit',
+      'Data', 'Lang', 'Ed', 'Art', 'Rev', 'Law', 'Mo', 'Biz', 'Mu', 'Doc', 'Gov',
     ])
   })
 

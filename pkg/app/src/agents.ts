@@ -36,17 +36,6 @@ export const RUNS: Readonly<Record<string, Required<Pick<Cast, 'schedule' | 'tri
   mu: { schedule: '0 * * * *', triggers: ['webhook', 'channel'] },
   doc: { schedule: '0 * * * *', triggers: ['git', 'webhook'] },
   gov: { schedule: '0 9 * * 1-5', triggers: ['watch', 'channel'] },
-  cust: { schedule: '*/15 * * * *', triggers: ['webhook', 'channel', 'watch'] },
-  com: { schedule: '*/15 * * * *', triggers: ['git', 'channel', 'webhook'] },
-  it: { schedule: '*/15 * * * *', triggers: ['webhook', 'watch'] },
-  qa: { schedule: '*/15 * * * *', triggers: ['git', 'webhook', 'watch'] },
-  auto: { schedule: '*/5 * * * *', triggers: ['webhook', 'git', 'channel', 'watch'] },
-  proc: { schedule: '0 9 * * 1-5', triggers: ['webhook', 'watch'] },
-  supply: { schedule: '0 * * * *', triggers: ['webhook', 'watch'] },
-  corp: { schedule: '0 9 * * 1', triggers: ['watch', 'channel'] },
-  comp: { schedule: '0 * * * *', triggers: ['git', 'webhook', 'watch'] },
-  risk: { schedule: '0 * * * *', triggers: ['webhook', 'watch'] },
-  audit: { schedule: '0 9 * * *', triggers: ['git', 'watch'] },
 }
 
 /**
