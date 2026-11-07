@@ -109,7 +109,7 @@ function Avatar({ id, size }: { id: string; size: number }) {
   if (!agent(id)) return <Face name={who(id).name} size={size} person />
   return (
     <View
-      render={<img src={`/memoji/${id}.svg`} alt="" width={size} height={size} loading="lazy" decoding="async" />}
+      render={<img src={`/agents/${id}.png`} alt="" width={size} height={size} loading="lazy" decoding="async" />}
       width={size}
       height={size}
       shrink={0}
