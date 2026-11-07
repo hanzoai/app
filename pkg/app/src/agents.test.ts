@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getPersonaMd, team } from '@hanzo/personas'
 import { beforeAll, describe, expect, test } from 'vitest'
-import { CAST, draft, handle, line, ordered, title, type Figure } from './agents'
+import { BOTS, CAST, LEAD_AGENTS, draft, handle, line, ordered, title, type Figure } from './agents'
 import { TEAM } from './team'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -24,11 +24,22 @@ describe('the default cast', () => {
     expect(ordered(null)).toEqual([])
   })
 
-  test('is what Add default agents makes: the team by its handles, each a valid agent name with a budget-ready model, then QA, Ops and Support', () => {
-    expect(CAST.map((c) => c.name)).toEqual([...TEAM.map((one) => one.id), 'qa', 'ops', 'support'])
+  test('includes all 17 default Team agents and all 27 autonomous 24/7 Bots, each with a valid name, model, avatar and instructions', () => {
+    expect(LEAD_AGENTS).toHaveLength(17)
+    expect(BOTS).toHaveLength(27)
+    expect(CAST).toEqual([...LEAD_AGENTS, ...BOTS])
+    expect(LEAD_AGENTS.slice(0, 8).map((c) => c.name)).toEqual(TEAM.map((one) => one.id))
     for (const c of CAST) {
       expect(c.name).toMatch(NAME)
       expect(c.model).toBeTruthy()
+      expect(c.avatar).toBeTruthy()
+      expect(c.instructions.length).toBeGreaterThan(50)
+    }
+    for (const b of BOTS) {
+      expect(b.category).toBe('Bot')
+      expect(b.executionMode).toBe('long-running')
+      expect(b.schedule).toBeTruthy()
+      expect(b.triggers?.length).toBeGreaterThan(0)
     }
     expect(CAST[0]).toMatchObject({ name: 'dev', description: 'Dev — Engineer', avatar: '/agents/dev.png' })
     expect(CAST[0]!.instructions.length).toBeGreaterThan(100)

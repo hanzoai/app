@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="it">
+<defs>
+<linearGradient id="g-it" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5eead4"/><stop offset="1" stop-color="#0f766e"/></linearGradient>
+<radialGradient id="f-it" cx=".36" cy=".3" r=".8"><stop offset="0" stop-color="#c38b65"/><stop offset="1" stop-color="#955d37"/></radialGradient>
+<clipPath id="c-it"><circle cx="128" cy="128" r="128"/></clipPath>
+</defs>
+<g clip-path="url(#c-it)">
+<rect width="256" height="256" fill="url(#g-it)"/>
+<circle cx="84" cy="64" r="70" fill="#fff" opacity=".13"/>
+<path d="M26 256 C30 214 66 196 128 196 C190 196 226 214 230 256 Z" fill="#0f766e"/><path d="M26 256 C30 214 66 196 128 196 C100 214 96 240 98 256 Z" fill="#218880" opacity=".5"/><path d="M104 196 L128 226 L152 196 Z" fill="#ccfbf1"/><circle cx="182" cy="226" r="16" fill="#f8fafc"/><g transform="translate(172 216) scale(.83)" fill="none" stroke="#115e59" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></g>
+<rect x="110" y="168" width="36" height="36" rx="14" fill="#905832"/>
+<ellipse cx="68" cy="128" rx="9" ry="13" fill="#9f6741"/><ellipse cx="188" cy="128" rx="9" ry="13" fill="#9f6741"/>
+<ellipse cx="128" cy="120" rx="58" ry="62" fill="url(#f-it)"/>
+<path d="M74 104 C76 70 100 58 128 58 C156 58 180 70 182 104 C168 88 150 82 128 84 C106 82 88 88 74 104 Z" fill="#111827"/>
+<g stroke="#19202f" stroke-width="5" stroke-linecap="round" fill="none"><path d="M90 106 Q104 98 118 104"/><path d="M138 104 Q152 98 166 106"/></g>
+<g fill="#1f2937"><ellipse cx="104" cy="126" rx="7.5" ry="9"/><ellipse cx="152" cy="126" rx="7.5" ry="9"/></g><g fill="#fff"><circle cx="107" cy="122" r="2.8"/><circle cx="155" cy="122" r="2.8"/></g>
+<ellipse cx="88" cy="146" rx="11" ry="7" fill="#f87171" opacity=".28"/><ellipse cx="168" cy="146" rx="11" ry="7" fill="#f87171" opacity=".28"/>
+<path d="M126 134 Q132 140 126 144" stroke="#763e18" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".7"/>
+<path d="M110 154 Q128 172 146 154" stroke="#7c2d12" stroke-width="5" fill="#fff" stroke-linecap="round" stroke-linejoin="round"/>
+<g fill="#ffffff22" stroke="#1f2937" stroke-width="5"><circle cx="102" cy="124" r="17"/><circle cx="154" cy="124" r="17"/></g><path d="M119 124 L137 124" stroke="#1f2937" stroke-width="5"/>
+</g>
+</svg>
