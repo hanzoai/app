@@ -603,7 +603,10 @@ catalog files under Enso or Zen (`house`).
   Row and Link types are @hanzo/ui/chat's, re-exported by agents.ts.
 - Customize › Agents › Browse is @hanzo/build's and lists the host's `cast`
   (dev.tsx passes `CAST`) and nothing else: the 34 seats, each wearing
-  `/agents/<id>.png`. The twelve leads (`lead: true`, seats 1-12) are its Team;
+  `/agents/<id>.png` and naming who it is drawn from (`Cast.after`, @hanzo/build
+  ≥ 0.2.114: "Mark — Marketing · after Ogilvy, Bernbach, Burnett"). Those names
+  are each member's `exemplars`, as the figures' PERSONA.md name them, which
+  scripts/team.mjs writes into team.gen.ts as `NAMES` (team.ts `after`). The twelve leads (`lead: true`, seats 1-12) are its Team;
   the other 22 are its Bots, `executionMode: 'long-running'` with the schedule
   and triggers `RUNS` (agents.ts) gives each, which Use and Elect 24/7 carry to
   the row. A personas release that adds a seat after the twelfth fails
