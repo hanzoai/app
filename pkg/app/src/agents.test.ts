@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getPersonaMd, team } from '@hanzo/personas'
 import { beforeAll, describe, expect, test } from 'vitest'
-import { CAST, draft, handle, line, ordered, title, type Figure } from './agents'
+import { CAST, RUNS, draft, handle, line, ordered, title, type Figure } from './agents'
 import { TEAM } from './team'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -37,18 +37,29 @@ describe('the default cast', () => {
       expect(c).toEqual({
         name: one.id,
         title: one.name,
-        category: 'Team',
+        category: one.lead ? 'Team' : 'Bot',
         description: `${one.name} — ${one.role}`,
         model: one.model,
         instructions: one.instructions,
         avatar: `/agents/${one.id}.png`,
         tools: one.tools,
+        ...(one.lead ? {} : { executionMode: 'long-running', ...RUNS[one.id] }),
       })
       expect(c.name).toMatch(NAME)
       expect(c.title).toMatch(/^[A-Za-z]+$/)
       expect(c.instructions.length).toBeGreaterThan(100)
     }
     expect(CAST[0]).toMatchObject({ name: 'vi', title: 'Vi', description: 'Vi — CEO/Vision', model: 'enso' })
+  })
+
+  test('offers the twelve leads under Team and every other seat as a Bot that runs 24/7 on its schedule and triggers', () => {
+    expect(CAST.filter((c) => c.category === 'Team').map((c) => c.name)).toEqual(TEAM.slice(0, 12).map((one) => one.id))
+    expect(Object.keys(RUNS)).toEqual(TEAM.filter((one) => !one.lead).map((one) => one.id))
+    for (const c of CAST.filter((c) => c.category === 'Bot')) {
+      expect(c.executionMode).toBe('long-running')
+      expect(c.schedule).toMatch(/^\S+ \S+ \S+ \S+ \S+$/)
+      expect(c.triggers!.length).toBeGreaterThan(0)
+    }
   })
 
   test('every face is the member’s memoji, copied from the package at build', () => {

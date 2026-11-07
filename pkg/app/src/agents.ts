@@ -17,21 +17,55 @@ export const PAINTER = 'zen-image'
 /** The words every drawn face is asked for after its description. */
 export const MEMOJI = 'memoji style 3D emoji portrait, head and shoulders, centered, plain background'
 
+type Cast = NonNullable<Host['cast']>[number]
+
+/**
+ * How each seat after the first twelve runs once it is made: autonomously,
+ * 24/7, woken on its schedule (5-field cron) and by its triggers. Keyed by the
+ * seat's id; the first twelve, the leads, run when asked.
+ */
+export const RUNS: Readonly<Record<string, Required<Pick<Cast, 'schedule' | 'triggers'>>>> = {
+  data: { schedule: '*/15 * * * *', triggers: ['webhook', 'watch'] },
+  lang: { schedule: '0 * * * *', triggers: ['git', 'webhook', 'channel'] },
+  edu: { schedule: '0 9 * * *', triggers: ['channel', 'webhook'] },
+  art: { schedule: '0 * * * *', triggers: ['webhook', 'channel'] },
+  rev: { schedule: '*/15 * * * *', triggers: ['webhook', 'watch'] },
+  law: { schedule: '0 9 * * 1-5', triggers: ['webhook', 'channel'] },
+  vid: { schedule: '0 * * * *', triggers: ['webhook', 'channel'] },
+  biz: { schedule: '0 9 * * 1-5', triggers: ['webhook', 'channel'] },
+  mu: { schedule: '0 * * * *', triggers: ['webhook', 'channel'] },
+  doc: { schedule: '0 * * * *', triggers: ['git', 'webhook'] },
+  gov: { schedule: '0 9 * * 1-5', triggers: ['watch', 'channel'] },
+  cust: { schedule: '*/15 * * * *', triggers: ['webhook', 'channel', 'watch'] },
+  com: { schedule: '*/15 * * * *', triggers: ['git', 'channel', 'webhook'] },
+  it: { schedule: '*/15 * * * *', triggers: ['webhook', 'watch'] },
+  qa: { schedule: '*/15 * * * *', triggers: ['git', 'webhook', 'watch'] },
+  auto: { schedule: '*/5 * * * *', triggers: ['webhook', 'git', 'channel', 'watch'] },
+  proc: { schedule: '0 9 * * 1-5', triggers: ['webhook', 'watch'] },
+  supply: { schedule: '0 * * * *', triggers: ['webhook', 'watch'] },
+  corp: { schedule: '0 9 * * 1', triggers: ['watch', 'channel'] },
+  comp: { schedule: '0 * * * *', triggers: ['git', 'webhook', 'watch'] },
+  risk: { schedule: '0 * * * *', triggers: ['webhook', 'watch'] },
+  audit: { schedule: '0 9 * * *', triggers: ['git', 'watch'] },
+}
+
 /**
  * The default agents (Customize › Agents, @hanzo/build `cast`): the team
  * hanzoai/personas publishes, one per seat in seat order, each as its file writes
- * it and wearing its memoji. An org starts with none of them and loads none
- * until it adds them. Browse lists them under Team, by the name each goes by.
+ * it and wearing its memoji. The twelve leads are offered under Team; every
+ * other seat is a Bot, offered to run 24/7 on its `RUNS`. An org starts with
+ * none of them and loads none until it adds them.
  */
 export const CAST: NonNullable<Host['cast']> = TEAM.map((one) => ({
   name: one.id,
   title: one.name,
-  category: 'Team',
+  category: one.lead ? 'Team' : 'Bot',
   description: `${one.name} — ${one.role}`,
   model: one.model,
   instructions: one.instructions,
   avatar: `/agents/${one.id}.png`,
   tools: one.tools,
+  ...(one.lead ? {} : { executionMode: 'long-running' as const, ...RUNS[one.id] }),
 }))
 
 const RANK = new Map(TEAM.map((one, i) => [one.id, i]))
