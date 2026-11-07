@@ -603,7 +603,11 @@ catalog files under Enso or Zen (`house`).
   Row and Link types are @hanzo/ui/chat's, re-exported by agents.ts.
 - Customize › Agents › Browse is @hanzo/build's and lists the host's `cast`
   (dev.tsx passes `CAST`) and nothing else: the 34 seats, each wearing
-  `/agents/<id>.png`. The platform's chat presets (`/v1/agent/chat/presets`,
+  `/agents/<id>.png`. The twelve leads (`lead: true`, seats 1-12) are its Team;
+  the other 22 are its Bots, `executionMode: 'long-running'` with the schedule
+  and triggers `RUNS` (agents.ts) gives each, which Use and Elect 24/7 carry to
+  the row. A personas release that adds a seat after the twelfth fails
+  agents.test.ts until `RUNS` names it. The platform's chat presets (`/v1/agent/chat/presets`,
   such as `create`, "Product & Fashion Create") are modes of a chat round, not
   agents, and Browse does not offer them (@hanzo/build 0.2.111).
 - `Hire` (New agent) starts from a persona: @hanzo/personas' figures, fetched
