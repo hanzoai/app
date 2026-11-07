@@ -38,12 +38,10 @@ vi.mock('@hanzo/ui', () => ({
   Kbd: Draw,
 }))
 vi.mock('@hanzo/iam/react', () => ({ useOrganizations: () => ({ roles: { acme: 'owner' } }) }))
-vi.mock('@hanzo/build', () => ({
-  label: () => null,
-  Meter: () => null,
-  said: () => '',
-  useStanding: () => ({ value: null, error: null, loading: false }),
-}))
+vi.mock('@hanzo/build', async () => {
+  const { label, said } = await import('@hanzo/build/plan')
+  return { label, Meter: () => null, said, useStanding: () => ({ value: null, error: null, loading: false }) }
+})
 vi.mock('./lib/session', () => ({ choose: () => {}, org: () => 'acme', orgs: () => ['acme'], pick: () => {}, renew: () => {}, scope: () => ({}), superAdmin: () => false }))
 vi.mock('./lib/org', () => ({ createOrg: async () => '', say: String }))
 vi.mock('./dev', () => ({ leave: left }))
@@ -64,7 +62,8 @@ vi.mock('./lib/accounts', () => ({
   }),
 }))
 
-import { Account, upgrade } from './Account'
+import { Account, planOf, upgrade } from './Account'
+import type { Tier } from './lib/tier'
 
 /** The account menu, open, as its rows. */
 function menu(accountOpen = false) {
@@ -133,5 +132,14 @@ describe('the account menu', () => {
     expect(upgrade('Enterprise')).toBe('Enterprise plan')
     expect(upgrade('Agency')).toBe('Agency plan')
     for (const family of ['Free', 'Pro', 'Max', 'Team', 'DNS', 'Embedded Pod', 'Forward Deployed', 'White', null, undefined]) expect(upgrade(family), String(family)).toBe('Upgrade plan')
+  })
+
+  test("an organization's plan is the tier answer's planName, else its family", () => {
+    const tier = (t: Partial<Tier>) => ({ plan: '', tier: { name: 'pro' }, ...t }) as Tier
+    expect(planOf(tier({ plan: 'unlimited', planName: 'Unlimited' }))).toBe('Unlimited')
+    expect(planOf(tier({ plan: '', planName: 'Unlimited' }))).toBe('Unlimited')
+    expect(planOf(tier({ plan: 'max-20x' }))).toBe('Max 20x')
+    expect(planOf(tier({ plan: '' }))).toBe('Pro')
+    expect(planOf(null)).toBe('')
   })
 })
