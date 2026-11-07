@@ -83,6 +83,7 @@ export interface Figure {
   called?: string
   about?: string
   based?: string
+  avatar?: string
 }
 
 /** Where a host serves the roster: the list, and each written figure's PERSONA.md. */
@@ -93,6 +94,54 @@ export const title = (f: Figure): string => f.based?.replace(/\s*\(.*\)\s*$/, ''
 
 /** A figure's one line: its PERSONA.md's description, else what it was. */
 export const line = (f: Figure): string => f.about ?? f.category.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())
+
+/**
+ * The historical figures of @hanzo/personas' roster, read on demand when
+ * Customize › Agents opens (`Host.personas`). Figures with an authored
+ * PERSONA.md lead; each wears its memoji portrait and reads its PERSONA.md
+ * only when added.
+ */
+let cachedPersonas: Promise<readonly Cast[]> | null = null
+export function personas(): Promise<readonly Cast[]> {
+  if (!cachedPersonas) {
+    cachedPersonas = fetch(`${FIGURES}/index.json`, { credentials: 'omit' })
+      .then((res) => {
+        if (!res.ok) throw new Error(`personas: ${res.status}`)
+        return res.json() as Promise<Figure[]>
+      })
+      .then((list) =>
+        [...list]
+          .sort((a, b) => Number(!a.called) - Number(!b.called))
+          .map((f): Cast => {
+            const who = title(f)
+            const cat = f.category.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())
+            return {
+              name: handle(f.called ?? who),
+              title: who,
+              category: cat,
+              description: line(f),
+              model: 'enso',
+              avatar: f.avatar ?? `${FIGURES}/${f.slug}.svg`,
+              instructions: `You are ${who}. Answer as ${who} would, in your own voice and from what you wrote and did. When a question is past what you could have known, say so.`,
+              ...(f.called
+                ? {
+                    read: async () => {
+                      const res = await fetch(`${FIGURES}/${f.slug}.md`, { credentials: 'omit' })
+                      if (!res.ok) return draft(f, null).does
+                      return draft(f, await res.text()).does
+                    },
+                  }
+                : {}),
+            }
+          }),
+      )
+      .catch((err) => {
+        cachedPersonas = null
+        throw err
+      })
+  }
+  return cachedPersonas
+}
 
 /**
  * A name the agents API takes (cloud apps/agents `nameRE`): letters, digits, dots,

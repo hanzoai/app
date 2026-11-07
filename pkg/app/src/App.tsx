@@ -224,7 +224,7 @@ function Window({ bar, betas }: Hosted) {
   const inFlow = at.mode === 'flow'
   const made = inDesign || inStudio || inFlow ? at.at : ''
   const modeRoute = inDesign ? design : inFlow ? flow : studio
-  const modeName = inDesign ? 'Hanzo Design' : inFlow ? 'Hanzo Flow' : 'Hanzo Studio'
+  const modeName = inDesign ? 'Design' : inFlow ? 'Flow' : 'Studio'
   const maker = useMemo<Host>(
     () => ({
       ...host,

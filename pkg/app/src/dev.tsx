@@ -40,7 +40,7 @@ import { administers, path, route, type Host } from '@hanzo/build'
 import { bearer, named, org, orgs, pick } from './lib/session'
 import { enter } from './lib/destination'
 import { api } from './lib/api'
-import { CAST } from './agents'
+import { CAST, personas } from './agents'
 import { app, place, settings, visit } from './lib/host'
 import { link } from './lib/tags'
 import { payUrl } from './lib/pay'
@@ -131,6 +131,7 @@ export function useDevHost(): Host {
       // The sidebar lists Settings' sections and Customize's tabs (Sidebar.tsx), and Customize › Agents offers the cast.
       sections: true,
       cast: CAST,
+      personas,
       // An address of the app moves the app, another of this site moves in the
       // router, and another origin is left in this tab. platform.hanzo.ai is
       // another product, and a click that names it stays here — everything the

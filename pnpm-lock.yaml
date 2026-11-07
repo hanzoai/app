@@ -34,8 +34,8 @@ catalogs:
       specifier: 1.0.26
       version: 1.0.26
     '@hanzo/personas':
-      specifier: https://github.com/hanzoai/personas/releases/download/v1.3.0/hanzo-personas-1.3.0.tgz
-      version: 1.3.0
+      specifier: https://github.com/hanzoai/personas/releases/download/v1.3.1/hanzo-personas-1.3.1.tgz
+      version: 1.3.1
     '@hanzo/studio':
       specifier: 0.1.0
       version: 0.1.0
@@ -118,7 +118,7 @@ importers:
         version: link:../mod
       '@hanzo/personas':
         specifier: 'catalog:'
-        version: https://github.com/hanzoai/personas/releases/download/v1.3.0/hanzo-personas-1.3.0.tgz
+        version: https://github.com/hanzoai/personas/releases/download/v1.3.1/hanzo-personas-1.3.1.tgz
       marked:
         specifier: 'catalog:'
         version: 18.0.12
@@ -753,9 +753,9 @@ packages:
       react:
         optional: true
 
-  '@hanzo/personas@https://github.com/hanzoai/personas/releases/download/v1.3.0/hanzo-personas-1.3.0.tgz':
-    resolution: {integrity: sha512-yQwVSDaJsJ3d9ayTbAPC+7lyZltR6HHbiTeeuoywopM35HN7hWxKfqmN3TebS4wVVjyHu6Cr9M8d98QfCJoKBw==, tarball: https://github.com/hanzoai/personas/releases/download/v1.3.0/hanzo-personas-1.3.0.tgz}
-    version: 1.3.0
+  '@hanzo/personas@https://github.com/hanzoai/personas/releases/download/v1.3.1/hanzo-personas-1.3.1.tgz':
+    resolution: {integrity: sha512-cX5weqpMdmfj2gH4J+ZyIG6esaDUrTmLBpLeU/D6GBQp60d+kAOKahd923FOXx0Zm/Q41RCmObgMrWvhfv7Gxw==, tarball: https://github.com/hanzoai/personas/releases/download/v1.3.1/hanzo-personas-1.3.1.tgz}
+    version: 1.3.1
 
   '@hanzo/plans@1.8.9':
     resolution: {integrity: sha512-Sbjm/6KhllxWUByBynO0PpwxHwrAADYLce2ZQcC4xtNVkSiba9EwMUAOz5KUque7Yp8VPxvUuQ6PtbUppadVWw==}
@@ -4024,7 +4024,7 @@ snapshots:
     optionalDependencies:
       react: 19.2.8
 
-  '@hanzo/personas@https://github.com/hanzoai/personas/releases/download/v1.3.0/hanzo-personas-1.3.0.tgz': {}
+  '@hanzo/personas@https://github.com/hanzoai/personas/releases/download/v1.3.1/hanzo-personas-1.3.1.tgz': {}
 
   '@hanzo/plans@1.8.9':
     optional: true

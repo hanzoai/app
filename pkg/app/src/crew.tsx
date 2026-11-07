@@ -399,12 +399,12 @@ function Figures({ onPick }: { onPick: (f: Figure) => void }) {
       />
       <YStack maxH={360} overflowY="auto" overflowX="hidden" role="group" aria-label={t('Personas')}>
         {found.slice(0, SHOWN).map((f) => (
-          <YStack
+          <XStack
             key={f.slug}
             render="button"
             onClick={() => onPick(f)}
-            items="flex-start"
-            gap={2}
+            items="center"
+            gap="$2.5"
             px="$2"
             py="$2"
             rounded="$3"
@@ -412,13 +412,16 @@ function Figures({ onPick }: { onPick: (f: Figure) => void }) {
             hoverStyle={{ bg: '$raised' }}
             focusVisibleStyle={{ bg: '$raised' }}
           >
-            <Text fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1}>
-              {title(f)}
-            </Text>
-            <Text fontSize="$2" color="$soft" numberOfLines={1}>
-              {line(f)}
-            </Text>
-          </YStack>
+            <Face src={f.avatar ?? `${FIGURES}/${f.slug}.svg`} name={title(f)} size={32} />
+            <YStack flex={1} minW={0} items="flex-start" gap={2}>
+              <Text fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1}>
+                {title(f)}
+              </Text>
+              <Text fontSize="$2" color="$soft" numberOfLines={1}>
+                {line(f)}
+              </Text>
+            </YStack>
+          </XStack>
         ))}
       </YStack>
       <Text fontSize="$2" color={failed ? BAD : '$soft'} role={failed ? 'alert' : undefined}>
@@ -556,6 +559,8 @@ export function Hire({ onClose, onMade, start = false }: { onClose: () => void; 
       setName(d.name)
       setDoes(d.does)
       setLook(d.look)
+      setAvatar(f.avatar ?? `${FIGURES}/${f.slug}.svg`)
+      setEmoji('')
       setFaceless(false)
     } catch (e) {
       setWrong({ field: 'form', text: reach(e) })

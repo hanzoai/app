@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { brand, configure, site, where } from './where'
+import { brand, configure, site, where, wordmark } from './where'
 import { safe, signUp } from './lib/destination'
 
 describe('addresses', () => {
@@ -14,9 +14,16 @@ describe('addresses', () => {
 })
 
 describe('brand', () => {
-  test("the apps print the host's product name, hanzo.ai's until a host states its own", () => {
+  test("the apps print the host's product name, Hanzo in chat and unprefixed section names elsewhere", () => {
     configure({ brand: undefined })
-    expect(brand()).toBe('Hanzo AI')
+    expect(brand()).toBe('Hanzo')
+    expect(wordmark('chat')).toBe('Hanzo')
+    expect(wordmark('dev')).toBe('Dev')
+    expect(wordmark('design')).toBe('Design')
+    expect(wordmark('studio')).toBe('Studio')
+    expect(wordmark('flow')).toBe('Flow')
+    expect(wordmark('tabs')).toBe('Tabs')
+    expect(wordmark('beta')).toBe('Betas')
     configure({ brand: 'Hanzo Team' })
     expect(brand()).toBe('Hanzo Team')
   })

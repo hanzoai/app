@@ -106,6 +106,8 @@ import { restoreActiveMod } from "@hanzo/mod";
 import {
   HanzoMark,
 } from "@hanzogui/shell";
+import { BUSINESS_APPS, BusinessHeader } from "@hanzo/ui/product";
+import { useAccounts } from "./lib/accounts";
 import { useHydrated } from "./lib/hydrated";
 import { useHostname } from "./lib/hostname";
 import { useHost } from "./host";
@@ -628,6 +630,7 @@ function Chats({
 
   const { isAuthenticated, user } = useIam();
   const { user: account } = useAccount();
+  const { accounts: browserAccounts, current: currentBrowserAccount, switchTo: switchToAccount, add: addAccount } = useAccounts();
   const signedIn = isAuthenticated || Boolean(user) || Boolean(account) || hasSession();
   const free = useFree(signedIn);
 
@@ -1028,6 +1031,7 @@ function Team({
   const { channels, wrong } = useChannels();
   const { isAuthenticated, user } = useIam();
   const { user: account } = useAccount();
+  const { accounts: browserAccounts, current: currentBrowserAccount, switchTo: switchToAccount, add: addAccount } = useAccounts();
   const signedIn = isAuthenticated || Boolean(user) || Boolean(account) || hasSession();
   const free = useFree(signedIn);
 
@@ -2360,6 +2364,7 @@ function Frame({
   const settled = hydrated && !isLoading;
 
   const { user: account } = useAccount();
+  const { accounts: browserAccounts, current: currentBrowserAccount, switchTo: switchToAccount, add: addAccount } = useAccounts();
   const signedIn = isAuthenticated || Boolean(user) || Boolean(account) || hasSession();
   const free = useFree(signedIn);
   const logout = useSignOut();
@@ -2613,12 +2618,9 @@ function Frame({
             >
               {t("Share Hanzo")}
             </SidebarItem>
-            {/* WHO YOU ARE, at the foot: the app's one account menu (Account.tsx),
-                SuperAdmin's All organizations under its account row. */}
-            <XStack items="center" gap="$1" px="$1.5" py="$1" borderTopWidth={1} borderColor="$borderColor">
-              <YStack flex={1} minW={0}>
-                <Account host={who} onOrg={(o) => (choose(o), window.location.reload())} />
-              </YStack>
+            {/* User profile moved to the top-right global BusinessHeader account menu;
+                the sidebar foot retains only the collapse toggle. */}
+            <XStack items="center" justify="flex-end" gap="$1" px="$1.5" py="$1" borderTopWidth={1} borderColor="$borderColor">
               <Box
                 render="button"
                 onClick={toggle}
@@ -2650,11 +2652,11 @@ function Frame({
       data-sidebar={asked ? "open" : "shut"}
       display="grid"
       gridTemplateColumns="64px auto minmax(0, 1fr) auto"
-      gridTemplateRows="44px minmax(0, 1fr)"
-      gridTemplateAreas={'"rail bar bar bar" "rail list pane side"'}
+      gridTemplateRows="56px minmax(0, 1fr)"
+      gridTemplateAreas={'"bar bar bar bar" "rail list pane side"'}
       $max-md={{
         gridTemplateColumns: "minmax(0, 1fr)",
-        gridTemplateRows: `44px minmax(0, 1fr) ${TABS_HEIGHT}`,
+        gridTemplateRows: `56px minmax(0, 1fr) ${TABS_HEIGHT}`,
         gridTemplateAreas: '"bar" "pane" "rail"',
       }}
       position="relative"
@@ -2673,200 +2675,221 @@ function Frame({
         onSettings={() => showSettings(FIRST)}
         onMore={() => setFinding(true)}
       />
-        <XStack
-          render="header"
+        <Box
+          gridArea="bar"
           data-slot="bar"
           data-tauri-drag-region="deep"
           onMouseDown={dragWindow}
           onDoubleClick={toggleWindowMaximize}
-          gridArea="bar"
-          {...sheet(0)}
-          height={44}
           shrink={0}
-          items="center"
-          px="$3"
-          gap="$3"
-          borderBottomWidth={1}
-          borderColor="var(--edge, var(--white-06))"
         >
-          {/* A BUDGET, NOT A SIZE. 180 is what the two clusters reserve so the
-              search between them sits centred on a laptop — but stated as `width` it
-              is also a FLOOR, and two 180px floors plus the search do not fit a
-              390px phone: the right-hand cluster was measured reaching 396. As a
-              maximum that can shrink, the centring is unchanged where there is space
-              and the row simply gets narrower where there is not. */}
-          {/* LEADING: sidebar toggle (if collapsed) + back/forward navigation arrows left aligned */}
-          <XStack
-            items="center"
-            gap="$1"
-            shrink={0}
-          >
-            <SidebarIconButton
-              {...TAP}
-              label={t(shown ? "Close sidebar" : "Open sidebar")}
-              onPress={toggle}
-              onMouseEnter={() => setPeeking(true)}
-            >
-              <PanelLeft size={16} aria-hidden data-i18n-mirror="" />
-            </SidebarIconButton>
-
-            {/* Not on a phone: the browser's own back gesture is there, and
-                the bar's width belongs to the search. */}
-            {back || forward ? (
-              <XStack
-                display="none"
-                $md={{ display: "flex" }}
-                items="center"
-                gap="$1"
-                shrink={0}
-              >
-                <SidebarIconButton {...TAP} label={t("Back")} onPress={() => back?.()}>
-                  <ArrowLeft size={16} aria-hidden data-i18n-mirror="" />
-                </SidebarIconButton>
+          <BusinessHeader
+            appId={onApex ? (mode === "dev" ? "dev" : "chat") : "team"}
+            appTitle={onApex ? (mode === "dev" ? "Hanzo Dev" : "Hanzo Chat") : "Hanzo Team"}
+            apps={BUSINESS_APPS}
+            brandMark={<HanzoMark size={18} />}
+            onSelectApp={(item) => {
+              if (typeof window === "undefined") return;
+              try {
+                const target = new URL(item.href, window.location.origin);
+                if (target.origin === window.location.origin) {
+                  navigate?.(target.pathname + target.search);
+                  return;
+                }
+                const activeOrg = currentOrgId || scoped() || "";
+                if (activeOrg) target.searchParams.set("org", activeOrg);
+                const sub = currentBrowserAccount?.sub || (user as { sub?: string; id?: string } | null)?.sub || (user as { id?: string } | null)?.id || "";
+                const isConsoleSibling =
+                  target.hostname.startsWith("crm.") ||
+                  target.hostname.startsWith("console.") ||
+                  target.hostname.startsWith("platform.") ||
+                  target.hostname.startsWith("marketing.") ||
+                  target.hostname.startsWith("ads.") ||
+                  target.hostname.startsWith("social.");
+                if (isConsoleSibling && sub) {
+                  const fresh = new URL("/auth/fresh", target.origin);
+                  fresh.searchParams.set("next", target.pathname + target.search);
+                  fresh.searchParams.set("who", sub);
+                  window.location.assign(fresh.toString());
+                  return;
+                }
+                window.location.assign(target.toString());
+              } catch {
+                window.location.assign(item.href);
+              }
+            }}
+            currentOrg={{
+              name: currentOrgId || scoped() || "hanzo",
+              displayName: workspace,
+            }}
+            orgs={(orgState.organizations ?? []).map((o) => ({
+              name: o.name,
+              displayName: o.displayName || o.name,
+            }))}
+            onSelectOrg={(orgName) => {
+              choose(orgName);
+              window.location.reload();
+            }}
+            user={
+              settled && signedIn
+                ? {
+                    sub:
+                      currentBrowserAccount?.sub ||
+                      (user as { sub?: string; id?: string } | null)?.sub ||
+                      (user as { id?: string } | null)?.id ||
+                      who.person.email ||
+                      "me",
+                    name: who.person.name || who.person.email || "You",
+                    email: who.person.email,
+                    avatar: who.person.avatar,
+                  }
+                : null
+            }
+            accounts={browserAccounts.map((a) => ({
+              sub: a.sub,
+              owner: a.owner || "hanzo",
+              name: a.displayName || a.name || a.email,
+              email: a.email,
+              avatar: a.avatar,
+            }))}
+            onSwitchAccount={(acct) => {
+              const found = browserAccounts.find((a) => a.sub === acct.sub);
+              if (found) void switchToAccount(found);
+              else void addAccount();
+            }}
+            onAddAccount={() => void addAccount()}
+            onSettings={() => showSettings(FIRST)}
+            onSignOut={() => void logout()}
+            leftSlot={
+              <XStack items="center" gap="$1" shrink={0}>
                 <SidebarIconButton
                   {...TAP}
-                  label={t("Forward")}
-                  onPress={() => forward?.()}
+                  label={t(shown ? "Close sidebar" : "Open sidebar")}
+                  onPress={toggle}
+                  onMouseEnter={() => setPeeking(true)}
                 >
-                  <ArrowRight size={16} aria-hidden data-i18n-mirror="" />
+                  <PanelLeft size={16} aria-hidden data-i18n-mirror="" />
                 </SidebarIconButton>
+                {back || forward ? (
+                  <XStack display="none" $md={{ display: "flex" }} items="center" gap="$1" shrink={0}>
+                    <SidebarIconButton {...TAP} label={t("Back")} onPress={() => back?.()}>
+                      <ArrowLeft size={16} aria-hidden data-i18n-mirror="" />
+                    </SidebarIconButton>
+                    <SidebarIconButton {...TAP} label={t("Forward")} onPress={() => forward?.()}>
+                      <ArrowRight size={16} aria-hidden data-i18n-mirror="" />
+                    </SidebarIconButton>
+                  </XStack>
+                ) : null}
               </XStack>
-            ) : null}
-          </XStack>
+            }
+            rightSlot={
+              <XStack shrink={0} minW={0} justify="flex-end" items="center" gap="$2">
+                {settled && !signedIn ? (
+                  <Box
+                    {...TAP}
+                    render="button"
+                    onClick={() => enter(LOGIN)}
+                    display="flex"
+                    items="center"
+                    justify="center"
+                    cursor="pointer"
+                  >
+                    <XStack
+                      items="center"
+                      justify="center"
+                      height={CONTROL}
+                      px="$2.5"
+                      rounded="$2"
+                      borderWidth={1}
+                      borderColor="$borderColor"
+                      hoverStyle={{ bg: "$hover" }}
+                    >
+                      <Text fontSize="$1" fontWeight="600" color="$ink">
+                        {t("Sign in")}
+                      </Text>
+                    </XStack>
+                  </Box>
+                ) : null}
 
-        <XStack flex={1} justify="center" data-tauri-drag-region="deep">
-          <YStack width={440} maxW="100%" position="relative">
-            {/* ONE ELEMENT, ONE HEIGHT. This was a row of one height nested in
-                a button of another, and the two disagreed — the button measured
-                32 and the row inside it 28, so the contents sat high in a field
-                that was not the height either of them asked for. A button IS a
-                row here, so it is written as one. */}
-            <Box
-              render="button"
-              onClick={() => setFinding(true)}
-              display="flex"
-              flexDirection="row"
-              data-slot="find"
-              items="center"
-              // A phone keeps the glyph and gives up the words: a chord is not
-              // pressable there, and the label wrapped onto the key cap.
-              $max-md={{ justify: "center" }}
-              gap="$2"
-              width="100%"
-              height={CONTROL}
-              px="$2.5"
-              rounded="$2"
-              borderWidth={1}
-              borderColor="$borderColor"
-              hoverStyle={{ bg: '$hover' }}
-            >
-              <SearchIcon size={13} aria-hidden color="var(--soft, var(--muted-foreground))" />
-              <Text fontSize="$1" color="$soft" $max-md={{ display: "none" }}>
-                {t("Search {workspace}", { workspace })}
-              </Text>
-              {/* The kit's keycaps: ⌘K on a Mac, Ctrl+K elsewhere, in their own order in any language. */}
-              <Shortcut keys={["Mod", "K"]} marginInlineStart="auto" data-i18n-ltr="" $max-md={{ display: "none" }} />
-            </Box>
-          </YStack>
-        </XStack>
+                {settled && signedIn && free ? (
+                  <Box
+                    {...TAP}
+                    render="button"
+                    onClick={() => window.location.assign(payUrl("/cart", { returnUrl: window.location.href }))}
+                    display="flex"
+                    items="center"
+                    justify="center"
+                    cursor="pointer"
+                    aria-label={t("Upgrade")}
+                    data-slot="bar-upgrade"
+                  >
+                    <XStack
+                      items="center"
+                      justify="center"
+                      height={CONTROL}
+                      px="$2.5"
+                      rounded="$2"
+                      borderWidth={1}
+                      borderColor="$borderColor"
+                      gap="$1.5"
+                      hoverStyle={{ bg: "$hover" }}
+                    >
+                      <Sparkles size={13} aria-hidden color="var(--primary)" />
+                      <Text fontSize="$1" fontWeight="600" color="$ink">
+                        {t("Upgrade")}
+                      </Text>
+                    </XStack>
+                  </Box>
+                ) : null}
 
-        <XStack
-          shrink={0}
-          minW={0}
-          justify="flex-end"
-          items="center"
-          gap="$2"
-        >
-          {/* THE WAY IN, for somebody who has not taken it.
+                <XStack display="none" $lg={{ display: "flex" }} items="center" gap="$1">
+                  <SidebarIconButton
+                    {...TAP}
+                    label={t(aside === "roster" ? "Hide directory & roster" : "Show directory & roster")}
+                    onPress={() => showAside(aside === "roster" ? null : "roster")}
+                  >
+                    <Users size={16} aria-hidden />
+                  </SidebarIconButton>
+                  <SidebarIconButton
+                    {...TAP}
+                    label={t(aside === "tasks" ? "Close side panel" : "Open side panel")}
+                    onPress={() => showAside(aside === "tasks" ? null : "tasks")}
+                  >
+                    <PanelRight size={16} aria-hidden data-i18n-mirror="" />
+                  </SidebarIconButton>
+                </XStack>
 
-              A 44px TARGET AROUND A 28px CONTROL. The button keeps the tap area
-              every control in this row has; the border and the fill sit on the
-              box inside it. Carried on the button itself, that 44px minimum
-              became the VISIBLE size — a bordered rectangle half again the
-              height of the search field, while the icon buttons beside it wear
-              the same 44 invisibly and look right. */}
-          {settled && !signedIn ? (
-            <Box
-              {...TAP}
-              render="button"
-              onClick={() => enter(LOGIN)}
-              display="flex"
-              items="center"
-              justify="center"
-              cursor="pointer"
-            >
-              <XStack
+                <WindowControls />
+              </XStack>
+            }
+          >
+            <YStack width={420} maxW="100%" position="relative">
+              <Box
+                render="button"
+                onClick={() => setFinding(true)}
+                display="flex"
+                flexDirection="row"
+                data-slot="find"
                 items="center"
-                justify="center"
+                $max-md={{ justify: "center" }}
+                gap="$2"
+                width="100%"
                 height={CONTROL}
                 px="$2.5"
                 rounded="$2"
                 borderWidth={1}
                 borderColor="$borderColor"
-                hoverStyle={{ bg: '$hover' }}
-              >
-                <Text fontSize="$1" fontWeight="600" color="$ink">
-                  {t("Sign in")}
-                </Text>
-              </XStack>
-            </Box>
-          ) : null}
-
-          {settled && signedIn && free ? (
-            <Box
-              {...TAP}
-              render="button"
-              onClick={() => window.location.assign(payUrl("/cart", { returnUrl: window.location.href }))}
-              display="flex"
-              items="center"
-              justify="center"
-              cursor="pointer"
-              aria-label={t("Upgrade")}
-              data-slot="bar-upgrade"
-            >
-              <XStack
-                items="center"
-                justify="center"
-                height={CONTROL}
-                px="$2.5"
-                rounded="$2"
-                borderWidth={1}
-                borderColor="$borderColor"
-                gap="$1.5"
                 hoverStyle={{ bg: "$hover" }}
               >
-                <Sparkles size={13} aria-hidden color="var(--primary)" />
-                <Text fontSize="$1" fontWeight="600" color="$ink">
-                  {t("Upgrade")}
+                <SearchIcon size={13} aria-hidden color="var(--soft, var(--muted-foreground))" />
+                <Text fontSize="$1" color="$soft" $max-md={{ display: "none" }}>
+                  {t("Search {workspace}", { workspace })}
                 </Text>
-              </XStack>
-            </Box>
-          ) : null}
-
-          {/* WHAT STANDS BESIDE THE PANE: the work behind an answer, a preview
-              of what a run built. Drawn where the column is — from `$lg`, the
-              breakpoint `side` below uses — because below it these would
-              toggle a column nobody can see. */}
-          <XStack display="none" $lg={{ display: "flex" }} items="center" gap="$1">
-            <SidebarIconButton
-              {...TAP}
-              label={t(aside === "roster" ? "Hide directory & roster" : "Show directory & roster")}
-              onPress={() => showAside(aside === "roster" ? null : "roster")}
-            >
-              <Users size={16} aria-hidden />
-            </SidebarIconButton>
-            <SidebarIconButton
-              {...TAP}
-              label={t(aside === "tasks" ? "Close side panel" : "Open side panel")}
-              onPress={() => showAside(aside === "tasks" ? null : "tasks")}
-            >
-              <PanelRight size={16} aria-hidden data-i18n-mirror="" />
-            </SidebarIconButton>
-          </XStack>
-
-          <WindowControls />
-        </XStack>
-      </XStack>
+                <Shortcut keys={["Mod", "K"]} marginInlineStart="auto" data-i18n-ltr="" $max-md={{ display: "none" }} />
+              </Box>
+            </YStack>
+          </BusinessHeader>
+        </Box>
       {/* THE PAGE UNDER A SHEET THAT LIFTED — a phone only; on a laptop the
           list is a column and dims nothing. */}
       {shown ? (
@@ -2877,7 +2900,7 @@ function Frame({
           {...scrim}
           data-slot="scrim"
           position="absolute"
-          t={44}
+          t={56}
           r={0}
           b={TABS_HEIGHT}
           l={0}
@@ -2893,9 +2916,9 @@ function Frame({
           gridArea="list"
           position={asked ? "relative" : "absolute"}
           // Peeking, it stands past the rail, which is at the start edge.
-          {...(asked ? {} : { top: 44, bottom: 0, insetInlineStart: 64 })}
+          {...(asked ? {} : { top: 56, bottom: 0, insetInlineStart: 64 })}
           // A phone's list is a sheet between the bar and the tab bar.
-          $max-md={{ position: "fixed", t: 44, r: 0, b: TABS_HEIGHT, l: 0, width: "100%" }}
+          $max-md={{ position: "fixed", t: 56, r: 0, b: TABS_HEIGHT, l: 0, width: "100%" }}
           z="var(--z-drawer)"
           bg="$background"
           onMouseEnter={() => setPeeking(true)}

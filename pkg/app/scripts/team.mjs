@@ -48,17 +48,36 @@ const field = (md, key) => new RegExp(`^${key}:\\s*(.+)$`, 'm').exec(md.split(/^
 const out = join(here, 'assets', 'personas')
 rmSync(out, { recursive: true, force: true })
 mkdirSync(out, { recursive: true })
+const portraits = join(root, 'assets', 'personas')
 const figures = readdirSync(join(root, 'personas'))
   .sort()
   .map((slug) => {
     const dir = join(root, 'personas', slug)
     const { name, category } = JSON.parse(readFileSync(join(dir, 'profile.json'), 'utf8'))
+    const png = join(portraits, `${slug}.png`)
+    const svg = join(portraits, `${slug}.svg`)
+    let avatar
+    if (existsSync(png)) {
+      copyFileSync(png, join(out, `${slug}.png`))
+      avatar = `/personas/${slug}.png`
+    } else if (existsSync(svg)) {
+      copyFileSync(svg, join(out, `${slug}.svg`))
+      avatar = `/personas/${slug}.svg`
+    }
     const at = join(dir, 'PERSONA.md')
-    if (!existsSync(at)) return { slug, name, category }
+    if (!existsSync(at)) return { slug, name, category, ...(avatar ? { avatar } : {}) }
     const md = readFileSync(at, 'utf8')
     writeFileSync(join(out, `${slug}.md`), md)
     const based = field(md, 'based_on')
-    return { slug, name, category, called: field(md, 'name'), about: field(md, 'description'), ...(based ? { based } : {}) }
+    return {
+      slug,
+      name,
+      category,
+      called: field(md, 'name'),
+      about: field(md, 'description'),
+      ...(based ? { based } : {}),
+      ...(avatar ? { avatar } : {}),
+    }
   })
 writeFileSync(join(out, 'index.json'), JSON.stringify(figures))
 console.log(`figures: ${figures.length}, ${figures.filter((f) => f.called).length} with a PERSONA.md`)

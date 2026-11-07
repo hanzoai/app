@@ -30,7 +30,7 @@ describe('the cast reads in the speech service’s own voices', () => {
     expect(new Set(voices).size).toBe(voices.length)
     expect(voiceOf('Hanzo Coder')).toBe(voiceOf('dev'))
     expect(voiceOf('Hanzo Researcher')).toBe(voiceOf('feynman'))
-    expect(voiceOf('Hanzo Support')).toBe(voiceOf('nora'))
+    expect(voiceOf('Hanzo Support')).toBe(voiceOf('su'))
   })
 
   it('reads register and accent off the voice id', () => {
@@ -50,7 +50,7 @@ describe('the browser voice that stands in for a refused platform', () => {
 
   it('matches the cast voice’s accent and register', () => {
     expect(standIn(voiceProfileOf('einstein'), voices)).toBe('Daniel')
-    expect(standIn(voiceProfileOf('maya'), voices)).toBe('Google UK English Female')
+    expect(standIn(voiceProfileOf('mana'), voices)).toBe('Google UK English Female')
     expect(standIn(voiceProfileOf('des'), voices)).toBe('Samantha')
   })
 
