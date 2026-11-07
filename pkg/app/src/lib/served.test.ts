@@ -17,10 +17,10 @@ describe('served', () => {
     expect(served(ids('gpt-x'), 'openrouter/auto')).toBe('gpt-x')
   })
 
-  it('answers a free turn on the free pool', () => {
-    expect(served(ids('enso-auto', 'enso-free', 'other:free'), 'free')).toBe('enso-free')
-    expect(served(ids('enso-auto', 'zen-free'), 'enso-free')).toBe('zen-free')
-    expect(served(ids('enso-auto'), 'enso-free')).toBe('enso-free')
+  it('answers a retired free id on Enso Auto', () => {
+    expect(served(ids('zen6', 'enso-auto'), 'enso-free')).toBe('enso-auto')
+    expect(served(ids('zen6', 'enso-auto'), 'free')).toBe('enso-auto')
+    expect(served(ids('zen6', 'enso-auto'), 'zen-free')).toBe('enso-auto')
   })
 
   it('falls to a house router, then the first model served', () => {
