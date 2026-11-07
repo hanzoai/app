@@ -19,7 +19,7 @@ describe('the default cast', () => {
     expect(TEAM.map((one) => one.seat)).toEqual(TEAM.map((_, i) => i + 1))
     expect(names(TEAM)).toEqual([
       'Vi', 'Fin', 'Dev', 'Mark', 'Opera', 'Des', 'Sal', 'Su', 'Cyber', 'Sci', 'Huma', 'Mana',
-      'Data', 'Lang', 'Ed', 'Art', 'Rev', 'Law', 'Mo', 'Biz', 'Mu', 'Doc', 'Gov',
+      'Data', 'Lang', 'Ed', 'Art', 'Rev', 'Law', 'Mo', 'Biz', 'Mu', 'Doc', 'Gov', 'Grant',
     ])
   })
 
