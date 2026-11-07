@@ -4,7 +4,7 @@
  * for every composer (@hanzo/appearance `composing`, Settings → Appearance).
  * - allowThirdPartyModels: whether 3rd-party models (OpenAI, Anthropic, etc.) are enabled via pre-paid credit (default: false)
  * - approvalMode: whether tools/actions run automatically ('auto') or ask for confirmation first ('manual') (default: 'auto')
- * - effort: the reasoning effort a message asks for (default: high)
+ * - effort: the reasoning effort a message asks for (default: auto, the router decides)
  * - showLanguage: dictation listens in the person's own language rather than Auto
  */
 import { useEffect, useState } from 'react'
@@ -13,7 +13,7 @@ import { EFFORTS, type Effort } from '@hanzo/ui/chat/pure'
 
 export type ApprovalMode = 'auto' | 'manual'
 
-export const DEFAULT_EFFORT: Effort = 'high'
+export const DEFAULT_EFFORT: Effort = 'auto'
 
 export interface ChatPreferences {
   allowThirdPartyModels: boolean
@@ -26,7 +26,7 @@ export interface ChatPreferences {
 const STORAGE_KEY = 'hanzo.chat.preferences'
 const AUTONOMY_KEY = 'hanzo.agent.autonomy'
 const EVENT_NAME = 'hanzo:chat:preferences'
-const EFFORT_SCHEMA_VERSION = 3
+const EFFORT_SCHEMA_VERSION = 4
 
 const DEFAULT_PREFERENCES: ChatPreferences = {
   allowThirdPartyModels: false,
