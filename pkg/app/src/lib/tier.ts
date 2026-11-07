@@ -79,6 +79,10 @@ export interface Tier {
    *  class (free/dev/enterprise) that slug is served under; this is the row
    *  `lib/plans.ts` names, and the one a menu should print. */
   plan: string
+  /** The display name of the plan the served subscription is on ("Unlimited"),
+   *  absent where no subscription serves the subject. It names the plan where
+   *  present, whatever the slug (@hanzo/build `label`). */
+  planName?: string
   tier: TierLimits
   balance: TierBalance
   windows?: TierWindow[]

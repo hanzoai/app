@@ -143,8 +143,8 @@ export const initials = (name: string): string =>
     .map((w) => w.charAt(0).toUpperCase())
     .join('') || '?'
 
-/** The plan by its family, `Max 20x`, from a tier answer; '' with no plan. */
-const planOf = (tier: Tier | null): string => (tier ? spoken(label(tier.plan, tier.tier?.name)) : '')
+/** The plan from a tier answer: its display name (`Unlimited`), else by its family (`Max 20x`); '' with no plan. */
+export const planOf = (tier: Tier | null): string => (tier ? spoken(label(tier.plan, tier.tier?.name, tier.planName)) : '')
 
 /**
  * The token's organizations with IAM's rows beside them: display name, and which
