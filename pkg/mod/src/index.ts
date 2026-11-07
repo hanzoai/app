@@ -3,6 +3,7 @@ export {
   getActivePlatform,
   setActivePlatform,
   applyPlatformTokens,
+  clearPlatformTokens,
   PLATFORM_PROFILES,
   type PlatformId,
   type PlatformProfile,

@@ -196,7 +196,7 @@ describe('a phone’s menu', () => {
         foot: createElement('div', { 'data-slot': 'drawer-foot' }),
       }),
     )
-    expect(at(html, 'Hanzo AI')).toBeLessThan(at(html, 'aria-label="Search"'))
+    expect(at(html, 'Hanzo')).toBeLessThan(at(html, 'aria-label="Search"'))
     expect(at(html, 'New chat')).toBeLessThan(at(html, 'data-slot="places"'))
     expect(at(html, 'data-slot="places"')).toBeLessThan(at(html, 'data-slot="recents"'))
     expect(at(html, 'data-slot="recents"')).toBeLessThan(at(html, 'data-slot="drawer-foot"'))
@@ -214,7 +214,7 @@ describe('the sidebar', () => {
 
   test('Chat: its name, the bell and the search, New chat, then Recents', () => {
     const html = column('chat')
-    expect(at(html, 'Hanzo AI')).toBeLessThan(at(html, 'aria-label="Activity"'))
+    expect(at(html, 'Hanzo')).toBeLessThan(at(html, 'aria-label="Activity"'))
     expect(at(html, 'aria-label="Activity"')).toBeLessThan(at(html, 'aria-label="Search"'))
     expect(at(html, 'aria-label="Search"')).toBeLessThan(at(html, 'New chat'))
     expect(at(html, 'New chat')).toBeLessThan(at(html, 'data-slot="recents"'))
@@ -223,7 +223,7 @@ describe('the sidebar', () => {
 
   test('Dev: its name, then its own places, then Recents; nothing the rail holds', () => {
     const html = column('dev')
-    expect(at(html, 'Hanzo Dev')).toBeLessThan(at(html, 'New run'))
+    expect(at(html, '>Dev<')).toBeLessThan(at(html, 'New run'))
     expect(at(html, 'New run')).toBeLessThan(at(html, 'Templates'))
     expect(at(html, 'Templates')).toBeLessThan(at(html, 'data-slot="recents"'))
     for (const word of ['Library', 'Scheduled tasks', 'Customize', '>Make<', '>Run<', '>Setup<']) expect(html).not.toContain(word)

@@ -12,7 +12,7 @@ import { phrase } from '@hanzo/i18n'
 import { LanguagePicker } from '@hanzo/i18n/react'
 import { useI18n } from '@hanzo/i18n/react'
 import { Box, Button, Input, Text, XStack, YStack } from '@hanzo/ui'
-import { Appearance } from '@hanzo/appearance'
+import { Appearance, apply } from '@hanzo/appearance'
 import { useIam } from '@hanzo/iam/react'
 import { Check, Download, Laptop, Palette, Smartphone, Sparkles, Type, Upload } from 'lucide-react'
 import {
@@ -21,6 +21,7 @@ import {
   PLATFORM_PROFILES,
   BUILTIN_MODS,
   applyMod,
+  clearActiveMod,
   exportMod,
   importMod,
   injectCustomFont,
@@ -30,7 +31,7 @@ import {
 } from '@hanzo/mod'
 import { api } from './lib/api'
 import { useChatPreferences } from './lib/chatPreferences'
-import { useOrg } from './host'
+import { useLook, useOrg } from './host'
 import { EFFORTS } from '@hanzo/ui/chat/pure'
 import { brand } from './where'
 import { tap } from './lib/tap'
@@ -50,6 +51,7 @@ export function Look() {
   const { t } = useI18n()
   const { accessToken } = useIam()
   const org = useOrg()
+  const look = useLook()
   const [chatPrefs, setChatPrefs] = useChatPreferences()
 
   const [activePlatform, setPlatform] = useState<PlatformId | 'auto'>(() => {
@@ -58,14 +60,62 @@ export function Look() {
     return stored ?? 'auto'
   })
 
+  const [activeModId, setActiveModId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const raw = window.localStorage.getItem('hanzo.mod.active')
+      if (!raw) return null
+      const parsed = JSON.parse(raw) as ModTheme
+      return parsed?.id ?? null
+    } catch {
+      return null
+    }
+  })
+
   const [customFont, setCustomFont] = useState('')
   const [fontApplied, setFontApplied] = useState(false)
   const [modJson, setModJson] = useState('')
   const [copiedMod, setCopiedMod] = useState(false)
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onModCleared = () => setActiveModId(null)
+    const onModApplied = (e: Event) => {
+      const detail = (e as CustomEvent<{ mod?: ModTheme }>).detail
+      if (detail?.mod?.id) setActiveModId(detail.mod.id)
+    }
+    window.addEventListener('hanzo:mod:cleared', onModCleared)
+    window.addEventListener('hanzo:mod:applied', onModApplied)
+    return () => {
+      window.removeEventListener('hanzo:mod:cleared', onModCleared)
+      window.removeEventListener('hanzo:mod:applied', onModApplied)
+    }
+  }, [])
+
   const handlePlatformChange = (p: PlatformId | 'auto') => {
     setPlatform(p)
     setActivePlatform(p)
+    if (p === 'auto') {
+      apply(look.pref)
+    }
+  }
+
+  const handleSelectMod = (mod: ModTheme) => {
+    if (activeModId === mod.id) {
+      clearActiveMod()
+      setActiveModId(null)
+      apply(look.pref)
+      return
+    }
+    setActiveModId(mod.id)
+    if (mod.platform) setPlatform(mod.platform)
+    look.set({
+      ...(mod.theme ? { theme: mod.theme } : {}),
+      background: mod.background,
+      accent: mod.accent ?? mod.primary,
+      ...(mod.density ? { density: mod.density } : {}),
+    })
+    applyMod(mod)
   }
 
   const handleApplyFont = () => {
@@ -92,7 +142,7 @@ export function Look() {
     if (!modJson.trim()) return
     try {
       const mod = importMod(modJson.trim())
-      applyMod(mod)
+      handleSelectMod(mod)
       alert(t('Mod "{name}" successfully applied!', { name: mod.name }))
       setModJson('')
     } catch (e: any) {
@@ -165,24 +215,30 @@ export function Look() {
         </Text>
 
         <XStack gap="$2" flexWrap="wrap">
-          {BUILTIN_MODS.map((mod) => (
-            <Box
-              render={<button type="button" />}
-              key={mod.id}
-              {...tap}
-              onClick={() => applyMod(mod)}
-              {...CHOICE}
-              py={6}
-              px={12}
-              bg="transparent"
-              borderColor="var(--white-10)"
-              hoverStyle={{ bg: '$hover' }}
-            >
-              <Text fontSize="$2" color="$ink">
-                {mod.name}
-              </Text>
-            </Box>
-          ))}
+          {BUILTIN_MODS.map((mod) => {
+            const active = activeModId === mod.id
+            return (
+              <Box
+                render={<button type="button" />}
+                key={mod.id}
+                {...tap}
+                onClick={() => handleSelectMod(mod)}
+                {...CHOICE}
+                py={6}
+                px={12}
+                bg={active ? 'var(--edge, var(--white-14))' : 'transparent'}
+                borderColor={active ? 'var(--borderColor, var(--white-22))' : 'var(--white-10)'}
+                hoverStyle={{ bg: '$hover' }}
+              >
+                <XStack items="center" gap="$1.5">
+                  <Text fontSize="$2" fontWeight={active ? '600' : '400'} color="$ink">
+                    {mod.name}
+                  </Text>
+                  {active ? <Check size={12} color="var(--primary)" aria-hidden /> : null}
+                </XStack>
+              </Box>
+            )
+          })}
         </XStack>
 
         {/* Custom Font Uploader / Input */}

@@ -608,12 +608,18 @@ export function AppContextMenu({
           },
           ...(host.chooseTheme
             ? [
-                {
-                  key: 'stage-theme',
-                  label: t(host.theme === 'light' ? 'Switch to Dark theme' : 'Switch to Light theme'),
-                  icon: host.theme === 'light' ? <Moon size={15} aria-hidden /> : <Sun size={15} aria-hidden />,
-                  run: () => host.chooseTheme?.(host.theme === 'light' ? 'dark' : 'light'),
-                },
+                (() => {
+                  const isLight =
+                    typeof document !== 'undefined'
+                      ? document.documentElement.classList.contains('light')
+                      : host.theme === 'light'
+                  return {
+                    key: 'stage-theme',
+                    label: t(isLight ? 'Switch to Dark theme' : 'Switch to Light theme'),
+                    icon: isLight ? <Moon size={15} aria-hidden /> : <Sun size={15} aria-hidden />,
+                    run: () => host.chooseTheme?.(isLight ? 'dark' : 'light'),
+                  }
+                })(),
               ]
             : []),
           {

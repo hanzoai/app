@@ -34,6 +34,7 @@
 import { useMemo } from 'react'
 import { useLook, useHost } from './host'
 import { useIam } from '@hanzo/iam/react'
+import { clearActiveMod } from '@hanzo/mod'
 import { useSignOut } from './lib/signout'
 import { administers, path, route, type Host } from '@hanzo/build'
 import { bearer, named, org, orgs, pick } from './lib/session'
@@ -101,7 +102,7 @@ export function useDevHost(): Host {
 
   return useMemo<Host>(
     () => ({
-      name: 'Hanzo Dev',
+      name: 'Dev',
       api: api(),
       token: bearer,
       org: scoped,
@@ -114,7 +115,14 @@ export function useDevHost(): Host {
         window.location.assign(app(''))
       },
       theme: theme(look.pref.theme),
-      chooseTheme: (t) => look.set({ theme: theme(t) }),
+      chooseTheme: (t) => {
+        clearActiveMod()
+        look.set({
+          theme: theme(t),
+          ...(look.pref.background !== undefined ? { background: undefined } : {}),
+          ...(look.pref.contrast !== undefined ? { contrast: undefined } : {}),
+        })
+      },
       person: signedIn ? { name, email, avatar } : null,
       admin: administers(bearer(), scoped),
       path: here,

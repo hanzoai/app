@@ -23,9 +23,10 @@
  * React context, and an app reads them with `useHost()`.
  */
 
-import { createContext, useContext, type AnchorHTMLAttributes, type ComponentType, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, type AnchorHTMLAttributes, type ComponentType, type ReactNode } from 'react'
 import { useIam, useOrganizations } from '@hanzo/iam/react'
 import { useAppearance } from '@hanzo/appearance'
+import { applyPlatformTokens, restoreActiveMod, type PlatformId } from '@hanzo/mod'
 import { api } from './lib/api'
 
 /** A link the host's router owns: next/link under Next, an anchor elsewhere. */
@@ -103,7 +104,18 @@ export function useLook(): ReturnType<typeof useAppearance> {
  * keeps their choice in step with IAM.
  */
 export function Look() {
+  const org = useOrg()
   useLook()
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const storedPlatform = window.localStorage.getItem('hanzo.mod.platform') as PlatformId | null
+      if (storedPlatform) applyPlatformTokens(storedPlatform)
+      restoreActiveMod(org.id)
+    } catch {
+      // ignore storage errors
+    }
+  }, [org.id])
   return null
 }
 

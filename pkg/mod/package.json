@@ -1,6 +1,9 @@
 {
   "name": "@hanzo/mod",
-  "version": "0.1.1",
+  "version": "0.1.2",
+  "files": [
+    "dist"
+  ],
   "description": "Native OS look/feel customization, custom fonts, and mod themes for Hanzo.",
   "type": "module",
   "main": "./dist/index.js",

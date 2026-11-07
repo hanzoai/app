@@ -114,6 +114,31 @@ export function getActivePlatform(): PlatformId {
   return detectPlatform()
 }
 
+const PLATFORM_CSS_VARS = [
+  '--platform-font-sans',
+  '--platform-font-mono',
+  '--platform-radius-card',
+  '--platform-radius-pill',
+  '--glass-blur',
+  '--glass-saturate',
+  '--font-sans',
+  '--font-display',
+  '--font-mono',
+  '--pane-round',
+  '--radius-scale',
+  '--chrome-blur',
+  '--pane-blur',
+] as const
+
+/** Clears inline platform token overrides from documentElement */
+export function clearPlatformTokens(): void {
+  if (typeof document === 'undefined') return
+  const root = document.documentElement
+  for (const prop of PLATFORM_CSS_VARS) {
+    root.style.removeProperty(prop)
+  }
+}
+
 /** Sets the user's preferred platform customization */
 export function setActivePlatform(platform: PlatformId | 'auto'): void {
   if (typeof window === 'undefined') return
@@ -126,7 +151,14 @@ export function setActivePlatform(platform: PlatformId | 'auto'): void {
   } catch {
     // ignore storage restrictions
   }
-  applyPlatformTokens(platform === 'auto' ? detectPlatform() : platform)
+  if (platform === 'auto') {
+    clearPlatformTokens()
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-platform', detectPlatform())
+    }
+  } else {
+    applyPlatformTokens(platform)
+  }
   window.dispatchEvent(new CustomEvent('hanzo:mod:change', { detail: { platform } }))
 }
 
@@ -135,12 +167,25 @@ export function applyPlatformTokens(platform: PlatformId): void {
   if (typeof document === 'undefined') return
   const profile = PLATFORM_PROFILES[platform] ?? PLATFORM_PROFILES.ios
   const root = document.documentElement
+  const radiusCardPx = typeof profile.radiusCard === 'number' ? `${profile.radiusCard}px` : profile.radiusCard
+  const radiusPillPx = typeof profile.radiusPill === 'number' ? `${profile.radiusPill}px` : profile.radiusPill
+  const radiusScale =
+    typeof profile.radiusCard === 'number'
+      ? String(Math.round((profile.radiusCard / 12) * 100) / 100)
+      : '1'
 
   root.setAttribute('data-platform', profile.id)
   root.style.setProperty('--platform-font-sans', profile.fontFamily)
   root.style.setProperty('--platform-font-mono', profile.fontMono)
-  root.style.setProperty('--platform-radius-card', typeof profile.radiusCard === 'number' ? `${profile.radiusCard}px` : profile.radiusCard)
-  root.style.setProperty('--platform-radius-pill', typeof profile.radiusPill === 'number' ? `${profile.radiusPill}px` : profile.radiusPill)
+  root.style.setProperty('--platform-radius-card', radiusCardPx)
+  root.style.setProperty('--platform-radius-pill', radiusPillPx)
   root.style.setProperty('--glass-blur', `${profile.glassBlur}px`)
   root.style.setProperty('--glass-saturate', `${profile.glassSaturate}%`)
+  root.style.setProperty('--font-sans', `var(--font-arabic), ${profile.fontFamily}`)
+  root.style.setProperty('--font-display', `var(--font-arabic), ${profile.fontFamily}`)
+  root.style.setProperty('--font-mono', `var(--font-arabic), ${profile.fontMono}`)
+  root.style.setProperty('--pane-round', radiusCardPx)
+  root.style.setProperty('--radius-scale', radiusScale)
+  root.style.setProperty('--chrome-blur', `${profile.glassBlur}px`)
+  root.style.setProperty('--pane-blur', `${Math.round(profile.glassBlur * 1.5)}px`)
 }
