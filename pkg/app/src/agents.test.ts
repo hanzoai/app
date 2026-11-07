@@ -1,10 +1,11 @@
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getPersonaMd, team } from '@hanzo/personas'
 import { beforeAll, describe, expect, test } from 'vitest'
-import { BOTS, CAST, LEAD_AGENTS, draft, handle, line, ordered, title, type Figure } from './agents'
+import { CAST, draft, handle, line, ordered, title, type Figure } from './agents'
 import { TEAM } from './team'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -13,9 +14,14 @@ const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
 const names = (list: readonly { name: string }[]) => list.map((one) => one.name)
 
 describe('the default cast', () => {
-  test('is every member @hanzo/personas publishes as the team, Dev first', () => {
+  test('is every member @hanzo/personas publishes as the team, in seat order', () => {
     expect(TEAM.map((one) => one.id).sort()).toEqual(team().map((one) => one.id).sort())
-    expect(names(TEAM)).toEqual(['Dev', 'Des', 'Vi', 'Feynman', 'Einstein', 'Nora', 'Maya', 'Leo'])
+    expect(TEAM.map((one) => one.seat)).toEqual(TEAM.map((_, i) => i + 1))
+    expect(names(TEAM)).toEqual([
+      'Vi', 'Fin', 'Dev', 'Mark', 'Opera', 'Des', 'Sal', 'Su', 'Cyber', 'Sci', 'Huma', 'Mana',
+      'Data', 'Lang', 'Edu', 'Art', 'Rev', 'Law', 'Vid', 'Biz', 'Mu', 'Doc', 'Gov', 'Cust',
+      'Com', 'IT', 'QA', 'Auto', 'Proc', 'Supply', 'Corp', 'Comp', 'Risk', 'Audit',
+    ])
   })
 
   test('stands in for nobody: an org with no agents has none to show', () => {
@@ -24,30 +30,40 @@ describe('the default cast', () => {
     expect(ordered(null)).toEqual([])
   })
 
-  test('includes all 17 default Team agents and all 27 autonomous 24/7 Bots, each with a valid name, model, avatar and instructions', () => {
-    expect(LEAD_AGENTS).toHaveLength(17)
-    expect(BOTS).toHaveLength(27)
-    expect(CAST).toEqual([...LEAD_AGENTS, ...BOTS])
-    expect(LEAD_AGENTS.slice(0, 8).map((c) => c.name)).toEqual(TEAM.map((one) => one.id))
-    for (const c of CAST) {
+  test('is the team and nothing else: one agent per seat, as its file writes it, wearing its memoji', () => {
+    expect(names(CAST)).toEqual(TEAM.map((one) => one.id))
+    for (const [i, c] of CAST.entries()) {
+      const one = TEAM[i]!
+      expect(c).toEqual({
+        name: one.id,
+        title: one.name,
+        category: 'Team',
+        description: `${one.name} — ${one.role}`,
+        model: one.model,
+        instructions: one.instructions,
+        avatar: `/agents/${one.id}.png`,
+        tools: one.tools,
+      })
       expect(c.name).toMatch(NAME)
-      expect(c.model).toBeTruthy()
-      expect(c.avatar).toBeTruthy()
-      expect(c.instructions.length).toBeGreaterThan(50)
+      expect(c.title).toMatch(/^[A-Za-z]+$/)
+      expect(c.instructions.length).toBeGreaterThan(100)
     }
-    for (const b of BOTS) {
-      expect(b.category).toBe('Bot')
-      expect(b.executionMode).toBe('long-running')
-      expect(b.schedule).toBeTruthy()
-      expect(b.triggers?.length).toBeGreaterThan(0)
-    }
-    expect(CAST[0]).toMatchObject({ name: 'dev', description: 'Dev — Engineer', avatar: '/agents/dev.png' })
-    expect(CAST[0]!.instructions.length).toBeGreaterThan(100)
+    expect(CAST[0]).toMatchObject({ name: 'vi', title: 'Vi', description: 'Vi — CEO/Vision', model: 'enso' })
   })
+
+  test('every face is the member’s memoji, copied from the package at build', () => {
+    execFileSync(process.execPath, [join(ROOT, 'scripts', 'team.mjs')], { cwd: ROOT, stdio: 'ignore' })
+    const memoji = join(dirname(createRequire(import.meta.url).resolve('@hanzo/personas/package.json')), 'assets', 'memoji')
+    for (const c of CAST) {
+      const at = join(ROOT, 'assets', c.avatar!.slice(1))
+      expect(existsSync(at)).toBe(true)
+      expect(readFileSync(at).equals(readFileSync(join(memoji, `${c.name}.png`)))).toBe(true)
+    }
+  }, 30_000)
 })
 
 describe('the shelf’s order', () => {
-  test('the core team’s rows lead in the crew’s order, whatever their case, and the rest follow as listed', () => {
+  test('the team’s rows lead in seat order, whatever their case, and the rest follow as listed', () => {
     const org = [
       { id: 'agent_zed', name: 'zed' },
       { id: 'agent_des', name: 'des', avatar: 'data:image/png;base64,AA' },

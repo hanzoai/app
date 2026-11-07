@@ -42,29 +42,20 @@ export interface MeetingAgent {
   voice: string
 }
 
-/** Roles this screen writes, keyed by member id. A part the screen does not author stays the persona's. */
-const PARTS: Record<string, string> = {
-  maya: phrase('Chief of Staff'),
-  des: phrase('Designer'),
-  vi: phrase('Strategist'),
-  nora: phrase('Support Lead'),
-  einstein: phrase('Legal & IP Counsel'),
-}
-
-/** A core member as a meeting seats them: the team's name and part, the cast's voice. */
+/** A team member as a meeting seats them: the team's name and part, the cast's voice. */
 const seated = (id: string): MeetingAgent => {
   const one = member(id)!
-  return { id, name: one.name, role: PARTS[id] ?? one.role, voice: voiceOf(id) }
+  return { id, name: one.name, role: one.role, voice: voiceOf(id) }
 }
 
 export const AVAILABLE_MEETING_AGENTS: MeetingAgent[] = [
   { id: 'hanzo-coder', name: 'Hanzo Coder', role: phrase('Engineering Lead & Coder'), voice: voiceOf('Hanzo Coder') },
   { id: 'hanzo-researcher', name: 'Hanzo Researcher', role: phrase('Research & DeSci Scientist'), voice: voiceOf('Hanzo Researcher') },
-  seated('maya'),
+  seated('opera'),
   seated('des'),
   seated('vi'),
-  seated('nora'),
-  seated('einstein'),
+  seated('su'),
+  seated('law'),
   { id: 'zach', name: 'Zach', role: phrase('Quantitative Analyst'), voice: voiceOf('zach') },
 ]
 
@@ -107,7 +98,7 @@ const DEFAULT_MEETINGS: ScheduledMeeting[] = [
     duration: '60m',
     host: phrase('Research'),
     participants: ['Alex', 'Research Team'],
-    agents: ['Hanzo Researcher', 'Maya'],
+    agents: ['Hanzo Researcher', 'Opera'],
     botInvited: true,
     url: 'https://meet.hanzo.ai/research-review',
   },
@@ -120,7 +111,7 @@ const DEFAULT_MEETINGS: ScheduledMeeting[] = [
     duration: '30m',
     host: phrase('Security'),
     participants: ['Alex', 'Core Developers'],
-    agents: ['Des', 'Einstein'],
+    agents: ['Des', 'Law'],
     botInvited: false,
     url: 'https://meet.hanzo.ai/security-sync',
   },

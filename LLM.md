@@ -335,17 +335,20 @@ Paths below are under `pkg/app`.
   (lib/signout, the account menu's). Under gui's `md` the account folds into its
   face, a menu of the address and the same two ways out. Signed out, the brand
   alone. It reads the session from `IamProvider` and its copy through `t()`.
-- `src/team.gen.ts` — the core team's persona files as strings, generated from
+- `src/team.gen.ts` — the team's persona files as strings, generated from
   `@hanzo/personas` by `scripts/team.mjs`, so no host needs an asset loader:
-  every member the package publishes, in the crew's order (`ORDER`, then any
-  other). That list is the default cast (`team.ts` `TEAM`).
+  every member the package publishes. `team.ts` `TEAM` parses them and draws
+  them in seat order (1 to 34); that list is the default cast. Moving the
+  catalog pin is the only way a member changes.
 - `src/lib/integrations.ts` — the integrations catalogue, the one copy:
   hanzo.ai's /integrations pages render it, Directory's "Works with" tab lists
   it (loaded when the tab opens).
 - `src/lib/terms.ts` — the Terms and AUP versions (`POLICY`), the one copy:
   hanzo.ai's legal pages print them, every sign-up card records them.
 - `assets/` — the files the apps name by path: the cast's portraits
-  (`assets/agents`, `/agents/<id>.png` in `cast.tsx`), the Bots app's
+  (`assets/agents`, `/agents/<id>.png` in `cast.tsx`; every team member's is its
+  memoji, copied from the package's `assets/memoji/<id>.png` by
+  `scripts/team.mjs` and committed beside `team.gen.ts`), the Bots app's
   avatars (`assets/bots`) and the personas roster (`assets/personas`, written
   by `scripts/team.mjs` at build and ignored by git: `index.json` lists every
   figure, `<slug>.md` is a figure's PERSONA.md where one is written). A host
@@ -588,16 +591,21 @@ catalog files under Enso or Zen (`house`).
 ## Agents
 
 - The composer's `+` › Agents is `useAgentShelf()` (crew.tsx): the org's own
-  agents (`useCrew`), the core team's first (agents.ts `ordered`), each by its
+  agents (`useCrew`), the team's first in seat order (agents.ts `ordered`), each by its
   `Face` at 16px. Nothing stands in for an agent the org has not added: a new
   org has none and loads none until Customize › Agents' Add default agents makes
-  the cast (agents.ts `CAST`: the core team, then QA, Ops and Support, each with
+  the cast (agents.ts `CAST`: the team, one agent per seat and nothing else, each with
   a $10 a month, $1 a run budget; @hanzo/build `hire`). On is
   in the open conversation (`useOpen().agents`) and a pick toggles it there
   (`openAgent`). Create agent and Browse personas open `Hire` through `make()`;
   the host mounts `<AgentMaker />` once beside the composer to draw it. Manage
   agents is Dev's Customize › Agents (`app('-/customize/agents')`). The Shelf,
   Row and Link types are @hanzo/ui/chat's, re-exported by agents.ts.
+- Customize › Agents › Browse is @hanzo/build's and lists the host's `cast`
+  (dev.tsx passes `CAST`) and nothing else: the 34 seats, each wearing
+  `/agents/<id>.png`. The platform's chat presets (`/v1/agent/chat/presets`,
+  such as `create`, "Product & Fashion Create") are modes of a chat round, not
+  agents, and Browse does not offer them (@hanzo/build 0.2.111).
 - `Hire` (New agent) starts from a persona: @hanzo/personas' figures, fetched
   from `/personas/index.json`, fill the name, the instructions (the figure's
   PERSONA.md body word for word, or one paragraph saying who it is where none is

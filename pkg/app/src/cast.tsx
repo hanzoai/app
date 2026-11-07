@@ -60,18 +60,18 @@ interface Role {
   voice: string
 }
 
-/** The named crew, keyed by the persona's @-handle. */
+/**
+ * The named crew, keyed by the persona's @-handle. Every member of the team
+ * (team.ts) wears its memoji, `/agents/<id>.png`, without an entry here
+ * (`roleOf`); an entry casts a member's voice, or names a character who is not
+ * on the team.
+ */
 export const CAST: Record<string, Role> = {
-  // The core team first, in the order the crew is drawn (team.ts). Des and Vi's
-  // grounds are their own rim light pulled to the register the crew below sits
-  // in: both wear black and have dark hair, so on a dark page an ungrounded
-  // cut-out is a floating head.
-  //
-  // Dev wears its own memoji (black ground baked in, so it fills the disc and
-  // needs no rim colour); hanzo coder is that same face under the house name.
+  // The memoji fills the disc with its own ground, so a member names none.
+  // Hanzo coder is Dev's face under the house name.
   dev: { portrait: '/agents/dev.png', voice: 'am_michael' },
-  des: { portrait: '/agents/des.png', ground: '#74569F', voice: 'af_bella' },
-  vi: { portrait: '/agents/vi.png', ground: '#41649F', voice: 'am_fenrir' },
+  des: { portrait: '/agents/des.png', voice: 'af_bella' },
+  vi: { portrait: '/agents/vi.png', voice: 'am_fenrir' },
   antje: { portrait: '/agents/antje.jpg', voice: 'af_nova' },
   zach: { portrait: '/agents/zach.jpg', voice: 'am_onyx' },
   feynman: { portrait: '/agents/feynman.png', ground: '#9C7C4F', voice: 'am_puck' },
@@ -96,13 +96,17 @@ export const CAST: Record<string, Role> = {
   'hanzo support': { portrait: '/agents/nora.png', voice: 'af_heart' },
 }
 
-/** The role for an agent name, or undefined for one nobody cast. */
-export const roleOf = (name: string | undefined): Role | undefined => CAST[name?.toLowerCase() ?? '']
+/** The role for an agent name: its entry, a team member's memoji, or undefined for one nobody cast. */
+export function roleOf(name: string | undefined): Role | undefined {
+  const key = name?.toLowerCase() ?? ''
+  const one = member(key)
+  return CAST[key] ?? (one ? { portrait: `/agents/${one.id}.png`, voice: fallbackVoice(name) } : undefined)
+}
 
 /** A core member's system prompt, as hanzoai/personas writes it, or undefined for anyone else. */
 export const speaksOf = (name: string | undefined): string | undefined => member(name)?.instructions
 
-/** Names as a sentence lists them: "Feynman", "Feynman & Einstein", "Feynman, Einstein & Vi". */
+/** Names as a sentence lists them: "Dev", "Dev & Des", "Dev, Des & Vi". */
 export const join = (names: string[], t: Say = english): string =>
   names.length < 2 ? (names[0] ?? '') : t('{names} & {last}', { names: names.slice(0, -1).join(', '), last: names[names.length - 1] })
 

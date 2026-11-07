@@ -61,12 +61,12 @@ describe('the Agents shelf', () => {
     expect(went).toEqual(['/dev/customize/agents'])
   })
 
-  test('lists the org’s agents, the core team’s first by name and part, the rest under their own names', () => {
+  test('lists the org’s agents, the team’s first by name and part, the rest under their own names', () => {
     org.agents = [{ id: 'agent_ops', name: 'ops' }, { id: 'agent_dev', name: 'dev' }]
     const s = shelf()
     expect(s.rows.map((r) => r.id)).toEqual(['dev', 'ops'])
     expect(s.rows[0].label).toBe('Dev')
-    expect(s.rows[0].note).toBe('Engineer')
+    expect(s.rows[0].note).toBe('Development')
     expect(s.rows.at(-1)?.label).toBe('ops')
   })
 
