@@ -3,7 +3,7 @@
 // and the New agent sheet read these, and the tests run them in Node.
 
 import type { Host } from '@hanzo/build'
-import { TEAM } from './team'
+import { TEAM, after } from './team'
 
 export type { Link, Shelf, ShelfRow as Row } from '@hanzo/ui/chat'
 
@@ -52,7 +52,7 @@ export const RUNS: Readonly<Record<string, Required<Pick<Cast, 'schedule' | 'tri
 /**
  * The default agents (Customize › Agents, @hanzo/build `cast`): the team
  * hanzoai/personas publishes, one per seat in seat order, each as its file writes
- * it and wearing its memoji. The twelve leads are offered under Team; every
+ * it, wearing its memoji and naming who it is drawn from (`after`). The twelve leads are offered under Team; every
  * other seat is a Bot, offered to run 24/7 on its `RUNS`. An org starts with
  * none of them and loads none until it adds them.
  */
@@ -64,6 +64,7 @@ export const CAST: NonNullable<Host['cast']> = TEAM.map((one) => ({
   model: one.model,
   instructions: one.instructions,
   avatar: `/agents/${one.id}.png`,
+  after: after(one),
   tools: one.tools,
   ...(one.lead ? {} : { executionMode: 'long-running' as const, ...RUNS[one.id] }),
 }))

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { getPersonaMd, team } from '@hanzo/personas'
 import { beforeAll, describe, expect, test } from 'vitest'
 import { CAST, RUNS, draft, handle, line, ordered, title, type Figure } from './agents'
-import { TEAM } from './team'
+import { TEAM, after } from './team'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 /** The agents API's name rule (cloud apps/agents `nameRE`). */
@@ -19,7 +19,7 @@ describe('the default cast', () => {
     expect(TEAM.map((one) => one.seat)).toEqual(TEAM.map((_, i) => i + 1))
     expect(names(TEAM)).toEqual([
       'Vi', 'Fin', 'Dev', 'Mark', 'Opera', 'Des', 'Sal', 'Su', 'Cyber', 'Sci', 'Huma', 'Mana',
-      'Data', 'Lang', 'Edu', 'Art', 'Rev', 'Law', 'Vid', 'Biz', 'Mu', 'Doc', 'Gov', 'Cust',
+      'Data', 'Lang', 'Ed', 'Art', 'Rev', 'Law', 'Mo', 'Biz', 'Mu', 'Doc', 'Gov', 'Cust',
       'Com', 'IT', 'QA', 'Auto', 'Proc', 'Supply', 'Corp', 'Comp', 'Risk', 'Audit',
     ])
   })
@@ -42,6 +42,7 @@ describe('the default cast', () => {
         model: one.model,
         instructions: one.instructions,
         avatar: `/agents/${one.id}.png`,
+        after: after(one),
         tools: one.tools,
         ...(one.lead ? {} : { executionMode: 'long-running', ...RUNS[one.id] }),
       })
@@ -50,6 +51,13 @@ describe('the default cast', () => {
       expect(c.instructions.length).toBeGreaterThan(100)
     }
     expect(CAST[0]).toMatchObject({ name: 'vi', title: 'Vi', description: 'Vi — CEO/Vision', model: 'enso' })
+  })
+
+  test('names, for every seat, the three figures it is drawn from, as their PERSONA.md names them', () => {
+    for (const c of CAST) expect(c.after, c.name).toHaveLength(3)
+    expect(CAST.find((c) => c.name === 'mark')!.after).toEqual(['Ogilvy', 'Bernbach', 'Burnett'])
+    expect(CAST.find((c) => c.name === 'vid')).toMatchObject({ title: 'Mo', description: 'Mo — Motion Pictures', after: ['Kubrick', 'Kurosawa', 'Hitchcock'] })
+    expect(CAST.find((c) => c.name === 'edu')).toMatchObject({ title: 'Ed', description: 'Ed — Education' })
   })
 
   test('offers the twelve leads under Team and every other seat as a Bot that runs 24/7 on its schedule and triggers', () => {

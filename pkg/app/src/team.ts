@@ -9,7 +9,7 @@
 // Every member the package publishes, in seat order: this is the default cast.
 
 import { parse, type Member } from '@hanzo/personas/team.js'
-import { FILES } from './team.gen'
+import { FILES, NAMES } from './team.gen'
 
 export type { Member }
 
@@ -18,6 +18,9 @@ export const TEAM: readonly Member[] = Object.entries(FILES)
   .sort((a, b) => a.seat - b.seat)
 
 const BY_ID = new Map(TEAM.map((one) => [one.id, one]))
+
+/** Who a member is drawn from, by the names they go by: Mark is after Ogilvy, Bernbach and Burnett. */
+export const after = (one: Member): string[] => one.exemplars.map((id) => NAMES[id]!)
 
 /** The core member an agent name refers to, whatever its case, or undefined. */
 export const member = (name: string | undefined): Member | undefined => BY_ID.get(name?.toLowerCase() ?? '')

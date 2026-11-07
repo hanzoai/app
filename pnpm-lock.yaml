@@ -13,8 +13,8 @@ catalogs:
       specifier: 0.2.14
       version: 0.2.14
     '@hanzo/build':
-      specifier: https://github.com/hanzoai/build/releases/download/v0.2.112/hanzo-build-0.2.112.tgz
-      version: 0.2.112
+      specifier: https://github.com/hanzoai/build/releases/download/v0.2.114/hanzo-build-0.2.114.tgz
+      version: 0.2.114
     '@hanzo/composer':
       specifier: 0.2.0
       version: 0.2.0
@@ -34,8 +34,8 @@ catalogs:
       specifier: 1.0.26
       version: 1.0.26
     '@hanzo/personas':
-      specifier: 1.2.0
-      version: 1.2.0
+      specifier: 1.2.2
+      version: 1.2.2
     '@hanzo/studio':
       specifier: 0.1.0
       version: 0.1.0
@@ -118,7 +118,7 @@ importers:
         version: link:../mod
       '@hanzo/personas':
         specifier: 'catalog:'
-        version: 1.2.0
+        version: 1.2.2
       marked:
         specifier: 'catalog:'
         version: 18.0.12
@@ -134,7 +134,7 @@ importers:
         version: 0.2.14(react@19.2.8)
       '@hanzo/build':
         specifier: 'catalog:'
-        version: https://github.com/hanzoai/build/releases/download/v0.2.112/hanzo-build-0.2.112.tgz(e02d12dfc71e840123156be62893aa42)
+        version: https://github.com/hanzoai/build/releases/download/v0.2.114/hanzo-build-0.2.114.tgz(e02d12dfc71e840123156be62893aa42)
       '@hanzo/composer':
         specifier: 'catalog:'
         version: 0.2.0(@hanzo/gui@8.3.5(react-dom@19.2.8(react@19.2.8))(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(react@19.2.8))(react@19.2.8)
@@ -158,7 +158,7 @@ importers:
         version: 1.0.26(react@19.2.8)
       '@hanzo/studio':
         specifier: 'catalog:'
-        version: 0.1.0(79e10477db91e6585f6e06e4eb706792)
+        version: 0.1.0(c60e27a8ad9569669c79ce947fb1f0f3)
       '@hanzo/tabs':
         specifier: 'catalog:'
         version: https://codeload.github.com/hanzo-inc/tabs/tar.gz/0f1f9dc0069d68dd50c9a5aaa03a12171730a171(@hanzo/gui@8.3.5(react-dom@19.2.8(react@19.2.8))(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(react@19.2.8))(@hanzo/ui@https://github.com/hanzoai/ui/releases/download/v8.29.48/hanzo-ui-8.29.48.tgz(ddc784c5f7c44e0985a53aa174d591a5))(lucide-react@1.42.0(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -651,9 +651,9 @@ packages:
       react:
         optional: true
 
-  '@hanzo/build@https://github.com/hanzoai/build/releases/download/v0.2.112/hanzo-build-0.2.112.tgz':
-    resolution: {integrity: sha512-HYiUqSI8qtIj3f6c0Dn3Iz8Ul9xiFgLVawk/VjaKKRGExos9Wb5afydXKrxB85TpKliQ/lrDjAoG/eMLNx0szg==, tarball: https://github.com/hanzoai/build/releases/download/v0.2.112/hanzo-build-0.2.112.tgz}
-    version: 0.2.112
+  '@hanzo/build@https://github.com/hanzoai/build/releases/download/v0.2.114/hanzo-build-0.2.114.tgz':
+    resolution: {integrity: sha512-3mteDAO1HVX4I0QE7Slb32N4pwFSEdW+9DNQL3GWXZHcmB2yjqbRweX8RhFh1OtXcdduPssSbMi84ozVd2viMQ==, tarball: https://github.com/hanzoai/build/releases/download/v0.2.114/hanzo-build-0.2.114.tgz}
+    version: 0.2.114
     engines: {node: '>=22.18'}
     peerDependencies:
       '@hanzo/composer': '>=0.2.0'
@@ -753,8 +753,8 @@ packages:
       react:
         optional: true
 
-  '@hanzo/personas@1.2.0':
-    resolution: {integrity: sha512-IPQEqTzZDPU5MPOKMV1R7wRa65oFn+fHiRw8Ut0NlISe0M3zdSKWQnJ6G0bqA7zaO/G5ssUSr5/9Cu8esknwjw==}
+  '@hanzo/personas@1.2.2':
+    resolution: {integrity: sha512-KFQVTpCUEXLAGR6dA0Oas9H1qeiQJwaTpD14xH0BqArRXllSK2KoNO2dHGJZkAI3skL8bg3dLKcDXers1scJIw==}
 
   '@hanzo/plans@1.8.9':
     resolution: {integrity: sha512-Sbjm/6KhllxWUByBynO0PpwxHwrAADYLce2ZQcC4xtNVkSiba9EwMUAOz5KUque7Yp8VPxvUuQ6PtbUppadVWw==}
@@ -3880,7 +3880,7 @@ snapshots:
     optionalDependencies:
       react: 19.2.8
 
-  '@hanzo/build@https://github.com/hanzoai/build/releases/download/v0.2.112/hanzo-build-0.2.112.tgz(e02d12dfc71e840123156be62893aa42)':
+  '@hanzo/build@https://github.com/hanzoai/build/releases/download/v0.2.114/hanzo-build-0.2.114.tgz(e02d12dfc71e840123156be62893aa42)':
     dependencies:
       '@hanzo/composer': 0.2.0(@hanzo/gui@8.3.5(react-dom@19.2.8(react@19.2.8))(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(react@19.2.8))(react@19.2.8)
       '@hanzo/gui': 8.3.5(react-dom@19.2.8(react@19.2.8))(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(react@19.2.8)
@@ -4023,7 +4023,7 @@ snapshots:
     optionalDependencies:
       react: 19.2.8
 
-  '@hanzo/personas@1.2.0': {}
+  '@hanzo/personas@1.2.2': {}
 
   '@hanzo/plans@1.8.9':
     optional: true
@@ -4033,9 +4033,9 @@ snapshots:
       '@hanzogui/lucide-icons-2': 8.3.5(react-dom@19.2.8(react@19.2.8))(react-native-svg@15.15.5(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(react@19.2.8))(react@19.2.8)
       react: 19.2.8
 
-  '@hanzo/studio@0.1.0(79e10477db91e6585f6e06e4eb706792)':
+  '@hanzo/studio@0.1.0(c60e27a8ad9569669c79ce947fb1f0f3)':
     dependencies:
-      '@hanzo/build': https://github.com/hanzoai/build/releases/download/v0.2.112/hanzo-build-0.2.112.tgz(e02d12dfc71e840123156be62893aa42)
+      '@hanzo/build': https://github.com/hanzoai/build/releases/download/v0.2.114/hanzo-build-0.2.114.tgz(e02d12dfc71e840123156be62893aa42)
       '@hanzo/composer': 0.2.0(@hanzo/gui@8.3.5(react-dom@19.2.8(react@19.2.8))(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(react@19.2.8))(react@19.2.8)
       '@hanzo/gui': 8.3.5(react-dom@19.2.8(react@19.2.8))(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(react@19.2.8)
       '@hanzo/ui': https://github.com/hanzoai/ui/releases/download/v8.29.48/hanzo-ui-8.29.48.tgz(ddc784c5f7c44e0985a53aa174d591a5)
