@@ -75,6 +75,8 @@ const placePath = (id: string, mode: Place['mode']): string | null => {
       return app('templates')
     case 'agents':
       return app('-/customize/agents')
+    case 'bots':
+      return app('-/customize/bots')
     case 'skills':
       return app('-/customize/skills')
     case 'connectors':

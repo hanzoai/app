@@ -56,7 +56,7 @@ vi.mock('@hanzo/build', () => {
     useLanguage: () => ['', () => {}] as const,
     NEW: 'new',
     own: () => [group('work', 'Work', ['New run', 'Projects', 'Issues', 'Templates'])],
-    tabs: () => [group('customize', '', ['Agents', 'Skills', 'Connectors', 'Plugins'])],
+    tabs: () => [group('customize', '', ['Agents', 'Bots', 'Skills', 'Connectors', 'Plugins'])],
     library: () => [group('library-do', '', ['Upload']), group('library-kinds', '', ['All', 'Images', 'Documents'])],
     useScheduled: () => [group('scheduled-do', '', ['New task']), group('scheduled-tasks', 'Tasks', ['Morning brief'])],
   }
@@ -235,7 +235,8 @@ describe('the sidebar', () => {
     expect(at(customize, 'aria-label="Back"')).toBeLessThan(at(customize, '>Customize<'))
     for (const word of ['New run', 'data-slot="recents"', 'aria-label="Search"']) expect(customize).not.toContain(word)
     expect(at(customize, '>Customize<')).toBeLessThan(at(customize, 'Agents'))
-    expect(at(customize, 'Agents')).toBeLessThan(at(customize, 'Skills'))
+    expect(at(customize, 'Agents')).toBeLessThan(at(customize, 'Bots'))
+    expect(at(customize, 'Bots')).toBeLessThan(at(customize, 'Skills'))
     const library = column('dev', '-/artifacts')
     expect(at(library, '>Library<')).toBeLessThan(at(library, 'Upload'))
     expect(at(library, 'Upload')).toBeLessThan(at(library, 'Images'))
