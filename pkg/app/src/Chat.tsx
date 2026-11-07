@@ -1019,8 +1019,8 @@ function Thread({
   // speaks for an agent it holds — the cloud keeps a core member's row in step
   // with hanzoai/personas, and an agent the org made under the same name keeps
   // its own brief — and a core member the org holds no row for speaks as
-  // hanzoai/personas writes them (`speaksOf`), so a visitor pressing Feynman
-  // gets Feynman rather than the house model.
+  // hanzoai/personas writes them (`speaksOf`), so a visitor pressing Sci
+  // gets Sci rather than the house model.
   const brief = useMemo(
     () =>
       castBrief(
