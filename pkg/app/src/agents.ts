@@ -36,6 +36,7 @@ export const RUNS: Readonly<Record<string, Required<Pick<Cast, 'schedule' | 'tri
   mu: { schedule: '0 * * * *', triggers: ['webhook', 'channel'] },
   doc: { schedule: '0 * * * *', triggers: ['git', 'webhook'] },
   gov: { schedule: '0 9 * * 1-5', triggers: ['watch', 'channel'] },
+  grant: { schedule: '0 9 * * 1-5', triggers: ['watch', 'channel'] },
 }
 
 /**
