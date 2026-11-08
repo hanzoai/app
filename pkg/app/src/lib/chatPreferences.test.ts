@@ -7,18 +7,18 @@ import { DEFAULT_EFFORT, getChatPreferences, setChatPreferences, shared } from '
 describe('what Chat does', () => {
   test('offers the composer’s efforts, auto by default', () => {
     expect(DEFAULT_EFFORT).toBe('auto')
-    expect(EFFORTS.map((s) => s.id)).toEqual(['auto', 'low', 'medium', 'high', 'xhigh', 'max'])
+    expect(EFFORTS.map((s) => s.id)).toEqual(['auto', 'instant', 'low', 'medium', 'high', 'max'])
     for (const step of EFFORTS) {
       expect(step.label.length).toBeGreaterThan(0)
       expect(step.note.length).toBeGreaterThan(0)
     }
   })
 
-  test('hands Dev every effort it offers, Auto, High, XHigh and Max, in Chat’s order and words', () => {
+  test('hands Dev every effort it offers, Auto, High and Max, in Chat’s order and words', () => {
     const dev = DEV.map((e) => e.id)
-    expect(dev).toEqual(['auto', 'high', 'xhigh', 'max'])
+    expect(dev).toEqual(['auto', 'high', 'max'])
     expect(EFFORTS.filter((s) => dev.includes(s.id as never)).map((s) => [s.id, s.label, s.note])).toEqual(DEV.map((e) => [e.id, e.label, e.note]))
-    expect(EFFORTS.map((s) => shared(s.id))).toEqual(['auto', null, null, 'high', 'xhigh', 'max'])
+    expect(EFFORTS.map((s) => shared(s.id))).toEqual(['auto', null, null, null, 'high', 'max'])
   })
 
   test('resets an effort kept under an older default to auto, and persists a chosen effort', () => {
