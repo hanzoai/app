@@ -43,7 +43,7 @@ import { api } from './lib/api'
 import { CAST, personas } from './agents'
 import { app, place, settings, visit } from './lib/host'
 import { link } from './lib/tags'
-import { payUrl } from './lib/pay'
+import { payUrl, topUp } from './lib/pay'
 
 /** Where the builder links out: every one of them an address of this site. */
 const LINKS: Host['links'] = {
@@ -127,6 +127,7 @@ export function useDevHost(): Host {
       admin: administers(bearer(), scoped),
       path: here,
       go: (to, how) => (isPlans(to) ? leave('here') : visit(router, app(to), how?.replace)),
+      topUp: signedIn ? topUp : undefined,
       links: LINKS,
       // The sidebar lists Settings' sections and Customize's tabs (Sidebar.tsx), and Customize › Agents offers the cast.
       sections: true,

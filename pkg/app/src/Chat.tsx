@@ -109,7 +109,7 @@ import {
   type Listen,
 } from "@hanzo/build";
 import type { ModelCatalogEntry as Model } from "@hanzo/ui/models/catalog";
-import { checkoutUrl, payUrl } from './lib/pay';
+import { checkoutUrl, payUrl, topUp } from './lib/pay';
 import { Upgrade, useFree, type Ask } from './Upgrade';
 import { enter, LOGIN } from './lib/destination';
 import { first } from './lib/first';
@@ -844,7 +844,7 @@ function Thread({
   const catalog = useRef<Model[]>([]);
   const planUsage = useLimits(!anonymous, org(), (id) => nameOf(id, catalog.current));
   const { limits, notice, reload: reread } = planUsage;
-  const mind = useMind(target, anonymous ? "free" : limits?.plan);
+  const mind = useMind(target, anonymous ? "free" : limits?.plan, anonymous ? undefined : topUp);
   catalog.current = mind.models;
   // Chat's effort is its own (six steps, sent as `reasoning_effort`); a
   // pick of one Dev offers too moves Dev's, where it is made, and opening Chat
