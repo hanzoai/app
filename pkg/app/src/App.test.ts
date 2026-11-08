@@ -1,3 +1,8 @@
+const { MARKS } = vi.hoisted(() => {
+  const mark = () => () => null
+  const one = { icon: mark(), make: mark() }
+  return { MARKS: { chat: one, dev: one, design: one, studio: one, tabs: one, library: one, scheduled: one, customize: one } }
+})
 vi.mock('./Usage', () => ({ UsageProvider: ({ children }: { children: unknown }) => children }))
 import { createElement, Fragment, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -23,7 +28,7 @@ vi.mock('lucide-react', () => ({ ArrowLeft: () => null, ArrowRight: () => null, 
 vi.mock('@hanzo/ai/react', () => ({ AiProvider: through }))
 vi.mock('@hanzo/gui', () => ({ XStack: part, YStack: part }))
 vi.mock('@hanzo/ui', () => ({ Button: part, Text: part }))
-vi.mock('@hanzo/build', () => ({
+vi.mock('@hanzo/build', () => ({ MARKS,
   Builder: stub('builder'),
   HostProvider: through,
   PrefsProvider: through,

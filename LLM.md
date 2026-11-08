@@ -141,8 +141,12 @@ repository or a site from any surface.
   edge to edge, no sidebar); nothing on the rail leaves for tabs.hanzo.ai.
   @hanzo/tabs is taken from its git commit (hanzo-inc/tabs, pinned in the
   catalog) until it publishes to npm. The rail moves
-  the app, and Shell's sidebar wears the product's name alone; the one Chat |
-  Dev switch is a phone's bar, which has no rail. Dev's own places (New run,
+  the app, and Shell's sidebar wears the product's name alone; there is no
+  Chat | Dev switch anywhere (owner, 2026-11-08): a phone's drawer holds the
+  rail down its start edge, and its bar is the drawer's button and New. Every
+  product and place wears one mark, @hanzo/build `MARKS` (`icon`, and `make` for
+  its New: Chat the pen, Dev `</>`, Tabs the terminal); the rail, the bar, the
+  sidebars, the palette and Home read it and no page keeps a copy. Dev's own places (New run,
   Projects, Issues, Templates: @hanzo/build `own`) are rows in Dev's sidebar
   (Sidebar), with no group labels. Library, Scheduled tasks and Customize each
   take the sidebar (Rail.tsx `raised`): Back (to where the reader was, Chat or
@@ -741,11 +745,11 @@ reference captures; outer window, inner panel):
 - The transcript reads at the reference's type (Prose.tsx): a 16px body on a
   24px line, headings 28/24/20.
 - A phone has neither rail nor sidebar (under gui's `md`): its bar (Bar.tsx,
-  the owner's iPhone reference) is three glass pieces on one 48px line under
+  the owner's iPhone reference) is two glass pieces on one 48px line under
   the device's top inset — a 44px circle that opens the sidebar as a drawer
-  (below); the 158×48 pill Chat | Dev, which
-  moves the app as the rail does (neither lit in Studio); and a 44px circle for
-  the mode's New (New chat, else the mode's `nav` `NEW` row). Glass is `pane()`
+  (below), and a 44px circle for the mode's New (New chat, else the mode's
+  `nav` `NEW` row; in Tabs a new terminal), drawn with the mode's `MARKS`
+  `make`. It carries no Chat | Dev pill. Glass is `pane()`
   cut round with a `--border-strong` edge, so the solid fallback and both themes
   are design's.
 - A phone's drawer (Drawer.tsx, the ChatGPT iOS app's shape): the menu stands

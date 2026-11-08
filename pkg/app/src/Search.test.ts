@@ -5,6 +5,11 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 // the shape they hand a sidebar: rows that move the app through `go`.
 const { empty, asked } = vi.hoisted(() => ({ empty: vi.fn(), asked: [] as unknown[] }))
 
+const { MARKS } = vi.hoisted(() => {
+  const mark = () => () => null
+  const one = { icon: mark(), make: mark() }
+  return { MARKS: { chat: one, dev: one, design: one, studio: one, tabs: one, library: one, scheduled: one, customize: one } }
+})
 vi.mock('@hanzo/ai/react', () => ({ useAi: () => ({}) }))
 vi.mock('@hanzo/ui', () => ({ Dialog: () => null, DialogContent: () => null, DialogTitle: () => null }))
 vi.mock('@hanzo/ui/product/CommandMenu', () => ({ CommandMenu: () => null }))
@@ -15,6 +20,7 @@ vi.mock('@hanzo/build', async () => {
   type Section = Extract<Parameters<typeof path>[0], { kind: 'settings' }>['section']
   const settings = (go: Go, id: Section, label: string) => link(go, id, label, path({ kind: 'settings', section: id }))
   return {
+    MARKS,
     NEW: 'new',
     path,
     // As @hanzo/build's reads it: the host's api, token, org and person, at once.

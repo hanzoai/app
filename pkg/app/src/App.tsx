@@ -506,8 +506,8 @@ function Window({ bar, betas }: Hosted) {
               marginInlineStart={closed || alone ? 0 : 'var(--pane-gap)'}
               $max-md={{ marginInlineStart: 0, pb: `max(var(--pane-gap), ${FOOT})` }}
             >
-              {/* A phone has no rail and no sidebar: its bar opens them as a drawer and switches Chat and Dev. */}
-              {bar ? null : <Bar host={host} mode={mode} places={sidebar} open={drawer.state !== 'shut'} go={move} onMenu={drawer.open} onChat={toChat} onDev={toDev} />}
+              {/* A phone has no rail and no sidebar: its bar opens them as a drawer, and the drawer lists the places. */}
+              {bar ? null : <Bar host={host} mode={mode} places={sidebar} open={drawer.state !== 'shut'} go={move} onMenu={drawer.open} />}
               {/* The stage's rest: the pane, and beside it the column a pane opens (Split names
                   them `pane` and `side`). The areas are named here because Split places its two by
                   name; unnamed, `grid-area: pane` made implicit tracks and Chat's pane stood its
