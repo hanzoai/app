@@ -61,6 +61,7 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
+  UserPlus,
   Users,
   X,
 } from 'lucide-react'
@@ -84,6 +85,7 @@ import {
   Input,
   Kbd,
 } from '@hanzo/ui'
+import { label as accountLabel, useAccounts } from './lib/accounts'
 import { api } from './lib/api'
 import { createOrg, say } from './lib/org'
 import type { Tier } from './lib/tier'
@@ -283,6 +285,10 @@ export function Account({
   const [keys, setKeys] = useState(false)
   const row = useRef<HTMLElement | null>(null)
   const current = host.org
+  // Every other account signed in on this browser, one press away, and a new one
+  // (lib/accounts: the sign-in with login_hint, and with prompt=login).
+  const signedIn = useAccounts()
+  const others = signedIn.accounts.filter((a) => a.sub !== signedIn.current?.sub)
   const all = useOrgs(current)
   const here = all.find((o) => o.name === current) ?? null
   const personal = all.find((o) => o.personal) ?? null
@@ -507,6 +513,22 @@ export function Account({
               </DropdownMenuSubContent>
             ) : null}
           </DropdownMenuSub>
+
+          {/* Every other account signed in here, and Add account. */}
+          {others.map((a) => {
+            const { title, line } = accountLabel(a)
+            return (
+              <DropdownMenuItem key={a.sub} data-slot="me-switch" onSelect={() => void signedIn.switchTo(a)}>
+                <Line icon={<CircleUserRound size={16} aria-hidden />} sub={line || undefined}>
+                  {title}
+                </Line>
+              </DropdownMenuItem>
+            )
+          })}
+          <DropdownMenuItem data-slot="me-add" onSelect={() => void signedIn.add()}>
+            <Line icon={<UserPlus size={16} aria-hidden />}>{t('Add account')}</Line>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
 
           {/* 2. Organization Switcher */}
           <DropdownMenuSub open={orgs} onOpenChange={setOrgs}>

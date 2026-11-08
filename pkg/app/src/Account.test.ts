@@ -48,6 +48,21 @@ vi.mock('./lib/session', () => ({ choose: () => {}, org: () => 'acme', orgs: () 
 vi.mock('./lib/org', () => ({ createOrg: async () => '', say: String }))
 vi.mock('./dev', () => ({ leave: left }))
 vi.mock('./open', () => ({ showSettings: settings }))
+// The accounts signed in on this browser: Ada (current) and whoever a test adds.
+const signed = vi.hoisted(() => ({
+  accounts: [] as { sub: string; owner: string; name: string; displayName: string; email: string; avatar: string }[],
+  switchTo: vi.fn(async () => {}),
+  add: vi.fn(async () => {}),
+}))
+vi.mock('./lib/accounts', () => ({
+  label: (a: { displayName: string; name: string; email: string }) => ({ title: a.displayName || a.name, line: a.email }),
+  useAccounts: () => ({
+    accounts: signed.accounts,
+    current: signed.accounts.find((a) => a.name === 'ada') ?? null,
+    switchTo: signed.switchTo,
+    add: signed.add,
+  }),
+}))
 
 import { Account, upgrade } from './Account'
 
@@ -67,12 +82,29 @@ afterEach(() => {
 })
 
 describe('the account menu', () => {
-  test('reads top to bottom: the account icon, the organization switcher, Usage, Settings, Upgrade plan, Language, Help and Log out', () => {
-    expect(menu(false).map((r) => r.label)).toEqual(['Ada', 'acme · Free', 'Usage', 'Settings', 'Upgrade plan', 'Language', 'Help', 'Log out'])
+  test('reads top to bottom: the account icon, Add account, the organization switcher, Usage, Settings, Upgrade plan, Language, Help and Log out', () => {
+    expect(menu(false).map((r) => r.label)).toEqual(['Ada', 'Add account', 'acme · Free', 'Usage', 'Settings', 'Upgrade plan', 'Language', 'Help', 'Log out'])
   })
 
   test('the account icon collapses account options: Profile, Personalization, Settings, Beta', () => {
-    expect(menu(true).map((r) => r.label)).toEqual(['Ada', 'Profile', 'Personalization', 'Settings', 'Beta', 'acme · Free', 'Usage', 'Settings', 'Upgrade plan', 'Language', 'Help', 'Log out'])
+    expect(menu(true).map((r) => r.label)).toEqual(['Ada', 'Profile', 'Personalization', 'Settings', 'Beta', 'Add account', 'acme · Free', 'Usage', 'Settings', 'Upgrade plan', 'Language', 'Help', 'Log out'])
+  })
+
+  test('every other account signed in on this browser is listed under the current one, and a press switches to it', () => {
+    const ada = { sub: 's-ada', owner: 'acme', name: 'ada', displayName: 'Ada', email: 'ada@acme.dev', avatar: '' }
+    const bob = { sub: 's-bob', owner: 'acme', name: 'bob', displayName: 'Bob Tester', email: 'bob@acme.dev', avatar: '' }
+    signed.accounts = [ada, bob]
+    try {
+      const labels = menu(false).map((r) => r.label)
+      expect(labels.slice(0, 3)).toEqual(['Ada', 'Bob Tester', 'Add account'])
+      expect(labels.filter((l) => l === 'Ada')).toHaveLength(1)
+      press('Bob Tester', false)
+      expect(signed.switchTo).toHaveBeenCalledWith(bob)
+      press('Add account', false)
+      expect(signed.add).toHaveBeenCalledTimes(1)
+    } finally {
+      signed.accounts = []
+    }
   })
 
   test("Beta opens the person's place on the waitlist, a page of the site", () => {
