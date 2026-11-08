@@ -698,14 +698,12 @@ export function AppContextMenu({
       borderWidth={1}
       borderColor="$borderColor"
       z={100000}
-      style={{
-        position: 'fixed',
-        left: state.x,
-        top: state.y,
-      }}
+      position="fixed"
+      l={state.x}
+      t={state.y}
       $platform-web={{
         backdropFilter: 'blur(20px)',
-        boxShadow: '0 12px 32px -4px rgba(0, 0, 0, 0.36)',
+        boxShadow: 'var(--shadow-lg)',
       }}
     >
       {state.entries.map((entry) =>
@@ -734,7 +732,7 @@ export function AppContextMenu({
             <XStack width={16} height={16} items="center" justify="center" shrink={0} opacity={0.85}>
               {entry.icon}
             </XStack>
-            <Text flex={1} minW={0} fontSize="$2" color="$ink" numberOfLines={1} style={{ textAlign: 'start' }}>
+            <Text flex={1} minW={0} fontSize="$2" color="$ink" numberOfLines={1} text="start">
               {entry.label}
             </Text>
             {entry.shortcut ? (

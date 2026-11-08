@@ -117,7 +117,6 @@ function Segment({ value, children }: { value: Place['mode']; children: string }
       rounded={9999}
       bg="transparent"
       borderColor="transparent"
-      style={{ WebkitAppearance: 'none', appearance: 'none', lineHeight: 1 }}
       hoverStyle={{ bg: '$hover' }}
       activeStyle={{ bg: '$raised', borderColor: 'transparent', borderWidth: 0 }}
     >

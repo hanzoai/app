@@ -1746,7 +1746,8 @@ export function Split({
             cursor="col-resize"
             display="none"
             $lg={{ display: "flex" }}
-            style={{ touchAction: "none" }}
+            // gui carries the web-only touch action to the page; its types lack it. A drag here pulls the split.
+            {...({ touchAction: "none" } as object)}
             onDoubleClick={() => showAside("tasks")}
             onPointerDown={(e: React.PointerEvent<HTMLElement>) => {
               if (e.button !== 0) return;

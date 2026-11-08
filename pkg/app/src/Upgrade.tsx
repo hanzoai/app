@@ -33,13 +33,22 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-react'
-import { Anchor, Box, Button, Dialog, DialogContent, DialogTitle, Text, XStack, YStack } from '@hanzo/ui'
+import { Anchor, Box, Button, Dialog, DialogContent, DialogTitle, Text, View, XStack, YStack } from '@hanzo/ui'
 import { track } from './lib/tags'
 import { org } from './lib/session'
 import { useTier } from './lib/tier'
 import { term, type Interval } from './lib/plans'
 import { payUrl } from './lib/pay'
 import { site } from './where'
+
+/**
+ * The dialog is chrome, so it draws on design's monochrome ladder in both
+ * themes: a hue is for artwork, and the plan on offer is told by its fill and
+ * its edge. Lucide's `color` is an SVG attribute gui never reads, so an icon
+ * takes the CSS value of the rung its label is on.
+ */
+const INK = 'var(--foreground)'
+const SOFT = 'var(--soft, var(--muted-foreground))'
 
 /** What the reader reached for: a model by its name, and the checkout a refusal named. */
 export interface Ask {
@@ -172,13 +181,13 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
         maxW={audience === 'business' || !showAllPersonal ? 880 : 1140}
         maxH="90vh"
         overflowY="auto"
-        bg="var(--popover, #121212)"
+        bg="var(--popover)"
         rounded="$8"
         p="$5"
         gap="$4"
         borderWidth={1}
-        borderColor="rgba(255, 255, 255, 0.1)"
-        boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.75)"
+        borderColor="var(--border)"
+        boxShadow="var(--shadow-floating)"
         $sm={{ p: '$7', gap: '$5' }}
       >
         {/* Top-right close button */}
@@ -197,10 +206,10 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
           cursor="pointer"
           items="center"
           justify="center"
-          hoverStyle={{ bg: 'rgba(255, 255, 255, 0.08)' }}
+          hoverStyle={{ bg: '$hover' }}
           z={10}
         >
-          <X size={18} aria-hidden color="var(--soft, #a1a1aa)" />
+          <X size={18} aria-hidden color={SOFT} />
         </Box>
 
         {/* Modal Title */}
@@ -272,20 +281,18 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
           !showAllPersonal ? (
             /* DEFAULT 2-PLAN VIEW: FREE + PRO (Clean, uncluttered, matching ChatGPT modal) */
             <YStack gap="$4" width="100%">
-              <Box
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                  gap: '24px',
-                  width: '100%',
-                  alignItems: 'stretch',
-                }}
+              <View
+                display="grid"
+                gridTemplateColumns="repeat(auto-fit, minmax(320px, 1fr))"
+                gap={24}
+                width="100%"
+                items="stretch"
               >
                 {/* 1. Free Card */}
                 <YStack
-                  bg="rgba(255, 255, 255, 0.02)"
+                  bg="var(--surface-card-quiet)"
                   borderWidth={1}
-                  borderColor="rgba(255, 255, 255, 0.08)"
+                  borderColor="var(--border)"
                   rounded="$6"
                   p="$6"
                   gap="$5"
@@ -293,8 +300,8 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                 >
                   <YStack gap="$3.5">
                     <XStack items="center" gap="$1.5">
-                      <Sprout size={16} color="#4ade80" aria-hidden />
-                      <Text fontSize={14} fontWeight="500" color="#a1a1aa">
+                      <Sprout size={16} color={SOFT} aria-hidden />
+                      <Text fontSize={14} fontWeight="500" color="$soft">
                         {t('Free')}
                       </Text>
                     </XStack>
@@ -303,7 +310,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                       <Text fontSize={24} fontWeight="700" color="$ink">
                         {t('Try Hanzo')}
                       </Text>
-                      <Text fontSize={14} color="var(--soft, #a1a1aa)">
+                      <Text fontSize={14} color="$soft">
                         {t('See what AI can do.')}
                       </Text>
                     </YStack>
@@ -315,11 +322,11 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                       width="100%"
                       py="$2.5"
                       my="$2"
-                      borderColor="rgba(255, 255, 255, 0.15)"
+                      borderColor="var(--border-control)"
                       bg="transparent"
                       cursor="default"
                     >
-                      <Text fontSize={14} fontWeight="500" color="#8e8e8e">
+                      <Text fontSize={14} fontWeight="500" color="$soft">
                         {t('Your current plan')}
                       </Text>
                     </Button>
@@ -328,7 +335,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                       <Text fontSize={28} fontWeight="700" color="$ink">
                         $0
                       </Text>
-                      <Text fontSize={14} color="#8e8e8e">
+                      <Text fontSize={14} color="$soft">
                         {t('/ month')}
                       </Text>
                     </XStack>
@@ -342,7 +349,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                         t('Community support'),
                       ].map((feat) => (
                         <XStack key={feat} items="center" gap="$2.5">
-                          <Check size={16} color="#a1a1aa" aria-hidden />
+                          <Check size={16} color={SOFT} aria-hidden />
                           <Text fontSize={13} color="$ink">
                             {feat}
                           </Text>
@@ -354,19 +361,19 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
 
                 {/* 2. Pro Card (Highlighted with Multiplier Switcher) */}
                 <YStack
-                  bg="rgba(37, 99, 235, 0.03)"
+                  bg="var(--surface-card-emphasis)"
                   borderWidth={1.5}
-                  borderColor="#2563eb"
+                  borderColor="var(--border-selected)"
                   rounded="$6"
                   p="$6"
                   gap="$4"
                   justify="space-between"
-                  boxShadow="0 0 28px rgba(37, 99, 235, 0.16)"
+                  boxShadow="var(--shadow-lg)"
                 >
                   <YStack gap="$3">
                     <XStack items="center" justify="space-between">
                       <XStack items="center" gap="$1.5">
-                        <activeMultiplier.icon size={16} color="#38bdf8" aria-hidden />
+                        <activeMultiplier.icon size={16} color={INK} aria-hidden />
                         <Text fontSize={16} fontWeight="700" color="$ink">
                           {activeMultiplier.name}
                         </Text>
@@ -410,7 +417,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                       <Text fontSize={24} fontWeight="700" color="$ink">
                         {t('{name} {tier}', { name: activeMultiplier.name, tier: activeMultiplier.multiple })}
                       </Text>
-                      <Text fontSize={14} color="var(--soft, #a1a1aa)">
+                      <Text fontSize={14} color="$soft">
                         {t(activeMultiplier.subtitle)}
                       </Text>
                     </YStack>
@@ -419,13 +426,13 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                     <Anchor
                       href={multiplierHref}
                       onPress={() => handleBuy(activeMultiplier.id, activeMultiplier.name, activeMultiplier.price)}
-                      bg="#0070f3"
-                      hoverStyle={{ bg: '#0060df' }}
+                      bg="var(--primary)"
+                      hoverStyle={{ bg: 'var(--primary-hover)' }}
                       rounded="$10"
                       width="100%"
                       py="$3"
                       my="$1"
-                      color="#ffffff"
+                      color="var(--primary-foreground)"
                       fontWeight="600"
                       fontSize={14}
                       text="center"
@@ -434,7 +441,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                       justify="center"
                       gap="$2"
                     >
-                      <Sparkles size={16} color="#ffffff" aria-hidden />
+                      <Sparkles size={16} color="var(--primary-foreground)" aria-hidden />
                       {t('Get {name}', { name: activeMultiplier.name })}
                     </Anchor>
 
@@ -442,7 +449,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                       <Text fontSize={28} fontWeight="700" color="$ink">
                         ${activeMultiplier.price}
                       </Text>
-                      <Text fontSize={14} color="#8e8e8e">
+                      <Text fontSize={14} color="$soft">
                         {t('/ month')}
                       </Text>
                     </XStack>
@@ -459,7 +466,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                         t('Dedicated priority support'),
                       ].map((feat, idx) => (
                         <XStack key={feat} items="center" gap="$2.5">
-                          <Check size={16} color={idx === 0 ? '#38bdf8' : '#388bfd'} aria-hidden />
+                          <Check size={16} color={INK} aria-hidden />
                           <Text fontSize={13} color="$ink" fontWeight={idx === 0 ? '600' : '400'}>
                             {feat}
                           </Text>
@@ -468,23 +475,23 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                     </YStack>
                   </YStack>
                 </YStack>
-              </Box>
+              </View>
 
               {/* Show all plans button */}
               <XStack justify="center" pt="$1">
                 <Box
                   render="button"
                   onClick={() => setShowAllPersonal(true)}
-                  bg="rgba(255, 255, 255, 0.05)"
-                  hoverStyle={{ bg: 'rgba(255, 255, 255, 0.1)' }}
+                  bg="var(--glass)"
+                  hoverStyle={{ bg: 'var(--glass-strong)' }}
                   px="$4"
                   py="$2"
                   rounded="$10"
                   borderWidth={1}
-                  borderColor="rgba(255, 255, 255, 0.1)"
+                  borderColor="var(--border)"
                   cursor="pointer"
                 >
-                  <Text fontSize={13} fontWeight="500" color="#38bdf8">
+                  <Text fontSize={13} fontWeight="500" color="$ink">
                     {t('Show all plans (Free, Go, Pro, Dev, Max, Ultra) ↓')}
                   </Text>
                 </Box>
@@ -493,20 +500,18 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
           ) : (
             /* EXPANDED VIEW: ALL PERSONAL OPTIONS (Free, Go, Pro 2x, Dev 5x, Max 10x, Ultra) */
             <YStack gap="$4" width="100%">
-              <Box
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                  gap: '14px',
-                  width: '100%',
-                  alignItems: 'stretch',
-                }}
+              <View
+                display="grid"
+                gridTemplateColumns="repeat(auto-fit, minmax(220px, 1fr))"
+                gap={14}
+                width="100%"
+                items="stretch"
               >
                 {/* 1. Free */}
                 <YStack
-                  bg="rgba(255, 255, 255, 0.02)"
+                  bg="var(--surface-card-quiet)"
                   borderWidth={1}
-                  borderColor="rgba(255, 255, 255, 0.08)"
+                  borderColor="var(--border)"
                   rounded="$6"
                   p="$4"
                   justify="space-between"
@@ -514,22 +519,22 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                 >
                   <YStack gap="$2">
                     <XStack items="center" gap="$1.5">
-                      <Sprout size={15} color="#4ade80" aria-hidden />
-                      <Text fontSize={12} fontWeight="600" color="#a1a1aa">{t('Free')}</Text>
+                      <Sprout size={15} color={SOFT} aria-hidden />
+                      <Text fontSize={12} fontWeight="600" color="$soft">{t('Free')}</Text>
                     </XStack>
                     <Text fontSize={18} fontWeight="700" color="$ink">{t('Try Hanzo')}</Text>
-                    <Text fontSize={12} color="var(--soft, #a1a1aa)" minH={32}>{t('See what AI can do.')}</Text>
-                    <Button disabled variant="outline" rounded="$10" py="$1.5" borderColor="rgba(255, 255, 255, 0.15)" bg="transparent" cursor="default">
-                      <Text fontSize={12} fontWeight="500" color="#8e8e8e">{t('Current plan')}</Text>
+                    <Text fontSize={12} color="$soft" minH={32}>{t('See what AI can do.')}</Text>
+                    <Button disabled variant="outline" rounded="$10" py="$1.5" borderColor="var(--border-control)" bg="transparent" cursor="default">
+                      <Text fontSize={12} fontWeight="500" color="$soft">{t('Current plan')}</Text>
                     </Button>
                     <XStack items="baseline" gap="$1">
                       <Text fontSize={22} fontWeight="700" color="$ink">$0</Text>
-                      <Text fontSize={12} color="#8e8e8e">{t('/ mo')}</Text>
+                      <Text fontSize={12} color="$soft">{t('/ mo')}</Text>
                     </XStack>
                     <YStack gap="$1.5" pt="$1">
                       {[t('Everyday chats'), t('Foundation models'), t('Standard speed'), t('Community support')].map((f) => (
                         <XStack key={f} items="center" gap="$1.5">
-                          <Check size={13} color="#a1a1aa" aria-hidden />
+                          <Check size={13} color={SOFT} aria-hidden />
                           <Text fontSize={11} color="$ink">{f}</Text>
                         </XStack>
                       ))}
@@ -539,9 +544,9 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
 
                 {/* 2. Go ($8/mo) */}
                 <YStack
-                  bg="rgba(255, 255, 255, 0.02)"
+                  bg="var(--surface-card-quiet)"
                   borderWidth={1}
-                  borderColor="rgba(255, 255, 255, 0.08)"
+                  borderColor="var(--border)"
                   rounded="$6"
                   p="$4"
                   justify="space-between"
@@ -549,22 +554,22 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                 >
                   <YStack gap="$2">
                     <XStack items="center" gap="$1.5">
-                      <Zap size={15} color="#eab308" aria-hidden />
-                      <Text fontSize={12} fontWeight="600" color="#a1a1aa">{t('Go')}</Text>
+                      <Zap size={15} color={INK} aria-hidden />
+                      <Text fontSize={12} fontWeight="600" color="$soft">{t('Go')}</Text>
                     </XStack>
                     <Text fontSize={18} fontWeight="700" color="$ink">{t('Everyday AI')}</Text>
-                    <Text fontSize={12} color="var(--soft, #a1a1aa)" minH={32}>{t('More models & agents.')}</Text>
+                    <Text fontSize={12} color="$soft" minH={32}>{t('More models & agents.')}</Text>
                     <Anchor href={goHref} onPress={() => handleBuy('go', 'Go', 8)} bg="var(--primary)" rounded="$10" py="$1.5" px="$3" color="var(--primary-foreground)" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
                       {t('Get Go')}
                     </Anchor>
                     <XStack items="baseline" gap="$1">
                       <Text fontSize={22} fontWeight="700" color="$ink">$8</Text>
-                      <Text fontSize={12} color="#8e8e8e">{t('/ mo')}</Text>
+                      <Text fontSize={12} color="$soft">{t('/ mo')}</Text>
                     </XStack>
                     <YStack gap="$1.5" pt="$1">
                       {[t('All frontier models'), t('Hanzo Dev & CLI'), t('Connect MCP servers'), t('Background agents')].map((f) => (
                         <XStack key={f} items="center" gap="$1.5">
-                          <Check size={13} color="#38bdf8" aria-hidden />
+                          <Check size={13} color={INK} aria-hidden />
                           <Text fontSize={11} color="$ink">{f}</Text>
                         </XStack>
                       ))}
@@ -574,9 +579,9 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
 
                 {/* 3. Pro 3x ($15/mo) */}
                 <YStack
-                  bg="rgba(255, 255, 255, 0.04)"
+                  bg="var(--surface-card)"
                   borderWidth={1.5}
-                  borderColor="rgba(56, 189, 248, 0.3)"
+                  borderColor="var(--border-selected)"
                   rounded="$6"
                   p="$4"
                   justify="space-between"
@@ -584,22 +589,22 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                 >
                   <YStack gap="$2">
                     <XStack items="center" gap="$1.5">
-                      <Rocket size={15} color="#38bdf8" aria-hidden />
+                      <Rocket size={15} color={INK} aria-hidden />
                       <Text fontSize={12} fontWeight="700" color="$ink">{t('Pro 3×')}</Text>
                     </XStack>
                     <Text fontSize={18} fontWeight="700" color="$ink">{t('Pro')}</Text>
-                    <Text fontSize={12} color="var(--soft, #a1a1aa)" minH={32}>{t('3× limits for builders.')}</Text>
+                    <Text fontSize={12} color="$soft" minH={32}>{t('3× limits for builders.')}</Text>
                     <Anchor href={proHref} onPress={() => handleBuy('pro-2x', 'Pro', 15)} bg="var(--primary)" rounded="$10" py="$1.5" px="$3" color="var(--primary-foreground)" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
                       {t('Get Pro')}
                     </Anchor>
                     <XStack items="baseline" gap="$1">
                       <Text fontSize={22} fontWeight="700" color="$ink">$15</Text>
-                      <Text fontSize={12} color="#8e8e8e">{t('/ mo')}</Text>
+                      <Text fontSize={12} color="$soft">{t('/ mo')}</Text>
                     </XStack>
                     <YStack gap="$1.5" pt="$1">
                       {[t('3× more usage than Go'), t('3× higher 5h limits'), t('1 custom Hanzo Bot'), t('Priority support')].map((f) => (
                         <XStack key={f} items="center" gap="$1.5">
-                          <Check size={13} color="#38bdf8" aria-hidden />
+                          <Check size={13} color={INK} aria-hidden />
                           <Text fontSize={11} color="$ink">{f}</Text>
                         </XStack>
                       ))}
@@ -609,9 +614,9 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
 
                 {/* 4. Dev 5x ($45/mo) */}
                 <YStack
-                  bg="rgba(255, 255, 255, 0.02)"
+                  bg="var(--surface-card-quiet)"
                   borderWidth={1}
-                  borderColor="rgba(255, 255, 255, 0.08)"
+                  borderColor="var(--border)"
                   rounded="$6"
                   p="$4"
                   justify="space-between"
@@ -619,22 +624,22 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                 >
                   <YStack gap="$2">
                     <XStack items="center" gap="$1.5">
-                      <Cpu size={15} color="#60a5fa" aria-hidden />
+                      <Cpu size={15} color={INK} aria-hidden />
                       <Text fontSize={12} fontWeight="700" color="$ink">{t('Dev 5×')}</Text>
                     </XStack>
                     <Text fontSize={18} fontWeight="700" color="$ink">{t('Dev')}</Text>
-                    <Text fontSize={12} color="var(--soft, #a1a1aa)" minH={32}>{t('5× limits for agents.')}</Text>
+                    <Text fontSize={12} color="$soft" minH={32}>{t('5× limits for agents.')}</Text>
                     <Anchor href={devHref} onPress={() => handleBuy('dev-5x', 'Dev', 45)} bg="var(--primary)" rounded="$10" py="$1.5" px="$3" color="var(--primary-foreground)" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
                       {t('Get Dev')}
                     </Anchor>
                     <XStack items="baseline" gap="$1">
                       <Text fontSize={22} fontWeight="700" color="$ink">$45</Text>
-                      <Text fontSize={12} color="#8e8e8e">{t('/ mo')}</Text>
+                      <Text fontSize={12} color="$soft">{t('/ mo')}</Text>
                     </XStack>
                     <YStack gap="$1.5" pt="$1">
                       {[t('5× more usage than Go'), t('5× higher 5h limits'), t('1 custom Hanzo Bot'), t('Train custom models')].map((f) => (
                         <XStack key={f} items="center" gap="$1.5">
-                          <Check size={13} color="#60a5fa" aria-hidden />
+                          <Check size={13} color={INK} aria-hidden />
                           <Text fontSize={11} color="$ink">{f}</Text>
                         </XStack>
                       ))}
@@ -644,9 +649,9 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
 
                 {/* 5. Max 15x ($95/mo) */}
                 <YStack
-                  bg="rgba(255, 255, 255, 0.02)"
+                  bg="var(--surface-card-quiet)"
                   borderWidth={1}
-                  borderColor="rgba(255, 255, 255, 0.08)"
+                  borderColor="var(--border)"
                   rounded="$6"
                   p="$4"
                   justify="space-between"
@@ -654,22 +659,22 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                 >
                   <YStack gap="$2">
                     <XStack items="center" gap="$1.5">
-                      <Crown size={15} color="#fbbf24" aria-hidden />
+                      <Crown size={15} color={INK} aria-hidden />
                       <Text fontSize={12} fontWeight="700" color="$ink">{t('Max 15×')}</Text>
                     </XStack>
                     <Text fontSize={18} fontWeight="700" color="$ink">{t('Max')}</Text>
-                    <Text fontSize={12} color="var(--soft, #a1a1aa)" minH={32}>{t('15× continuous limits.')}</Text>
+                    <Text fontSize={12} color="$soft" minH={32}>{t('15× continuous limits.')}</Text>
                     <Anchor href={maxHref} onPress={() => handleBuy('max-10x', 'Max', 95)} bg="var(--primary)" rounded="$10" py="$1.5" px="$3" color="var(--primary-foreground)" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
                       {t('Get Max')}
                     </Anchor>
                     <XStack items="baseline" gap="$1">
                       <Text fontSize={22} fontWeight="700" color="$ink">$95</Text>
-                      <Text fontSize={12} color="#8e8e8e">{t('/ mo')}</Text>
+                      <Text fontSize={12} color="$soft">{t('/ mo')}</Text>
                     </XStack>
                     <YStack gap="$1.5" pt="$1">
                       {[t('15× more usage than Go'), t('15× higher 5h limits'), t('3 custom Hanzo Bots'), t('Dedicated support')].map((f) => (
                         <XStack key={f} items="center" gap="$1.5">
-                          <Check size={13} color="#fbbf24" aria-hidden />
+                          <Check size={13} color={INK} aria-hidden />
                           <Text fontSize={11} color="$ink">{f}</Text>
                         </XStack>
                       ))}
@@ -679,9 +684,9 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
 
                 {/* 6. Ultra ($195/mo) */}
                 <YStack
-                  bg="rgba(255, 255, 255, 0.02)"
+                  bg="var(--surface-card-quiet)"
                   borderWidth={1}
-                  borderColor="rgba(255, 255, 255, 0.08)"
+                  borderColor="var(--border)"
                   rounded="$6"
                   p="$4"
                   justify="space-between"
@@ -689,29 +694,29 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                 >
                   <YStack gap="$2">
                     <XStack items="center" gap="$1.5">
-                      <Infinity size={15} color="#c084fc" aria-hidden />
+                      <Infinity size={15} color={INK} aria-hidden />
                       <Text fontSize={12} fontWeight="700" color="$ink">{t('Ultra')}</Text>
                     </XStack>
                     <Text fontSize={18} fontWeight="700" color="$ink">{t('Frontier Scale')}</Text>
-                    <Text fontSize={12} color="var(--soft, #a1a1aa)" minH={32}>{t('Unlimited intelligence.')}</Text>
+                    <Text fontSize={12} color="$soft" minH={32}>{t('Unlimited intelligence.')}</Text>
                     <Anchor href={ultraHref} onPress={() => handleBuy('ultra', 'Ultra', 195)} bg="var(--secondary)" rounded="$10" py="$1.5" px="$3" color="$ink" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
                       {t('Get Ultra')}
                     </Anchor>
                     <XStack items="baseline" gap="$1">
                       <Text fontSize={22} fontWeight="700" color="$ink">$195</Text>
-                      <Text fontSize={12} color="#8e8e8e">{t('/ mo')}</Text>
+                      <Text fontSize={12} color="$soft">{t('/ mo')}</Text>
                     </XStack>
                     <YStack gap="$1.5" pt="$1">
                       {[t('Unlimited model usage'), t('No hourly rate limits'), t('5 custom Hanzo Bots'), t('Engineering Slack')].map((f) => (
                         <XStack key={f} items="center" gap="$1.5">
-                          <Check size={13} color="#c084fc" aria-hidden />
+                          <Check size={13} color={INK} aria-hidden />
                           <Text fontSize={11} color="$ink">{f}</Text>
                         </XStack>
                       ))}
                     </YStack>
                   </YStack>
                 </YStack>
-              </Box>
+              </View>
 
               {/* Show fewer plans button */}
               <XStack justify="center" pt="$1">
@@ -719,15 +724,15 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                   render="button"
                   onClick={() => setShowAllPersonal(false)}
                   bg="transparent"
-                  hoverStyle={{ bg: 'rgba(255, 255, 255, 0.06)' }}
+                  hoverStyle={{ bg: '$hover' }}
                   px="$4"
                   py="$2"
                   rounded="$10"
                   borderWidth={1}
-                  borderColor="rgba(255, 255, 255, 0.1)"
+                  borderColor="var(--border)"
                   cursor="pointer"
                 >
-                  <Text fontSize={13} fontWeight="500" color="#a1a1aa">
+                  <Text fontSize={13} fontWeight="500" color="$soft">
                     {t('Show fewer plans ↑')}
                   </Text>
                 </Box>
@@ -737,27 +742,25 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
         ) : (
           /* BUSINESS TAB: EXACT CHATGPT PRICING MODAL LAYOUT (Free + Highlighted Business) */
           <YStack gap="$4" width="100%">
-            <Box
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                gap: '24px',
-                width: '100%',
-                alignItems: 'stretch',
-              }}
+            <View
+              display="grid"
+              gridTemplateColumns="repeat(auto-fit, minmax(320px, 1fr))"
+              gap={24}
+              width="100%"
+              items="stretch"
             >
               {/* Free Card in Business view */}
               <YStack
-                bg="rgba(255, 255, 255, 0.02)"
+                bg="var(--surface-card-quiet)"
                 borderWidth={1}
-                borderColor="rgba(255, 255, 255, 0.08)"
+                borderColor="var(--border)"
                 rounded="$6"
                 p="$6"
                 gap="$5"
                 justify="space-between"
               >
                 <YStack gap="$3.5">
-                  <Text fontSize={14} fontWeight="500" color="#a1a1aa">
+                  <Text fontSize={14} fontWeight="500" color="$soft">
                     {t('Free')}
                   </Text>
 
@@ -765,7 +768,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                     <Text fontSize={24} fontWeight="700" color="$ink">
                       {t('Try Hanzo')}
                     </Text>
-                    <Text fontSize={14} color="var(--soft, #a1a1aa)">
+                    <Text fontSize={14} color="$soft">
                       {t('See what AI can do.')}
                     </Text>
                   </YStack>
@@ -777,11 +780,11 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                     width="100%"
                     py="$2.5"
                     my="$2"
-                    borderColor="rgba(255, 255, 255, 0.15)"
+                    borderColor="var(--border-control)"
                     bg="transparent"
                     cursor="default"
                   >
-                    <Text fontSize={14} fontWeight="500" color="#8e8e8e">
+                    <Text fontSize={14} fontWeight="500" color="$soft">
                       {t('Your current plan')}
                     </Text>
                   </Button>
@@ -790,7 +793,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                     <Text fontSize={28} fontWeight="700" color="$ink">
                       $0
                     </Text>
-                    <Text fontSize={14} color="#8e8e8e">
+                    <Text fontSize={14} color="$soft">
                       {t('/ month')}
                     </Text>
                   </XStack>
@@ -804,7 +807,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                       t('Community and open model access'),
                     ].map((feat) => (
                       <XStack key={feat} items="center" gap="$2.5">
-                        <Check size={16} color="#a1a1aa" aria-hidden />
+                        <Check size={16} color={SOFT} aria-hidden />
                         <Text fontSize={13} color="$ink">
                           {feat}
                         </Text>
@@ -816,14 +819,14 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
 
               {/* Business Card (Prominent blue border matching reference screenshot) */}
               <YStack
-                bg="rgba(37, 99, 235, 0.03)"
+                bg="var(--surface-card-emphasis)"
                 borderWidth={1.5}
-                borderColor="#2563eb"
+                borderColor="var(--border-selected)"
                 rounded="$6"
                 p="$6"
                 gap="$4"
                 justify="space-between"
-                boxShadow="0 0 28px rgba(37, 99, 235, 0.16)"
+                boxShadow="var(--shadow-lg)"
               >
                 <YStack gap="$3">
                   {/* Header with Business and [ Annual | Monthly ] toggle */}
@@ -884,7 +887,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                     <Text fontSize={24} fontWeight="700" color="$ink">
                       {t('For growing teams')}
                     </Text>
-                    <Text fontSize={14} color="var(--soft, #a1a1aa)">
+                    <Text fontSize={14} color="$soft">
                       {t('A secure workspace with company context')}
                     </Text>
                   </YStack>
@@ -893,13 +896,13 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                   <Anchor
                     href={businessHref}
                     onPress={() => handleBuy('team', 'Business', businessCycle === 'year' ? 200 : 20, businessCycle)}
-                    bg="#0070f3"
-                    hoverStyle={{ bg: '#0060df' }}
+                    bg="var(--primary)"
+                    hoverStyle={{ bg: 'var(--primary-hover)' }}
                     rounded="$10"
                     width="100%"
                     py="$3"
                     my="$1"
-                    color="#ffffff"
+                    color="var(--primary-foreground)"
                     fontWeight="600"
                     fontSize={14}
                     text="center"
@@ -908,7 +911,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                     justify="center"
                     gap="$2"
                   >
-                    <Sparkles size={16} color="#ffffff" aria-hidden />
+                    <Sparkles size={16} color="var(--primary-foreground)" aria-hidden />
                     {t('Get started')}
                   </Anchor>
 
@@ -930,12 +933,12 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                           {businessCycle === 'year' ? '$16.67 / month' : '$20 / month'}
                         </Text>
                       </XStack>
-                      <Text fontSize={11} color="#8e8e8e">
+                      <Text fontSize={11} color="$soft">
                         {t('Best for everyday work')}
                       </Text>
                     </YStack>
 
-                    <Box height={1} bg="rgba(255, 255, 255, 0.06)" />
+                    <Box height={1} bg="var(--edge)" />
 
                     <YStack gap="$0.5">
                       <XStack justify="space-between" items="center">
@@ -946,7 +949,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                           {businessCycle === 'year' ? '$83.33 / month' : '$100 / month'}
                         </Text>
                       </XStack>
-                      <Text fontSize={11} color="#8e8e8e">
+                      <Text fontSize={11} color="$soft">
                         {t('More usage, no 5-hour limit')}
                       </Text>
                     </YStack>
@@ -966,7 +969,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                     ].map(([Icon, label], idx) => (
                       <XStack key={idx} items="flex-start" gap="$2.5">
                         <Box pt={2}>
-                          <Icon size={16} color="#388bfd" aria-hidden />
+                          <Icon size={16} color={INK} aria-hidden />
                         </Box>
                         <Text fontSize={13} color="$ink" lineHeight={18}>
                           {label}
@@ -976,18 +979,18 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                   </YStack>
                 </YStack>
               </YStack>
-            </Box>
+            </View>
 
             {/* Business Enterprise notice at the bottom of Business tab */}
             <XStack justify="center" items="center" gap="$1.5" pt="$2">
-              <Text fontSize={13} color="#8e8e8e">
+              <Text fontSize={13} color="$soft">
                 {t('Need more capabilities for your business?')}
               </Text>
               <Anchor
                 href={site('/contact-sales')}
                 fontSize={13}
                 fontWeight="600"
-                color="#388bfd"
+                color="$ink"
                 hoverStyle={{ textDecorationLine: 'none' }}
               >
                 {t('See Hanzo Enterprise')}
@@ -1001,7 +1004,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
           <Anchor
             href={site('/pricing')}
             fontSize={13}
-            color="var(--soft, #a1a1aa)"
+            color="$soft"
             hoverStyle={{ color: '$ink' }}
           >
             {t('See all plans & pricing table')}
@@ -1014,7 +1017,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
             p={0}
             cursor="pointer"
           >
-            <Text fontSize={13} color="var(--soft, #a1a1aa)" hoverStyle={{ color: '$ink' }}>
+            <Text fontSize={13} color="$soft" hoverStyle={{ color: '$ink' }}>
               {t('Not now')}
             </Text>
           </Box>
