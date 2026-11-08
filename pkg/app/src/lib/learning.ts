@@ -37,6 +37,7 @@ export const LEARNING_PATHS: Record<LearningPart, string> = {
 /** Every read uses the same IAM/org headers as the rest of the workspace. */
 export async function learningRead<K extends LearningPart>(part: K, signal?: AbortSignal): Promise<LearningRows[K]> {
   const r = await fetch(`${api()}${LEARNING_PATHS[part]}`, { headers: scope(), signal })
+  if (r.status === 404) return [] as unknown as LearningRows[K]
   if (!r.ok) throw Object.assign(new Error(`${r.status}`), { status: r.status })
   const body = await r.json() as { data?: unknown }
   if (!Array.isArray(body.data)) throw new Error('Learning response is missing its data array')

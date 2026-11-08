@@ -73,10 +73,7 @@ export function Learning({ open, onClose }: { open: boolean; onClose: () => void
   return <Dialog open={open} onOpenChange={(next: boolean) => { if (!next) onClose() }}>
     <DialogContent width="100%" maxW={900} p="$5">
       <YStack gap="$4" maxH="80vh" overflow="scroll">
-        <XStack items="center" justify="space-between" gap="$2">
-          <DialogTitle><Text fontSize="$5">{t('Learning')}</Text></DialogTitle>
-          <Button size="sm" onPress={onClose}>{t('Close')}</Button>
-        </XStack>
+        <DialogTitle><Text fontSize="$5">{t('Learning')}</Text></DialogTitle>
         <Text color="$soft">{t('Research, test ideas, and review improvements backed by your workspace’s evidence.')}</Text>
         {!accessToken ? <Text role="status">{t('Sign in to see your learning activity.')}</Text> : <>
           <XStack gap="$2" flexWrap="wrap" role="tablist" aria-label={t('Learning')}>
@@ -87,7 +84,7 @@ export function Learning({ open, onClose }: { open: boolean; onClose: () => void
           </XStack>
           {tab === 'research' ? <YStack gap="$3">
             <Text color="$soft">{t('A study with a baseline and acceptance criteria reviews new results as they arrive. Findings remain drafts until reviewed.')}</Text>
-            <Button size="sm" onPress={() => setForm(!form)}>{form ? t('Cancel') : t('New improvement study')}</Button>
+            {!form ? <Button size="sm" onPress={() => setForm(true)}>{t('New improvement study')}</Button> : null}
             {form ? <form onSubmit={(event) => { event.preventDefault(); void create() }}><YStack gap="$2">
               {field('title', t('Title'))}{field('question', t('Research question'))}{field('baseline', t('Baseline run ID'))}{field('target', t('App, harness, skill or connector'))}
               {field('category', t('Metric category'))}{field('metric', t('Primary metric'))}
@@ -106,7 +103,7 @@ export function Learning({ open, onClose }: { open: boolean; onClose: () => void
               <Text fontSize="$2">{study.improvement ? t('Automatic review enabled') : t('Evidence only')}</Text>
             </YStack>)}
             {answers.studies?.rows?.length === 0 ? <Text color="$soft">{t('No studies yet. Create one to review recorded results continuously.')}</Text> : null}
-            <Text fontSize="$4">{t('Improvement findings')}</Text>{state('reviews')}
+            <Text fontSize="$4">{t('Improvement findings')}</Text>{answers.studies?.error && answers.reviews?.error ? null : state('reviews')}
             {answers.reviews?.rows?.map((row) => <YStack key={row.id} gap="$1" p="$3" bg="$panel" rounded="$3">
               <Text>{row.action.review?.target}</Text><Text>{row.action.review?.status} · {row.status}</Text>
               <Text color="$soft">{row.action.description}</Text>
