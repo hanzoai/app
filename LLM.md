@@ -151,8 +151,10 @@ repository or a site from any surface.
   (Sidebar), with no group labels. Library, Scheduled tasks and Customize each
   take the sidebar (Rail.tsx `raised`): Back (to where the reader was, Chat or
   Dev), the place's name, and its own rows — Customize's tabs Agents first
-  (`tabs`), Library's Upload and kinds (`library`, the kind in the address,
-  /dev/artifacts/<kind>), Scheduled tasks' New task and the person's tasks
+  (`tabs`), Library's Make something new, Upload and kinds (`library`, the kind in
+  the address, /dev/artifacts/<kind>; Make something new is
+  /dev/artifacts/new, gallery.hanzo.ai's templates, and the palette's
+  `make`), Scheduled tasks' New task and the person's tasks
   (`useScheduled`) — and the page draws none of them itself (the host's
   `sections`). Shut, the sidebar takes them with it and the rail stays.
 - Settings is the host's own pages, one tree at /settings (hanzo.ai's

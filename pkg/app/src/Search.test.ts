@@ -33,8 +33,8 @@ vi.mock('@hanzo/build', async () => {
       { id: 'Settings', label: '', links: [settings(go, 'general', 'General'), settings(go, 'account', 'Account'), settings(go, 'billing', 'Billing'), settings(go, 'machines', 'Machines')] },
     ],
     tabs: (_: unknown, go: Go) => [{ id: 'customize', label: '', links: [link(go, 'agents', 'Agents', path({ kind: 'customize', tab: 'agents' }))] }],
-    library: () => [
-      { id: 'library-do', label: '', links: [{ id: 'upload', label: 'Upload', onPress: () => {} }] },
+    library: (_: unknown, go: Go) => [
+      { id: 'library-do', label: '', links: [link(go, 'make', 'Make something new', '-/artifacts/new'), { id: 'upload', label: 'Upload', onPress: () => {} }] },
       { id: 'library-kinds', label: '', links: [{ id: 'kind-image', label: 'Images', onPress: () => {} }] },
     ],
   }
@@ -127,9 +127,16 @@ describe('Actions', () => {
 
   test('what the host cannot do is not offered', () => {
     const ids = (h?: Host) => actions(h, vi.fn(), () => {}, () => {}).map((a) => a.id)
-    expect(ids(host)).toEqual(['new-chat', 'new-task', 'new-creation', 'new-scheduled', 'upload', 'model', 'org', 'keys', 'logout'])
+    expect(ids(host)).toEqual(['new-chat', 'new-task', 'new-creation', 'new-scheduled', 'make', 'upload', 'model', 'org', 'keys', 'logout'])
     expect(ids({ ...host, chooseTheme: () => {} } as Host)).toContain('theme')
     expect(ids()).not.toContain('upload')
+    expect(ids()).not.toContain('make')
+  })
+
+  test('Make something new opens the Library’s template picker in Dev', () => {
+    const go = vi.fn()
+    take(actions(host, go, () => {}, () => {}), 'make')
+    expect(go).toHaveBeenCalledWith(app('-/artifacts/new'))
   })
 })
 
