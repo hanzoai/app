@@ -2,13 +2,14 @@
 
 /**
  * The accounts signed in on this browser, as a list: who they are, which one is
- * this one, a tap to be another, and one to add. Log out is IAM's, and ends every
- * one of them (lib/accounts), so it is said once, for all.
+ * this one, a tap to be another, one to sign any of them out, and one to add.
+ * Signing out of all is IAM's (lib/signout): it ends every one of them, and with
+ * several signed in it says so.
  */
 
 import { Check, Plus } from 'lucide-react'
 import { useI18n } from '@hanzo/i18n/react'
-import { Text, View, XStack, YStack } from '@hanzo/gui'
+import { Text, XStack, YStack } from '@hanzo/gui'
 import { Avatar, Button } from '@hanzo/ui'
 import { label, useAccounts, type Account } from './lib/accounts'
 import { useSignOut } from './lib/signout'
@@ -36,7 +37,7 @@ export function Face({ account }: { account: Account }) {
 export function Accounts() {
   const { t } = useI18n()
   const out = useSignOut()
-  const { accounts, current, switchTo, add } = useAccounts()
+  const { accounts, current, switchTo, add, leave } = useAccounts()
   if (accounts.length === 0) return null
   return (
     <YStack render="section" aria-label={t('Accounts')} mt={36}>
@@ -46,13 +47,15 @@ export function Accounts() {
       <YStack render="ul" aria-label={t('Signed in on this browser')} m={0} p={0} mt={14} gap={8}>
         {accounts.map((a) => {
           const here = a.sub === current?.sub
+          const { title } = label(a)
           return (
-            <View key={a.sub} render="li" display="block">
+            <XStack key={a.sub} render="li" items="center" gap={8}>
               <XStack
                 render="button"
                 onClick={here ? undefined : () => void switchTo(a)}
                 aria-current={here || undefined}
-                width="100%"
+                flex={1}
+                minW={0}
                 items="center"
                 gap={12}
                 px={12}
@@ -67,7 +70,10 @@ export function Accounts() {
                 <Face account={a} />
                 {here ? <Check size={16} aria-label={t('Current')} /> : null}
               </XStack>
-            </View>
+              <Button type="button" size="xs" variant="ghost" aria-label={t('Sign out {name}', { name: title })} onClick={() => void leave(a)}>
+                {t('Sign out')}
+              </Button>
+            </XStack>
           )
         })}
       </YStack>
@@ -77,7 +83,7 @@ export function Accounts() {
           {t('Add account')}
         </Button>
         <Button type="button" variant="ghost" onClick={() => void out()}>
-          {t('Log out')}
+          {accounts.length > 1 ? t('Sign out of all accounts') : t('Log out')}
         </Button>
       </XStack>
     </YStack>

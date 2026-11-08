@@ -11,11 +11,12 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 const state = vi.hoisted(() => ({
   iam: { isAuthenticated: true, user: null as Record<string, string> | null },
   named: { name: 'Bob Ross', display: 'Bob Ross', email: 'bob@hanzo.ai' } as { name: string; display: string; email: string } | null,
-  accounts: { accounts: [], current: null, switchTo: async () => {}, add: async () => {} } as {
+  accounts: { accounts: [], current: null, switchTo: async () => {}, add: async () => {}, leave: async () => true } as {
     accounts: { sub: string; owner: string; name: string; displayName: string; email: string; avatar: string }[]
     current: { sub: string } | null
     switchTo: () => Promise<void>
     add: () => Promise<void>
+    leave: (a: unknown) => Promise<boolean>
   },
 }))
 
@@ -176,7 +177,7 @@ describe('the bar\'s other accounts', () => {
   test('a tap is being that account, Add account is adding one, and neither signs anyone out', async () => {
     const switchTo = vi.fn(async () => {})
     const add = vi.fn(async () => {})
-    state.accounts = { accounts: [bob, carol], current: bob, switchTo, add }
+    state.accounts = { ...state.accounts, accounts: [bob, carol], current: bob, switchTo, add }
     const host = document.createElement('div')
     document.body.append(host)
     const root = createRoot(host)
@@ -190,6 +191,39 @@ describe('the bar\'s other accounts', () => {
     expect(switchTo).toHaveBeenCalledWith(carol)
     await press('Add account')
     expect(add).toHaveBeenCalledTimes(1)
+    await act(async () => root.unmount())
+    host.remove()
+  })
+})
+
+describe('the bar\'s way out', () => {
+  const bob = { sub: 's1', owner: 'hanzo', name: 'bob', displayName: 'Bob Ross', email: 'bob@hanzo.ai', avatar: '' }
+  const carol = { sub: 's2', owner: 'hanzo', name: 'carol', displayName: 'Carol Ames', email: 'carol@example.com', avatar: '' }
+
+  beforeEach(() => {
+    state.iam = { isAuthenticated: true, user: null }
+    state.named = { name: 'Bob Ross', display: 'Bob Ross', email: 'bob@hanzo.ai' }
+  })
+
+  test('one account signed in says Log out', () => {
+    state.accounts = { ...state.accounts, accounts: [bob], current: bob }
+    const html = drawn()
+    expect(html.match(/>Log out</g)).toHaveLength(1)
+    expect(html).not.toContain('Sign out')
+  })
+
+  test('several signed in say this account alone, or all, and the first signs out only the reader', async () => {
+    const leave = vi.fn(async () => true)
+    state.accounts = { ...state.accounts, accounts: [bob, carol], current: bob, leave }
+    expect(drawn()).not.toContain('>Log out<')
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => root.render(createElement(Header, {})))
+    const button = (text: string) => [...host.querySelectorAll('button')].find((b) => b.textContent === text)
+    expect(button('Sign out of all accounts')).toBeTruthy()
+    await act(async () => button('Sign out Bob Ross')!.click())
+    expect(leave).toHaveBeenCalledWith(bob)
     await act(async () => root.unmount())
     host.remove()
   })

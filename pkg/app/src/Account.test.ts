@@ -51,6 +51,8 @@ const signed = vi.hoisted(() => ({
   accounts: [] as { sub: string; owner: string; name: string; displayName: string; email: string; avatar: string }[],
   switchTo: vi.fn(async () => {}),
   add: vi.fn(async () => {}),
+  leave: vi.fn(async () => true),
+  signOut: vi.fn(),
 }))
 vi.mock('./lib/accounts', () => ({
   label: (a: { displayName: string; name: string; email: string }) => ({ title: a.displayName || a.name, line: a.email }),
@@ -59,6 +61,7 @@ vi.mock('./lib/accounts', () => ({
     current: signed.accounts.find((a) => a.name === 'ada') ?? null,
     switchTo: signed.switchTo,
     add: signed.add,
+    leave: signed.leave,
   }),
 }))
 
@@ -68,7 +71,7 @@ import type { Tier } from './lib/tier'
 /** The account menu, open, as its rows. */
 function menu(accountOpen = false) {
   rows.length = 0
-  const host = { api: '', token: () => null, org: 'acme', person: { name: 'Ada', email: 'ada@acme.dev', avatar: '' }, signOut: () => {} }
+  const host = { api: '', token: () => null, org: 'acme', person: { name: 'Ada', email: 'ada@acme.dev', avatar: '' }, signOut: signed.signOut }
   renderToStaticMarkup(createElement(Account, { host, onOrg: () => {}, defaultAccountOpen: accountOpen }))
   return [...rows]
 }
@@ -104,6 +107,25 @@ describe('the account menu', () => {
     } finally {
       signed.accounts = []
     }
+  })
+
+  test('with several signed in the way out is this account alone, or all of them; with one it is Log out', () => {
+    const ada = { sub: 's-ada', owner: 'acme', name: 'ada', displayName: 'Ada', email: 'ada@acme.dev', avatar: '' }
+    const bob = { sub: 's-bob', owner: 'acme', name: 'bob', displayName: 'Bob Tester', email: 'bob@acme.dev', avatar: '' }
+    signed.accounts = [ada, bob]
+    try {
+      const labels = menu(false).map((r) => r.label)
+      expect(labels.slice(-3)).toEqual(['Help', 'Sign out Ada', 'Sign out of all accounts'])
+      expect(labels).not.toContain('Log out')
+      press('Sign out Ada', false)
+      expect(signed.leave).toHaveBeenCalledWith(ada)
+      expect(signed.signOut, 'one account out is not all of them').not.toHaveBeenCalled()
+      press('Sign out of all accounts', false)
+      expect(signed.signOut).toHaveBeenCalledTimes(1)
+    } finally {
+      signed.accounts = []
+    }
+    expect(menu(false).map((r) => r.label).slice(-2)).toEqual(['Help', 'Log out'])
   })
 
   test("Beta opens the person's place on the waitlist, a page of the site", () => {
