@@ -29,6 +29,9 @@ describe('native learning transport', () => {
   test('shows only native findings and propagates refusal rather than inventing empty results', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: [{ id: 'native', action: { rule: 'research.improvement.v1' } }, { id: 'other', action: { rule: 'unrelated' } }] }) }))
     expect((await learningRead('reviews')).map((row) => row.id)).toEqual(['native'])
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }))
+    expect(await learningRead('studies')).toEqual([])
+    expect(await learningRead('reviews')).toEqual([])
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 403 }))
     await expect(learningRead('studies')).rejects.toMatchObject({ status: 403 })
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }))
