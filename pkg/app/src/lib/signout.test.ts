@@ -4,10 +4,15 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-const state = vi.hoisted(() => ({ out: vi.fn(async () => {}) }))
+const state = vi.hoisted(() => ({ out: vi.fn(async () => {}), options: {} as { to?: string; everywhere?: boolean } }))
 vi.mock('@hanzo/iam', () => ({ IAM: class {} }))
 vi.mock('@hanzo/iam/react', () => ({ useIam: () => ({ config: {} }) }))
-vi.mock('@hanzo/ui/auth', () => ({ useSignOut: () => state.out }))
+vi.mock('@hanzo/ui/auth', () => ({
+  useSignOut: (options: { to?: string; everywhere?: boolean }) => {
+    state.options = options
+    return state.out
+  },
+}))
 vi.mock('./tags', () => ({ track: () => {} }))
 vi.mock('./host', () => ({ answers: () => false }))
 
@@ -19,10 +24,10 @@ describe('signing out', () => {
     state.out.mockClear()
   })
 
-  const press = async () => {
+  const press = async (to?: string) => {
     let leave!: () => Promise<void>
     const Probe = () => {
-      leave = useSignOut()
+      leave = useSignOut(to)
       return null
     }
     const host = document.createElement('div')
@@ -45,5 +50,12 @@ describe('signing out', () => {
   test('is the same without Google\'s script on the page', async () => {
     await press()
     expect(state.out).toHaveBeenCalledTimes(1)
+  })
+
+  test('lands on the sign-in after a sign-out, or where the caller says, and ends every Hanzo site either way', async () => {
+    await press()
+    expect(state.options).toMatchObject({ to: '/login?from=logout', everywhere: true })
+    await press('/login?client_id=hanzo-cli')
+    expect(state.options).toMatchObject({ to: '/login?client_id=hanzo-cli', everywhere: true })
   })
 })

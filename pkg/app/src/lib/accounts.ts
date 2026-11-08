@@ -10,18 +10,20 @@
  * sign-in with `prompt=login`, which asks for credentials and keeps the sessions
  * already held. Neither ends a session. Signing OUT is IAM's: this site's Log out
  * ends every session the browser holds (internal/oidc/logout.go); IAM ends one
- * alone only when told which (`logout_hint`), and no row here asks it to.
+ * alone when told which (`logout_hint`), and `end` tells it.
  *
- * Both go through the page's own IAM client (`useClient`), so the authorize
- * address is the one this site signs in at, and both write the page down first
- * (`rememberDestination`), so the sign-in returns here.
+ * Being one goes through the page's own IAM client (`useClient`), so the authorize
+ * address is the one this site signs in at, and both ways in write the page down
+ * first (`rememberDestination`), so the sign-in returns here. Being one also makes
+ * it the account IAM answers for when no one is named (PUT /v1/iam/accounts,
+ * `put`), so a read made with the session cookie says the same person the tokens do.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useIam } from '@hanzo/iam/react'
 import { rememberDestination } from './destination'
 import { named } from './session'
-import { here, useClient } from './signout'
+import { here, OUT, useClient } from './signout'
 
 /** One person signed in on this browser: enough to recognise them, and to name them in a `login_hint`. */
 export interface Account {
@@ -34,6 +36,10 @@ export interface Account {
 }
 
 const PATH = '/v1/iam/accounts'
+const LOGOUT = '/v1/iam/oauth/logout'
+
+/** How long the list is waited for before it is read as nobody: the page that asks first (the chooser) holds nothing else back longer. */
+const WAIT = 4000
 
 const text = (v: unknown): string => (typeof v === 'string' ? v.trim() : '')
 
@@ -70,6 +76,40 @@ export async function read(base: string, signal?: AbortSignal): Promise<Account[
   }
 }
 
+/** `a` made the account IAM answers for here when no one is named. Refused or unreachable is not the person's problem: the sign-in that follows names the account itself. */
+export async function put(base: string, a: Account): Promise<void> {
+  try {
+    await fetch(`${base.replace(/\/+$/, '')}${PATH}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ current: a.sub }),
+    })
+  } catch {
+    // Nothing to undo: no account was signed in or out.
+  }
+}
+
+/**
+ * `a` signed out of this browser alone: IAM's end-session with `logout_hint`
+ * ends that session and leaves every other signed in. `client` names the
+ * application whose grant goes with it. Whether IAM ended it.
+ */
+export async function end(base: string, a: Account, client?: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${base.replace(/\/+$/, '')}${LOGOUT}`, {
+      method: 'POST',
+      credentials: 'include',
+      redirect: 'manual',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ logout_hint: a.sub, ...(client ? { client_id: client } : {}) }).toString(),
+    })
+    return res.ok || res.type === 'opaqueredirect'
+  } catch {
+    return false
+  }
+}
+
 /** What the page knows of the reader, to tell which account is theirs. */
 export interface Who {
   email?: string
@@ -90,25 +130,37 @@ export function label(account: Account): { title: string; line: string } {
   return { title, line: account.email && account.email !== title ? account.email : '' }
 }
 
+/** What `useAccounts` answers: the list and who in it is the reader, and the ways to be another, add one and sign one out. */
+export interface Accounts {
+  accounts: Account[]
+  current: Account | null
+  switchTo: (a: Account) => Promise<void>
+  add: () => Promise<void>
+  /** `a` signed out alone. This tab's own account leaves for `to` (the sign-in page, which offers the rest); another's is taken off the list. Whether IAM ended it. */
+  leave: (a: Account, to?: string) => Promise<boolean>
+}
+
 /**
- * The accounts signed in here, which is the reader's, and the two ways to leave
- * for another: `switchTo` an account in the list, and `add` one. Signed out it
- * reads nothing.
+ * The accounts signed in here, which is the reader's, and the ways to leave for
+ * another: `switchTo` an account in the list, `add` one, and `leave` one. Signed
+ * out it reads nothing, unless the page says to (`listing`: the account chooser asks
+ * who is signed in on this browser before anyone is; false reads nothing at all).
  */
-export function useAccounts(): { accounts: Account[]; current: Account | null; switchTo: (a: Account) => Promise<void>; add: () => Promise<void> } {
+export function useAccounts(listing?: boolean): Accounts {
   const { config, user, isAuthenticated } = useIam()
   const client = useClient()
   const [accounts, setAccounts] = useState<Account[]>([])
   const base = here() ? window.location.origin : (config as { serverUrl?: string }).serverUrl || ''
+  const listed = listing ?? isAuthenticated
 
   useEffect(() => {
-    if (!isAuthenticated || !base) return
+    if (!listed || !base) return
     const ctl = new AbortController()
-    void read(base, ctl.signal).then((list) => {
+    void read(base, AbortSignal.any([ctl.signal, AbortSignal.timeout(WAIT)])).then((list) => {
       if (!ctl.signal.aborted) setAccounts(list)
     })
     return () => ctl.abort()
-  }, [base, isAuthenticated])
+  }, [base, listed])
 
   const claimed = named()
   const u = user as { email?: string; name?: string; sub?: string; id?: string } | null
@@ -122,7 +174,26 @@ export function useAccounts(): { accounts: Account[]; current: Account | null; s
     },
     [client],
   )
-  const switchTo = useCallback((a: Account) => go({ additionalParams: { login_hint: a.sub } }), [go])
+  const switchTo = useCallback(
+    async (a: Account) => {
+      await put(base, a)
+      await go({ additionalParams: { login_hint: a.sub } })
+    },
+    [base, go],
+  )
   const add = useCallback(() => go({ additionalParams: { prompt: 'login' } }), [go])
-  return { accounts, current, switchTo, add }
+  const leave = useCallback(
+    async (a: Account, to: string = OUT) => {
+      if (!(await end(base, a, config.clientId))) return false
+      if (a.sub !== current?.sub) {
+        setAccounts((list) => list.filter((x) => x.sub !== a.sub))
+        return true
+      }
+      client.clearTokens()
+      window.location.assign(to)
+      return true
+    },
+    [base, config.clientId, current, client],
+  )
+  return { accounts, current, switchTo, add, leave }
 }

@@ -8,7 +8,7 @@
  * host's root; then the host's `back`, where the page has a step to go back to.
  * At the end, once someone is signed in, who it is: the face, the name and the
  * address, the other accounts signed in on this browser to be one tap away
- * (lib/accounts), Add account and Log out. Signed out, nothing but the brand. Under gui's `md` the account folds into its face, a menu of the address
+ * (lib/accounts), Add account and the way out. Signed out, nothing but the brand. Under gui's `md` the account folds into its face, a menu of the address
  * and the same two ways out. A host with an account control of its own hands it
  * in as `account`, and the bar draws that in this one's place (null: none).
  *
@@ -24,9 +24,10 @@
  *
  * Being another account, and adding one, write this page down first
  * (destination.ts `rememberDestination`), so the sign-in that follows comes back
- * to it, as hanzo.ai's /join does, and neither ends a session. Log out is the
- * account menu's own (lib/signout) and ends every one. The session is IAM's: the
- * host mounts `IamProvider`.
+ * to it, as hanzo.ai's /join does, and neither ends a session. With one account
+ * signed in, Log out is the account menu's own (lib/signout); with several, this
+ * one is signed out alone (`leave`, IAM's `logout_hint`) or all of them are. The
+ * session is IAM's: the host mounts `IamProvider`.
  */
 
 import { useEffect, useState, type FocusEvent, type PointerEvent, type ReactNode } from 'react'
@@ -37,7 +38,7 @@ import { Text, View, XStack, YStack } from '@hanzo/gui'
 import { Avatar, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@hanzo/ui'
 import { HanzoWordmark } from '@hanzogui/shell'
 import { Face } from './Accounts'
-import { useAccounts } from './lib/accounts'
+import { label, useAccounts } from './lib/accounts'
 import { named } from './lib/session'
 import { useSignOut } from './lib/signout'
 import { brand, site } from './where'
@@ -85,7 +86,7 @@ export function Header({ back, account }: { back?: ReactNode; account?: ReactNod
   const avatar = typeof u?.avatar === 'string' && u.avatar.startsWith('https://') ? u.avatar : ''
   const who = name || email
   const out = () => void signOut()
-  const { accounts, current, switchTo, add } = useAccounts()
+  const { accounts, current, switchTo, add, leave } = useAccounts()
   const others = accounts.filter((a) => a.sub !== current?.sub)
   const signed = isAuthenticated && Boolean(who)
   const moved = useMoved()
@@ -172,9 +173,16 @@ export function Header({ back, account }: { back?: ReactNode; account?: ReactNod
                   {t('Add account')}
                 </Text>
               </DropdownMenuItem>
+              {others.length > 0 && current ? (
+                <DropdownMenuItem onSelect={() => void leave(current)}>
+                  <Text fontSize="$3" color="$ink">
+                    {t('Sign out {name}', { name: label(current).title })}
+                  </Text>
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuItem onSelect={out}>
                 <Text fontSize="$3" color="$ink">
-                  {t('Log out')}
+                  {others.length > 0 ? t('Sign out of all accounts') : t('Log out')}
                 </Text>
               </DropdownMenuItem>
             </DropdownMenuContent>

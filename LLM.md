@@ -390,6 +390,22 @@ hanzo.ai/login, which finishes it and returns the code to the host's callback.
 `guest()`: hanzo.app, `*.hanzo.app` and hanzo.chat sign nobody in and hand off to
 the same address on hanzo.ai.
 
+## The accounts signed in on this browser
+
+IAM holds one session per person in its cookie and lists them (`GET
+/v1/iam/accounts`, `lib/accounts` `read`); the UI only calls IAM. `useAccounts`
+is the one reader: `switchTo` makes the account IAM's current one (`PUT`
+`{current: sub}`, so a read made with the cookie names the person the tokens do)
+and then signs in with `login_hint`; `add` signs in with `prompt=login`, which
+keeps the others; `leave` signs one out alone (`POST /v1/iam/oauth/logout` with
+`logout_hint`) and, for this tab's own account, clears its tokens and goes to
+the sign-in, which offers the rest. Signing out of all is `useSignOut`
+(`everywhere`). `useAccounts(true)` reads before anyone is signed in: hanzo.ai's
+account chooser (/login) lists the browser's accounts for an app that asked
+`prompt=select_account`. The rail menu, the bar's menu and the Accounts section
+say "Sign out {name}" and "Sign out of all accounts" with several signed in,
+"Log out" with one.
+
 ## Build and ship
 
 The repository is a pnpm workspace of the packages it publishes, each under

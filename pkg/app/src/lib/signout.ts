@@ -32,16 +32,18 @@ export const OUT = '/login?from=logout'
 /**
  * Sign-out on this site: @hanzo/ui/auth's `signOut` — the tokens handed back to
  * IAM's /v1/iam routes, IAM's session here ended, the local session cleared —
- * counted as logout_completed, and then /login?from=logout, where the person can
- * sign straight back in. IAM's own logout page is never visited.
+ * counted as logout_completed, and then /login?from=logout (or `to`: the account
+ * chooser, which signs everyone out and stays on the request it was drawn for),
+ * where the person can sign straight back in. IAM's own logout page is never
+ * visited.
  *
  * EVERY HANZO SITE AT ONCE (`everywhere`). hanzo.ai and platform.hanzo.ai sign in
  * from one session, so leaving one of them must leave the other: IAM retires the
  * person's grant to every application of this client's organization along with
  * the session. A third-party app the person signed into keeps its own.
  */
-export function useSignOut(): () => Promise<void> {
-  const signOut: () => Promise<void> = useUiSignOut({ to: OUT, track, everywhere: true })
+export function useSignOut(to: string = OUT): () => Promise<void> {
+  const signOut: () => Promise<void> = useUiSignOut({ to, track, everywhere: true })
   return useCallback(async () => {
     // Google One Tap signs a returning person in on its own (`auto_select`), which
     // would put them straight back in the account they just left. Leaving says so.
