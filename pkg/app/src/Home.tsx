@@ -31,6 +31,7 @@ import { useAi } from './lib/ai'
 import { useHydrated } from './lib/hydrated'
 import { useOpen } from './open'
 import { plainly, say } from './failure'
+import { failed } from './failed'
 import { Directory } from './Directory'
 import { Bar } from './progress'
 import { Card, Go, INK, Quiet, Row, SOFT, CHOSEN } from './card'
@@ -520,8 +521,10 @@ function Next({ onConnect }: { onConnect: () => void }) {
 
   const rows = useMemo(() => {
     const out: { key: string; say: string; href?: string; press?: boolean }[] = []
-    const failed = safeSessions.filter((s) => s && s.status === 'error').length
-    if (failed) out.push({ key: 'failed', say: t('{n} failed', { n: failed }), href: '/work' })
+    // The past 7 days' failures, a tree counted once (./failed): counting every
+    // error in the last 100 runs kept old failures on the card indefinitely.
+    const failing = failed(safeSessions).length
+    if (failing) out.push({ key: 'failed', say: t('{n} failed in the past 7 days', { n: failing }), href: '/work' })
     if (safeAgents.length === 0) out.push({ key: 'agent', say: t('Hire your first agent'), href: '/work' })
     if (held?.length === 0) out.push({ key: 'ship', say: t('Ship your first project'), href: dev() })
     if (connected && Array.isArray(connected) && !connected.some((a) => a?.connected))
