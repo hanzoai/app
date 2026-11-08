@@ -3,7 +3,7 @@
 //
 // The card counted every run marked `error` among the org's last 100, with no
 // window and a fan-out's sub-runs each counted on their own, so a failure stayed
-// on the card ("14 failed", hanzo-inc/app#202) until a hundred newer runs pushed
+// on the card ("14 failed", hanzo-inc/app issue 202) until a hundred newer runs pushed
 // it off the page, however long ago it happened. A failure is news for the same
 // 7 days the Recents menu calls "Past 7 days", and a tree is one run.
 

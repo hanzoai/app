@@ -15,7 +15,7 @@ describe("Home's failed count", () => {
     expect(failed([run('a', { endedAt: ago(2) }), run('b', { endedAt: ago(7 * 24 - 1) })], now).map((s) => s.id)).toEqual(['a', 'b'])
   })
 
-  // hanzo-inc/app#202: the tile read "14 failed" because every errored run in
+  // hanzo-inc/app issue 202: the tile read "14 failed" because every errored run in
   // the last 100 counted, however long ago it ended.
   test('leaves out a failure older than 7 days, however few runs came after it', () => {
     const old = Array.from({ length: 14 }, (_, i) => run(`old${i}`, { endedAt: ago(8 * 24 + i) }))
