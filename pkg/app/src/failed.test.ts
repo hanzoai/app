@@ -59,4 +59,12 @@ describe("Home's failed count", () => {
     expect(home).toContain("t('{n} failed in the past 7 days'")
     expect(home).not.toMatch(/safeSessions\.filter\(\(s\) => s && s\.status === 'error'\)/)
   })
+
+  // A read that failed handed the card an empty list, which counted as nothing
+  // failed and could leave the card saying "Nothing needs you."
+  test('the Next card says a failed read of the runs, and pressing the row reads them again', () => {
+    const home = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'Home.tsx'), 'utf8')
+    expect(home).toContain('const { sessions, error: unread, reload } = useSessions({ limit: 100 })')
+    expect(home).toContain("say: say(unread, t('your runs'), 'read', t), press: reload")
+  })
 })

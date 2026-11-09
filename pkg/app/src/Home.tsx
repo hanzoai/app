@@ -32,6 +32,7 @@ import { useHydrated } from './lib/hydrated'
 import { useOpen } from './open'
 import { plainly, say } from './failure'
 import { failed } from './failed'
+import { watch } from './watch'
 import { Directory } from './Directory'
 import { Bar } from './progress'
 import { Card, Go, INK, Quiet, Row, SOFT, CHOSEN } from './card'
@@ -509,7 +510,7 @@ function Chats() {
  */
 function Next({ onConnect }: { onConnect: () => void }) {
   const { t } = useI18n()
-  const { sessions } = useSessions({ limit: 100 })
+  const { sessions, error: unread, reload } = useSessions({ limit: 100 })
   const { agents } = useAgents()
   const { held } = useProjects()
   const { held: connected } = useApps()
@@ -520,17 +521,22 @@ function Next({ onConnect }: { onConnect: () => void }) {
   const running = useMemo(() => safeSessions.filter((s) => s && s.status === 'running'), [safeSessions])
 
   const rows = useMemo(() => {
-    const out: { key: string; say: string; href?: string; press?: boolean }[] = []
+    const out: { key: string; say: string; href?: string; press?: () => void }[] = []
     // The past 7 days' failures, a tree counted once (./failed): counting every
-    // error in the last 100 runs kept old failures on the card indefinitely.
-    const failing = failed(safeSessions).length
-    if (failing) out.push({ key: 'failed', say: t('{n} failed in the past 7 days', { n: failing }), href: '/work' })
+    // error in the last 100 runs kept old failures on the card indefinitely. The
+    // row opens the newest of them on the Work board (./watch), not the board
+    // alone. A read that failed is not "nothing failed": it says so, and
+    // pressing the row reads the runs again.
+    const failing = failed(safeSessions)
+    if (unread) out.push({ key: 'failed', say: say(unread, t('your runs'), 'read', t), press: reload })
+    else if (failing.length)
+      out.push({ key: 'failed', say: t('{n} failed in the past 7 days', { n: failing.length }), href: watch(failing[0].id) })
     if (safeAgents.length === 0) out.push({ key: 'agent', say: t('Hire your first agent'), href: '/work' })
     if (held?.length === 0) out.push({ key: 'ship', say: t('Ship your first project'), href: dev() })
     if (connected && Array.isArray(connected) && !connected.some((a) => a?.connected))
-      out.push({ key: 'connect', say: t('Connect an app'), press: true })
+      out.push({ key: 'connect', say: t('Connect an app'), press: onConnect })
     return out
-  }, [safeSessions, safeAgents, held, connected, t])
+  }, [safeSessions, unread, reload, safeAgents, held, connected, onConnect, t])
 
   return (
     <Card kind="next" icon={<Bot size={14} aria-hidden />} title={t('Next')}>
@@ -550,7 +556,7 @@ function Next({ onConnect }: { onConnect: () => void }) {
       ) : (
         <YStack gap="$1">
           {rows.slice(0, 3).map((r) => (
-            <Row key={r.key} href={r.href} onPress={r.press ? onConnect : undefined}>
+            <Row key={r.key} href={r.href} onPress={r.press}>
               {r.say}
             </Row>
           ))}
