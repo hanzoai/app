@@ -26,7 +26,16 @@ vi.mock('@hanzo/ui', () => ({
 vi.mock('lucide-react', () => ({ ArrowUpRight: () => null, Compass: () => null, FlaskConical: () => null }))
 vi.mock('@hanzo/iam/react', () => ({ useIam: () => ({ accessToken: state.token }) }))
 vi.mock('./lib/api', () => ({ api: () => 'https://api.test' }))
-vi.mock('./lib/session', () => ({ bearer: () => state.token, scope: () => ({ Authorization: `Bearer ${state.token}` }), superAdmin: () => false }))
+// A reader who is not Hanzo's own: no home org, no orgs, no name. `hanzoAdmin()` reads all
+// three, and a Hanzo admin has every beta open, which is not what these tests ask about.
+vi.mock('./lib/session', () => ({
+  bearer: () => state.token,
+  scope: () => ({ Authorization: `Bearer ${state.token}` }),
+  superAdmin: () => false,
+  home: () => null,
+  orgs: () => [],
+  named: () => null,
+}))
 
 /** The cloud, as these routes answer: one switch on, one ask on file, and which betas are public. */
 const cloud = (flags: Record<string, boolean>, opted: { on: boolean; blocked: boolean; public: string[] }) =>
