@@ -58,8 +58,12 @@ export const spendShown = ({ limits, answered }: Pick<UseLimits, 'limits' | 'ans
 
 export { paidPlan }
 
-/** Whether the plan is Ultra: its id, compared as `paidPlan` compares it. */
-export const ultra = (l: Pick<Limits, 'plan'> | null | undefined): boolean => l?.plan === 'ultra'
+/**
+ * Whether the plan has no caps: Unlimited, with no windows and no included-usage
+ * limit. Its id, compared as `paidPlan` compares it. Ultra has Go's windows x25,
+ * so it is capped like any paid plan.
+ */
+export const uncapped = (l: Pick<Limits, 'plan'> | null | undefined): boolean => l?.plan === 'unlimited'
 
 /** An instant as the server writes one: RFC 3339, with its offset. Anything else names no instant. */
 const INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/i
@@ -113,8 +117,8 @@ export const spends = (code: string): boolean => SPENT.has(code)
  * pay's amount step to add some), both for this browser's organization and
  * coming back here, and Try again later, which the host takes as putting the
  * banner away. Until the plan is read (`limits` null) there is no upgrade: the
- * plan could be Ultra. Ultra has no allowance to spend, so what turns it away is
- * an empty balance, said as that, and its one way on is credits. Any other
+ * plan could be Unlimited. Unlimited has no allowance to spend, so what turns it
+ * away is an empty balance, said as that, and its one way on is credits. Any other
  * refusal is the server's own words and ways (@hanzo/build `ways`). Everything
  * said goes through `t`, and the time through `f`.
  */
@@ -130,7 +134,7 @@ export function paused(
   if (!SPENT.has(n.reason) && (n.reason || n.classes.length === 0)) return { message: n.message, actions: ways(n.actions, t) }
   const here = typeof window === 'undefined' ? undefined : window.location.href
   const topup: LimitAction = { kind: 'topup', label: t('Add credits'), url: payUrl('/amount/card', { org: org(), returnUrl: here }) }
-  if (ultra(limits)) return { message: t('Your balance is empty.') + on, actions: [topup] }
+  if (uncapped(limits)) return { message: t('Your balance is empty.') + on, actions: [topup] }
   const credits = n.actions.find((a) => a.kind === 'credits')
   const way = credits ? { ...credits, label: t('Continue with credits') } : topup
   const later: LimitAction = { kind: 'later', label: t('Try again later') }

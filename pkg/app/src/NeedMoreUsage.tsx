@@ -109,7 +109,7 @@ function TeamTrendIcon() {
 export interface NeedMoreUsageBannerProps {
   resetsAt?: string | null;
   fallbackModel?: string | null;
-  isUltra?: boolean;
+  isUncapped?: boolean;
   customMessage?: string | null;
   onGetMoreUsage: () => void;
   onSeeUsage: () => void;
@@ -118,7 +118,7 @@ export interface NeedMoreUsageBannerProps {
 export function NeedMoreUsageBanner({
   resetsAt,
   fallbackModel,
-  isUltra,
+  isUncapped,
   customMessage,
   onGetMoreUsage,
   onSeeUsage,
@@ -126,7 +126,7 @@ export function NeedMoreUsageBanner({
   const { t } = useI18n();
   const reset = formatResetParts(resetsAt);
 
-  const headlinePrefix = isUltra
+  const headlinePrefix = isUncapped
     ? t("Your balance is empty")
     : customMessage && !resetsAt
       ? customMessage.replace(/\.$/, "")
