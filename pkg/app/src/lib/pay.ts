@@ -71,6 +71,22 @@ export function payUrl(path: string, query: Record<string, string | null | undef
   return `${at}${path}${s ? `?${s}` : ""}`;
 }
 
+/**
+ * The plain top-up (no plan): pay's amount page for the card, for the organization in
+ * use, coming back to this page with the model it was for (`?model=`) so the chat
+ * resumes on it. Another maker's models are paid from this balance on any plan.
+ */
+export function topUpUrl(model?: string): string {
+  const back = new URL(window.location.href)
+  if (model) back.searchParams.set("model", model);
+  return payUrl("/amount/card", { org: org(), returnUrl: back.toString() });
+}
+
+/** Leaves for the top-up. */
+export function topUp(model?: string): void {
+  window.location.assign(topUpUrl(model));
+}
+
 export const dollars = (n: number) => `$${n.toFixed(2)}`;
 
 /**

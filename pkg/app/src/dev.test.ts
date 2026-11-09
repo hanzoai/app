@@ -9,12 +9,17 @@ import type { Host } from '@hanzo/build'
 // address grammar is the two kinds this reads: a screen and a Settings section.
 const { moved, routed } = vi.hoisted(() => ({ moved: [] as string[], routed: [] as string[] }))
 
+const { MARKS } = vi.hoisted(() => {
+  const mark = () => () => null
+  const one = { icon: mark(), make: mark() }
+  return { MARKS: { chat: one, dev: one, design: one, studio: one, tabs: one, library: one, scheduled: one, customize: one } }
+})
 vi.mock('@hanzo/build', () => {
   type Route = { kind: string; screen?: string; section?: string }
   const path = (r: Route) => (r.kind === 'settings' ? `-/settings/${r.section}` : r.kind === 'screen' ? `-/${r.screen}` : '')
   const route = (p: string): Route =>
     p.startsWith('-/settings/') ? { kind: 'settings', section: p.slice(11) } : p.startsWith('-/') ? { kind: 'screen', screen: p.slice(2) } : { kind: 'new' }
-  return { administers: () => true, path, route }
+  return { MARKS, administers: () => true, path, route }
 })
 vi.mock('@hanzo/iam/react', () => ({ useIam: () => ({ user: { name: 'Ada', email: 'ada@acme.dev' }, accessToken: 't' }) }))
 vi.mock('./host', () => ({

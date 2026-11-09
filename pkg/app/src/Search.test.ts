@@ -5,6 +5,11 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 // the shape they hand a sidebar: rows that move the app through `go`.
 const { empty, asked } = vi.hoisted(() => ({ empty: vi.fn(), asked: [] as unknown[] }))
 
+const { MARKS } = vi.hoisted(() => {
+  const mark = () => () => null
+  const one = { icon: mark(), make: mark() }
+  return { MARKS: { chat: one, dev: one, design: one, studio: one, tabs: one, library: one, scheduled: one, customize: one } }
+})
 vi.mock('@hanzo/ai/react', () => ({ useAi: () => ({}) }))
 vi.mock('@hanzo/ui', () => ({ Dialog: () => null, DialogContent: () => null, DialogTitle: () => null }))
 vi.mock('@hanzo/ui/product/CommandMenu', () => ({ CommandMenu: () => null }))
@@ -15,6 +20,7 @@ vi.mock('@hanzo/build', async () => {
   type Section = Extract<Parameters<typeof path>[0], { kind: 'settings' }>['section']
   const settings = (go: Go, id: Section, label: string) => link(go, id, label, path({ kind: 'settings', section: id }))
   return {
+    MARKS,
     NEW: 'new',
     path,
     // As @hanzo/build's reads it: the host's api, token, org and person, at once.
@@ -27,8 +33,8 @@ vi.mock('@hanzo/build', async () => {
       { id: 'Settings', label: '', links: [settings(go, 'general', 'General'), settings(go, 'account', 'Account'), settings(go, 'billing', 'Billing'), settings(go, 'machines', 'Machines')] },
     ],
     tabs: (_: unknown, go: Go) => [{ id: 'customize', label: '', links: [link(go, 'agents', 'Agents', path({ kind: 'customize', tab: 'agents' }))] }],
-    library: () => [
-      { id: 'library-do', label: '', links: [{ id: 'upload', label: 'Upload', onPress: () => {} }] },
+    library: (_: unknown, go: Go) => [
+      { id: 'library-do', label: '', links: [link(go, 'make', 'Make something new', '-/artifacts/new'), { id: 'upload', label: 'Upload', onPress: () => {} }] },
       { id: 'library-kinds', label: '', links: [{ id: 'kind-image', label: 'Images', onPress: () => {} }] },
     ],
   }
@@ -121,9 +127,16 @@ describe('Actions', () => {
 
   test('what the host cannot do is not offered', () => {
     const ids = (h?: Host) => actions(h, vi.fn(), () => {}, () => {}).map((a) => a.id)
-    expect(ids(host)).toEqual(['new-chat', 'new-task', 'new-creation', 'new-scheduled', 'upload', 'model', 'org', 'keys', 'logout'])
+    expect(ids(host)).toEqual(['new-chat', 'new-task', 'new-creation', 'new-scheduled', 'make', 'upload', 'model', 'org', 'keys', 'logout'])
     expect(ids({ ...host, chooseTheme: () => {} } as Host)).toContain('theme')
     expect(ids()).not.toContain('upload')
+    expect(ids()).not.toContain('make')
+  })
+
+  test('Make something new opens the Library’s template picker in Dev', () => {
+    const go = vi.fn()
+    take(actions(host, go, () => {}, () => {}), 'make')
+    expect(go).toHaveBeenCalledWith(app('-/artifacts/new'))
   })
 })
 

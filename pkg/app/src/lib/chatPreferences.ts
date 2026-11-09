@@ -2,7 +2,7 @@
  * What Chat does, kept in this browser. What the composer DRAWS (the key that
  * sends, the chips, the model selector, the mode) is not here: it is one setting
  * for every composer (@hanzo/appearance `composing`, Settings → Appearance).
- * - allowThirdPartyModels: whether 3rd-party models (OpenAI, Anthropic, etc.) are enabled via pre-paid credit (default: false)
+ * - allowThirdPartyModels: whether 3rd-party models (OpenAI, Anthropic, etc.) are listed. They are paid from the pre-paid balance on any plan, so they are on until the person turns them off (`thirdPartyChosen` says they did)
  * - approvalMode: whether tools/actions run automatically ('auto') or ask for confirmation first ('manual') (default: 'auto')
  * - effort: the reasoning effort a message asks for (default: auto, the router decides)
  * - showLanguage: dictation listens in the person's own language rather than Auto
@@ -17,6 +17,8 @@ export const DEFAULT_EFFORT: Effort = 'auto'
 
 export interface ChatPreferences {
   allowThirdPartyModels: boolean
+  /** The person turned third-party models on or off themselves; until then they are on. */
+  thirdPartyChosen?: boolean
   effort: Effort
   approvalMode: ApprovalMode
   showLanguage?: boolean
@@ -29,7 +31,7 @@ const EVENT_NAME = 'hanzo:chat:preferences'
 const EFFORT_SCHEMA_VERSION = 4
 
 const DEFAULT_PREFERENCES: ChatPreferences = {
-  allowThirdPartyModels: false,
+  allowThirdPartyModels: true,
   effort: DEFAULT_EFFORT,
   approvalMode: 'auto',
   showLanguage: false,
@@ -66,7 +68,8 @@ export function getChatPreferences(): ChatPreferences {
     const migratedEffort =
       parsed.effortVersion === EFFORT_SCHEMA_VERSION ? validEffort(parsed.effort) : DEFAULT_EFFORT
     return {
-      allowThirdPartyModels: Boolean(parsed.allowThirdPartyModels),
+      allowThirdPartyModels: parsed.thirdPartyChosen ? Boolean(parsed.allowThirdPartyModels) : true,
+      ...(parsed.thirdPartyChosen ? { thirdPartyChosen: true } : {}),
       effort: migratedEffort,
       approvalMode: validApprovalMode(parsed.approvalMode, autonomy),
       showLanguage: Boolean(parsed.showLanguage),

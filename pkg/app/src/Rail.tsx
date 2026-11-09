@@ -5,8 +5,10 @@
 // More (Team, on a host of its own, then the apps in beta this reader may open
 // and Betas, the list of every app in beta; none of it in Studio), and the
 // account at the foot. It
-// is how the app moves between its products; a phone, which has no rail,
-// switches Chat and Dev in its bar (Bar.tsx).
+// is how the app moves between its products; a phone's drawer holds it down its
+// start edge, as a laptop's window does, and its bar carries no switch of its
+// own. Every mark is @hanzo/build's `MARKS`, the one source the sidebars, the
+// bar, the palette and the landing pages draw from.
 //
 // Studio is the app's third mode (@hanzo/studio at /studio), each of the three
 // opened where the reader left it.
@@ -30,15 +32,15 @@
 // a browser tab. A host that is a window draws the toggle in its bar beside Back
 // and Forward (App.tsx `bar`), and its rail starts with Chat. A phone has no
 // rail: its menu (Drawer.tsx) lists the places as rows (`rows`) under the mode's
-// own — Studio, Tabs, then More, which Library, Scheduled tasks and Customize
-// lead there. Chat and Dev are the phone's bar's (Bar.tsx), and the account is
-// the menu's foot.
+// own — Design, Studio, Tabs, then More, which Library, Scheduled tasks and
+// Customize lead there. Chat and Dev are the rail's marks beside them, and the
+// account is the menu's foot.
 
 import { useI18n } from '@hanzo/i18n/react'
-import { Bot, CircleHelp, Clapperboard, Clock, Code2, Compass, Ellipsis, FlaskConical, Library, MessageSquare, PanelLeft, Puzzle, Settings, Sparkles, SquareTerminal, Users, WandSparkles } from 'lucide-react'
+import { Bot, CircleHelp, Compass, Ellipsis, FlaskConical, PanelLeft, Settings, Sparkles, Users } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Text, XStack, YStack } from '@hanzo/gui'
-import { route, type Host } from '@hanzo/build'
+import { MARKS, route, type Host } from '@hanzo/build'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { SidebarItem } from '@hanzo/ui/chat'
 import { BetasDialog, useBetas } from './Betas'
@@ -225,9 +227,9 @@ export function Rail({
   const rest: NonNullable<DropdownMenuProps['items']> = [
     ...(rows
       ? [
-          { key: 'library', label: t('Library'), icon: <Library size={16} aria-hidden />, onSelect: to(RAISED.library) },
-          { key: 'scheduled', label: t('Scheduled tasks'), icon: <Clock size={16} aria-hidden />, onSelect: to(RAISED.scheduled) },
-          { key: 'customize', label: t('Customize'), icon: <Puzzle size={16} aria-hidden />, onSelect: to(RAISED.customize) },
+          { key: 'library', label: t('Library'), icon: <MARKS.library.icon size={16} aria-hidden />, onSelect: to(RAISED.library) },
+          { key: 'scheduled', label: t('Scheduled tasks'), icon: <MARKS.scheduled.icon size={16} aria-hidden />, onSelect: to(RAISED.scheduled) },
+          { key: 'customize', label: t('Customize'), icon: <MARKS.customize.icon size={16} aria-hidden />, onSelect: to(RAISED.customize) },
           ...(team ? [{ type: 'separator' as const, key: 'raised' }] : []),
         ]
       : []),
@@ -247,17 +249,17 @@ export function Rail({
         <YStack role="list" gap={2}>
           {anon ? null : (
             <YStack role="listitem">
-              <Row label="Design" on={mode === 'design'} onPress={onDesign} data-slot="place-design" icon={<WandSparkles size={16} aria-hidden />} />
+              <Row label="Design" on={mode === 'design'} onPress={onDesign} data-slot="place-design" icon={<MARKS.design.icon size={16} aria-hidden />} />
             </YStack>
           )}
           {!anon && opened('studio') ? (
             <YStack role="listitem">
-              <Row label="Studio" on={mode === 'studio'} onPress={onStudio} data-slot="place-studio" icon={<Clapperboard size={16} aria-hidden />} />
+              <Row label="Studio" on={mode === 'studio'} onPress={onStudio} data-slot="place-studio" icon={<MARKS.studio.icon size={16} aria-hidden />} />
             </YStack>
           ) : null}
           {anon ? null : (
             <YStack role="listitem">
-              <Row label="Tabs" on={mode === 'tabs'} onPress={onTabs} data-slot="place-tabs" icon={<SquareTerminal size={16} aria-hidden />} />
+              <Row label="Tabs" on={mode === 'tabs'} onPress={onTabs} data-slot="place-tabs" icon={<MARKS.tabs.icon size={16} aria-hidden />} />
             </YStack>
           )}
           {apps.map((a) => (
@@ -300,24 +302,24 @@ export function Rail({
           with every product's mark scrolled the whole page and put the account below the fold. */}
       <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden" items="center" gap={4} width="100%" $platform-web={{ scrollbarWidth: 'none' }}>
       <Mark label={t('Chat')} on={mode === 'chat'} onPress={onChat} data-slot="rail-chat">
-        <MessageSquare size={18} aria-hidden />
+        <MARKS.chat.icon size={18} aria-hidden />
       </Mark>
       <Mark label="Dev" on={mode === 'dev' && !here} onPress={onDev} data-slot="rail-dev">
-        <Code2 size={18} aria-hidden />
+        <MARKS.dev.icon size={18} aria-hidden />
       </Mark>
       {anon ? null : (
         <Mark label="Design" on={mode === 'design'} onPress={onDesign} data-slot="rail-design">
-          <WandSparkles size={18} aria-hidden />
+          <MARKS.design.icon size={18} aria-hidden />
         </Mark>
       )}
       {!anon && opened('studio') ? (
         <Mark label="Studio" on={mode === 'studio'} onPress={onStudio} data-slot="rail-studio">
-          <Clapperboard size={18} aria-hidden />
+          <MARKS.studio.icon size={18} aria-hidden />
         </Mark>
       ) : null}
       {anon ? null : (
         <Mark label="Tabs" on={mode === 'tabs'} onPress={onTabs} data-slot="rail-tabs">
-          <SquareTerminal size={18} aria-hidden />
+          <MARKS.tabs.icon size={18} aria-hidden />
         </Mark>
       )}
       {apps.map((a) => (
@@ -326,16 +328,16 @@ export function Rail({
         </Mark>
       ))}
       <Mark label={t('Library')} on={here === 'library'} onPress={to(RAISED.library)} data-slot="rail-library">
-        <Library size={18} aria-hidden />
+        <MARKS.library.icon size={18} aria-hidden />
       </Mark>
       {anon ? null : (
         <Mark label={t('Scheduled tasks')} on={here === 'scheduled'} onPress={to(RAISED.scheduled)} data-slot="rail-scheduled">
-          <Clock size={18} aria-hidden />
+          <MARKS.scheduled.icon size={18} aria-hidden />
         </Mark>
       )}
       {anon ? null : (
         <Mark label={t('Customize')} on={here === 'customize'} onPress={to(RAISED.customize)} data-slot="rail-customize">
-          <Puzzle size={18} aria-hidden />
+          <MARKS.customize.icon size={18} aria-hidden />
         </Mark>
       )}
       {anon ? null : (

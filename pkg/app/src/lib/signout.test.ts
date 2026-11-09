@@ -16,7 +16,8 @@ vi.mock('@hanzo/ui/auth', () => ({
 vi.mock('./tags', () => ({ track: () => {} }))
 vi.mock('./host', () => ({ answers: () => false }))
 
-const { useSignOut } = await import('./signout')
+const { here, useSignOut } = await import('./signout')
+const { configure } = await import('../where')
 
 describe('signing out', () => {
   afterEach(() => {
@@ -57,5 +58,20 @@ describe('signing out', () => {
     expect(state.options).toMatchObject({ to: '/login?from=logout', everywhere: true })
     await press('/login?client_id=hanzo-cli')
     expect(state.options).toMatchObject({ to: '/login?client_id=hanzo-cli', everywhere: true })
+  })
+})
+
+describe('a page that answers IAM on its own origin', () => {
+  afterEach(() => configure({ answers: undefined }))
+
+  test('is a Hanzo host, or a host that says it signs in on its own page', () => {
+    // happy-dom's host is localhost, which no Hanzo list names here (host is mocked to none).
+    expect(here()).toBe(false)
+    configure({ answers: (host) => host === 'localhost' })
+    expect(here()).toBe(true)
+    configure({ answers: (host) => host === 'hanzo.market' })
+    expect(here()).toBe(false)
+    configure({ answers: () => true })
+    expect(here()).toBe(true)
   })
 })

@@ -17,10 +17,11 @@ import { dev } from './lib/host'
 import { phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { useEffect, useMemo, useState } from 'react'
-import { AtSign, Blocks, Bot, Code2, FolderGit2, Hash, MessageSquare, Plus, UserPlus } from 'lucide-react'
+import { AtSign, Blocks, Bot, FolderGit2, Hash, Plus, UserPlus } from 'lucide-react'
 import { useAgents, usePeople, useSessions, useThreads } from '@hanzo/ai/react'
 import type { AiClient } from '@hanzo/ai'
 import { Composer } from '@hanzo/ui/chat'
+import { MARKS } from '@hanzo/build'
 import { Crew } from './crew'
 import { Box, Text, XStack, YStack } from '@hanzo/ui'
 import { tap } from './lib/tap'
@@ -482,7 +483,7 @@ function Chats() {
   const { threads, loading } = useThreads()
   const { open } = useOpen()
   return (
-    <Card kind="chats" icon={<MessageSquare size={14} aria-hidden />} title={t('Chats')}>
+    <Card kind="chats" icon={<MARKS.chat.icon size={14} aria-hidden />} title={t('Chats')}>
       {loading && threads.length === 0 ? (
         <Waiting subject={t('your chats')} />
       ) : threads.length === 0 ? (
@@ -648,7 +649,7 @@ function Mates({ owner }: { owner: string }) {
 function Build() {
   const { t } = useI18n()
   return (
-    <Card kind="build" icon={<Code2 size={14} aria-hidden />} title={t('Build')}>
+    <Card kind="build" icon={<MARKS.dev.icon size={14} aria-hidden />} title={t('Build')}>
       <Quiet>{t('Hanzo Dev writes it, runs it, ships it.')}</Quiet>
       <Go href={dev()}>{t('Open Dev')}</Go>
     </Card>

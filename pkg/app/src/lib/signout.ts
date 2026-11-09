@@ -15,9 +15,14 @@ import { useIam } from '@hanzo/iam/react'
 import { useSignOut as useUiSignOut } from '@hanzo/ui/auth'
 import { track } from './tags'
 import { answers } from './host'
+import { where } from '../where'
 
-/** Whether the page in front of us is on an origin that answers IAM itself (`answers` in host.ts). */
-export const here = (): boolean => typeof window !== 'undefined' && answers(window.location.hostname)
+/**
+ * Whether the page in front of us is on an origin that answers IAM itself: one of
+ * the Hanzo hosts (`answers` in host.ts) or one the host states with
+ * `configure({ answers })` (where.ts).
+ */
+export const here = (): boolean => typeof window !== 'undefined' && (answers(window.location.hostname) || where().answers?.(window.location.hostname) === true)
 
 /** The IAM client for this page; the token exchange at the callback shares its PKCE store. */
 export function useClient(): IAM {
