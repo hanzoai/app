@@ -6,11 +6,12 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 const state = vi.hoisted(() => ({
-  accounts: { accounts: [], current: null, switchTo: async () => {}, add: async () => {} } as {
+  accounts: { accounts: [], current: null, switchTo: async () => {}, add: async () => {}, leave: async () => true } as {
     accounts: { sub: string; owner: string; name: string; displayName: string; email: string; avatar: string }[]
     current: { sub: string } | null
     switchTo: (a: unknown) => Promise<void>
     add: () => Promise<void>
+    leave: (a: unknown) => Promise<boolean>
   },
   out: vi.fn(async () => {}),
 }))
@@ -35,7 +36,7 @@ const carol = { sub: 's2', owner: 'hanzo', name: 'carol', displayName: 'Carol Am
 
 describe('the accounts section', () => {
   beforeEach(() => {
-    state.accounts = { accounts: [bob, carol], current: bob, switchTo: vi.fn(async () => {}), add: vi.fn(async () => {}) }
+    state.accounts = { accounts: [bob, carol], current: bob, switchTo: vi.fn(async () => {}), add: vi.fn(async () => {}), leave: vi.fn(async () => true) }
     state.out.mockClear()
   })
 
@@ -46,13 +47,22 @@ describe('the accounts section', () => {
 
   test('lists every account with its name and address, this one marked, and says nothing else', () => {
     const html = renderToStaticMarkup(createElement(Accounts))
-    for (const text of ['Bob Ross', 'bob@hanzo.ai', 'Carol Ames', 'carol@example.com', 'Add account', 'Log out']) expect(html).toContain(`>${text}<`)
+    for (const text of ['Bob Ross', 'bob@hanzo.ai', 'Carol Ames', 'carol@example.com', 'Add account', 'Sign out of all accounts']) expect(html).toContain(`>${text}<`)
     expect(html.match(/aria-current="true"/g), 'one account is this one').toHaveLength(1)
-    // A heading, the rows and two buttons: no paragraph explains any of it.
+    expect(html.match(/>Sign out</g), 'each account has its own way out').toHaveLength(2)
+    expect(html, 'with several signed in, Log out would say too little').not.toContain('>Log out<')
+    // A heading, the rows and their buttons: no paragraph explains any of it.
     expect(html).not.toMatch(/<p[\s>]/)
   })
 
-  test('a tap on another is being it, on this one is nothing, and Log out is IAM\'s, for all', async () => {
+  test('one account alone says Log out, which is all of it', () => {
+    state.accounts = { ...state.accounts, accounts: [bob], current: bob }
+    const html = renderToStaticMarkup(createElement(Accounts))
+    expect(html).toContain('>Log out<')
+    expect(html).not.toContain('Sign out of all accounts')
+  })
+
+  test('a tap on another is being it, on this one is nothing, Sign out is that account alone, and Sign out of all is IAM\'s, for all', async () => {
     const host = document.createElement('div')
     document.body.append(host)
     const root = createRoot(host)
@@ -64,7 +74,11 @@ describe('the accounts section', () => {
     expect(state.accounts.switchTo).toHaveBeenCalledWith(carol)
     await act(async () => row('Add account').click())
     expect(state.accounts.add).toHaveBeenCalledTimes(1)
-    await act(async () => row('Log out').click())
+    const leave = [...host.querySelectorAll('button')].filter((b) => b.textContent === 'Sign out')
+    await act(async () => leave[1].click())
+    expect(state.accounts.leave).toHaveBeenCalledWith(carol)
+    expect(state.out, 'one account signed out is not all of them').not.toHaveBeenCalled()
+    await act(async () => row('Sign out of all accounts').click())
     expect(state.out).toHaveBeenCalledTimes(1)
     await act(async () => root.unmount())
     host.remove()

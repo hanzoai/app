@@ -66,7 +66,7 @@ interface Template { slug: string; title?: string; name?: string; category?: str
 
 /** Checkout for a plan, coming back to this page. */
 function checkout(plan: SubscriptionPlan): string {
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://hanzo.ai'
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://hanzo.app'
   const path = typeof window !== 'undefined' ? window.location.pathname : '/chat'
   return checkoutUrl(plan.id, `${origin}${path}`)
 }

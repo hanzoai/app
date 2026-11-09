@@ -20,7 +20,7 @@
  * refusal degrades to the default and never to an exception.
  */
 
-import { apex, guest, SIGNIN } from "./host";
+import { apex, guest, HOST, signs } from "./host";
 import { SHARED } from "./share";
 import { where } from "../where";
 
@@ -119,7 +119,7 @@ export function door(): string {
  * Every signed-out door into the app is this one call: /chat, /dev and every
  * path under them, an app. The page is written down, and the browser goes to `to`,
  * which asks IAM for an existing session before it draws a form
- * (components/auth/panel.tsx `Gate`). On a `guest` host the same address is asked for on hanzo.ai instead. With no `to`
+ * (components/auth/panel.tsx `Gate`). On a `guest` host the same address is asked for on hanzo.app instead. With no `to`
  * the page is `door()`'s; a control that says "Sign in" names LOGIN.
  */
 export function enter(to: string = door()): void {
@@ -172,14 +172,19 @@ export function onward(search: string): string | undefined {
 }
 
 /**
- * On a `guest` host, send this sign-in to `address` on hanzo.ai and report that
- * it left; anywhere else, do nothing and report false so the caller signs in
- * here. A guest host cannot finish a sign-in (no client lists its callback), so
- * starting one there only reaches IAM's refusal.
+ * Send this sign-in to `address` on hanzo.app, the app's host, and report that
+ * it left, from a host that cannot start one for itself: a `guest` (no client
+ * lists its callback), and hanzo.ai opened with no app's authorize request in
+ * its address, where a session would land on the site rather than in the app.
+ * hanzo.app starts its own request and comes back to hanzo.ai's page with it.
+ * Anywhere else, do nothing and report false so the caller signs in here.
  */
 export function handoff(address: string): boolean {
-  if (typeof window === "undefined" || !guest(window.location.hostname)) return false;
-  window.location.assign(SIGNIN + address);
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname;
+  const asked = new URLSearchParams(address.split("#")[0].split("?")[1] ?? "").has("client_id");
+  if (!guest(host) && !(signs(host) && !asked)) return false;
+  window.location.assign(HOST + address);
   return true;
 }
 

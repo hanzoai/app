@@ -21,10 +21,10 @@ overrides:
   '@react-native/normalize-colors': 0.87.1
   react-is: 19.2.8
 
-# @hanzo/ui 8.30.0 plus the product header Shell draws (BusinessHeader,
+# @hanzo/ui 8.30.4 plus the product header Shell draws (BusinessHeader,
 # BUSINESS_APPS), the same patch hanzo-inc/app carries until a ui release has it.
 patchedDependencies:
-  '@hanzo/ui@8.30.0': patches/@hanzo__ui@8.30.0.patch
+  '@hanzo/ui@8.30.4': patches/@hanzo__ui@8.30.4.patch
 
 # Our own release train publishes hours before it is consumed.
 minimumReleaseAge: 0
@@ -32,7 +32,7 @@ minimumReleaseAge: 0
 catalog:
   '@hanzo/ai': 0.7.0
   '@hanzo/appearance': 0.2.14
-  '@hanzo/build': https://github.com/hanzoai/build/releases/download/v0.2.117/hanzo-build-0.2.117.tgz
+  '@hanzo/build': 0.2.120
   '@hanzo/composer': 0.2.0
   '@hanzo/design': 0.5.39
   '@hanzo/event': 0.3.56
@@ -41,7 +41,7 @@ catalog:
   '@hanzo/iam': 0.21.35
   '@hanzo/logo': 1.0.26
   '@hanzo/personas': https://github.com/hanzoai/personas/releases/download/v1.3.2/hanzo-personas-1.3.2.tgz
-  '@hanzo/ui': https://github.com/hanzoai/ui/releases/download/v8.30.0/hanzo-ui-8.30.0.tgz
+  '@hanzo/ui': 8.30.4
   '@hanzo/usage': 0.1.18
   '@hanzo/studio': 0.1.0
   '@hanzo/tabs': github:hanzo-inc/tabs

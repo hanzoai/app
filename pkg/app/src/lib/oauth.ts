@@ -17,8 +17,8 @@
  * this origin, and closes it, so a popup that cannot close itself still does.
  */
 
-/** The return page the connect names: hanzo.ai's Settings → Integrations, registered with the API. */
-export const RETURN = 'https://hanzo.ai/?at=-/settings/integrations'
+/** The return page the connect names: hanzo.app's Settings → Integrations, registered with the API. */
+export const RETURN = 'https://hanzo.app/?at=-/settings/integrations'
 
 /** The message, channel and storage key one answer travels by. */
 export const RETURNED = 'hanzo-oauth-return'

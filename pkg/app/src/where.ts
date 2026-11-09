@@ -35,6 +35,14 @@ export interface Addresses {
   /** The publishable key anonymous calls carry. */
   key?: string
   /**
+   * Whether a host answers IAM's credential, account-list and sign-out calls on
+   * its own origin (lib/signout `here`), in addition to the Hanzo hosts the apps
+   * already know (lib/host `answers`). A site that signs people in on its own page
+   * and keeps IAM's session cookie there, as hanzo.market does, states it here and
+   * gets the account chooser and the account menu with no other change.
+   */
+  answers?: (hostname: string) => boolean
+  /**
    * Where the IAM session is kept when it is not this page's `localStorage`:
    * the `storage` the host hands its IamProvider (Hanzo Desktop's keychain).
    * The apps read the access token, its expiry and its claims from it.

@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useAi, useSession, useSessions } from '@hanzo/ai/react'
 import { useOpen } from './open'
+import { asked, KEY } from './watch'
 import type { Session, SessionEvent, TreeNode } from '@hanzo/ai'
 import {
   AgentBoard,
@@ -105,6 +106,19 @@ function Watching({ idle }: { idle?: ReactNode }) {
   // and the list is re-read when the id changes so the new row is there to open.
   const { session: open, openSession: setOpen } = useOpen()
   const [trees, setTrees] = useState<Record<string, Run[]>>({})
+
+  // A run the address names opens on arrival: Home's "{n} failed" sends
+  // /work?session=<id> (./watch). The param is then dropped, the way Chat drops
+  // `?thread=`, so the address is the board's own again and a reload does not
+  // reopen a run the reader has moved on from.
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (!url.searchParams.has(KEY)) return
+    const id = asked(url.search)
+    url.searchParams.delete(KEY)
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+    if (id) setOpen(id)
+  }, [setOpen])
 
   useEffect(() => {
     if (open) reload()

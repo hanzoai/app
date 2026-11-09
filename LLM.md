@@ -141,14 +141,20 @@ repository or a site from any surface.
   edge to edge, no sidebar); nothing on the rail leaves for tabs.hanzo.ai.
   @hanzo/tabs is taken from its git commit (hanzo-inc/tabs, pinned in the
   catalog) until it publishes to npm. The rail moves
-  the app, and Shell's sidebar wears the product's name alone; the one Chat |
-  Dev switch is a phone's bar, which has no rail. Dev's own places (New run,
+  the app, and Shell's sidebar wears the product's name alone; there is no
+  Chat | Dev switch anywhere (owner, 2026-11-08): a phone's drawer holds the
+  rail down its start edge, and its bar is the drawer's button and New. Every
+  product and place wears one mark, @hanzo/build `MARKS` (`icon`, and `make` for
+  its New: Chat the pen, Dev `</>`, Tabs the terminal); the rail, the bar, the
+  sidebars, the palette and Home read it and no page keeps a copy. Dev's own places (New run,
   Projects, Issues, Templates: @hanzo/build `own`) are rows in Dev's sidebar
   (Sidebar), with no group labels. Library, Scheduled tasks and Customize each
   take the sidebar (Rail.tsx `raised`): Back (to where the reader was, Chat or
   Dev), the place's name, and its own rows — Customize's tabs Agents first
-  (`tabs`), Library's Upload and kinds (`library`, the kind in the address,
-  /dev/artifacts/<kind>), Scheduled tasks' New task and the person's tasks
+  (`tabs`), Library's Make something new, Upload and kinds (`library`, the kind in
+  the address, /dev/artifacts/<kind>; Make something new is
+  /dev/artifacts/new, gallery.hanzo.ai's templates, and the palette's
+  `make`), Scheduled tasks' New task and the person's tasks
   (`useScheduled`) — and the page draws none of them itself (the host's
   `sections`). Shut, the sidebar takes them with it and the rail stays.
 - Settings is the host's own pages, one tree at /settings (hanzo.ai's
@@ -389,6 +395,40 @@ but sign in on hanzo.ai, sending the host's own authorize request to
 hanzo.ai/login, which finishes it and returns the code to the host's callback.
 `guest()`: hanzo.app, `*.hanzo.app` and hanzo.chat sign nobody in and hand off to
 the same address on hanzo.ai.
+
+## The accounts signed in on this browser
+
+IAM holds one session per person in its cookie and lists them (`GET
+/v1/iam/accounts`, `lib/accounts` `read`); the UI only calls IAM. `useAccounts`
+is the one reader: `switchTo` makes the account IAM's current one (`PUT`
+`{current: sub}`, so a read made with the cookie names the person the tokens do)
+and then signs in with `login_hint`; `add` signs in with `prompt=login`, which
+keeps the others; `leave` signs one out alone (`POST /v1/iam/oauth/logout` with
+`logout_hint`) and, for this tab's own account, clears its tokens and goes to
+the sign-in, which offers the rest. Signing out of all is `useSignOut`
+(`everywhere`). `useAccounts(true)` reads before anyone is signed in: hanzo.ai's
+account chooser (/login) lists the browser's accounts for an app that asked
+`prompt=select_account`. The rail menu, the bar's menu and the Accounts section
+say "Sign out {name}" and "Sign out of all accounts" with several signed in,
+"Log out" with one.
+
+**One chooser and one set of menu rows, for every site that signs in on its own
+origin.** `Choose` (`@hanzo/app/Choose`) is the chooser view: the rows, each
+account's Sign out, Use another account, Sign out of all accounts. What differs by
+site is handed in: `pick` (be the account pressed: IAM's `resume` with the account
+named, then on to the code; false where IAM has no session to spend), `frame` (the
+card around the rows: hanzo.ai's Sheet), `refusal` and `note`. `Others`
+(`@hanzo/app/Others`) is the account menu's rows after a host's own: the other
+accounts, Add account, Sign out of this one alone, and Sign out of all accounts
+(Log out with one); `pick` and `add` replace lib/accounts' own for a site whose
+sign-in page is its own (a switch through `getSigninUrl` goes to the SDK's
+`serverUrl`, which is hanzo.id for hanzo.market). A site that answers IAM on its
+own origin says so with `configure({ answers: (hostname) => boolean })` (where.ts):
+`lib/signout` `here()` is then true there, so lib/accounts reads `/v1/iam/accounts`
+from the page's origin and `useClient` posts the credential calls there. hanzo.ai
+(hanzo-inc/app `components/auth/choose.tsx`, `components/shell/account-widget.tsx`)
+and hanzo.market (`src/choose.tsx`, `src/menu.tsx`) are the two callers; the bar's
+own menu (Header.tsx) and the Accounts section keep their markup.
 
 ## Build and ship
 
@@ -707,11 +747,11 @@ reference captures; outer window, inner panel):
 - The transcript reads at the reference's type (Prose.tsx): a 16px body on a
   24px line, headings 28/24/20.
 - A phone has neither rail nor sidebar (under gui's `md`): its bar (Bar.tsx,
-  the owner's iPhone reference) is three glass pieces on one 48px line under
+  the owner's iPhone reference) is two glass pieces on one 48px line under
   the device's top inset — a 44px circle that opens the sidebar as a drawer
-  (below); the 158×48 pill Chat | Dev, which
-  moves the app as the rail does (neither lit in Studio); and a 44px circle for
-  the mode's New (New chat, else the mode's `nav` `NEW` row). Glass is `pane()`
+  (below), and a 44px circle for the mode's New (New chat, else the mode's
+  `nav` `NEW` row; in Tabs a new terminal), drawn with the mode's `MARKS`
+  `make`. It carries no Chat | Dev pill. Glass is `pane()`
   cut round with a `--border-strong` edge, so the solid fallback and both themes
   are design's.
 - A phone's drawer (Drawer.tsx, the ChatGPT iOS app's shape): the menu stands

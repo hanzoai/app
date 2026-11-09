@@ -283,7 +283,7 @@ function List({
     const devAside =
       r.kind === 'dev' ? (
         <XStack items="center" gap="$1">
-          {r.pr ? <GitPullRequest size={13} color="var(--green-10, #22c55e)" aria-hidden /> : null}
+          {r.pr ? <GitPullRequest size={13} color="var(--state-success)" aria-hidden /> : null}
           <StatusDot status={DOTS[r.status as keyof typeof DOTS] ?? 'idle'} />
         </XStack>
       ) : undefined

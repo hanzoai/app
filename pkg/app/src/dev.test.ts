@@ -9,12 +9,17 @@ import type { Host } from '@hanzo/build'
 // address grammar is the two kinds this reads: a screen and a Settings section.
 const { moved, routed } = vi.hoisted(() => ({ moved: [] as string[], routed: [] as string[] }))
 
+const { MARKS } = vi.hoisted(() => {
+  const mark = () => () => null
+  const one = { icon: mark(), make: mark() }
+  return { MARKS: { chat: one, dev: one, design: one, studio: one, tabs: one, library: one, scheduled: one, customize: one } }
+})
 vi.mock('@hanzo/build', () => {
   type Route = { kind: string; screen?: string; section?: string }
   const path = (r: Route) => (r.kind === 'settings' ? `-/settings/${r.section}` : r.kind === 'screen' ? `-/${r.screen}` : '')
   const route = (p: string): Route =>
     p.startsWith('-/settings/') ? { kind: 'settings', section: p.slice(11) } : p.startsWith('-/') ? { kind: 'screen', screen: p.slice(2) } : { kind: 'new' }
-  return { administers: () => true, path, route }
+  return { MARKS, administers: () => true, path, route }
 })
 vi.mock('@hanzo/iam/react', () => ({ useIam: () => ({ user: { name: 'Ada', email: 'ada@acme.dev' }, accessToken: 't' }) }))
 vi.mock('./host', () => ({
@@ -68,22 +73,22 @@ const where = (to: string) => {
 
 describe('the app host', () => {
   test('opens the plans on the pay site at once, for the organization in use, coming back to the page it left', () => {
-    const { assign } = at('https://hanzo.ai/chat')
+    const { assign } = at('https://hanzo.app/chat')
     host().go(path({ kind: 'screen', screen: 'plans' }))
     expect(assign, 'in the same turn as the press, with nothing read first').toHaveBeenCalledTimes(1)
-    expect(where(assign.mock.calls[0][0])).toEqual({ at: 'https://hanzo.ai/pay/cart', org: 'acme', back: 'https://hanzo.ai/chat' })
+    expect(where(assign.mock.calls[0][0])).toEqual({ at: 'https://hanzo.app/pay/cart', org: 'acme', back: 'https://hanzo.app/chat' })
     expect(moved, 'a page load, not a move inside the app').toEqual([])
   })
 
   test("the plans' own address is replaced, coming back to Dev", () => {
-    const { assign, replace } = at('https://hanzo.ai/dev/-/plans')
+    const { assign, replace } = at('https://hanzo.app/dev/-/plans')
     leave('app')
     expect(assign).not.toHaveBeenCalled()
-    expect(where(replace.mock.calls[0][0])).toEqual({ at: 'https://hanzo.ai/pay/cart', org: 'acme', back: 'https://hanzo.ai/dev' })
+    expect(where(replace.mock.calls[0][0])).toEqual({ at: 'https://hanzo.app/pay/cart', org: 'acme', back: 'https://hanzo.app/dev' })
   })
 
   test('opens a Settings section at its page of the site, through the router, never under /dev', () => {
-    const { assign } = at('https://hanzo.ai/dev')
+    const { assign } = at('https://hanzo.app/dev')
     host().go(path({ kind: 'settings', section: 'billing' }))
     host().go(path({ kind: 'settings', section: 'notifications' }))
     expect(assign).not.toHaveBeenCalled()
@@ -92,7 +97,7 @@ describe('the app host', () => {
   })
 
   test('moves inside the app to every other place', () => {
-    const { assign } = at('https://hanzo.ai/chat')
+    const { assign } = at('https://hanzo.app/chat')
     host().go(path({ kind: 'screen', screen: 'projects' }))
     expect(assign).not.toHaveBeenCalled()
     expect(routed).toEqual([])

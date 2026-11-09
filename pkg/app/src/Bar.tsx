@@ -1,44 +1,37 @@
 'use client'
 
 // A phone's bar, which has neither rail nor sidebar to move the app: the
-// drawer's button at the start, Chat | Dev in the middle, and New at the end
-// (the owner's iPhone reference; LLM.md "The app is `App`"). Right to left the
-// row turns with the page, and the drawer's mark is mirrored.
+// drawer's button at the start and New at the end. The drawer lists the places
+// (Chat, Dev, Studio, Tabs, Library, Scheduled tasks, Customize) as rows, so the
+// bar carries no switch of its own. Right to left the row turns with the page,
+// and the drawer's mark is mirrored.
 //
-//   (≡)        ( Chat | Dev )        (✎)
+//   (≡)                                (✎)
 //
-// The three are glass: the pane's material (ground.ts) cut round, its edge one
-// step stronger so a circle on the bare floor reads as one. Measured on the
+// Both are glass: the pane's material (ground.ts) cut round, its edge one step
+// stronger so a circle on the bare floor reads as one. Measured on the
 // reference at 440×956: the buttons are 44px circles 20px in from each edge,
-// the pill 158×48 with a 40px segment inside a 4px rim, its labels at 15px
-// medium, all centred on one line 48px tall under the device's top inset.
+// all centred on one line 48px tall under the device's top inset.
 //
-// Chat | Dev moves the app the way the rail does (`onChat`, `onDev`: where each
-// was last). In Studio neither is lit. New is Chat's New chat, and elsewhere the
-// mode's own New row (@hanzo/build's and @hanzo/studio's `nav`, `NEW`), so the
-// bar names it as the sidebar does.
+// New is Chat's New chat, and elsewhere the mode's own New row (@hanzo/build's
+// and @hanzo/studio's `nav`, `NEW`), so the bar names it as the sidebar does;
+// its icon is the mode's `make` mark (@hanzo/build `MARKS`): the pen in Chat,
+// `</>` in Dev, the terminal in Tabs.
 
 import { useI18n } from '@hanzo/i18n/react'
-import { SquarePen } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { Text, XStack } from '@hanzo/gui'
-import { nav, NEW, type Host } from '@hanzo/build'
-import { ToggleGroup, ToggleGroupItem } from '@hanzo/ui'
+import { XStack } from '@hanzo/gui'
+import { MARKS, nav, NEW, type Host } from '@hanzo/build'
 import type { RailLink } from '@hanzo/ui/chat'
 import { BAND, pane } from './ground'
 import { empty } from './open'
 import { talk, type Place } from './lib/host'
+import { dispatchTabsAction } from './Sidebar'
 
 /** A button, px: compact and refined. */
 const ROUND = 34
 
-/** The bar's line under the device's top inset, px: the pill's height. */
-const LINE = 34
-
-/** A segment, px: compact switcher button. */
-const SEGMENT = 56
-
-/** The glass the three are cut from. */
+/** The glass the two are cut from. */
 const GLASS = {
   ...pane(),
   borderWidth: 1,
@@ -96,38 +89,6 @@ function Lines() {
   )
 }
 
-/** One side of the pill. */
-function Segment({ value, children }: { value: Place['mode']; children: string }) {
-  return (
-    <ToggleGroupItem
-      value={value}
-      size="sm"
-      width={SEGMENT}
-      height={24}
-      maxH={24}
-      minH={0}
-      $touchable={{ minH: 0 }}
-      p={0}
-      px={0}
-      py={0}
-      m={0}
-      borderWidth={0}
-      overflow="hidden"
-      boxSizing="border-box"
-      rounded={9999}
-      bg="transparent"
-      borderColor="transparent"
-      style={{ WebkitAppearance: 'none', appearance: 'none', lineHeight: 1 }}
-      hoverStyle={{ bg: '$hover' }}
-      activeStyle={{ bg: '$raised', borderColor: 'transparent', borderWidth: 0 }}
-    >
-      <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>
-        {children}
-      </Text>
-    </ToggleGroupItem>
-  )
-}
-
 export function Bar({
   host,
   mode,
@@ -135,8 +96,6 @@ export function Bar({
   open = false,
   go,
   onMenu,
-  onChat,
-  onDev,
 }: {
   host: Host
   mode: Place['mode']
@@ -147,8 +106,6 @@ export function Bar({
   /** Moves the app, the drawer away first. */
   go: (address: string) => void
   onMenu: () => void
-  onChat: () => void
-  onDev: () => void
 }) {
   const { t } = useI18n()
   const made = mode === 'chat' ? null : (places ?? nav(host, (p) => host.go(p), t)).flatMap((g) => g.links).find((l) => l.id === NEW)
@@ -161,42 +118,34 @@ export function Bar({
             go(talk())
           },
         }
-      : { label: made?.label ?? t('New'), onPress: made?.onPress }
+      : mode === 'tabs'
+        ? { label: t('New terminal'), onPress: () => dispatchTabsAction({ kind: 'shell' }) }
+        : { label: made?.label ?? t('New'), onPress: made?.onPress }
+  const Make = mode === 'chat' || mode === 'dev' || mode === 'tabs' || mode === 'studio' ? MARKS[mode].make : MARKS.chat.make
   return (
     // The gap above the bar is the gap the pane keeps all round, under the device's inset; the bar's row is the
     // head band (BAND), the drawer's title row on the same line.
     <XStack
       data-slot="app-bar"
-      display="grid"
-      gridTemplateColumns="1fr auto 1fr"
       items="center"
+      justify="space-between"
       height={`calc(${BAND}px + var(--safe-top) + var(--pane-gap))`}
       pt="calc(var(--safe-top) + var(--pane-gap))"
       px="$4.5"
       shrink={0}
       $md={{ display: 'none' }}
     >
-      <XStack justifySelf="start">
-        <Round label={t('Open sidebar')} data-slot="bar-menu" onPress={onMenu} pointerEvents={open ? 'none' : 'auto'}>
-          <Lines />
+      <Round label={t('Open sidebar')} data-slot="bar-menu" onPress={onMenu} pointerEvents={open ? 'none' : 'auto'}>
+        <Lines />
+      </Round>
+      {/* A mode with nothing to make (Betas) has no New: the bar keeps its menu. */}
+      {fresh.onPress ? (
+        <Round label={fresh.label} data-slot="bar-new" onPress={fresh.onPress}>
+          <Make size={16} strokeWidth={1.75} aria-hidden />
         </Round>
-      </XStack>
-      <XStack data-slot="bar-mode" {...GLASS} height={LINE} p="$1" overflow="hidden" boxSizing="border-box" items="center" justifySelf="center">
-        <ToggleGroup type="single" aria-label={t('App')} value={mode === 'chat' || mode === 'dev' ? mode : ''} disableDeactivation onValueChange={(v) => (v === 'chat' ? onChat() : v === 'dev' ? onDev() : undefined)}>
-          <Segment value="chat">{t('Chat')}</Segment>
-          <Segment value="dev">Dev</Segment>
-        </ToggleGroup>
-      </XStack>
-      {/* A mode with nothing to make (Betas) has no New: the bar keeps its menu and Chat | Dev. */}
-      <XStack justifySelf="end">
-        {fresh.onPress ? (
-          <Round label={fresh.label} data-slot="bar-new" onPress={fresh.onPress}>
-            <SquarePen size={16} strokeWidth={1.75} aria-hidden />
-          </Round>
-        ) : (
-          <XStack width={ROUND} height={ROUND} aria-hidden />
-        )}
-      </XStack>
+      ) : (
+        <XStack width={ROUND} height={ROUND} aria-hidden />
+      )}
     </XStack>
   )
 }

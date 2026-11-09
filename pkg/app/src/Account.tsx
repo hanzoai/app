@@ -285,10 +285,12 @@ export function Account({
   const [keys, setKeys] = useState(false)
   const row = useRef<HTMLElement | null>(null)
   const current = host.org
-  // Every other account signed in on this browser, one press away, and a new one
-  // (lib/accounts: the sign-in with login_hint, and with prompt=login).
+  // Every other account signed in on this browser, one press away, a new one
+  // (lib/accounts: the sign-in with login_hint, and with prompt=login) and a way
+  // out of this one alone.
   const signedIn = useAccounts()
   const others = signedIn.accounts.filter((a) => a.sub !== signedIn.current?.sub)
+  const several = signedIn.accounts.length > 1
   const all = useOrgs(current)
   const here = all.find((o) => o.name === current) ?? null
   const personal = all.find((o) => o.personal) ?? null
@@ -416,9 +418,9 @@ export function Account({
             }}
             render="button"
             data-slot="me"
-            // The name the gates and a screen reader know it by: who, and in which organization.
+            // The name the gates and a screen reader know it by: who, and in which organization. No native
+            // tooltip: the face already says who, and the browser's box beside the rail is noise.
             aria-label={t('Account: {name}', { name: [who, current].filter(Boolean).join(' · ') })}
-            {...({ title: who } as object)}
             width={narrow ? (above ? 44 : 36) : '100%'}
             minH={narrow ? (above ? 44 : 36) : 48}
             // A thumb's 44 on a touch screen.
@@ -670,9 +672,15 @@ export function Account({
               </DropdownMenuSubContent>
             ) : null}
           </DropdownMenuSub>
+          {/* Several signed in: this one alone, or all of them. One: Log out. */}
+          {several && signedIn.current ? (
+            <DropdownMenuItem data-slot="me-leave" onSelect={() => void signedIn.leave(signedIn.current!)}>
+              <Line icon={<LogOut size={16} aria-hidden data-i18n-mirror />}>{t('Sign out {name}', { name: accountLabel(signedIn.current).title })}</Line>
+            </DropdownMenuItem>
+          ) : null}
           {host.signOut ? (
             <DropdownMenuItem onSelect={() => host.signOut?.()}>
-              <Line icon={<LogOut size={16} aria-hidden data-i18n-mirror />}>{t('Log out')}</Line>
+              <Line icon={<LogOut size={16} aria-hidden data-i18n-mirror />}>{several ? t('Sign out of all accounts') : t('Log out')}</Line>
             </DropdownMenuItem>
           ) : null}
         </DropdownMenuContent>

@@ -9,8 +9,13 @@ const state = vi.hoisted(() => ({ opened: new Set<string>(), went: [] as string[
 // The drawing libraries are not under test: each part stands in as an element that keeps what a test reads.
 type Part = { children?: ReactNode; 'data-slot'?: string; 'aria-label'?: string; 'aria-current'?: string; onPress?: () => void; label?: string; active?: boolean }
 const draw = ({ children, 'data-slot': slot, 'aria-label': named, 'aria-current': current }: Part) => createElement('div', { 'data-slot': slot, 'aria-label': named, 'aria-current': current }, children)
+const { MARKS } = vi.hoisted(() => {
+  const mark = () => () => null
+  const one = { icon: mark(), make: mark() }
+  return { MARKS: { chat: one, dev: one, design: one, studio: one, tabs: one, library: one, scheduled: one, customize: one } }
+})
 vi.mock('@hanzo/gui', () => ({ Text: draw, XStack: draw, YStack: draw }))
-vi.mock('@hanzo/build', () => ({ route: () => ({ kind: 'home' }) }))
+vi.mock('@hanzo/build', () => ({ MARKS, route: () => ({ kind: 'home' }) }))
 vi.mock('@hanzo/ui', () => ({
   DropdownMenu: ({ trigger, items }: { trigger?: ReactNode; items?: { key?: string; label?: string }[] }) =>
     createElement('div', { 'data-slot': 'menu', 'data-items': (items ?? []).map((i) => i.key ?? '-').join(',') }, trigger),

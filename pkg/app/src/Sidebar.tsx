@@ -30,12 +30,12 @@
 import { locales, phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { Text, XStack, YStack } from '@hanzo/gui'
-import { ArrowLeft, ArrowRight, Bell, ChevronDown, ChevronUp, CircleHelp, Cloud, Globe, Image as ImageMark, Monitor, Puzzle, Search, Settings, Sparkles, SquarePen, SquareTerminal } from 'lucide-react'
-import { DOTS, Gutter, library, NEW, own, tabs, useLanguage, useScheduled, useSessions, type Host } from '@hanzo/build'
+import { ArrowLeft, ArrowRight, Bell, ChevronDown, ChevronUp, CircleHelp, Cloud, Globe, Image as ImageMark, Monitor, Puzzle, Search, Settings, Sparkles } from 'lucide-react'
+import { DOTS, Gutter, library, MARKS, NEW, own, tabs, useLanguage, useScheduled, useSessions, type Host } from '@hanzo/build'
 
 type Theme = NonNullable<Host['theme']>
 import { tidy } from './lib/title'
-import { Button, DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
+import { Button, DropdownMenu, Switch, type DropdownMenuProps } from '@hanzo/ui'
 import { Sidebar as Base, SidebarIconButton, SidebarItem, StatusDot, type RailLink } from '@hanzo/ui/chat'
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { Made } from './Account'
@@ -102,7 +102,7 @@ interface TabsSavedBind {
   want?: string
 }
 
-function dispatchTabsAction(detail: { kind: string; id?: string; machine?: string }) {
+export function dispatchTabsAction(detail: { kind: string; id?: string; machine?: string }) {
   if (typeof window === 'undefined') return
   window.dispatchEvent(new CustomEvent('hanzo:tabs-action', { detail }))
 }
@@ -160,7 +160,7 @@ function useTabsGroups(t: (key: string, params?: Record<string, string | number>
       {
         id: 'new-terminal',
         label: t('New terminal'),
-        icon: <SquareTerminal size={16} aria-hidden />,
+        icon: <MARKS.tabs.make size={16} aria-hidden />,
         onPress: () => dispatchTabsAction({ kind: 'shell' }),
       },
       {
@@ -230,7 +230,7 @@ function useTabsGroups(t: (key: string, params?: Record<string, string | number>
       return {
         id: `tab-${id}`,
         label: machine ? `${machine}${name ? ` (${name})` : ''}` : t('Terminal'),
-        icon: <SquareTerminal size={16} aria-hidden />,
+        icon: <MARKS.tabs.icon size={16} aria-hidden />,
         onPress: () => dispatchTabsAction({ kind: 'focus', id }),
       }
     })
@@ -353,6 +353,8 @@ export function Sidebar({
 
   const dev = (p: string) => host.go(p)
   const at = mode === 'dev' ? raised(host.path) : null
+  // A New row that brings no icon of its own wears its mode's `make` mark.
+  const Make = mode === 'chat' || mode === 'dev' || mode === 'tabs' || mode === 'studio' ? MARKS[mode].make : MARKS.chat.make
   // Each place the rail holds lists its own rows: Library its kinds and Upload, Scheduled tasks its tasks and New task.
   const scheduled = useScheduled(host, dev, at === 'scheduled')
   const tabsGroups = useTabsGroups(t, mode === 'tabs')
@@ -493,7 +495,7 @@ export function Sidebar({
                 hoverStyle={{ bg: '$hover' }}
                 icon={
                   <XStack width={20} height={20} items="center" justify="center" shrink={0}>
-                    <SquarePen size={16} aria-hidden />
+                    <MARKS.chat.make size={16} aria-hidden />
                   </XStack>
                 }
                 onPress={create}
@@ -580,13 +582,9 @@ export function Sidebar({
                         {...(link.id === NEW ? { 'data-slot': 'app-new' } : {})}
                         active={link.active}
                         icon={
-                          link.id === NEW ? (
+                          link.icon || link.id === NEW ? (
                             <XStack width={20} height={20} items="center" justify="center" shrink={0}>
-                              <SquarePen size={16} aria-hidden />
-                            </XStack>
-                          ) : link.icon ? (
-                            <XStack width={20} height={20} items="center" justify="center" shrink={0}>
-                              {link.icon}
+                              {link.icon ?? <Make size={16} aria-hidden />}
                             </XStack>
                           ) : null
                         }
@@ -811,36 +809,8 @@ function AnonSwitch({
   label: string
   slot: string
 }) {
-  return (
-    <XStack
-      render="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      data-slot={slot}
-      width={40}
-      height={22}
-      p={2}
-      rounded={9999}
-      items="center"
-      cursor="pointer"
-      shrink={0}
-      bg={checked ? '#0285ff' : 'rgba(128, 128, 128, 0.35)'}
-      onPress={() => onChange(!checked)}
-      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
-    >
-      <XStack
-        width={18}
-        height={18}
-        rounded={9999}
-        bg="#ffffff"
-        style={{
-          transform: checked ? 'translateX(18px)' : 'translateX(0px)',
-          transition: 'transform 150ms ease',
-        }}
-      />
-    </XStack>
-  )
+  // The kit's switch: its track, thumb and focus ring are the system's, in both themes.
+  return <Switch checked={checked} onCheckedChange={onChange} aria-label={label} data-slot={slot} />
 }
 
 export function AnonSettingsPane({

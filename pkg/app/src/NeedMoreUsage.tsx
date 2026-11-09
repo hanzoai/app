@@ -169,14 +169,11 @@ export function NeedMoreUsageBanner({
             color="$soft"
             cursor="pointer"
             hoverStyle={{ color: "$ink" }}
-            style={{
-              textDecorationLine: "underline",
-              textUnderlineOffset: "3px",
-              background: "transparent",
-              border: "none",
-              padding: 0,
-              display: "inline",
-            }}
+            textDecorationLine="underline"
+            bg="transparent"
+            borderWidth={0}
+            p={0}
+            display="inline"
           >
             {t("limits shared with Hanzo Dev")}
           </Text>
@@ -268,7 +265,7 @@ export function NeedMoreUsageModal({
         gap={16}
         borderWidth={1}
         borderColor="var(--border)"
-        boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.45)"
+        boxShadow="var(--shadow-floating)"
       >
         {/* Header */}
         <XStack items="center" justify="space-between" width="100%">
@@ -366,9 +363,9 @@ export function NeedMoreUsageModal({
             minW={0}
             p={18}
             rounded={12}
-            bg="rgba(37, 99, 235, 0.04)"
+            bg="var(--surface-card-emphasis)"
             borderWidth={1}
-            borderColor="rgba(59, 130, 246, 0.35)"
+            borderColor="var(--border-selected)"
             justify="space-between"
             gap={16}
           >
@@ -381,11 +378,11 @@ export function NeedMoreUsageModal({
                   px={10}
                   py={3}
                   rounded={999}
-                  bg="#2563eb"
+                  bg="var(--primary)"
                   items="center"
                   justify="center"
                 >
-                  <Text fontSize={11.5} lineHeight={15} fontWeight="600" color="#ffffff">
+                  <Text fontSize={11.5} lineHeight={15} fontWeight="600" color="var(--primary-foreground)">
                     {t("Recommended")}
                   </Text>
                 </Box>

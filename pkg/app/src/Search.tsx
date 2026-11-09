@@ -36,26 +36,20 @@ import {
   Bot,
   Building2,
   CircleHelp,
-  Clock,
-  Code2,
   FlaskConical,
   FolderGit2,
   Gift,
   Keyboard,
   LogOut,
   MessageCircle,
-  MessageSquare,
   Plug,
   Settings,
   Sparkles,
-  SquarePen,
-  SquareTerminal,
   SunMoon,
   Users,
-  WandSparkles,
 } from 'lucide-react'
 import { useAi } from '@hanzo/ai/react'
-import { library, nav, NEW, path as written, sections, tabs, useSessions, type Host } from '@hanzo/build'
+import { library, MARKS, nav, NEW, path as written, sections, tabs, useSessions, type Host } from '@hanzo/build'
 import { nav as made } from '@hanzo/studio'
 import { Dialog, DialogContent, DialogTitle, type ShortcutKeys } from '@hanzo/ui'
 import { CommandMenu, type CommandMenuGroup } from '@hanzo/ui/product/CommandMenu'
@@ -114,12 +108,12 @@ export function places(host: Host | undefined, go: (address: string) => void, t:
   const anon = host?.person === null
   const builder = (p: string) => go(app(p))
   const top: Action[] = [
-    { id: 'chat', label: t('Chat'), icon: <MessageSquare {...ICON} />, run: () => go(talk()) },
-    { id: 'dev', label: 'Dev', icon: <Code2 {...ICON} />, run: () => go(app('')) },
+    { id: 'chat', label: t('Chat'), icon: <MARKS.chat.icon {...ICON} />, run: () => go(talk()) },
+    { id: 'dev', label: 'Dev', icon: <MARKS.dev.icon {...ICON} />, run: () => go(app('')) },
     ...(!anon
       ? [
-          { id: 'studio', label: 'Studio', icon: <WandSparkles {...ICON} />, run: () => go(studio('')) },
-          { id: 'tabs', label: 'Tabs', icon: <SquareTerminal {...ICON} />, run: () => go(TERMINALS) },
+          { id: 'studio', label: 'Studio', icon: <MARKS.studio.icon {...ICON} />, run: () => go(studio('')) },
+          { id: 'tabs', label: 'Tabs', icon: <MARKS.tabs.icon {...ICON} />, run: () => go(TERMINALS) },
           ...(host ? [{ id: 'team', label: 'Team', icon: <Users {...ICON} />, keywords: ['workspace'], run: () => out(WORKSPACE) }] : []),
           ...(host ? rows(nav(host, builder, t).map((g) => ({ links: g.links.filter((l) => l.id !== NEW) })), '', 'dev') : []),
         ]
@@ -179,12 +173,16 @@ function tune(go: (address: string) => void) {
 /** The palette's actions, named through `t`; a host that cannot do one (no theme to change, no org to pick) is not offered it. */
 export function actions(host: Host | undefined, go: (address: string) => void, signOut: () => void, keys: () => void, t: Say = english): Action[] {
   const anon = host?.person === null
-  const upload = host && !anon ? library(host, (p) => go(app(p)), t)[0]?.links.find((l) => l.id === 'upload') : undefined
+  // The Library's own acts (@hanzo/build `library`): Make something new and Upload, where the build has them.
+  const acts = host && !anon ? (library(host, (p) => go(app(p)), t)[0]?.links ?? []) : []
+  const make = acts.find((l) => l.id === 'make')
+  const upload = acts.find((l) => l.id === 'upload')
   const list: (Action | false | undefined)[] = [
-    { id: 'new-chat', label: t('New chat'), icon: <SquarePen {...ICON} />, run: () => (empty(), go(talk())) },
-    { id: 'new-task', label: t('New Dev task'), icon: <Code2 {...ICON} />, keywords: ['run'], run: () => go(app('')) },
-    !anon && { id: 'new-creation', label: t('New Studio creation'), icon: <WandSparkles {...ICON} />, keywords: ['image', 'video'], run: () => go(studio('')) },
-    !anon && { id: 'new-scheduled', label: t('New scheduled task'), icon: <Clock {...ICON} />, keywords: ['automation'], run: () => go(app(written({ kind: 'automation', id: 'new' }))) },
+    { id: 'new-chat', label: t('New chat'), icon: <MARKS.chat.make {...ICON} />, run: () => (empty(), go(talk())) },
+    { id: 'new-task', label: t('New Dev task'), icon: <MARKS.dev.make {...ICON} />, keywords: ['run'], run: () => go(app('')) },
+    !anon && { id: 'new-creation', label: t('New Studio creation'), icon: <MARKS.studio.make {...ICON} />, keywords: ['image', 'video'], run: () => go(studio('')) },
+    !anon && { id: 'new-scheduled', label: t('New scheduled task'), icon: <MARKS.scheduled.icon {...ICON} />, keywords: ['automation'], run: () => go(app(written({ kind: 'automation', id: 'new' }))) },
+    !!make && { id: 'make', label: t('Make something new'), icon: make.icon, keywords: ['template', 'gallery', 'library'], run: () => make.onPress?.() },
     !!upload && { id: 'upload', label: t('Upload'), icon: upload.icon, keywords: ['file', 'library'], run: () => upload.onPress?.() },
     { id: 'model', label: t('Switch model'), icon: <Sparkles {...ICON} />, keywords: ['model'], run: () => tune(go) },
     !!host?.chooseTheme && {
@@ -309,7 +307,7 @@ export function Search({
       label: tidy(s.title, 80, t('Untitled run')),
       at: s.updatedAt || s.createdAt,
       keywords: [s.status ?? ''],
-      icon: <Code2 {...ICON} />,
+      icon: <MARKS.dev.icon {...ICON} />,
       run: () => go(app(s.id)),
     }))
     const mine: Group<Action>[] =

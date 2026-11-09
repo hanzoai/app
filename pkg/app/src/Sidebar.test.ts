@@ -30,8 +30,13 @@ const { part, menu } = vi.hoisted(() => {
   return { part, menu }
 })
 
+const { MARKS } = vi.hoisted(() => {
+  const mark = () => () => null
+  const one = { icon: mark(), make: mark() }
+  return { MARKS: { chat: one, dev: one, design: one, studio: one, tabs: one, library: one, scheduled: one, customize: one } }
+})
 vi.mock('@hanzo/gui', () => ({ Text: part, XStack: part, YStack: part }))
-vi.mock('@hanzo/ui', () => ({ DropdownMenu: menu }))
+vi.mock('@hanzo/ui', () => ({ DropdownMenu: menu, Switch: part }))
 vi.mock('@hanzo/ui/chat', () => ({ Sidebar: part, SidebarIconButton: part, SidebarItem: part, StatusDot: () => null }))
 vi.mock('@hanzogui/shell', () => ({ HanzoMark: () => null }))
 // The reader holds beta.finance and nothing else.
@@ -49,6 +54,7 @@ vi.mock('@hanzo/build', () => {
             : { kind: 'new' }
   const group = (id: string, label: string, names: string[]) => ({ id, label, links: names.map((n) => ({ id: n.toLowerCase(), label: n, icon: null })) })
   return {
+    MARKS,
     DOTS: {},
     Gutter: () => null,
     route,
@@ -171,9 +177,9 @@ describe('a phone’s menu', () => {
     expect(more).toEqual([...more].sort((a, b) => a - b))
   })
 
-  test('holds neither Chat nor Dev, which are the bar’s, nor the account, which is the foot’s', () => {
+  test('holds neither Chat nor Dev, which are the rail’s marks beside it, nor the account, which is the foot’s', () => {
     const html = rows('chat')
-    for (const slot of ['rail-chat', 'rail-dev', 'me']) expect(html).not.toContain(`data-slot="${slot}"`)
+    for (const slot of ['rail-chat', 'rail-dev', 'me', 'bar-mode']) expect(html).not.toContain(`data-slot="${slot}"`)
   })
 
   test('lights the place the reader is in', () => {

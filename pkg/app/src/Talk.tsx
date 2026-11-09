@@ -61,7 +61,7 @@ const mention = (draft: string, name: string): string =>
 export function Talk({ channel }: { channel: Channel }) {
   const { t, dir, locale } = useI18n()
   const { messages, failed, send } = useMessages(channel.id, channel.space)
-  const { members, wrong } = useRoster()
+  const { members, wrong } = useRoster(channel.space)
   const me = useMe()
   const { aside, showAside } = useOpen()
   const [draft, setDraft] = useState('')

@@ -20,7 +20,7 @@ import { org } from "./session";
  * address. Absolute, because this export also serves cloud.hanzo.ai and
  * hanzo.bot, and the checkout lives on hanzo.ai.
  */
-export const BILLING_URL = "https://hanzo.ai/pay";
+export const BILLING_URL = "https://hanzo.app/pay";
 
 /**
  * The devnet's checkout: the same /pay mount on the devnet's site host, which
@@ -69,6 +69,22 @@ export function payUrl(path: string, query: Record<string, string | null | undef
   const at = billing();
   if (path === "/" && !s) return at;
   return `${at}${path}${s ? `?${s}` : ""}`;
+}
+
+/**
+ * The plain top-up (no plan): pay's amount page for the card, for the organization in
+ * use, coming back to this page with the model it was for (`?model=`) so the chat
+ * resumes on it. Another maker's models are paid from this balance on any plan.
+ */
+export function topUpUrl(model?: string): string {
+  const back = new URL(window.location.href)
+  if (model) back.searchParams.set("model", model);
+  return payUrl("/amount/card", { org: org(), returnUrl: back.toString() });
+}
+
+/** Leaves for the top-up. */
+export function topUp(model?: string): void {
+  window.location.assign(topUpUrl(model));
 }
 
 export const dollars = (n: number) => `$${n.toFixed(2)}`;

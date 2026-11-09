@@ -77,8 +77,10 @@ export const BETAS: readonly Beta[] = [
   { id: 'search', name: 'Search', line: phrase('Keyword and meaning in one query'), group: 'Data', href: `${PLATFORM}/search` },
   { id: 'world', name: 'World', line: phrase('A live map of every model and AI workload'), group: 'Data', href: 'https://world.hanzo.ai' },
   { id: 'crawl', name: 'Crawl', line: phrase('Turn a website into clean Markdown'), group: 'Data', href: `${PLATFORM}/crawl` },
+  { id: 'notebook', name: 'Notebook', line: phrase('Shared live Python, R and SQL notebooks connected to Hanzo Science agents'), group: 'Data', href: '/science?view=notebook' },
   { id: 'workspace', name: 'Google Workspace', line: phrase('Drive, Docs, Sheets, Gmail and Calendar for the assistant, read and write'), group: 'Data' },
 
+  { id: 'science', name: 'Science', line: phrase('AI research workbench for multi-agent literature review, auditable figures and live notebooks'), group: 'Agents', href: '/science?workbench=1' },
   { id: 'flow', name: 'Flow', line: phrase('Visual node-graph canvas for agents, RAG pipelines and workflows'), group: 'Agents', href: '/flow' },
   { id: 'operative', name: 'Operative', line: phrase('A desktop in a container, driven by a model'), group: 'Agents' },
   { id: 'tasks', name: 'Tasks', line: phrase('Durable execution for long-running work'), group: 'Agents', href: `${PLATFORM}/tasks` },
@@ -122,8 +124,9 @@ export const opens = (id: string, flags: Record<string, boolean>, sudo: boolean,
   if (all === 'off') return false
   if (flags?.[key(id)] === true) return true
   if (local) return true
+  if ((id === 'science' || id === 'notebook') && hanzoAdmin()) return true
   if (id === 'studio' || id === 'flow') return false
-  return Boolean(sudo)
+  return Boolean(sudo || hanzoAdmin())
 }
 
 const ADMIN_BETA_ALL_KEY = 'hz_beta_admin_all'
