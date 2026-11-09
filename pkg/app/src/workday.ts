@@ -347,7 +347,7 @@ const SUPPORT = scene('acme/support', hm(10, 4), (c) => [
   react('answer', 'check', 1),
   c.say('su', phrase('Sent. @dev the download link expires before Safari opens it.')),
   c.typing('dev'),
-  c.say('dev', phrase('Found it. Links last five minutes now instead of five seconds. The fix is in #483.'), { id: 'links' }),
+  c.say('dev', phrase('Found it. Links last five minutes now instead of five seconds. The fix is in pull request 483.'), { id: 'links' }),
   react('links', 'laugh', 3),
   c.say('su', phrase('The customer wrote back: “That was fast. Thank you.”'), { id: 'thanks' }),
   react('thanks', 'heart', 5),

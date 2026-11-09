@@ -783,14 +783,13 @@ export function ConversationMenu({
           bg="$raised"
           borderWidth={1}
           borderColor="$borderColor"
+          // Pinned to the list's foot, over the rows (their marks sit at 2).
+          position="sticky"
+          b={0}
+          z="var(--z-raised)"
           $platform-web={{
             backdropFilter: 'blur(16px)',
-            boxShadow: '0 6px 20px -4px rgba(0, 0, 0, 0.28)',
-          }}
-          style={{
-            position: 'sticky',
-            bottom: 0,
-            zIndex: 5,
+            boxShadow: 'var(--shadow-lg)',
           }}
         >
           <XStack items="center" justify="space-between" px="$1">
@@ -899,7 +898,7 @@ export function ConversationMenu({
               onPress={() => batchRemove(selectedThreads)}
             >
               <Trash2 size={13} color={DANGER} aria-hidden />
-              <SizableText size="$1" fontWeight="500" style={{ color: DANGER }}>
+              <SizableText size="$1" fontWeight="500" color={DANGER}>
                 {t('Delete')}
               </SizableText>
             </XStack>
@@ -1043,7 +1042,7 @@ export function ThreadRow({
       bg={isSelected ? '$hover' : undefined}
       $platform-web={{
         userSelect: 'none',
-        ...(isSelected ? { backgroundColor: 'rgba(255, 255, 255, 0.06)' } : null),
+        ...(isSelected ? { backgroundColor: 'var(--glass)' } : null),
       }}
       data-thread={thread.id}
       data-selected={isSelected ? '' : undefined}
@@ -1145,22 +1144,11 @@ export function ThreadRow({
             rounded={999}
             items="center"
             justify="center"
-            style={
-              isSelected
-                ? {
-                    backgroundColor: 'var(--foreground)',
-                    borderColor: 'var(--foreground)',
-                    borderWidth: 1.5,
-                    borderStyle: 'solid',
-                  }
-                : {
-                    backgroundColor: 'transparent',
-                    borderColor: 'var(--muted-foreground)',
-                    borderWidth: 1.5,
-                    borderStyle: 'solid',
-                    opacity: 0.65,
-                  }
-            }
+            borderWidth={1.5}
+            borderStyle="solid"
+            bg={isSelected ? 'var(--foreground)' : 'transparent'}
+            borderColor={isSelected ? 'var(--foreground)' : 'var(--muted-foreground)'}
+            opacity={isSelected ? 1 : 0.65}
           >
             {isSelected ? <Check size={11} strokeWidth={3} color="var(--background)" aria-hidden /> : null}
           </XStack>

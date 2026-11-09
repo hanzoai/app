@@ -35,7 +35,7 @@ import { DOTS, Gutter, library, NEW, own, tabs, useLanguage, useScheduled, useSe
 
 type Theme = NonNullable<Host['theme']>
 import { tidy } from './lib/title'
-import { Button, DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
+import { Button, DropdownMenu, Switch, type DropdownMenuProps } from '@hanzo/ui'
 import { Sidebar as Base, SidebarIconButton, SidebarItem, StatusDot, type RailLink } from '@hanzo/ui/chat'
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { Made } from './Account'
@@ -811,36 +811,8 @@ function AnonSwitch({
   label: string
   slot: string
 }) {
-  return (
-    <XStack
-      render="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      data-slot={slot}
-      width={40}
-      height={22}
-      p={2}
-      rounded={9999}
-      items="center"
-      cursor="pointer"
-      shrink={0}
-      bg={checked ? '#0285ff' : 'rgba(128, 128, 128, 0.35)'}
-      onPress={() => onChange(!checked)}
-      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
-    >
-      <XStack
-        width={18}
-        height={18}
-        rounded={9999}
-        bg="#ffffff"
-        style={{
-          transform: checked ? 'translateX(18px)' : 'translateX(0px)',
-          transition: 'transform 150ms ease',
-        }}
-      />
-    </XStack>
-  )
+  // The kit's switch: its track, thumb and focus ring are the system's, in both themes.
+  return <Switch checked={checked} onCheckedChange={onChange} aria-label={label} data-slot={slot} />
 }
 
 export function AnonSettingsPane({

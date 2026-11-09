@@ -31,7 +31,7 @@ const { part, menu } = vi.hoisted(() => {
 })
 
 vi.mock('@hanzo/gui', () => ({ Text: part, XStack: part, YStack: part }))
-vi.mock('@hanzo/ui', () => ({ DropdownMenu: menu }))
+vi.mock('@hanzo/ui', () => ({ DropdownMenu: menu, Switch: part }))
 vi.mock('@hanzo/ui/chat', () => ({ Sidebar: part, SidebarIconButton: part, SidebarItem: part, StatusDot: () => null }))
 vi.mock('@hanzogui/shell', () => ({ HanzoMark: () => null }))
 // The reader holds beta.finance and nothing else.

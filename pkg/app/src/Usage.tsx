@@ -19,6 +19,16 @@ import { useLimits } from './lib/limits'
 import { contextOf, readTokens, subscribeTokens, tokenKey, type Turn } from './lib/tokens'
 
 export interface ContextUsage { model: string; window?: number; messages: readonly Turn[]; draft?: string; tools?: unknown }
+
+/**
+ * A Button that is a link: `asChild` draws the Anchor with the Button's classes,
+ * so each says what it owns — the box is the Button's (its props over its size),
+ * the label's line the Anchor's (over the line its own size sets). gui types a
+ * line height as a number or a token; `normal` is the value the page reads.
+ */
+const LINK_BOX = { display: 'inline-flex', items: 'center', justify: 'center', height: '100%', width: '100%' } as const
+const LINK_LINE = { lineHeight: 'normal' } as object
+
 /** The account control, shared by Chat, Dev and Studio through the composer slot. */
 export function UsageControl({ context, read }: { context?: ContextUsage; read?: UseLimits }) {
   const { t, format } = useI18n()
@@ -130,13 +140,13 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
             {answered && !limits ? <Button type="button" size="sm" variant="link" onClick={usage.reload}>{t('Retry')}</Button> : null}
           </YStack>
           <XStack gap="$3" justify="space-between" flexWrap="wrap">
-            <Button asChild size="sm">
-              <Anchor href={payPage('/cart')} data-slot="composer-upgrade" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', lineHeight: 'normal' }}>
+            <Button asChild size="sm" {...LINK_BOX}>
+              <Anchor href={payPage('/cart')} data-slot="composer-upgrade" {...LINK_LINE}>
                 {t('Upgrade plan')}
               </Anchor>
             </Button>
-            <Button asChild size="sm" variant="outline">
-              <Anchor href={payPage('/amount/card')} data-slot="composer-buy-credits" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', lineHeight: 'normal' }}>
+            <Button asChild size="sm" variant="outline" {...LINK_BOX}>
+              <Anchor href={payPage('/amount/card')} data-slot="composer-buy-credits" {...LINK_LINE}>
                 {t('Buy credits')}
               </Anchor>
             </Button>
