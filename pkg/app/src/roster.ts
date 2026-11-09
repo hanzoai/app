@@ -1,65 +1,41 @@
 'use client'
 
-// Who is in the org, by account — the ONE place an author becomes a name.
+// Who is in a space, by account — the ONE place an author becomes a name.
 //
 // A message carries the team account that wrote it and nothing else: for a
 // person that is their IAM user id (the OIDC `sub`, which team's account id
-// equals), for an agent the user id the platform minted for it and publishes on
-// `/v1/team/bots`. Two reads, one list, so the transcript, the roster column and
-// the mention chips cannot disagree about what to call anybody.
+// equals), for an agent the account team derives from its id. The space roster
+// answers both in one list (members.ts), so the transcript, the roster column
+// and the mention chips cannot disagree about what to call anybody.
 
 import { useEffect, useState } from 'react'
-import { useIam, useOrganizations } from '@hanzo/iam/react'
+import { useIam } from '@hanzo/iam/react'
 import { useAi } from './lib/ai'
+import { MEMBERS, membersOf, type Member, type TeamMember } from './members'
 
-/** One member of the org: a person, or an agent standing in the channels. */
-export interface Member {
-  /** The account a message names as its author. */
-  id: string
-  name: string
-  /** A saved picture, as a data URI. People only; an agent wears initials. */
-  avatar?: string
-  agent: boolean
-}
+export type { Member } from './members'
 
 /**
- * The org's members, or null while unknown.
+ * The members of the space a channel stands in, or null while unknown.
  *
- * Needs a session and an org: both reads are org-scoped and answer 403 without
- * one. A service account carries no id and can author nothing, so it is not a
- * member here.
+ * Needs a session and the space: the roster is read per space and answers only
+ * a member of it. A service account carries no id and can author nothing, so it
+ * is not a member here.
  */
-export function useRoster(): { members: Member[] | null; wrong: unknown } {
+export function useRoster(space: string | undefined): { members: Member[] | null; wrong: unknown } {
   const { client } = useAi()
   const { isAuthenticated } = useIam()
-  const { currentOrgId } = useOrganizations()
   const [members, setMembers] = useState<Member[] | null>(null)
   const [wrong, setWrong] = useState<unknown>(null)
 
   useEffect(() => {
-    if (!client || !isAuthenticated || !currentOrgId) return
+    if (!client || !isAuthenticated || !space) return
     let live = true
     const stop = new AbortController()
-    const { signal } = stop
-    Promise.all([
-      client.http.json<{
-        users?: { id?: string; name: string; displayName?: string; avatar?: string }[]
-      }>({ path: '/v1/iam/users', query: { owner: currentOrgId }, signal }),
-      client.http.json<{ bots?: { id: string; name: string; userId: string; active: boolean }[] }>({
-        path: '/v1/team/bots',
-        signal,
-      }),
-    ])
-      .then(([people, bots]) => {
-        if (!live) return
-        setMembers([
-          ...(people.users ?? []).flatMap((one) =>
-            one.id
-              ? [{ id: one.id, name: one.displayName || one.name, avatar: one.avatar || undefined, agent: false }]
-              : [],
-          ),
-          ...(bots.bots ?? []).map((one) => ({ id: one.userId, name: one.name, agent: true })),
-        ])
+    client.http
+      .json<{ members?: TeamMember[] }>({ path: MEMBERS, query: { space }, signal: stop.signal })
+      .then((body) => {
+        if (live) setMembers(membersOf(body))
       })
       .catch((e: unknown) => {
         if (live) setWrong(e)
@@ -68,7 +44,7 @@ export function useRoster(): { members: Member[] | null; wrong: unknown } {
       live = false
       stop.abort()
     }
-  }, [client, isAuthenticated, currentOrgId])
+  }, [client, isAuthenticated, space])
 
   return { members, wrong }
 }
