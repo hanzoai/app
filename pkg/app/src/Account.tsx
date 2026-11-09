@@ -418,9 +418,9 @@ export function Account({
             }}
             render="button"
             data-slot="me"
-            // The name the gates and a screen reader know it by: who, and in which organization.
+            // The name the gates and a screen reader know it by: who, and in which organization. No native
+            // tooltip: the face already says who, and the browser's box beside the rail is noise.
             aria-label={t('Account: {name}', { name: [who, current].filter(Boolean).join(' · ') })}
-            {...({ title: who } as object)}
             width={narrow ? (above ? 44 : 36) : '100%'}
             minH={narrow ? (above ? 44 : 36) : 48}
             // A thumb's 44 on a touch screen.

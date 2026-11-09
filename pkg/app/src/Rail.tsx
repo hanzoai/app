@@ -285,13 +285,14 @@ export function Rail({
       flex={1}
       // As tall as the window and no taller: its marks scroll inside it (below), never the page.
       minH={0}
-      // The first mark stands at the pane's top edge, one head row high (HEAD), the account on the sidebar's foot (Sidebar's `pb`).
+      // The first mark stands at the pane's top edge, one head row high (HEAD), and the last at its foot by the
+      // same inset, so the account mirrors the sidebar's toggle across the rail.
       pt={(HEAD - MARK) / 2}
-      pb="$2"
+      pb={(HEAD - MARK) / 2}
       gap={4}
       shrink={0}
       items="center"
-      $touchable={{ pt: (TOUCH_HEAD - TOUCH) / 2 }}
+      $touchable={{ pt: (TOUCH_HEAD - TOUCH) / 2, pb: (TOUCH_HEAD - TOUCH) / 2 }}
     >
       {toggle ? (
         <YStack>
@@ -377,7 +378,7 @@ export function Rail({
       ) : null}
       </YStack>
       {anon ? (
-        <YStack gap={4} items="center" pb={4}>
+        <YStack gap={4} items="center">
           <Mark
             label={t('See plans and pricing')}
             data-slot="anon-pricing"

@@ -84,24 +84,24 @@ describe('every other host answers as it did', () => {
 })
 
 describe('the hosts that answer IAM on their own origin', () => {
-  test('hanzo.app, testnet and every devnet host', () => {
-    for (const host of ['hanzo.app', 'test.hanzo.ai', 'app-dev.hanzo.ai', 'id-dev.hanzo.ai'])
+  test('hanzo.ai, where Hanzo signs in, hanzo.app, testnet and every devnet host', () => {
+    for (const host of ['hanzo.ai', 'www.hanzo.ai', 'hanzo.app', 'test.hanzo.ai', 'app-dev.hanzo.ai', 'id-dev.hanzo.ai'])
       expect(answers(host), host).toBe(true)
   })
 
-  test('the hosts that sign in on hanzo.app, the signed-out site, dev.hanzo.ai, a lookalike and a customer site do not', () => {
-    for (const host of ['hanzo.ai', 'www.hanzo.ai', 'cloud.hanzo.ai', 'hanzo.bot', 'bot.hanzo.ai', 'dev.hanzo.ai', 'app-dev.hanzo.ai.evil.com', 'a.b-dev.hanzo.ai', 'acme.hanzo.app'])
+  test('the hosts that sign in on hanzo.ai, dev.hanzo.ai, a lookalike and a customer site do not', () => {
+    for (const host of ['cloud.hanzo.ai', 'hanzo.bot', 'bot.hanzo.ai', 'dev.hanzo.ai', 'app-dev.hanzo.ai.evil.com', 'a.b-dev.hanzo.ai', 'acme.hanzo.app'])
       expect(answers(host), host).toBe(false)
   })
 })
 
-describe('the hosts that sign in on hanzo.app with their own request', () => {
-  test('cloud.hanzo.ai, hanzo.bot and bot.hanzo.ai', () => {
-    for (const host of ['cloud.hanzo.ai', 'hanzo.bot', 'bot.hanzo.ai']) expect(visits(host), host).toBe(true)
+describe('the hosts that sign in on hanzo.ai with their own request', () => {
+  test('hanzo.app, the app\'s host, cloud.hanzo.ai, hanzo.bot and bot.hanzo.ai', () => {
+    for (const host of ['hanzo.app', 'cloud.hanzo.ai', 'hanzo.bot', 'bot.hanzo.ai']) expect(visits(host), host).toBe(true)
   })
 
-  test('not hanzo.app itself, a separate IAM, or a host that signs nobody in', () => {
-    for (const host of ['hanzo.ai', 'www.hanzo.ai', 'test.hanzo.ai', 'app-dev.hanzo.ai', 'hanzo.app', 'hanzo.chat', 'hanzo.bot.evil.com'])
+  test('not hanzo.ai itself, a separate IAM, or a host that signs nobody in', () => {
+    for (const host of ['hanzo.ai', 'www.hanzo.ai', 'test.hanzo.ai', 'app-dev.hanzo.ai', 'acme.hanzo.app', 'hanzo.chat', 'hanzo.bot.evil.com'])
       expect(visits(host), host).toBe(false)
   })
 })
