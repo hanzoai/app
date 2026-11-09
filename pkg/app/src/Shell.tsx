@@ -148,6 +148,7 @@ const HOME_INDICATOR = "env(safe-area-inset-bottom)" as `var(--${string})`
 import { invite } from "./lib/home";
 import { reach } from "./lib/reach";
 import { say } from "./failure";
+import { half } from "./half";
 import { Face } from "./cast";
 import { useStarred, titleOf } from "./stars";
 import { channelName } from "./network";
@@ -1273,8 +1274,13 @@ function Bots({
     folk = [...folk].sort((a, b) => (a.displayName || a.name).localeCompare(b.displayName || b.name));
   }
   const empty = folk.length + shown.length === 0;
-  const waiting = agentsLoading || peopleLoading;
-  const broke = agentsWrong ?? peopleWrong;
+  // Each half answers for its own read. IAM refuses the people read to a member
+  // who is not an org admin, so reporting either read's failure put "cannot open
+  // this org's roster" over agents that had loaded (half.ts).
+  const { loading: waiting, error: broke } = half(show, {
+    agents: { loading: agentsLoading, error: agentsWrong },
+    people: { loading: peopleLoading, error: peopleWrong },
+  });
 
   const pick = async (file: File | undefined) => {
     if (!file) return;
