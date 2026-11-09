@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { answered, awaitAnswer, heard, RETURN, RETURNED } from './oauth'
 
-const ORIGIN = 'https://hanzo.ai'
+const ORIGIN = 'https://hanzo.app'
 
 /** The opener: a window that hears `message` and `storage`, on hanzo.ai. */
 function opener() {
@@ -25,7 +25,7 @@ function popup() {
 }
 
 describe('the return page', () => {
-  test('is the one hanzo.ai registers with the API, on its own origin', () => {
+  test('is the one hanzo.app registers with the API, on its own origin', () => {
     expect(new URL(RETURN).origin).toBe(ORIGIN)
     expect(new URL(RETURN).searchParams.get('at')).toBe('-/settings/integrations')
   })

@@ -20,7 +20,7 @@
  * where it was. Called at request time it answers for the page that is open.
  */
 
-import { devnet, guest, team } from './host'
+import { apex, devnet, guest, team } from './host'
 import { where } from '../where'
 
 /**
@@ -43,11 +43,11 @@ export function api(): string {
   if (set) return set.replace(/\/+$/, '')
   if (typeof window !== 'undefined') {
     const host = window.location.hostname
-    // The shipped site is served from an origin the gateway already admits, so
-    // there the absolute address stands and no proxy is involved. hanzo.team,
-    // hanzo.bot and the Sites plane's `<slug>.hanzo.app` aliases serve this same
-    // export and are admitted the same way; none of them has a /v1 of its own.
-    if (host === 'hanzo.ai' || host.endsWith('.hanzo.ai') || team(host) || host === 'hanzo.bot' || guest(host))
+    // The shipped app is served from an origin the gateway already admits, so
+    // there the absolute address stands and no proxy is involved. hanzo.ai,
+    // hanzo.team, hanzo.bot and the Sites plane's `<slug>.hanzo.app` aliases
+    // serve this same export and are admitted the same way.
+    if (apex(host) || host === 'hanzo.ai' || host.endsWith('.hanzo.ai') || team(host) || host === 'hanzo.bot' || guest(host))
       return 'https://api.hanzo.ai'
     return window.location.origin
   }

@@ -14,11 +14,11 @@ describe('the top-up', () => {
   afterEach(() => vi.unstubAllGlobals())
 
   test('is pay’s plain top-up, coming back to this page with the model it was for', () => {
-    vi.stubGlobal('window', { location: { href: 'https://hanzo.ai/chat/abc?x=1', hostname: 'hanzo.ai', assign: () => {} }, localStorage: { getItem: () => null } })
+    vi.stubGlobal('window', { location: { href: 'https://hanzo.app/chat/abc?x=1', hostname: 'hanzo.app', assign: () => {} }, localStorage: { getItem: () => null } })
     const to = new URL(topUpUrl('anthropic/claude-sonnet-4.5'))
-    expect(to.origin + to.pathname).toBe('https://hanzo.ai/pay/amount/card')
+    expect(to.origin + to.pathname).toBe('https://hanzo.app/pay/amount/card')
     const back = new URL(to.searchParams.get('returnUrl')!)
-    expect(back.origin + back.pathname).toBe('https://hanzo.ai/chat/abc')
+    expect(back.origin + back.pathname).toBe('https://hanzo.app/chat/abc')
     expect(back.searchParams.get('model')).toBe('anthropic/claude-sonnet-4.5')
     expect(back.searchParams.get('x')).toBe('1')
   })

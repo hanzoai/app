@@ -304,8 +304,8 @@ export const APPS: readonly string[] = ROUTES.filter(
   (path) => !KEPT.has(path) && path !== SETTINGS && !path.startsWith(`${SETTINGS}/`),
 )
 
-/** The apex's hosts, where the app is served and the workspace's apps are not. */
-export const APEX: readonly string[] = ['hanzo.ai', 'www.hanzo.ai']
+/** The app's host, where it is served and signs people in, and the workspace's apps are not. hanzo.ai is the signed-out site. */
+export const APEX: readonly string[] = ['hanzo.app']
 
 /** Whether a host is the apex. */
 export const apex = (hostname: string): boolean => APEX.includes(hostname)
@@ -323,7 +323,7 @@ export { APPS as ROOMS, leaves as room }
 
 /**
  * Where an address belongs when it is asked for on `hostname`: on a `guest`
- * alias, the same address on hanzo.ai, because every app signs in and a guest
+ * host, the same address on hanzo.app, because every app signs in and a guest
  * host cannot; on the apex, the same app and query on the workspace; otherwise
  * null. Home is the workspace's root, so /home?channel=x lands on /?channel=x.
  */
@@ -334,34 +334,33 @@ export const away = (hostname: string, address: string): string | null => {
   return home ? `${WORKSPACE}/${address.slice(home[0].length)}` : `${WORKSPACE}${address}`
 }
 
-/** Where a sign-in started on a `guest` host is finished. */
-export const SIGNIN = 'https://hanzo.ai'
+/** Where a sign-in started on a `guest` host is finished: the app's own host. */
+export const SIGNIN = 'https://hanzo.app'
 
 /**
  * The Hanzo App, to get: the page with Download, Install CLI and Open in web.
  * It is this export's /app, served as the root of hanzo.app (universe
- * static-sites `hanzo-app`), so it is linked by that address and hanzo.ai/app
- * forwards there.
+ * static-sites `hanzo-app`), so it is linked by that address.
  */
 export const GET = 'https://hanzo.app'
 
 /**
- * The app, opened from another host: the chat at hanzo.ai/chat. A reader who
- * is signed out is asked to sign in there, on hanzo.ai's own page, and lands
+ * The app, opened from another host: the chat at hanzo.app/chat. A reader who
+ * is signed out is asked to sign in there, on hanzo.app's own page, and lands
  * back in the chat.
  */
 export const WEB = `${SIGNIN}${CHAT}`
 
 /**
- * Whether a host serves this export and signs nobody in: hanzo.app, whose root
- * is the page above; every `<slug>.hanzo.app` alias the Sites plane serves it
- * at; and hanzo.chat, whose root is /forward. hanzo.app is a namespace
- * customers publish into and hanzo.chat is only an address for the chat, so no
- * sign-in runs under either: every address that needs one is the same address
- * on hanzo.ai.
+ * Whether a host serves this export and signs nobody in: hanzo.ai, the
+ * signed-out site, while it still serves this export; every `<slug>.hanzo.app`
+ * alias the Sites plane serves it at; and hanzo.chat, whose root is /forward.
+ * `<slug>.hanzo.app` is a namespace customers publish into and hanzo.chat is
+ * only an address for the chat, so no sign-in runs under any of them: every
+ * address that needs one is the same address on hanzo.app.
  */
 export const guest = (hostname: string): boolean =>
-  hostname === 'hanzo.app' || hostname.endsWith('.hanzo.app') || hostname === 'hanzo.chat'
+  hostname === 'hanzo.ai' || hostname === 'www.hanzo.ai' || hostname.endsWith('.hanzo.app') || hostname === 'hanzo.chat'
 
 /** The devnet's hosts are one label under hanzo.ai ending in `-dev`: app-dev, api-dev, id-dev. */
 const DEVNET = '-dev.hanzo.ai'
@@ -383,17 +382,17 @@ export function devnet(hostname: string): boolean {
 
 /**
  * The hosts that answer IAM's sign-in and sign-out calls on their own origin:
- * hanzo.ai, where Hanzo signs in (universe static-sites `iam-on-hanzo-ai` and
- * cloud.yaml `iam-signin`), testnet's test.hanzo.ai, and the dev server's /v1
- * proxy.
+ * hanzo.app, where Hanzo signs in (its /v1 is the cloud API, universe
+ * hanzo-domains `v1-hanzo-app`), testnet's test.hanzo.ai, and the dev server's
+ * /v1 proxy.
  */
 const ANSWERS = new Set([...APEX, 'test.hanzo.ai', 'localhost', '127.0.0.1'])
 
 /**
  * The hosts this export is served on that keep a session of their own and sign
- * in on hanzo.ai: a person signed out there is sent to hanzo.ai/login carrying
+ * in on hanzo.app: a person signed out there is sent to hanzo.app/login carrying
  * the host's OWN authorize request (its callback, its PKCE challenge), which
- * hanzo.ai's page finishes, and the code comes back to the host's
+ * hanzo.app's page finishes, and the code comes back to the host's
  * /auth/callback. One sign-in page for Hanzo, and nobody types a credential on
  * these hosts.
  */
