@@ -2300,7 +2300,8 @@ function Thread({
             },
           },
       // The model, only where the person turned the model selector on; the effort, always.
-      mind: anonymous ? null : mind,
+      // The picker lists what the person has turned on: third-party models (paid from the balance) unless they turned them off.
+      mind: anonymous ? null : { ...mind, models: filteredListed },
       effort: {
         value: chatPrefs.effort || "auto",
         set: (eff) => {

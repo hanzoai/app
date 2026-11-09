@@ -55,4 +55,18 @@ describe('what Chat does', () => {
     expect(Object.keys(getChatPreferences()).sort()).toEqual(['allowThirdPartyModels', 'approvalMode', 'effort', 'effortVersion', 'showLanguage'])
     vi.unstubAllGlobals()
   })
+
+  test('lists third-party models until the person turns them off, and then keeps their word', () => {
+    const map = new Map<string, string>()
+    vi.stubGlobal('window', { localStorage: { getItem: (k: string) => map.get(k) ?? null, setItem: (k: string, v: string) => map.set(k, v) }, dispatchEvent: () => true })
+    expect(getChatPreferences().allowThirdPartyModels).toBe(true)
+    // An old default of off, written before the person chose anything, reads as on.
+    map.set('hanzo.chat.preferences', JSON.stringify({ effortVersion: 4, allowThirdPartyModels: false }))
+    expect(getChatPreferences().allowThirdPartyModels).toBe(true)
+    setChatPreferences({ allowThirdPartyModels: false, thirdPartyChosen: true })
+    expect(getChatPreferences().allowThirdPartyModels).toBe(false)
+    setChatPreferences({ allowThirdPartyModels: true, thirdPartyChosen: true })
+    expect(getChatPreferences().allowThirdPartyModels).toBe(true)
+    vi.unstubAllGlobals()
+  })
 })

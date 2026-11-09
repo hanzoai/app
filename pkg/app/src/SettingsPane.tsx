@@ -243,14 +243,13 @@ function Model() {
                 {t('Enable third-party models')}
               </Text>
               <Text fontSize="$2" color="$soft">
-                {t('Third-party models (OpenAI, Anthropic, Google, DeepSeek) are billed from your pre-paid credit topup. First-party models (Enso, Zen, Kai) are covered by your plan.')}
+                {t('Third-party models (OpenAI, Anthropic, Google, DeepSeek) are paid from your pre-paid balance on any plan. First-party models (Enso, Zen, Kai) are covered by your plan.')}
               </Text>
             </YStack>
             <Button
               size="sm"
               variant={chatPrefs.allowThirdPartyModels ? 'default' : 'outline'}
-              disabled={!paid}
-              onClick={() => paid && setChatPrefs({ allowThirdPartyModels: !chatPrefs.allowThirdPartyModels })}
+              onClick={() => setChatPrefs({ allowThirdPartyModels: !chatPrefs.allowThirdPartyModels, thirdPartyChosen: true })}
             >
               {chatPrefs.allowThirdPartyModels ? t('Enabled') : t('Disabled')}
             </Button>
