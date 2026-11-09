@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 import { SECTIONS } from '@hanzo/build/route'
-import { app, BETA, CHAT, DEV, dev, follow, page, paged, place, SETTINGS, settings, studio, talk, visit } from './host'
+import { app, BETA, CHAT, DEV, dev, follow, page, paged, place, resume, SETTINGS, settings, studio, talk, visit } from './host'
 import { configure } from '../where'
 
 const RUN = `sess_${'0123456789abcdef'.repeat(2)}`
@@ -154,3 +154,36 @@ describe('Studio is the third root', () => {
   })
 })
 
+
+// ON THE APP'S HOST CHAT IS THE ROOT. hanzo.app/ is a new conversation and /chat forwards there (the edge); a
+// conversation keeps its path, /chat/<id>, everywhere, so every link to one still opens it. Elsewhere Chat is /chat.
+describe('Chat is the root of the app host', () => {
+  const at = (hostname: string) => vi.stubGlobal('window', { location: { hostname }, localStorage: { getItem: () => null } })
+
+  test('on hanzo.app a new conversation is `/`, and `/` is Chat', () => {
+    at('hanzo.app')
+    try {
+      expect(talk()).toBe('/')
+      expect(place('/')).toEqual({ mode: 'chat', thread: null })
+      expect(place(CHAT)).toEqual({ mode: 'chat', thread: null })
+      expect(talk(THREAD)).toBe(`${CHAT}/${THREAD}`)
+      expect(place(`${CHAT}/${THREAD}`)).toEqual({ mode: 'chat', thread: THREAD })
+      expect(resume()).toBe('/')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  test('elsewhere Chat is /chat, and `/` is no place of the app', () => {
+    for (const host of ['hanzo.team', 'cloud.hanzo.ai', 'localhost']) {
+      at(host)
+      try {
+        expect(talk(), host).toBe(CHAT)
+        expect(place('/'), host).toBeNull()
+        expect(resume(), host).toBe(CHAT)
+      } finally {
+        vi.unstubAllGlobals()
+      }
+    }
+  })
+})

@@ -20,7 +20,7 @@
  * refusal degrades to the default and never to an exception.
  */
 
-import { apex, GET, guest, signs } from "./host";
+import { apex, guest, HOST, signs } from "./host";
 import { SHARED } from "./share";
 import { where } from "../where";
 
@@ -184,7 +184,7 @@ export function handoff(address: string): boolean {
   const host = window.location.hostname;
   const asked = new URLSearchParams(address.split("#")[0].split("?")[1] ?? "").has("client_id");
   if (!guest(host) && !(signs(host) && !asked)) return false;
-  window.location.assign(GET + address);
+  window.location.assign(HOST + address);
   return true;
 }
 

@@ -153,7 +153,7 @@ import { Face } from "./cast";
 import { useStarred, titleOf } from "./stars";
 import { channelName } from "./network";
 import { useChannels, teamKey, channelHref, type Channel } from "./channels";
-import { apex, app, away, dev, ENTRY, leaves, WORKSPACE } from "./lib/host";
+import { apex, app, away, chat, CHAT as TALK, dev, ENTRY, leaves, WORKSPACE } from "./lib/host";
 import { netKey } from "./conversations";
 import {
   FIRST,
@@ -293,7 +293,10 @@ const HOME: Place = {
  */
 const CHAT: Place = {
   id: "chat",
-  route: "/chat",
+  // Chat's own address: `/` on the app's host, /chat elsewhere (lib/host `chat`).
+  get route() {
+    return chat();
+  },
   get name() {
     return brand();
   },
@@ -2950,7 +2953,7 @@ function Frame({
             actions={doors}
             onClose={found}
             // A chat opens in this workspace's Chat, the palette having picked it; the rest is the app's.
-            go={(to) => navigate?.(to.startsWith(CHAT.route) ? CHAT.route : site(to))}
+            go={(to) => navigate?.(to.startsWith(TALK) ? chat() : site(to))}
           />
         ) : null}
     </YStack>

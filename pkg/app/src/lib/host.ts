@@ -59,6 +59,17 @@ export const TABS = 'https://tabs.hanzo.ai'
  */
 export const CHAT = '/chat'
 export const DEV = '/dev'
+
+/**
+ * Whether this page is on the app's own host, where Chat is the root: `/` is a new
+ * conversation and /chat forwards to it (universe static-sites `hanzo-app`). Read in
+ * the browser; a prerender has no host and answers no. A conversation keeps its
+ * path, /chat/<id>, on every host.
+ */
+const rooted = (): boolean => typeof window !== 'undefined' && apex(window.location.hostname)
+
+/** Chat's own address on this host: `/` on the app's, /chat on every other. */
+export const chat = (): string => (rooted() ? '/' : CHAT)
 /**
  * Studio: making images, audio, video and documents, and editing them.
  * hanzo.ai/studio, whose page draws the app for a signed-in reader.
@@ -102,8 +113,8 @@ export const design = (at: string): string => (at ? `${DESIGN}/${at.replace(/^\/
 /** Flow at an address of its own (@hanzo/studio `FlowStudio`): '' is New, /flow. */
 export const flow = (at: string): string => (at ? `${FLOW}/${at.replace(/^\/+/, '')}` : FLOW)
 
-/** Chat on a conversation, or /chat itself for a new one. */
-export const talk = (id?: string | null): string => (id ? `${CHAT}/${encodeURIComponent(id)}` : CHAT)
+/** Chat on a conversation, or Chat itself for a new one (`chat`: `/` on the app's host). */
+export const talk = (id?: string | null): string => (id ? `${CHAT}/${encodeURIComponent(id)}` : chat())
 
 /**
  * Settings, and every page under it: the person's and the organization's, the
@@ -163,7 +174,7 @@ const SHARED = 'shared'
 /** The place a path names, or null when it names none of the app's. */
 export function place(pathname: string): Place | null {
   const p = pathname.replace(/\/+$/, '') || '/'
-  if (p === CHAT) return { mode: 'chat', thread: null }
+  if (p === CHAT || (p === '/' && rooted())) return { mode: 'chat', thread: null }
   if (p === DEV || p.startsWith(`${DEV}/`)) return { mode: 'dev', at: path(parse(p.slice(DEV.length))) }
   if (p === STUDIO || p.startsWith(`${STUDIO}/`)) return { mode: 'studio', at: p.slice(STUDIO.length + 1) }
   if (p === DESIGN || p.startsWith(`${DESIGN}/`)) return { mode: 'design', at: p.slice(DESIGN.length + 1) }
@@ -285,9 +296,9 @@ export function remember(mode: Place['mode']): void {
 export function resume(): string {
   try {
     const kept = window.localStorage.getItem(MODE)
-    return kept === 'dev' ? DEV : kept === 'studio' ? STUDIO : kept === 'design' ? DESIGN : kept === 'flow' ? FLOW : kept === 'tabs' ? TERMINALS : CHAT
+    return kept === 'dev' ? DEV : kept === 'studio' ? STUDIO : kept === 'design' ? DESIGN : kept === 'flow' ? FLOW : kept === 'tabs' ? TERMINALS : chat()
   } catch {
-    return CHAT
+    return chat()
   }
 }
 
@@ -329,7 +340,7 @@ export { APPS as ROOMS, leaves as room }
  * lands on /?channel=x.
  */
 export const away = (hostname: string, address: string): string | null => {
-  if (guest(hostname)) return GET + address
+  if (guest(hostname)) return HOST + address
   if (!apex(hostname) || !leaves(address)) return null
   const home = address.match(/^\/home\/?(?=[?#]|$)/)
   return home ? `${WORKSPACE}/${address.slice(home[0].length)}` : `${WORKSPACE}${address}`
@@ -345,18 +356,17 @@ export const SIGNIN = 'https://hanzo.ai'
 /** Whether a host is the one Hanzo signs in on. */
 export const signs = (hostname: string): boolean => hostname === 'hanzo.ai' || hostname === 'www.hanzo.ai'
 
-/**
- * The Hanzo App, to get: the page with Download, Install CLI and Open in web.
- * It is this export's /app, served as the root of hanzo.app (universe
- * static-sites `hanzo-app`), so it is linked by that address.
- */
-export const GET = 'https://hanzo.app'
+/** The app's own host. Chat is its root. */
+export const HOST = 'https://hanzo.app'
+
+/** The Hanzo App, to get: the page with Download, Install CLI and Open in web, this export's /app. */
+export const GET = `${HOST}/app`
 
 /**
- * The app, opened from another host: the chat at hanzo.app/chat. A reader who
- * is signed out signs in on hanzo.ai's page and lands back in the chat.
+ * The app, opened from another host: Chat, at hanzo.app's root. A reader who is
+ * signed out signs in on hanzo.ai's page and lands back in it.
  */
-export const WEB = `${GET}${CHAT}`
+export const WEB = `${HOST}/`
 
 /**
  * Whether a host serves this export and signs nobody in: every `<slug>.hanzo.app`
