@@ -406,6 +406,24 @@ account chooser (/login) lists the browser's accounts for an app that asked
 say "Sign out {name}" and "Sign out of all accounts" with several signed in,
 "Log out" with one.
 
+**One chooser and one set of menu rows, for every site that signs in on its own
+origin.** `Choose` (`@hanzo/app/Choose`) is the chooser view: the rows, each
+account's Sign out, Use another account, Sign out of all accounts. What differs by
+site is handed in: `pick` (be the account pressed: IAM's `resume` with the account
+named, then on to the code; false where IAM has no session to spend), `frame` (the
+card around the rows: hanzo.ai's Sheet), `refusal` and `note`. `Others`
+(`@hanzo/app/Others`) is the account menu's rows after a host's own: the other
+accounts, Add account, Sign out of this one alone, and Sign out of all accounts
+(Log out with one); `pick` and `add` replace lib/accounts' own for a site whose
+sign-in page is its own (a switch through `getSigninUrl` goes to the SDK's
+`serverUrl`, which is hanzo.id for hanzo.market). A site that answers IAM on its
+own origin says so with `configure({ answers: (hostname) => boolean })` (where.ts):
+`lib/signout` `here()` is then true there, so lib/accounts reads `/v1/iam/accounts`
+from the page's origin and `useClient` posts the credential calls there. hanzo.ai
+(hanzo-inc/app `components/auth/choose.tsx`, `components/shell/account-widget.tsx`)
+and hanzo.market (`src/choose.tsx`, `src/menu.tsx`) are the two callers; the bar's
+own menu (Header.tsx) and the Accounts section keep their markup.
+
 ## Build and ship
 
 The repository is a pnpm workspace of the packages it publishes, each under
