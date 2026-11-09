@@ -18,7 +18,7 @@ import {
   Check,
   Cpu,
   Crown,
-  Infinity,
+  Gem,
   Layers,
   Link2,
   Lock,
@@ -87,7 +87,7 @@ interface MultiplierConfig {
 
 const MULTIPLIERS: Record<MultiplierTier, MultiplierConfig> = {
   '3x': {
-    id: 'pro-2x',
+    id: 'pro-3x',
     name: 'Pro',
     multiple: '3×',
     price: 15,
@@ -102,16 +102,16 @@ const MULTIPLIERS: Record<MultiplierTier, MultiplierConfig> = {
     price: 45,
     icon: Cpu,
     subtitle: '5× higher limits for autonomous coding agents.',
-    bots: 1,
+    bots: 2,
   },
   '15x': {
-    id: 'max-10x',
+    id: 'max-15x',
     name: 'Max',
     multiple: '15×',
     price: 95,
     icon: Crown,
     subtitle: '15× limits for heavy continuous coding sessions.',
-    bots: 3,
+    bots: 5,
   },
 }
 
@@ -160,9 +160,9 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
   const activeMultiplier = MULTIPLIERS[multiplier]
 
   const goHref = term(payUrl('/cart', { plan: 'go', org: org(), returnUrl: here() }), 'month')
-  const proHref = term(payUrl('/cart', { plan: 'pro-2x', org: org(), returnUrl: here() }), 'month')
+  const proHref = term(payUrl('/cart', { plan: 'pro-3x', org: org(), returnUrl: here() }), 'month')
   const devHref = term(payUrl('/cart', { plan: 'dev-5x', org: org(), returnUrl: here() }), 'month')
-  const maxHref = term(payUrl('/cart', { plan: 'max-10x', org: org(), returnUrl: here() }), 'month')
+  const maxHref = term(payUrl('/cart', { plan: 'max-15x', org: org(), returnUrl: here() }), 'month')
   const multiplierHref = term(payUrl('/cart', { plan: activeMultiplier.id, org: org(), returnUrl: here() }), 'month')
   const ultraHref = term(payUrl('/cart', { plan: 'ultra', org: org(), returnUrl: here() }), 'month')
   const businessHref = term(payUrl('/cart', { plan: 'team', quantity: '5', org: org(), returnUrl: here() }), businessCycle)
@@ -457,7 +457,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                     <YStack gap="$2.5" pt="$1">
                       {[
                         t('Everything in Free, plus:'),
-                        t('{multiple} more usage than Free', { multiple: activeMultiplier.multiple }),
+                        t('{multiple} more usage than Go', { multiple: activeMultiplier.multiple }),
                         t('Access to Enso Ultra, Kai, and frontier models'),
                         t('Build apps with Hanzo Dev & CLI'),
                         t('Connect any MCP server'),
@@ -498,7 +498,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
               </XStack>
             </YStack>
           ) : (
-            /* EXPANDED VIEW: ALL PERSONAL OPTIONS (Free, Go, Pro 2x, Dev 5x, Max 10x, Ultra) */
+            /* EXPANDED VIEW: ALL PERSONAL OPTIONS (Free, Go, Pro 3x, Dev 5x, Max 15x, Ultra 25x) */
             <YStack gap="$4" width="100%">
               <View
                 display="grid"
@@ -594,7 +594,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                     </XStack>
                     <Text fontSize={18} fontWeight="700" color="$ink">{t('Pro')}</Text>
                     <Text fontSize={12} color="$soft" minH={32}>{t('3× limits for builders.')}</Text>
-                    <Anchor href={proHref} onPress={() => handleBuy('pro-2x', 'Pro', 15)} bg="var(--primary)" rounded="$10" py="$1.5" px="$3" color="var(--primary-foreground)" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
+                    <Anchor href={proHref} onPress={() => handleBuy('pro-3x', 'Pro', 15)} bg="var(--primary)" rounded="$10" py="$1.5" px="$3" color="var(--primary-foreground)" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
                       {t('Get Pro')}
                     </Anchor>
                     <XStack items="baseline" gap="$1">
@@ -637,7 +637,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                       <Text fontSize={12} color="$soft">{t('/ mo')}</Text>
                     </XStack>
                     <YStack gap="$1.5" pt="$1">
-                      {[t('5× more usage than Go'), t('5× higher 5h limits'), t('1 custom Hanzo Bot'), t('Train custom models')].map((f) => (
+                      {[t('5× more usage than Go'), t('5× higher 5h limits'), t('2 custom Hanzo Bots'), t('Train custom models')].map((f) => (
                         <XStack key={f} items="center" gap="$1.5">
                           <Check size={13} color={INK} aria-hidden />
                           <Text fontSize={11} color="$ink">{f}</Text>
@@ -664,7 +664,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                     </XStack>
                     <Text fontSize={18} fontWeight="700" color="$ink">{t('Max')}</Text>
                     <Text fontSize={12} color="$soft" minH={32}>{t('15× continuous limits.')}</Text>
-                    <Anchor href={maxHref} onPress={() => handleBuy('max-10x', 'Max', 95)} bg="var(--primary)" rounded="$10" py="$1.5" px="$3" color="var(--primary-foreground)" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
+                    <Anchor href={maxHref} onPress={() => handleBuy('max-15x', 'Max', 95)} bg="var(--primary)" rounded="$10" py="$1.5" px="$3" color="var(--primary-foreground)" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
                       {t('Get Max')}
                     </Anchor>
                     <XStack items="baseline" gap="$1">
@@ -672,7 +672,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                       <Text fontSize={12} color="$soft">{t('/ mo')}</Text>
                     </XStack>
                     <YStack gap="$1.5" pt="$1">
-                      {[t('15× more usage than Go'), t('15× higher 5h limits'), t('3 custom Hanzo Bots'), t('Dedicated support')].map((f) => (
+                      {[t('15× more usage than Go'), t('15× higher 5h limits'), t('5 custom Hanzo Bots'), t('Dedicated support')].map((f) => (
                         <XStack key={f} items="center" gap="$1.5">
                           <Check size={13} color={INK} aria-hidden />
                           <Text fontSize={11} color="$ink">{f}</Text>
@@ -694,11 +694,11 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                 >
                   <YStack gap="$2">
                     <XStack items="center" gap="$1.5">
-                      <Infinity size={15} color={INK} aria-hidden />
-                      <Text fontSize={12} fontWeight="700" color="$ink">{t('Ultra')}</Text>
+                      <Gem size={15} color={INK} aria-hidden />
+                      <Text fontSize={12} fontWeight="700" color="$ink">{t('Ultra 25×')}</Text>
                     </XStack>
                     <Text fontSize={18} fontWeight="700" color="$ink">{t('Frontier Scale')}</Text>
-                    <Text fontSize={12} color="$soft" minH={32}>{t('Unlimited intelligence.')}</Text>
+                    <Text fontSize={12} color="$soft" minH={32}>{t('25× limits for the biggest workloads.')}</Text>
                     <Anchor href={ultraHref} onPress={() => handleBuy('ultra', 'Ultra', 195)} bg="var(--secondary)" rounded="$10" py="$1.5" px="$3" color="$ink" fontWeight="600" fontSize={12} text="center" textDecorationLine="none">
                       {t('Get Ultra')}
                     </Anchor>
@@ -707,7 +707,7 @@ export function Upgrade({ ask, onClose }: { ask: Ask | null; onClose: () => void
                       <Text fontSize={12} color="$soft">{t('/ mo')}</Text>
                     </XStack>
                     <YStack gap="$1.5" pt="$1">
-                      {[t('Unlimited model usage'), t('No hourly rate limits'), t('5 custom Hanzo Bots'), t('Engineering Slack')].map((f) => (
+                      {[t('25× more usage than Go'), t('25× higher 5h limits'), t('10 custom Hanzo Bots'), t('Engineering Slack')].map((f) => (
                         <XStack key={f} items="center" gap="$1.5">
                           <Check size={13} color={INK} aria-hidden />
                           <Text fontSize={11} color="$ink">{f}</Text>

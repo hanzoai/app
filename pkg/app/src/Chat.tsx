@@ -55,7 +55,7 @@ import { bearer, hasSession, named, org } from "./lib/session";
 import { api } from "./lib/api";
 import { app, dev, follow, go } from "./lib/host";
 import { useHost } from "./host";
-import { chats, house, paidPlan, paused, setCreditsAfterAllowance, spends, ultra, useLimits } from "./lib/limits";
+import { chats, house, paidPlan, paused, setCreditsAfterAllowance, spends, uncapped, useLimits } from "./lib/limits";
 import { LimitedBanner } from "@hanzo/ui/product/LimitedBanner";
 import { NeedMoreUsageBanner, NeedMoreUsageModal } from "./NeedMoreUsage";
 import type { LimitAction } from "@hanzo/ui/product/limits";
@@ -1123,7 +1123,7 @@ function Thread({
   const [shut, setShut] = useState<string | null>(null);
   const which = pause ? `${kept ?? open ?? ""}:${chat.messages[chat.messages.length - 1]?.id ?? ""}` : null;
   const banner = which !== shut ? spent : null;
-  const isUsageLimitReached = Boolean(pause && (spends(pause.reason) || !pause.reason) && !ultra(limits));
+  const isUsageLimitReached = Boolean(pause && (spends(pause.reason) || !pause.reason) && !uncapped(limits));
   const [needMoreUsageOpen, setNeedMoreUsageOpen] = useState(false);
   const [simulatedResetAt, setSimulatedResetAt] = useState<string | null>(null);
   const seenUsageLimit = useRef<string | null>(null);
@@ -2019,7 +2019,7 @@ function Thread({
         : failed.empty
           ? t("{model} answered with nothing.", { model: nameOf(model, listed) })
           : bill
-            ? spent?.message ?? (spends(bill.code) ? (ultra(limits) ? t("Your balance is empty.") : t("Usage reached.")) : bill.message || plainly(wrong, t("this conversation"), t))
+            ? spent?.message ?? (spends(bill.code) ? (uncapped(limits) ? t("Your balance is empty.") : t("Usage reached.")) : bill.message || plainly(wrong, t("this conversation"), t))
             : resign
             ? t(anonymous
               ? "Sign in to ask this."
@@ -2164,7 +2164,7 @@ function Thread({
               <NeedMoreUsageBanner
                 resetsAt={pause?.resets_at ?? simulatedResetAt}
                 fallbackModel={pause?.fallback ? nameOf(pause.fallback, listed) : null}
-                isUltra={ultra(limits)}
+                isUncapped={uncapped(limits)}
                 customMessage={banner?.message ?? null}
                 onGetMoreUsage={() => setNeedMoreUsageOpen(true)}
                 onSeeUsage={() => showSettings("usage")}

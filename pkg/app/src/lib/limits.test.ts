@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { format } from '@hanzo/i18n'
 import type { LimitNotice } from '@hanzo/ui/product/limits'
-import { paused, resets, spends, ultra } from './limits'
+import { paused, resets, spends, uncapped } from './limits'
 
 // This browser works in one organization, which every pay address names.
 vi.mock('./session', async (real) => ({ ...(await real<typeof import('./session')>()), org: () => 'acme' }))
@@ -14,6 +14,7 @@ const TOPUP = { kind: 'topup' as const, label: 'Add prepaid credit', url: PAY }
 const FREE = { plan: 'free' }
 const MAX = { plan: 'max-5x' }
 const ULTRA = { plan: 'ultra' }
+const UNLIMITED = { plan: 'unlimited' }
 const en = format('en-US')
 
 const notice = (o: Partial<LimitNotice>): LimitNotice => ({
@@ -67,7 +68,7 @@ describe('paused', () => {
   })
 
   it('says a spent request window the same way, never with the raw instant or address the gateway wrote', () => {
-    const raw = "You've used 5-hour requests on your plan. They reset at 2026-10-07T17:00:00Z. Upgrade for more at https://hanzo.ai/pay/cart?plan=max-10x"
+    const raw = "You've used 5-hour requests on your plan. They reset at 2026-10-07T17:00:00Z. Upgrade for more at https://hanzo.ai/pay/cart?plan=max-15x"
     const b = paused(notice({ reason: 'usage_cap_exceeded', classes: [], message: raw, actions: [UP] }), MAX, undefined, NOW)!
     expect(b.message).toBe(said('2026-10-07T17:00:00Z'))
     expect(b.message).not.toMatch(/2026-|https?:|UTC/)
@@ -78,25 +79,34 @@ describe('paused', () => {
       expect(paused(notice({ resets_at }), MAX, undefined, NOW)!.message).toBe('Usage reached.')
   })
 
-  it('tells an Ultra reader the balance is empty, with credits the one way on, for every spent reason', () => {
+  it('tells an Unlimited reader the balance is empty, with credits the one way on, for every spent reason', () => {
     for (const reason of ['plan_allowance_used', 'usage_cap_exceeded', 'allowance_spent', 'free_plan_cap']) {
-      const b = paused(notice({ reason }), ULTRA, undefined, NOW)!
+      const b = paused(notice({ reason }), UNLIMITED, undefined, NOW)!
       expect(b.message).toBe('Your balance is empty.')
       expect(b.actions.map((a) => [a.kind, a.label])).toEqual([['topup', 'Add credits']])
       expect(new URL(b.actions[0].url!).searchParams.get('org')).toBe('acme')
     }
-    expect(paused(notice({ fallback: 'enso' }), ULTRA, () => 'Enso', NOW)!.message).toBe('Your balance is empty. You’re chatting on Enso.')
+    expect(paused(notice({ fallback: 'enso' }), UNLIMITED, () => 'Enso', NOW)!.message).toBe('Your balance is empty. You’re chatting on Enso.')
   })
 
-  it('knows Ultra by its id alone, as paidPlan knows a paid plan', () => {
-    expect(ultra(ULTRA)).toBe(true)
-    for (const plan of ['Ultra', 'ultra-annual', 'ultra-lite', 'ultramax', 'hanzo-ultra', ' ultra', '', 'free']) expect(ultra({ plan })).toBe(false)
-    expect(ultra(null)).toBe(false)
-    // A plan whose name merely starts with "ultra" is any other paid plan: told of its window, with the upgrade.
-    expect(paused(notice({ reason: 'usage_cap_exceeded' }), { plan: 'ultra-lite' }, undefined, NOW)!.actions[0].kind).toBe('upgrade')
+  it('tells an Ultra reader usage reached and when it resets, as any paid plan, since Ultra has windows', () => {
+    for (const reason of ['plan_allowance_used', 'usage_cap_exceeded']) {
+      const b = paused(notice({ reason }), ULTRA, undefined, NOW)!
+      expect(b.message).toBe(said('2026-10-07T17:00:00Z'))
+      expect(b.actions.map((a) => a.kind)).toEqual(['upgrade', 'credits', 'later'])
+    }
   })
 
-  it('offers no upgrade before the plan is read, since it could be Ultra', () => {
+  it('knows Unlimited by its id alone, as paidPlan knows a paid plan', () => {
+    expect(uncapped(UNLIMITED)).toBe(true)
+    for (const plan of ['Unlimited', 'unlimited-annual', 'unlimited-lite', 'unlimitedmax', 'hanzo-unlimited', ' unlimited', 'ultra', '', 'free'])
+      expect(uncapped({ plan })).toBe(false)
+    expect(uncapped(null)).toBe(false)
+    // A plan whose name merely starts with "unlimited" is any other paid plan: told of its window, with the upgrade.
+    expect(paused(notice({ reason: 'usage_cap_exceeded' }), { plan: 'unlimited-lite' }, undefined, NOW)!.actions[0].kind).toBe('upgrade')
+  })
+
+  it('offers no upgrade before the plan is read, since it could be Unlimited', () => {
     const b = paused(notice({ reason: 'allowance_spent', classes: [], actions: [] }), null, undefined, NOW)!
     expect(b.message).toBe(said('2026-10-07T17:00:00Z'))
     expect(b.actions.map((a) => a.kind)).toEqual(['topup', 'later'])
@@ -112,7 +122,7 @@ describe('paused', () => {
     expect(b.message).toBe('«Usage reached.»')
     expect(b.actions.map((a) => a.label)).toEqual(['«Upgrade to continue»', '«Continue with credits»', '«Try again later»'])
     expect(paused(notice({}), MAX, undefined, NOW, t as never)!.message).toMatch(/^«Usage reached\. Resets (\{date\} )?at (\{time\}|midnight)\.»$/)
-    const u = paused(notice({}), ULTRA, undefined, NOW, t as never)!
+    const u = paused(notice({}), UNLIMITED, undefined, NOW, t as never)!
     expect([u.message, ...u.actions.map((a) => a.label)]).toEqual(['«Your balance is empty.»', '«Add credits»'])
   })
 
