@@ -28,7 +28,7 @@
 // Free is offered a team, and an open one is sent on (`forward`). Behind the
 // door, and only there, nothing opens without a live plan.
 
-import { dev } from './lib/host'
+import { CHAT, chat, dev } from './lib/host'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useIam } from '@hanzo/iam/react'
 import { phrase, english, type Say } from '@hanzo/i18n'
@@ -67,14 +67,14 @@ interface Template { slug: string; title?: string; name?: string; category?: str
 /** Checkout for a plan, coming back to this page. */
 function checkout(plan: SubscriptionPlan): string {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://hanzo.app'
-  const path = typeof window !== 'undefined' ? window.location.pathname : '/chat'
+  const path = typeof window !== 'undefined' ? window.location.pathname : chat()
   return checkoutUrl(plan.id, `${origin}${path}`)
 }
 
-/** Whether the current /chat navigation is an anonymous preview session. */
+/** Whether the current Chat navigation is an anonymous preview session. */
 function isAnonChat(): boolean {
   if (typeof window === 'undefined' || hasSession()) return false
-  if (window.location.pathname !== '/chat') return false
+  if (window.location.pathname !== CHAT && window.location.pathname !== chat()) return false
   const win = window as unknown as { __hanzoAnonChat?: boolean }
   const q = new URLSearchParams(window.location.search)
   if (
