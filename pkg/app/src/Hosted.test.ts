@@ -13,6 +13,7 @@ const state = vi.hoisted(() => ({
   betas: { ready: true as boolean, open: (_id: string): boolean => true },
   pref: { theme: 'dark', accent: 'blue', density: 'compact' } as Record<string, string>,
   org: { id: 'hanzo' } as { id?: string },
+  token: null as string | null,
   went: [] as string[],
   moved: [] as [string, boolean | undefined][],
 }))
@@ -38,6 +39,7 @@ vi.mock('@hanzo/appearance', () => ({ current: () => ({ pref: state.pref }), dar
 vi.mock('./Betas', () => ({ useBetas: () => state.betas, Ask: () => createElement('button', { 'data-slot': 'ask' }) }))
 vi.mock('./help', () => ({ out: (href: string) => state.went.push(href) }))
 vi.mock('./host', () => ({ useOrg: () => state.org }))
+vi.mock('./lib/session', () => ({ bearer: () => state.token }))
 vi.mock('./lib/host', async (original) => ({ ...(await original<typeof import('./lib/host')>()), go: (address: string, replace?: boolean) => state.moved.push([address, replace]) }))
 
 const { HostedPane, PATIENCE } = await import('./Hosted')
@@ -101,6 +103,7 @@ beforeEach(() => {
   state.betas = { ready: true, open: () => true }
   state.pref = { theme: 'dark', accent: 'blue', density: 'compact' }
   state.org = { id: 'hanzo' }
+  state.token = null
   state.went = []
   state.moved = []
   window.history.replaceState(null, '', '/apps/crm')
@@ -179,6 +182,17 @@ describe('what the host tells the frame, and what it hears', () => {
     state.org = { id: 'zoo' }
     await show('crm')
     expect(posted.at(-1)).toEqual([expect.objectContaining({ type: 'hanzo:host', org: 'zoo' }), 'https://crm.hanzo.ai'])
+  })
+
+  test('the session bearer token is included in hanzo:host when signed in and re-sent on hanzo:ready', async () => {
+    state.token = 'jwt-token-123'
+    await show('crm')
+    const { win, posted } = stand(frames()[0])
+    await say({ type: 'hanzo:ready' }, { origin: 'https://crm.hanzo.ai', source: win })
+    expect(posted.at(-1)).toEqual([
+      { type: 'hanzo:host', theme: 'dark', accent: 'blue', density: 'compact', org: 'hanzo', token: 'jwt-token-123' },
+      'https://crm.hanzo.ai',
+    ])
   })
 
   test('where the frame says it is is kept in this address, in place of the last', async () => {

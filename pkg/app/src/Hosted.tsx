@@ -34,6 +34,7 @@ import { useOrg } from './host'
 import { BETAS } from './lib/betas'
 import { go as replace, hosted } from './lib/host'
 import { frameUrl, hostedApp, origin, pathOn, type Hosted } from './lib/hosted'
+import { bearer } from './lib/session'
 
 /** How long a frame may take to load before the pane says it did not. */
 export const PATIENCE = 20_000
@@ -41,13 +42,14 @@ export const PATIENCE = 20_000
 /** What the frame may use of the browser: the clipboard and full screen, which the apps' own pages ask for. */
 const ALLOW = 'clipboard-read; clipboard-write; fullscreen'
 
-/** What the host tells a frame about how it looks. */
+/** What the host tells a frame about how it looks and who is signed in. */
 export interface Hostly {
   type: 'hanzo:host'
   theme: 'light' | 'dark'
   accent?: string
   density?: string
   org?: string
+  token?: string
 }
 
 /**
@@ -56,8 +58,8 @@ export interface Hostly {
  * (a class or a variable on <html>), so a change in Settings reaches the frame
  * without a second reading of the account.
  */
-function useLooks(orgId?: string): Omit<Hostly, 'type' | 'org'> {
-  const read = useCallback((): Omit<Hostly, 'type' | 'org'> => {
+function useLooks(orgId?: string): Omit<Hostly, 'type' | 'org' | 'token'> {
+  const read = useCallback((): Omit<Hostly, 'type' | 'org' | 'token'> => {
     const { pref } = current({ orgId })
     return { theme: dark(pref.theme ?? 'system') ? 'dark' : 'light', accent: pref.accent, density: pref.density }
   }, [orgId])
@@ -136,11 +138,12 @@ function Frame({ app }: { app: Hosted }) {
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading')
   const host = origin(app)
 
-  // What the frame is told: each time it loads, and whenever the look or the organization changes after.
+  // What the frame is told: each time it loads, when it announces ready, and whenever the look or the organization changes after.
   const tell = useCallback(() => {
     const to = frame.current?.contentWindow
     if (!to) return
-    const said: Hostly = { type: 'hanzo:host', ...looks, org: org.id }
+    const token = bearer()
+    const said: Hostly = { type: 'hanzo:host', ...looks, org: org.id, ...(token ? { token } : {}) }
     try {
       to.postMessage(said, host)
     } catch {
@@ -164,8 +167,10 @@ function Frame({ app }: { app: Hosted }) {
     const hear = (e: MessageEvent) => {
       if (e.origin !== host || e.source !== frame.current?.contentWindow) return
       const said = e.data as { type?: unknown; href?: unknown } | null
-      if (said?.type === 'hanzo:ready') setState('ready')
-      else if (said?.type === 'hanzo:navigate' && typeof said.href === 'string') {
+      if (said?.type === 'hanzo:ready') {
+        setState('ready')
+        tell()
+      } else if (said?.type === 'hanzo:navigate' && typeof said.href === 'string') {
         const to = pathOn(app, said.href)
         if (!to) return
         at.current = to
