@@ -7,7 +7,7 @@ import { paused, resets, spends, uncapped } from './limits'
 vi.mock('./session', async (real) => ({ ...(await real<typeof import('./session')>()), org: () => 'acme' }))
 
 const NOW = Date.parse('2026-10-07T12:00:00Z')
-const PAY = 'https://hanzo.ai/pay'
+const PAY = 'https://pay.hanzo.ai'
 const UP = { kind: 'upgrade' as const, label: 'Upgrade to Max 20x', plan: 'max-20x', url: `${PAY}/cart?plan=max-20x` }
 const CREDITS = { kind: 'credits' as const, label: 'Claim a free Ultra', url: '/v1/ai/limits' }
 const TOPUP = { kind: 'topup' as const, label: 'Add prepaid credit', url: PAY }
@@ -61,14 +61,14 @@ describe('paused', () => {
     expect(b.message).toBe(said('2026-10-07T17:00:00Z'))
     expect(b.actions.map((a) => a.kind)).toEqual(['upgrade', 'topup', 'later'])
     const [upgrade, topup] = b.actions.map((a) => new URL(a.url ?? 'https://x.invalid'))
-    expect(upgrade.pathname).toBe('/pay/cart')
-    expect(topup.pathname).toBe('/pay/amount/card')
+    expect(upgrade.origin + upgrade.pathname).toBe('https://pay.hanzo.ai/cart')
+    expect(topup.origin + topup.pathname).toBe('https://pay.hanzo.ai/amount/card')
     expect(b.actions[1].label).toBe('Add credits')
     for (const url of [upgrade, topup]) expect(url.searchParams.get('org')).toBe('acme')
   })
 
   it('says a spent request window the same way, never with the raw instant or address the gateway wrote', () => {
-    const raw = "You've used 5-hour requests on your plan. They reset at 2026-10-07T17:00:00Z. Upgrade for more at https://hanzo.ai/pay/cart?plan=max-15x"
+    const raw = "You've used 5-hour requests on your plan. They reset at 2026-10-07T17:00:00Z. Upgrade for more at https://pay.hanzo.ai/cart?plan=max-15x"
     const b = paused(notice({ reason: 'usage_cap_exceeded', classes: [], message: raw, actions: [UP] }), MAX, undefined, NOW)!
     expect(b.message).toBe(said('2026-10-07T17:00:00Z'))
     expect(b.message).not.toMatch(/2026-|https?:|UTC/)
