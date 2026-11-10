@@ -138,9 +138,12 @@ function Frame({ app }: { app: Hosted }) {
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading')
   const host = origin(app)
 
+  const target = () =>
+    frame.current ?? (typeof document !== 'undefined' ? document.querySelector<HTMLIFrameElement>('iframe[data-slot="hosted-frame"]') : null)
+
   // What the frame is told: each time it loads, when it announces ready, and whenever the look or the organization changes after.
   const tell = useCallback(() => {
-    const to = frame.current?.contentWindow
+    const to = target()?.contentWindow
     if (!to) return
     const token = bearer()
     const said: Hostly = { type: 'hanzo:host', ...looks, org: org.id, ...(token ? { token } : {}) }
@@ -165,7 +168,7 @@ function Frame({ app }: { app: Hosted }) {
   // What the frame says: heard from its host and from it alone.
   useEffect(() => {
     const hear = (e: MessageEvent) => {
-      if (e.origin !== host || e.source !== frame.current?.contentWindow) return
+      if (e.origin !== host || e.source !== target()?.contentWindow) return
       const said = e.data as { type?: unknown; href?: unknown } | null
       if (said?.type === 'hanzo:ready') {
         setState('ready')
@@ -179,7 +182,7 @@ function Frame({ app }: { app: Hosted }) {
     }
     window.addEventListener('message', hear)
     return () => window.removeEventListener('message', hear)
-  }, [app, host])
+  }, [app, host, tell])
 
   // A frame that never loads is said not to have.
   useEffect(() => {
@@ -215,6 +218,7 @@ function Frame({ app }: { app: Hosted }) {
       </XStack>
       <YStack flex={1} minH={0} position="relative">
         <View
+          ref={frame as never}
           flex={1}
           width="100%"
           height="100%"

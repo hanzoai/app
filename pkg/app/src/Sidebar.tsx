@@ -185,9 +185,10 @@ function useTabsGroups(t: (key: string, params?: Record<string, string | number>
       },
     ]
 
+    const liveFleet = fleet.filter((h) => h.status !== 'offline')
     const sandboxLinks: RailLink[] =
-      fleet.length > 0
-        ? fleet.map((h) => ({
+      liveFleet.length > 0
+        ? liveFleet.map((h) => ({
             id: `sandbox-${h.machine}`,
             label: h.label ? `${h.machine} · ${h.label}` : h.machine,
             icon: h.desktop ? <Monitor size={16} aria-hidden /> : <Cloud size={16} aria-hidden />,
@@ -202,7 +203,7 @@ function useTabsGroups(t: (key: string, params?: Record<string, string | number>
             },
           ]
 
-    const knownMachines = fleet.length > 0 ? new Set(fleet.map((h) => h.machine)) : null
+    const knownMachines = fleet.length > 0 ? new Set(liveFleet.map((h) => h.machine)) : null
     const recentLinks: RailLink[] = Object.entries(bind)
       .filter(([, b]) => {
         if (b.kind === 'page') return Boolean(b.url)
