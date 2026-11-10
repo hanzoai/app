@@ -39,6 +39,7 @@ import { Button, DropdownMenu, Switch, type DropdownMenuProps } from '@hanzo/ui'
 import { Sidebar as Base, SidebarIconButton, SidebarItem, StatusDot, type RailLink } from '@hanzo/ui/chat'
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { Made } from './Account'
+import { useBetas } from './Betas'
 import { Recents } from './Recents'
 import { MARK, RAIL, raised, type Raised } from './Rail'
 import { Setup } from './Setup'
@@ -46,7 +47,8 @@ import { ago, UNTITLED_RUN, type Recent } from './recent'
 import { empty } from './open'
 import { useSpan } from './span'
 import { useFree } from './Upgrade'
-import { talk, type Place } from './lib/host'
+import { hosted, talk, type Place } from './lib/host'
+import { HOSTED_APPS } from './lib/hosted'
 import { payUrl } from './lib/pay'
 import { brand, wordmark } from './where'
 import { dragWindow, toggleWindowMaximize } from './WindowControls'
@@ -200,7 +202,18 @@ function useTabsGroups(t: (key: string, params?: Record<string, string | number>
             },
           ]
 
-    const recentLinks: RailLink[] = Object.entries(bind).map(([id, b]) => {
+    const knownMachines = fleet.length > 0 ? new Set(fleet.map((h) => h.machine)) : null
+    const recentLinks: RailLink[] = Object.entries(bind)
+      .filter(([, b]) => {
+        if (b.kind === 'page') return Boolean(b.url)
+        if (b.kind === 'screen') return Boolean(b.machine) && (!knownMachines || knownMachines.has(b.machine!))
+        if (b.kind === 'shell') {
+          const m = b.shell?.machine ?? b.machine
+          return Boolean(m) && (!knownMachines || knownMachines.has(m!))
+        }
+        return false
+      })
+      .map(([id, b]) => {
       if (b.kind === 'screen') {
         return {
           id: `tab-${id}`,
@@ -358,17 +371,38 @@ export function Sidebar({
   // Each place the rail holds lists its own rows: Library its kinds and Upload, Scheduled tasks its tasks and New task.
   const scheduled = useScheduled(host, dev, at === 'scheduled')
   const tabsGroups = useTabsGroups(t, mode === 'tabs')
+  const { open: betaOpen } = useBetas()
+  const hostedGroups = useMemo(() => {
+    if (mode !== 'hosted') return []
+    const path = typeof window !== 'undefined' ? window.location.pathname : host.path
+    const links: RailLink[] = HOSTED_APPS.filter((a) => betaOpen(a.id)).map((a) => {
+      const href = hosted(a.id)
+      const active = path === href || path.startsWith(`${href}/`)
+      return {
+        id: `app-${a.id}`,
+        label: a.name,
+        active,
+        icon: <a.icon size={16} aria-hidden />,
+        onPress: () => go(href),
+      }
+    })
+    return links.length > 0 ? [{ id: 'hosted-apps', label: '', links }] : []
+  }, [mode, betaOpen, host.path, go])
   const groups =
-    places ??
-    (mode === 'tabs'
-      ? tabsGroups
-      : at === 'customize'
-        ? tabs(host, dev, t)
-        : at === 'library'
-          ? library(host, dev, t)
-          : at === 'scheduled'
-            ? scheduled
-            : own(host, dev, t))
+    places && places.length > 0
+      ? places
+      : mode === 'hosted'
+        ? hostedGroups
+        : places ??
+          (mode === 'tabs'
+            ? tabsGroups
+            : at === 'customize'
+              ? tabs(host, dev, t)
+              : at === 'library'
+                ? library(host, dev, t)
+                : at === 'scheduled'
+                  ? scheduled
+                  : own(host, dev, t))
   const open = (row: Recent) => (row.kind === 'chat' ? go(talk(row.id)) : dev(row.id))
   const setAnonSettings = (next: boolean) => {
     setAnonSettingsOpen(next)
@@ -575,7 +609,7 @@ export function Sidebar({
                 ) : null}
                 <YStack role="list" aria-labelledby={i && g.label ? `${uid}-${g.id}` : undefined} aria-label={i && g.label ? undefined : g.label || (at ? t(TITLE[at]) : g.id)} gap={1}>
                   {g.links.map((link) => (
-                    <YStack key={link.id} role="listitem" self="flex-start">
+                    <YStack key={link.id} role="listitem" self="flex-start" maxW="100%" minW={0}>
                       <SidebarItem
                         {...COMPACT_ROW}
                         data-place-id={link.id}
@@ -591,7 +625,7 @@ export function Sidebar({
                         onPress={link.onPress}
                         {...keys(() => link.onPress?.())}
                       >
-                        <Text fontSize="$3" color={link.active ? '$ink' : '$quiet'}>
+                        <Text fontSize="$3" color={link.active ? '$ink' : '$quiet'} numberOfLines={1}>
                           {link.label}
                         </Text>
                       </SidebarItem>
@@ -625,7 +659,7 @@ export function Sidebar({
               </YStack>
             </YStack>
           </YStack>
-        ) : mode === 'hosted' || mode === 'beta' || anon || at ? (
+        ) : mode === 'hosted' || mode === 'beta' || mode === 'tabs' || anon || at ? (
           <YStack flex={1} minH={0} />
         ) : (
           <Recents host={host} mode={mode === 'dev' ? 'dev' : 'chat'} thread={thread} onOpen={open} onNew={create} />

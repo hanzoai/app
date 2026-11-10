@@ -15,17 +15,20 @@ import { bearer } from './lib/session'
 
 export default function Terminals() {
   const { t } = useI18n()
-  const fleet = useFleet(bearer(), api())
+  const token = bearer()
+  const fleet = useFleet(token, api())
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    if (typeof window === 'undefined' || !fleet.read) return
     try {
-      const lite = fleet.hosts.map((h) => ({ machine: h.machine, label: h.label, status: h.status, desktop: Boolean(h.screen) }))
+      const lite = fleet.hosts
+        .filter((h) => (h.base || h.sandbox) && h.status !== 'offline')
+        .map((h) => ({ machine: h.machine, label: h.label, status: h.status, desktop: Boolean(h.screen) }))
       window.localStorage.setItem('hanzo.tabs.fleet', JSON.stringify(lite))
       window.dispatchEvent(new CustomEvent('hanzo:tabs-fleet', { detail: lite }))
     } catch {
       // ignore storage errors
     }
-  }, [fleet.hosts])
+  }, [fleet.hosts, fleet.read])
   return (
     <YStack data-slot="terminals" flex={1} minH={0} minW={0}>
       {fleet.error ? (
@@ -33,7 +36,15 @@ export default function Terminals() {
           {t('The machines could not be read: {error}', { error: fleet.error })}
         </Text>
       ) : null}
-      <Workspace hosts={fleet.hosts} mint={fleet.mint} onLaunch={fleet.launch} agent={fleet.agent} />
+      {fleet.read || fleet.error || !token ? (
+        <Workspace hosts={fleet.hosts} mint={fleet.mint} onLaunch={fleet.launch} agent={fleet.agent} />
+      ) : (
+        <YStack flex={1} items="center" justify="center">
+          <Text fontSize="$2" color="$soft">
+            {t('Reading your machines…')}
+          </Text>
+        </YStack>
+      )}
     </YStack>
   )
 }

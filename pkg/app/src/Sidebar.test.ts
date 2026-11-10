@@ -292,4 +292,12 @@ describe('the sidebar', () => {
       expect(html).toContain(text)
     }
   })
+
+  test('Tabs lists its actions and sandboxes without Chat’s Recents', () => {
+    const html = column('tabs')
+    expect(html).toContain('>Tabs<')
+    expect(html).toContain('New terminal')
+    expect(html).toContain('Sandboxes')
+    expect(html).not.toContain('data-slot="recents"')
+  })
 })
