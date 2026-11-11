@@ -20,7 +20,7 @@ import { org } from "./session";
  * address. Absolute, because this export also serves cloud.hanzo.ai and
  * hanzo.bot, and the checkout lives on hanzo.ai.
  */
-export const BILLING_URL = "https://pay.hanzo.ai";
+export const BILLING_URL = "https://hanzo.ai/pay";
 
 /**
  * The devnet's checkout: the same /pay mount on the devnet's site host, which
