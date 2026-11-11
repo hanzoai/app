@@ -14,9 +14,9 @@ vi.mock('@hanzo/ui/auth', () => ({
   },
 }))
 vi.mock('./tags', () => ({ track: () => {} }))
-vi.mock('./host', () => ({ answers: () => false }))
+vi.mock('./host', () => ({ answers: () => false, SIGNIN: 'https://hanzo.ai' }))
 
-const { here, useSignOut } = await import('./signout')
+const { endsAt, here, useSignOut } = await import('./signout')
 const { configure } = await import('../where')
 
 describe('signing out', () => {
@@ -53,18 +53,33 @@ describe('signing out', () => {
     expect(state.out).toHaveBeenCalledTimes(1)
   })
 
-  test('lands on the sign-in after a sign-out, or where the caller says, and ends every Hanzo site either way', async () => {
+  test('lands on the home page after a sign-out, or where the caller says, and ends every Hanzo site either way', async () => {
     await press()
-    expect(state.options).toMatchObject({ to: '/login?from=logout', everywhere: true })
+    expect(state.options).toMatchObject({ to: '/', everywhere: true })
     await press('/login?client_id=hanzo-cli')
     expect(state.options).toMatchObject({ to: '/login?client_id=hanzo-cli', everywhere: true })
   })
 
-  test('a plain sign-out leaves through the issuer, so every sign-in origin ends; the chooser\'s stays on its request', async () => {
+  test('on a dev server the plain sign-out ends here, and the chooser\'s always does', async () => {
+    // happy-dom is localhost: a dev server's sign-out stays on this machine.
     await press()
-    expect(state.options.issuer).toBe('https://hanzo.id')
+    expect(state.options.issuer).toBe('')
     await press('/login?client_id=hanzo-cli&prompt=select_account')
     expect(state.options.issuer).toBe('')
+  })
+
+  test('a sign-out everywhere ends on hanzo.ai\'s end-session page, where the session lives', () => {
+    // The configured server is where the token calls go, and IAM's walk starts
+    // only on a sign-in origin, so Hanzo's own hosts end on hanzo.ai.
+    expect(endsAt('https://api.hanzo.ai', 'hanzo.ai')).toBe('https://hanzo.ai')
+    expect(endsAt('https://api.hanzo.ai', 'hanzo.app')).toBe('https://hanzo.ai')
+    expect(endsAt('https://hanzo.id', 'hanzo.bot')).toBe('https://hanzo.ai')
+    // A brand with an issuer of its own ends there.
+    expect(endsAt('https://lux.id', 'lux.network')).toBe('https://lux.id')
+    // A dev server ends here, and a server that is no address ends nothing past it.
+    expect(endsAt('https://api.hanzo.ai', 'localhost')).toBe('')
+    expect(endsAt('https://api.hanzo.ai', 'app.localhost')).toBe('')
+    expect(endsAt('not an address', 'hanzo.ai')).toBe('')
   })
 })
 
