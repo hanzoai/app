@@ -1,6 +1,6 @@
 {
   "name": "@hanzo/app",
-  "version": "0.3.64",
+  "version": "0.3.65",
   "description": "Hanzo's app: the shell and its apps (Home, Chat, Inbox, Contacts, Meet, Calendar, Drive, Board, Work, Bots), once, for every Hanzo surface.",
   "type": "module",
   "main": "./dist/index.js",
@@ -69,7 +69,7 @@
     "@hanzo/logo": ">=1.0.26",
     "@hanzo/studio": ">=0.1.0",
     "@hanzo/tabs": ">=0.1.8",
-    "@hanzo/ui": ">=8.30.4",
+    "@hanzo/ui": ">=8.31.0",
     "@hanzo/usage": ">=0.1.18",
     "@hanzo/voice": ">=0.1.16",
     "@hanzogui/shell": "^8.3.20",
