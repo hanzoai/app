@@ -4,11 +4,11 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-const state = vi.hoisted(() => ({ out: vi.fn(async () => {}), options: {} as { to?: string; everywhere?: boolean } }))
+const state = vi.hoisted(() => ({ out: vi.fn(async () => {}), options: {} as { to?: string; everywhere?: boolean; issuer?: string } }))
 vi.mock('@hanzo/iam', () => ({ IAM: class {} }))
-vi.mock('@hanzo/iam/react', () => ({ useIam: () => ({ config: {} }) }))
+vi.mock('@hanzo/iam/react', () => ({ useIam: () => ({ config: { serverUrl: 'https://hanzo.id' } }) }))
 vi.mock('@hanzo/ui/auth', () => ({
-  useSignOut: (options: { to?: string; everywhere?: boolean }) => {
+  useSignOut: (options: { to?: string; everywhere?: boolean; issuer?: string }) => {
     state.options = options
     return state.out
   },
@@ -58,6 +58,13 @@ describe('signing out', () => {
     expect(state.options).toMatchObject({ to: '/login?from=logout', everywhere: true })
     await press('/login?client_id=hanzo-cli')
     expect(state.options).toMatchObject({ to: '/login?client_id=hanzo-cli', everywhere: true })
+  })
+
+  test('a plain sign-out leaves through the issuer, so every sign-in origin ends; the chooser\'s stays on its request', async () => {
+    await press()
+    expect(state.options.issuer).toBe('https://hanzo.id')
+    await press('/login?client_id=hanzo-cli&prompt=select_account')
+    expect(state.options.issuer).toBe('')
   })
 })
 

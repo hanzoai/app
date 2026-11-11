@@ -6,7 +6,8 @@
  * answered on this origin where it answers them (universe static-sites
  * `iam-on-hanzo-ai`): that is also where IAM keeps its session cookie, so the
  * session a person signs in with here is the one a later visit finds, and the
- * one sign-out ends. Nobody is sent to hanzo.id for any of it.
+ * one sign-out ends. Nobody is sent to hanzo.id to sign in; a plain sign-out
+ * passes through its end-session page on the way out (`useSignOut`).
  */
 
 import { useCallback, useMemo } from 'react'
@@ -39,16 +40,24 @@ export const OUT = '/login?from=logout'
  * IAM's /v1/iam routes, IAM's session here ended, the local session cleared —
  * counted as logout_completed, and then /login?from=logout (or `to`: the account
  * chooser, which signs everyone out and stays on the request it was drawn for),
- * where the person can sign straight back in. IAM's own logout page is never
- * visited.
+ * where the person can sign straight back in.
  *
  * EVERY HANZO SITE AT ONCE (`everywhere`). hanzo.ai and platform.hanzo.ai sign in
  * from one session, so leaving one of them must leave the other: IAM retires the
  * person's grant to every application of this client's organization along with
  * the session. A third-party app the person signed into keeps its own.
+ *
+ * AND EVERY SIGN-IN ORIGIN (D3). A plain sign-out ends through the issuer's
+ * end-session page (`issuer`, @hanzo/ui 8.31), which ends the session hanzo.id
+ * and hanzo.market hold for this person as well as this origin's, and lands on
+ * the issuer's sign-in, hanzo.ai/login. A sign-out with its own `to` is the
+ * account chooser's, which must stay on the request in flight, so it ends here
+ * only (an empty issuer).
  */
 export function useSignOut(to: string = OUT): () => Promise<void> {
-  const signOut: () => Promise<void> = useUiSignOut({ to, track, everywhere: true })
+  const { config } = useIam()
+  const issuer = to === OUT ? config.serverUrl : ''
+  const signOut: () => Promise<void> = useUiSignOut({ to, track, everywhere: true, issuer })
   return useCallback(async () => {
     // Google One Tap signs a returning person in on its own (`auto_select`), which
     // would put them straight back in the account they just left. Leaving says so.
