@@ -107,11 +107,11 @@ describe('the hosts that sign in on hanzo.ai with their own request', () => {
 })
 
 describe('the checkout a page sends a buyer to', () => {
-  test('pay.hanzo.ai on every production host, the devnet’s on a devnet host', () => {
+  test('hanzo.ai/pay on every production host, the devnet’s on a devnet host', () => {
     for (const host of ['hanzo.app', 'hanzo.ai', 'www.hanzo.ai', 'cloud.hanzo.ai', 'hanzo.bot', 'dev.hanzo.ai']) {
       at(host)
-      expect(billing(), host).toBe('https://pay.hanzo.ai')
-      expect(payUrl('/cart', { plan: 'pro' }), host).toBe('https://pay.hanzo.ai/cart?plan=pro')
+      expect(billing(), host).toBe('https://hanzo.ai/pay')
+      expect(payUrl('/cart', { plan: 'pro' }), host).toBe('https://hanzo.ai/pay/cart?plan=pro')
     }
     at('app-dev.hanzo.ai')
     expect(billing()).toBe('https://app-dev.hanzo.ai/pay')
@@ -121,6 +121,6 @@ describe('the checkout a page sends a buyer to', () => {
   })
 
   test('the prerender has no window and answers production', () => {
-    expect(billing()).toBe('https://pay.hanzo.ai')
+    expect(billing()).toBe('https://hanzo.ai/pay')
   })
 })

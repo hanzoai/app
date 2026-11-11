@@ -76,7 +76,7 @@ describe('the app host', () => {
     const { assign } = at('https://hanzo.app/chat')
     host().go(path({ kind: 'screen', screen: 'plans' }))
     expect(assign, 'in the same turn as the press, with nothing read first').toHaveBeenCalledTimes(1)
-    expect(where(assign.mock.calls[0][0])).toEqual({ at: 'https://pay.hanzo.ai/cart', org: 'acme', back: 'https://hanzo.app/chat' })
+    expect(where(assign.mock.calls[0][0])).toEqual({ at: 'https://hanzo.ai/pay/cart', org: 'acme', back: 'https://hanzo.app/chat' })
     expect(moved, 'a page load, not a move inside the app').toEqual([])
   })
 
@@ -84,7 +84,7 @@ describe('the app host', () => {
     const { assign, replace } = at('https://hanzo.app/dev/-/plans')
     leave('app')
     expect(assign).not.toHaveBeenCalled()
-    expect(where(replace.mock.calls[0][0])).toEqual({ at: 'https://pay.hanzo.ai/cart', org: 'acme', back: 'https://hanzo.app/dev' })
+    expect(where(replace.mock.calls[0][0])).toEqual({ at: 'https://hanzo.ai/pay/cart', org: 'acme', back: 'https://hanzo.app/dev' })
   })
 
   test('opens a Settings section at its page of the site, through the router, never under /dev', () => {
