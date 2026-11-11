@@ -15,7 +15,7 @@ import { IAM } from '@hanzo/iam'
 import { useIam } from '@hanzo/iam/react'
 import { useSignOut as useUiSignOut } from '@hanzo/ui/auth'
 import { track } from './tags'
-import { answers } from './host'
+import { answers, SIGNIN } from './host'
 import { where } from '../where'
 
 /**
@@ -32,31 +32,64 @@ export function useClient(): IAM {
   return useMemo(() => new IAM(local ? { ...config, proxyBaseUrl: window.location.origin } : config), [config, local])
 }
 
-/** Where a sign-out lands: this site's sign-in, which does not ask IAM for the session just ended. */
+/** This site's sign-in after a sign-out, which does not ask IAM for the session just ended. */
 export const OUT = '/login?from=logout'
+
+/**
+ * Where a plain sign-out lands: this site's home page. Every host this export is
+ * served on (hanzo.ai, hanzo.app, hanzo.bot) has a marketing page there, and a
+ * person who signed out is brought back to it rather than to a sign-in form. IAM
+ * returns the browser to it when the client registered it (universe
+ * iam-provision.yaml); otherwise it lands on hanzo.ai/login.
+ */
+export const HOME = '/'
+
+/** A dev server on this machine, which keeps its sign-out local. */
+const loopback = (hostname: string): boolean =>
+  hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]' || hostname.endsWith('.localhost')
+
+/**
+ * The end-session page a sign-out everywhere leaves through: hanzo.ai's, the
+ * origin every Hanzo site signs in on and so the one holding the person's session.
+ * IAM ends the session there and walks the issuer's other sign-in origins
+ * (hanzo.id, hanzo.market) by the request's own Host, so the page has to be one of
+ * them: the configured `serverUrl` (api.hanzo.ai, where the token calls go) is
+ * none, and an end-session there ends nothing past it. A brand with an issuer of
+ * its own ends on that issuer; a dev server on this machine ends here ('').
+ */
+export function endsAt(serverUrl: string, hostname: string): string {
+  if (loopback(hostname)) return ''
+  try {
+    const host = new URL(serverUrl).hostname
+    if (host === 'api.hanzo.ai' || host === 'hanzo.id' || host === 'hanzo.ai') return SIGNIN
+  } catch {
+    return ''
+  }
+  return serverUrl
+}
 
 /**
  * Sign-out on this site: @hanzo/ui/auth's `signOut` — the tokens handed back to
  * IAM's /v1/iam routes, IAM's session here ended, the local session cleared —
- * counted as logout_completed, and then /login?from=logout (or `to`: the account
- * chooser, which signs everyone out and stays on the request it was drawn for),
- * where the person can sign straight back in.
+ * counted as logout_completed, and then this site's home page (or `to`: the
+ * account chooser, which signs everyone out and stays on the request it was drawn
+ * for).
  *
  * EVERY HANZO SITE AT ONCE (`everywhere`). hanzo.ai and platform.hanzo.ai sign in
  * from one session, so leaving one of them must leave the other: IAM retires the
  * person's grant to every application of this client's organization along with
  * the session. A third-party app the person signed into keeps its own.
  *
- * AND EVERY SIGN-IN ORIGIN (D3). A plain sign-out ends through the issuer's
- * end-session page (`issuer`, @hanzo/ui 8.31), which ends the session hanzo.id
- * and hanzo.market hold for this person as well as this origin's, and lands on
- * the issuer's sign-in, hanzo.ai/login. A sign-out with its own `to` is the
- * account chooser's, which must stay on the request in flight, so it ends here
- * only (an empty issuer).
+ * AND EVERY SIGN-IN ORIGIN (D3). A plain sign-out ends through hanzo.ai's
+ * end-session page (`endsAt`, passed to @hanzo/ui 8.31 as `issuer`), which ends
+ * the session there and on hanzo.id and hanzo.market too, as well as this
+ * origin's. A sign-out with its own `to` is the account chooser's, which must stay
+ * on the request in flight, so it ends here only (an empty issuer).
  */
-export function useSignOut(to: string = OUT): () => Promise<void> {
+export function useSignOut(to: string = HOME): () => Promise<void> {
   const { config } = useIam()
-  const issuer = to === OUT ? config.serverUrl : ''
+  const plain = to === HOME || to === OUT
+  const issuer = plain && typeof window !== 'undefined' ? endsAt(config.serverUrl, window.location.hostname) : ''
   const signOut: () => Promise<void> = useUiSignOut({ to, track, everywhere: true, issuer })
   return useCallback(async () => {
     // Google One Tap signs a returning person in on its own (`auto_select`), which
