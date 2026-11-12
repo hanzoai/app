@@ -129,11 +129,11 @@ export function Roster({
         {grid.length ? (
           <XStack
             data-parity-key="bots.grid"
-            role="list"
+            role="group"
             aria-label={t('Bots')}
             flexWrap="wrap"
-            px={9}
-            pt={9}
+            px={11}
+            pt={11}
             columnGap={3}
             rowGap={13}
             $max-md={{ px: 12, columnGap: 0, justify: 'space-between' }}
@@ -143,7 +143,6 @@ export function Roster({
               return (
                 <YStack
                   key={b.id || b.name}
-                  role="listitem"
                   render="button"
                   {...{ type: 'button' }}
                   data-parity-key="bots.tile"
@@ -175,14 +174,13 @@ export function Roster({
         ) : null}
 
         {rows.length ? (
-          <YStack data-parity-key="bots.rows" role="list" aria-label={t('More bots')} pt={17} pb={8}>
+          <YStack data-parity-key="bots.rows" role="group" aria-label={t('More bots')} pt={17} pb={8}>
             {rows.map((b) => {
               const here = b.name === open
               const word = lastWord(last.get(b.name)) || b.description || ''
               return (
                 <XStack
                   key={b.id || b.name}
-                  role="listitem"
                   render="button"
                   {...{ type: 'button' }}
                   data-parity-key="bots.row"

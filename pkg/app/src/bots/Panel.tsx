@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Agent, Sandbox } from '@hanzo/ai'
 import { useI18n } from '@hanzo/i18n/react'
 import { Text, XStack, YStack } from '@hanzo/gui'
-import { Switch } from '@hanzo/ui'
+import { Button, Dialog, DialogContent, DialogTitle, Switch } from '@hanzo/ui'
 import { Clock, X } from 'lucide-react'
 import { useAi } from '../lib/ai'
 import { say } from '../failure'
@@ -17,7 +17,7 @@ import { Face } from './face'
 import { ALWAYS, answering, disk, grant } from './api'
 import { CARD, CLIP, LABEL, ROUND } from './kit'
 import { DIM, INK, LINE } from './ink'
-import { cron } from './time'
+import { cron as words } from './time'
 
 /** One row of a card: a mark, two lines, and whatever acts on it. */
 function Row({ mark, title, line, children, last }: { mark: React.ReactNode; title: string; line?: string; children?: React.ReactNode; last?: boolean }) {
@@ -47,14 +47,26 @@ function state(box: Sandbox | null, t: (s: string) => string): string {
   return box.error || t('Stopped')
 }
 
+/** The computer to draw: a running one first, then one waking, then any. */
+const best = (boxes: readonly Sandbox[]): Sandbox | null =>
+  boxes.find((b) => b.status === 'running') ?? boxes.find((b) => b.status === 'pending') ?? boxes[0] ?? null
+
+/** How often a waking computer is asked whether it is awake. */
+const POLL = 5000
+
 export function Panel({
   bot,
   onClose,
   onSchedule,
+  onDelete,
+  focus = false,
 }: {
   bot: Agent
   onClose: () => void
-  onSchedule: (on: boolean) => Promise<void>
+  onSchedule: (on: boolean, cron: string) => Promise<void>
+  onDelete: () => Promise<void>
+  /** Over the thread: the close control takes the focus, so Escape and Tab start here. */
+  focus?: boolean
 }) {
   const { t, locale } = useI18n()
   const { client } = useAi()
@@ -63,7 +75,15 @@ export function Panel({
   const [box, setBox] = useState<Sandbox | null>(null)
   const [boxed, setBoxed] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [wrong, setWrong] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  // The schedule this page last saw. The platform keeps none for a bot that runs
+  // only when asked, so a routine turned off keeps its words here to turn back on.
+  const [cron, setCron] = useState(bot.schedule ?? '')
+  useEffect(() => {
+    if (bot.schedule) setCron(bot.schedule)
+  }, [bot.schedule])
 
   const survey = useCallback(
     async (signal?: AbortSignal) => {
@@ -77,7 +97,7 @@ export function Panel({
       if (signal?.aborted) return
       if (detail.status === 'fulfilled') setInstructions(detail.value.instructions ?? '')
       if (boxes.status === 'fulfilled') {
-        setBox(boxes.value[0] ?? null)
+        setBox(best(boxes.value))
         setBoxed(true)
       }
       if (nets.status === 'fulfilled') {
@@ -99,32 +119,57 @@ export function Panel({
     return () => stop.abort()
   }, [survey])
 
-  /** Asleep, a press wakes it; awake, a press opens its screen. */
+  // A waking computer is asked again until it is awake or says why it is not.
+  useEffect(() => {
+    if (!client || box?.status !== 'pending') return
+    const stop = new AbortController()
+    const tick = window.setInterval(() => {
+      client.sandboxes
+        .list({ project: disk(bot.name) }, { signal: stop.signal })
+        .then((boxes) => setBox(best(boxes)))
+        .catch(() => undefined)
+    }, POLL)
+    return () => {
+      window.clearInterval(tick)
+      stop.abort()
+    }
+  }, [client, box?.status, bot.name])
+
+  /**
+   * Asleep, a press wakes it; awake, a press opens its screen in a new tab. The
+   * tab is opened inside the press, before the grant answers, because a browser
+   * allows a new window only from the press itself.
+   */
   const computer = async () => {
     if (!client || busy) return
     setBusy(true)
     setWrong(null)
+    const tab = box?.status === 'running' ? window.open('', '_blank') : null
     try {
       if (box?.status === 'running') {
         const g = await grant(client, box.id, box.class === 'desktop' ? 'screen' : 'terminal')
-        if (g.url) window.open(g.url, '_blank', 'noopener')
+        if (!tab) throw new Error(t('The browser kept the new tab from opening.'))
+        if (!g.url) throw new Error(t('The platform opened no window onto it.'))
+        tab.opener = null
+        tab.location.href = g.url
       } else if (!box || box.status === 'error') {
         await client.sandboxes.lease({ class: 'desktop', project: disk(bot.name) })
         await survey()
       }
     } catch (e) {
+      tab?.close()
       setWrong(say(e, t('{name}’s computer', { name: bot.name }), 'save', t))
     } finally {
       setBusy(false)
     }
   }
 
-  const routine = bot.schedule ? instructions.split('\n')[0].trim() || bot.description || bot.name : ''
+  const routine = cron ? instructions.split('\n')[0].trim() || bot.description || bot.name : ''
 
   return (
     <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden" aria-label={bot.name} render="aside">
       <XStack height={58} shrink={0} px={13} items="center" justify="flex-end">
-        <XStack {...ROUND} aria-label={t('Close')} onClick={onClose}>
+        <XStack {...ROUND} aria-label={t('Close')} onClick={onClose} {...{ autoFocus: focus }}>
           <X size={16} color={INK} aria-hidden />
         </XStack>
       </XStack>
@@ -137,19 +182,23 @@ export function Panel({
       </YStack>
 
       <YStack px={15} pb={24} gap={20}>
-        {bot.schedule ? (
+        {cron ? (
           <YStack gap={10} data-parity-key="bots.panel.upcoming">
             <Text {...LABEL} px={12}>
               {t('Upcoming')}
             </Text>
             <YStack {...CARD}>
-              <Row mark={<Clock size={16} color={DIM} aria-hidden />} title={routine} line={cron(bot.schedule, locale, t)} last>
+              <Row mark={<Clock size={16} color={DIM} aria-hidden />} title={routine} line={words(cron, locale, t)} last>
                 <Switch
                   aria-label={t('Run {name} on its schedule', { name: bot.name })}
-                  checked={bot.executionMode === ALWAYS}
+                  checked={bot.executionMode === ALWAYS && Boolean(bot.schedule)}
+                  disabled={saving}
                   onCheckedChange={(on: boolean) => {
                     setWrong(null)
-                    onSchedule(on).catch((e) => setWrong(say(e, bot.name, 'save', t)))
+                    setSaving(true)
+                    onSchedule(on, cron)
+                      .catch((e) => setWrong(say(e, t('{name}’s schedule', { name: bot.name }), 'save', t)))
+                      .finally(() => setSaving(false))
                   }}
                 />
               </Row>
@@ -201,7 +250,51 @@ export function Panel({
             {wrong}
           </Text>
         ) : null}
+
+        <XStack px={12} pt={8}>
+          <Text
+            render="button"
+            {...{ type: 'button' }}
+            onClick={() => setDeleting(true)}
+            bg="transparent"
+            borderWidth={0}
+            p={0}
+            cursor="pointer"
+            fontSize={13}
+            lineHeight={18}
+            color={DIM}
+            hoverStyle={{ color: INK }}
+          >
+            {t('Delete {name}', { name: bot.name })}
+          </Text>
+        </XStack>
       </YStack>
+
+      <Dialog open={deleting} onOpenChange={setDeleting}>
+        <DialogContent maxW={440} rounded={20} gap={14}>
+          <DialogTitle>{t('Delete {name}?', { name: bot.name })}</DialogTitle>
+          <Text fontSize={15} lineHeight={22} color={DIM}>
+            {t('{name} and every message it was sent are deleted for good.', { name: bot.name })}
+          </Text>
+          <XStack gap={8} justify="flex-end">
+            <Button size="sm" variant="outline" rounded={999} onPress={() => setDeleting(false)}>
+              {t('Cancel')}
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              rounded={999}
+              onPress={() => {
+                if (!deleting) return
+                setDeleting(false)
+                onDelete().catch((e) => setWrong(say(e, bot.name, 'save', t)))
+              }}
+            >
+              {t('Delete')}
+            </Button>
+          </XStack>
+        </DialogContent>
+      </Dialog>
     </YStack>
   )
 }

@@ -13,7 +13,7 @@ import { useI18n } from '@hanzo/i18n/react'
 import { Input, Text, XStack, YStack } from '@hanzo/gui'
 import { Dialog, DialogContent, DialogTitle } from '@hanzo/ui'
 import { ENSO, useAi } from '../lib/ai'
-import { detail } from '../failure'
+import { plainly } from '../failure'
 import { NAME, make } from './api'
 import { PILL, WORD } from './kit'
 import { DIM, INK, LINE, RAISED } from './ink'
@@ -43,7 +43,8 @@ export function Make({ onDone, onCancel }: { onDone: (a: Agent) => void | Promis
 
   const dollars = Number(weekly)
   const named = NAME.test(name.trim())
-  const ok = named && Number.isInteger(dollars) && dollars > 0 && !busy
+  // Up to ten thousand dollars a week: a cap is a guard, and past it a typo is a fortune.
+  const ok = named && Number.isInteger(dollars) && dollars > 0 && dollars <= 10_000 && !busy
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -53,7 +54,7 @@ export function Make({ onDone, onCancel }: { onDone: (a: Agent) => void | Promis
     try {
       await onDone(await make(client, { name: name.trim(), instructions: does.trim(), model: ENSO, weekly: dollars }))
     } catch (err) {
-      setWrong(detail(err))
+      setWrong(plainly(err, t('this bot'), t))
     } finally {
       setBusy(false)
     }

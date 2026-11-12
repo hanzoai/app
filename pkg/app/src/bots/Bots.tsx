@@ -13,7 +13,8 @@
 // API, read with the reader's own token.
 //
 // Below a tablet the columns are one at a time: the roster, then the thread a
-// press opens, with the panel over it.
+// press opens (a step in the history, so Back returns to the roster), with the
+// panel over it.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Agent, AgentRun } from '@hanzo/ai'
@@ -25,25 +26,26 @@ import { useKept } from '../kept'
 import { say } from '../failure'
 import { Roster } from './Roster'
 import { Thread } from './Thread'
-import { refusal, type Notice } from './refusal'
+import { recordedRun, refusal, type Notice } from './refusal'
 import type { Pending } from './said'
 import { Panel } from './Panel'
 import { Make } from './Make'
-import { ALWAYS, ONCE } from './api'
+import { ALWAYS, ONCE, PARAM } from './api'
 import { instant } from './time'
 import { FLOOR, GROUND, LINE } from './ink'
 
-/** The address names the open bot, so a reload, a link and Share all reopen it. */
-const PARAM = 'bot'
 
 const named = (): string | null =>
   typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get(PARAM)
 
-function address(name: string | null): void {
+/** Writes the open bot into the address: a new step when a phone enters a thread, else in place. */
+function address(name: string | null, step: boolean): void {
   const url = new URL(window.location.href)
   if (name) url.searchParams.set(PARAM, name)
   else url.searchParams.delete(PARAM)
-  window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+  const to = `${url.pathname}${url.search}${url.hash}`
+  if (step) window.history.pushState(window.history.state, '', to)
+  else window.history.replaceState(window.history.state, '', to)
 }
 
 /** The newest run of each bot, from the org's feed (newest first). */
@@ -53,45 +55,81 @@ function lastOf(feed: readonly AgentRun[]): Map<string, AgentRun> {
   return out
 }
 
+/** Runs by id, oldest first: a late read never drops a run this page already drew. */
+function merged(a: readonly AgentRun[], b: readonly AgentRun[]): AgentRun[] {
+  const by = new Map<string, AgentRun>()
+  for (const r of [...a, ...b]) by.set(r.id, r)
+  return [...by.values()].sort((x, y) => (instant(x.createdAt) ?? 0) - (instant(y.createdAt) ?? 0))
+}
 
-export function Bots({ foot = true }: {
+/** Whether a media query holds, kept current. False until mounted. */
+function useWide(query: string): boolean {
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    const q = window.matchMedia(query)
+    const set = () => setOn(q.matches)
+    set()
+    q.addEventListener('change', set)
+    return () => q.removeEventListener('change', set)
+  }, [query])
+  return on
+}
+
+export function Bots({
+  foot = true,
+  bot: held,
+  onBot,
+}: {
   /** The reader and the other apps at the roster's foot. A host whose own chrome
    *  already holds both (hanzo.team's rail and bar) passes false. */
   foot?: boolean
+  /** The open bot, when the host's router holds the address (`?bot=`); with it,
+   *  `onBot` is how a press or Back moves it. Absent, the app keeps the address. */
+  bot?: string | null
+  onBot?: (name: string | null, step: boolean) => void
 } = {}) {
   const { t } = useI18n()
   const { client, ready } = useAi()
   const { user, isAuthenticated } = useIam()
   const live = Boolean(client && isAuthenticated && ready)
+  const hosted = held !== undefined
 
   const [bots, setBots] = useState<Agent[] | null>(null)
   const [feed, setFeed] = useState<AgentRun[]>([])
   const [unread, setUnread] = useState<string | null>(null)
-  const [name, setName] = useState<string | null>(null)
-  // The phone shows one column: the roster, or the thread once one is opened.
-  const [inside, setInside] = useState(false)
+  const [own, setOwn] = useState<string | null>(null)
   const [making, setMaking] = useState(false)
   // The panel beside the thread, kept per browser; over the thread below a laptop.
   const [side, setSide] = useKept('hanzo.bots.side', true)
   const [over, setOver] = useState(false)
+  const wide = useWide('(min-width: 768px)')
+  const laptop = useWide('(min-width: 1280px)')
 
-  // From a tablet up the thread stands beside the roster, so the bot it shows is
-  // the open one; on a phone nothing is open until one is pressed.
-  const [wide, setWide] = useState(false)
+  // The address, read on arrival and on every Back and Forward.
   useEffect(() => {
-    const asked = named()
-    setName(asked)
-    setInside(Boolean(asked))
-    const query = window.matchMedia('(min-width: 768px)')
-    const on = () => setWide(query.matches)
-    on()
-    query.addEventListener('change', on)
-    return () => query.removeEventListener('change', on)
-  }, [])
+    if (hosted) return
+    const read = () => setOwn(named())
+    read()
+    window.addEventListener('popstate', read)
+    return () => window.removeEventListener('popstate', read)
+  }, [hosted])
 
+  const name = hosted ? (held ?? null) : own
+  const move = useCallback(
+    (next: string | null, step: boolean) => {
+      if (hosted) return onBot?.(next, step)
+      setOwn(next)
+      address(next, step)
+    },
+    [hosted, onBot],
+  )
+
+  const reading = useRef(0)
   const read = useCallback(async () => {
     if (!client) return
+    const turn = ++reading.current
     const [list, runs] = await Promise.allSettled([client.agents.list(), client.agents.runs({ limit: 200 })])
+    if (turn !== reading.current) return
     if (list.status === 'fulfilled') {
       setBots(list.value)
       setUnread(null)
@@ -108,27 +146,39 @@ export function Bots({ foot = true }: {
 
   const last = useMemo(() => lastOf(feed), [feed])
 
-  // The open bot: the one the address names, else the one last spoken to, else the first.
-  const bot = useMemo<Agent | null>(() => {
-    if (!bots?.length) return null
-    const asked = name ? bots.find((b) => b.name === name) : undefined
-    if (asked) return asked
-    const recent = feed.find((r) => r.agent && bots.some((b) => b.name === r.agent))
-    return bots.find((b) => b.name === recent?.agent) ?? bots[0]
-  }, [bots, name, feed])
+  // The open bot is the one the address names. With none — or one this org does
+  // not keep — a laptop opens the one last spoken to (else the first) and writes
+  // it into the address, so it stays open while the feed moves; a phone stays on
+  // the roster.
+  const bot = useMemo<Agent | null>(() => (name && bots?.find((b) => b.name === name)) || null, [bots, name])
+  useEffect(() => {
+    if (!bots || bot) return
+    if (name && !bots.some((b) => b.name === name)) return move(null, false)
+    if (!wide || !bots.length) return
+    const recent = feed.find((r) => r.agent && bots.some((b) => b.name === r.agent))?.agent
+    move(recent ?? bots[0].name, false)
+  }, [bots, bot, name, wide, feed, move])
 
-  const pick = useCallback((next: string) => {
-    setName(next)
-    setInside(true)
-    setOver(false)
-    address(next)
-  }, [])
+  // Whether this page stepped into the thread, so Back can step out of it.
+  const stepped = useRef(false)
+  const pick = useCallback(
+    (next: string) => {
+      setOver(false)
+      // A phone steps into the thread, so Back returns to the roster.
+      const step = !wide && !name
+      if (step) stepped.current = true
+      move(next, step)
+    },
+    [move, wide, name],
+  )
 
   const back = useCallback(() => {
-    setInside(false)
     setOver(false)
-    address(null)
-  }, [])
+    if (!hosted && stepped.current) {
+      stepped.current = false
+      window.history.back()
+    } else move(null, false)
+  }, [hosted, move])
 
   // ── the open bot's thread ────────────────────────────────────────────────
   const [runs, setRuns] = useState<AgentRun[] | null>(null)
@@ -142,8 +192,7 @@ export function Bots({ foot = true }: {
     async (who: string, signal?: AbortSignal) => {
       if (!client) return
       const rows = await client.agents.runs({ agent: who, limit: 200 }, signal ? { signal } : undefined)
-      // The route answers newest first; a thread reads down to the newest.
-      setRuns([...rows].sort((a, b) => (instant(a.createdAt) ?? 0) - (instant(b.createdAt) ?? 0)))
+      if (!signal?.aborted) setRuns((drawn) => merged(drawn ?? [], rows))
     },
     [client],
   )
@@ -173,67 +222,92 @@ export function Bots({ foot = true }: {
   const send = useCallback(
     async (input: string): Promise<boolean> => {
       if (!client || !bot) return false
+      const who = bot.name
       const turn = ++asking.current
+      const now = () => turn === asking.current
       setNotice(null)
       setWrong(null)
       setPending({ input, at: Date.now() })
       try {
-        const ran = await client.agents.run(bot.name, input)
-        if (turn === asking.current) setRuns((rs) => [...(rs ?? []), ran])
+        const ran = await client.agents.run(who, input)
+        if (now()) setRuns((rs) => merged(rs ?? [], [ran]))
         return true
       } catch (e) {
         // A thread since left: its words are not handed to the one now open.
-        if (turn !== asking.current) return true
-        const no = refusal(e, t)
+        if (!now()) return true
+        const no = refusal(e, who, Date.now(), t)
         if (no) {
           setNotice(no)
           return false
         }
-        // A run that reached its model and failed is recorded (502, the run as
-        // its body); the thread reads it back. Anything else never arrived.
-        const recorded = (e as { status?: unknown } | null)?.status === 502
-        if (recorded) await history(bot.name).catch(() => undefined)
-        setWrong(say(e, bot.name, 'save', t))
-        return recorded
+        // A run that reached its model and failed is recorded and comes back as
+        // the body; it is drawn with its own error. Anything else never arrived.
+        const ran = recordedRun<AgentRun>(e)
+        if (ran) {
+          setRuns((rs) => merged(rs ?? [], [ran]))
+          return true
+        }
+        setWrong(say(e, t('your message to {name}', { name: who }), 'save', t))
+        return false
       } finally {
-        if (turn === asking.current) setPending(null)
+        if (now()) setPending(null)
         void read()
       }
     },
-    [client, bot, history, read, t],
+    [client, bot, read, t],
   )
 
-  /** Runs on its schedule, or only when asked. The record is the answer. */
+  /**
+   * Runs on its schedule, or only when asked. The platform keeps no schedule for
+   * a bot that runs only when asked, so turning it back on states the schedule.
+   */
   const schedule = useCallback(
-    async (on: boolean) => {
+    async (on: boolean, cron: string) => {
       if (!client || !bot) return
-      const saved = await client.agents.update(bot.name, { executionMode: on ? ALWAYS : ONCE })
-      setBots((all) => (all ?? []).map((b) => (b.name === saved.name ? { ...b, ...saved } : b)))
+      const saved = await client.agents.update(bot.name, on ? { executionMode: ALWAYS, schedule: cron } : { executionMode: ONCE })
+      setBots((all) => (all ?? []).map((b) => (b.name === saved.name ? { ...b, ...saved, schedule: saved.schedule } : b)))
     },
     [client, bot],
   )
+
+  /** Deletes the open bot and every run recorded against it. */
+  const remove = useCallback(async () => {
+    if (!client || !bot) return
+    await client.agents.delete(bot.name)
+    setBots((all) => (all ?? []).filter((b) => b.name !== bot.name))
+    setOver(false)
+    move(null, false)
+    await read()
+  }, [client, bot, move, read])
 
   const made = useCallback(
     async (agent: Agent) => {
       setMaking(false)
       setBots((all) => [...(all ?? []).filter((b) => b.name !== agent.name), agent])
-      pick(agent.name)
+      const step = !wide && !name
+      if (step) stepped.current = true
+      move(agent.name, step)
       await read()
     },
-    [pick, read],
+    [move, read, wide, name],
   )
 
+  // Escape closes the panel over the thread, as it closes any dialog.
+  useEffect(() => {
+    if (!over) return
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && setOver(false)
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [over])
+
+  const close = () => {
+    if (laptop) setSide(false)
+    setOver(false)
+  }
   const panel = bot ? (
-    <Panel
-      key={bot.name}
-      bot={bot}
-      onClose={() => {
-        setSide(false)
-        setOver(false)
-      }}
-      onSchedule={schedule}
-    />
+    <Panel key={bot.name} bot={bot} onClose={close} onSchedule={schedule} onDelete={remove} focus={over && !laptop} />
   ) : null
+  const shown = laptop ? side : over
 
   return (
     <XStack data-parity-key="bots.window" width="100%" height="100%" overflow="hidden" bg={FLOOR} position="relative">
@@ -245,12 +319,12 @@ export function Bots({ foot = true }: {
         bg={FLOOR}
         borderRightWidth={1}
         borderColor={LINE}
-        $max-md={{ width: '100%', borderRightWidth: 0, display: inside ? 'none' : 'flex' }}
+        $max-md={{ width: '100%', borderRightWidth: 0, display: bot ? 'none' : 'flex' }}
       >
         <Roster
           bots={bots}
           last={last}
-          open={wide || inside ? open : null}
+          open={open}
           unread={unread}
           me={foot ? user : null}
           onPick={pick}
@@ -265,7 +339,7 @@ export function Bots({ foot = true }: {
         minW={0}
         height="100%"
         bg={GROUND}
-        $max-md={{ display: inside ? 'flex' : 'none' }}
+        $max-md={{ display: bot ? 'flex' : 'none' }}
       >
         <Thread
           bot={bot}
@@ -274,15 +348,12 @@ export function Bots({ foot = true }: {
           pending={pending}
           notice={notice}
           wrong={wrong}
-          side={side}
+          side={shown}
           live={live}
+          loaded={bots !== null}
           onSend={send}
           onDismiss={() => setNotice(null)}
-          onSide={() => {
-            // Beside the thread from a laptop up; over it below one.
-            if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1280px)').matches) setSide(!side)
-            else setOver(!over)
-          }}
+          onSide={() => (laptop ? setSide(!side) : setOver(!over))}
           onBack={back}
           onMake={() => setMaking(true)}
         />
@@ -303,9 +374,12 @@ export function Bots({ foot = true }: {
         </YStack>
       ) : null}
 
-      {over && panel ? (
+      {over && panel && !laptop ? (
         <YStack
           data-parity-key="bots.panel.over"
+          role="dialog"
+          aria-modal
+          aria-label={bot?.name}
           position="absolute"
           t={0}
           r={0}
@@ -317,7 +391,6 @@ export function Bots({ foot = true }: {
           borderLeftWidth={1}
           borderColor={LINE}
           boxShadow="var(--shadow-floating)"
-          $xl={{ display: 'none' }}
         >
           {panel}
         </YStack>

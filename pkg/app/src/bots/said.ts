@@ -44,9 +44,13 @@ export function lines(
   for (const r of runs) {
     const at = instant(r.createdAt) ?? now
     mark(at, r.id)
+    // A run another bot asked for opens with that bot's words, marked as its
+    // message; any other run's input is yours.
     const from = asker(r, bots, self)
-    if (from) out.push({ kind: 'from', key: `f-${r.id}`, bot: from })
-    else if (r.input) out.push({ kind: 'mine', key: `i-${r.id}`, text: r.input })
+    if (from) {
+      out.push({ kind: 'from', key: `f-${r.id}`, bot: from })
+      if (r.input) out.push({ kind: 'theirs', key: `i-${r.id}`, text: r.input })
+    } else if (r.input) out.push({ kind: 'mine', key: `i-${r.id}`, text: r.input })
     const said = r.output || r.error
     if (said) out.push({ kind: 'theirs', key: `o-${r.id}`, text: said, failed: !r.output && Boolean(r.error) })
   }

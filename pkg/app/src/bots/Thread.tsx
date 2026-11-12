@@ -24,22 +24,24 @@ import { CLIP, PILL, ROUND, WORD } from './kit'
 import { DIM, EDGE, INK, LINE, MINE, RAISED } from './ink'
 import { instant } from './time'
 import { lines, type Pending } from './said'
+import { compose, fits, MAX, texty, type File } from './carry'
+import { PARAM } from './api'
 import type { Notice } from './refusal'
 
 
 /** The widest a conversation reads, as the desktop app draws it. */
 const MEASURE = 960
 
-/** The largest text file that goes with a message, by the run's own input cap. */
-const CARRY = 96 * 1024
 
-/** "It resets in 3 days." from the instant a refusal lifts. */
+/** "It resets in 3 days." from the instant a refusal lifts, in the reader's calendar days. */
 function lifts(iso: string | null, now: number, t: (s: string, v?: Record<string, unknown>) => string): string {
   const at = instant(iso ?? undefined)
   if (at === null || at <= now) return ''
   const hours = Math.ceil((at - now) / 3_600_000)
-  if (hours < 24) return hours === 1 ? t('It resets in an hour.') : t('It resets in {n} hours.', { n: hours })
-  const days = Math.round(hours / 24)
+  if (hours < 24 && new Date(at).getDate() === new Date(now).getDate())
+    return hours === 1 ? t('It resets in an hour.') : t('It resets in {n} hours.', { n: hours })
+  const day = (n: number) => new Date(new Date(n).getFullYear(), new Date(n).getMonth(), new Date(n).getDate()).getTime()
+  const days = Math.round((day(at) - day(now)) / 86_400_000)
   return days === 1 ? t('It resets tomorrow.') : t('It resets in {n} days.', { n: days })
 }
 
@@ -52,6 +54,7 @@ export function Thread({
   wrong,
   side,
   live,
+  loaded,
   onSend,
   onDismiss,
   onSide,
@@ -66,6 +69,8 @@ export function Thread({
   wrong: string | null
   side: boolean
   live: boolean
+  /** The roster has answered, so an empty one is an empty org and not a slow one. */
+  loaded: boolean
   onSend: (input: string) => Promise<boolean>
   onDismiss: () => void
   onSide: () => void
@@ -74,8 +79,9 @@ export function Thread({
 }) {
   const { t, locale } = useI18n()
   const [draft, setDraft] = useState('')
-  const [shared, setShared] = useState(false)
-  const [carried, setCarried] = useState<string | null>(null)
+  const [shared, setShared] = useState<string | null>(null)
+  const [file, setFile] = useState<File | null>(null)
+  const [note, setNote] = useState<string | null>(null)
   const foot = useRef<HTMLDivElement>(null)
   const pick = useRef<HTMLInputElement>(null)
 
@@ -99,40 +105,55 @@ export function Thread({
 
   useEffect(() => {
     setDraft('')
-    setCarried(null)
+    setFile(null)
+    setNote(null)
   }, [bot?.name])
 
+  /** The address of this bot's conversation, whatever the address bar says now. */
   const share = async () => {
-    const url = window.location.href
+    if (!bot) return
+    const url = new URL(window.location.href)
+    url.searchParams.set(PARAM, bot.name)
+    const link = url.toString()
     const nav = navigator as Navigator & { share?: (d: { url: string; title?: string }) => Promise<void> }
     try {
-      if (nav.share && window.matchMedia('(pointer: coarse)').matches) await nav.share({ url, title: bot?.name })
-      else await navigator.clipboard.writeText(url)
-      setShared(true)
-      window.setTimeout(() => setShared(false), 2000)
-    } catch {
-      // A share the reader closed is not a failure to report.
+      if (nav.share && window.matchMedia('(pointer: coarse)').matches) await nav.share({ url: link, title: bot.name })
+      else await navigator.clipboard.writeText(link)
+      setShared(t('Link copied'))
+    } catch (e) {
+      // A share the reader closed is not a failure; a copy the browser refused is.
+      if ((e as { name?: string } | null)?.name === 'AbortError') return
+      setShared(t('Copy failed'))
     }
+    window.setTimeout(() => setShared(null), 2000)
   }
 
-  // A text file goes with the message, fenced under its name; a run carries text alone.
-  const carry = async (file: File) => {
-    if (file.size > CARRY || !(file.type.startsWith('text/') || /\.(md|txt|csv|json|ya?ml|tsv|log)$/i.test(file.name))) {
-      setCarried(t('Only a text file under 96 KB goes with a message to a bot.'))
-      return
+  // A text file goes with the message, held beside the draft until it is sent.
+  const carry = async (picked: globalThis.File) => {
+    setNote(null)
+    try {
+      const text = picked.size <= MAX ? await picked.text() : ''
+      if (!text || !texty(text)) throw new Error('not text')
+      setFile({ name: picked.name, text })
+    } catch {
+      setNote(t('Only a text file under 128 KB goes with a message to a bot.'))
     }
-    const text = await file.text()
-    setCarried(null)
-    setDraft((d) => `${d}${d ? '\n\n' : ''}\`\`\`${file.name}\n${text}\n\`\`\``)
   }
 
   const submit = () => {
-    const input = draft.trim()
+    const words = draft
+    const held = file
+    const input = compose(words, held)
     if (!input || !bot || !live || pending) return
+    if (!fits(input)) return setNote(t('That message is over the 128 KB a bot reads at once.'))
     setDraft('')
+    setFile(null)
+    setNote(null)
     void onSend(input).then((said) => {
-      // Not recorded: the words come back, unless something new was typed meanwhile.
-      if (!said) setDraft((d) => d || input)
+      // Not recorded: the words and the file come back, unless something new is there.
+      if (said) return
+      setDraft((d) => d || words)
+      setFile((f) => f ?? held)
     })
   }
 
@@ -148,13 +169,14 @@ export function Thread({
           <XStack
             {...PILL}
             data-parity-key="bots.pill"
-            aria-label={t(side ? 'Hide {name}' : 'Show {name}', { name: bot.name })}
-            aria-pressed={side}
+            aria-label={t('{name}’s details', { name: bot.name })}
+            aria-expanded={side}
             onClick={onSide}
-            pl={6}
+            height={40}
+            pl={7}
             maxW="60%"
           >
-            <Face bot={bot} size={26} />
+            <Face bot={bot} size={24} />
             <Text {...WORD} {...CLIP}>
               {bot.name}
             </Text>
@@ -162,8 +184,8 @@ export function Thread({
         ) : null}
         <XStack flex={1} minW={0} items="center" justify="flex-end">
           {bot ? (
-            <XStack {...PILL} data-parity-key="bots.share" onClick={share} aria-live="polite">
-              <Text {...WORD}>{shared ? t('Link copied') : t('Share')}</Text>
+            <XStack {...PILL} data-parity-key="bots.share" px={15} onClick={share}>
+              <Text {...WORD}>{shared ?? t('Share')}</Text>
             </XStack>
           ) : null}
         </XStack>
@@ -171,7 +193,7 @@ export function Thread({
 
       {!bot ? (
         <YStack flex={1} items="center" justify="center" gap={16} px={24}>
-          {live ? (
+          {live && loaded && bots.length === 0 ? (
             <>
               <Text render="h1" m={0} fontSize={22} lineHeight={28} fontWeight="500" color={INK}>
                 {t('Make your first bot')}
@@ -336,9 +358,20 @@ export function Thread({
             </YStack>
           ) : null}
 
-          {carried ? (
-            <Text fontSize={13} lineHeight={18} color={DIM} px={8}>
-              {carried}
+          {file ? (
+            <XStack self="flex-start" items="center" gap={6} height={30} pl={12} pr={4} rounded={999} bg={RAISED} borderWidth={1} borderColor={LINE}>
+              <Text {...CLIP} maxW={260} fontSize={13} lineHeight={18} color={INK}>
+                {file.name}
+              </Text>
+              <XStack {...ROUND} width={24} height={24} bg="transparent" borderWidth={0} aria-label={t('Remove {name}', { name: file.name })} onClick={() => setFile(null)}>
+                <X size={12} color={DIM} aria-hidden />
+              </XStack>
+            </XStack>
+          ) : null}
+
+          {note ? (
+            <Text role="alert" fontSize={13} lineHeight={18} color={DIM} px={8}>
+              {note}
             </Text>
           ) : null}
 
@@ -400,9 +433,9 @@ export function Thread({
             hidden
             accept="text/*,.md,.txt,.csv,.json,.yaml,.yml,.tsv,.log"
             onChange={(e) => {
-              const file = e.target.files?.[0]
+              const picked = e.target.files?.[0]
               e.target.value = ''
-              if (file) void carry(file)
+              if (picked) void carry(picked)
             }}
           />
         </YStack>

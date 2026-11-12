@@ -19,6 +19,9 @@ export const ONCE = 'one-shot'
 /** A bot's name, as the agents route accepts one in a path. */
 export const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
 
+/** The address names the open bot (`?bot=`), so a reload, a link and Share all reopen it. */
+export const PARAM = 'bot'
+
 /** One US dollar in the platform's unit of money. */
 export const DOLLAR = 1_000_000
 
