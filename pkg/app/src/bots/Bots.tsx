@@ -1,983 +1,423 @@
 'use client'
 
-// The Bots app.
+// The Bots app: make a bot, open it, talk to it.
 //
-// Bots are autonomous workers for your organization: each has a model,
-// instructions, tools, and a record of everything it has accomplished.
+// Three columns, as the desktop app draws them: the roster (the bots as a grid
+// of faces, then the rest with their last word, then you), the thread with the
+// open bot, and the panel of what that bot has. Every row, message and switch is
+// a platform record — `/v1/agents` and the runs it records — and a section with
+// nothing behind it is not drawn.
 //
-// In live mode, this connects directly to your organization's bots and sessions.
-// When visiting without an account, an interactive Example Workspace lets you
-// explore how bots use computers to automate sales, triage inboxes, and review code.
+// The same component is the app on hanzo.bot (hanzo.ai's /bots) and on
+// hanzo.team, so a bot made in one is in the other: one list, one thread, one
+// API, read with the reader's own token.
+//
+// Below a tablet the columns are one at a time: the roster, then the thread a
+// press opens (a step in the history, so Back returns to the roster), with the
+// panel over it.
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Monitor, Plus, Search, Send, Trash2 } from 'lucide-react'
-import { phrase, type Say } from '@hanzo/i18n'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { Agent, AgentRun } from '@hanzo/ai'
 import { useIam } from '@hanzo/iam/react'
-import type { Agent, AgentDetail, AgentRun, Model, Session } from '@hanzo/ai'
-import { useAi, ENSO } from '../lib/ai'
 import { useI18n } from '@hanzo/i18n/react'
+import { XStack, YStack } from '@hanzo/gui'
+import { useAi } from '../lib/ai'
+import { useKept } from '../kept'
 import { say } from '../failure'
-import { Input, Text, XStack, YStack } from '@hanzo/gui'
-import { Button } from '@hanzo/ui'
-import { Lights } from './Lights'
-import { Face } from './face'
-import { Runtime } from './runtime'
-import { DIM, FAINT, GROUND, INK, LINE, RAISED, SURFACE } from './ink'
-import { BARE, BOXED, CARD, CLIP, GHOST, LABEL, NOTE, TAB } from './kit'
-import { ALWAYS, ONCE, launch, sessions, steer } from './api'
+import { Roster } from './Roster'
+import { Thread } from './Thread'
+import { recordedRun, refusal, type Notice } from './refusal'
+import type { Pending } from './said'
+import { Panel } from './Panel'
+import { Make } from './Make'
+import { ALWAYS, ONCE, PARAM } from './api'
+import { instant } from './time'
+import { FLOOR, GROUND, LINE } from './ink'
 
-/** How long ago, in the words a roster row has space for. */
-function when(iso: string | undefined, t: Say, locale: string): string {
-  if (!iso) return ''
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return ''
-  const days = Math.floor((Date.now() - date.getTime()) / 86_400_000)
-  if (days === 0) return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
-  if (days === 1) return t('Yesterday')
-  if (days < 7) return date.toLocaleDateString(locale, { weekday: 'short' })
-  return date.toLocaleDateString(locale, { month: 'short', day: 'numeric' })
+
+const named = (): string | null =>
+  typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get(PARAM)
+
+/** Writes the open bot into the address: a new step when a phone enters a thread, else in place. */
+function address(name: string | null, step: boolean): void {
+  const url = new URL(window.location.href)
+  if (name) url.searchParams.set(PARAM, name)
+  else url.searchParams.delete(PARAM)
+  const to = `${url.pathname}${url.search}${url.hash}`
+  // Null, not the current state: Next's router stamps its own entries and syncs
+  // only a write that does not carry its stamp.
+  if (step) window.history.pushState(null, '', to)
+  else window.history.replaceState(null, '', to)
 }
 
-/** What a run cost, from the fields the run actually recorded. */
-function cost(r: AgentRun, t: Say): string {
-  const tokens = (r.promptTokens ?? 0) + (r.completionTokens ?? 0)
-  return [
-    r.model,
-    r.durationMs ? t('{seconds}s', { seconds: (r.durationMs / 1000).toFixed(1) }) : '',
-    tokens ? t('{count} tokens', { count: tokens }) : '',
-  ]
-    .filter(Boolean)
-    .join(' · ')
+/** The newest run of each bot, from the org's feed (newest first). */
+function lastOf(feed: readonly AgentRun[]): Map<string, AgentRun> {
+  const out = new Map<string, AgentRun>()
+  for (const r of feed) if (r.agent && !out.has(r.agent)) out.set(r.agent, r)
+  return out
 }
 
-/** The platform's word for how a bot runs, as a person reads it. An unknown mode stays a token. */
-function modeName(mode: string | undefined, t: Say): string {
-  if (mode === ALWAYS) return t('long-running')
-  if (!mode || mode === ONCE) return t('one-shot')
-  return mode
+/** Runs by id, oldest first: a late read never drops a run this page already drew. */
+function merged(a: readonly AgentRun[], b: readonly AgentRun[]): AgentRun[] {
+  const by = new Map<string, AgentRun>()
+  for (const r of [...a, ...b]) by.set(r.id, r)
+  return [...by.values()].sort((x, y) => (instant(x.createdAt) ?? 0) - (instant(y.createdAt) ?? 0))
 }
 
-/** A session's status, in the reader's words. An unrecognized status stays a token. */
-function sessionStatus(status: string, t: Say): string {
-  switch (status) {
-    case 'running':
-      return t('running')
-    case 'paused':
-      return t('paused')
-    default:
-      return status
-  }
+/** Whether a media query holds, kept current. False until mounted. */
+function useWide(query: string): boolean {
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    const q = window.matchMedia(query)
+    const set = () => setOn(q.matches)
+    set()
+    q.addEventListener('change', set)
+    return () => q.removeEventListener('change', set)
+  }, [query])
+  return on
 }
 
-/** When something happened, as a number to sort by. */
-const at = (iso?: string): number => {
-  const t = iso ? new Date(iso).getTime() : NaN
-  return Number.isNaN(t) ? 0 : t
-}
-
-/** A session the platform still considers open. Only these can be steered:
- *  the route takes a command for a finished session and records it against a
- *  log nothing is reading, so a control on one is a control over nothing. */
-const open = (s: Session) => s.status === 'running' || s.status === 'paused'
-
-interface Turn {
-  id: string
-  at: number
-  who: 'you' | 'bot'
-  text: string
-  note?: string
-  failed?: boolean
-}
-
-/** A Bot's recorded runs as the turns they were. */
-function turns(detail: AgentDetail | null, t: Say): Turn[] {
-  return (detail?.recentRuns ?? []).flatMap((r) => {
-    const when = at(r.createdAt)
-    const out: Turn[] = []
-    if (r.input) out.push({ id: `${r.id}-in`, at: when, who: 'you', text: r.input })
-    out.push({
-      id: `${r.id}-out`,
-      at: when + 1,
-      who: 'bot',
-      text: r.error || r.output || t('This run recorded no output.'),
-      note: cost(r, t),
-      failed: Boolean(r.error),
-    })
-    return out
-  })
-}
-
-const EXAMPLE_BOTS: Agent[] = [
-  {
-    id: 'bot-sales-outbound',
-    avatar: '/bots/sales-outbound.png',
-    name: 'Sales Outbound',
-    description: phrase('Prospecting, lead qualification, and cold outreach'),
-    model: 'claude-3-5-sonnet',
-    executionMode: ALWAYS,
-    schedule: '0 9 * * 1-5',
-    updatedAt: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
-  },
-  {
-    id: 'bot-chief',
-    avatar: '/bots/chief.png',
-    name: 'Chief',
-    description: phrase('Executive briefing, team updates, and orchestration'),
-    model: 'claude-3-5-sonnet',
-    executionMode: ALWAYS,
-    schedule: '0 8 * * *',
-    updatedAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-  },
-  {
-    id: 'bot-inbox-manager',
-    avatar: '/bots/inbox-manager.png',
-    name: 'Inbox Manager',
-    description: phrase('Triage email, draft responses, and surface urgent items'),
-    model: 'claude-3-5-sonnet',
-    executionMode: ALWAYS,
-    schedule: '*/15 * * * *',
-    updatedAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
-  },
-  {
-    id: 'bot-code-reviewer',
-    name: 'Code Reviewer',
-    description: phrase('Analyze pull requests, check test suites, and style'),
-    model: 'claude-3-5-sonnet',
-    executionMode: ONCE,
-    updatedAt: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
-  },
-  {
-    id: 'bot-research-analyst',
-    name: 'Research Analyst',
-    description: phrase('Track industry trends, competitive moves, and filings'),
-    model: 'claude-3-5-sonnet',
-    executionMode: ONCE,
-    updatedAt: new Date(Date.now() - 1000 * 60 * 300).toISOString(),
-  },
-]
-
-interface ComputerAction {
-  title: string
-  status: string
-  summary: string
-  tasks: string[]
-}
-
-const EXAMPLE_ACTIONS: Record<string, ComputerAction> = {
-  'Sales Outbound': {
-    title: phrase('Computer'),
-    status: phrase('Done'),
-    summary: phrase('Reviewed 52 new outbound leads across target accounts. Qualified 18 high-fit profiles and prepared tailored email drafts.'),
-    tasks: [
-      phrase('Verified domain deliverability and prospect contact records'),
-      phrase('Extracted buyer intent signals from company milestones'),
-      phrase('Queued 18 personalized emails for Armand’s review'),
-    ],
-  },
-  'Chief': {
-    title: phrase('Computer'),
-    status: phrase('Done'),
-    summary: phrase('Compiled morning briefing, synced calendar events, and highlighted team priorities.'),
-    tasks: [
-      phrase('Aggregated GitHub pull requests and release milestones'),
-      phrase('Organized 3 priority decisions for today'),
-      phrase('Synchronized executive calendar and shared prep notes'),
-    ],
-  },
-  'Inbox Manager': {
-    title: phrase('Computer'),
-    status: phrase('Done'),
-    summary: phrase('Triaged 34 unread messages, flagged 4 urgent requests, and drafted replies for approval.'),
-    tasks: [
-      phrase('Categorized incoming inquiries by priority and topic'),
-      phrase('Drafted context-aware responses citing knowledge base docs'),
-      phrase('Scheduled followup reminders for unresolved partner threads'),
-    ],
-  },
-  'Code Reviewer': {
-    title: phrase('Computer'),
-    status: phrase('Done'),
-    summary: phrase('Analyzed pull request 142 for architectural consistency, security considerations, and edge cases.'),
-    tasks: [
-      phrase('Verified zero memory leaks and confirmed strict typing'),
-      phrase('Validated test suite passes across all target environments'),
-      phrase('Posted inline review suggestions for error handling'),
-    ],
-  },
-  'Research Analyst': {
-    title: phrase('Computer'),
-    status: phrase('Done'),
-    summary: phrase('Indexed frontier model benchmarks, competitive releases, and performance telemetry.'),
-    tasks: [
-      phrase('Indexed latest release notes and technical benchmarks'),
-      phrase('Created comparative capability matrix'),
-      phrase('Generated summary digest for the engineering team'),
-    ],
-  },
-}
-
-export function Bots() {
-  const { t, locale } = useI18n()
+export function Bots({
+  foot = true,
+  bot: held,
+  onBot,
+}: {
+  /** The reader and the other apps at the roster's foot. A host whose own chrome
+   *  already holds both (hanzo.team's rail and bar) passes false. */
+  foot?: boolean
+  /** The open bot, when the host's router holds the address (`?bot=`); with it,
+   *  `onBot` is how a press or Back moves it. Absent, the app keeps the address. */
+  bot?: string | null
+  onBot?: (name: string | null, step: boolean) => void
+} = {}) {
+  const { t } = useI18n()
   const { client, ready } = useAi()
   const { user, isAuthenticated } = useIam()
-
-  // A client EXISTS signed out — `useAi` hands back an anonymous one so the
-  // free chat lane works — so holding one is not proof of a reader. Every read
-  // below is org-scoped and answers 403 without a session, so this is the gate.
   const live = Boolean(client && isAuthenticated && ready)
+  const hosted = held !== undefined
 
-  const [roster, setRoster] = useState<Agent[]>([])
-  const [rosterFailed, setRosterFailed] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [query, setQuery] = useState('')
-  const [picked, setPicked] = useState('')
-  const [detail, setDetail] = useState<AgentDetail | null>(null)
-  const [own, setOwn] = useState<Session[]>([])
-  const [draft, setDraft] = useState('')
-  const [trialTurns, setTrialTurns] = useState<Turn[]>([])
-  const [running, setRunning] = useState(false)
-  const [failed, setFailed] = useState<string | null>(null)
-  const [pane, setPane] = useState(false)
+  const [bots, setBots] = useState<Agent[] | null>(null)
+  // The roster has been read once, so a name it lacks is not this org's.
+  const [listed, setListed] = useState(false)
+  const [feed, setFeed] = useState<AgentRun[]>([])
+  const [unread, setUnread] = useState<string | null>(null)
+  const [own, setOwn] = useState<string | null>(null)
   const [making, setMaking] = useState(false)
-  const [cron, setCron] = useState('')
+  // The panel beside the thread, kept per browser; over the thread below a laptop.
+  const [side, setSide] = useKept('hanzo.bots.side', true)
+  const [over, setOver] = useState(false)
+  const wide = useWide('(min-width: 768px)')
+  const laptop = useWide('(min-width: 1280px)')
 
+  // The address, read on arrival and on every Back and Forward.
+  useEffect(() => {
+    if (hosted) return
+    const read = () => setOwn(named())
+    read()
+    window.addEventListener('popstate', read)
+    return () => window.removeEventListener('popstate', read)
+  }, [hosted])
+
+  const name = hosted ? (held ?? null) : own
+  const move = useCallback(
+    (next: string | null, step: boolean) => {
+      if (hosted) return onBot?.(next, step)
+      setOwn(next)
+      address(next, step)
+    },
+    [hosted, onBot],
+  )
+
+  const reading = useRef(0)
   const read = useCallback(async () => {
     if (!client) return
-    setLoading(true)
-    try {
-      setRoster(await client.agents.list())
-      setRosterFailed(null)
-    } catch (e) {
-      setRosterFailed(say(e, t('this org’s bots'), 'read', t))
-    } finally {
-      setLoading(false)
+    const turn = ++reading.current
+    const [list, runs] = await Promise.allSettled([client.agents.list(), client.agents.runs({ limit: 200 })])
+    if (turn !== reading.current) return
+    if (list.status === 'fulfilled') {
+      setBots(list.value)
+      setListed(true)
+      setUnread(null)
+    } else {
+      setBots((b) => b ?? [])
+      setUnread(say(list.reason, t('your bots'), 'read', t))
     }
+    if (runs.status === 'fulfilled') setFeed(runs.value)
   }, [client, t])
 
   useEffect(() => {
     if (live) void read()
   }, [live, read])
 
-  // In live mode, use platform roster. When exploring as a visitor, show example workspace bots.
-  const activeRoster = useMemo(() => {
-    if (live && roster.length > 0) return roster
-    if (!live) return EXAMPLE_BOTS
-    return roster
-  }, [live, roster])
+  const last = useMemo(() => lastOf(feed), [feed])
 
-  const shown = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return activeRoster
-    return activeRoster.filter((b) => {
-      const about = b.description ? (live ? b.description : t(b.description)) : ''
-      return b.name.toLowerCase().includes(q) || about.toLowerCase().includes(q)
-    })
-  }, [activeRoster, query, live, t])
-
-  const bot = useMemo(
-    () => activeRoster.find((b) => b.name === picked) ?? shown[0] ?? activeRoster[0] ?? null,
-    [activeRoster, shown, picked],
-  )
-
-  // Its record and its work, re-read after anything this app does to it —
-  // the platform's answer is the only account of what happened.
-  const refresh = useCallback(async () => {
-    if (!client || !bot) return
-    const [d, s] = await Promise.allSettled([client.agents.get(bot.name), sessions(client, bot.name)])
-    if (d.status === 'fulfilled') setDetail(d.value)
-    setOwn(s.status === 'fulfilled' ? s.value : [])
-  }, [client, bot])
-
+  // The open bot is the one the address names. With none — or one this org does
+  // not keep — a laptop opens the one last spoken to (else the first) and writes
+  // it into the address, so it stays open while the feed moves; a phone stays on
+  // the roster.
+  const bot = useMemo<Agent | null>(() => (name && bots?.find((b) => b.name === name)) || null, [bots, name])
   useEffect(() => {
-    if (!client || !bot) {
-      setDetail(null)
-      setOwn([])
+    if (!bots || bot) return
+    if (name) {
+      if (listed && !bots.some((b) => b.name === name)) move(null, false)
       return
     }
-    const stop = new AbortController()
-    setCron(bot.schedule ?? '')
-    client.agents
-      .get(bot.name, { signal: stop.signal })
-      .then(setDetail)
-      .catch(() => {
-        if (!stop.signal.aborted) setDetail(null)
-      })
-    // No limit of its own. The route has no per-agent filter, so the page it
-    // answers is the ORG's and the narrowing happens after — ask for twenty
-    // and a bot whose work is older than the org's twenty newest sessions
-    // reads as having none.
-    sessions(client, bot.name, undefined, stop.signal)
-      .then(setOwn)
-      .catch(() => setOwn([]))
-    return () => stop.abort()
-  }, [client, bot])
+    if (!wide || !bots.length) return
+    const recent = feed.find((r) => r.agent && bots.some((b) => b.name === r.agent))?.agent
+    move(recent ?? bots[0].name, false)
+  }, [bots, bot, name, listed, wide, feed, move])
 
-  // ONE STREAM, IN THE ORDER IT HAPPENED. A run and a session are two records
-  // of the same Bot working, so they are read together and sorted by the clock
-  // the platform put on them — newest at the bottom, where a reader who has
-  // just asked for something is looking.
-  const computerAction = bot ? EXAMPLE_ACTIONS[bot.name] ?? null : null
-
-  const stream = useMemo(() => {
-    if (!live) {
-      return trialTurns.map((turn) => ({ at: turn.at, key: turn.id, turn, session: null as Session | null }))
-    }
-    return [
-      ...turns(detail, t).map((turn) => ({ at: turn.at, key: turn.id, turn, session: null as Session | null })),
-      ...own.map((s) => ({ at: at(s.updatedAt || s.startedAt || s.createdAt), key: s.id, turn: null as Turn | null, session: s })),
-    ].sort((a, b) => a.at - b.at)
-  }, [live, detail, own, trialTurns, t])
-
-  const always = bot?.executionMode === ALWAYS
-
-  // Newest last means the newest is off-screen on a Bot with any history, so
-  // the stream opens where a reader is looking rather than at its oldest run.
-  const foot = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    foot.current?.scrollIntoView({ block: 'end' })
-  }, [stream])
-
-  /** One task, run now. */
-  const run = useCallback(
-    async (e?: React.FormEvent) => {
-      if (e) e.preventDefault()
-      const input = draft.trim()
-      if (!bot || !input || running) return
-
-      if (!live) {
-        setDraft('')
-        const userTurn: Turn = { id: `trial-${Date.now()}-in`, at: Date.now(), who: 'you', text: input }
-        setTrialTurns((prev) => [...prev, userTurn])
-        setTimeout(() => {
-          const botTurn: Turn = {
-            id: `trial-${Date.now()}-out`,
-            at: Date.now(),
-            who: 'bot',
-            text: t('Received: "{input}". Running on {model} with computer tools enabled. Sign in to your organization to deploy bots into production.', {
-              input,
-              model: bot.model,
-            }),
-            note: t('{model} · {seconds}s · {count} tokens', { model: bot.model, seconds: '0.8', count: 142 }),
-          }
-          setTrialTurns((prev) => [...prev, botTurn])
-        }, 400)
-        return
-      }
-
-      if (!client) return
-      setRunning(true)
-      setFailed(null)
-      try {
-        await client.agents.run(bot.name, input)
-        setDraft('')
-        await refresh()
-      } catch (err) {
-        setFailed(err instanceof Error ? err.message : String(err))
-      } finally {
-        setRunning(false)
-      }
+  // Whether this page stepped into the thread, so Back can step out of it.
+  const stepped = useRef(false)
+  const pick = useCallback(
+    (next: string) => {
+      setOver(false)
+      // A phone steps into the thread, so Back returns to the roster.
+      const step = !wide && !name
+      if (step) stepped.current = true
+      move(next, step)
     },
-    [live, client, bot, draft, running, refresh, t],
+    [move, wide, name],
   )
 
-  /** Stays up, or runs when asked. The platform REFUSES long-running without a
-   *  cron — measured, 400 naming the field — so the cron is asked for beside
-   *  the switch rather than guessed at here. */
-  const keepUp = useCallback(async () => {
-    if (!client || !bot) return
-    setFailed(null)
-    try {
-      const saved = always
-        ? await client.agents.update(bot.name, { executionMode: ONCE })
-        : await client.agents.update(bot.name, { executionMode: ALWAYS, schedule: cron.trim() })
-      setRoster((r) => r.map((b) => (b.name === saved.name ? saved : b)))
-    } catch (e) {
-      setFailed(e instanceof Error ? e.message : String(e))
-    }
-  }, [client, bot, always, cron])
+  const back = useCallback(() => {
+    setOver(false)
+    if (stepped.current) {
+      stepped.current = false
+      window.history.back()
+    } else move(null, false)
+  }, [move])
 
-  const retire = useCallback(async () => {
+  // ── the open bot's thread ────────────────────────────────────────────────
+  const [runs, setRuns] = useState<AgentRun[] | null>(null)
+  const [pending, setPending] = useState<Pending | null>(null)
+  const [notice, setNotice] = useState<Notice | null>(null)
+  const [wrong, setWrong] = useState<string | null>(null)
+  const open = bot?.name ?? null
+  const asking = useRef(0)
+
+  const history = useCallback(
+    async (who: string, signal?: AbortSignal) => {
+      if (!client) return
+      const rows = await client.agents.runs({ agent: who, limit: 200 }, signal ? { signal } : undefined)
+      if (!signal?.aborted) setRuns((drawn) => merged(drawn ?? [], rows))
+    },
+    [client],
+  )
+
+  useEffect(() => {
+    // Another bot is open: whatever the last one's run answers, it is not this thread's.
+    asking.current += 1
+    setRuns(null)
+    setPending(null)
+    setNotice(null)
+    setWrong(null)
+    if (!client || !open) return
+    const stop = new AbortController()
+    history(open, stop.signal).catch((e) => {
+      if (stop.signal.aborted) return
+      setRuns([])
+      setWrong(say(e, t('this conversation'), 'read', t))
+    })
+    return () => stop.abort()
+  }, [client, open, history, t])
+
+  /**
+   * Says `input` to the open bot. Answers whether the platform recorded it: a
+   * message it refused, or never received, is handed back to the composer so
+   * the thread holds only what was said.
+   */
+  const send = useCallback(
+    async (input: string): Promise<boolean> => {
+      if (!client || !bot) return false
+      const who = bot.name
+      const turn = ++asking.current
+      const now = () => turn === asking.current
+      setNotice(null)
+      setWrong(null)
+      setPending({ input, at: Date.now() })
+      try {
+        const ran = await client.agents.run(who, input)
+        if (now()) setRuns((rs) => merged(rs ?? [], [ran]))
+        return true
+      } catch (e) {
+        // A thread since left: its words are not handed to the one now open.
+        if (!now()) return true
+        const no = refusal(e, who, Date.now(), t, (bot as Agent & { period?: string }).period)
+        if (no) {
+          setNotice(no)
+          return false
+        }
+        // A run that reached its model and failed is recorded and comes back as
+        // the body; it is drawn with its own error. Anything else never arrived.
+        const ran = recordedRun<AgentRun>(e)
+        if (ran) {
+          setRuns((rs) => merged(rs ?? [], [ran]))
+          return true
+        }
+        setWrong(say(e, t('your message to {name}', { name: who }), 'save', t))
+        return false
+      } finally {
+        if (now()) setPending(null)
+        void read()
+      }
+    },
+    [client, bot, read, t],
+  )
+
+  /**
+   * Runs on its schedule, or only when asked. The platform keeps no schedule for
+   * a bot that runs only when asked, so turning it back on states the schedule.
+   */
+  // The schedule each bot last had on this page. The platform keeps none for a bot
+  // that runs only when asked, so a schedule turned off is held here to turn back on.
+  const [kept, setKept] = useState<Record<string, string>>({})
+  const schedule = useCallback(
+    async (on: boolean, cron: string) => {
+      if (!client || !bot) return
+      setKept((k) => ({ ...k, [bot.name]: cron }))
+      const saved = await client.agents.update(bot.name, on ? { executionMode: ALWAYS, schedule: cron } : { executionMode: ONCE })
+      setBots((all) => (all ?? []).map((b) => (b.name === saved.name ? { ...b, ...saved, schedule: saved.schedule } : b)))
+    },
+    [client, bot],
+  )
+
+  /** Deletes the open bot and every run recorded against it. */
+  const remove = useCallback(async () => {
     if (!client || !bot) return
-    setFailed(null)
-    try {
-      await client.agents.delete(bot.name)
-      setPicked('')
+    await client.agents.delete(bot.name)
+    setBots((all) => (all ?? []).filter((b) => b.name !== bot.name))
+    setOver(false)
+    stepped.current = false
+    move(null, false)
+    await read()
+  }, [client, bot, move, read])
+
+  const made = useCallback(
+    async (agent: Agent) => {
+      setMaking(false)
+      setBots((all) => [...(all ?? []).filter((b) => b.name !== agent.name), agent])
+      const step = !wide && !name
+      if (step) stepped.current = true
+      move(agent.name, step)
       await read()
-    } catch (e) {
-      setFailed(say(e, t('this bot'), 'save', t))
-    }
-  }, [client, bot, read, t])
+    },
+    [move, read, wide, name],
+  )
+
+  // Escape closes the panel over the thread, as it closes any dialog.
+  useEffect(() => {
+    if (!over) return
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && setOver(false)
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [over])
+
+  const close = () => {
+    if (laptop) setSide(false)
+    setOver(false)
+  }
+  const panel = bot ? (
+    <Panel
+      key={bot.name}
+      bot={bot}
+      kept={kept[bot.name] ?? ''}
+      onClose={close}
+      onSchedule={schedule}
+      onDelete={remove}
+      focus={over && !laptop}
+    />
+  ) : null
+  const shown = laptop ? side : over
 
   return (
-    // The roster beside the bot from a laptop. Below one the pane is too narrow
-    // for both, so they are two screens side by side, swiped between and
-    // snapped to.
-    <XStack
-      width="100%"
-      height="100%"
-      overflow="hidden"
-      bg={GROUND}
-      $max-lg={{ overflowX: 'auto', overflowY: 'hidden' }}
-      // gui types no scroll-snap prop; `$platform-web` carries it as an atomic class.
-      $platform-web={{ scrollSnapType: 'x mandatory' }}
-    >
+    <XStack data-parity-key="bots.window" width="100%" height="100%" overflow="hidden" bg={FLOOR} position="relative">
       <YStack
-        width={280}
-        minW={280}
+        data-parity-key="bots.roster"
+        width={279}
+        shrink={0}
         height="100%"
-        bg={GROUND}
+        bg={FLOOR}
         borderRightWidth={1}
         borderColor={LINE}
-        $max-lg={{ width: '85%', maxW: 320 }}
-        $platform-web={{ scrollSnapAlign: 'start' }}
+        $max-md={{ width: '100%', borderRightWidth: 0, display: bot ? 'none' : 'flex' }}
       >
-        <XStack pt={16} px={18} pb={12} items="center" justify="space-between">
-          <Lights />
-          <XStack
-            {...GHOST}
-            {...{ title: t(live ? 'New bot' : 'Sign in to keep a bot') }}
-            onClick={() => setMaking((m) => !m)}
-            aria-label={t('New bot')}
-            aria-expanded={making}
-            disabled={!live}
-            opacity={live ? 1 : 0.4}
-          >
-            <Plus size={18} color={DIM} />
-          </XStack>
-        </XStack>
-
-        {making && live ? (
-          <Hire
-            onDone={async (made) => {
-              setMaking(false)
-              setPicked(made.name)
-              await read()
-            }}
-            onCancel={() => setMaking(false)}
-          />
-        ) : null}
-
-        <YStack px={14} pb={12}>
-          <XStack items="center" gap={8} bg={SURFACE} borderWidth={1} borderColor={LINE} rounded={8} px={12} py={8}>
-            <Search size={14} color={DIM} aria-hidden />
-            <Input
-              {...BARE}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t('Search')}
-              aria-label={t('Search bots')}
-              fontSize="$2"
-              flex={1}
-              minW={0}
-            />
-          </XStack>
-        </YStack>
-
-        <YStack data-hz="roster" flex={1} overflowY="auto" px={10} gap={2}>
-          {live && rosterFailed ? (
-            <Text {...NOTE}>{rosterFailed}</Text>
-          ) : live && loading && roster.length === 0 ? (
-            <Text {...NOTE}>{t('Reading the roster…')}</Text>
-          ) : live && shown.length === 0 ? (
-            <Text {...NOTE}>{t(roster.length === 0 ? 'This org keeps no bots yet.' : 'No bot matches that.')}</Text>
-          ) : null}
-
-          {shown.map((b) => {
-            const on = bot?.name === b.name
-            return (
-              <XStack
-                key={b.id || b.name}
-                render="button"
-                {...{ type: 'button' }}
-                data-hz="bot"
-                data-name={b.name}
-                aria-current={on}
-                onClick={() => setPicked(b.name)}
-                items="center"
-                gap={12}
-                px={12}
-                py={10}
-                rounded={10}
-                bg={on ? SURFACE : 'transparent'}
-                borderWidth={0}
-                cursor="pointer"
-                width="100%"
-              >
-                <Face bot={b} size={36} />
-                <YStack flex={1} minW={0}>
-                  <XStack items="center" justify="space-between" gap={8}>
-                    <Text fontSize="$2" fontWeight="600" color={on ? INK : DIM}>{b.name}</Text>
-                    <Text fontSize="$1" color={FAINT} whiteSpace="nowrap">{when(b.updatedAt, t, locale)}</Text>
-                  </XStack>
-                  <Text {...CLIP} fontSize="$2" color={DIM} text="left">
-                    {b.description
-                      ? live
-                        ? b.description
-                        : t(b.description)
-                      : t(b.runs ? '{model} · {count} runs' : '{model}', {
-                          model: b.model,
-                          count: b.runs ?? 0,
-                        })}
-                  </Text>
-                </YStack>
-              </XStack>
-            )
-          })}
-        </YStack>
-
-        <XStack px={16} py={14} borderTopWidth={1} borderColor={LINE} items="center" gap={12}>
-          <Text
-            aria-hidden
-            display="flex"
-            width={32}
-            height={32}
-            shrink={0}
-            rounded={9999}
-            bg={SURFACE}
-            borderWidth={1}
-            borderColor={LINE}
-            items="center"
-            justify="center"
-            fontSize="$2"
-            fontWeight="600"
-            color={DIM}
-          >
-            {(user?.name || (live ? '·' : 'Armand Segall')).trim().charAt(0).toUpperCase()}
-          </Text>
-          <YStack flex={1} minW={0}>
-            <Text fontSize="$2" fontWeight="600" color={INK}>
-              {user?.name || (live ? t('Signed in') : 'Armand Segall')}
-            </Text>
-            <Text {...CLIP} fontSize="$1" color={FAINT}>
-              {user?.email || (live ? t('Active Workspace') : t('{email} · Example Workspace', { email: 'armand@example.com' }))}
-            </Text>
-          </YStack>
-        </XStack>
+        <Roster
+          bots={bots}
+          last={last}
+          open={open}
+          unread={unread}
+          me={foot ? user : null}
+          onPick={pick}
+          onMake={() => setMaking(true)}
+          disabled={!live}
+        />
       </YStack>
 
       <YStack
+        data-parity-key="bots.center"
         flex={1}
         minW={0}
         height="100%"
-        position="relative"
         bg={GROUND}
-        $max-lg={{ width: '100%', minW: '100%', shrink: 0, overflowX: 'hidden' }}
-        $platform-web={{ scrollSnapAlign: 'start' }}
+        $max-md={{ display: bot ? 'flex' : 'none' }}
       >
-        <XStack height={60} borderBottomWidth={1} borderColor={LINE} items="center" justify="space-between" px={16} gap={12}>
-          {/* THE NAMING CLUSTER GIVES WAY, THE CONTROLS DO NOT. A flex item
-              defaults to min-width: auto and refuses to shrink under its own
-              content, so at 390px this row pushed its controls off the side —
-              where `overflow-x: clip` makes them unreachable. */}
-          <XStack items="center" gap={10} minW={0} shrink={1}>
-            {bot ? <Face bot={bot} size={28} /> : null}
-            <YStack minW={0} shrink={1}>
-              <Text {...CLIP} data-hz="head" fontSize="$3" fontWeight="600" color={INK}>
-                {bot?.name || t('No bot')}
-              </Text>
-              <Text {...CLIP} data-hz="mode" fontSize="$1" color={FAINT}>
-                {bot
-                  ? t(bot.schedule ? '{model} · {mode} · {schedule}' : '{model} · {mode}', {
-                      model: bot.model,
-                      mode: modeName(bot.executionMode, t),
-                      schedule: bot.schedule ?? '',
-                    })
-                  : ''}
-              </Text>
-            </YStack>
-          </XStack>
-
-          {bot ? (
-            <XStack items="center" gap={8} shrink={0}>
-              {/* The cron the platform requires to keep a Bot up, asked for
-                  where the switch is. Long-running without one is a 400. */}
-              {!always ? (
-                <Input
-                  {...BOXED}
-                  data-hz="cron"
-                  value={cron}
-                  onChange={(e) => setCron(e.target.value)}
-                  placeholder={t('0 * * * *')}
-                  aria-label={t('Schedule, as a 5-field cron')}
-                  width={104}
-                  fontSize="$1"
-                />
-              ) : null}
-              <Button
-                size="sm"
-                variant={always ? undefined : 'default'}
-                bg={always ? 'var(--primary)' : undefined}
-                color={always ? 'var(--primary-foreground)' : undefined}
-                borderColor={always ? 'var(--primary)' : undefined}
-                hoverStyle={always ? { bg: 'var(--primary-hover)', borderColor: 'var(--primary-hover)' } : undefined}
-                rounded={999}
-                title={t(always ? 'Run only when asked' : 'Keep this bot up on a schedule')}
-                data-hz="always"
-                onClick={keepUp}
-                aria-pressed={always}
-              >
-                {t('24/7')}
-              </Button>
-              {/* A session is the row every runner hangs its activity off — the
-                  CLI's outer agent, hanzo.bot, this app. Opening one from here
-                  registers it; a machine attaching to it is a separate act, and
-                  until one does, a command sent to it comes back `forwarded:
-                  false` and the card says so. */}
-              <Button
-                size="sm"
-                bg="var(--primary)"
-                color="var(--primary-foreground)"
-                borderColor="var(--primary)"
-                hoverStyle={{ bg: 'var(--primary-hover)', borderColor: 'var(--primary-hover)' }}
-                title={t('Open a session for this bot')}
-                data-hz="open"
-                onClick={async () => {
-                  if (!client || !bot) return
-                  setFailed(null)
-                  try {
-                    await launch(client, bot.name, t('{name} session', { name: bot.name }))
-                    await refresh()
-                  } catch (e) {
-                    setFailed(e instanceof Error ? e.message : String(e))
-                  }
-                }}
-              >
-                {t('Open a session')}
-              </Button>
-              <XStack
-                {...GHOST}
-                {...{ title: t('What this bot has') }}
-                data-hz="runtime"
-                onClick={() => setPane((p) => !p)}
-                aria-label={t('Runtime')}
-                aria-pressed={pane}
-                bg={pane ? SURFACE : 'transparent'}
-              >
-                <Monitor size={18} color={pane ? INK : DIM} />
-              </XStack>
-              <XStack {...GHOST} {...{ title: t('Retire') }} data-hz="retire" onClick={retire} aria-label={t('Retire {name}', { name: bot.name })}>
-                <Trash2 size={16} color={DIM} />
-              </XStack>
-            </XStack>
-          ) : null}
-        </XStack>
-
-        <XStack flex={1} minH={0}>
-          <YStack flex={1} minW={0} overflow="hidden">
-            <YStack data-hz="stream" flex={1} overflowY="auto" px={32} py={24} gap={16}>
-              {!bot ? (
-                <Text {...NOTE}>
-                  {t(
-                    live
-                      ? 'Nothing is kept yet. A bot is a model, a standing instruction and a record of what it has done — press + to keep one.'
-                      : 'Select a bot to begin.',
-                  )}
-                </Text>
-              ) : null}
-
-              {bot && detail?.instructions ? (
-                <YStack {...CARD}>
-                  <Text {...LABEL}>{t('Standing instruction')}</Text>
-                  <Text render="p" fontSize="$2" lineHeight="1.3rem" color={DIM} whiteSpace="pre-wrap">
-                    {detail.instructions}
-                  </Text>
-                </YStack>
-              ) : null}
-
-              {computerAction ? (
-                <YStack {...CARD} data-hz="computer-card">
-                  <XStack items="center" justify="space-between">
-                    <XStack items="center" gap={8}>
-                      <Monitor size={15} color={INK} />
-                      <Text fontSize="$2" fontWeight="600" color={INK}>{t(computerAction.title)}</Text>
-                    </XStack>
-                    {/* Greyscale, like every other chip here: this file's own
-                        rule is that status is said in words, and the green said
-                        nothing the word beside it did not — while being the one
-                        thing on the card unreadable on a light page. */}
-                    <Text
-                      display="inline-flex"
-                      items="center"
-                      px={8}
-                      py={2}
-                      rounded={999}
-                      fontSize="$1"
-                      fontWeight="600"
-                      bg={SURFACE}
-                      color={DIM}
-                      borderWidth={1}
-                      borderColor={LINE}
-                    >
-                      {t(computerAction.status)}
-                    </Text>
-                  </XStack>
-                  <Text render="p" fontSize="$2" lineHeight="1.26rem" color={INK}>
-                    {t(computerAction.summary)}
-                  </Text>
-                  <YStack gap={5} mt={4}>
-                    {computerAction.tasks.map((task, idx) => (
-                      <XStack key={idx} items="center" gap={8}>
-                        <YStack width={4} height={4} shrink={0} rounded={9999} bg={FAINT} />
-                        <Text fontSize="$2" color={DIM}>{t(task)}</Text>
-                      </XStack>
-                    ))}
-                  </YStack>
-                </YStack>
-              ) : null}
-
-              {bot && stream.length === 0 && !computerAction ? (
-                <Text {...NOTE}>{t('Nothing has been run yet. Ask for something below and the run is recorded here.')}</Text>
-              ) : null}
-
-              {stream.map(({ key, turn, session }) =>
-                session ? (
-                  <Live key={key} session={session} onChange={refresh} />
-                ) : turn ? (
-                  <Text
-                    key={key}
-                    render="div"
-                    data-hz={turn.who === 'you' ? 'asked' : 'answered'}
-                    self={turn.who === 'you' ? 'flex-end' : 'flex-start'}
-                    maxW={620}
-                    rounded={14}
-                    px={16}
-                    py={12}
-                    fontSize="$3"
-                    lineHeight="1.35625rem"
-                    whiteSpace="pre-wrap"
-                    bg={turn.who === 'you' ? SURFACE : RAISED}
-                    borderWidth={1}
-                    borderColor={LINE}
-                    color={turn.failed ? DIM : INK}
-                  >
-                    {turn.text}
-                    {turn.note ? (
-                      <Text display="block" mt={6} fontSize="$1" lineHeight="1.0656rem" color={FAINT}>
-                        {turn.failed ? t('failed · {note}', { note: turn.note ?? '' }) : turn.note}
-                      </Text>
-                    ) : null}
-                  </Text>
-                ) : null,
-              )}
-              <div ref={foot} />
-            </YStack>
-
-            <YStack pt={16} px={32} pb={24}>
-              {failed ? <Text {...NOTE} px={0} pt={0} pb={8}>{failed}</Text> : null}
-              <XStack
-                render="form"
-                {...{ onSubmit: run }}
-                items="center"
-                gap={12}
-                bg={SURFACE}
-                borderWidth={1}
-                borderColor={LINE}
-                rounded={26}
-                pt={6}
-                pr={8}
-                pb={6}
-                pl={16}
-              >
-                <Input
-                  {...BARE}
-                  data-hz="ask"
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  placeholder={bot ? t('Message {name}', { name: bot.name }) : t('Message bot...')}
-                  aria-label={t('Task')}
-                  disabled={!bot || running}
-                  flex={1}
-                  fontSize="$3"
-                />
-                <Button
-                  type="submit"
-                  size="icon"
-                  rounded={9999}
-                  bg={!bot || running || !draft.trim() ? SURFACE : 'var(--primary)'}
-                  color={!bot || running || !draft.trim() ? FAINT : 'var(--primary-foreground)'}
-                  borderColor="transparent"
-                  hoverStyle={!bot || running || !draft.trim() ? undefined : { bg: 'var(--primary-hover)' }}
-                  title={t('Run this task')}
-                  data-hz="run"
-                  disabled={!bot || running || !draft.trim()}
-                  aria-label={t('Run this task')}
-                >
-                  <Send size={16} color={!bot || running || !draft.trim() ? 'var(--text-tertiary)' : 'var(--primary-foreground)'} />
-                </Button>
-              </XStack>
-              <Text render="p" mt={8} fontSize="$1" color={FAINT}>
-                {running
-                  ? t('Running. The recorded run appears above when the platform answers.')
-                  : bot
-                    ? t('Runs on {model}, recorded against {name}.', { model: bot.model, name: bot.name })
-                    : ''}
-              </Text>
-            </YStack>
-          </YStack>
-
-          {pane && bot ? <Runtime bot={bot} /> : null}
-        </XStack>
+        <Thread
+          bot={bot}
+          bots={bots ?? []}
+          runs={runs}
+          pending={pending}
+          notice={notice}
+          wrong={wrong}
+          side={shown}
+          live={live}
+          loaded={bots !== null}
+          onSend={send}
+          onDismiss={() => setNotice(null)}
+          onSide={() => (laptop ? setSide(!side) : setOver(!over))}
+          onBack={back}
+          onMake={() => setMaking(true)}
+        />
       </YStack>
-    </XStack>
-  )
-}
 
-/**
- * One session of this Bot's, and — while it is still open — the three things
- * the route lets you say to it.
- *
- * A FINISHED SESSION HAS NO CONTROLS. The route accepts a command for one and
- * records it against a log nothing is reading, so drawing Pause beside a run
- * that ended an hour ago is a control over nothing.
- *
- * `forwarded` is the platform's own word for whether a runner was listening: a
- * command is always RECORDED, and only sometimes delivered. Saying which is the
- * difference between a control and a button that appears to work.
- */
-function Live({ session, onChange }: { session: Session; onChange: () => void | Promise<void> }) {
-  const { t, locale } = useI18n()
-  const { client } = useAi()
-  const [said, setSaid] = useState<string | null>(null)
-
-  const command = async (verb: 'pause' | 'resume' | 'stop') => {
-    if (!client) return
-    try {
-      const r = await steer(client, session.id, verb)
-      const delivered =
-        verb === 'pause' ? t('pause delivered') : verb === 'resume' ? t('resume delivered') : t('stop delivered')
-      const recorded =
-        verb === 'pause'
-          ? t('pause recorded — no runner is attached to this session')
-          : verb === 'resume'
-            ? t('resume recorded — no runner is attached to this session')
-            : t('stop recorded — no runner is attached to this session')
-      setSaid(r.forwarded ? delivered : recorded)
-      await onChange()
-    } catch (e) {
-      setSaid(say(e, t('this session'), 'save', t))
-    }
-  }
-
-  return (
-    <YStack {...CARD} data-hz="session" data-status={session.status}>
-      <XStack items="baseline" justify="space-between" gap={8}>
-        <Text fontSize="$2" fontWeight="600" color={INK}>{session.title || t('Session')}</Text>
-        <Text fontSize="$1" color={FAINT}>
-          {t('{status} · {count} turns', {
-            status: sessionStatus(session.status, t),
-            count: session.events ?? 0,
-          })}
-        </Text>
-      </XStack>
-      {session.lastEvent?.preview ? (
-        <Text {...CLIP} render="p" fontSize="$1" lineHeight="1.03125rem" fontFamily="$mono" color={FAINT}>
-          {session.lastEvent.preview}
-        </Text>
-      ) : null}
-      {open(session) ? (
-        <XStack gap={6}>
-          <Text {...TAB} data-hz="pause" onClick={() => command('pause')}>{t('Pause')}</Text>
-          <Text {...TAB} data-hz="resume" onClick={() => command('resume')}>{t('Resume')}</Text>
-          <Text {...TAB} data-hz="stop" onClick={() => command('stop')}>{t('Stop')}</Text>
-        </XStack>
-      ) : null}
-      {said ? <Text render="p" fontSize="$1" color={FAINT}>{said}</Text> : null}
-    </YStack>
-  )
-}
-
-/**
- * Keeping a Bot.
- *
- * The model is checked against the gateway's served catalogue at create time,
- * so the field OFFERS that catalogue rather than a name this file invented: a
- * model this deployment cannot serve is refused with a 400 naming it, and the
- * platform's own sentence is what a reader is shown.
- */
-function Hire({ onDone, onCancel }: { onDone: (a: Agent) => void | Promise<void>; onCancel: () => void }) {
-  const { t, locale } = useI18n()
-  const { client } = useAi()
-  const [name, setName] = useState('')
-  const [model, setModel] = useState(ENSO)
-  const [about, setAbout] = useState('')
-  const [orders, setOrders] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [failed, setFailed] = useState<string | null>(null)
-  const [served, setServed] = useState<Model[]>([])
-
-  useEffect(() => {
-    if (!client) return
-    const stop = new AbortController()
-    client.models
-      .list({ signal: stop.signal })
-      .then(setServed)
-      .catch(() => setServed([]))
-    return () => stop.abort()
-  }, [client])
-
-  return (
-    <YStack
-      render="form"
-      {...{
-        onSubmit: async (e: React.FormEvent) => {
-          e.preventDefault()
-          if (!client || busy || !name.trim()) return
-          setBusy(true)
-          setFailed(null)
-          try {
-            await onDone(
-              await client.agents.create({
-                name: name.trim(),
-                model: model.trim() || ENSO,
-                description: about.trim(),
-                instructions: orders.trim(),
-              }),
-            )
-          } catch (err) {
-            setFailed(err instanceof Error ? err.message : String(err))
-          } finally {
-            setBusy(false)
-          }
-        },
-      }}
-      data-hz="hire"
-      mx={10}
-      mb={10}
-      p={12}
-      gap={8}
-      bg={RAISED}
-      borderWidth={1}
-      borderColor={LINE}
-      rounded={10}
-    >
-      <Input {...BOXED} data-hz="name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('Name')} aria-label={t('Bot name')} autoFocus />
-      <Input {...BOXED} data-hz="model" list="bot-models" value={model} onChange={(e) => setModel(e.target.value)} placeholder={t('Model')} aria-label={t('Model')} />
-      <datalist id="bot-models">
-        {served.map((m) => (
-          <option key={m.id} value={m.id} />
-        ))}
-      </datalist>
-      <Input {...BOXED} value={about} onChange={(e) => setAbout(e.target.value)} placeholder={t('What it is for')} aria-label={t('Description')} />
-      <Input {...BOXED} render="textarea" rows={2} value={orders} onChange={(e) => setOrders(e.target.value)} placeholder={t('Standing instruction')} aria-label={t('Standing instruction')} />
-      {failed ? <Text data-hz="hire-failed" fontSize="$1" color={DIM}>{failed}</Text> : null}
-      <XStack gap={6}>
-        <Button
-          type="submit"
-          size="sm"
-          bg="var(--primary)"
-          color="var(--primary-foreground)"
-          borderColor="var(--primary)"
-          hoverStyle={{ bg: 'var(--primary-hover)', borderColor: 'var(--primary-hover)' }}
-          data-hz="keep"
-          disabled={busy || !name.trim()}
-          flex={1}
+      {laptop && side && panel ? (
+        <YStack
+          data-parity-key="bots.panel"
+          width={319}
+          shrink={0}
+          height="100%"
+          bg={GROUND}
+          borderLeftWidth={1}
+          borderColor={LINE}
+          $max-xl={{ display: 'none' }}
         >
-          {t(busy ? 'Keeping…' : 'Keep')}
-        </Button>
-        <Button size="sm" onClick={onCancel} flex={1}>
-          {t('Cancel')}
-        </Button>
-      </XStack>
-    </YStack>
+          {panel}
+        </YStack>
+      ) : null}
+
+      {over && panel && !laptop ? (
+        <YStack
+          data-parity-key="bots.panel.over"
+          role="dialog"
+          aria-modal
+          aria-label={bot?.name}
+          position="absolute"
+          t={0}
+          r={0}
+          b={0}
+          width={319}
+          maxW="100%"
+          z={10}
+          bg={GROUND}
+          borderLeftWidth={1}
+          borderColor={LINE}
+          boxShadow="var(--shadow-floating)"
+        >
+          {panel}
+        </YStack>
+      ) : null}
+
+      {making ? <Make onDone={made} onCancel={() => setMaking(false)} /> : null}
+    </XStack>
   )
 }
