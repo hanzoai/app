@@ -66,7 +66,7 @@ import { ArrowLeft, ArrowRight, Clapperboard, RefreshCw, Sparkles, Workflow } fr
 import { AiProvider } from '@hanzo/ai/react'
 import { XStack, YStack } from '@hanzo/gui'
 import { Button, Text } from '@hanzo/ui'
-import { Builder, HostProvider, MARKS, PrefsProvider, route, tabs, type Host } from '@hanzo/build'
+import { Builder, HostProvider, PrefsProvider, route, tabs, type Host } from '@hanzo/build'
 import * as studioPkg from '@hanzo/studio'
 import { nav as places } from '@hanzo/studio'
 import { useAi } from './lib/ai'
@@ -84,7 +84,7 @@ import { empty, openThread, showSettings, useOpen } from './open'
 import { Split } from './Shell'
 import { Search } from './Search'
 import { summons } from './seek'
-import { floor, pane } from './ground'
+import { floor, pane, SIDE } from './ground'
 import { org as currentOrg, pick } from './lib/session'
 import { payUrl } from './lib/pay'
 import { useFree } from './Upgrade'
@@ -413,7 +413,7 @@ function Window({ bar, betas }: Hosted) {
               pl={(bar?.inset ?? 0) + 8}
               pr={8}
               shrink={0}
-              width={closed ? RAIL : (`calc(${RAIL}px + var(--app-sidebar-span, 280px))` as never)}
+              width={closed ? RAIL : (`calc(${RAIL}px + var(--app-sidebar-span, ${SIDE}px))` as never)}
               {...(bar?.drag ?? null)}
             >
               <XStack $md={{ display: 'none' }}>
@@ -472,7 +472,7 @@ function Window({ bar, betas }: Hosted) {
             pt={bar ? 0 : 'var(--pane-gap)'}
             // A phone's frame is full-bleed on the floor, which follows the theme,
             // so the top of the page the browser's bar tints from does too.
-            $max-md={{ p: 0, bg: 'var(--pane-floor)' }}
+            $max-md={{ p: 0 }}
           >
             {drawer.slide ? <Lift /> : null}
             <YStack height="100%" position="relative" $max-md={{ display: 'none' }}>

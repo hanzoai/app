@@ -30,8 +30,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Text,
-  XStack,
-  YStack,
 } from '@hanzo/ui'
 import { useAi, type ChatMessage } from '@hanzo/ai/react'
 import { artifacts, name as titleOf, PAGE, type Deck, type Entry, type Section, type Tabs } from '@hanzo/build'

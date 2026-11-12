@@ -43,6 +43,9 @@ export const TOUCH_HEAD = 44
  */
 export const INSET = 28
 
+/** The sidebar's width before the reader pulls its edge, px. */
+export const SIDE = 280
+
 /**
  * A row INSIDE a pane shares the height of the row it lines up with.
  */

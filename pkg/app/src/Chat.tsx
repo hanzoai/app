@@ -65,7 +65,7 @@ import { useHydrated } from "./lib/hydrated";
 import { base, served } from "./lib/ai";
 import { onServed, type Served as Heard } from "./lib/served";
 import { refused as worded, speech, useDictation, useTalk, useVoice } from "@hanzo/voice";
-import { Check, ChevronDown, CircleAlert, Copy, FileText, Ghost, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, SquarePlus, X } from "lucide-react";
+import { Check, ChevronDown, CircleAlert, FileText, Ghost, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, SquarePlus, X } from "lucide-react";
 import { ENSO } from "./lib/ai";
 import { openThread, empty as emptyOpen, useOpen } from "./open";
 import { Side } from "./Shell";

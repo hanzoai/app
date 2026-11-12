@@ -52,14 +52,14 @@ import { HOSTED_APPS } from './lib/hosted'
 import { payUrl } from './lib/pay'
 import { brand, wordmark } from './where'
 import { dragWindow, toggleWindowMaximize } from './WindowControls'
-import { BAND, HEAD as LINE, TOUCH_HEAD } from './ground'
+import { BAND, HEAD as LINE, SIDE, TOUCH_HEAD } from './ground'
 
 /** The sidebar fills the column. Its `width` is typed in px alone, though its frame takes any gui size — the type is
  *  @hanzo/ui's to widen. */
 const FILL = { width: '100%' } as object
 
 /** The sidebar's width, px: its default, and the two a drag holds it between. */
-const WIDTH = 280
+const WIDTH = SIDE
 const FLOOR = 200
 const CEIL = 420
 /** Per reader, per browser. */
@@ -441,7 +441,7 @@ export function Sidebar({
       bg={drawer ? undefined : "var(--side-fill, var(--sheet-2))"}
       rounded={drawer ? undefined : "var(--pane-round)"}
       borderWidth={drawer ? 0 : 1}
-      borderColor="var(--pane-edge)"
+      borderColor="var(--pane-edge, var(--edge, var(--white-06)))"
     >
       <Base
         data-slot="app-rail"
@@ -500,7 +500,6 @@ export function Sidebar({
               <Text fontSize={17} lineHeight={24} fontWeight="600" color="$ink" numberOfLines={1}>
                 {wordmark(mode)}
               </Text>
-              <ChevronDown size={15} strokeWidth={2} color="var(--muted-foreground)" aria-hidden />
             </XStack>
             {drawer || anon ? null : <Activity host={host} />}
             {anon ? null : (
