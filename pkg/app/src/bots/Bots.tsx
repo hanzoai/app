@@ -5,13 +5,12 @@
 // Bots are autonomous workers for your organization: each has a model,
 // instructions, tools, and a record of everything it has accomplished.
 //
-// In live mode, this connects directly to your organization's bots and sessions.
-// When visiting without an account, an interactive Example Workspace lets you
-// explore how bots use computers to automate sales, triage inboxes, and review code.
+// This connects directly to your organization's bots and sessions. Signed out
+// there is nothing to show: every row, run and control is a real platform record.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Monitor, Plus, Search, Send, Trash2 } from 'lucide-react'
-import { phrase, type Say } from '@hanzo/i18n'
+import { type Say } from '@hanzo/i18n'
 import { useIam } from '@hanzo/iam/react'
 import type { Agent, AgentDetail, AgentRun, Model, Session } from '@hanzo/ai'
 import { useAi, ENSO } from '../lib/ai'
@@ -24,7 +23,8 @@ import { Face } from './face'
 import { Runtime } from './runtime'
 import { DIM, FAINT, GROUND, INK, LINE, RAISED, SURFACE } from './ink'
 import { BARE, BOXED, CARD, CLIP, GHOST, LABEL, NOTE, TAB } from './kit'
-import { ALWAYS, ONCE, launch, sessions, steer } from './api'
+import { resultOf, type Result } from './result'
+import { ALWAYS, ONCE, launch, sessions, steer, transcript } from './api'
 
 /** How long ago, in the words a roster row has space for. */
 function when(iso: string | undefined, t: Say, locale: string): string {
@@ -107,115 +107,6 @@ function turns(detail: AgentDetail | null, t: Say): Turn[] {
   })
 }
 
-const EXAMPLE_BOTS: Agent[] = [
-  {
-    id: 'bot-sales-outbound',
-    avatar: '/bots/sales-outbound.png',
-    name: 'Sales Outbound',
-    description: phrase('Prospecting, lead qualification, and cold outreach'),
-    model: 'claude-3-5-sonnet',
-    executionMode: ALWAYS,
-    schedule: '0 9 * * 1-5',
-    updatedAt: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
-  },
-  {
-    id: 'bot-chief',
-    avatar: '/bots/chief.png',
-    name: 'Chief',
-    description: phrase('Executive briefing, team updates, and orchestration'),
-    model: 'claude-3-5-sonnet',
-    executionMode: ALWAYS,
-    schedule: '0 8 * * *',
-    updatedAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-  },
-  {
-    id: 'bot-inbox-manager',
-    avatar: '/bots/inbox-manager.png',
-    name: 'Inbox Manager',
-    description: phrase('Triage email, draft responses, and surface urgent items'),
-    model: 'claude-3-5-sonnet',
-    executionMode: ALWAYS,
-    schedule: '*/15 * * * *',
-    updatedAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
-  },
-  {
-    id: 'bot-code-reviewer',
-    name: 'Code Reviewer',
-    description: phrase('Analyze pull requests, check test suites, and style'),
-    model: 'claude-3-5-sonnet',
-    executionMode: ONCE,
-    updatedAt: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
-  },
-  {
-    id: 'bot-research-analyst',
-    name: 'Research Analyst',
-    description: phrase('Track industry trends, competitive moves, and filings'),
-    model: 'claude-3-5-sonnet',
-    executionMode: ONCE,
-    updatedAt: new Date(Date.now() - 1000 * 60 * 300).toISOString(),
-  },
-]
-
-interface ComputerAction {
-  title: string
-  status: string
-  summary: string
-  tasks: string[]
-}
-
-const EXAMPLE_ACTIONS: Record<string, ComputerAction> = {
-  'Sales Outbound': {
-    title: phrase('Computer'),
-    status: phrase('Done'),
-    summary: phrase('Reviewed 52 new outbound leads across target accounts. Qualified 18 high-fit profiles and prepared tailored email drafts.'),
-    tasks: [
-      phrase('Verified domain deliverability and prospect contact records'),
-      phrase('Extracted buyer intent signals from company milestones'),
-      phrase('Queued 18 personalized emails for Armand’s review'),
-    ],
-  },
-  'Chief': {
-    title: phrase('Computer'),
-    status: phrase('Done'),
-    summary: phrase('Compiled morning briefing, synced calendar events, and highlighted team priorities.'),
-    tasks: [
-      phrase('Aggregated GitHub pull requests and release milestones'),
-      phrase('Organized 3 priority decisions for today'),
-      phrase('Synchronized executive calendar and shared prep notes'),
-    ],
-  },
-  'Inbox Manager': {
-    title: phrase('Computer'),
-    status: phrase('Done'),
-    summary: phrase('Triaged 34 unread messages, flagged 4 urgent requests, and drafted replies for approval.'),
-    tasks: [
-      phrase('Categorized incoming inquiries by priority and topic'),
-      phrase('Drafted context-aware responses citing knowledge base docs'),
-      phrase('Scheduled followup reminders for unresolved partner threads'),
-    ],
-  },
-  'Code Reviewer': {
-    title: phrase('Computer'),
-    status: phrase('Done'),
-    summary: phrase('Analyzed pull request 142 for architectural consistency, security considerations, and edge cases.'),
-    tasks: [
-      phrase('Verified zero memory leaks and confirmed strict typing'),
-      phrase('Validated test suite passes across all target environments'),
-      phrase('Posted inline review suggestions for error handling'),
-    ],
-  },
-  'Research Analyst': {
-    title: phrase('Computer'),
-    status: phrase('Done'),
-    summary: phrase('Indexed frontier model benchmarks, competitive releases, and performance telemetry.'),
-    tasks: [
-      phrase('Indexed latest release notes and technical benchmarks'),
-      phrase('Created comparative capability matrix'),
-      phrase('Generated summary digest for the engineering team'),
-    ],
-  },
-}
-
 export function Bots() {
   const { t, locale } = useI18n()
   const { client, ready } = useAi()
@@ -234,7 +125,6 @@ export function Bots() {
   const [detail, setDetail] = useState<AgentDetail | null>(null)
   const [own, setOwn] = useState<Session[]>([])
   const [draft, setDraft] = useState('')
-  const [trialTurns, setTrialTurns] = useState<Turn[]>([])
   const [running, setRunning] = useState(false)
   const [failed, setFailed] = useState<string | null>(null)
   const [pane, setPane] = useState(false)
@@ -258,21 +148,17 @@ export function Bots() {
     if (live) void read()
   }, [live, read])
 
-  // In live mode, use platform roster. When exploring as a visitor, show example workspace bots.
-  const activeRoster = useMemo(() => {
-    if (live && roster.length > 0) return roster
-    if (!live) return EXAMPLE_BOTS
-    return roster
-  }, [live, roster])
+  // Signed out there is no roster: the platform's answer is the only one.
+  const activeRoster = useMemo(() => (live ? roster : []), [live, roster])
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return activeRoster
     return activeRoster.filter((b) => {
-      const about = b.description ? (live ? b.description : t(b.description)) : ''
+      const about = b.description ?? ''
       return b.name.toLowerCase().includes(q) || about.toLowerCase().includes(q)
     })
-  }, [activeRoster, query, live, t])
+  }, [activeRoster, query])
 
   const bot = useMemo(
     () => activeRoster.find((b) => b.name === picked) ?? shown[0] ?? activeRoster[0] ?? null,
@@ -316,19 +202,18 @@ export function Bots() {
   // of the same Bot working, so they are read together and sorted by the clock
   // the platform put on them — newest at the bottom, where a reader who has
   // just asked for something is looking.
-  const computerAction = bot ? EXAMPLE_ACTIONS[bot.name] ?? null : null
-
   const stream = useMemo(() => {
-    if (!live) {
-      return trialTurns.map((turn) => ({ at: turn.at, key: turn.id, turn, session: null as Session | null }))
-    }
+    if (!live) return []
     return [
       ...turns(detail, t).map((turn) => ({ at: turn.at, key: turn.id, turn, session: null as Session | null })),
       ...own.map((s) => ({ at: at(s.updatedAt || s.startedAt || s.createdAt), key: s.id, turn: null as Turn | null, session: s })),
     ].sort((a, b) => a.at - b.at)
-  }, [live, detail, own, trialTurns, t])
+  }, [live, detail, own, t])
 
   const always = bot?.executionMode === ALWAYS
+
+  // A run is recorded twice, as a run and as a session; the answer shows once.
+  const recorded = useMemo(() => new Set((detail?.recentRuns ?? []).map((r) => r.output).filter(Boolean)), [detail])
 
   // Newest last means the newest is off-screen on a Bot with any history, so
   // the stream opens where a reader is looking rather than at its oldest run.
@@ -344,25 +229,7 @@ export function Bots() {
       const input = draft.trim()
       if (!bot || !input || running) return
 
-      if (!live) {
-        setDraft('')
-        const userTurn: Turn = { id: `trial-${Date.now()}-in`, at: Date.now(), who: 'you', text: input }
-        setTrialTurns((prev) => [...prev, userTurn])
-        setTimeout(() => {
-          const botTurn: Turn = {
-            id: `trial-${Date.now()}-out`,
-            at: Date.now(),
-            who: 'bot',
-            text: t('Received: "{input}". Running on {model} with computer tools enabled. Sign in to your organization to deploy bots into production.', {
-              input,
-              model: bot.model,
-            }),
-            note: t('{model} · {seconds}s · {count} tokens', { model: bot.model, seconds: '0.8', count: 142 }),
-          }
-          setTrialTurns((prev) => [...prev, botTurn])
-        }, 400)
-        return
-      }
+      if (!live) return
 
       if (!client) return
       setRunning(true)
@@ -511,9 +378,7 @@ export function Bots() {
                   </XStack>
                   <Text {...CLIP} fontSize="$2" color={DIM} text="left">
                     {b.description
-                      ? live
-                        ? b.description
-                        : t(b.description)
+                      ? b.description
                       : t(b.runs ? '{model} · {count} runs' : '{model}', {
                           model: b.model,
                           count: b.runs ?? 0,
@@ -542,14 +407,14 @@ export function Bots() {
             fontWeight="600"
             color={DIM}
           >
-            {(user?.name || (live ? '·' : 'Armand Segall')).trim().charAt(0).toUpperCase()}
+            {(user?.name || '·').trim().charAt(0).toUpperCase()}
           </Text>
           <YStack flex={1} minW={0}>
             <Text fontSize="$2" fontWeight="600" color={INK}>
-              {user?.name || (live ? t('Signed in') : 'Armand Segall')}
+              {user?.name || (live ? t('Signed in') : t('Signed out'))}
             </Text>
             <Text {...CLIP} fontSize="$1" color={FAINT}>
-              {user?.email || (live ? t('Active Workspace') : t('{email} · Example Workspace', { email: 'armand@example.com' }))}
+              {user?.email || ''}
             </Text>
           </YStack>
         </XStack>
@@ -597,9 +462,9 @@ export function Bots() {
                   data-hz="cron"
                   value={cron}
                   onChange={(e) => setCron(e.target.value)}
-                  placeholder={t('0 * * * *')}
+                  placeholder={t('minute hour day month weekday')}
                   aria-label={t('Schedule, as a 5-field cron')}
-                  width={104}
+                  width={200}
                   fontSize="$1"
                 />
               ) : null}
@@ -611,12 +476,13 @@ export function Bots() {
                 borderColor={always ? 'var(--primary)' : undefined}
                 hoverStyle={always ? { bg: 'var(--primary-hover)', borderColor: 'var(--primary-hover)' } : undefined}
                 rounded={999}
-                title={t(always ? 'Run only when asked' : 'Keep this bot up on a schedule')}
+                title={t(always ? 'Stop the schedule; run only when asked' : 'Run this bot on the schedule in the field beside it')}
                 data-hz="always"
                 onClick={keepUp}
                 aria-pressed={always}
+                disabled={!always && cron.trim().split(/\s+/).filter(Boolean).length !== 5}
               >
-                {t('24/7')}
+                {t('On a schedule')}
               </Button>
               {/* A session is the row every runner hangs its activity off — the
                   CLI's outer agent, hanzo.bot, this app. Opening one from here
@@ -670,7 +536,7 @@ export function Bots() {
                   {t(
                     live
                       ? 'Nothing is kept yet. A bot is a model, a standing instruction and a record of what it has done — press + to keep one.'
-                      : 'Select a bot to begin.',
+                      : 'Sign in to keep a bot and run it.',
                   )}
                 </Text>
               ) : null}
@@ -684,54 +550,13 @@ export function Bots() {
                 </YStack>
               ) : null}
 
-              {computerAction ? (
-                <YStack {...CARD} data-hz="computer-card">
-                  <XStack items="center" justify="space-between">
-                    <XStack items="center" gap={8}>
-                      <Monitor size={15} color={INK} />
-                      <Text fontSize="$2" fontWeight="600" color={INK}>{t(computerAction.title)}</Text>
-                    </XStack>
-                    {/* Greyscale, like every other chip here: this file's own
-                        rule is that status is said in words, and the green said
-                        nothing the word beside it did not — while being the one
-                        thing on the card unreadable on a light page. */}
-                    <Text
-                      display="inline-flex"
-                      items="center"
-                      px={8}
-                      py={2}
-                      rounded={999}
-                      fontSize="$1"
-                      fontWeight="600"
-                      bg={SURFACE}
-                      color={DIM}
-                      borderWidth={1}
-                      borderColor={LINE}
-                    >
-                      {t(computerAction.status)}
-                    </Text>
-                  </XStack>
-                  <Text render="p" fontSize="$2" lineHeight="1.26rem" color={INK}>
-                    {t(computerAction.summary)}
-                  </Text>
-                  <YStack gap={5} mt={4}>
-                    {computerAction.tasks.map((task, idx) => (
-                      <XStack key={idx} items="center" gap={8}>
-                        <YStack width={4} height={4} shrink={0} rounded={9999} bg={FAINT} />
-                        <Text fontSize="$2" color={DIM}>{t(task)}</Text>
-                      </XStack>
-                    ))}
-                  </YStack>
-                </YStack>
-              ) : null}
-
-              {bot && stream.length === 0 && !computerAction ? (
+              {bot && stream.length === 0 ? (
                 <Text {...NOTE}>{t('Nothing has been run yet. Ask for something below and the run is recorded here.')}</Text>
               ) : null}
 
               {stream.map(({ key, turn, session }) =>
                 session ? (
-                  <Live key={key} session={session} onChange={refresh} />
+                  <Live key={key} session={session} onChange={refresh} recorded={recorded} />
                 ) : turn ? (
                   <Text
                     key={key}
@@ -834,10 +659,23 @@ export function Bots() {
  * command is always RECORDED, and only sometimes delivered. Saying which is the
  * difference between a control and a button that appears to work.
  */
-function Live({ session, onChange }: { session: Session; onChange: () => void | Promise<void> }) {
+function Live({ session, onChange, recorded }: { session: Session; onChange: () => void | Promise<void>; recorded: Set<string | undefined> }) {
   const { t, locale } = useI18n()
   const { client } = useAi()
   const [said, setSaid] = useState<string | null>(null)
+  const [result, setResult] = useState<Result | null>(null)
+
+  // A finished run keeps its answer as a message turn and its model and time
+  // as a log turn. Read them, and show the text, never the log's JSON.
+  const finished = !open(session)
+  useEffect(() => {
+    if (!client || !finished) return
+    const stop = new AbortController()
+    transcript(client, session.id, stop.signal)
+      .then((d) => setResult(resultOf(d.recentEvents ?? [], t)))
+      .catch(() => {})
+    return () => stop.abort()
+  }, [client, finished, session.id, session.updatedAt, t])
 
   const command = async (verb: 'pause' | 'resume' | 'stop') => {
     if (!client) return
@@ -869,10 +707,16 @@ function Live({ session, onChange }: { session: Session; onChange: () => void | 
           })}
         </Text>
       </XStack>
-      {session.lastEvent?.preview ? (
-        <Text {...CLIP} render="p" fontSize="$1" lineHeight="1.03125rem" fontFamily="$mono" color={FAINT}>
-          {session.lastEvent.preview}
+      {result?.text && !recorded.has(result.text) ? (
+        <Text render="p" data-hz="answer" fontSize="$2" lineHeight="1.3rem" whiteSpace="pre-wrap" color={INK}>
+          {result.text}
         </Text>
+      ) : null}
+      {result?.error ? (
+        <Text render="p" fontSize="$1" color={DIM}>{t('failed · {note}', { note: result.error })}</Text>
+      ) : null}
+      {result?.meta ? (
+        <Text render="p" fontSize="$1" color={FAINT}>{result.meta}</Text>
       ) : null}
       {open(session) ? (
         <XStack gap={6}>
