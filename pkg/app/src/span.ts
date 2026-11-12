@@ -47,6 +47,7 @@ export function useSpan(store: string, initial: number, floor: number, ceil: num
   }, [store, floor, ceil])
   useLayoutEffect(() => {
     el.current?.style.setProperty('--span', `${span}px`)
+    ;(el.current?.closest?.('[data-slot="window"]') as HTMLElement | null)?.style.setProperty('--app-sidebar-span', `${span}px`)
   }, [span])
   // Typed loosely because a gui stack hands its host element through a ref
   // typed for native too; on the web it is the element.
@@ -55,15 +56,18 @@ export function useSpan(store: string, initial: number, floor: number, ceil: num
       const next = node instanceof HTMLElement ? node : null
       el.current = next
       next?.style.setProperty('--span', `${span}px`)
+      ;(next?.closest?.('[data-slot="window"]') as HTMLElement | null)?.style.setProperty('--app-sidebar-span', `${span}px`)
     },
     [span],
   )
   const move = useCallback((n: number) => {
     el.current?.style.setProperty('--span', `${n}px`)
+    ;(el.current?.closest?.('[data-slot="window"]') as HTMLElement | null)?.style.setProperty('--app-sidebar-span', `${n}px`)
   }, [])
   const keep = useCallback(
     (n: number) => {
       el.current?.style.setProperty('--span', `${n}px`)
+      ;(el.current?.closest?.('[data-slot="window"]') as HTMLElement | null)?.style.setProperty('--app-sidebar-span', `${n}px`)
       setSpan(n)
       try {
         localStorage.setItem(store, String(n))

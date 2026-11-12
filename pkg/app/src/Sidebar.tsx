@@ -74,11 +74,11 @@ const keys = (press: () => void) => ({
   },
 })
 
-/** A row of the sidebar: a pill on a 36px pitch matching the rail's mark height, a thumb's 44 on a touch screen, lit where the reader is. */
-const ROW = { rounded: '$4', minH: MARK, py: 0, px: '$2', $touchable: { minH: 44 } } as const
+/** A row of the sidebar: a full-width 29px pill, 44px on a touch screen, lit where the reader is. */
+const ROW = { rounded: 8, minH: 29, py: 0, px: '$2', width: '100%' as never, $touchable: { minH: 44 } } as const
 
-/** A sidebar link row hugs its icon and label rather than stretching across the full column width. */
-const COMPACT_ROW = { ...ROW, self: 'flex-start', '$platform-web': { width: 'fit-content', maxWidth: '100%' } } as const
+/** A sidebar link row spans the column width so hover and active pills align with Recents. */
+const COMPACT_ROW = ROW
 
 /** The run activity behind the bell: the runs that moved last, newest first. */
 const RECENT = 6
@@ -86,8 +86,8 @@ const RECENT = 6
 /** What a place that takes the sidebar is called at its head. */
 const TITLE: Record<Raised, string> = { library: phrase('Library'), scheduled: phrase('Scheduled tasks'), customize: phrase('Customize') }
 
-/** A header mark: a 16px glyph in a 32px target, a thumb's 44 on a touch screen. */
-const HEAD = { width: 32, height: 32, rounded: '$3', $touchable: { width: 44, height: 44 } } as const
+/** A header mark: a 15px glyph in a 28px target, a thumb's 44 on a touch screen. */
+const HEAD = { width: 28, height: 28, rounded: '$3', $touchable: { width: 44, height: 44 } } as const
 
 interface TabsFleetHost {
   machine: string
@@ -290,7 +290,7 @@ function Activity({ host }: { host: Host }) {
           hoverStyle={{ bg: '$hover', opacity: 1 }}
           focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
         >
-          <Bell size={16} aria-hidden />
+          <Bell size={15} aria-hidden />
         </XStack>
       }
       items={items}
@@ -438,6 +438,9 @@ export function Sidebar({
       height="100%"
       width={drawer ? undefined : `var(--span, ${WIDTH}px)`}
       maxW={drawer ? undefined : `var(--span, ${WIDTH}px)`}
+      bg="var(--shell-sidebar-bg, var(--surface-2))"
+      borderRightWidth={drawer ? 0 : 1}
+      borderColor="var(--shell-sidebar-border, var(--border))"
     >
       <Base
         data-slot="app-rail"
@@ -446,8 +449,8 @@ export function Sidebar({
         bg="transparent"
         borderWidth={0}
         {...FILL}
-        px="$2"
-        pt={drawer ? 'var(--pane-gap)' : 0}
+        px={8}
+        pt={drawer ? 'var(--pane-gap)' : 2}
         // In the drawer the menu's own foot padding is the gap; its foot row stands on it.
         pb={drawer ? 0 : '$2'}
         gap="$0"
@@ -472,7 +475,7 @@ export function Sidebar({
             <SidebarIconButton label={t('Back')} data-slot="place-back" data-tauri-drag-region="false" onPress={onBack} {...HEAD}>
               <ArrowLeft size={16} aria-hidden data-i18n-mirror />
             </SidebarIconButton>
-            <Text flex={1} minW={0} fontSize={18} lineHeight={24} fontWeight="600" color="$ink" numberOfLines={1} data-slot="place-name">
+            <Text flex={1} minW={0} fontSize={15} lineHeight={20} fontWeight="600" color="$ink" numberOfLines={1} data-slot="place-name">
               {t(TITLE[at])}
             </Text>
           </XStack>
@@ -480,8 +483,8 @@ export function Sidebar({
           <XStack
             data-slot="app-head"
             items="center"
-            gap="$1"
-            paddingInlineStart={4}
+            gap={2}
+            paddingInlineStart={8}
             paddingInlineEnd={2}
             // The phone's drawer lines up with its bar (BAND); beside the rail, with the rail's first mark (ground.ts HEAD).
             height={drawer ? BAND : LINE}
@@ -492,9 +495,12 @@ export function Sidebar({
             onMouseDown={dragWindow}
             onDoubleClick={toggleWindowMaximize}
           >
-            <Text flex={1} minW={0} fontSize={24} lineHeight={28} fontWeight="700" color="$ink" numberOfLines={1}>
-              {wordmark(mode)}
-            </Text>
+            <XStack flex={1} minW={0} items="center" gap={4}>
+              <Text fontSize={15} lineHeight={20} fontWeight="600" color="$ink" numberOfLines={1}>
+                {wordmark(mode)}
+              </Text>
+              <ChevronDown size={13} strokeWidth={2} color="var(--shell-section-fg, var(--muted-foreground))" aria-hidden />
+            </XStack>
             {drawer || anon ? null : <Activity host={host} />}
             {anon ? null : (
               <SidebarIconButton
@@ -511,16 +517,16 @@ export function Sidebar({
                       borderColor: 'var(--border-strong)',
                       bg: 'var(--pane-fill)',
                     }
-                  : HEAD)}
+                  : { width: 28, height: 28, rounded: '$3', $touchable: { width: 44, height: 44 } })}
               >
-                <Search size={drawer ? 18 : 16} aria-hidden />
+                <Search size={drawer ? 18 : 15} aria-hidden />
               </SidebarIconButton>
             )}
           </XStack>
         )}
         {mode === 'chat' ? (
-          <YStack role="list" gap={2} shrink={0} pt={drawer ? 0 : 4}>
-            <YStack role="listitem" self="flex-start">
+          <YStack role="list" gap={2} shrink={0} pt={drawer ? 0 : 2}>
+            <YStack role="listitem" width="100%">
               {/* Current while the pane holds a new conversation, and never lit: the reference lights the conversation open, not New. */}
               <SidebarItem
                 data-slot="app-new"
@@ -529,14 +535,14 @@ export function Sidebar({
                 bg="transparent"
                 hoverStyle={{ bg: '$hover' }}
                 icon={
-                  <XStack width={20} height={20} items="center" justify="center" shrink={0}>
-                    <MARKS.chat.make size={16} aria-hidden />
+                  <XStack width={18} height={18} items="center" justify="center" shrink={0}>
+                    <MARKS.chat.make size={15} aria-hidden />
                   </XStack>
                 }
                 onPress={create}
                 {...keys(create)}
               >
-                <Text fontSize="$3" color="$ink">{t('New chat')}</Text>
+                <Text fontSize={13} lineHeight={18} color="$ink">{t('New chat')}</Text>
               </SidebarItem>
             </YStack>
             {anon ? (
@@ -610,7 +616,7 @@ export function Sidebar({
                 ) : null}
                 <YStack role="list" aria-labelledby={i && g.label ? `${uid}-${g.id}` : undefined} aria-label={i && g.label ? undefined : g.label || (at ? t(TITLE[at]) : g.id)} gap={1}>
                   {g.links.map((link) => (
-                    <YStack key={link.id} role="listitem" self="flex-start" maxW="100%" minW={0}>
+                    <YStack key={link.id} role="listitem" width="100%" minW={0}>
                       <SidebarItem
                         {...COMPACT_ROW}
                         data-place-id={link.id}
@@ -618,15 +624,15 @@ export function Sidebar({
                         active={link.active}
                         icon={
                           link.icon || link.id === NEW ? (
-                            <XStack width={20} height={20} items="center" justify="center" shrink={0}>
-                              {link.icon ?? <Make size={16} aria-hidden />}
+                            <XStack width={18} height={18} items="center" justify="center" shrink={0}>
+                              {link.icon ?? <Make size={15} aria-hidden />}
                             </XStack>
                           ) : null
                         }
                         onPress={link.onPress}
                         {...keys(() => link.onPress?.())}
                       >
-                        <Text fontSize="$3" color={link.active ? '$ink' : '$quiet'} numberOfLines={1}>
+                        <Text fontSize={13} lineHeight={18} color={link.active ? '$ink' : '$quiet'} numberOfLines={1}>
                           {link.label}
                         </Text>
                       </SidebarItem>

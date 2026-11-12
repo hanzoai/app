@@ -194,11 +194,22 @@ function usePlan(org: string | null, enabled: boolean): string {
 export function Face({ host, size = 28 }: { host: Who; size?: number }) {
   const p = host.person
   return (
-    <XStack width={size} height={size} rounded={9999} items="center" justify="center" bg="$raised" overflow="hidden" shrink={0} borderWidth={1} borderColor="$borderColor">
+    <XStack
+      width={size}
+      height={size}
+      rounded={9999}
+      items="center"
+      justify="center"
+      bg={p?.avatar ? '$raised' : 'var(--shell-avatar-bg, var(--art-ember))'}
+      overflow="hidden"
+      shrink={0}
+      borderWidth={p?.avatar ? 1 : 0}
+      borderColor="$borderColor"
+    >
       {p?.avatar ? (
         <img src={p.avatar} alt="" width={size} height={size} />
       ) : (
-        <SizableText size="$1" fontWeight="600" color="$ink">
+        <SizableText fontSize={Math.max(10, Math.round(size * 0.39))} lineHeight={size} fontWeight="600" color="var(--pure-white)">
           {initials(p?.name || p?.email || '')}
         </SizableText>
       )}

@@ -66,7 +66,7 @@ import { ArrowLeft, ArrowRight, Clapperboard, RefreshCw, Sparkles, Workflow } fr
 import { AiProvider } from '@hanzo/ai/react'
 import { XStack, YStack } from '@hanzo/gui'
 import { Button, Text } from '@hanzo/ui'
-import { Builder, HostProvider, PrefsProvider, route, tabs, type Host } from '@hanzo/build'
+import { Builder, HostProvider, MARKS, PrefsProvider, route, tabs, type Host } from '@hanzo/build'
 import * as studioPkg from '@hanzo/studio'
 import { nav as places } from '@hanzo/studio'
 import { useAi } from './lib/ai'
@@ -144,8 +144,8 @@ export interface Hosted {
   betas?: React.ReactNode
 }
 
-/** The bar's height, px: the reference window's title bar. */
-const BAR = 40
+/** The bar's height, px: the reference window's 38px top chrome bar. */
+const BAR = 38
 
 /** Where each mode was last, so the rail goes back to it. */
 const last = { chat: '', dev: '', studio: '', design: '', flow: '', tabs: '' }
@@ -395,45 +395,87 @@ function Window({ bar, betas }: Hosted) {
           // hidden overflow is still a scroller that a `scrollIntoView` inside the pane would move.
           $max-md={{ position: 'fixed', t: TOP, l: 0, r: 0, height: HEIGHT, ...({ overflow: 'clip' } as object) }}
         >
-          {bar ? (
-            // The inset is the window's own controls', which the host's shell paints at the window's left whatever the page's direction.
+          <XStack
+            data-slot="title-bar"
+            height={BAR}
+            shrink={0}
+            items="center"
+            bg="var(--shell-bar-bg, var(--secondary))"
+            borderBottomWidth={1}
+            borderColor="var(--shell-bar-border, var(--border))"
+            $max-md={bar ? undefined : { display: 'none' }}
+            onMouseDown={bar ? dragWindow : undefined}
+            onDoubleClick={bar ? toggleWindowMaximize : undefined}
+            {...(bar?.drag ?? null)}
+          >
             <XStack
-              data-slot="title-bar"
-              height={BAR}
-              shrink={0}
+              data-slot="title-bar-start"
+              height="100%"
               items="center"
               gap={2}
-              pl={(bar.inset ?? 0) + 6}
-              pr="$2"
-              onMouseDown={dragWindow}
-              onDoubleClick={toggleWindowMaximize}
-              {...bar.drag}
+              pl={(bar?.inset ?? 0) + 8}
+              pr={8}
+              shrink={0}
+              width={closed ? 44 : ('calc(44px + var(--app-sidebar-span, 240px))' as never)}
+              borderRightWidth={closed ? 0 : 1}
+              borderColor="var(--shell-bar-border, var(--border))"
+              {...(bar?.drag ?? null)}
             >
-              {/* From a tablet up the toggle shuts the sidebar; on a phone it opens the drawer. */}
-              <XStack $max-md={{ display: 'none' }}>
-                <Toggle open={!closed} onPress={flip} />
-              </XStack>
               <XStack $md={{ display: 'none' }}>
                 <Toggle open={drawer.state === 'open'} onPress={drawer.open} label={t('Open sidebar')} />
               </XStack>
               <Mark label={t('Back')} data-slot="back" onPress={() => router.back()}>
-                <ArrowLeft size={18} aria-hidden data-i18n-mirror />
+                <ArrowLeft size={15} aria-hidden data-i18n-mirror />
               </Mark>
               <Mark label={t('Forward')} data-slot="forward" onPress={() => router.forward()}>
-                <ArrowRight size={18} aria-hidden data-i18n-mirror />
+                <ArrowRight size={15} aria-hidden data-i18n-mirror />
               </Mark>
-              <XStack
-                flex={1}
-                self="stretch"
-                {...bar.drag}
-              />
-              {bar.controls !== undefined ? (
-                bar.controls
-              ) : !bar.inset ? (
-                <WindowControls />
+              <XStack $max-md={{ display: 'none' }}>
+                <Toggle open={!closed} onPress={flip} />
+              </XStack>
+            </XStack>
+            <XStack
+              id="hanzo-titlebar-slot"
+              data-slot="title-bar-main"
+              flex={1}
+              minW={0}
+              self="stretch"
+              items="center"
+              justify="space-between"
+              pl={14}
+              pr={10}
+              gap={6}
+              {...(bar?.drag ?? null)}
+            >
+              <XStack data-slot="titlebar-fallback" flex={1} minW={0} items="center" justify="space-between" gap={8}>
+                <Text fontSize={13} lineHeight={18} fontWeight="500" color="$ink" numberOfLines={1}>
+                  {mode === 'chat' ? '' : mode === 'dev' ? 'Dev' : mode === 'studio' ? 'Studio' : mode === 'design' ? 'Design' : mode === 'flow' ? 'Flow' : mode === 'tabs' ? 'Tabs' : ''}
+                </Text>
+                <XStack items="center" gap={2} data-tauri-drag-region="false">
+                  <Mark
+                    label={mode === 'dev' ? t('New run') : t('New chat')}
+                    data-slot="titlebar-new"
+                    onPress={() => {
+                      if (mode === 'dev') host.go('')
+                      else {
+                        empty()
+                        move(talk())
+                      }
+                    }}
+                  >
+                    {mode === 'dev' ? <MARKS.dev.make size={15} aria-hidden /> : <MARKS.chat.make size={15} aria-hidden />}
+                  </Mark>
+                </XStack>
+              </XStack>
+              {bar ? (
+                bar.controls !== undefined ? (
+                  bar.controls
+                ) : !bar.inset ? (
+                  <WindowControls />
+                ) : null
               ) : null}
             </XStack>
-          ) : null}
+          </XStack>
           <XStack
             ref={drawer.pane}
             data-app={mode}
@@ -454,7 +496,7 @@ function Window({ bar, betas }: Hosted) {
           >
             {drawer.slide ? <Lift /> : null}
             <YStack height="100%" position="relative" $max-md={{ display: 'none' }}>
-              <Rail host={host} mode={mode} at={where} inside={inside} open={!closed} toggle={bar ? undefined : flip} onChat={toChat} onDev={toDev} onDesign={toDesign} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />
+              <Rail host={host} mode={mode} at={where} inside={inside} open={!closed} onChat={toChat} onDev={toDev} onDesign={toDesign} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />
               {closed ? (
                 <YStack
                   data-slot="sidebar-reopen-edge"

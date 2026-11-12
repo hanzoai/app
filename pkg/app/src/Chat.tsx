@@ -29,6 +29,7 @@
 // pre-emptively refuses on the gateway's behalf.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { english, isolate, phrase, type Say } from "@hanzo/i18n";
 import { useI18n } from "@hanzo/i18n/react";
 import { billed, detail, familyOf, ours, planRequired, plainly, refused } from "./failure";
@@ -39,7 +40,7 @@ import {
   useChat,
   type ChatMessage,
 } from "@hanzo/ai/react";
-import { Chat as ChatSurface, EFFORTS, Failure, MEASURE, Parts, useFamilies, words, type ComposerProps, type Said } from "@hanzo/ui/chat";
+import { Chat as ChatSurface, EFFORTS, Failure, Parts, Tune, useFamilies, words, type ComposerProps, type Said } from "@hanzo/ui/chat";
 import { carriedIn, carrying, compose, partsOf, said as told, weigh } from "./lib/attach";
 import { download, dropped, fileOf, pct, readable, refOf, retrieve, type Api, type FileRef, type WorkFile } from "./lib/files";
 import { conversation, drop, hold, landed, localOf, spend, take, usePane, useWorkFile, type Held, type Via } from "./pane";
@@ -64,13 +65,13 @@ import { useHydrated } from "./lib/hydrated";
 import { base, served } from "./lib/ai";
 import { onServed, type Served as Heard } from "./lib/served";
 import { refused as worded, speech, useDictation, useTalk, useVoice } from "@hanzo/voice";
-import { Check, FileText, Ghost, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, X } from "lucide-react";
+import { Check, ChevronDown, CircleAlert, Copy, FileText, Ghost, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, SquarePlus, X } from "lucide-react";
 import { ENSO } from "./lib/ai";
 import { openThread, empty as emptyOpen, useOpen } from "./open";
 import { Side } from "./Shell";
-import { SEED, look, useSections, useSites, type Mark } from "./RightPane";
+import { ContextCard, SEED, look, useSections, useSites, type Mark } from "./RightPane";
 import { Share } from "./Share";
-import { ConversationMenu, useThreadActions, useThreadList, type Thread } from "./thread";
+import { ConversationMenu, ThreadMore, useThreadActions, useThreadList, type Thread } from "./thread";
 import { Schedule } from "./Schedule";
 import { keepFile, useAttach, useKeep } from "./keep";
 import { useKept } from "./kept";
@@ -116,7 +117,6 @@ import { first } from './lib/first';
 import { BAD } from "./lib/mix";
 import { brand } from './where'
 import { BAND, HEAD, inPane, INSET, TOUCH_HEAD } from './ground'
-import { UsageControl } from './Usage'
 import { shared, useChatPreferences } from './lib/chatPreferences'
 import { handleHint } from './hint'
 
@@ -148,6 +148,82 @@ import { handleHint } from './hint'
  * since.
  */
 const MAX_ANON_TURNS = 3;
+
+function extractWritingTurn(text: string): string | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  const fenced = trimmed.match(/^```(?:writing|markdown|md|text)\s*\n([\s\S]*?)\n```\s*$/i);
+  if (fenced) return fenced[1]?.trim() || null;
+  if (!trimmed.includes("```") && trimmed.includes("\n\n")) return trimmed;
+  return null;
+}
+
+function WritingCard({
+  text,
+  label,
+  copyLabel,
+  copiedLabel,
+}: {
+  text: string;
+  label: string;
+  copyLabel: string;
+  copiedLabel: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <YStack
+      data-slot="writing-card"
+      width="100%"
+      rounded={14}
+      borderWidth={1}
+      borderColor="var(--writing-border, var(--border-strong))"
+      overflow="hidden"
+    >
+      <XStack
+        data-slot="writing-head"
+        height={36}
+        px={16}
+        items="center"
+        justify="space-between"
+        bg="var(--writing-head-bg, var(--surface-3))"
+        borderBottomWidth={1}
+        borderColor="var(--writing-divider, var(--border))"
+      >
+        <Text fontSize={12} lineHeight={16} fontWeight="500" color="var(--shell-section-fg, var(--muted-foreground))">
+          {label}
+        </Text>
+        <Box
+          render="button"
+          data-slot="writing-copy"
+          aria-label={copied ? copiedLabel : copyLabel}
+          title={copied ? copiedLabel : copyLabel}
+          width={26}
+          height={26}
+          rounded={6}
+          items="center"
+          justify="center"
+          cursor="pointer"
+          hoverStyle={{ bg: "$hover" }}
+          onClick={() => {
+            void navigator.clipboard?.writeText(text).then(() => {
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1600);
+            });
+          }}
+        >
+          {copied ? (
+            <Check size={14} color="var(--foreground)" aria-hidden />
+          ) : (
+            <Copy size={14} color="var(--shell-section-fg, var(--muted-foreground))" aria-hidden />
+          )}
+        </Box>
+      </XStack>
+      <YStack px={18} py={16} bg="var(--writing-body-bg, var(--surface-2))">
+        <Prose text={text} />
+      </YStack>
+    </YStack>
+  );
+}
 
 function synthesizeAnonReply(prompt: string): string {
   const q = prompt.trim();
@@ -2126,6 +2202,12 @@ function Thread({
   }, [initial, open, anonymous, settled, sendAnon]);
 
   const families = useFamilies(mind, (id) => setAsk({ model: nameOf(id, listed) } as Ask));
+  const [titlebarSlot, setTitlebarSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    setTitlebarSlot(document.getElementById("hanzo-titlebar-slot"));
+  }, [media.md]);
+  const inTopChrome = Boolean(media.md && titlebarSlot);
   const composer: ComposerProps = {
       value: draft,
       onChange: setDraft,
@@ -2134,15 +2216,70 @@ function Thread({
       busy: chat.streaming || anonBusy,
       // Files alone are a message: what is held goes with an empty draft too.
       ready: Boolean(draft.trim() || files.length),
-      // `label` keeps the accessible name constant; the placeholder is the composer's own
-      // (the defaults @hanzo/ui and @hanzo/build each call ASK), said here so both are the reader's.
+      // `label` keeps the accessible name constant; the placeholder matches the desktop workspace prompt.
       label: t("Ask anything"),
-      placeholder: t("Type / for skills"),
+      placeholder: t("Work with {brand}", { brand: brand() }),
       // At the thread's measure.
       column: true,
       // Private: the frame drops its ground and dashes its edge (@hanzo/ui ≥ 8.29.40); the
       // toggled ghost in the head and this frame are the whole of what says it.
       forgetful,
+      children: anonymous ? undefined : (
+        <XStack flex={1} minW={0} items="center" justify="space-between" gap={6}>
+          <XStack
+            render="button"
+            data-slot="composer-access-mode"
+            data-mode={chatPrefs.approvalMode === "manual" ? "manual" : "auto"}
+            aria-label={chatPrefs.approvalMode === "manual" ? t("Manual approval") : t("Full access")}
+            items="center"
+            gap={5}
+            height={28}
+            px={6}
+            rounded={8}
+            cursor="pointer"
+            hoverStyle={{ bg: "$hover" }}
+            onPress={() => {
+              const next = chatPrefs.approvalMode === "manual" ? "auto" : "manual";
+              setChatPrefs({ approvalMode: next });
+              carry.mode.set(next);
+            }}
+          >
+            <CircleAlert
+              size={14}
+              strokeWidth={1.9}
+              color={chatPrefs.approvalMode === "manual" ? "var(--shell-section-fg, var(--muted-foreground))" : "var(--composer-full-access, var(--art-ember))"}
+              aria-hidden
+            />
+            <Text
+              fontSize={12.5}
+              lineHeight={16}
+              fontWeight="500"
+              color={chatPrefs.approvalMode === "manual" ? "var(--shell-section-fg, var(--muted-foreground))" : "var(--composer-full-access, var(--art-ember))"}
+              numberOfLines={1}
+            >
+              {chatPrefs.approvalMode === "manual" ? t("Manual approval") : t("Full access")}
+            </Text>
+          </XStack>
+          <XStack items="center" gap={2} shrink={0}>
+            <Tune
+              mind={{ ...mind, models: filteredListed }}
+              effort={{
+                value: chatPrefs.effort || "auto",
+                set: (eff) => {
+                  setChatPrefs({ effort: eff as typeof chatPrefs.effort });
+                  const next = shared(eff as typeof chatPrefs.effort);
+                  if (next) mind.pace(next);
+                },
+                items: EFFORTS,
+              }}
+              mode={null}
+              limits={limits}
+              onUpgrade={(id) => setAsk({ model: nameOf(id, listed) } as Ask)}
+            />
+            <ChevronDown size={12} color="var(--shell-section-fg, var(--muted-foreground))" aria-hidden />
+          </XStack>
+        </XStack>
+      ),
       // A file or an image pasted into the field is held like a picked one;
       // words paste as words.
       field: {
@@ -2287,34 +2424,13 @@ function Thread({
       ],
       slash: carry.skills,
       at: carry.plugins,
-      // The mode is Auto or Manual approval, the one Settings keeps; the person
-      // turns the pill on in Settings → Appearance, and it is off until they do.
-      mode: anonymous
-        ? null
-        : {
-            ...carry.mode,
-            set: (m) => {
-              const approval = m === "manual" ? "manual" : "auto";
-              setChatPrefs({ approvalMode: approval });
-              carry.mode.set(approval);
-            },
-          },
-      // The model, only where the person turned the model selector on; the effort, always.
-      // The picker lists what the person has turned on: third-party models (paid from the balance) unless they turned them off.
-      mind: anonymous ? null : { ...mind, models: filteredListed },
-      effort: {
-        value: chatPrefs.effort || "auto",
-        set: (eff) => {
-          setChatPrefs({ effort: eff as typeof chatPrefs.effort });
-          const next = shared(eff as typeof chatPrefs.effort);
-          if (next) mind.pace(next);
-        },
-        items: EFFORTS,
-      },
-      // Chat keeps to the effort alone until the person asks for more: the family chips, the mode, the model.
+      // Inline controls live inside the composer's bottom strip (`children` above), so the outer foot stays empty.
+      mode: null,
+      mind: null,
+      effort: undefined,
       chips: anonymous ? undefined : families,
       defaults: { chips: false, mode: false, model: false },
-      status: anonymous ? null : <UsageControl read={planUsage} context={{ model, window: rowOf(model)?.context_window, messages: chat.messages, draft, tools: !anonymous && carry.gear.gear.research && house(rowOf(model)?.family) ? WEB : undefined }} />,
+      status: null,
       limits,
       onUpgrade: (id) => setAsk({ model: nameOf(id, listed) } as Ask),
       voice,
@@ -2408,9 +2524,169 @@ function Thread({
           </XStack>
         </YStack>
       ) : null}
-      {/* The conversation's own row: its title and who is in it, and at its
-          right end the conversation's controls — Share, its menu, the
-          Summary, and the tabs beside it. */}
+      {inTopChrome && titlebarSlot
+        ? createPortal(
+            <XStack
+              data-slot="chat-titlebar-portal"
+              flex={1}
+              minW={0}
+              items="center"
+              justify="space-between"
+              gap={8}
+            >
+              <XStack items="center" gap="$2" minW={0} flex={1} data-tauri-drag-region="false">
+                {editingTitle && shownTitle ? (
+                  <Input
+                    data-slot="conversation-title-input"
+                    aria-label={t("Chat title")}
+                    value={titleDraft}
+                    autoFocus
+                    maxLength={200}
+                    size="sm"
+                    minW={160}
+                    maxW={360}
+                    onChangeText={setTitleDraft}
+                    onBlur={commitTitle}
+                    onKeyDown={(e: { key?: string; preventDefault?: () => void; stopPropagation?: () => void }) => {
+                      e.stopPropagation?.();
+                      if (e.key === "Enter") {
+                        e.preventDefault?.();
+                        commitTitle();
+                      } else if (e.key === "Escape") {
+                        e.preventDefault?.();
+                        setEditingTitle(false);
+                      }
+                    }}
+                  />
+                ) : shownTitle ? (
+                  <XStack
+                    render="button"
+                    data-slot="conversation-title"
+                    aria-label={shownTitle}
+                    items="center"
+                    gap="$1.5"
+                    px="$1.5"
+                    py="$0.5"
+                    rounded="$2"
+                    minW={0}
+                    shrink={1}
+                    cursor="pointer"
+                    hoverStyle={{ bg: "$hover" }}
+                    onPress={() => {
+                      setTitleDraft(shownTitle);
+                      setEditingTitle(true);
+                    }}
+                  >
+                    <Text fontSize={13} lineHeight={18} fontWeight="500" color="$ink" numberOfLines={1} shrink={1} minW={0}>
+                      {shownTitle}
+                    </Text>
+                  </XStack>
+                ) : null}
+              </XStack>
+
+              <XStack data-slot="conversation-controls" data-tauri-drag-region="false" items="center" gap={2} shrink={0}>
+                {anonymous ? (
+                  <XStack items="center" gap="$2">
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      rounded={9999}
+                      px="$3"
+                      data-slot="header-login"
+                      onPress={() => {
+                        if (typeof window !== "undefined") window.location.assign("/login?next=%2Fchat");
+                      }}
+                    >
+                      {t("Log in")}
+                    </Button>
+                    <Button
+                      size="xs"
+                      rounded={9999}
+                      px="$3"
+                      data-slot="header-signup"
+                      onPress={() => {
+                        if (typeof window !== "undefined") window.location.assign("/signup?next=%2Fchat");
+                      }}
+                    >
+                      {t("Sign up for free")}
+                    </Button>
+                  </XStack>
+                ) : null}
+                {said.length > 0 ? (
+                  <ConversationMenu
+                    threads={currentThreadMap}
+                    active={open || currentThread.id}
+                    onSchedule={anonymous || forgetful ? undefined : () => setPlan(lastAsked())}
+                  >
+                    <XStack>
+                      <ThreadMore t={currentThread} />
+                    </XStack>
+                  </ConversationMenu>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <XStack
+                        render="button"
+                        data-slot="header-private-chat"
+                        aria-label={t("Private chat")}
+                        aria-pressed={forgetful}
+                        width={28}
+                        height={28}
+                        items="center"
+                        justify="center"
+                        rounded="$3"
+                        bg="transparent"
+                        cursor="pointer"
+                        hoverStyle={{ bg: "$hover" }}
+                        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+                        onPress={() => setForgetful(!forgetful)}
+                      >
+                        <Ghost
+                          size={15}
+                          strokeWidth={1.75}
+                          color={forgetful ? "var(--foreground)" : "var(--muted-foreground)"}
+                          fill={forgetful ? "currentColor" : "none"}
+                          aria-hidden
+                        />
+                      </XStack>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {forgetful ? t("Private chat is on: this conversation is not saved") : t("Private chat")}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+                {open ? <Share thread={open} /> : null}
+                <Summary sections={sections} onOpen={() => setPanel(true)} label={t("Summary")} />
+                <PanelToggle open={panel} onToggle={() => setPanel(!panel)} />
+                <XStack
+                  render="button"
+                  data-slot="titlebar-new-chat"
+                  aria-label={t("New chat")}
+                  {...({ title: t("New chat") } as object)}
+                  width={28}
+                  height={28}
+                  items="center"
+                  justify="center"
+                  rounded="$3"
+                  bg="transparent"
+                  cursor="pointer"
+                  opacity={0.78}
+                  hoverStyle={{ bg: "$hover", opacity: 1 }}
+                  onPress={() => {
+                    emptyOpen();
+                    go("/chat");
+                  }}
+                >
+                  <SquarePlus size={15} strokeWidth={1.75} aria-hidden />
+                </XStack>
+              </XStack>
+            </XStack>,
+            titlebarSlot,
+          )
+        : null}
+      {/* The conversation's own row: on desktop its title & controls portal into the
+          38px top chrome bar above; here it stays for mobile or multi-agent cast pills. */}
+      {inTopChrome && !cast.length ? null : (
       <XStack
         data-slot="conversation-head"
         group
@@ -2650,11 +2926,34 @@ function Thread({
           {/* THE TABS' OWN CONTROL, at the header's end while they are shut;
               open, the strip beside the conversation holds it. Its mark is
               never the sidebar's: that toggle is the window's, at its top-left. */}
-          <XStack $max-md={{ display: 'none' }}>
-            <PanelToggle open={panel} onToggle={() => setPanel(!panel)} />
-          </XStack>
+          {inTopChrome ? null : (
+            <XStack $max-md={{ display: 'none' }}>
+              <PanelToggle open={panel} onToggle={() => setPanel(!panel)} />
+            </XStack>
+          )}
         </XStack>
       </XStack>
+      )}
+
+      {/* Docked top-right Outputs / Sources card on desktop when the side panel is closed. */}
+      {!panel && !anonymous ? (
+        <Box
+          data-slot="context-card-dock"
+          display="none"
+          $xl={{ display: "flex" }}
+          position="absolute"
+          t={12}
+          r={16}
+          z={4}
+        >
+          <ContextCard
+            at={at}
+            sections={sections}
+            onCreate={create}
+            onOpenPanel={() => setPanel(true)}
+          />
+        </Box>
+      ) : null}
 
       {/* The frame owns the column on a laptop; this is what Chat puts in it.
           On a phone the panel is a sheet over the pane instead. */}
@@ -2794,16 +3093,26 @@ function Thread({
                 </YStack>
               );
             }
+            const writingBody = turn.role === "assistant" && said ? extractWritingTurn(said) : null;
             return (
-              <YStack gap="$1" data-turn-id={String(turn.id)} data-turn-role={turn.role}>
-                <Prose text={said} />
+              <YStack gap="$1.5" data-turn-id={String(turn.id)} data-turn-role={turn.role}>
+                {writingBody ? (
+                  <WritingCard
+                    text={writingBody}
+                    label={t("Writing")}
+                    copyLabel={t("Copy")}
+                    copiedLabel={t("Copied")}
+                  />
+                ) : (
+                  <Prose text={said} />
+                )}
                 {/* UNDER AN ANSWER, the row Dev's answers have too (@hanzo/build
                     `Reply`): copy the markdown as written, listen in the
                     speaker's voice, and open what it wrote in the side panel.
                     Only an answer, and only one with words in it. */}
                 {turn.role === "assistant" && said ? (
                   <Reply
-                    text={said}
+                    text={writingBody ?? said}
                     title={shownTitle}
                     listen={listen(withWhom ?? undefined)}
                     onOpen={opener(said)}
@@ -2900,7 +3209,7 @@ function Thread({
           }
           // The transcript reads at the same measure. `Thread` defaults to 768
           // itself; handing it the column here is what lets Width reach it.
-          column={{ maxW: MEASURE }}
+          column={{ maxW: "var(--chat-column-measure, 640px)" as unknown as number }}
           composer={composer}
         />
         </YStack>

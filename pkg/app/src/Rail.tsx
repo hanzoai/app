@@ -54,8 +54,8 @@ import { app, hosted, WORKSPACE, type Place } from './lib/host'
 /** The rail's width, px. */
 export const RAIL = 2 * INSET
 
-/** A mark, px: a 36px square on a 44px pitch. */
-export const MARK = 36
+/** A mark, px: a 32px rounded square on a 44px rail. */
+export const MARK = 32
 
 /** A mark on a touch screen, px: a thumb's 44. */
 const TOUCH = 44
@@ -98,14 +98,14 @@ export function Mark({
       onPress={onPress}
       width={MARK}
       height={MARK}
-      rounded="$4"
+      rounded={8}
       items="center"
       justify="center"
       shrink={0}
       cursor="pointer"
-      opacity={on ? 1 : 0.62}
-      bg={on ? '$edge' : 'transparent'}
-      hoverStyle={{ bg: on ? '$edge' : '$hover', opacity: 1 }}
+      opacity={on ? 1 : 0.68}
+      bg={on ? 'var(--shell-rail-active, var(--secondary-hover))' : 'transparent'}
+      hoverStyle={{ bg: on ? 'var(--shell-rail-active, var(--secondary-hover))' : '$hover', opacity: 1 }}
       pressStyle={{ bg: '$raised' }}
       focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
       // A thumb's 44px on a touch screen.
@@ -283,13 +283,16 @@ export function Rail({
       aria-label={t('Products')}
       width={RAIL}
       flex={1}
+      bg="var(--shell-rail-bg, var(--secondary))"
+      borderRightWidth={1}
+      borderColor="var(--shell-rail-border, var(--border))"
       // As tall as the window and no taller: its marks scroll inside it (below), never the page.
       minH={0}
       // The first mark stands at the pane's top edge, one head row high (HEAD), and the last at its foot by the
       // same inset, so the account mirrors the sidebar's toggle across the rail.
-      pt={(HEAD - MARK) / 2}
-      pb={(HEAD - MARK) / 2}
-      gap={4}
+      pt={(HEAD - MARK) / 2 + 2}
+      pb={10}
+      gap={3}
       shrink={0}
       items="center"
       $touchable={{ pt: (TOUCH_HEAD - TOUCH) / 2, pb: (TOUCH_HEAD - TOUCH) / 2 }}

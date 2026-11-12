@@ -21,6 +21,7 @@ import { app } from './lib/host'
 import { site } from './where'
 import { arrange, chats, MENUS, PINNED, PLAIN, runs, SINCE, UNFILED, UNTITLED, UNTITLED_RUN, viewOf, type Mode, type Option, type Recent, type View } from './recent'
 import type { Say } from '@hanzo/i18n'
+import { hasUnreadUpdate, ProjectsTree, useChatProjects } from './ProjectsTree'
 import { ConversationMenu, ThreadRow, useThreadList, type ThreadActions } from './thread'
 
 /** The menu's items: each section a heading and its options (recent.ts's phrases, drawn through `t`), the one in force checked. */
@@ -103,10 +104,56 @@ function Chats({
   const store = useThreadList(view.status === 'archived', thread)
   const rows = useMemo(() => chats(store.threads), [store.threads])
   const byId = useMemo(() => new Map(store.threads.map((t) => [t.id, t])), [store.threads])
+  const projects = useChatProjects(rows)
+  const [seenAt, setSeenAt] = useKept<Record<string, number>>('hanzo.chat.seen.v1', {})
+  const seenRef = useRef(seenAt)
+  seenRef.current = seenAt
+
+  useEffect(() => {
+    if (!store.threads.length) return
+    const now = Date.now()
+    const current = seenRef.current ?? {}
+    let changed = false
+    const next = { ...current }
+    for (const item of store.threads) {
+      if (item.id === thread) {
+        const ts = item.updatedAt ? Date.parse(item.updatedAt) : now
+        const target = Number.isFinite(ts) ? Math.max(now, ts) : now
+        if ((next[item.id] ?? 0) < target) {
+          next[item.id] = target
+          changed = true
+        }
+      } else if (next[item.id] === undefined) {
+        const ts = item.updatedAt ? Date.parse(item.updatedAt) : now
+        next[item.id] = Number.isFinite(ts) ? ts : now
+        changed = true
+      }
+    }
+    if (changed) {
+      seenRef.current = next
+      setSeenAt(next)
+    }
+  }, [store.threads, thread, setSeenAt])
+
+  const unreadIds = useMemo(() => {
+    const out = new Set<string>()
+    for (const item of store.threads) {
+      if ((item as { unread?: boolean }).unread || hasUnreadUpdate(item.id, item.updatedAt, thread, seenAt ?? {})) {
+        out.add(item.id)
+      }
+    }
+    return out
+  }, [store.threads, thread, seenAt])
+
+  const unfiledRows = useMemo(
+    () => (view.status === 'archived' ? rows : rows.filter((r) => r.pinned || !projects.filedIds.has(r.id))),
+    [rows, projects.filedIds, view.status],
+  )
+
   return (
     <List
       mode="chat"
-      rows={rows}
+      rows={unfiledRows}
       view={view}
       keep={keep}
       open={(r) => r.id === thread}
@@ -116,6 +163,22 @@ function Chats({
       threads={byId}
       held={thread}
       onNew={onNew}
+      unreadIds={unreadIds}
+      projectsNode={
+        view.status === 'archived' ? null : (
+          <ProjectsTree
+            folders={projects.folders}
+            openMap={projects.openMap}
+            byFolder={projects.byFolder}
+            threads={byId}
+            activeId={thread}
+            onToggle={projects.toggleFolder}
+            onCreate={projects.createFolder}
+            onOpen={onOpen}
+            onNew={onNew}
+          />
+        )
+      }
     />
   )
 }
@@ -246,6 +309,8 @@ function List({
   onNew,
   customActions,
   hrefOf,
+  unreadIds,
+  projectsNode,
 }: {
   mode: Mode
   rows: Recent[]
@@ -265,6 +330,10 @@ function List({
   customActions?: ThreadActions
   /** Address builder for Copy link / Open in new tab. */
   hrefOf?: (id: string) => string
+  /** Background-updated conversation IDs showing a blue unread dot. */
+  unreadIds?: Set<string>
+  /** Chat's collapsible Projects folder tree above Recents. */
+  projectsNode?: ReactNode
 }) {
   const { t } = useI18n()
   const label = useId()
@@ -280,21 +349,31 @@ function List({
   // shows on hover and focus, a run's state is a dot at its end.
   const row = (r: Recent) => {
     const one = threads?.get(r.id)
-    const devAside =
+    const isUnread = Boolean(r.kind === 'chat' && !open(r) && unreadIds?.has(r.id))
+    const rowAside =
       r.kind === 'dev' ? (
         <XStack items="center" gap="$1">
           {r.pr ? <GitPullRequest size={13} color="var(--state-success)" aria-hidden /> : null}
           <StatusDot status={DOTS[r.status as keyof typeof DOTS] ?? 'idle'} />
         </XStack>
+      ) : isUnread ? (
+        <XStack
+          data-slot="thread-unread-dot"
+          width={6}
+          height={6}
+          rounded={999}
+          bg="var(--shell-unread-dot, var(--art-tide))"
+          aria-hidden
+        />
       ) : undefined
     const item = (
       <SidebarItem
         data-kind={r.kind}
         active={open(r)}
-        rounded="$4"
-        minH={31}
+        rounded={8}
+        minH={29}
         paddingInlineStart="$2"
-        paddingInlineEnd={one || r.kind === 'dev' ? '$7' : '$2'}
+        paddingInlineEnd={one || r.kind === 'dev' ? '$6' : '$2'}
         // A thumb's 44 on a touch screen; a conversation's ⋯ is a thumb wide there and always there: the title stops short of it.
         $touchable={one ? { minH: 44, paddingInlineEnd: 52 } : { minH: 44 }}
         onKeyDown={(e: { key?: string; preventDefault?: () => void }) => {
@@ -304,7 +383,13 @@ function List({
         }}
         onPress={() => onOpen(r)}
       >
-        <SizableText size="$3" color={open(r) ? '$ink' : '$quiet'} numberOfLines={1} display="block">
+        <SizableText
+          fontSize={13}
+          lineHeight={18}
+          color={open(r) ? 'var(--shell-row-active-fg, var(--text-primary))' : 'var(--shell-row-fg, var(--foreground))'}
+          numberOfLines={1}
+          display="block"
+        >
           {named(r.title)}
         </SizableText>
       </SidebarItem>
@@ -315,7 +400,7 @@ function List({
           key={r.id}
           t={one}
           active={open(r)}
-          aside={devAside}
+          aside={rowAside}
         >
           {item}
         </ThreadRow>
@@ -323,9 +408,9 @@ function List({
     return (
       <YStack role="listitem" key={r.id} position="relative">
         {item}
-        {r.kind === 'dev' ? (
+        {rowAside ? (
           <XStack position="absolute" insetInlineEnd="$2.5" t={0} b={0} items="center" pointerEvents="none">
-            {devAside}
+            {rowAside}
           </XStack>
         ) : null}
       </YStack>
@@ -359,11 +444,11 @@ function List({
       items={items(mode, view, keep, t)}
     />
   )
-  /** A section's heading: the reference's quiet 14px label, the Recents one carrying the count and the menu. */
+  /** A section's heading: quiet 11.5px label, the Recents one carrying the count and the menu. */
   const heading = (title: string, id?: string, lead = false) => (
-    <XStack group items="center" justify="space-between" height={31} paddingInlineStart="$2" paddingInlineEnd="$1" mt="$3" shrink={0}>
+    <XStack group items="center" justify="space-between" height={26} paddingInlineStart="$2" paddingInlineEnd="$1" mt="$2.5" shrink={0}>
       <XStack items="center" gap="$2">
-        <SizableText id={id} size="$3" color="$soft">
+        <SizableText id={id} fontSize={11.5} lineHeight={16} fontWeight="500" color="var(--shell-section-fg, var(--muted-foreground))">
           {title}
         </SizableText>
         {lead && running ? (
@@ -473,6 +558,7 @@ function List({
       {/* Its end is its own: a scroll that reaches it does not move the page behind (a phone's menu). */}
       <ScrollView flex={1} showsVerticalScrollIndicator={false} {...({ overscrollBehavior: 'contain' } as object)}>
         {error ? <Note>{error.message}</Note> : null}
+        {projectsNode}
         <YStack role="list" aria-labelledby={label} gap={1}>
           {pinned ? (
             <YStack role="listitem" gap={1}>

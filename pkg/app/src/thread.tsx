@@ -1229,14 +1229,14 @@ export function ThreadMore({ t: thread }: { t: Thread }) {
         aria-label={t('Conversation options')}
         {...({ title: t('More') } as object)}
         data-slot="conversation-options"
-        width={32}
-        height={32}
+        width={28}
+        height={28}
         rounded="$3"
         items="center"
         justify="center"
         cursor="pointer"
         bg={isOpen ? '$hover' : 'transparent'}
-        opacity={isOpen || focused || hovered ? 1 : 0}
+        opacity={isOpen || focused || hovered ? 1 : 0.72}
         hoverStyle={{ bg: '$hover', opacity: 1 }}
         focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor', opacity: 1 }}
         // Before gui's own press handler, which opens the menu and stops there.
