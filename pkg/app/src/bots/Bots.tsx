@@ -149,6 +149,8 @@ export function Bots({ foot = true }: {
   )
 
   useEffect(() => {
+    // Another bot is open: whatever the last one's run answers, it is not this thread's.
+    asking.current += 1
     setRuns(null)
     setPending(null)
     setNotice(null)
@@ -180,7 +182,8 @@ export function Bots({ foot = true }: {
         if (turn === asking.current) setRuns((rs) => [...(rs ?? []), ran])
         return true
       } catch (e) {
-        if (turn !== asking.current) return false
+        // A thread since left: its words are not handed to the one now open.
+        if (turn !== asking.current) return true
         const no = refusal(e, t)
         if (no) {
           setNotice(no)
