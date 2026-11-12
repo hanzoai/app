@@ -216,7 +216,7 @@ export function ProjectsTree({
         paddingInlineEnd="$1"
         shrink={0}
       >
-        <SizableText fontSize={11.5} lineHeight={16} fontWeight="500" color="var(--shell-section-fg, var(--muted-foreground))">
+        <SizableText fontSize={11.5} lineHeight={16} fontWeight="500" color="var(--muted-foreground)">
           {t('Projects')}
         </SizableText>
         <XStack
@@ -237,7 +237,7 @@ export function ProjectsTree({
           hoverStyle={{ bg: '$hover', opacity: 1 }}
           onPress={() => setCreating(true)}
         >
-          <Plus size={13} color="var(--shell-section-fg, var(--muted-foreground))" aria-hidden />
+          <Plus size={13} color="var(--muted-foreground)" aria-hidden />
         </XStack>
       </XStack>
 
@@ -261,9 +261,9 @@ export function ProjectsTree({
                     icon={
                       <XStack width={18} height={18} items="center" justify="center" shrink={0}>
                         {expanded ? (
-                          <FolderOpen size={15} strokeWidth={1.75} color="var(--shell-icon-fg, var(--muted-foreground))" aria-hidden />
+                          <FolderOpen size={15} strokeWidth={1.75} color="var(--muted-foreground)" aria-hidden />
                         ) : (
-                          <Folder size={15} strokeWidth={1.75} color="var(--shell-icon-fg, var(--muted-foreground))" aria-hidden />
+                          <Folder size={15} strokeWidth={1.75} color="var(--muted-foreground)" aria-hidden />
                         )}
                       </XStack>
                     }
@@ -274,7 +274,7 @@ export function ProjectsTree({
                       onToggle(folder.id)
                     }}
                   >
-                    <SizableText fontSize={13} lineHeight={18} color="var(--shell-row-fg, var(--foreground))" numberOfLines={1} display="block">
+                    <SizableText fontSize={13} lineHeight={18} color="var(--foreground)" numberOfLines={1} display="block">
                       {folder.name}
                     </SizableText>
                   </SidebarItem>
@@ -306,7 +306,7 @@ export function ProjectsTree({
                               <SizableText
                                 fontSize={13}
                                 lineHeight={18}
-                                color={isOpen ? 'var(--shell-row-active-fg, var(--text-primary))' : 'var(--shell-subrow-fg, var(--text-secondary))'}
+                                color={isOpen ? 'var(--text-primary)' : 'var(--text-secondary)'}
                                 numberOfLines={1}
                                 display="block"
                               >
@@ -327,7 +327,7 @@ export function ProjectsTree({
                       </YStack>
                     ) : (
                       <XStack height={25} items="center" paddingInlineStart={28} paddingInlineEnd="$2" data-slot="project-empty">
-                        <SizableText fontSize={12.5} lineHeight={17} color="var(--shell-muted-fg, var(--text-tertiary))" numberOfLines={1}>
+                        <SizableText fontSize={12.5} lineHeight={17} color="var(--text-tertiary)" numberOfLines={1}>
                           {t('No chats')}
                         </SizableText>
                       </XStack>

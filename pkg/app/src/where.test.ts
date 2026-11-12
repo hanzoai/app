@@ -14,10 +14,10 @@ describe('addresses', () => {
 })
 
 describe('brand', () => {
-  test("the apps print the host's product name, Hanzo in chat and unprefixed section names elsewhere", () => {
+  test("the apps print the host's product name; the sidebar names the section the reader is in", () => {
     configure({ brand: undefined })
     expect(brand()).toBe('Hanzo')
-    expect(wordmark('chat')).toBe('Hanzo')
+    expect(wordmark('chat')).toBe('Chat')
     expect(wordmark('dev')).toBe('Dev')
     expect(wordmark('design')).toBe('Design')
     expect(wordmark('studio')).toBe('Studio')

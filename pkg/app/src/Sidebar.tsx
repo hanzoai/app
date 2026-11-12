@@ -59,7 +59,7 @@ import { BAND, HEAD as LINE, TOUCH_HEAD } from './ground'
 const FILL = { width: '100%' } as object
 
 /** The sidebar's width, px: its default, and the two a drag holds it between. */
-const WIDTH = 240
+const WIDTH = 280
 const FLOOR = 200
 const CEIL = 420
 /** Per reader, per browser. */
@@ -74,8 +74,8 @@ const keys = (press: () => void) => ({
   },
 })
 
-/** A row of the sidebar: a full-width 29px pill, 44px on a touch screen, lit where the reader is. */
-const ROW = { rounded: 8, minH: 29, py: 0, px: '$2', width: '100%' as never, $touchable: { minH: 44 } } as const
+/** A row of the sidebar: a full-width 40px pill, 44px on a touch screen, lit where the reader is. */
+const ROW = { rounded: 12, minH: 40, py: 0, px: '$3', width: '100%' as never, $touchable: { minH: 44 } } as const
 
 /** A sidebar link row spans the column width so hover and active pills align with Recents. */
 const COMPACT_ROW = ROW
@@ -87,7 +87,7 @@ const RECENT = 6
 const TITLE: Record<Raised, string> = { library: phrase('Library'), scheduled: phrase('Scheduled tasks'), customize: phrase('Customize') }
 
 /** A header mark: a 15px glyph in a 28px target, a thumb's 44 on a touch screen. */
-const HEAD = { width: 28, height: 28, rounded: '$3', $touchable: { width: 44, height: 44 } } as const
+const HEAD = { width: 32, height: 32, rounded: '$3', $touchable: { width: 44, height: 44 } } as const
 
 interface TabsFleetHost {
   machine: string
@@ -438,9 +438,10 @@ export function Sidebar({
       height="100%"
       width={drawer ? undefined : `var(--span, ${WIDTH}px)`}
       maxW={drawer ? undefined : `var(--span, ${WIDTH}px)`}
-      bg="var(--shell-sidebar-bg, var(--surface-2))"
-      borderRightWidth={drawer ? 0 : 1}
-      borderColor="var(--shell-sidebar-border, var(--border))"
+      bg={drawer ? undefined : "var(--side-fill, var(--sheet-2))"}
+      rounded={drawer ? undefined : "var(--pane-round)"}
+      borderWidth={drawer ? 0 : 1}
+      borderColor="var(--pane-edge)"
     >
       <Base
         data-slot="app-rail"
@@ -450,7 +451,7 @@ export function Sidebar({
         borderWidth={0}
         {...FILL}
         px={8}
-        pt={drawer ? 'var(--pane-gap)' : 2}
+        pt={drawer ? 'var(--pane-gap)' : 4}
         // In the drawer the menu's own foot padding is the gap; its foot row stands on it.
         pb={drawer ? 0 : '$2'}
         gap="$0"
@@ -496,10 +497,10 @@ export function Sidebar({
             onDoubleClick={toggleWindowMaximize}
           >
             <XStack flex={1} minW={0} items="center" gap={4}>
-              <Text fontSize={15} lineHeight={20} fontWeight="600" color="$ink" numberOfLines={1}>
+              <Text fontSize={17} lineHeight={24} fontWeight="600" color="$ink" numberOfLines={1}>
                 {wordmark(mode)}
               </Text>
-              <ChevronDown size={13} strokeWidth={2} color="var(--shell-section-fg, var(--muted-foreground))" aria-hidden />
+              <ChevronDown size={15} strokeWidth={2} color="var(--muted-foreground)" aria-hidden />
             </XStack>
             {drawer || anon ? null : <Activity host={host} />}
             {anon ? null : (
@@ -517,7 +518,7 @@ export function Sidebar({
                       borderColor: 'var(--border-strong)',
                       bg: 'var(--pane-fill)',
                     }
-                  : { width: 28, height: 28, rounded: '$3', $touchable: { width: 44, height: 44 } })}
+                  : HEAD)}
               >
                 <Search size={drawer ? 18 : 15} aria-hidden />
               </SidebarIconButton>
@@ -542,7 +543,7 @@ export function Sidebar({
                 onPress={create}
                 {...keys(create)}
               >
-                <Text fontSize={13} lineHeight={18} color="$ink">{t('New chat')}</Text>
+                <Text fontSize={14} lineHeight={20} color="$ink">{t('New chat')}</Text>
               </SidebarItem>
             </YStack>
             {anon ? (
@@ -632,7 +633,7 @@ export function Sidebar({
                         onPress={link.onPress}
                         {...keys(() => link.onPress?.())}
                       >
-                        <Text fontSize={13} lineHeight={18} color={link.active ? '$ink' : '$quiet'} numberOfLines={1}>
+                        <Text fontSize={14} lineHeight={20} color={link.active ? '$ink' : '$quiet'} numberOfLines={1}>
                           {link.label}
                         </Text>
                       </SidebarItem>

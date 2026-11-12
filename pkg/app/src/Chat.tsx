@@ -69,7 +69,7 @@ import { Check, ChevronDown, CircleAlert, Copy, FileText, Ghost, Image as ImageM
 import { ENSO } from "./lib/ai";
 import { openThread, empty as emptyOpen, useOpen } from "./open";
 import { Side } from "./Shell";
-import { ContextCard, SEED, look, useSections, useSites, type Mark } from "./RightPane";
+import { SEED, look, useSections, useSites, type Mark } from "./RightPane";
 import { Share } from "./Share";
 import { ConversationMenu, ThreadMore, useThreadActions, useThreadList, type Thread } from "./thread";
 import { Schedule } from "./Schedule";
@@ -149,81 +149,6 @@ import { handleHint } from './hint'
  */
 const MAX_ANON_TURNS = 3;
 
-function extractWritingTurn(text: string): string | null {
-  const trimmed = text.trim();
-  if (!trimmed) return null;
-  const fenced = trimmed.match(/^```(?:writing|markdown|md|text)\s*\n([\s\S]*?)\n```\s*$/i);
-  if (fenced) return fenced[1]?.trim() || null;
-  if (!trimmed.includes("```") && trimmed.includes("\n\n")) return trimmed;
-  return null;
-}
-
-function WritingCard({
-  text,
-  label,
-  copyLabel,
-  copiedLabel,
-}: {
-  text: string;
-  label: string;
-  copyLabel: string;
-  copiedLabel: string;
-}) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <YStack
-      data-slot="writing-card"
-      width="100%"
-      rounded={14}
-      borderWidth={1}
-      borderColor="var(--writing-border, var(--border-strong))"
-      overflow="hidden"
-    >
-      <XStack
-        data-slot="writing-head"
-        height={36}
-        px={16}
-        items="center"
-        justify="space-between"
-        bg="var(--writing-head-bg, var(--surface-3))"
-        borderBottomWidth={1}
-        borderColor="var(--writing-divider, var(--border))"
-      >
-        <Text fontSize={12} lineHeight={16} fontWeight="500" color="var(--shell-section-fg, var(--muted-foreground))">
-          {label}
-        </Text>
-        <Box
-          render="button"
-          data-slot="writing-copy"
-          aria-label={copied ? copiedLabel : copyLabel}
-          title={copied ? copiedLabel : copyLabel}
-          width={26}
-          height={26}
-          rounded={6}
-          items="center"
-          justify="center"
-          cursor="pointer"
-          hoverStyle={{ bg: "$hover" }}
-          onClick={() => {
-            void navigator.clipboard?.writeText(text).then(() => {
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1600);
-            });
-          }}
-        >
-          {copied ? (
-            <Check size={14} color="var(--foreground)" aria-hidden />
-          ) : (
-            <Copy size={14} color="var(--shell-section-fg, var(--muted-foreground))" aria-hidden />
-          )}
-        </Box>
-      </XStack>
-      <YStack px={18} py={16} bg="var(--writing-body-bg, var(--surface-2))">
-        <Prose text={text} />
-      </YStack>
-    </YStack>
-  );
-}
 
 function synthesizeAnonReply(prompt: string): string {
   const q = prompt.trim();
@@ -2247,14 +2172,14 @@ function Thread({
             <CircleAlert
               size={14}
               strokeWidth={1.9}
-              color={chatPrefs.approvalMode === "manual" ? "var(--shell-section-fg, var(--muted-foreground))" : "var(--composer-full-access, var(--art-ember))"}
+              color={chatPrefs.approvalMode === "manual" ? "var(--muted-foreground)" : "var(--foreground)"}
               aria-hidden
             />
             <Text
               fontSize={12.5}
               lineHeight={16}
               fontWeight="500"
-              color={chatPrefs.approvalMode === "manual" ? "var(--shell-section-fg, var(--muted-foreground))" : "var(--composer-full-access, var(--art-ember))"}
+              color={chatPrefs.approvalMode === "manual" ? "var(--muted-foreground)" : "var(--foreground)"}
               numberOfLines={1}
             >
               {chatPrefs.approvalMode === "manual" ? t("Manual approval") : t("Full access")}
@@ -2276,7 +2201,7 @@ function Thread({
               limits={limits}
               onUpgrade={(id) => setAsk({ model: nameOf(id, listed) } as Ask)}
             />
-            <ChevronDown size={12} color="var(--shell-section-fg, var(--muted-foreground))" aria-hidden />
+            <ChevronDown size={12} color="var(--muted-foreground)" aria-hidden />
           </XStack>
         </XStack>
       ),
@@ -2935,25 +2860,6 @@ function Thread({
       </XStack>
       )}
 
-      {/* Docked top-right Outputs / Sources card on desktop when the side panel is closed. */}
-      {!panel && !anonymous ? (
-        <Box
-          data-slot="context-card-dock"
-          display="none"
-          $xl={{ display: "flex" }}
-          position="absolute"
-          t={12}
-          r={16}
-          z={4}
-        >
-          <ContextCard
-            at={at}
-            sections={sections}
-            onCreate={create}
-            onOpenPanel={() => setPanel(true)}
-          />
-        </Box>
-      ) : null}
 
       {/* The frame owns the column on a laptop; this is what Chat puts in it.
           On a phone the panel is a sheet over the pane instead. */}
@@ -3093,26 +2999,16 @@ function Thread({
                 </YStack>
               );
             }
-            const writingBody = turn.role === "assistant" && said ? extractWritingTurn(said) : null;
             return (
               <YStack gap="$1.5" data-turn-id={String(turn.id)} data-turn-role={turn.role}>
-                {writingBody ? (
-                  <WritingCard
-                    text={writingBody}
-                    label={t("Writing")}
-                    copyLabel={t("Copy")}
-                    copiedLabel={t("Copied")}
-                  />
-                ) : (
-                  <Prose text={said} />
-                )}
+                <Prose text={said} />
                 {/* UNDER AN ANSWER, the row Dev's answers have too (@hanzo/build
                     `Reply`): copy the markdown as written, listen in the
                     speaker's voice, and open what it wrote in the side panel.
                     Only an answer, and only one with words in it. */}
                 {turn.role === "assistant" && said ? (
                   <Reply
-                    text={writingBody ?? said}
+                    text={said}
                     title={shownTitle}
                     listen={listen(withWhom ?? undefined)}
                     onOpen={opener(said)}

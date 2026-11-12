@@ -88,7 +88,7 @@ export const where = (): Addresses => addresses
 /** The product's name, as the host states it. Read at call time, like every address. */
 export const brand = (): string => addresses.brand ?? 'Hanzo'
 
-/** The product's name in each mode of the app: the host's brand in Chat (Hanzo), and the section's own name elsewhere (Dev, Design, Studio, Flow, Tabs, Betas). */
+/** The product's name in each mode of the app, the section the reader is in: Chat, Dev, Design, Studio, Flow, Tabs, Betas. */
 export const wordmark = (mode: 'chat' | 'dev' | 'studio' | 'design' | 'flow' | 'tabs' | 'beta' | 'hosted'): string =>
   mode === 'dev'
     ? 'Dev'
@@ -102,7 +102,9 @@ export const wordmark = (mode: 'chat' | 'dev' | 'studio' | 'design' | 'flow' | '
             ? 'Tabs'
             : mode === 'beta'
               ? 'Betas'
-              : brand()
+              : mode === 'chat'
+                ? 'Chat'
+                : brand()
 
 /** A page of the app's own, from wherever the apps are mounted. */
 export const site = (path: string): string => `${addresses.site}${path}`

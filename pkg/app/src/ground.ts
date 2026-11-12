@@ -32,7 +32,7 @@ export const BAND = 52
  * top, left, right"). A thumb's mark is 44 on a touch screen, and the rows grow
  * with it (`TOUCH_HEAD`).
  */
-export const HEAD = 36
+export const HEAD = 40
 export const TOUCH_HEAD = 44
 
 /**
@@ -41,7 +41,7 @@ export const TOUCH_HEAD = 44
  * mark from the pane's end edge, so the two top corners mirror each other
  * (owner, 2026-10-30: "top left / top right").
  */
-export const INSET = 22
+export const INSET = 28
 
 /**
  * A row INSIDE a pane shares the height of the row it lines up with.
@@ -50,8 +50,9 @@ export const inPane = (row: number): number => row
 
 /**
  * THE FLOOR under the app's frame (app/_web.tsx, components/settings/Frame.tsx):
- * clean minimal dark ground without a 3D top glass gradient.
+ * the ground colour with `--pane-ground`, the host's soft radial light, on it.
  */
 export const floor = {
   backgroundColor: 'var(--pane-floor)',
+  backgroundImage: 'var(--pane-ground)',
 } as const

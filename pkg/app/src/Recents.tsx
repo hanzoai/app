@@ -362,7 +362,7 @@ function List({
           width={6}
           height={6}
           rounded={999}
-          bg="var(--shell-unread-dot, var(--art-tide))"
+          bg="var(--foreground)"
           aria-hidden
         />
       ) : undefined
@@ -386,7 +386,7 @@ function List({
         <SizableText
           fontSize={13}
           lineHeight={18}
-          color={open(r) ? 'var(--shell-row-active-fg, var(--text-primary))' : 'var(--shell-row-fg, var(--foreground))'}
+          color={open(r) ? 'var(--text-primary)' : 'var(--foreground)'}
           numberOfLines={1}
           display="block"
         >
@@ -448,7 +448,7 @@ function List({
   const heading = (title: string, id?: string, lead = false) => (
     <XStack group items="center" justify="space-between" height={26} paddingInlineStart="$2" paddingInlineEnd="$1" mt="$2.5" shrink={0}>
       <XStack items="center" gap="$2">
-        <SizableText id={id} fontSize={11.5} lineHeight={16} fontWeight="500" color="var(--shell-section-fg, var(--muted-foreground))">
+        <SizableText id={id} fontSize={11.5} lineHeight={16} fontWeight="500" color="var(--muted-foreground)">
           {title}
         </SizableText>
         {lead && running ? (

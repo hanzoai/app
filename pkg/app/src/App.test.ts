@@ -44,7 +44,7 @@ vi.mock('./dev', () => ({ isPlans: () => false, leave: () => {}, useDevHost: () 
 vi.mock('./Gate', () => ({ Gate: through }))
 vi.mock('./host', () => ({ useHost: () => ({ router: { back: () => {}, forward: () => {}, push: () => {} }, path: state.path }) }))
 vi.mock('./kept', () => ({ useKept: () => [false, () => {}] }))
-vi.mock('./Rail', () => ({ Mark: () => null, raised: () => null, Rail: stub('rail'), Toggle: () => null }))
+vi.mock('./Rail', () => ({ Mark: () => null, raised: () => null, Rail: stub('rail'), RAIL: 56, Toggle: () => null }))
 vi.mock('./Drawer', () => ({
   Foot: () => null,
   Layer: stub('drawer'),

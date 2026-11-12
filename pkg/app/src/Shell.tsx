@@ -1636,7 +1636,7 @@ const CEIL = 480
 /** Per-reader, per-browser. A width that resets is a width you set every load. */
 const SPAN = "hanzo.sidebar.span"
 /** The shell's sidebar: its default width, px. */
-const SIDEBAR_WIDTH = 240
+const SIDEBAR_WIDTH = 280
 
 /**
  * Where an app's own column goes, when it has one.
@@ -1900,10 +1900,9 @@ function Rail({
       {...sheet(0)}
       gridArea="rail"
       minH={0}
-      bg="var(--shell-rail-bg, var(--secondary))"
       borderInlineEndWidth={1}
       borderInlineEndStyle="solid"
-      borderColor="var(--shell-rail-border, var(--border))"
+      borderColor="var(--edge, var(--white-06))"
       $max-md={{
         flexDirection: "row",
         items: "center",
@@ -2411,8 +2410,7 @@ function Frame({
       // The kit draws the sidebar's edge on its right, a physical side, so the edge is
       // traded here: the left in a right-to-left language, where the sidebar stands at the right.
       {...(dir === "rtl" ? { borderRightWidth: 0, borderLeftWidth: 1 } : { borderRightWidth: 1 })}
-      bg="var(--shell-sidebar-bg, var(--surface-2))"
-      borderColor="var(--shell-sidebar-border, var(--border))"
+      borderColor="var(--edge, var(--white-06))"
       position="relative"
     >
       <Gutter
@@ -2663,12 +2661,12 @@ function Frame({
       data-hydrated={settled ? "true" : undefined}
       data-sidebar={asked ? "open" : "shut"}
       display="grid"
-      gridTemplateColumns="44px auto minmax(0, 1fr) auto"
-      gridTemplateRows="38px minmax(0, 1fr)"
+      gridTemplateColumns="64px auto minmax(0, 1fr) auto"
+      gridTemplateRows="56px minmax(0, 1fr)"
       gridTemplateAreas={'"bar bar bar bar" "rail list pane side"'}
       $max-md={{
         gridTemplateColumns: "minmax(0, 1fr)",
-        gridTemplateRows: `44px minmax(0, 1fr) ${TABS_HEIGHT}`,
+        gridTemplateRows: `56px minmax(0, 1fr) ${TABS_HEIGHT}`,
         gridTemplateAreas: '"bar" "pane" "rail"',
       }}
       position="relative"
@@ -2694,9 +2692,6 @@ function Frame({
           onMouseDown={dragWindow}
           onDoubleClick={toggleWindowMaximize}
           shrink={0}
-          bg="var(--shell-bar-bg, var(--secondary))"
-          borderBottomWidth={1}
-          borderColor="var(--shell-bar-border, var(--border))"
         >
           <BusinessHeader
             appId={onApex ? (mode === "dev" ? "dev" : "chat") : "team"}
@@ -2915,7 +2910,7 @@ function Frame({
           {...scrim}
           data-slot="scrim"
           position="absolute"
-          t={38}
+          t={56}
           r={0}
           b={TABS_HEIGHT}
           l={0}
@@ -2931,11 +2926,11 @@ function Frame({
           gridArea="list"
           position={asked ? "relative" : "absolute"}
           // Peeking, it stands past the rail, which is at the start edge.
-          {...(asked ? {} : { top: 38, bottom: 0, insetInlineStart: 44 })}
+          {...(asked ? {} : { top: 56, bottom: 0, insetInlineStart: 64 })}
           // A phone's list is a sheet between the bar and the tab bar.
-          $max-md={{ position: "fixed", t: 44, r: 0, b: TABS_HEIGHT, l: 0, width: "100%" }}
+          $max-md={{ position: "fixed", t: 56, r: 0, b: TABS_HEIGHT, l: 0, width: "100%" }}
           z="var(--z-drawer)"
-          bg="var(--shell-sidebar-bg, var(--surface-2))"
+          bg="$background"
           onMouseEnter={() => setPeeking(true)}
           onMouseLeave={() => {
             if (!asked) setPeeking(false);

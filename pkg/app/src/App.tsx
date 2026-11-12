@@ -78,7 +78,7 @@ import { isPlans, leave, useDevHost } from './dev'
 import { Gate } from './Gate'
 import { useHost } from './host'
 import { useKept } from './kept'
-import { Mark, raised, Rail, Toggle } from './Rail'
+import { Mark, raised, Rail, RAIL, Toggle } from './Rail'
 import { Layer, Lift, useDrawer } from './Drawer'
 import { empty, openThread, showSettings, useOpen } from './open'
 import { Split } from './Shell'
@@ -144,8 +144,8 @@ export interface Hosted {
   betas?: React.ReactNode
 }
 
-/** The bar's height, px: the reference window's 38px top chrome bar. */
-const BAR = 38
+/** The bar's height, px: a thin top bar on the ground. */
+const BAR = 44
 
 /** Where each mode was last, so the rail goes back to it. */
 const last = { chat: '', dev: '', studio: '', design: '', flow: '', tabs: '' }
@@ -385,7 +385,7 @@ function Window({ bar, betas }: Hosted) {
         <YStack
           ref={windowRef}
           data-slot="window"
-          {...(bar ? floor : null)}
+          {...floor}
           flex={1}
           minW={0}
           height={bar ? '100%' : '100dvh'}
@@ -400,9 +400,6 @@ function Window({ bar, betas }: Hosted) {
             height={BAR}
             shrink={0}
             items="center"
-            bg="var(--shell-bar-bg, var(--secondary))"
-            borderBottomWidth={1}
-            borderColor="var(--shell-bar-border, var(--border))"
             $max-md={bar ? undefined : { display: 'none' }}
             onMouseDown={bar ? dragWindow : undefined}
             onDoubleClick={bar ? toggleWindowMaximize : undefined}
@@ -416,9 +413,7 @@ function Window({ bar, betas }: Hosted) {
               pl={(bar?.inset ?? 0) + 8}
               pr={8}
               shrink={0}
-              width={closed ? 44 : ('calc(44px + var(--app-sidebar-span, 240px))' as never)}
-              borderRightWidth={closed ? 0 : 1}
-              borderColor="var(--shell-bar-border, var(--border))"
+              width={closed ? RAIL : (`calc(${RAIL}px + var(--app-sidebar-span, 280px))` as never)}
               {...(bar?.drag ?? null)}
             >
               <XStack $md={{ display: 'none' }}>
@@ -451,21 +446,6 @@ function Window({ bar, betas }: Hosted) {
                 <Text fontSize={13} lineHeight={18} fontWeight="500" color="$ink" numberOfLines={1}>
                   {mode === 'chat' ? '' : mode === 'dev' ? 'Dev' : mode === 'studio' ? 'Studio' : mode === 'design' ? 'Design' : mode === 'flow' ? 'Flow' : mode === 'tabs' ? 'Tabs' : ''}
                 </Text>
-                <XStack items="center" gap={2} data-tauri-drag-region="false">
-                  <Mark
-                    label={mode === 'dev' ? t('New run') : t('New chat')}
-                    data-slot="titlebar-new"
-                    onPress={() => {
-                      if (mode === 'dev') host.go('')
-                      else {
-                        empty()
-                        move(talk())
-                      }
-                    }}
-                  >
-                    {mode === 'dev' ? <MARKS.dev.make size={15} aria-hidden /> : <MARKS.chat.make size={15} aria-hidden />}
-                  </Mark>
-                </XStack>
               </XStack>
               {bar ? (
                 bar.controls !== undefined ? (
@@ -480,7 +460,7 @@ function Window({ bar, betas }: Hosted) {
             ref={drawer.pane}
             data-app={mode}
             data-slot="frame"
-            {...(bar ? null : floor)}
+            bg="transparent"
             // While a phone's drawer is out the pane is raised over it, sliding toward the end side.
             {...drawer.slide}
             flex={1}
@@ -492,7 +472,7 @@ function Window({ bar, betas }: Hosted) {
             pt={bar ? 0 : 'var(--pane-gap)'}
             // A phone's frame is full-bleed on the floor, which follows the theme,
             // so the top of the page the browser's bar tints from does too.
-            $max-md={{ p: 0 }}
+            $max-md={{ p: 0, bg: 'var(--pane-floor)' }}
           >
             {drawer.slide ? <Lift /> : null}
             <YStack height="100%" position="relative" $max-md={{ display: 'none' }}>

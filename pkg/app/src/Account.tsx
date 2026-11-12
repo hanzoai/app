@@ -200,16 +200,16 @@ export function Face({ host, size = 28 }: { host: Who; size?: number }) {
       rounded={9999}
       items="center"
       justify="center"
-      bg={p?.avatar ? '$raised' : 'var(--shell-avatar-bg, var(--art-ember))'}
+      bg="$raised"
       overflow="hidden"
       shrink={0}
-      borderWidth={p?.avatar ? 1 : 0}
+      borderWidth={1}
       borderColor="$borderColor"
     >
       {p?.avatar ? (
         <img src={p.avatar} alt="" width={size} height={size} />
       ) : (
-        <SizableText fontSize={Math.max(10, Math.round(size * 0.39))} lineHeight={size} fontWeight="600" color="var(--pure-white)">
+        <SizableText fontSize={Math.max(10, Math.round(size * 0.39))} lineHeight={size} fontWeight="600" color="$ink">
           {initials(p?.name || p?.email || '')}
         </SizableText>
       )}
