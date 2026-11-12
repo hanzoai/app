@@ -33,7 +33,7 @@ minimumReleaseAge: 0
 catalog:
   '@hanzo/ai': 0.7.0
   '@hanzo/appearance': 0.2.14
-  '@hanzo/build': 0.2.120
+  '@hanzo/build': 0.2.123
   '@hanzo/composer': 0.2.0
   '@hanzo/design': 0.5.39
   '@hanzo/event': 0.3.56
