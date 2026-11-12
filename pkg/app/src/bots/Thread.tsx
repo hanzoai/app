@@ -270,7 +270,7 @@ export function Thread({
               return (
                 <YStack
                   key={line.key}
-                  data-parity-key="bots.theirs"
+                  data-parity-key={line.kind === 'other' ? 'bots.other' : 'bots.theirs'}
                   self="flex-start"
                   maxW={560}
                   mt={gap}
@@ -282,7 +282,7 @@ export function Thread({
                   borderColor={LINE}
                   $max-md={{ maxW: '88%' }}
                 >
-                  {line.failed ? (
+                  {line.kind === 'theirs' && line.failed ? (
                     <Text fontSize={15} lineHeight={22} color={DIM}>
                       {line.text}
                     </Text>
@@ -422,7 +422,7 @@ export function Thread({
                   {(state) => <Mic size={15} fill={state === 'idle' ? 'none' : 'currentColor'} />}
                 </Voice>
               </Control>
-              <Control type="submit" aria-label={t('Send')} fill disabled={!draft.trim() || !live || Boolean(pending)}>
+              <Control type="submit" aria-label={t('Send')} fill disabled={!(draft.trim() || file) || !live || Boolean(pending)}>
                 <ArrowUp size={15} strokeWidth={2.5} />
               </Control>
             </XStack>

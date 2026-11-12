@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Agent, AgentRun } from '@hanzo/ai'
 import { lines } from './said'
 import { GRID, lastWord, split } from './grid'
-import { nextWeek, recordedRun, refusal } from './refusal'
+import { nextPeriod, nextWeek, recordedRun, refusal } from './refusal'
 import { compose, fence, fits, MAX, texty } from './carry'
 
 const t = (s: string, v?: Record<string, unknown>) => s.replace(/\{(\w+)\}/g, (_, k) => String(v?.[k] ?? ''))
@@ -44,7 +44,7 @@ describe('the thread', () => {
       { id: 'a', status: 'ok', input: 'post it', output: 'posted', actor: 'acme/agt_dev', createdAt: at('2026-11-12T11:00:00') },
     ]
     const said = lines(runs, bots, 'Mark', null, NOW, 'en-US', t)
-    expect(said.map((l) => l.kind)).toEqual(['stamp', 'from', 'theirs', 'theirs'])
+    expect(said.map((l) => l.kind)).toEqual(['stamp', 'from', 'other', 'theirs'])
     expect(said[1]).toMatchObject({ kind: 'from', bot: { name: 'Dev' } })
     expect(said[2]).toMatchObject({ text: 'post it' })
   })
@@ -128,6 +128,12 @@ describe('a refusal about money', () => {
     })
     const no = refusal(e, 'Mark', Date.UTC(2026, 10, 12, 19, 30), t)
     expect(no).toEqual({ message: 'Mark has spent this week’s budget.', resets: '2026-11-16T00:00:00.000Z', actions: [] })
+  })
+
+  it('says a daily or monthly budget by its own period', () => {
+    const e = Object.assign(new Error('402'), { status: 402, body: { code: 'budget_exceeded' } })
+    expect(refusal(e, 'Mark', Date.UTC(2026, 10, 12, 19, 30), t, 'month')).toEqual({ message: 'Mark has spent this month’s budget.', resets: '2026-12-01T00:00:00.000Z', actions: [] })
+    expect(nextPeriod(Date.UTC(2026, 10, 12, 19, 30), 'day')).toBe('2026-11-13T00:00:00.000Z')
   })
 
   it('counts a week from Monday 00:00 UTC, and a Monday as the start of the next', () => {

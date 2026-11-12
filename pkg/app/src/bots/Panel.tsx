@@ -15,7 +15,7 @@ import { say } from '../failure'
 import { Network, of } from '../network'
 import { Face } from './face'
 import { ALWAYS, answering, disk, grant } from './api'
-import { CARD, CLIP, LABEL, ROUND } from './kit'
+import { CARD, CLIP, LABEL, PILL, ROUND, WORD } from './kit'
 import { DIM, INK, LINE } from './ink'
 import { cron as words } from './time'
 
@@ -57,11 +57,14 @@ const POLL = 5000
 export function Panel({
   bot,
   onClose,
+  kept,
   onSchedule,
   onDelete,
   focus = false,
 }: {
   bot: Agent
+  /** The schedule this page last saw for the bot, kept by the app across panels. */
+  kept: string
   onClose: () => void
   onSchedule: (on: boolean, cron: string) => Promise<void>
   onDelete: () => Promise<void>
@@ -78,12 +81,9 @@ export function Panel({
   const [saving, setSaving] = useState(false)
   const [wrong, setWrong] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
-  // The schedule this page last saw. The platform keeps none for a bot that runs
-  // only when asked, so a routine turned off keeps its words here to turn back on.
-  const [cron, setCron] = useState(bot.schedule ?? '')
-  useEffect(() => {
-    if (bot.schedule) setCron(bot.schedule)
-  }, [bot.schedule])
+  // The schedule on the record, else the one this page last saw for the bot (the
+  // platform keeps none for a bot that runs only when asked).
+  const cron = bot.schedule || kept
 
   const survey = useCallback(
     async (signal?: AbortSignal) => {
@@ -148,8 +148,11 @@ export function Panel({
     try {
       if (box?.status === 'running') {
         const g = await grant(client, box.id, box.class === 'desktop' ? 'screen' : 'terminal')
-        if (!tab) throw new Error(t('The browser kept the new tab from opening.'))
-        if (!g.url) throw new Error(t('The platform opened no window onto it.'))
+        if (!tab) return setWrong(t('The browser kept the new tab from opening.'))
+        if (!g.url?.startsWith('https://')) {
+          tab.close()
+          return setWrong(t('The platform opened no window onto it.'))
+        }
         tab.opener = null
         tab.location.href = g.url
       } else if (!box || box.status === 'error') {
@@ -280,18 +283,22 @@ export function Panel({
             <Button size="sm" variant="outline" rounded={999} onPress={() => setDeleting(false)}>
               {t('Cancel')}
             </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              rounded={999}
-              onPress={() => {
+            <XStack
+              {...PILL}
+              height={34}
+              bg={INK}
+              borderColor={INK}
+              hoverStyle={{ bg: INK, opacity: 0.9 }}
+              onClick={() => {
                 if (!deleting) return
                 setDeleting(false)
                 onDelete().catch((e) => setWrong(say(e, bot.name, 'save', t)))
               }}
             >
-              {t('Delete')}
-            </Button>
+              <Text {...WORD} color="var(--background)">
+                {t('Delete')}
+              </Text>
+            </XStack>
           </XStack>
         </DialogContent>
       </Dialog>

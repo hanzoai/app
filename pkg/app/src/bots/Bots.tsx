@@ -44,8 +44,10 @@ function address(name: string | null, step: boolean): void {
   if (name) url.searchParams.set(PARAM, name)
   else url.searchParams.delete(PARAM)
   const to = `${url.pathname}${url.search}${url.hash}`
-  if (step) window.history.pushState(window.history.state, '', to)
-  else window.history.replaceState(window.history.state, '', to)
+  // Null, not the current state: Next's router stamps its own entries and syncs
+  // only a write that does not carry its stamp.
+  if (step) window.history.pushState(null, '', to)
+  else window.history.replaceState(null, '', to)
 }
 
 /** The newest run of each bot, from the org's feed (newest first). */
@@ -95,6 +97,8 @@ export function Bots({
   const hosted = held !== undefined
 
   const [bots, setBots] = useState<Agent[] | null>(null)
+  // The roster has been read once, so a name it lacks is not this org's.
+  const [listed, setListed] = useState(false)
   const [feed, setFeed] = useState<AgentRun[]>([])
   const [unread, setUnread] = useState<string | null>(null)
   const [own, setOwn] = useState<string | null>(null)
@@ -132,6 +136,7 @@ export function Bots({
     if (turn !== reading.current) return
     if (list.status === 'fulfilled') {
       setBots(list.value)
+      setListed(true)
       setUnread(null)
     } else {
       setBots((b) => b ?? [])
@@ -153,11 +158,14 @@ export function Bots({
   const bot = useMemo<Agent | null>(() => (name && bots?.find((b) => b.name === name)) || null, [bots, name])
   useEffect(() => {
     if (!bots || bot) return
-    if (name && !bots.some((b) => b.name === name)) return move(null, false)
+    if (name) {
+      if (listed && !bots.some((b) => b.name === name)) move(null, false)
+      return
+    }
     if (!wide || !bots.length) return
     const recent = feed.find((r) => r.agent && bots.some((b) => b.name === r.agent))?.agent
     move(recent ?? bots[0].name, false)
-  }, [bots, bot, name, wide, feed, move])
+  }, [bots, bot, name, listed, wide, feed, move])
 
   // Whether this page stepped into the thread, so Back can step out of it.
   const stepped = useRef(false)
@@ -174,11 +182,11 @@ export function Bots({
 
   const back = useCallback(() => {
     setOver(false)
-    if (!hosted && stepped.current) {
+    if (stepped.current) {
       stepped.current = false
       window.history.back()
     } else move(null, false)
-  }, [hosted, move])
+  }, [move])
 
   // ── the open bot's thread ────────────────────────────────────────────────
   const [runs, setRuns] = useState<AgentRun[] | null>(null)
@@ -235,7 +243,7 @@ export function Bots({
       } catch (e) {
         // A thread since left: its words are not handed to the one now open.
         if (!now()) return true
-        const no = refusal(e, who, Date.now(), t)
+        const no = refusal(e, who, Date.now(), t, (bot as Agent & { period?: string }).period)
         if (no) {
           setNotice(no)
           return false
@@ -261,9 +269,13 @@ export function Bots({
    * Runs on its schedule, or only when asked. The platform keeps no schedule for
    * a bot that runs only when asked, so turning it back on states the schedule.
    */
+  // The schedule each bot last had on this page. The platform keeps none for a bot
+  // that runs only when asked, so a schedule turned off is held here to turn back on.
+  const [kept, setKept] = useState<Record<string, string>>({})
   const schedule = useCallback(
     async (on: boolean, cron: string) => {
       if (!client || !bot) return
+      setKept((k) => ({ ...k, [bot.name]: cron }))
       const saved = await client.agents.update(bot.name, on ? { executionMode: ALWAYS, schedule: cron } : { executionMode: ONCE })
       setBots((all) => (all ?? []).map((b) => (b.name === saved.name ? { ...b, ...saved, schedule: saved.schedule } : b)))
     },
@@ -276,6 +288,7 @@ export function Bots({
     await client.agents.delete(bot.name)
     setBots((all) => (all ?? []).filter((b) => b.name !== bot.name))
     setOver(false)
+    stepped.current = false
     move(null, false)
     await read()
   }, [client, bot, move, read])
@@ -305,7 +318,15 @@ export function Bots({
     setOver(false)
   }
   const panel = bot ? (
-    <Panel key={bot.name} bot={bot} onClose={close} onSchedule={schedule} onDelete={remove} focus={over && !laptop} />
+    <Panel
+      key={bot.name}
+      bot={bot}
+      kept={kept[bot.name] ?? ''}
+      onClose={close}
+      onSchedule={schedule}
+      onDelete={remove}
+      focus={over && !laptop}
+    />
   ) : null
   const shown = laptop ? side : over
 
@@ -359,7 +380,7 @@ export function Bots({
         />
       </YStack>
 
-      {side && panel ? (
+      {laptop && side && panel ? (
         <YStack
           data-parity-key="bots.panel"
           width={319}

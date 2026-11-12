@@ -16,6 +16,7 @@ export type Line =
   | { kind: 'from'; key: string; bot: Agent }
   | { kind: 'mine'; key: string; text: string }
   | { kind: 'theirs'; key: string; text: string; failed?: boolean }
+  | { kind: 'other'; key: string; text: string }
   | { kind: 'thinking'; key: string }
 
 /** The bot a run's actor names, when another bot asked for it. */
@@ -49,7 +50,7 @@ export function lines(
     const from = asker(r, bots, self)
     if (from) {
       out.push({ kind: 'from', key: `f-${r.id}`, bot: from })
-      if (r.input) out.push({ kind: 'theirs', key: `i-${r.id}`, text: r.input })
+      if (r.input) out.push({ kind: 'other', key: `i-${r.id}`, text: r.input })
     } else if (r.input) out.push({ kind: 'mine', key: `i-${r.id}`, text: r.input })
     const said = r.output || r.error
     if (said) out.push({ kind: 'theirs', key: `o-${r.id}`, text: said, failed: !r.output && Boolean(r.error) })

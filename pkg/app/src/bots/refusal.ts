@@ -22,6 +22,14 @@ export function nextWeek(now: number): string {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + ahead)).toISOString()
 }
 
+/** When a cap's period after `now` begins: calendar-aligned in UTC, as the platform counts it. */
+export function nextPeriod(now: number, period = 'week'): string {
+  const d = new Date(now)
+  if (period === 'day') return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1)).toISOString()
+  if (period === 'month') return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)).toISOString()
+  return nextWeek(now)
+}
+
 type Body = { code?: unknown; message?: unknown; resets_at?: unknown; billingUrl?: unknown }
 
 /**
@@ -30,7 +38,7 @@ type Body = { code?: unknown; message?: unknown; resets_at?: unknown; billingUrl
  * the run's 402 for an org with no balance with the credits page it names (when
  * that page is one of ours). Any other failure is not a notice.
  */
-export function refusal(e: unknown, name: string, now: number, t: Say = english): Notice | null {
+export function refusal(e: unknown, name: string, now: number, t: Say = english, period = 'week'): Notice | null {
   const no = billed(e)
   if (no) return { message: no.message || say(e, t('your message to {name}', { name }), 'save', t), resets: no.resets_at, actions: no.actions }
   const status = (e as { status?: unknown } | null)?.status
@@ -38,7 +46,13 @@ export function refusal(e: unknown, name: string, now: number, t: Say = english)
   const raw = (e as { body?: { error?: unknown; code?: unknown } } | null)?.body
   const body: Body = raw && typeof raw.error === 'object' && raw.error ? (raw.error as Body) : (raw as Body) ?? {}
   if (body.code === BUDGET) {
-    return { message: t('{name} has spent this week’s budget.', { name }), resets: nextWeek(now), actions: [] }
+    const spent =
+      period === 'day'
+        ? t('{name} has spent today’s budget.', { name })
+        : period === 'month'
+          ? t('{name} has spent this month’s budget.', { name })
+          : t('{name} has spent this week’s budget.', { name })
+    return { message: spent, resets: nextPeriod(now, period), actions: [] }
   }
   const url = ours(body.billingUrl)
   return {
