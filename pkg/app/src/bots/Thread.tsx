@@ -1,11 +1,8 @@
 'use client'
 
-// The thread with the open bot: its pill and Share in the bar, what was said
-// with a stamp wherever the conversation paused, and the composer.
-//
-// A message is a run the platform recorded: your words are its input, the bot's
-// its output (or the error its model returned). A run another bot asked for is
-// marked as that bot's message. Nothing here is drawn that the runs do not say.
+// The thread with the open bot: floating frosted bot pill and circular Share
+// button over the scrolling messages, structured attachment/image cards,
+// timestamps wherever the conversation paused, and the pill composer.
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import type { Agent, AgentRun } from '@hanzo/ai'
@@ -16,22 +13,55 @@ import { Text, XStack, YStack } from '@hanzo/gui'
 import { Caret } from '@hanzo/ui/chat'
 import { Composer, Control, Field } from '@hanzo/composer'
 import { speech, useDictation, useVoice, Voice } from '@hanzo/voice'
-import { ArrowLeft, ArrowUp, Gauge, Mic, Plus, X } from 'lucide-react'
+import { ArrowLeft, ArrowUp, AudioLines, Check, Gauge, Mic, Plus, Share, X } from 'lucide-react'
 import { base } from '../lib/ai'
 import { Prose } from '../Prose'
+import { called } from '../team'
 import { Face } from './face'
 import { CLIP, PILL, ROUND, WORD } from './kit'
-import { DIM, EDGE, INK, LINE, MINE, RAISED } from './ink'
+import { DIM, EDGE, GROUND, INK, LINE, MINE, RAISED } from './ink'
 import { instant } from './time'
-import { lines, type Pending } from './said'
+import { lines, partsOf, type Pending } from './said'
 import { compose, fits, MAX, texty, type File } from './carry'
 import { PARAM } from './api'
 import type { Notice } from './refusal'
 
-
 /** The widest a conversation reads, as the desktop app draws it. */
-const MEASURE = 960
+const MEASURE = 900
 
+function DocBadge({ ext }: { ext: string }) {
+  const accent =
+    ext === 'pdf'
+      ? 'var(--destructive)'
+      : ext === 'ppt' || ext === 'pptx'
+        ? 'var(--warning, var(--chrome-dot-yellow))'
+        : 'var(--info, var(--muted-foreground))'
+  return (
+    <YStack
+      aria-hidden
+      width={40}
+      height={44}
+      shrink={0}
+      rounded={9}
+      overflow="hidden"
+      bg="var(--secondary)"
+      borderWidth={1}
+      borderColor={LINE}
+    >
+      <YStack flex={1} px={7} pt={7} gap={4} justify="center">
+        <XStack gap={3}>
+          <YStack width={9} height={9} rounded={2} bg="var(--muted-foreground)" opacity={0.4} />
+          <YStack flex={1} gap={3} justify="center">
+            <YStack height={3} rounded={2} bg="var(--muted-foreground)" opacity={0.4} />
+            <YStack height={3} width="75%" rounded={2} bg="var(--muted-foreground)" opacity={0.3} />
+          </YStack>
+        </XStack>
+        <YStack height={3} rounded={2} bg="var(--muted-foreground)" opacity={0.34} />
+      </YStack>
+      <YStack height={12} bg={accent} />
+    </YStack>
+  )
+}
 
 /** "It resets in 3 days." from the instant a refusal lifts, in the reader's calendar days. */
 function lifts(iso: string | null, now: number, t: (s: string, v?: Record<string, unknown>) => string): string {
@@ -69,7 +99,6 @@ export function Thread({
   wrong: string | null
   side: boolean
   live: boolean
-  /** The roster has answered, so an empty one is an empty org and not a slow one. */
   loaded: boolean
   onSend: (input: string) => Promise<boolean>
   onDismiss: () => void
@@ -85,8 +114,6 @@ export function Thread({
   const foot = useRef<HTMLDivElement>(null)
   const pick = useRef<HTMLInputElement>(null)
 
-  // Dictation through Hanzo's own ear, as Chat's composer does: each pause is
-  // transcribed and lands after what the draft already held.
   const { token } = useIamToken()
   const ear = useMemo(() => speech({ ...base(), ...(token ? { token } : {}) }), [token])
   const voice = useVoice({ speech: ear, ...useDictation(draft, setDraft) })
@@ -94,7 +121,6 @@ export function Thread({
   const now = Date.now()
   const said = useMemo(
     () => (bot ? lines(runs ?? [], bots, bot.name, pending, now, locale, t) : []),
-    // `now` moves every render; the stamps only need it when the thread does.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [bot, runs, bots, pending, locale, t],
   )
@@ -109,7 +135,8 @@ export function Thread({
     setNote(null)
   }, [bot?.name])
 
-  /** The address of this bot's conversation, whatever the address bar says now. */
+  const displayName = bot ? called(bot.name) : ''
+
   const share = async () => {
     if (!bot) return
     const url = new URL(window.location.href)
@@ -117,18 +144,16 @@ export function Thread({
     const link = url.toString()
     const nav = navigator as Navigator & { share?: (d: { url: string; title?: string }) => Promise<void> }
     try {
-      if (nav.share && window.matchMedia('(pointer: coarse)').matches) await nav.share({ url: link, title: bot.name })
+      if (nav.share && window.matchMedia('(pointer: coarse)').matches) await nav.share({ url: link, title: displayName })
       else await navigator.clipboard.writeText(link)
       setShared(t('Link copied'))
     } catch (e) {
-      // A share the reader closed is not a failure; a copy the browser refused is.
       if ((e as { name?: string } | null)?.name === 'AbortError') return
       setShared(t('Copy failed'))
     }
     window.setTimeout(() => setShared(null), 2000)
   }
 
-  // A text file goes with the message, held beside the draft until it is sent.
   const carry = async (picked: globalThis.File) => {
     setNote(null)
     try {
@@ -149,43 +174,77 @@ export function Thread({
     setDraft('')
     setFile(null)
     setNote(null)
-    void onSend(input).then((said) => {
-      // Not recorded: the words and the file come back, unless something new is there.
-      if (said) return
+    void onSend(input).then((ok) => {
+      if (ok) return
       setDraft((d) => d || words)
       setFile((f) => f ?? held)
     })
   }
 
+  const hasDraft = Boolean(draft.trim() || file)
+
   return (
     <YStack flex={1} minH={0} position="relative">
-      <XStack data-parity-key="bots.bar" height={58} shrink={0} px={13} items="center" gap={8}>
+      <XStack
+        data-parity-key="bots.bar"
+        position="absolute"
+        t={0}
+        l={0}
+        r={0}
+        z={4}
+        height={58}
+        px={14}
+        items="center"
+        gap={8}
+        pointerEvents="none"
+        $platform-web={{
+          backgroundImage: `linear-gradient(to bottom, ${GROUND} 18%, color-mix(in srgb, ${GROUND} 68%, transparent) 64%, transparent)`,
+        }}
+      >
         <XStack flex={1} minW={0} items="center">
-          <XStack {...ROUND} aria-label={t('All bots')} onClick={onBack} display="none" $max-md={{ display: 'flex' }}>
+          <XStack
+            {...ROUND}
+            pointerEvents="auto"
+            aria-label={t('All bots')}
+            onClick={onBack}
+            display="none"
+            $max-md={{ display: 'flex' }}
+          >
             <ArrowLeft size={16} color={INK} aria-hidden data-i18n-mirror />
           </XStack>
         </XStack>
         {bot ? (
           <XStack
             {...PILL}
+            pointerEvents="auto"
             data-parity-key="bots.pill"
-            aria-label={t('{name}’s details', { name: bot.name })}
+            aria-label={t('{name}’s details', { name: displayName })}
             aria-expanded={side}
             onClick={onSide}
-            height={40}
-            pl={7}
+            height={36}
+            pl={6}
+            pr={13}
             maxW="60%"
+            bg={RAISED}
+            $platform-web={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
           >
             <Face bot={bot} size={24} />
             <Text {...WORD} {...CLIP}>
-              {bot.name}
+              {displayName}
             </Text>
           </XStack>
         ) : null}
         <XStack flex={1} minW={0} items="center" justify="flex-end">
           {bot ? (
-            <XStack {...PILL} data-parity-key="bots.share" px={15} onClick={share}>
-              <Text {...WORD}>{shared ?? t('Share')}</Text>
+            <XStack
+              {...ROUND}
+              pointerEvents="auto"
+              data-parity-key="bots.share"
+              aria-label={shared ?? t('Share')}
+              onClick={share}
+              $platform-web={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
+            >
+              {shared ? <Check size={15} color={INK} aria-hidden /> : <Share size={15} color={INK} aria-hidden />}
             </XStack>
           ) : null}
         </XStack>
@@ -206,25 +265,25 @@ export function Thread({
         </YStack>
       ) : (
         <YStack data-parity-key="bots.thread" flex={1} minH={0} overflowY="auto" overflowX="hidden">
-          <YStack width="100%" maxW={MEASURE + 48} mx="auto" px={24} pt={12} pb={16} $max-md={{ px: 12 }}>
+          <YStack width="100%" maxW={MEASURE + 48} mx="auto" px={24} pt={64} pb={18} $max-md={{ px: 12 }}>
             {said.map((line, i) => {
               const prev = said[i - 1]
-              const gap = !prev ? 0 : line.kind === prev.kind && (line.kind === 'mine' || line.kind === 'theirs') ? 3 : 16
+              const gap = !prev ? 0 : line.kind === prev.kind && (line.kind === 'mine' || line.kind === 'theirs') ? 6 : 16
               if (line.kind === 'stamp')
                 return (
-                  <Text key={line.key} self="center" mt={i ? 22 : 8} mb={2} fontSize={13} lineHeight={18} color={DIM}>
+                  <Text key={line.key} self="center" mt={i ? 22 : 6} mb={4} fontSize={12} lineHeight={17} color={DIM}>
                     {line.text}
                   </Text>
                 )
               if (line.kind === 'from')
                 return (
                   <XStack key={line.key} self="center" mt={gap} items="center" gap={6}>
-                    <Text fontSize={13} lineHeight={18} color={DIM}>
+                    <Text fontSize={12} lineHeight={17} color={DIM}>
                       {t('Message from')}
                     </Text>
                     <Face bot={line.bot} size={16} />
-                    <Text fontSize={13} lineHeight={18} color={DIM}>
-                      {line.bot.name}
+                    <Text fontSize={12} lineHeight={17} color={DIM}>
+                      {called(line.bot.name)}
                     </Text>
                   </XStack>
                 )
@@ -234,8 +293,8 @@ export function Thread({
                     <Text
                       data-parity-key="bots.mine"
                       render="div"
-                      px={12}
-                      py={7}
+                      px={14}
+                      py={8}
                       rounded={18}
                       fontSize={15}
                       lineHeight={22}
@@ -253,7 +312,7 @@ export function Thread({
                     key={line.key}
                     data-parity-key="bots.thinking"
                     role="status"
-                    aria-label={t('{name} is working', { name: bot.name })}
+                    aria-label={t('{name} is working', { name: displayName })}
                     self="flex-start"
                     mt={gap}
                     px={14}
@@ -267,28 +326,111 @@ export function Thread({
                     <Caret />
                   </XStack>
                 )
+
+              if (line.kind === 'theirs' && line.failed)
+                return (
+                  <YStack
+                    key={line.key}
+                    data-parity-key="bots.theirs"
+                    self="flex-start"
+                    maxW={520}
+                    mt={gap}
+                    px={15}
+                    py={11}
+                    rounded={18}
+                    bg={RAISED}
+                    borderWidth={1}
+                    borderColor={LINE}
+                    $max-md={{ maxW: '88%' }}
+                  >
+                    <Text fontSize={15} lineHeight={22} color={DIM}>
+                      {line.text}
+                    </Text>
+                  </YStack>
+                )
+
+              const parts = partsOf(line.text)
               return (
                 <YStack
                   key={line.key}
                   data-parity-key={line.kind === 'other' ? 'bots.other' : 'bots.theirs'}
                   self="flex-start"
-                  maxW={560}
+                  items="flex-start"
+                  gap={10}
+                  maxW="100%"
                   mt={gap}
-                  px={12}
-                  py={10}
-                  rounded={16}
-                  bg={RAISED}
-                  borderWidth={1}
-                  borderColor={LINE}
-                  $max-md={{ maxW: '88%' }}
                 >
-                  {line.kind === 'theirs' && line.failed ? (
-                    <Text fontSize={15} lineHeight={22} color={DIM}>
-                      {line.text}
-                    </Text>
-                  ) : (
-                    <Prose text={line.text} />
-                  )}
+                  {parts.map((part, idx) => {
+                    if (part.kind === 'doc') {
+                      const inner = (
+                        <XStack
+                          px={12}
+                          py={10}
+                          gap={12}
+                          items="center"
+                          rounded={16}
+                          bg={RAISED}
+                          borderWidth={1}
+                          borderColor={LINE}
+                          maxW={290}
+                        >
+                          <DocBadge ext={part.ext} />
+                          <YStack flex={1} minW={0}>
+                            <Text {...CLIP} fontSize={14} lineHeight={19} fontWeight="500" color={INK}>
+                              {part.name}
+                            </Text>
+                            {part.size ? (
+                              <Text fontSize={12} lineHeight={17} color={DIM}>
+                                {part.size}
+                              </Text>
+                            ) : null}
+                          </YStack>
+                        </XStack>
+                      )
+                      return part.href ? (
+                        <YStack
+                          key={idx}
+                          render="a"
+                          {...{ href: part.href, target: '_blank', rel: 'noopener noreferrer' }}
+                          $platform-web={{ textDecoration: 'none' }}
+                        >
+                          {inner}
+                        </YStack>
+                      ) : (
+                        <YStack key={idx}>{inner}</YStack>
+                      )
+                    }
+                    if (part.kind === 'image') {
+                      return (
+                        <YStack
+                          key={idx}
+                          width={172}
+                          rounded={14}
+                          overflow="hidden"
+                          bg={RAISED}
+                          borderWidth={1}
+                          borderColor={LINE}
+                        >
+                          <YStack render="img" {...{ src: part.src, alt: part.alt }} width="100%" height="auto" display="block" />
+                        </YStack>
+                      )
+                    }
+                    return (
+                      <YStack
+                        key={idx}
+                        maxW={520}
+                        px={15}
+                        py={11}
+                        rounded={18}
+                        bg={RAISED}
+                        borderWidth={1}
+                        borderColor={LINE}
+                        $max-md={{ maxW: '88%' }}
+                      >
+                        <Prose text={part.text} />
+                      </YStack>
+                    )
+                  })}
                 </YStack>
               )
             })}
@@ -303,7 +445,7 @@ export function Thread({
       )}
 
       {bot ? (
-        <YStack width="100%" maxW={MEASURE + 48} mx="auto" px={24} pb={15} gap={8} shrink={0} $max-md={{ px: 8, pb: 8 }}>
+        <YStack width="100%" maxW={MEASURE + 48} mx="auto" px={20} pb={14} gap={8} shrink={0} $max-md={{ px: 8, pb: 8 }}>
           {notice ? (
             <YStack
               data-parity-key="bots.notice"
@@ -388,9 +530,9 @@ export function Thread({
           >
             <XStack
               data-parity-key="bots.composer"
-              height={44}
-              pl={6}
-              pr={6}
+              height={46}
+              pl={7}
+              pr={7}
               gap={6}
               items="center"
               rounded={999}
@@ -411,8 +553,8 @@ export function Thread({
                     submit()
                   }
                 }}
-                placeholder={t('Message {name}', { name: bot.name })}
-                aria-label={t('Message {name}', { name: bot.name })}
+                placeholder={t('Message {name}', { name: displayName })}
+                aria-label={t('Message {name}', { name: displayName })}
                 disabled={!live}
                 fontSize={15}
                 px={4}
@@ -422,9 +564,27 @@ export function Thread({
                   {(state) => <Mic size={15} fill={state === 'idle' ? 'none' : 'currentColor'} />}
                 </Voice>
               </Control>
-              <Control type="submit" aria-label={t('Send')} fill disabled={!(draft.trim() || file) || !live || Boolean(pending)}>
-                <ArrowUp size={15} strokeWidth={2.5} />
-              </Control>
+              {hasDraft ? (
+                <Control type="submit" aria-label={t('Send')} fill disabled={!live || Boolean(pending)}>
+                  <ArrowUp size={15} strokeWidth={2.5} />
+                </Control>
+              ) : (
+                <Voice voice={voice} disabled={!live}>
+                  {() => (
+                    <XStack
+                      width={32}
+                      height={32}
+                      rounded={999}
+                      items="center"
+                      justify="center"
+                      bg={INK}
+                      opacity={live ? 1 : 0.45}
+                    >
+                      <AudioLines size={15} color="var(--background)" strokeWidth={2.2} aria-hidden />
+                    </XStack>
+                  )}
+                </Voice>
+              )}
             </XStack>
           </Composer>
           <input
@@ -440,7 +600,6 @@ export function Thread({
           />
         </YStack>
       ) : null}
-
     </YStack>
   )
 }

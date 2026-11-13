@@ -63,3 +63,73 @@ export function lines(
   return out
 }
 
+export type MessagePart =
+  | { kind: 'prose'; text: string }
+  | { kind: 'doc'; name: string; size?: string; href?: string; ext: string }
+  | { kind: 'image'; alt: string; src: string }
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)}MB`
+  if (bytes >= 1024) return `${Math.max(1, Math.round(bytes / 1024))}KB`
+  return `${bytes}B`
+}
+
+const DOC_EXT = /\.(pdf|pptx?|docx?|xlsx?|csv|zip|md|json|txt)$/i
+
+/** Splits a message into prose blocks, standalone document cards, and standalone preview images. */
+export function partsOf(raw: string): MessagePart[] {
+  const out: MessagePart[] = []
+  const prose: string[] = []
+  const flush = () => {
+    const joined = prose.join('\n').trim()
+    if (joined) out.push({ kind: 'prose', text: joined })
+    prose.length = 0
+  }
+
+  const fenceRe = /^(`{3,})([^\n`]+\.[a-z0-9]{2,5})\n([\s\S]*?)\n\1$/gm
+  let cursor = 0
+  for (const match of raw.matchAll(fenceRe)) {
+    const before = raw.slice(cursor, match.index ?? 0)
+    parseLines(before, out, prose, flush)
+    flush()
+    const name = match[2].trim()
+    const ext = (name.split('.').pop() ?? '').toLowerCase()
+    out.push({ kind: 'doc', name, size: formatBytes(new TextEncoder().encode(match[3]).length), ext })
+    cursor = (match.index ?? 0) + match[0].length
+  }
+  parseLines(raw.slice(cursor), out, prose, flush)
+  flush()
+  return out.length ? out : [{ kind: 'prose', text: raw }]
+}
+
+function parseLines(chunk: string, out: MessagePart[], prose: string[], flush: () => void) {
+  for (const line of chunk.split('\n')) {
+    const trimmed = line.trim()
+    const img = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(trimmed)
+    if (img) {
+      flush()
+      out.push({ kind: 'image', alt: img[1], src: img[2] })
+      continue
+    }
+    const link = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(trimmed)
+    if (link) {
+      const label = link[1].trim()
+      const parts = label.split(/\s*[·•|]\s*/)
+      const filePart = parts[0].trim()
+      const extMatch = DOC_EXT.exec(filePart)
+      if (extMatch) {
+        flush()
+        out.push({
+          kind: 'doc',
+          name: filePart,
+          size: parts[1]?.trim(),
+          href: link[2].trim(),
+          ext: extMatch[1].toLowerCase(),
+        })
+        continue
+      }
+    }
+    prose.push(line)
+  }
+}
+

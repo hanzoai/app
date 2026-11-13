@@ -321,6 +321,7 @@ export function Bots({
     <Panel
       key={bot.name}
       bot={bot}
+      runs={runs ?? []}
       kept={kept[bot.name] ?? ''}
       onClose={close}
       onSchedule={schedule}

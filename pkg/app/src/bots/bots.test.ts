@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Agent, AgentRun } from '@hanzo/ai'
-import { lines } from './said'
+import { lines, partsOf } from './said'
 import { GRID, lastWord, split } from './grid'
 import { nextPeriod, nextWeek, recordedRun, refusal } from './refusal'
 import { compose, fence, fits, MAX, texty } from './carry'
@@ -71,6 +71,15 @@ describe('the roster', () => {
     expect(grid).toHaveLength(GRID)
     expect(grid.map((b) => b.name)).toEqual(bots.slice(0, GRID).map((b) => b.name))
     expect(rows.map((b) => b.name)).toEqual(['B13', 'B12'])
+  })
+
+  it('orders core Hanzo personas by seat so Vi leads the 3x4 grid ahead of non-lead crew', () => {
+    const seeded = ['art', 'cyber', 'su', 'sci', 'sal', 'mark', 'huma', 'fin', 'des', 'dev', 'mana', 'opera', 'vi', 'doc'].map((id) =>
+      bot(id, '2026-10-01T09:00:00'),
+    )
+    const { grid, rows } = split(seeded, new Map())
+    expect(grid.map((b) => b.name)).toEqual(['vi', 'opera', 'mana', 'dev', 'des', 'fin', 'huma', 'mark', 'sal', 'sci', 'su', 'cyber'])
+    expect(rows.map((b) => b.name)).toEqual(['art', 'doc'])
   })
 
   it('says a bot’s last word on one line: what it answered, else its error, else what it was asked', () => {
@@ -173,5 +182,20 @@ describe('a text file with a message', () => {
     expect(texty('bin\u0000ary')).toBe(false)
     expect(fits('a'.repeat(MAX))).toBe(true)
     expect(fits('é'.repeat(MAX / 2 + 1))).toBe(false)
+  })
+
+  it('splits structured attachment cards and preview images cleanly from prose', () => {
+    const raw = [
+      "I'm building the new comparables page.",
+      '[Hanzo Bloomingdale.pdf · 2.9MB](https://hanzo.ai/brief.pdf)',
+      'The brief now has 9 pages.',
+      '![Comparables preview](/preview.png)',
+    ].join('\n\n')
+    expect(partsOf(raw)).toEqual([
+      { kind: 'prose', text: "I'm building the new comparables page." },
+      { kind: 'doc', name: 'Hanzo Bloomingdale.pdf', size: '2.9MB', href: 'https://hanzo.ai/brief.pdf', ext: 'pdf' },
+      { kind: 'prose', text: 'The brief now has 9 pages.' },
+      { kind: 'image', alt: 'Comparables preview', src: '/preview.png' },
+    ])
   })
 })
