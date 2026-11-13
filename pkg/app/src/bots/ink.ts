@@ -14,7 +14,7 @@ export const PICKED = 'var(--secondary)'
 /** Your own message: lighter than a bot's, in either theme. */
 export const MINE = 'color-mix(in oklab, var(--foreground) 17%, var(--pane-fill, var(--card)))'
 export const INK = 'var(--foreground)'
-export const DIM = 'var(--muted-foreground)'
+export const DIM = 'var(--text-secondary, var(--muted-foreground))'
 export const FAINT = '$faint'
 export const LINE = 'var(--pane-edge, var(--border))'
 /** The composer's edge, the one control drawn a step louder. */

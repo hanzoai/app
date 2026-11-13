@@ -14,9 +14,9 @@ import { Code } from '@hanzo/ui/chat'
 import { destination, read, type Token, type Tokens } from './lib/prose'
 
 const INK = 'var(--foreground)'
-const QUIET = 'var(--muted-foreground)'
-const EDGE = 'var(--border)'
-const GROUND = 'var(--secondary)'
+const QUIET = 'var(--text-secondary, var(--muted-foreground))'
+const EDGE = 'var(--pane-edge, var(--border))'
+const GROUND = 'var(--surface-card-emphasis, var(--secondary))'
 type Tone = typeof INK | typeof QUIET
 
 /**
@@ -197,7 +197,14 @@ function blocks(tokens: Token[] | undefined, tone: Tone): ReactNode[] {
       // own, because wrapping code changes what it says.
       case 'code':
         return (
-          <Code key={i} language={(t as Tokens.Code).lang || 'text'} value={t.text}>
+          <Code
+            key={i}
+            language={(t as Tokens.Code).lang || 'text'}
+            value={t.text}
+            rounded={12}
+            borderColor={EDGE}
+            bg="var(--side-fill, var(--card))"
+          >
             {t.text}
           </Code>
         )

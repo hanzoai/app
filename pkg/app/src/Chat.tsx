@@ -69,7 +69,7 @@ import { Check, ChevronDown, CircleAlert, FileText, Ghost, Image as ImageMark, L
 import { ENSO } from "./lib/ai";
 import { openThread, empty as emptyOpen, useOpen } from "./open";
 import { Side } from "./Shell";
-import { SEED, look, useSections, useSites, type Mark } from "./RightPane";
+import { OutputsCard, SEED, look, useSections, useSites, type Mark } from "./RightPane";
 import { Share } from "./Share";
 import { ConversationMenu, ThreadMore, useThreadActions, useThreadList, type Thread } from "./thread";
 import { Schedule } from "./Schedule";
@@ -891,6 +891,8 @@ function Thread({
   const talkRef = useCallback((el: unknown) => setTalkBox(el instanceof HTMLElement ? el : null), []);
   const wide = media.lg;
   const [panel, setPanel] = usePanel(`chat:${at}`, false, wide);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const dockSummary = Boolean(wide && aside === null);
   const deck = useDeck(`chat:${at}`, SEED);
   // The org's sites, which an empty tab suggests.
   const sites = useSites();
@@ -2577,7 +2579,14 @@ function Thread({
                   </Tooltip>
                 )}
                 {open ? <Share thread={open} /> : null}
-                <Summary sections={sections} onOpen={() => setPanel(true)} label={t("Summary")} />
+                <Summary
+                  sections={sections}
+                  docked={dockSummary}
+                  open={summaryOpen}
+                  onOpenChange={setSummaryOpen}
+                  onOpen={() => setPanel(true)}
+                  label={t("Summary")}
+                />
                 <PanelToggle open={panel} onToggle={() => setPanel(!panel)} />
                 <XStack
                   render="button"
@@ -2840,6 +2849,9 @@ function Thread({
           <XStack $max-md={{ display: 'none' }}>
             <Summary
               sections={sections}
+              docked={dockSummary}
+              open={summaryOpen}
+              onOpenChange={setSummaryOpen}
               onOpen={() => setPanel(true)}
               label={t("Summary")}
             />
@@ -3112,13 +3124,21 @@ function Thread({
               </YStack>
             )
           }
-          // The transcript reads at the same measure. `Thread` defaults to 768
-          // itself; handing it the column here is what lets Width reach it.
-          column={{ maxW: "var(--chat-column-measure, 640px)" as unknown as number }}
+          // The transcript reads at the same measure as Composer (`--container-prose`, 48rem),
+          // so user bubbles, assistant output cards, and the composer share exact left/right edges.
+          column={{ maxW: "var(--container-prose, 48rem)" as unknown as number }}
           composer={composer}
         />
           <ToBottom within={talkBox} />
         </YStack>
+        {dockSummary && summaryOpen ? (
+          <OutputsCard
+            sections={sections}
+            label={t("Summary")}
+            onOpen={() => setPanel(true)}
+            onClose={() => setSummaryOpen(false)}
+          />
+        ) : null}
       </XStack>
       <AgentMaker />
       {carry.dialog}

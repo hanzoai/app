@@ -16,6 +16,9 @@ export const pane = (fill = 'var(--pane-fill)') =>
   ({
     backgroundColor: fill,
     borderRadius: 'var(--pane-round)',
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'var(--pane-edge, var(--border))',
     backdropFilter: 'var(--pane-blur)',
   }) as const
 

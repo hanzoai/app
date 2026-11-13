@@ -30,6 +30,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Text,
+  XStack,
+  YStack,
 } from '@hanzo/ui'
 import { useAi, type ChatMessage } from '@hanzo/ai/react'
 import { artifacts, name as titleOf, PAGE, type Deck, type Entry, type Section, type Tabs } from '@hanzo/build'
@@ -306,11 +308,139 @@ export function useSections({ at, said, held, deck, onCreate }: { at: string; sa
       const m: Mark = { id: call.id, name: call.name, kind: 'file', body: [call.asked, call.got ?? ''].filter(Boolean).join('\n\n'), mime: 'text/plain' }
       return { ...row(m), title: call.name === 'web_search' || call.name === 'search' ? t('Web search') : call.name, icon: <Globe size={15} aria-hidden />, detail: call.asked }
     })
+    const sourceRows = [...asked, ...took.map(row)]
     return [
-      { id: 'outputs', title: t('Outputs'), lead: { title: t('Create file or site'), run: onCreate }, entries: made.map(row) },
-      { id: 'sources', title: t('Sources'), action: <Add at={at} />, empty: t('Nothing yet'), entries: [...asked, ...took.map(row)] },
+      {
+        id: 'outputs',
+        title: t('Outputs'),
+        action: (
+          <Box render="button" aria-label={t('Create a file or site')} onPress={onCreate} p="$1" rounded="$2" cursor="pointer" hoverStyle={{ bg: '$hover' }}>
+            <Plus size={16} aria-hidden />
+          </Box>
+        ),
+        lead: { title: t('Create a file or site'), run: onCreate },
+        entries: made.map(row),
+      },
+      {
+        id: 'sources',
+        title: t('Sources'),
+        action: <Add at={at} />,
+        lead: sourceRows.length ? undefined : { title: t('Attach files or connect apps'), run: () => take(at, { api: ai, org: org() }) },
+        entries: sourceRows,
+      },
     ]
   }, [at, made, took, done, deck, ai, onCreate, t])
+}
+
+/**
+ * Docked inner rounded Outputs / Sources card aligned at the top-right inside
+ * the inner Chat pane (`main[data-slot="pane"]`).
+ */
+export function OutputsCard({
+  sections,
+  label,
+  onOpen,
+  onClose,
+}: {
+  sections: Section[]
+  label: string
+  onOpen?: () => void
+  onClose?: () => void
+}) {
+  useEffect(() => {
+    if (!onClose) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return
+      if (document.querySelector('[data-slot="dropdown-menu-content"], [role="menu"]')) return
+      onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
+  return (
+    <YStack
+      data-slot="summary"
+      role="complementary"
+      aria-label={label}
+      width={268}
+      shrink={0}
+      self="flex-start"
+      mt={12}
+      marginInlineEnd={12}
+      rounded={12}
+      borderWidth={1}
+      borderColor="var(--pane-edge, var(--border))"
+      bg="var(--side-fill, var(--card))"
+      overflow="hidden"
+    >
+      {sections.map((s, i) => (
+        <YStack
+          key={s.id}
+          px={12}
+          py={10}
+          gap={2}
+          borderTopWidth={i ? 1 : 0}
+          borderColor="var(--pane-edge, var(--border))"
+        >
+          <XStack items="center" justify="space-between" minH={26}>
+            <Text fontSize="$2" fontWeight="600" color="$ink">
+              {s.title}
+            </Text>
+            {s.action}
+          </XStack>
+          {s.lead ? (
+            <XStack
+              render="button"
+              onPress={s.lead.run}
+              items="center"
+              minH={28}
+              px={6}
+              mx={-6}
+              rounded="$2"
+              cursor="pointer"
+              hoverStyle={{ bg: '$hover' }}
+            >
+              <Text fontSize="$2" color="var(--text-secondary, var(--muted-foreground))" numberOfLines={1}>
+                {s.lead.title}
+              </Text>
+            </XStack>
+          ) : null}
+          {s.entries.map((e) => (
+            <XStack
+              key={e.id}
+              render="button"
+              onPress={
+                e.open
+                  ? () => {
+                      onOpen?.()
+                      e.open?.()
+                    }
+                  : undefined
+              }
+              items="center"
+              gap="$2"
+              minH={30}
+              px={6}
+              mx={-6}
+              rounded="$2"
+              cursor={e.open ? 'pointer' : undefined}
+              hoverStyle={e.open ? { bg: '$hover' } : undefined}
+            >
+              {e.icon ? (
+                <XStack width={16} justify="center" shrink={0} $platform-web={{ color: 'var(--text-secondary, var(--muted-foreground))' }}>
+                  {e.icon}
+                </XStack>
+              ) : null}
+              <Text flex={1} minW={0} fontSize="$2" fontWeight="500" color="$ink" numberOfLines={1}>
+                {e.title}
+              </Text>
+            </XStack>
+          ))}
+        </YStack>
+      ))}
+    </YStack>
+  )
 }
 
 /**
