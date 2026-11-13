@@ -29,8 +29,8 @@ describe('entry', () => {
 })
 
 // HANZO SIGNS IN ON HANZO.AI, AND THE APP STARTS IT. A guest, and hanzo.ai opened with no app's request, send the
-// sign-in to hanzo.app, which comes back to hanzo.ai's page with its own; hanzo.ai holding that request, and
-// hanzo.app itself, sign in where they are.
+// sign-in to hanzo.app, which comes back to hanzo.ai's page with its own; hanzo.ai holding that request, hanzo.ai
+// signing in for its own checkout, and hanzo.app itself, sign in where they are.
 describe('handoff', () => {
   afterEach(() => vi.unstubAllGlobals())
   const at = (hostname: string) => {
@@ -53,6 +53,40 @@ describe('handoff', () => {
       const assign = at(host)
       expect(handoff(address), host).toBe(false)
       expect(assign, host).not.toHaveBeenCalled()
+    }
+  })
+
+  // THE CHECKOUT IS hanzo.ai's, SO IS ITS SIGN-IN. pay at hanzo.ai/pay reads hanzo.ai's session, and hanzo.app sends
+  // /pay back to hanzo.ai/pay. Handed to hanzo.app, "Add funds" went hanzo.ai/pay → hanzo.ai/login → hanzo.app/login →
+  // hanzo.app/pay → hanzo.ai/pay, without end (2026-11-13).
+  test("a sign-in on its way to hanzo.ai's checkout stays on hanzo.ai", () => {
+    // Exactly as pay leaves (hanzo-inc/pay lib/auth `login`: `${VITE_SIGNIN}?next=${encodeURIComponent(here)}`).
+    const deposit = `/login?next=${encodeURIComponent('/pay/amount/card?org=acme&returnUrl=https%3A%2F%2Fhanzo.app%2F')}`
+    const addresses = [
+      deposit,
+      '/login?next=%2Fpay',
+      '/signup?next=%2Fpay%2Fconfirm%2Fcard%3Fplan%3Ddev',
+      '/login?redirect=%2Fpay%2Ftransactions',
+    ]
+    for (const host of ['hanzo.ai', 'www.hanzo.ai']) {
+      for (const address of addresses) {
+        const assign = at(host)
+        expect(handoff(address), `${host}${address}`).toBe(false)
+        expect(assign, `${host}${address}`).not.toHaveBeenCalled()
+      }
+    }
+  })
+
+  test('only the checkout stays: a lookalike path, or an address off this site, still goes to hanzo.app', () => {
+    for (const address of [
+      '/login?next=%2Fpayments',
+      '/login?next=%2Fpayouts%2Fpay',
+      '/login?next=%2F%2Fevil.example%2Fpay',
+      '/login?next=https%3A%2F%2Fevil.example%2Fpay',
+    ]) {
+      const assign = at('hanzo.ai')
+      expect(handoff(address), address).toBe(true)
+      expect(assign, address).toHaveBeenCalledWith(`https://hanzo.app${address}`)
     }
   })
 })

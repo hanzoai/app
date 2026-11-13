@@ -171,19 +171,45 @@ export function onward(search: string): string | undefined {
   return next && safe(next, "") === next ? next : undefined;
 }
 
+/** hanzo.ai's checkout: hanzo-inc/pay mounted at hanzo.ai/pay (lib/pay `BILLING_URL`), and every path under it. */
+const CHECKOUT = /^\/pay(?:\/|$)/;
+
+/**
+ * Whether the sign-in at `address` goes on to hanzo.ai's checkout: its `next`
+ * (or `redirect`, which the sign-in page reads too) is a path on this site
+ * (`safe`) under /pay. pay sends a buyer with no session there exactly so
+ * (hanzo-inc/pay lib/auth `login`, `/login?next=/pay/…`).
+ *
+ * The checkout is served on hanzo.ai alone and reads the session hanzo.ai's
+ * origin keeps. hanzo.app answers /pay by sending it to hanzo.ai/pay, so a
+ * session made on hanzo.app never reaches the checkout, which finds none and
+ * sends the buyer to sign in again: hanzo.ai/pay, hanzo.ai/login, hanzo.app/login,
+ * hanzo.app/pay, hanzo.ai/pay, without end ("Add funds", 2026-11-13).
+ */
+function paying(address: string): boolean {
+  const q = new URLSearchParams(address.split("#")[0].split("?")[1] ?? "");
+  const to = safe(q.get("next") || q.get("redirect"), "");
+  return to !== "" && CHECKOUT.test(new URL(to, HERE).pathname);
+}
+
 /**
  * Send this sign-in to `address` on hanzo.app, the app's host, and report that
  * it left, from a host that cannot start one for itself: a `guest` (no client
  * lists its callback), and hanzo.ai opened with no app's authorize request in
  * its address, where a session would land on the site rather than in the app.
  * hanzo.app starts its own request and comes back to hanzo.ai's page with it.
+ *
+ * Except a sign-in that goes on to hanzo.ai's checkout (`paying`): the session
+ * has to land on the site, since the checkout is the site's, so hanzo.ai signs
+ * that one in itself.
+ *
  * Anywhere else, do nothing and report false so the caller signs in here.
  */
 export function handoff(address: string): boolean {
   if (typeof window === "undefined") return false;
   const host = window.location.hostname;
   const asked = new URLSearchParams(address.split("#")[0].split("?")[1] ?? "").has("client_id");
-  if (!guest(host) && !(signs(host) && !asked)) return false;
+  if (!guest(host) && !(signs(host) && !asked && !paying(address))) return false;
   window.location.assign(HOST + address);
   return true;
 }
