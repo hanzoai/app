@@ -16,11 +16,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@hanzo/ui'
-import { BUSINESS_APPS } from '@hanzo/ui/product'
 import { Grid2x2Plus, Plus, Search, SlidersHorizontal, X } from 'lucide-react'
 import { useSignOut } from '../lib/signout'
 import { PreferencesDialog } from '../PreferencesDialog'
 import { called, member } from '../team'
+import { ConnectorsDialog } from './ConnectorsDialog'
 import { Face } from './face'
 import { CLIP, PILL, ROUND, WORD } from './kit'
 import { DIM, FLOOR, INK, LINE, PICKED, RAISED } from './ink'
@@ -72,7 +72,7 @@ export function Roster({
 
   return (
     <YStack flex={1} minH={0} position="relative">
-      <XStack data-parity-key="bots.roster.bar" height={58} shrink={0} px={16} items="center" justify="flex-end" gap={10}>
+      <XStack data-parity-key="bots.roster.bar" height={46} shrink={0} px={12} items="center" justify="flex-end" gap={8}>
         <XStack
           {...ROUND}
           aria-label={t(seeking ? 'Close search' : 'Search bots')}
@@ -90,7 +90,7 @@ export function Roster({
       </XStack>
 
       {seeking ? (
-        <XStack px={12} pb={10} shrink={0}>
+        <XStack px={10} pb={8} shrink={0}>
           <Input
             unstyled
             autoFocus
@@ -99,8 +99,8 @@ export function Roster({
             placeholder={t('Search')}
             aria-label={t('Search bots')}
             width="100%"
-            height={36}
-            px={14}
+            height={34}
+            px={12}
             rounded={999}
             bg={RAISED}
             borderWidth={1}
@@ -115,13 +115,13 @@ export function Roster({
       <YStack flex={1} minH={0} position="relative">
         <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden">
           {unread ? (
-            <Text render="p" px={18} py={10} fontSize={13} lineHeight={18} color={DIM}>
+            <Text render="p" px={16} py={8} fontSize={13} lineHeight={18} color={DIM}>
               {unread}
             </Text>
           ) : null}
 
           {bots && bots.length === 0 && !unread && !disabled ? (
-            <YStack display="none" $max-md={{ display: 'flex' }} items="center" gap={16} pt={160} px={24}>
+            <YStack display="none" $max-md={{ display: 'flex' }} items="center" gap={16} pt={140} px={20}>
               <Text render="h1" m={0} fontSize={22} lineHeight={28} fontWeight="500" color={INK}>
                 {t('Make your first bot')}
               </Text>
@@ -137,10 +137,10 @@ export function Roster({
               role="group"
               aria-label={t('Bots')}
               flexWrap="wrap"
-              px={11}
-              pt={6}
+              px={9}
+              pt={4}
               columnGap={3}
-              rowGap={12}
+              rowGap={10}
               $max-md={{ px: 12, columnGap: 0, justify: 'space-between' }}
             >
               {grid.map((b) => {
@@ -156,12 +156,12 @@ export function Roster({
                     aria-current={here}
                     aria-label={label}
                     onClick={() => onPick(b.name)}
-                    width={83}
-                    height={92}
-                    rounded={12}
+                    width={78}
+                    height={88}
+                    rounded={11}
                     items="center"
-                    pt={6}
-                    gap={6}
+                    pt={5}
+                    gap={5}
                     bg={here ? PICKED : 'transparent'}
                     borderWidth={0}
                     cursor="pointer"
@@ -169,8 +169,8 @@ export function Roster({
                     focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
                     $max-md={{ width: '33%' }}
                   >
-                    <Face bot={b} size={60} starred={member(b.name)?.seat === 1} />
-                    <Text {...CLIP} maxW={77} fontSize={13} lineHeight={17} fontWeight={here ? '500' : '400'} color={INK}>
+                    <Face bot={b} size={56} starred={member(b.name)?.seat === 1} />
+                    <Text {...CLIP} maxW={72} fontSize={13} lineHeight={17} fontWeight={here ? '500' : '400'} color={INK}>
                       {label}
                     </Text>
                   </YStack>
@@ -243,11 +243,12 @@ export function Roster({
   )
 }
 
-/** You, at the foot: your account, Hanzo apps, and unified Hanzo Preferences. */
+/** You, at the foot: your account, external Connectors, and unified Hanzo Preferences. */
 function Foot({ me }: { me: Me | null }) {
   const { t } = useI18n()
   const leave = useSignOut()
   const [prefsOpen, setPrefsOpen] = useState(false)
+  const [connectorsOpen, setConnectorsOpen] = useState(false)
   const name = me?.displayName || me?.name || ''
 
   useEffect(() => {
@@ -265,7 +266,7 @@ function Foot({ me }: { me: Me | null }) {
   if (!me) return null
   return (
     <>
-      <XStack data-parity-key="bots.me" height={64} shrink={0} px={14} items="center" gap={8}>
+      <XStack data-parity-key="bots.me" height={52} shrink={0} px={12} items="center" gap={6} borderTopWidth={1} borderColor={LINE}>
         <DropdownMenu placement="top-start" offset={8}>
           <DropdownMenuTrigger asChild>
             <XStack
@@ -275,13 +276,13 @@ function Foot({ me }: { me: Me | null }) {
               flex={1}
               minW={0}
               items="center"
-              gap={10}
+              gap={9}
               bg="transparent"
               borderWidth={0}
               p={0}
               cursor="pointer"
             >
-              <Face bot={{ name, avatar: me.avatar }} size={34} person />
+              <Face bot={{ name, avatar: me.avatar }} size={30} person />
               <Text {...CLIP} fontSize={14} lineHeight={19} fontWeight="500" color={INK}>
                 {name}
               </Text>
@@ -301,6 +302,11 @@ function Foot({ me }: { me: Me | null }) {
               </YStack>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => setConnectorsOpen(true)}>
+              <Text fontSize="$3" color="$ink">
+                {t('Connectors')}
+              </Text>
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setPrefsOpen(true)}>
               <Text fontSize="$3" color="$ink">
                 {t('Preferences')}
@@ -314,33 +320,16 @@ function Foot({ me }: { me: Me | null }) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <DropdownMenu placement="top-end" offset={8}>
-          <DropdownMenuTrigger asChild>
-            <XStack {...ROUND} aria-label={t('Hanzo apps')}>
-              <Grid2x2Plus size={16} color={INK} aria-hidden />
-            </XStack>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent minW={240} maxH={420} aria-label={t('Hanzo apps')}>
-            {BUSINESS_APPS.map((app) => (
-              <DropdownMenuItem key={app.id} onSelect={() => window.location.assign(app.href)}>
-                <YStack minW={0}>
-                  <Text fontSize="$3" color="$ink" numberOfLines={1}>
-                    {app.productTitle}
-                  </Text>
-                  <Text fontSize="$1" color="$soft" numberOfLines={1}>
-                    {app.description}
-                  </Text>
-                </YStack>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <XStack {...ROUND} aria-label={t('Connectors')} onClick={() => setConnectorsOpen(true)}>
+          <Grid2x2Plus size={16} color={INK} aria-hidden />
+        </XStack>
 
         <XStack {...ROUND} aria-label={t('Preferences')} onClick={() => setPrefsOpen(true)}>
           <SlidersHorizontal size={15} color={INK} aria-hidden />
         </XStack>
       </XStack>
 
+      <ConnectorsDialog open={connectorsOpen} onOpenChange={setConnectorsOpen} />
       <PreferencesDialog open={prefsOpen} onOpenChange={setPrefsOpen} />
     </>
   )

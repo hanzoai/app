@@ -335,7 +335,7 @@ export function Bots({
     <XStack data-parity-key="bots.window" width="100%" height="100%" overflow="hidden" bg={FLOOR} position="relative">
       <YStack
         data-parity-key="bots.roster"
-        width={279}
+        width={260}
         shrink={0}
         height="100%"
         bg={FLOOR}
@@ -384,7 +384,7 @@ export function Bots({
       {laptop && side && panel ? (
         <YStack
           data-parity-key="bots.panel"
-          width={319}
+          width={296}
           shrink={0}
           height="100%"
           bg={GROUND}
@@ -406,7 +406,7 @@ export function Bots({
           t={0}
           r={0}
           b={0}
-          width={319}
+          width={296}
           maxW="100%"
           z={10}
           bg={GROUND}

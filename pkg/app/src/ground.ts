@@ -41,16 +41,16 @@ export const TOUCH_HEAD = 44
  * mark from the pane's end edge, so the two top corners mirror each other
  * (owner, 2026-10-30: "top left / top right").
  */
-export const INSET = 28
+export const INSET = 24
 
 /** The rail's width, px: two insets. */
 export const RAIL = 2 * INSET
 
 /** The top bar's height, px, on every shell. */
-export const BAR = 44
+export const BAR = 38
 
 /** The sidebar's width before the reader pulls its edge, px. */
-export const SIDE = 280
+export const SIDE = 248
 
 /**
  * A row INSIDE a pane shares the height of the row it lines up with.

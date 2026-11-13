@@ -19,12 +19,13 @@ import {
   DropdownMenuTrigger,
   Switch,
 } from '@hanzo/ui'
-import { ChevronDown, ChevronRight, Clock, FileText, Image as ImageIcon, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Clock, FileText, Image as ImageIcon, Plus, X } from 'lucide-react'
 import { useKept } from '../kept'
 import { useAi } from '../lib/ai'
 import { say } from '../failure'
 import { Network, of } from '../network'
 import { called } from '../team'
+import { ConnectorsDialog } from './ConnectorsDialog'
 import { Face } from './face'
 import { ALWAYS, answering, disk, grant } from './api'
 import { CARD, CLIP, LABEL, PILL, ROUND, WORD } from './kit'
@@ -200,6 +201,7 @@ export function Panel({
   const [saving, setSaving] = useState(false)
   const [wrong, setWrong] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [connectorsOpen, setConnectorsOpen] = useState(false)
 
   const [voiceName, setVoiceName] = useKept<string>('hanzo.bots.voice.name', 'Liora')
   const [voiceSpeed, setVoiceSpeed] = useKept<string>('hanzo.bots.voice.speed', '1x')
@@ -317,15 +319,15 @@ export function Panel({
 
   return (
     <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden" aria-label={displayName} render="aside">
-      <XStack height={58} shrink={0} px={14} items="center" justify="flex-end">
+      <XStack height={46} shrink={0} px={12} items="center" justify="flex-end">
         <XStack {...ROUND} aria-label={t('Close')} onClick={onClose} {...{ autoFocus: focus }}>
           <X size={16} color={INK} aria-hidden />
         </XStack>
       </XStack>
 
-      <YStack items="center" gap={14} pt={4} pb={22} px={16}>
-        <Face bot={bot} size={72} />
-        <Text {...CLIP} maxW="100%" fontSize={19} lineHeight={24} fontWeight="600" color={INK}>
+      <YStack items="center" gap={12} pt={2} pb={18} px={14}>
+        <Face bot={bot} size={68} />
+        <Text {...CLIP} maxW="100%" fontSize={18} lineHeight={23} fontWeight="600" color={INK}>
           {displayName}
         </Text>
         <XStack
@@ -407,6 +409,55 @@ export function Panel({
               ) : null}
             </YStack>
           ) : null}
+
+          <YStack gap={10} data-parity-key="bots.panel.connectors">
+            <XStack items="center" justify="space-between" px={4}>
+              <Text {...LABEL}>{t('Connectors')}</Text>
+              <XStack
+                render="button"
+                {...{ type: 'button' }}
+                onClick={() => setConnectorsOpen(true)}
+                items="center"
+                gap={3}
+                px={6}
+                py={2}
+                rounded={6}
+                bg="transparent"
+                borderWidth={0}
+                cursor="pointer"
+                hoverStyle={{ bg: PICKED }}
+              >
+                <Plus size={12} color={DIM} aria-hidden />
+                <Text fontSize={12} lineHeight={16} color={DIM}>
+                  {t('Add')}
+                </Text>
+              </XStack>
+            </XStack>
+            <XStack
+              {...CARD}
+              render="button"
+              {...{ type: 'button' }}
+              onClick={() => setConnectorsOpen(true)}
+              minH={50}
+              px={13}
+              py={9}
+              items="center"
+              justify="space-between"
+              gap={10}
+              cursor="pointer"
+              hoverStyle={{ bg: PICKED }}
+            >
+              <YStack flex={1} minW={0} items="flex-start">
+                <Text {...CLIP} fontSize={14} lineHeight={19} color={INK}>
+                  {answers.length ? t('{n} channels connected', { n: answers.length }) : t('Connect Slack, WhatsApp, Stripe…')}
+                </Text>
+                <Text {...CLIP} fontSize={12} lineHeight={17} color={DIM}>
+                  {t('External apps, socials & MCP tools')}
+                </Text>
+              </YStack>
+              <ChevronRight size={15} color={DIM} aria-hidden />
+            </XStack>
+          </YStack>
 
           {boxed ? (
             <YStack gap={10} data-parity-key="bots.panel.computer">
@@ -531,6 +582,12 @@ export function Panel({
           </XStack>
         </DialogContent>
       </Dialog>
+      <ConnectorsDialog
+        open={connectorsOpen}
+        onOpenChange={setConnectorsOpen}
+        defaultFilter="channels"
+        onConnected={() => void survey()}
+      />
     </YStack>
   )
 }

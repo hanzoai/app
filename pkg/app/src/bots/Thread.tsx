@@ -26,9 +26,6 @@ import { compose, fits, MAX, texty, type File } from './carry'
 import { PARAM } from './api'
 import type { Notice } from './refusal'
 
-/** The widest a conversation reads, as the desktop app draws it. */
-const MEASURE = 900
-
 function DocBadge({ ext }: { ext: string }) {
   const accent =
     ext === 'pdf'
@@ -192,7 +189,7 @@ export function Thread({
         l={0}
         r={0}
         z={4}
-        height={58}
+        height={46}
         px={14}
         items="center"
         gap={8}
@@ -265,13 +262,13 @@ export function Thread({
         </YStack>
       ) : (
         <YStack data-parity-key="bots.thread" flex={1} minH={0} overflowY="auto" overflowX="hidden">
-          <YStack width="100%" maxW={MEASURE + 48} mx="auto" px={24} pt={64} pb={18} $max-md={{ px: 12 }}>
+          <YStack width="100%" px={18} pt={52} pb={14} $max-md={{ px: 12 }}>
             {said.map((line, i) => {
               const prev = said[i - 1]
-              const gap = !prev ? 0 : line.kind === prev.kind && (line.kind === 'mine' || line.kind === 'theirs') ? 6 : 16
+              const gap = !prev ? 0 : line.kind === prev.kind && (line.kind === 'mine' || line.kind === 'theirs') ? 6 : 14
               if (line.kind === 'stamp')
                 return (
-                  <Text key={line.key} self="center" mt={i ? 22 : 6} mb={4} fontSize={12} lineHeight={17} color={DIM}>
+                  <Text key={line.key} self="center" mt={i ? 18 : 4} mb={4} fontSize={12} lineHeight={17} color={DIM}>
                     {line.text}
                   </Text>
                 )
@@ -289,7 +286,7 @@ export function Thread({
                 )
               if (line.kind === 'mine')
                 return (
-                  <YStack key={line.key} self="flex-end" items="flex-end" maxW="78%" mt={gap}>
+                  <YStack key={line.key} self="flex-end" items="flex-end" maxW="76%" mt={gap}>
                     <Text
                       data-parity-key="bots.mine"
                       render="div"
@@ -333,7 +330,7 @@ export function Thread({
                     key={line.key}
                     data-parity-key="bots.theirs"
                     self="flex-start"
-                    maxW={520}
+                    maxW={680}
                     mt={gap}
                     px={15}
                     py={11}
@@ -341,7 +338,7 @@ export function Thread({
                     bg={RAISED}
                     borderWidth={1}
                     borderColor={LINE}
-                    $max-md={{ maxW: '88%' }}
+                    $max-md={{ maxW: '92%' }}
                   >
                     <Text fontSize={15} lineHeight={22} color={DIM}>
                       {line.text}
@@ -418,14 +415,14 @@ export function Thread({
                     return (
                       <YStack
                         key={idx}
-                        maxW={520}
+                        maxW={680}
                         px={15}
                         py={11}
                         rounded={18}
                         bg={RAISED}
                         borderWidth={1}
                         borderColor={LINE}
-                        $max-md={{ maxW: '88%' }}
+                        $max-md={{ maxW: '92%' }}
                       >
                         <Prose text={part.text} />
                       </YStack>
@@ -445,7 +442,7 @@ export function Thread({
       )}
 
       {bot ? (
-        <YStack width="100%" maxW={MEASURE + 48} mx="auto" px={20} pb={14} gap={8} shrink={0} $max-md={{ px: 8, pb: 8 }}>
+        <YStack width="100%" px={16} pb={12} gap={8} shrink={0} $max-md={{ px: 8, pb: 8 }}>
           {notice ? (
             <YStack
               data-parity-key="bots.notice"

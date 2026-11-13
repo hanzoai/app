@@ -408,8 +408,8 @@ function Window({ bar, betas }: Hosted) {
               height="100%"
               items="center"
               gap={2}
-              pl={(bar?.inset ?? 0) + 8}
-              pr={8}
+              pl={(bar?.inset ?? 0) + 4}
+              pr={6}
               shrink={0}
               width={closed ? RAIL : (`calc(${RAIL}px + var(--app-sidebar-span, ${SIDE}px))` as never)}
               {...(bar?.drag ?? null)}
@@ -417,15 +417,15 @@ function Window({ bar, betas }: Hosted) {
               <XStack $md={{ display: 'none' }}>
                 <Toggle open={drawer.state === 'open'} onPress={drawer.open} label={t('Open sidebar')} />
               </XStack>
+              <XStack $max-md={{ display: 'none' }}>
+                <Toggle open={!closed} onPress={flip} />
+              </XStack>
               <Mark label={t('Back')} data-slot="back" onPress={() => router.back()}>
                 <ArrowLeft size={15} aria-hidden data-i18n-mirror />
               </Mark>
               <Mark label={t('Forward')} data-slot="forward" onPress={() => router.forward()}>
                 <ArrowRight size={15} aria-hidden data-i18n-mirror />
               </Mark>
-              <XStack $max-md={{ display: 'none' }}>
-                <Toggle open={!closed} onPress={flip} />
-              </XStack>
             </XStack>
             <XStack
               id="hanzo-titlebar-slot"
