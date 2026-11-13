@@ -98,6 +98,7 @@ import { leave } from './dev'
 import { payUrl } from './lib/pay'
 import { asked, KEYS, legal, out, pages } from './help'
 import { showSettings } from './open'
+import { MARK } from './ground'
 import { site, where } from './where'
 import { BAD } from './lib/mix'
 
@@ -432,19 +433,21 @@ export function Account({
             // The name the gates and a screen reader know it by: who, and in which organization. No native
             // tooltip: the face already says who, and the browser's box beside the rail is noise.
             aria-label={t('Account: {name}', { name: [who, current].filter(Boolean).join(' · ') })}
-            width={narrow ? (above ? 44 : 36) : '100%'}
-            minH={narrow ? (above ? 44 : 36) : 48}
+            width={narrow ? (above ? 44 : MARK) : '100%'}
+            height={narrow ? (above ? 44 : MARK) : undefined}
+            minH={narrow ? (above ? 44 : MARK) : 48}
             // A thumb's 44 on a touch screen.
-            $touchable={narrow ? { width: 44, minH: 44 } : undefined}
+            $touchable={narrow ? { width: 44, height: 44, minH: 44 } : undefined}
             px={narrow ? 0 : '$2'}
             gap="$2.5"
-            rounded={narrow ? 999 : '$5'}
+            rounded={narrow ? 12 : '$5'}
             borderWidth={narrow && above ? 1 : 0}
             borderColor={narrow && above ? 'var(--border-strong)' : undefined}
-            bg={narrow && above ? 'var(--pane-fill)' : undefined}
+            bg={narrow && above ? 'var(--pane-fill)' : narrow && open ? '$edge' : 'transparent'}
             items="center"
             justify={narrow ? 'center' : 'flex-start'}
-            hoverStyle={{ bg: '$hover' }}
+            hoverStyle={{ bg: narrow && open ? '$edge' : '$hover' }}
+            pressStyle={{ bg: '$raised' }}
             focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
             cursor="pointer"
           >

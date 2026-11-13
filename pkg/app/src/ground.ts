@@ -38,6 +38,9 @@ export const BAND = 52
 export const HEAD = 40
 export const TOUCH_HEAD = 44
 
+/** A mark on the rail, px: a 40px rounded square leaving `--pane-gap` (4px) on each side of the 48px rail. */
+export const MARK = 40
+
 /**
  * A corner mark's centre from its edge, px: the rail's first mark from the
  * window's start edge (the rail is twice this wide), and the pane head's last

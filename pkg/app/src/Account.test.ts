@@ -10,7 +10,32 @@ const { rows, settings, left, Draw, Row } = vi.hoisted(() => {
   /** The words under a node, in order. */
   const words = (node: ReactNode): string[] =>
     typeof node === 'string' ? [node] : Array.isArray(node) ? node.flatMap(words) : isValidElement<{ children?: ReactNode }>(node) ? words(node.props.children) : []
-  const Draw = ({ children }: { children?: ReactNode }) => createElement('div', null, children)
+  const Draw = ({
+    children,
+    'data-slot': slot,
+    width,
+    height,
+    rounded,
+    hoverStyle,
+  }: {
+    children?: ReactNode
+    'data-slot'?: string
+    width?: number | string
+    height?: number | string
+    rounded?: number | string
+    hoverStyle?: { bg?: string }
+  }) =>
+    createElement(
+      'div',
+      {
+        'data-slot': slot,
+        'data-w': width,
+        'data-h': height,
+        'data-r': rounded,
+        'data-hover': hoverStyle?.bg,
+      },
+      children,
+    )
   const Row = (props: { children?: ReactNode; onSelect?: () => void }) => {
     rows.push({ label: words(props.children)[0] ?? '', press: props.onSelect ?? (() => {}) })
     return Draw(props)
@@ -163,5 +188,15 @@ describe('the account menu', () => {
     expect(planOf(tier({ plan: 'max-20x' }))).toBe('Max 20x')
     expect(planOf(tier({ plan: '' }))).toBe('Pro')
     expect(planOf(null)).toBe('')
+  })
+
+  test('the rail trigger uses a 40x40 rounded-12 square matching the rail marks and inner pane corner', () => {
+    const host = { api: '', token: () => null, org: 'acme', person: { name: 'Ada', email: 'ada@acme.dev', avatar: '' }, signOut: signed.signOut }
+    const html = renderToStaticMarkup(createElement(Account, { host, narrow: true, onOrg: () => {} }))
+    const me = html.match(/<div data-slot="me"[^>]*>/)?.[0] ?? ''
+    expect(me).toContain('data-w="40"')
+    expect(me).toContain('data-h="40"')
+    expect(me).toContain('data-r="12"')
+    expect(me).toContain('data-hover="$hover"')
   })
 })

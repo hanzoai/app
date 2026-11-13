@@ -48,13 +48,10 @@ import { out } from './help'
 import { BETAS } from './lib/betas'
 import { HOSTED_APPS } from './lib/hosted'
 import { Account } from './Account'
-import { HEAD, RAIL, TOUCH_HEAD } from './ground'
+import { HEAD, MARK, RAIL, TOUCH_HEAD } from './ground'
 import { app, hosted, WORKSPACE, type Place } from './lib/host'
 
-/** The rail's width, px. */
-
-/** A mark, px: a 40px rounded square on the rail's 56px. */
-export const MARK = 40
+export { MARK }
 
 /** A mark on a touch screen, px: a thumb's 44. */
 const TOUCH = 44
@@ -284,14 +281,15 @@ export function Rail({
       flex={1}
       // As tall as the window and no taller: its marks scroll inside it (below), never the page.
       minH={0}
-      // The first mark stands at the pane's top edge, one head row high (HEAD), and the last at its foot by the
-      // same inset, so the account mirrors the sidebar's toggle across the rail.
+      // The first mark stands at the pane's top edge, one head row high (HEAD), and the last at its foot:
+      // the frame and drawer already leave `--pane-gap` below, so pb=0 aligns the account hover box symmetrically
+      // with the inner pane's bottom corner.
       pt={(HEAD - MARK) / 2 + 2}
-      pb={10}
+      pb={0}
       gap={3}
       shrink={0}
       items="center"
-      $touchable={{ pt: (TOUCH_HEAD - TOUCH) / 2, pb: (TOUCH_HEAD - TOUCH) / 2 }}
+      $touchable={{ pt: (TOUCH_HEAD - TOUCH) / 2, pb: 0 }}
     >
       {toggle ? (
         <YStack>
@@ -359,7 +357,7 @@ export function Rail({
               data-slot="rail-more"
               width={MARK}
               height={MARK}
-              rounded="$4"
+              rounded={12}
               items="center"
               justify="center"
               cursor="pointer"
