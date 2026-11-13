@@ -34,8 +34,8 @@ catalogs:
       specifier: 1.0.26
       version: 1.0.26
     '@hanzo/personas':
-      specifier: https://github.com/hanzoai/personas/releases/download/v1.3.2/hanzo-personas-1.3.2.tgz
-      version: 1.3.2
+      specifier: 1.3.3
+      version: 1.3.3
     '@hanzo/studio':
       specifier: 0.1.0
       version: 0.1.0
@@ -121,7 +121,7 @@ importers:
         version: link:../mod
       '@hanzo/personas':
         specifier: 'catalog:'
-        version: https://github.com/hanzoai/personas/releases/download/v1.3.2/hanzo-personas-1.3.2.tgz
+        version: 1.3.3
       marked:
         specifier: 'catalog:'
         version: 18.0.12
@@ -755,9 +755,8 @@ packages:
       react:
         optional: true
 
-  '@hanzo/personas@https://github.com/hanzoai/personas/releases/download/v1.3.2/hanzo-personas-1.3.2.tgz':
-    resolution: {integrity: sha512-bTOhmyZTLJCtOX9zAFvtM1Urn6AURX0BmmAoHvQ2pLr9YSvPfLJRAZXdW7OWGd+FTpTpamlY1pYYZi15utSfWA==, tarball: https://github.com/hanzoai/personas/releases/download/v1.3.2/hanzo-personas-1.3.2.tgz}
-    version: 1.3.2
+  '@hanzo/personas@1.3.3':
+    resolution: {integrity: sha512-1W4qeozx5hiHpMzxM9QT+zR95LryIxLJpwnR3o0fVGpita0XpzzbEiLhWmbMfDMtWf1fKyuqbPLcxUEzoM14hQ==}
 
   '@hanzo/plans@1.8.9':
     resolution: {integrity: sha512-Sbjm/6KhllxWUByBynO0PpwxHwrAADYLce2ZQcC4xtNVkSiba9EwMUAOz5KUque7Yp8VPxvUuQ6PtbUppadVWw==}
@@ -4027,7 +4026,7 @@ snapshots:
     optionalDependencies:
       react: 19.2.8
 
-  '@hanzo/personas@https://github.com/hanzoai/personas/releases/download/v1.3.2/hanzo-personas-1.3.2.tgz': {}
+  '@hanzo/personas@1.3.3': {}
 
   '@hanzo/plans@1.8.9':
     optional: true
