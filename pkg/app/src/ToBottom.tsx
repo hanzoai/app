@@ -31,15 +31,26 @@ export function ToBottom({ within }: { within: HTMLElement | null }) {
       const foot = composer ? room.bottom - composer.getBoundingClientRect().top + 12 : 16
       setLift(far ? foot : null)
     }
-    const seen = new MutationObserver(measure)
+    // One measure a frame, however many scrolls, token commits or resizes ask for it.
+    let frame = 0
+    const soon = () => {
+      if (!frame) frame = requestAnimationFrame(() => ((frame = 0), measure()))
+    }
+    const seen = new MutationObserver(soon)
     seen.observe(box, { childList: true, subtree: true })
-    box.addEventListener('scroll', measure, true)
-    window.addEventListener('resize', measure)
+    const sized = new ResizeObserver(soon)
+    sized.observe(box)
+    box.querySelectorAll('[data-slot="thread"], [data-slot="composer"]').forEach((el) => sized.observe(el))
+    box.addEventListener('scroll', soon, { capture: true, passive: true })
+    window.addEventListener('resize', soon)
     measure()
     return () => {
+      cancelAnimationFrame(frame)
       seen.disconnect()
-      box.removeEventListener('scroll', measure, true)
-      window.removeEventListener('resize', measure)
+      sized.disconnect()
+      box.removeEventListener('scroll', soon, { capture: true })
+      window.removeEventListener('resize', soon)
+      setLift(null)
     }
   }, [within])
 
@@ -51,7 +62,7 @@ export function ToBottom({ within }: { within: HTMLElement | null }) {
       data-slot="to-bottom"
       onPress={() => {
         const thread = within?.querySelector<HTMLElement>('[data-slot="thread"]')
-        thread?.scrollTo({ top: thread.scrollHeight, behavior: 'smooth' })
+        thread?.scrollTo({ top: thread.scrollHeight, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
       }}
       position="absolute"
       b={lift}
@@ -63,6 +74,7 @@ export function ToBottom({ within }: { within: HTMLElement | null }) {
       items="center"
       justify="center"
       cursor="pointer"
+      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
       bg="$raised"
       borderWidth={1}
       borderColor="$borderColor"

@@ -52,7 +52,6 @@ import { HEAD, RAIL, TOUCH_HEAD } from './ground'
 import { app, hosted, WORKSPACE, type Place } from './lib/host'
 
 /** The rail's width, px. */
-export { RAIL }
 
 /** A mark, px: a 40px rounded square on the rail's 56px. */
 export const MARK = 40

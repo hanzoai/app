@@ -151,6 +151,9 @@ import { ToBottom } from './ToBottom'
  */
 const MAX_ANON_TURNS = 3;
 
+/** What an anonymous send says when the API gave no answer. */
+const NO_ANSWER = phrase("No answer came back. Sign in to keep going.");
+
 
 function readOpeningQuery(): { text: string; thread: string | null } {
   if (typeof window === "undefined") return { text: "", thread: null };
@@ -885,6 +888,7 @@ function Thread({
   // never as the last chat was. The header's Panel button and ⌘. move it.
   const media = useMedia();
   const [talkBox, setTalkBox] = useState<HTMLElement | null>(null);
+  const talkRef = useCallback((el: unknown) => setTalkBox(el instanceof HTMLElement ? el : null), []);
   const wide = media.lg;
   const [panel, setPanel] = usePanel(`chat:${at}`, false, wide);
   const deck = useDeck(`chat:${at}`, SEED);
@@ -1366,7 +1370,7 @@ function Thread({
     if (!replyText) {
       // No answer came back: say so and ask for a sign-in, never a made-up reply.
       apply.current((held) =>
-        held.map((m) => (m.id === aId ? { ...m, content: "No answer came back. Sign in to keep going." } : m)),
+        held.map((m) => (m.id === aId ? { ...m, content: NO_ANSWER } : m)),
       );
       setAnonBusy(false);
       setAnonGateOpen(true);
@@ -2863,7 +2867,7 @@ function Thread({
       {!wide && panel ? <Panel side={deck} kinds={NONE} sheet onHide={() => setPanel(false)} label={t("Tabs")} {...browsing} /> : null}
 
       <XStack flex={1} minH={0} minW={0}>
-        <YStack ref={(el: unknown) => setTalkBox(el instanceof HTMLElement ? el : null)} data-slot="talk" flex={1} minH={0} minW={0} position="relative">
+        <YStack ref={talkRef} data-slot="talk" flex={1} minH={0} minW={0} position="relative">
         <ChatSurface
           {...chat}
           messages={shown}

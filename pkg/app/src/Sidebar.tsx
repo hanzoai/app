@@ -41,7 +41,7 @@ import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { Made } from './Account'
 import { useBetas } from './Betas'
 import { Recents } from './Recents'
-import { MARK, RAIL, raised, type Raised } from './Rail'
+import { MARK, raised, type Raised } from './Rail'
 import { Setup } from './Setup'
 import { ago, UNTITLED_RUN, type Recent } from './recent'
 import { empty, showSettings } from './open'
@@ -52,7 +52,7 @@ import { HOSTED_APPS } from './lib/hosted'
 import { payUrl } from './lib/pay'
 import { brand, wordmark } from './where'
 import { dragWindow, toggleWindowMaximize } from './WindowControls'
-import { BAND, HEAD as LINE, SIDE, TOUCH_HEAD } from './ground'
+import { BAND, HEAD as LINE, RAIL, SIDE, TOUCH_HEAD } from './ground'
 
 /** The sidebar fills the column. Its `width` is typed in px alone, though its frame takes any gui size — the type is
  *  @hanzo/ui's to widen. */

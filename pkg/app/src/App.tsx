@@ -78,13 +78,13 @@ import { isPlans, leave, useDevHost } from './dev'
 import { Gate } from './Gate'
 import { useHost } from './host'
 import { useKept } from './kept'
-import { Mark, raised, Rail, RAIL, Toggle } from './Rail'
+import { Mark, raised, Rail, Toggle } from './Rail'
 import { Layer, Lift, useDrawer } from './Drawer'
 import { empty, openThread, showSettings, useOpen } from './open'
 import { Split } from './Shell'
 import { Search } from './Search'
 import { summons } from './seek'
-import { BAR, floor, pane, SIDE } from './ground'
+import { BAR, floor, pane, RAIL, SIDE } from './ground'
 import { org as currentOrg, pick } from './lib/session'
 import { payUrl } from './lib/pay'
 import { useFree } from './Upgrade'
@@ -144,7 +144,6 @@ export interface Hosted {
   betas?: React.ReactNode
 }
 
-/** The bar's height, px: a thin top bar on the ground. */
 
 /** Where each mode was last, so the rail goes back to it. */
 const last = { chat: '', dev: '', studio: '', design: '', flow: '', tabs: '' }

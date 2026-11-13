@@ -1973,7 +1973,7 @@ function Rail({
           })}
           {team ? (
             <XStack $max-md={{ display: places.length < 4 ? "flex" : "none", width: "auto", minW: 0 }}>
-            <Text render={<a href={team} aria-label={t("Workspace")} title="Hanzo Team" />} display="flex" width={56} color="inherit">
+            <Text render={<a href={team} aria-label={t("Workspace")} title="Hanzo Team" />} display="flex" width={RAIL} color="inherit">
               {/* `Box` is a block until told otherwise. */}
               <Box
                 display="flex"
@@ -2004,7 +2004,7 @@ function Rail({
             display="none"
             $max-md={{ display: "flex", width: "auto", minW: 0 }}
             flexDirection="column"
-            width={56}
+            width={RAIL}
             minH={44}
             py="$1"
             rounded="$2"
@@ -2029,7 +2029,7 @@ function Rail({
             title={t("Settings")}
             display="flex"
             flexDirection="column"
-            width={56}
+            width={RAIL}
             minH={44}
             py="$1"
             rounded="$2"
