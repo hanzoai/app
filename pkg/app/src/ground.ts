@@ -32,7 +32,7 @@ export const BAND = 52
  * top, left, right"). A thumb's mark is 44 on a touch screen, and the rows grow
  * with it (`TOUCH_HEAD`).
  */
-export const HEAD = 40
+export const HEAD = 38
 export const TOUCH_HEAD = 44
 
 /**
@@ -41,10 +41,10 @@ export const TOUCH_HEAD = 44
  * mark from the pane's end edge, so the two top corners mirror each other
  * (owner, 2026-10-30: "top left / top right").
  */
-export const INSET = 28
+export const INSET = 24
 
 /** The sidebar's width before the reader pulls its edge, px. */
-export const SIDE = 280
+export const SIDE = 260
 
 /**
  * A row INSIDE a pane shares the height of the row it lines up with.

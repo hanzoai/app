@@ -74,8 +74,8 @@ const keys = (press: () => void) => ({
   },
 })
 
-/** A row of the sidebar: a full-width 40px pill, 44px on a touch screen, lit where the reader is. */
-const ROW = { rounded: 12, minH: 40, py: 0, px: '$3', width: '100%' as never, $touchable: { minH: 44 } } as const
+/** A row of the sidebar: a full-width 32px pill, 44px on a touch screen, lit where the reader is. */
+const ROW = { rounded: 8, minH: 32, py: 0, px: '$2.5', width: '100%' as never, $touchable: { minH: 44 } } as const
 
 /** A sidebar link row spans the column width so hover and active pills align with Recents. */
 const COMPACT_ROW = ROW
@@ -432,6 +432,7 @@ export function Sidebar({
       ref={drawer ? undefined : span.ref}
       {...(drawer ? null : ({ '$platform-web': { '--span': `${span.span}px`, ...(anon ? { overflow: 'visible' } : null) } } as object))}
       position="relative"
+      z={drawer ? undefined : 5}
       flex={drawer ? 1 : undefined}
       shrink={drawer ? 1 : 0}
       minW={0}
@@ -439,8 +440,11 @@ export function Sidebar({
       width={drawer ? undefined : `var(--span, ${WIDTH}px)`}
       maxW={drawer ? undefined : `var(--span, ${WIDTH}px)`}
       bg={drawer ? undefined : "var(--side-fill, var(--sheet-2))"}
-      rounded={drawer ? undefined : "var(--pane-round)"}
-      borderWidth={drawer ? 0 : 1}
+      borderTopWidth={0}
+      borderBottomWidth={0}
+      borderRightWidth={drawer || dir === 'rtl' ? 0 : 1}
+      borderLeftWidth={!drawer && dir === 'rtl' ? 1 : 0}
+      borderStyle="solid"
       borderColor="var(--pane-edge, var(--edge, var(--white-06)))"
     >
       <Base
@@ -451,9 +455,9 @@ export function Sidebar({
         borderWidth={0}
         {...FILL}
         px={8}
-        pt={drawer ? 'var(--pane-gap)' : 4}
+        pt={drawer ? 'var(--pane-gap)' : 2}
         // In the drawer the menu's own foot padding is the gap; its foot row stands on it.
-        pb={drawer ? 0 : '$2'}
+        pb={drawer ? 0 : 7}
         gap="$0"
         $platform-web={anon && !drawer ? { overflow: 'visible' } : undefined}
       >
@@ -497,7 +501,7 @@ export function Sidebar({
             onDoubleClick={toggleWindowMaximize}
           >
             <XStack flex={1} minW={0} items="center" gap={4}>
-              <Text fontSize={17} lineHeight={24} fontWeight="600" color="$ink" numberOfLines={1}>
+              <Text fontSize={15} lineHeight={20} fontWeight="600" color="$ink" numberOfLines={1}>
                 {wordmark(mode)}
               </Text>
             </XStack>
@@ -741,13 +745,13 @@ export function Sidebar({
         {!anon && free && (drawer || (mode !== 'beta' && mode !== 'hosted')) ? (
           <YStack role="list" gap={2} shrink={0} pt="$2">
             {/* A mark's height, centred: the rail's account beside it stands on the same line. */}
-            <YStack role="listitem" minH={MARK} justify="center">
+            <YStack role="listitem" minH={36} justify="center">
               <SidebarItem
                 {...ROW}
                 data-slot="column-upgrade"
                 icon={
-                  <XStack width={20} height={20} items="center" justify="center" shrink={0}>
-                    <Sparkles size={16} aria-hidden color="var(--primary)" />
+                  <XStack width={18} height={18} items="center" justify="center" shrink={0}>
+                    <Sparkles size={15} aria-hidden color="var(--muted-foreground)" />
                   </XStack>
                 }
                 onPress={() => window.location.assign(payUrl('/cart', { returnUrl: window.location.href }))}

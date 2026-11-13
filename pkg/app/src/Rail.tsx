@@ -54,8 +54,8 @@ import { app, hosted, WORKSPACE, type Place } from './lib/host'
 /** The rail's width, px. */
 export const RAIL = 2 * INSET
 
-/** A mark, px: a 40px rounded square on the rail's 56px. */
-export const MARK = 40
+/** A mark, px: a 34px rounded square on the rail's 48px. */
+export const MARK = 34
 
 /** A mark on a touch screen, px: a thumb's 44. */
 const TOUCH = 44
@@ -98,14 +98,14 @@ export function Mark({
       onPress={onPress}
       width={MARK}
       height={MARK}
-      rounded={12}
+      rounded={10}
       items="center"
       justify="center"
       shrink={0}
       cursor="pointer"
-      opacity={on ? 1 : 0.7}
-      bg={on ? '$edge' : 'transparent'}
-      hoverStyle={{ bg: on ? '$edge' : '$hover', opacity: 1 }}
+      opacity={on ? 1 : 0.72}
+      bg={on ? 'var(--rail-active, var(--white-14))' : 'transparent'}
+      hoverStyle={{ bg: on ? 'var(--rail-active, var(--white-14))' : 'var(--rail-hover, var(--white-08))', opacity: 1 }}
       pressStyle={{ bg: '$raised' }}
       focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
       // A thumb's 44px on a touch screen.
@@ -287,12 +287,13 @@ export function Rail({
       minH={0}
       // The first mark stands at the pane's top edge, one head row high (HEAD), and the last at its foot by the
       // same inset, so the account mirrors the sidebar's toggle across the rail.
-      pt={(HEAD - MARK) / 2 + 2}
-      pb={10}
+      pt={(HEAD - MARK) / 2 + 3}
+      pb={8}
       gap={3}
       shrink={0}
       items="center"
-      $touchable={{ pt: (TOUCH_HEAD - TOUCH) / 2, pb: (TOUCH_HEAD - TOUCH) / 2 }}
+      $max-md={{ pb: 0 }}
+      $touchable={{ pt: (TOUCH_HEAD - TOUCH) / 2, pb: 0 }}
     >
       {toggle ? (
         <YStack>

@@ -1718,7 +1718,7 @@ export function Split({
         {...(framed
           ? bare
             ? null
-            : { ...pane(), overflow: "hidden" as const }
+            : { ...pane(), overflow: "hidden" as const, $md: { rounded: 0 } }
           : {
               ...sheet(0),
               // The edge the pane shares with the column before it: the left, or the right in a right-to-left language.
@@ -1792,9 +1792,16 @@ export function Split({
           render="aside"
           data-slot="side"
           gridArea="side"
-          {...pane(framed ? undefined : sheet(1).backgroundColor)}
-          // In the frame the gutter stands between the pane and this column.
-          marginInlineStart={framed ? "var(--pane-gap)" : undefined}
+          {...pane(framed ? "var(--side-fill, var(--pane-fill))" : sheet(1).backgroundColor)}
+          {...(framed
+            ? {
+                rounded: 0,
+                borderInlineStartWidth: 1,
+                borderInlineStartStyle: "solid" as const,
+                borderColor: "var(--pane-edge, var(--edge, var(--white-06)))",
+              }
+            : null)}
+          marginInlineStart={0}
           ref={split.aside}
           position="relative"
           shrink={0}
@@ -1818,7 +1825,7 @@ export function Split({
             flex={1}
             minH={0}
             overflowY="auto" overflowX="hidden"
-            rounded="var(--pane-round)"
+            rounded={framed ? 0 : "var(--pane-round)"}
             ref={(el) => setSlot(el instanceof HTMLElement ? el : null)}
           />
         </YStack>
