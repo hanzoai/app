@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="edu">
 <defs>
-<linearGradient id="g-edu" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d8b4fe"/><stop offset="1" stop-color="#7e22ce"/></linearGradient>
+<linearGradient id="g-edu" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d9d9d9"/><stop offset="1" stop-color="#787878"/></linearGradient>
 <radialGradient id="f-edu" cx=".36" cy=".3" r=".8"><stop offset="0" stop-color="#ffedcd"/><stop offset="1" stop-color="#e2bf9f"/></radialGradient>
 <clipPath id="c-edu"><circle cx="128" cy="128" r="128"/></clipPath>
 </defs>
 <g clip-path="url(#c-edu)">
 <rect width="256" height="256" fill="url(#g-edu)"/>
 <circle cx="84" cy="64" r="70" fill="#fff" opacity=".13"/>
-<path d="M26 256 C30 214 66 196 128 196 C190 196 226 214 230 256 Z" fill="#7e22ce"/><path d="M26 256 C30 214 66 196 128 196 C100 214 96 240 98 256 Z" fill="#9034e0" opacity=".5"/><path d="M104 196 L128 226 L152 196 Z" fill="#f3e8ff"/><circle cx="182" cy="226" r="16" fill="#f8fafc"/><g transform="translate(172 216) scale(.83)" fill="none" stroke="#6b21a8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5M22 9v6"/></g>
+<path d="M26 256 C30 214 66 196 128 196 C190 196 226 214 230 256 Z" fill="#787878"/><path d="M26 256 C30 214 66 196 128 196 C100 214 96 240 98 256 Z" fill="#8a8a8a" opacity=".5"/><path d="M104 196 L128 226 L152 196 Z" fill="#f3f3f3"/><circle cx="182" cy="226" r="16" fill="#f8fafc"/><g transform="translate(172 216) scale(.83)" fill="none" stroke="#646464" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5M22 9v6"/></g>
 <rect x="110" y="168" width="36" height="36" rx="14" fill="#ddba9a"/>
 <ellipse cx="68" cy="128" rx="9" ry="13" fill="#ecc9a9"/><ellipse cx="188" cy="128" rx="9" ry="13" fill="#ecc9a9"/>
 <ellipse cx="128" cy="120" rx="58" ry="62" fill="url(#f-edu)"/>
