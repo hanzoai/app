@@ -420,12 +420,16 @@ function Window({ bar, betas }: Hosted) {
               <XStack $max-md={{ display: 'none' }}>
                 <Toggle open={!closed} onPress={flip} />
               </XStack>
-              <Mark label={t('Back')} data-slot="back" onPress={() => router.back()}>
-                <ArrowLeft size={15} aria-hidden data-i18n-mirror />
-              </Mark>
-              <Mark label={t('Forward')} data-slot="forward" onPress={() => router.forward()}>
-                <ArrowRight size={15} aria-hidden data-i18n-mirror />
-              </Mark>
+              {bar ? (
+                <>
+                  <Mark label={t('Back')} data-slot="back" onPress={() => router.back()}>
+                    <ArrowLeft size={15} aria-hidden data-i18n-mirror />
+                  </Mark>
+                  <Mark label={t('Forward')} data-slot="forward" onPress={() => router.forward()}>
+                    <ArrowRight size={15} aria-hidden data-i18n-mirror />
+                  </Mark>
+                </>
+              ) : null}
             </XStack>
             <XStack
               id="hanzo-titlebar-slot"

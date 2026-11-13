@@ -44,7 +44,12 @@ vi.mock('./dev', () => ({ isPlans: () => false, leave: () => {}, useDevHost: () 
 vi.mock('./Gate', () => ({ Gate: through }))
 vi.mock('./host', () => ({ useHost: () => ({ router: { back: () => {}, forward: () => {}, push: () => {} }, path: state.path }) }))
 vi.mock('./kept', () => ({ useKept: () => [false, () => {}] }))
-vi.mock('./Rail', () => ({ Mark: () => null, raised: () => null, Rail: stub('rail'), Toggle: () => null }))
+vi.mock('./Rail', () => ({
+  Mark: ({ 'data-slot': slot }: { 'data-slot'?: string }) => (slot ? createElement('div', { 'data-slot': slot }) : null),
+  raised: () => null,
+  Rail: stub('rail'),
+  Toggle: () => null,
+}))
 vi.mock('./Drawer', () => ({
   Foot: () => null,
   Layer: stub('drawer'),
@@ -183,5 +188,12 @@ describe('the pane keeps one gap all round', () => {
 
   test('the same holds in Betas and Tabs', () => {
     for (const path of ['/beta', '/tabs']) expect(frame(draw(path))).toContain('data-pt="var(--pane-gap)"')
+  })
+
+  test('only a desktop window bar draws back and forward', () => {
+    expect(draw('/chat')).not.toContain('data-slot="back"')
+    expect(draw('/chat')).not.toContain('data-slot="forward"')
+    expect(draw('/chat', undefined, {})).toContain('data-slot="back"')
+    expect(draw('/chat', undefined, {})).toContain('data-slot="forward"')
   })
 })
