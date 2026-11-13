@@ -43,6 +43,12 @@ export const TOUCH_HEAD = 44
  */
 export const INSET = 28
 
+/** The rail's width, px: two insets. */
+export const RAIL = 2 * INSET
+
+/** The top bar's height, px, on every shell. */
+export const BAR = 44
+
 /** The sidebar's width before the reader pulls its edge, px. */
 export const SIDE = 280
 

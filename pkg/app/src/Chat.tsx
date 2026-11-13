@@ -119,6 +119,8 @@ import { brand } from './where'
 import { BAND, HEAD, inPane, INSET, TOUCH_HEAD } from './ground'
 import { shared, useChatPreferences } from './lib/chatPreferences'
 import { handleHint } from './hint'
+import { ProviderMark } from './ProviderMark'
+import { ToBottom } from './ToBottom'
 
 // NO REASONING PANEL HERE. Every assistant turn opened a "Thinking" disclosure
 // listing seven steps — "Planning CSS extraction for chat styles", "Designing
@@ -149,23 +151,6 @@ import { handleHint } from './hint'
  */
 const MAX_ANON_TURNS = 3;
 
-
-function synthesizeAnonReply(prompt: string): string {
-  const q = prompt.trim();
-  const lower = q.toLowerCase();
-  if (lower.includes("beta") || lower.includes("join") || lower.includes("access") || lower.includes("waitlist")) {
-    return `You can join and explore **Hanzo Beta** right now:\n\n1. **Sign in or create a free account** at [hanzo.ai/signup](/signup) for instant access to open betas.\n2. **Open the Betas portal** at [hanzo.ai/beta](/beta) (or from the left rail once signed in) to apply for early access to **Hanzo Studio**, **Design**, **Flow**, and **Operative** computer-use agents.\n3. **Upgrade anytime** to **Go**, **Pro**, **Dev**, **Max**, or **Ultra** for priority beta access.`;
-  }
-  if (lower.includes("majorana") || lower.includes("quantum") || lower.includes("qubit") || lower.includes("decoherence")) {
-    return `**Majorana zero modes (MZMs)** protect quantum information topologically rather than locally:\n\n1. **Non-Local Fermionic Parity**: Two spatially separated Majorana quasiparticles $\\gamma_1$ and $\\gamma_2$ form a single Dirac fermion operator $c = (\\gamma_1 + i\\gamma_2)/2$. Because the occupation state $|0\\rangle$ or $|1\\rangle$ is delocalized across the wire ends, local electromagnetic noise cannot flip the parity.\n2. **Non-Abelian Braiding**: Quantum gates are executed by braiding vortices in 2D $p+ip$ superconductors, producing unitary matrices determined by knot topology.\n3. **Exponential Suppression**: Residual energy splitting scales as $\\exp(-L/\\xi)$, where $L$ is wire separation and $\\xi$ is superconducting coherence length.`;
-  }
-  if (lower.includes("code") || lower.includes("build") || lower.includes("middleware") || lower.includes("jwt") || lower.includes("typescript") || lower.includes("python")) {
-    return `Here is a production TypeScript middleware:\n\n\`\`\`ts\nexport async function guard(req: Request): Promise<Response | null> {\n  const token = req.headers.get('authorization')?.replace(/^Bearer\\s+/i, '')\n  if (!token) return Response.json({ error: 'unauthorized' }, { status: 401 })\n  const claims = await verifyJwt(token)\n  const allowed = await rateLimit(\`org:\${claims.org}\`, { rpm: 600 })\n  if (!allowed) return Response.json({ error: 'rate_limited' }, { status: 429 })\n  return null\n}\n\`\`\`\n\nRun \`hanzo dev\` in your repository or sign in to execute and deploy this in a cloud sandbox.`;
-  }
-  return q.length <= 8 || /^(hi|hello|hey|yo|sup|test|asdf|qwerty|ping)\b/i.test(q)
-    ? `Hey! How can I help you today? Feel free to ask a question, write or debug code, analyze a system architecture, or explore a topic.`
-    : `Here are the key points on **${q.slice(0, 96)}**:\n\n1. **Core Mechanism & Architecture**: Break the problem into clear, composable layers with well-defined interfaces, explicit state transitions, and deterministic validation.\n2. **Implementation Strategy**: Start with a minimal, testable baseline and benchmark latency, throughput, and correctness under realistic workloads.\n3. **Next Steps**: Tell me if you want to dive into the implementation code, mathematical formulation, or system architecture and I will write it out in full.`;
-}
 
 function readOpeningQuery(): { text: string; thread: string | null } {
   if (typeof window === "undefined") return { text: "", thread: null };
@@ -877,7 +862,7 @@ function Thread({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatPrefs.approvalMode, anonymous]);
   const agentShelf = useAgentShelf();
-  // The opening greets the person by the first word of their display name, capitalised ("What’s up, Z?").
+  // The opening greets the person by the first word of their display name, capitalised ("Good to see you, Z. What’s next?").
   // A username is a handle, not a name: without a display name the greeting has none.
   const firstName = useMemo(() => (anonymous ? "" : given(named()?.display ?? "")), [anonymous]);
   // Private / forgetful mode: an ephemeral conversation kept in memory only, never saved to server history.
@@ -899,6 +884,7 @@ function Thread({
   // kept per conversation with its tabs, so a chat opens as it was left and
   // never as the last chat was. The header's Panel button and ⌘. move it.
   const media = useMedia();
+  const [talkBox, setTalkBox] = useState<HTMLElement | null>(null);
   const wide = media.lg;
   const [panel, setPanel] = usePanel(`chat:${at}`, false, wide);
   const deck = useDeck(`chat:${at}`, SEED);
@@ -1378,7 +1364,13 @@ function Thread({
       }
     } catch {}
     if (!replyText) {
-      replyText = synthesizeAnonReply(clean);
+      // No answer came back: say so and ask for a sign-in, never a made-up reply.
+      apply.current((held) =>
+        held.map((m) => (m.id === aId ? { ...m, content: "No answer came back. Sign in to keep going." } : m)),
+      );
+      setAnonBusy(false);
+      setAnonGateOpen(true);
+      return;
     }
     const wordsList = replyText.split(" ");
     let idx = 0;
@@ -2871,7 +2863,7 @@ function Thread({
       {!wide && panel ? <Panel side={deck} kinds={NONE} sheet onHide={() => setPanel(false)} label={t("Tabs")} {...browsing} /> : null}
 
       <XStack flex={1} minH={0} minW={0}>
-        <YStack data-slot="talk" flex={1} minH={0} minW={0}>
+        <YStack ref={(el: unknown) => setTalkBox(el instanceof HTMLElement ? el : null)} data-slot="talk" flex={1} minH={0} minW={0} position="relative">
         <ChatSurface
           {...chat}
           messages={shown}
@@ -2999,8 +2991,15 @@ function Thread({
                 </YStack>
               );
             }
+            const ms = (turn as unknown as { durationMs?: unknown }).durationMs;
+            const worked = turn.role === "assistant" && typeof ms === "number" && ms >= 1000 ? ms : 0;
             return (
               <YStack gap="$1.5" data-turn-id={String(turn.id)} data-turn-role={turn.role}>
+                {worked ? (
+                  <Text data-slot="worked-for" fontSize="$2" color="$soft">
+                    {t("Worked for {n}s", { n: Math.round(worked / 1000) })}
+                  </Text>
+                ) : null}
                 <Prose text={said} />
                 {/* UNDER AN ANSWER, the row Dev's answers have too (@hanzo/build
                     `Reply`): copy the markdown as written, listen in the
@@ -3068,6 +3067,12 @@ function Thread({
                   </Box>
                 ) : null}
 
+                {cast.length === 0 && !portrait ? (
+                  <Box mb="$3" data-slot="opening-mark">
+                    <ProviderMark org="hanzo" size={44} ink />
+                  </Box>
+                ) : null}
+
                 <Text
                   render="h1"
                   fontSize="$7"
@@ -3077,7 +3082,7 @@ function Thread({
                   text="center"
                   mb="$1"
                 >
-                  {join(cast, t) || heading || (firstName ? t("What’s up, {name}?", { name: firstName }) : t("What’s up?"))}
+                  {join(cast, t) || heading || (firstName ? t("Good to see you, {name}. What’s next?", { name: firstName }) : t("What’s next?"))}
                 </Text>
 
                 {/* WHAT THE AGENT ROW SAYS ABOUT ITSELF, and only that. The
@@ -3108,6 +3113,7 @@ function Thread({
           column={{ maxW: "var(--chat-column-measure, 640px)" as unknown as number }}
           composer={composer}
         />
+          <ToBottom within={talkBox} />
         </YStack>
       </XStack>
       <AgentMaker />

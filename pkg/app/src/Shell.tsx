@@ -127,7 +127,7 @@ import { parseModels } from "@hanzo/ui/models/catalog";
 import { mark } from "./lib/mark";
 import { useOpen } from "./open";
 import { useSpan } from "./span";
-import { pane } from "./ground";
+import { BAR, pane, RAIL } from "./ground";
 import { useFree } from "./Upgrade";
 import { payUrl } from "./lib/pay";
 
@@ -1954,7 +1954,7 @@ function Rail({
                 display="flex"
                 $max-md={{ display: i < 4 ? "flex" : "none", width: "auto", minW: 0 }}
                 flexDirection="column"
-                width={56}
+                width={40}
                 minH={44}
                 py="$1"
                 rounded="$2"
@@ -2409,8 +2409,10 @@ function Frame({
       {...sheet(0)}
       // The kit draws the sidebar's edge on its right, a physical side, so the edge is
       // traded here: the left in a right-to-left language, where the sidebar stands at the right.
-      {...(dir === "rtl" ? { borderRightWidth: 0, borderLeftWidth: 1 } : { borderRightWidth: 1 })}
-      borderColor="var(--edge, var(--white-06))"
+      bg="var(--side-fill, var(--sheet-2))"
+      rounded="var(--pane-round)"
+      borderWidth={1}
+      borderColor="var(--pane-edge, var(--edge, var(--white-06)))"
       position="relative"
     >
       <Gutter
@@ -2661,12 +2663,12 @@ function Frame({
       data-hydrated={settled ? "true" : undefined}
       data-sidebar={asked ? "open" : "shut"}
       display="grid"
-      gridTemplateColumns="64px auto minmax(0, 1fr) auto"
-      gridTemplateRows="56px minmax(0, 1fr)"
+      gridTemplateColumns={`${RAIL}px auto minmax(0, 1fr) auto`}
+      gridTemplateRows={`${BAR}px minmax(0, 1fr)`}
       gridTemplateAreas={'"bar bar bar bar" "rail list pane side"'}
       $max-md={{
         gridTemplateColumns: "minmax(0, 1fr)",
-        gridTemplateRows: `56px minmax(0, 1fr) ${TABS_HEIGHT}`,
+        gridTemplateRows: `${BAR}px minmax(0, 1fr) ${TABS_HEIGHT}`,
         gridTemplateAreas: '"bar" "pane" "rail"',
       }}
       position="relative"
@@ -2910,7 +2912,7 @@ function Frame({
           {...scrim}
           data-slot="scrim"
           position="absolute"
-          t={56}
+          t={BAR}
           r={0}
           b={TABS_HEIGHT}
           l={0}
@@ -2926,9 +2928,9 @@ function Frame({
           gridArea="list"
           position={asked ? "relative" : "absolute"}
           // Peeking, it stands past the rail, which is at the start edge.
-          {...(asked ? {} : { top: 56, bottom: 0, insetInlineStart: 64 })}
+          {...(asked ? {} : { top: BAR, bottom: 0, insetInlineStart: RAIL })}
           // A phone's list is a sheet between the bar and the tab bar.
-          $max-md={{ position: "fixed", t: 56, r: 0, b: TABS_HEIGHT, l: 0, width: "100%" }}
+          $max-md={{ position: "fixed", t: BAR, r: 0, b: TABS_HEIGHT, l: 0, width: "100%" }}
           z="var(--z-drawer)"
           bg="$background"
           onMouseEnter={() => setPeeking(true)}

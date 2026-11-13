@@ -66,7 +66,7 @@ vi.mock('./open', () => ({ empty: () => {}, openThread: () => {}, showSettings: 
 vi.mock('./Shell', () => ({ Split: through }))
 vi.mock('./Search', () => ({ Search: () => null }))
 vi.mock('./seek', () => ({ summons: () => false }))
-vi.mock('./ground', () => ({ floor: {}, pane: () => ({}), SIDE: 280 }))
+vi.mock('./ground', () => ({ floor: {}, pane: () => ({}), SIDE: 280, BAR: 44 }))
 vi.mock('./lib/session', () => ({ org: () => null, pick: () => {} }))
 vi.mock('./lib/pay', () => ({ payUrl: (p: string) => p }))
 vi.mock('./Upgrade', () => ({ useFree: () => false }))

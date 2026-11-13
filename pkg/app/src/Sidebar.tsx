@@ -44,7 +44,7 @@ import { Recents } from './Recents'
 import { MARK, RAIL, raised, type Raised } from './Rail'
 import { Setup } from './Setup'
 import { ago, UNTITLED_RUN, type Recent } from './recent'
-import { empty } from './open'
+import { empty, showSettings } from './open'
 import { useSpan } from './span'
 import { useFree } from './Upgrade'
 import { hosted, talk, type Place } from './lib/host'
@@ -754,6 +754,27 @@ export function Sidebar({
                 {...keys(() => window.location.assign(payUrl('/cart', { returnUrl: window.location.href })))}
               >
                 <Text fontSize="$3" color="$ink">{t('Upgrade plan')}</Text>
+              </SidebarItem>
+            </YStack>
+          </YStack>
+        ) : null}
+        {!anon && !drawer && !at && mode !== 'beta' && mode !== 'hosted' ? (
+          <YStack role="list" gap={2} shrink={0} pt="$1">
+            <YStack role="listitem">
+              <SidebarItem
+                {...ROW}
+                data-slot="column-settings"
+                bg="transparent"
+                hoverStyle={{ bg: '$hover' }}
+                icon={
+                  <XStack width={18} height={18} items="center" justify="center" shrink={0}>
+                    <Settings size={15} aria-hidden />
+                  </XStack>
+                }
+                onPress={() => showSettings('general')}
+                {...keys(() => showSettings('general'))}
+              >
+                <Text fontSize={14} lineHeight={20} color="$ink">{t('Settings')}</Text>
               </SidebarItem>
             </YStack>
           </YStack>

@@ -19,7 +19,7 @@ import { SidebarItem, StatusDot } from '@hanzo/ui/chat'
 import { useKept } from './kept'
 import { app } from './lib/host'
 import { site } from './where'
-import { arrange, chats, MENUS, PINNED, PLAIN, runs, SINCE, UNFILED, UNTITLED, UNTITLED_RUN, viewOf, type Mode, type Option, type Recent, type View } from './recent'
+import { ago, arrange, chats, MENUS, PINNED, PLAIN, runs, SINCE, UNFILED, UNTITLED, UNTITLED_RUN, viewOf, type Mode, type Option, type Recent, type View } from './recent'
 import type { Say } from '@hanzo/i18n'
 import { hasUnreadUpdate, ProjectsTree, useChatProjects } from './ProjectsTree'
 import { ConversationMenu, ThreadRow, useThreadList, type ThreadActions } from './thread'
@@ -350,21 +350,26 @@ function List({
   const row = (r: Recent) => {
     const one = threads?.get(r.id)
     const isUnread = Boolean(r.kind === 'chat' && !open(r) && unreadIds?.has(r.id))
+    const age = ago(r.at, new Date(), t)
+    const when = age ? (
+      <SizableText data-slot="row-age" fontSize={12} lineHeight={16} color="var(--muted-foreground)">
+        {age}
+      </SizableText>
+    ) : null
     const rowAside =
       r.kind === 'dev' ? (
-        <XStack items="center" gap="$1">
+        <XStack items="center" gap="$1.5">
+          {when}
           {r.pr ? <GitPullRequest size={13} color="var(--state-success)" aria-hidden /> : null}
           <StatusDot status={DOTS[r.status as keyof typeof DOTS] ?? 'idle'} />
         </XStack>
-      ) : isUnread ? (
-        <XStack
-          data-slot="thread-unread-dot"
-          width={6}
-          height={6}
-          rounded={999}
-          bg="var(--foreground)"
-          aria-hidden
-        />
+      ) : isUnread || when ? (
+        <XStack items="center" gap="$1.5">
+          {when}
+          {isUnread ? (
+            <XStack data-slot="thread-unread-dot" width={6} height={6} rounded={999} bg="var(--foreground)" aria-hidden />
+          ) : null}
+        </XStack>
       ) : undefined
     const item = (
       <SidebarItem
@@ -373,7 +378,7 @@ function List({
         rounded={8}
         minH={29}
         paddingInlineStart="$2"
-        paddingInlineEnd={one || r.kind === 'dev' ? '$6' : '$2'}
+        paddingInlineEnd={one || rowAside ? 52 : '$2'}
         // A thumb's 44 on a touch screen; a conversation's ⋯ is a thumb wide there and always there: the title stops short of it.
         $touchable={one ? { minH: 44, paddingInlineEnd: 52 } : { minH: 44 }}
         onKeyDown={(e: { key?: string; preventDefault?: () => void }) => {

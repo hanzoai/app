@@ -84,7 +84,7 @@ import { empty, openThread, showSettings, useOpen } from './open'
 import { Split } from './Shell'
 import { Search } from './Search'
 import { summons } from './seek'
-import { floor, pane, SIDE } from './ground'
+import { BAR, floor, pane, SIDE } from './ground'
 import { org as currentOrg, pick } from './lib/session'
 import { payUrl } from './lib/pay'
 import { useFree } from './Upgrade'
@@ -145,7 +145,6 @@ export interface Hosted {
 }
 
 /** The bar's height, px: a thin top bar on the ground. */
-const BAR = 44
 
 /** Where each mode was last, so the rail goes back to it. */
 const last = { chat: '', dev: '', studio: '', design: '', flow: '', tabs: '' }

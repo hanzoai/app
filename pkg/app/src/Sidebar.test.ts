@@ -255,7 +255,7 @@ describe('the sidebar', () => {
 
   test('Settings takes no sidebar: it is the site’s pages, and a builder place filed under it is Dev’s', () => {
     const machines = column('dev', '-/settings/machines')
-    expect(machines).not.toContain('>Settings<')
+    expect(machines).not.toContain('data-slot="place-name"')
     expect(machines).not.toContain('aria-label="Back"')
     expect(at(machines, 'New run')).toBeLessThan(at(machines, 'data-slot="recents"'))
   })
