@@ -44,14 +44,7 @@ vi.mock('./dev', () => ({ isPlans: () => false, leave: () => {}, useDevHost: () 
 vi.mock('./Gate', () => ({ Gate: through }))
 vi.mock('./host', () => ({ useHost: () => ({ router: { back: () => {}, forward: () => {}, push: () => {} }, path: state.path }) }))
 vi.mock('./kept', () => ({ useKept: () => [false, () => {}] }))
-vi.mock('./Rail', () => ({
-  Mark: (props: { 'data-slot'?: string }) => createElement('button', { 'data-slot': props['data-slot'] }),
-  MARK: 34,
-  raised: () => null,
-  Rail: stub('rail'),
-  RAIL: 48,
-  Toggle: () => createElement('button', { 'data-slot': 'sidebar-toggle' }),
-}))
+vi.mock('./Rail', () => ({ Mark: () => null, raised: () => null, Rail: stub('rail'), RAIL: 56, Toggle: () => null }))
 vi.mock('./Drawer', () => ({
   Foot: () => null,
   Layer: stub('drawer'),
@@ -170,11 +163,7 @@ describe('Betas and hosted apps keep the sidebar column', () => {
   })
 
   test('Chat keeps its sidebar', () => {
-    const html = draw('/chat')
-    expect(html).toContain('data-slot="app-column"')
-    expect(html).toMatch(/data-slot="inner-surface"[^>]*>.*data-slot="app-column".*data-slot="stage"/)
-    expect(html).toMatch(/data-slot="title-bar-start"[^>]*>.*data-slot="sidebar-toggle".*data-slot="back".*data-slot="forward"/)
-    expect(html).not.toContain('data-slot="titlebar-fallback"')
+    expect(draw('/chat')).toContain('data-slot="app-column"')
   })
 })
 

@@ -78,7 +78,7 @@ import { isPlans, leave, useDevHost } from './dev'
 import { Gate } from './Gate'
 import { useHost } from './host'
 import { useKept } from './kept'
-import { Mark, MARK, raised, Rail, RAIL, Toggle } from './Rail'
+import { Mark, raised, Rail, RAIL, Toggle } from './Rail'
 import { Layer, Lift, useDrawer } from './Drawer'
 import { empty, openThread, showSettings, useOpen } from './open'
 import { Split } from './Shell'
@@ -145,7 +145,7 @@ export interface Hosted {
 }
 
 /** The bar's height, px: a thin top bar on the ground. */
-const BAR = 38
+const BAR = 44
 
 /** Where each mode was last, so the rail goes back to it. */
 const last = { chat: '', dev: '', studio: '', design: '', flow: '', tabs: '' }
@@ -410,19 +410,14 @@ function Window({ bar, betas }: Hosted) {
               height="100%"
               items="center"
               gap={2}
-              pl={bar?.inset ? bar.inset + 4 : (RAIL - (MARK ?? 34)) / 2}
+              pl={(bar?.inset ?? 0) + 8}
               pr={8}
               shrink={0}
-              minW={closed || alone ? undefined : (`calc(${RAIL}px + var(--app-sidebar-span, ${SIDE}px))` as never)}
+              width={closed ? RAIL : (`calc(${RAIL}px + var(--app-sidebar-span, ${SIDE}px))` as never)}
               {...(bar?.drag ?? null)}
             >
-              {bar ? (
-                <XStack $md={{ display: 'none' }}>
-                  <Toggle open={drawer.state === 'open'} onPress={drawer.open} label={t('Open sidebar')} />
-                </XStack>
-              ) : null}
-              <XStack $max-md={{ display: 'none' }}>
-                <Toggle open={!closed} onPress={flip} />
+              <XStack $md={{ display: 'none' }}>
+                <Toggle open={drawer.state === 'open'} onPress={drawer.open} label={t('Open sidebar')} />
               </XStack>
               <Mark label={t('Back')} data-slot="back" onPress={() => router.back()}>
                 <ArrowLeft size={15} aria-hidden data-i18n-mirror />
@@ -430,6 +425,9 @@ function Window({ bar, betas }: Hosted) {
               <Mark label={t('Forward')} data-slot="forward" onPress={() => router.forward()}>
                 <ArrowRight size={15} aria-hidden data-i18n-mirror />
               </Mark>
+              <XStack $max-md={{ display: 'none' }}>
+                <Toggle open={!closed} onPress={flip} />
+              </XStack>
             </XStack>
             <XStack
               id="hanzo-titlebar-slot"
@@ -444,13 +442,11 @@ function Window({ bar, betas }: Hosted) {
               gap={6}
               {...(bar?.drag ?? null)}
             >
-              {mode === 'chat' ? null : (
-                <XStack data-slot="titlebar-fallback" flex={1} minW={0} items="center" justify="space-between" gap={8}>
-                  <Text fontSize={13} lineHeight={18} fontWeight="500" color="$ink" numberOfLines={1}>
-                    {mode === 'dev' && !inPlace ? 'Dev' : mode === 'studio' ? 'Studio' : mode === 'design' ? 'Design' : mode === 'flow' ? 'Flow' : mode === 'tabs' ? 'Tabs' : ''}
-                  </Text>
-                </XStack>
-              )}
+              <XStack data-slot="titlebar-fallback" flex={1} minW={0} items="center" justify="space-between" gap={8}>
+                <Text fontSize={13} lineHeight={18} fontWeight="500" color="$ink" numberOfLines={1}>
+                  {mode === 'chat' ? '' : mode === 'dev' ? 'Dev' : mode === 'studio' ? 'Studio' : mode === 'design' ? 'Design' : mode === 'flow' ? 'Flow' : mode === 'tabs' ? 'Tabs' : ''}
+                </Text>
+              </XStack>
               {bar ? (
                 bar.controls !== undefined ? (
                   bar.controls
@@ -474,7 +470,6 @@ function Window({ bar, betas }: Hosted) {
             pb="var(--pane-gap)"
             // The gap above the pane is the gap at its end and foot; a window's own bar above it is that gap.
             pt={bar ? 0 : 'var(--pane-gap)'}
-            $md={{ pt: 0 }}
             // A phone's frame is full-bleed on the floor, which follows the theme,
             // so the top of the page the browser's bar tints from does too.
             $max-md={{ p: 0 }}
@@ -513,192 +508,179 @@ function Window({ bar, betas }: Hosted) {
                 />
               ) : null}
             </YStack>
-            {/* One unified rounded inner surface on desktop: 1 pane when closed, 2 flush panes when open. */}
-            <XStack
-              data-slot="inner-surface"
+            {/* Tabs and Betas stand alone: no sidebar beside them. */}
+            {closed || alone ? null : (
+              <YStack $max-md={{ display: 'none' }}>
+                <Sidebar host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} onSeek={seek} onBack={back} places={sidebar} />
+              </YStack>
+            )}
+            <YStack
+              data-slot="stage"
+              // A column: the phone's bar, then the panes taking the rest. Not a grid of `auto` and
+              // `1fr` rows: from md the bar is display none, which leaves the grid, so the panes were
+              // placed in the `auto` row and stood their content's height, and Dev's pane, which
+              // scrolls inside, collapsed to its border (Projects drew blank). The rest of the row
+              // beside the rail and the sidebar, never width 100%: a View does not shrink, so at the
+              // row's full width again the pane stood past the window's edge.
               flex={1}
               minW={0}
               minH={0}
-              $md={{
-                rounded: 'var(--pane-round)',
-                overflow: 'hidden',
-                borderWidth: 1,
-                borderColor: 'var(--pane-edge, var(--edge, var(--white-06)))',
-                bg: 'var(--pane-fill)',
-              }}
+              marginInlineStart={closed || alone ? 0 : 'var(--pane-gap)'}
+              $max-md={{ marginInlineStart: 0, pb: `max(var(--pane-gap), ${FOOT})` }}
             >
-              {closed || alone ? null : (
-                <YStack height="100%" $max-md={{ display: 'none' }}>
-                  <Sidebar host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} onSeek={seek} onBack={back} places={sidebar} />
-                </YStack>
-              )}
-              <YStack
-                data-slot="stage"
-                // A column: the phone's bar, then the panes taking the rest. Not a grid of `auto` and
-                // `1fr` rows: from md the bar is display none, which leaves the grid, so the panes were
-                // placed in the `auto` row and stood their content's height, and Dev's pane, which
-                // scrolls inside, collapsed to its border (Projects drew blank). The rest of the row
-                // beside the rail and the sidebar, never width 100%: a View does not shrink, so at the
-                // row's full width again the pane stood past the window's edge.
+              {/* A phone has no rail and no sidebar: its bar opens them as a drawer, and the drawer lists the places. */}
+              {bar ? null : <Bar host={host} mode={mode} places={sidebar} open={drawer.state !== 'shut'} go={move} onMenu={drawer.open} />}
+              {/* The stage's rest: the pane, and beside it the column a pane opens (Split names
+                  them `pane` and `side`). The areas are named here because Split places its two by
+                  name; unnamed, `grid-area: pane` made implicit tracks and Chat's pane stood its
+                  content's size in the far corner. A pane scrolls inside its cell rather than
+                  growing past it. */}
+              <XStack
+                data-slot="panes"
                 flex={1}
+                display="grid"
+                gridTemplateAreas={'"pane side"'}
+                gridTemplateColumns="minmax(0, 1fr) auto"
+                gridTemplateRows="minmax(0, 1fr)"
                 minW={0}
                 minH={0}
-                $max-md={{ pb: `max(var(--pane-gap), ${FOOT})` }}
               >
-                {/* A phone has no rail and no sidebar: its bar opens them as a drawer, and the drawer lists the places. */}
-                {bar ? null : <Bar host={host} mode={mode} places={sidebar} open={drawer.state !== 'shut'} go={move} onMenu={drawer.open} />}
-                {/* The stage's rest: the pane, and beside it the column a pane opens (Split names
-                    them `pane` and `side`). The areas are named here because Split places its two by
-                    name; unnamed, `grid-area: pane` made implicit tracks and Chat's pane stood its
-                    content's size in the far corner. A pane scrolls inside its cell rather than
-                    growing past it. */}
-                <XStack
-                  data-slot="panes"
-                  flex={1}
-                  display="grid"
-                  gridTemplateAreas={'"pane side"'}
-                  gridTemplateColumns="minmax(0, 1fr) auto"
-                  gridTemplateRows="minmax(0, 1fr)"
-                  minW={0}
-                  minH={0}
-                >
-                  {anonSettings && host.person === null ? (
-                    <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0} $md={{ rounded: 0 }}>
-                      <AnonSettingsPane
-                        host={host}
-                        onClose={() => {
-                          setAnonSettings(false)
-                          if (typeof window !== 'undefined') {
-                            window.dispatchEvent(new CustomEvent('hanzo:anon-settings', { detail: { open: false } }))
-                          }
-                        }}
-                      />
-                    </YStack>
-                  ) : mode === 'chat' ? (
-                    <Split framed>
-                      <Chat />
-                    </Split>
-                  ) : mode === 'tabs' ? (
-                    <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0} $md={{ rounded: 0 }}>
+                {anonSettings && host.person === null ? (
+                  <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                    <AnonSettingsPane
+                      host={host}
+                      onClose={() => {
+                        setAnonSettings(false)
+                        if (typeof window !== 'undefined') {
+                          window.dispatchEvent(new CustomEvent('hanzo:anon-settings', { detail: { open: false } }))
+                        }
+                      }}
+                    />
+                  </YStack>
+                ) : mode === 'chat' ? (
+                  <Split framed>
+                    <Chat />
+                  </Split>
+                ) : mode === 'tabs' ? (
+                  <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                    <Suspense fallback={null}>
+                      <Terminals />
+                    </Suspense>
+                  </YStack>
+                ) : mode === 'design' ? (
+                  <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                    <YStack flex={1} minH={0} height="100%">
                       <Suspense fallback={null}>
-                        <Terminals />
+                        <Studio host={maker} rail={false} />
                       </Suspense>
                     </YStack>
-                  ) : mode === 'design' ? (
-                    <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0} $md={{ rounded: 0 }}>
+                  </YStack>
+                ) : mode === 'flow' ? (
+                  <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                    {blockedBeta ? (
+                      <YStack data-slot="hosted-request" flex={1} minH={0} items="center" justify="center" p="$6">
+                        <YStack width="100%" maxW={440} gap="$4">
+                          <XStack items="center" gap="$3">
+                            <XStack width={44} height={44} rounded="$4" bg="$hover" items="center" justify="center" shrink={0}>
+                              <Workflow size={22} aria-hidden />
+                            </XStack>
+                            <YStack gap={2} minW={0}>
+                              <XStack items="center" gap="$2">
+                                <Text fontSize="$6" fontWeight="600" color="$ink">Flow</Text>
+                                <Text fontSize="$1" color="$quiet" px="$2" py={2} rounded="$2" bg="$hover">{t('Beta')}</Text>
+                              </XStack>
+                              <Text fontSize="$3" color="$quiet">{BETAS.find((b) => b.id === 'flow')?.line ?? 'Visual workflows and multi-agent pipelines.'}</Text>
+                            </YStack>
+                          </XStack>
+                          <XStack items="center" gap="$2" pt="$1">
+                            <Ask beta={BETAS.find((b) => b.id === 'flow')!} go={move} />
+                            <Button variant="ghost" size="sm" onPress={() => move('/beta')}>{t('All betas')}</Button>
+                          </XStack>
+                        </YStack>
+                      </YStack>
+                    ) : (
                       <YStack flex={1} minH={0} height="100%">
                         <Suspense fallback={null}>
-                          <Studio host={maker} rail={false} />
+                          <FlowStudio host={maker} />
                         </Suspense>
                       </YStack>
-                    </YStack>
-                  ) : mode === 'flow' ? (
-                    <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0} $md={{ rounded: 0 }}>
-                      {blockedBeta ? (
-                        <YStack data-slot="hosted-request" flex={1} minH={0} items="center" justify="center" p="$6">
-                          <YStack width="100%" maxW={440} gap="$4">
-                            <XStack items="center" gap="$3">
-                              <XStack width={44} height={44} rounded="$4" bg="$hover" items="center" justify="center" shrink={0}>
-                                <Workflow size={22} aria-hidden />
+                    )}
+                  </YStack>
+                ) : mode === 'studio' ? (
+                  <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                    {blockedBeta ? (
+                      <YStack data-slot="hosted-request" flex={1} minH={0} items="center" justify="center" p="$6">
+                        <YStack width="100%" maxW={440} gap="$4">
+                          <XStack items="center" gap="$3">
+                            <XStack width={44} height={44} rounded="$4" bg="$hover" items="center" justify="center" shrink={0}>
+                              <Clapperboard size={22} aria-hidden />
+                            </XStack>
+                            <YStack gap={2} minW={0}>
+                              <XStack items="center" gap="$2">
+                                <Text fontSize="$6" fontWeight="600" color="$ink">Studio</Text>
+                                <Text fontSize="$1" color="$quiet" px="$2" py={2} rounded="$2" bg="$hover">{t('Beta')}</Text>
                               </XStack>
-                              <YStack gap={2} minW={0}>
-                                <XStack items="center" gap="$2">
-                                  <Text fontSize="$6" fontWeight="600" color="$ink">Flow</Text>
-                                  <Text fontSize="$1" color="$quiet" px="$2" py={2} rounded="$2" bg="$hover">{t('Beta')}</Text>
-                                </XStack>
-                                <Text fontSize="$3" color="$quiet">{BETAS.find((b) => b.id === 'flow')?.line ?? 'Visual workflows and multi-agent pipelines.'}</Text>
-                              </YStack>
-                            </XStack>
-                            <XStack items="center" gap="$2" pt="$1">
-                              <Ask beta={BETAS.find((b) => b.id === 'flow')!} go={move} />
-                              <Button variant="ghost" size="sm" onPress={() => move('/beta')}>{t('All betas')}</Button>
-                            </XStack>
-                          </YStack>
-                        </YStack>
-                      ) : (
-                        <YStack flex={1} minH={0} height="100%">
-                          <Suspense fallback={null}>
-                            <FlowStudio host={maker} />
-                          </Suspense>
-                        </YStack>
-                      )}
-                    </YStack>
-                  ) : mode === 'studio' ? (
-                    <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0} $md={{ rounded: 0 }}>
-                      {blockedBeta ? (
-                        <YStack data-slot="hosted-request" flex={1} minH={0} items="center" justify="center" p="$6">
-                          <YStack width="100%" maxW={440} gap="$4">
-                            <XStack items="center" gap="$3">
-                              <XStack width={44} height={44} rounded="$4" bg="$hover" items="center" justify="center" shrink={0}>
-                                <Clapperboard size={22} aria-hidden />
-                              </XStack>
-                              <YStack gap={2} minW={0}>
-                                <XStack items="center" gap="$2">
-                                  <Text fontSize="$6" fontWeight="600" color="$ink">Studio</Text>
-                                  <Text fontSize="$1" color="$quiet" px="$2" py={2} rounded="$2" bg="$hover">{t('Beta')}</Text>
-                                </XStack>
-                                <Text fontSize="$3" color="$quiet">{BETAS.find((b) => b.id === 'studio')?.line ?? 'Director Studio for AI film, video, and creative production.'}</Text>
-                              </YStack>
-                            </XStack>
-                            <XStack items="center" gap="$2" pt="$1">
-                              <Ask beta={BETAS.find((b) => b.id === 'studio')!} go={move} />
-                              <Button variant="ghost" size="sm" onPress={() => move('/beta')}>{t('All betas')}</Button>
-                            </XStack>
-                          </YStack>
-                        </YStack>
-                      ) : (
-                        <YStack flex={1} minH={0} height="100%">
-                          <Suspense fallback={null}>
-                            <DirectorStudio host={maker} />
-                          </Suspense>
-                        </YStack>
-                      )}
-                    </YStack>
-                  ) : at.mode === 'hosted' ? (
-                    <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0} $md={{ rounded: 0 }}>
-                      <Suspense fallback={null}>
-                        <Hosted id={at.id} go={move} />
-                      </Suspense>
-                    </YStack>
-                  ) : mode === 'beta' ? (
-                    <YStack render="main" data-slot="pane" {...pane()} overflowY="auto" overflowX="hidden" flex={1} minW={0} minH={0} p="$4" $md={{ p: '$6', rounded: 0 }}>
-                      {betas ?? (
-                        <Suspense fallback={null}>
-                          <Betas go={move} />
-                        </Suspense>
-                      )}
-                    </YStack>
-                  ) : (
-                    <YStack render="main" data-slot="pane" {...(run ? null : { ...pane(), overflow: 'hidden', $md: { rounded: 0 } })} position="relative" flex={1} minW={0} minH={0}>
-                      {!plans && !run && !inPlace && closed && free && host.person !== null ? (
-                        <XStack position="absolute" t={8} r={12} z={5} items="center" $max-md={{ display: 'none' }}>
-                          <XStack
-                            render="button"
-                            data-slot="header-upgrade"
-                            aria-label={t('Upgrade plan')}
-                            items="center"
-                            gap="$1.5"
-                            px="$2"
-                            py="$1"
-                            rounded="$3"
-                            bg="transparent"
-                            cursor="pointer"
-                            hoverStyle={{ bg: '$hover' }}
-                            onPress={() => window.location.assign(payUrl('/cart', { org: currentOrg(), returnUrl: window.location.href }))}
-                          >
-                            <Sparkles size={14} color="var(--muted-foreground)" aria-hidden />
-                            <Text fontSize={15} lineHeight={20} fontWeight="500" color="$soft" numberOfLines={1}>
-                              {t('Upgrade plan')}
-                            </Text>
+                              <Text fontSize="$3" color="$quiet">{BETAS.find((b) => b.id === 'studio')?.line ?? 'Director Studio for AI film, video, and creative production.'}</Text>
+                            </YStack>
                           </XStack>
+                          <XStack items="center" gap="$2" pt="$1">
+                            <Ask beta={BETAS.find((b) => b.id === 'studio')!} go={move} />
+                            <Button variant="ghost" size="sm" onPress={() => move('/beta')}>{t('All betas')}</Button>
+                          </XStack>
+                        </YStack>
+                      </YStack>
+                    ) : (
+                      <YStack flex={1} minH={0} height="100%">
+                        <Suspense fallback={null}>
+                          <DirectorStudio host={maker} />
+                        </Suspense>
+                      </YStack>
+                    )}
+                  </YStack>
+                ) : at.mode === 'hosted' ? (
+                  <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                    <Suspense fallback={null}>
+                      <Hosted id={at.id} go={move} />
+                    </Suspense>
+                  </YStack>
+                ) : mode === 'beta' ? (
+                  <YStack render="main" data-slot="pane" {...pane()} overflowY="auto" overflowX="hidden" flex={1} minW={0} minH={0} p="$4" $md={{ p: '$6' }}>
+                    {betas ?? (
+                      <Suspense fallback={null}>
+                        <Betas go={move} />
+                      </Suspense>
+                    )}
+                  </YStack>
+                ) : (
+                  <YStack render="main" data-slot="pane" {...(run ? null : { ...pane(), overflow: 'hidden' })} position="relative" flex={1} minW={0} minH={0}>
+                    {!plans && !run && !inPlace && closed && free && host.person !== null ? (
+                      <XStack position="absolute" t={8} r={12} z={5} items="center" $max-md={{ display: 'none' }}>
+                        <XStack
+                          render="button"
+                          data-slot="header-upgrade"
+                          aria-label={t('Upgrade plan')}
+                          items="center"
+                          gap="$1.5"
+                          px="$2"
+                          py="$1"
+                          rounded="$3"
+                          bg="transparent"
+                          cursor="pointer"
+                          hoverStyle={{ bg: '$hover' }}
+                          onPress={() => window.location.assign(payUrl('/cart', { org: currentOrg(), returnUrl: window.location.href }))}
+                        >
+                          <Sparkles size={14} color="var(--muted-foreground)" aria-hidden />
+                          <Text fontSize={15} lineHeight={20} fontWeight="500" color="$soft" numberOfLines={1}>
+                            {t('Upgrade plan')}
+                          </Text>
                         </XStack>
-                      ) : null}
-                      {plans ? null : <Builder host={host} rail={false} />}
-                    </YStack>
-                  )}
-                </XStack>
-              </YStack>
-            </XStack>
+                      </XStack>
+                    ) : null}
+                    {plans ? null : <Builder host={host} rail={false} />}
+                  </YStack>
+                )}
+              </XStack>
+            </YStack>
           </XStack>
           {drawer.state === 'shut' ? null : (
             // A phone's sidebar is the menu behind the pane: the rail down its start edge, every
@@ -706,7 +688,7 @@ function Window({ bar, betas }: Hosted) {
             // the floor. New chat is the bar's, so the foot carries nothing of its own.
             <Layer drawer={drawer} top={bar ? BAR : 0}>
               <XStack flex={1} minH={0}>
-                <YStack data-slot="drawer-rail" shrink={0} pt="calc(var(--pane-gap) + 4px)" $touchable={{ pt: 'calc(var(--pane-gap) + 4px)' }}>
+                <YStack data-slot="drawer-rail" shrink={0} pt="calc(var(--pane-gap) + 8px)" $touchable={{ pt: 'calc(var(--pane-gap) + 4px)' }}>
                   <Rail host={host} mode={mode} at={where} inside={inside} open onChat={toChat} onDev={toDev} onDesign={toDesign} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />
                 </YStack>
                 <YStack flex={1} minW={0}>
