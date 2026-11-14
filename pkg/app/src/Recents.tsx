@@ -19,9 +19,8 @@ import { SidebarItem, StatusDot } from '@hanzo/ui/chat'
 import { useKept } from './kept'
 import { app } from './lib/host'
 import { site } from './where'
-import { ago, arrange, chats, MENUS, PINNED, PLAIN, runs, SINCE, UNFILED, UNTITLED, UNTITLED_RUN, viewOf, type Mode, type Option, type Recent, type View } from './recent'
+import { ago, arrange, chats, hasUnreadUpdate, MENUS, PINNED, PLAIN, runs, SINCE, UNFILED, UNTITLED, UNTITLED_RUN, viewOf, type Mode, type Option, type Recent, type View } from './recent'
 import type { Say } from '@hanzo/i18n'
-import { hasUnreadUpdate, ProjectsTree, useChatProjects } from './ProjectsTree'
 import { ConversationMenu, ThreadRow, useThreadList, type ThreadActions } from './thread'
 
 /** The menu's items: each section a heading and its options (recent.ts's phrases, drawn through `t`), the one in force checked. */
@@ -104,7 +103,6 @@ function Chats({
   const store = useThreadList(view.status === 'archived', thread)
   const rows = useMemo(() => chats(store.threads), [store.threads])
   const byId = useMemo(() => new Map(store.threads.map((t) => [t.id, t])), [store.threads])
-  const projects = useChatProjects(rows)
   const [seenAt, setSeenAt] = useKept<Record<string, number>>('hanzo.chat.seen.v1', {})
   const seenRef = useRef(seenAt)
   seenRef.current = seenAt
@@ -145,15 +143,10 @@ function Chats({
     return out
   }, [store.threads, thread, seenAt])
 
-  const unfiledRows = useMemo(
-    () => (view.status === 'archived' ? rows : rows.filter((r) => r.pinned || !projects.filedIds.has(r.id))),
-    [rows, projects.filedIds, view.status],
-  )
-
   return (
     <List
       mode="chat"
-      rows={unfiledRows}
+      rows={rows}
       view={view}
       keep={keep}
       open={(r) => r.id === thread}
@@ -164,21 +157,6 @@ function Chats({
       held={thread}
       onNew={onNew}
       unreadIds={unreadIds}
-      projectsNode={
-        view.status === 'archived' ? null : (
-          <ProjectsTree
-            folders={projects.folders}
-            openMap={projects.openMap}
-            byFolder={projects.byFolder}
-            threads={byId}
-            activeId={thread}
-            onToggle={projects.toggleFolder}
-            onCreate={projects.createFolder}
-            onOpen={onOpen}
-            onNew={onNew}
-          />
-        )
-      }
     />
   )
 }
@@ -310,7 +288,6 @@ function List({
   customActions,
   hrefOf,
   unreadIds,
-  projectsNode,
 }: {
   mode: Mode
   rows: Recent[]
@@ -332,8 +309,6 @@ function List({
   hrefOf?: (id: string) => string
   /** Background-updated conversation IDs showing a blue unread dot. */
   unreadIds?: Set<string>
-  /** Chat's collapsible Projects folder tree above Recents. */
-  projectsNode?: ReactNode
 }) {
   const { t } = useI18n()
   const label = useId()
@@ -563,7 +538,6 @@ function List({
       {/* Its end is its own: a scroll that reaches it does not move the page behind (a phone's menu). */}
       <ScrollView flex={1} showsVerticalScrollIndicator={false} {...({ overscrollBehavior: 'contain' } as object)}>
         {error ? <Note>{error.message}</Note> : null}
-        {projectsNode}
         <YStack role="list" aria-labelledby={label} gap={1}>
           {pinned ? (
             <YStack role="listitem" gap={1}>
