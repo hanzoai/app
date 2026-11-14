@@ -68,7 +68,9 @@ vi.mock('@hanzo/build', () => {
   }
 })
 vi.mock('./Account', () => ({ Made: () => null, Account: () => createElement('div', { 'data-slot': 'me' }) }))
-vi.mock('./Recents', () => ({ Recents: () => createElement('div', { 'data-slot': 'recents' }) }))
+vi.mock('./Recents', () => ({
+  Recents: ({ mode, host }: { mode: string; host: { name?: string } }) => createElement('div', { 'data-slot': 'recents', 'data-mode': mode, 'data-host': host.name ?? '' }),
+}))
 vi.mock('./Setup', () => ({ Setup: () => null }))
 vi.mock('./span', () => ({ useSpan: () => ({ ref: null, style: {}, span: 272, move: () => {}, keep: () => {} }) }))
 
@@ -291,6 +293,17 @@ describe('the sidebar', () => {
     ]) {
       expect(html).toContain(text)
     }
+  })
+
+  test('Design lists its own conversations, through the host Studio is mounted with; Studio and Flow list none, never Chat’s', () => {
+    expect(column('studio')).not.toContain('data-slot="recents"')
+    expect(column('flow')).not.toContain('data-slot="recents"')
+    expect(column('design')).not.toContain('data-slot="recents"')
+    const made = { ...hostAt(''), name: 'Design' }
+    const design = renderToStaticMarkup(createElement(Sidebar, { host: hostAt(''), mode: 'design', thread: null, go: noop, onShut: noop, onBack: noop, made }))
+    expect(design).toContain('data-slot="recents" data-mode="design" data-host="Design"')
+    expect(column('chat')).toContain('data-slot="recents" data-mode="chat"')
+    expect(column('dev')).toContain('data-slot="recents" data-mode="dev"')
   })
 
   test('Tabs lists its actions and sandboxes without Chat’s Recents', () => {

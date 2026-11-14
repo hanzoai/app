@@ -2,7 +2,9 @@
 
 // The app's sidebar, beside the rail on the window's floor (App.tsx): the
 // mode's name with the bell and the search at its end, New, Dev's places in
-// Dev, the reader's Recents (Pinned first), and the first-run cards. Which
+// Dev, the reader's Recents (Pinned first) for Chat, Dev and Design (Design's
+// own, through the host Studio is mounted with; Studio and Flow keep none to
+// list), and the first-run cards. Which
 // product it lists is the rail's to say; the account is at the rail's foot, or
 // on a phone at the foot of its menu (Drawer.tsx), where this column is the menu.
 //
@@ -310,6 +312,7 @@ export function Sidebar({
   rail,
   foot,
   places,
+  made,
 }: {
   host: Host
   mode: Place['mode']
@@ -331,6 +334,8 @@ export function Sidebar({
   foot?: ReactNode
   /** The mode's places, where they are not Dev's (Studio's `nav`). */
   places?: { id: string; label: string; links: RailLink[] }[]
+  /** The host Design is mounted with (App.tsx `maker`): where its conversations are read and opened. */
+  made?: Host
 }) {
   const { t, dir } = useI18n()
   const anon = host.person === null
@@ -666,8 +671,12 @@ export function Sidebar({
               </YStack>
             </YStack>
           </YStack>
-        ) : mode === 'hosted' || mode === 'beta' || mode === 'tabs' || anon || at ? (
+        ) : mode === 'hosted' || mode === 'beta' || mode === 'tabs' || mode === 'studio' || mode === 'flow' || anon || at ? (
+          // Studio (the Director) and Flow keep no conversations to list: their places stand alone, never above Chat's.
           <YStack flex={1} minH={0} />
+        ) : mode === 'design' ? (
+          // Design's own conversations, read and opened through the host Studio is mounted with.
+          made ? <Recents host={made} mode="design" thread={null} onOpen={open} onNew={create} /> : <YStack flex={1} minH={0} />
         ) : (
           <Recents host={host} mode={mode === 'dev' ? 'dev' : 'chat'} thread={thread} onOpen={open} onNew={create} />
         )}
