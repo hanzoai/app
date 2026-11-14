@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { arrange, chats, MENUS, PINNED, PLAIN, viewOf } from './recent'
+import { arrange, chats, hasUnreadUpdate, MENUS, PINNED, PLAIN, viewOf } from './recent'
 
 const now = new Date('2026-10-08T12:00:00Z')
 const at = (hoursAgo: number) => new Date(now.getTime() - hoursAgo * 3_600_000).toISOString()
@@ -43,5 +43,13 @@ describe('Recents', () => {
     expect(viewOf('chat', { group: 'starred' })).toEqual(PLAIN)
     expect(viewOf('chat', { status: 'archived' }).status).toBe('archived')
     expect(viewOf('dev', { status: 'archived' }).status).toBe('all')
+  })
+
+  test('a conversation updated since it was seen is unread, unless the pane holds it', () => {
+    const seen = { c1: Date.parse('2026-11-12T10:00:00Z'), c2: Date.parse('2026-11-12T10:00:00Z') }
+    expect(hasUnreadUpdate('c1', '2026-11-12T10:05:00Z', null, seen)).toBe(true)
+    expect(hasUnreadUpdate('c1', '2026-11-12T10:05:00Z', 'c1', seen)).toBe(false)
+    expect(hasUnreadUpdate('c2', '2026-11-12T09:59:00Z', null, seen)).toBe(false)
+    expect(hasUnreadUpdate('c3', '2026-11-12T10:05:00Z', null, seen)).toBe(false)
   })
 })
