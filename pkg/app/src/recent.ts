@@ -114,6 +114,24 @@ export function chats(threads: { id: string; title?: string; updatedAt?: string;
   }))
 }
 
+/**
+ * Whether a conversation moved on since its reader last saw it (`seenAt`, its
+ * time per id): never the one the pane holds, nor one this browser has not
+ * seen yet.
+ */
+export function hasUnreadUpdate(
+  rowId: string,
+  updatedAt: string | number | undefined,
+  activeId: string | null,
+  seenAt: Record<string, number>,
+): boolean {
+  if (!updatedAt || rowId === activeId) return false
+  const stamp = typeof updatedAt === 'number' ? updatedAt : Date.parse(updatedAt)
+  if (!Number.isFinite(stamp) || stamp <= 0) return false
+  const seen = seenAt[rowId]
+  return typeof seen === 'number' && stamp > seen
+}
+
 /** Dev's runs as rows. */
 export function runs(sessions: { id: string; title: string; status: string; project?: string; repo?: string; pr?: string; createdAt: string; updatedAt: string; pinned?: boolean }[]): Recent[] {
   return sessions.map((r) => ({
