@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { arrange, chats, hasUnreadUpdate, MENUS, PINNED, PLAIN, viewOf } from './recent'
+import { arrange, chats, designs, hasUnreadUpdate, MENUS, PINNED, PLAIN, UNTITLED, viewOf } from './recent'
 
 const now = new Date('2026-10-08T12:00:00Z')
 const at = (hoursAgo: number) => new Date(now.getTime() - hoursAgo * 3_600_000).toISOString()
@@ -43,6 +43,30 @@ describe('Recents', () => {
     expect(viewOf('chat', { group: 'starred' })).toEqual(PLAIN)
     expect(viewOf('chat', { status: 'archived' }).status).toBe('archived')
     expect(viewOf('dev', { status: 'archived' }).status).toBe('all')
+  })
+
+  test('Design’s conversations are rows of their own, their state read as a run’s', () => {
+    const made = designs([
+      { id: 'd1', title: 'Spring poster', updated: Date.parse('2026-11-12T10:00:00Z'), state: 'making' },
+      { id: 'd2', title: '', updated: Date.parse('2026-11-11T10:00:00Z'), state: 'failed' },
+      { id: 'd3', title: 'Logo', updated: Number.NaN, state: 'done' },
+    ])
+    expect(made.map((r) => [r.kind, r.status])).toEqual([
+      ['design', 'running'],
+      ['design', 'error'],
+      ['design', 'done'],
+    ])
+    expect(made[0]).toMatchObject({ title: 'Spring poster', at: '2026-11-12T10:00:00.000Z', began: '2026-11-12T10:00:00.000Z' })
+    expect(made[1]!.title).toBe(UNTITLED)
+    expect(made[2]!.at).toBe('')
+    expect(arrange(made, PLAIN, now).flatMap((g) => g.rows.map((r) => r.id))).toEqual(['d1', 'd2', 'd3'])
+  })
+
+  test('Design’s menu has no Status: it groups by date or not at all, and sorts by activity or title', () => {
+    expect(MENUS.design.status).toEqual([])
+    expect(MENUS.design.group.map((o) => o.id)).toEqual(['date', 'none'])
+    expect(MENUS.design.sort.map((o) => o.id)).toEqual(['activity', 'title'])
+    expect(viewOf('design', { status: 'archived', group: 'project' })).toEqual(PLAIN)
   })
 
   test('a conversation updated since it was seen is unread, unless the pane holds it', () => {

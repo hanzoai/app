@@ -5,7 +5,7 @@
 
 import { phrase, english, type Say } from '@hanzo/i18n'
 
-export type Mode = 'chat' | 'dev'
+export type Mode = 'chat' | 'dev' | 'design'
 
 export interface Recent {
   kind: Mode
@@ -86,6 +86,18 @@ export const MENUS: Record<Mode, { status: Option<Status>[]; group: Option<Group
       { id: 'title', label: phrase('Title') },
     ],
   },
+  // Design's conversations (@hanzo/studio): no archive, and a state that is the last turn's, so no Status to narrow by.
+  design: {
+    status: [],
+    group: [
+      { id: 'date', label: phrase('Date') },
+      { id: 'none', label: phrase('None') },
+    ],
+    sort: [
+      { id: 'activity', label: phrase('Activity') },
+      { id: 'title', label: phrase('Title') },
+    ],
+  },
 }
 
 /** A kept view as this mode may hold it: anything a menu does not offer reads as the plain view's. */
@@ -130,6 +142,26 @@ export function hasUnreadUpdate(
   if (!Number.isFinite(stamp) || stamp <= 0) return false
   const seen = seenAt[rowId]
   return typeof seen === 'number' && stamp > seen
+}
+
+/**
+ * Design's conversations as rows, as @hanzo/studio's `useRecent` lists them:
+ * one at work reads Running and one whose last turn failed Failed, as a run's
+ * would; `updated` is Unix milliseconds.
+ */
+export function designs(rows: { id: string; title?: string; updated?: number; state?: string }[]): Recent[] {
+  return rows.map((r) => {
+    const when = new Date(typeof r.updated === 'number' ? r.updated : Number.NaN)
+    const at = Number.isNaN(when.getTime()) ? '' : when.toISOString()
+    return {
+      kind: 'design',
+      id: r.id,
+      title: r.title || UNTITLED,
+      at,
+      began: at,
+      status: r.state === 'making' ? 'running' : r.state === 'failed' ? 'error' : 'done',
+    }
+  })
 }
 
 /** Dev's runs as rows. */

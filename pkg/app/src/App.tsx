@@ -513,7 +513,7 @@ function Window({ bar, betas }: Hosted) {
             {/* Tabs and Betas stand alone: no sidebar beside them. */}
             {closed || alone ? null : (
               <YStack $max-md={{ display: 'none' }}>
-                <Sidebar host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} onSeek={seek} onBack={back} places={sidebar} />
+                <Sidebar host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} onSeek={seek} onBack={back} places={sidebar} made={maker} />
               </YStack>
             )}
             <YStack
@@ -704,6 +704,7 @@ function Window({ bar, betas }: Hosted) {
                     onBack={back}
                     drawer
                     places={sidebar}
+                    made={maker}
                   />
                 </YStack>
               </XStack>

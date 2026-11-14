@@ -2,7 +2,8 @@
 
 // The reader's Recents in the column's mode, and only that mode's: Chat lists its
 // conversations (`/v1/agents/chat/conversations`, `useThreadList`), Dev its
-// coding runs (`/v1/agent/sessions?kind=coding`, @hanzo/build `useSessions`). Each
+// coding runs (`/v1/agent/sessions?kind=coding`, @hanzo/build `useSessions`),
+// Design what Studio keeps of its conversations (@hanzo/studio `useRecent`). Each
 // mode reads its own store. The menu beside the heading narrows, groups and sorts
 // the list; the choice is kept per mode in this browser. Chat's rows share one
 // menu (thread.tsx `ConversationMenu`): pinned ones list first, under Pinned,
@@ -14,17 +15,28 @@ import { ScrollView, SizableText, XStack, YStack } from '@hanzo/gui'
 import { CheckSquare, ChevronDown, ChevronRight, GitPullRequest, ListFilter } from 'lucide-react'
 import type { Thread } from '@hanzo/ai'
 import { DOTS, route, useSessions, type Host } from '@hanzo/build'
+import * as studio from '@hanzo/studio'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { SidebarItem, StatusDot } from '@hanzo/ui/chat'
 import { useKept } from './kept'
 import { app } from './lib/host'
 import { site } from './where'
-import { ago, arrange, chats, hasUnreadUpdate, MENUS, PINNED, PLAIN, runs, SINCE, UNFILED, UNTITLED, UNTITLED_RUN, viewOf, type Mode, type Option, type Recent, type View } from './recent'
+import { ago, arrange, chats, designs, hasUnreadUpdate, MENUS, PINNED, PLAIN, runs, SINCE, UNFILED, UNTITLED, UNTITLED_RUN, viewOf, type Mode, type Option, type Recent, type View } from './recent'
 import type { Say } from '@hanzo/i18n'
 import { ConversationMenu, ThreadRow, useThreadList, type ThreadActions } from './thread'
 
-/** The menu's items: each section a heading and its options (recent.ts's phrases, drawn through `t`), the one in force checked. */
-function items(mode: Mode, view: View, set: (v: View) => void, t: Say): NonNullable<DropdownMenuProps['items']> {
+/** A Design conversation as Studio lists it (@hanzo/studio `Listed`). */
+type Made = { id: string; title: string; updated: number; state: 'making' | 'done' | 'failed' }
+
+/**
+ * Studio's own read of Design's conversations (@hanzo/studio `useRecent`, from
+ * 0.1.11): this browser's store, shared with Studio's panes. An older Studio has
+ * none, and Design then lists nothing here, never Chat's.
+ */
+const useMade = (studio as { useRecent?: (host: Host) => { rows: Made[]; error: string } }).useRecent
+
+/** The menu's items: each section a heading and its options (recent.ts's phrases, drawn through `t`), the one in force checked; Select multiple where the rows carry a menu. */
+function items(mode: Mode, view: View, set: (v: View) => void, t: Say, select: boolean): NonNullable<DropdownMenuProps['items']> {
   const m = MENUS[mode]
   const section = <K extends keyof View>(key: K, label: string, options: Option<View[K]>[]): NonNullable<DropdownMenuProps['items']> =>
     options.length
@@ -43,6 +55,7 @@ function items(mode: Mode, view: View, set: (v: View) => void, t: Say): NonNulla
     (p) => p.length,
   )
   const base = parts.flatMap((p, i) => (i ? [{ type: 'separator' as const, key: `sep-${i}` }, ...p] : p))
+  if (!select) return base
   return [
     ...base,
     { type: 'separator' as const, key: 'sep-select' },
@@ -69,6 +82,7 @@ export function Recents({
   onOpen,
   onNew,
 }: {
+  /** The mode's host: Design's is the one Studio is mounted with (App.tsx `maker`), whose path is Studio's. */
   host: Host
   mode: Mode
   /** The Chat conversation the pane holds, or null. */
@@ -79,10 +93,29 @@ export function Recents({
 }) {
   const [kept, keep] = useKept<unknown>(`hanzo.recents.${mode}`, PLAIN)
   const view = viewOf(mode, kept)
-  return mode === 'chat' ? (
-    <Chats thread={thread} view={view} keep={keep} onOpen={onOpen} onNew={onNew} />
-  ) : (
-    <Runs host={host} view={view} keep={keep} onOpen={onOpen} />
+  if (mode === 'chat') return <Chats thread={thread} view={view} keep={keep} onOpen={onOpen} onNew={onNew} />
+  if (mode === 'design') return useMade ? <Designs host={host} view={view} keep={keep} /> : <YStack flex={1} minH={0} />
+  return <Runs host={host} view={view} keep={keep} onOpen={onOpen} />
+}
+
+/** Design's Recents: Studio's conversations, each opened in Design at its own address (@hanzo/studio `path`). */
+function Designs({ host, view, keep }: { host: Host; view: View; keep: (v: View) => void }) {
+  const { rows: made, error } = useMade!(host)
+  const rows = useMemo(() => designs(made), [made])
+  const failed = useMemo(() => (error ? new Error(error) : null), [error])
+  const at = studio.route(host.path)
+  const held = at.kind === 'chat' ? at.id : null
+  return (
+    <List
+      mode="design"
+      rows={rows}
+      view={view}
+      keep={keep}
+      open={(r) => r.id === held}
+      reading={false}
+      error={failed}
+      onOpen={(r) => host.go(studio.path({ kind: 'chat', id: r.id }))}
+    />
   )
 }
 
@@ -331,8 +364,15 @@ function List({
         {age}
       </SizableText>
     ) : null
+    // A Design conversation's dot is there while it works or when it failed; at rest it wears its age alone.
+    const settled = r.kind === 'design' && r.status === 'done'
     const rowAside =
-      r.kind === 'dev' ? (
+      r.kind === 'design' ? (
+        <XStack items="center" gap="$1.5">
+          {when}
+          {settled ? null : <StatusDot status={DOTS[r.status as keyof typeof DOTS] ?? 'idle'} />}
+        </XStack>
+      ) : r.kind === 'dev' ? (
         <XStack items="center" gap="$1.5">
           {when}
           {r.pr ? <GitPullRequest size={13} color="var(--state-success)" aria-hidden /> : null}
@@ -421,7 +461,7 @@ function List({
           <ListFilter size={14} aria-hidden />
         </XStack>
       }
-      items={items(mode, view, keep, t)}
+      items={items(mode, view, keep, t, Boolean(threads))}
     />
   )
   /** A section's heading: quiet 11.5px label, the Recents one carrying the count and the menu. */
@@ -441,7 +481,7 @@ function List({
         ) : null}
       </XStack>
       <XStack items="center" gap={2}>
-        {lead && rows.length > 0 ? (
+        {lead && threads && rows.length > 0 ? (
           <XStack
             render="button"
             aria-label={t('Select multiple')}
@@ -478,7 +518,7 @@ function List({
   ) : narrowed ? (
     <Note>{t('Nothing in this view.')}</Note>
   ) : (
-    <Note>{t(mode === 'chat' ? 'No chats yet.' : 'No runs yet.')}</Note>
+    <Note>{t(mode === 'chat' ? 'No chats yet.' : mode === 'design' ? 'Nothing made yet.' : 'No runs yet.')}</Note>
   )
   // Each list of conversations holds its own menu (thread.tsx): the view menu
   // in the Recents heading between them is a menu of its own, never inside one.
