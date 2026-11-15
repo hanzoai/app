@@ -1,8 +1,13 @@
 'use client'
 
-// The open bot's right inspector panel: avatar, name, [Activity | Library]
-// segmented control, Upcoming routines & connected networks, Bot's computer
-// status monitor, and Voice chat preferences.
+// The open bot's right inspector panel:
+// - Avatar, Primary Bot ("hanzo" · Layer 0) status, [Activity | Library] segmented tabs
+// - Hierarchy & Layer role card (Primary Bot promotion, Bot Group assignment, Layer 0..3)
+// - Slack Sync & Channel Routing card (one-click Add to Slack, Sync Channels, default @hanzo responder, #channel bindings)
+// - Upcoming routines & connected networks
+// - Connectors launcher
+// - Dedicated Desktop Sandbox Computer card opening ComputerDialog (live GUI + Terminal + Computer Use)
+// - Voice chat preferences
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Agent, AgentRun, Sandbox } from '@hanzo/ai'
@@ -19,17 +24,46 @@ import {
   DropdownMenuTrigger,
   Switch,
 } from '@hanzo/ui'
-import { ChevronDown, ChevronRight, Clock, FileText, Image as ImageIcon, Plus, X } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  ExternalLink,
+  FileText,
+  Image as ImageIcon,
+  Layers,
+  Plus,
+  RefreshCw,
+  Star,
+  X,
+} from 'lucide-react'
 import { useKept } from '../kept'
 import { useAi } from '../lib/ai'
 import { say } from '../failure'
 import { Network, of } from '../network'
 import { called } from '../team'
+import { ComputerDialog } from './ComputerDialog'
 import { ConnectorsDialog } from './ConnectorsDialog'
 import { Face } from './face'
-import { ALWAYS, answering, disk, grant } from './api'
+import {
+  ALWAYS,
+  PRIMARY_BOT,
+  answering,
+  disk,
+  setAnswering,
+  setPrimaryBot,
+  slackAuthorizeUrl,
+  slackChannels,
+  slackStatus,
+  slackSyncChannels,
+  toGroupRef,
+  updateBotMeta,
+  type BotAgent,
+  type BotGroup,
+  type SlackChannel,
+} from './api'
 import { CARD, CLIP, LABEL, PILL, ROUND, WORD } from './kit'
-import { DIM, INK, LINE, PICKED, RAISED } from './ink'
+import { DIM, GROUND, INK, LINE, PICKED, RAISED } from './ink'
 import { partsOf } from './said'
 import { cron as words } from './time'
 
@@ -37,7 +71,6 @@ const VOICES = ['Liora', 'Aria', 'Sol', 'Koe', 'Nova', 'Echo'] as const
 const SPEEDS = ['0.9x', '1x', '1.25x', '1.5x', '2x'] as const
 const LANGUAGES = ['Auto-detect', 'English', 'Spanish', 'French', 'German', 'Japanese', 'Chinese'] as const
 
-/** One row of a card: a mark, two lines, and whatever acts on it. */
 function Row({
   mark,
   title,
@@ -139,7 +172,7 @@ function ComputerScreen({ awake }: { awake: boolean }) {
       borderColor={LINE}
     >
       {awake ? (
-        <YStack width={10} height={10} rounded={999} bg="var(--state-online)" />
+        <YStack width={10} height={10} rounded={999} bg="var(--state-online, #22c55e)" />
       ) : (
         <>
           <Text position="absolute" t={2} r={6} fontSize={9} lineHeight={10} fontWeight="600" color={DIM}>
@@ -160,12 +193,11 @@ function ComputerScreen({ awake }: { awake: boolean }) {
   )
 }
 
-/** A computer's state as a person reads it. No lease is a computer asleep. */
-function state(box: Sandbox | null, t: (s: string) => string): string {
-  if (!box) return t('Asleep')
-  if (box.status === 'running') return t('Awake')
-  if (box.status === 'pending') return t('Waking')
-  return box.error || t('Stopped')
+function stateLabel(box: Sandbox | null, t: (s: string) => string): string {
+  if (!box) return t('Asleep · click for Desktop GUI')
+  if (box.status === 'running') return t('Awake · Desktop GUI & Shell')
+  if (box.status === 'pending') return t('Waking desktop…')
+  return box.error || t('Parked · click to wake')
 }
 
 const best = (boxes: readonly Sandbox[]): Sandbox | null =>
@@ -175,33 +207,50 @@ const POLL = 5000
 
 export function Panel({
   bot,
+  groups = [],
   runs = [],
   onClose,
   kept,
   onSchedule,
   onDelete,
+  onBotChanged,
+  onPickGroup,
   focus = false,
 }: {
   bot: Agent
+  groups?: readonly BotGroup[]
   runs?: readonly AgentRun[]
   kept: string
   onClose: () => void
   onSchedule: (on: boolean, cron: string) => Promise<void>
   onDelete: () => Promise<void>
+  onBotChanged?: () => void | Promise<void>
+  onPickGroup?: (ref: string) => void
   focus?: boolean
 }) {
   const { t, locale } = useI18n()
   const { client } = useAi()
+  const ext = bot as BotAgent
+  const isPrimary = Boolean(ext.isPrimary || bot.name.toLowerCase() === PRIMARY_BOT)
+  const currentLayer = isPrimary ? 0 : (ext.layer ?? 1)
+
   const [tab, setTab] = useState<'activity' | 'library'>('activity')
   const [instructions, setInstructions] = useState('')
   const [answers, setAnswers] = useState<string[]>([])
   const [box, setBox] = useState<Sandbox | null>(null)
-  const [boxed, setBoxed] = useState(false)
-  const [busy, setBusy] = useState(false)
+  const [computerOpen, setComputerOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [wrong, setWrong] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [connectorsOpen, setConnectorsOpen] = useState(false)
+
+  // Slack workspace + channel routing state
+  const [slackConn, setSlackConn] = useState<{ connected: boolean; account?: string }>({ connected: false })
+  const [slackDefault, setSlackDefault] = useState<string>(PRIMARY_BOT)
+  const [slackChans, setSlackChans] = useState<SlackChannel[]>([])
+  const [slackBound, setSlackBound] = useState<Record<string, string>>({})
+  const [slackBusy, setSlackBusy] = useState(false)
+  const [slackNote, setSlackNote] = useState<string | null>(null)
 
   const [voiceName, setVoiceName] = useKept<string>('hanzo.bots.voice.name', 'Liora')
   const [voiceSpeed, setVoiceSpeed] = useKept<string>('hanzo.bots.voice.speed', '1x')
@@ -211,20 +260,41 @@ export function Panel({
   const cron = bot.schedule || kept
   const activeSchedule = bot.executionMode === ALWAYS && Boolean(bot.schedule)
 
+  const assignedGroup = useMemo(
+    () => groups.find((g) => g.id === ext.groupId || g.name === ext.groupId || g.members.includes(bot.name)) ?? null,
+    [groups, ext.groupId, bot.name],
+  )
+
   const survey = useCallback(
     async (signal?: AbortSignal) => {
       if (!client) return
       const opts = signal ? { signal } : undefined
-      const [detail, nets, boxes] = await Promise.allSettled([
+      const [detail, nets, boxes, slk] = await Promise.allSettled([
         client.agents.get(bot.name, opts),
         client.transports.list(opts),
         client.sandboxes.list({ project: disk(bot.name) }, opts),
+        slackStatus(signal),
       ])
       if (signal?.aborted) return
       if (detail.status === 'fulfilled') setInstructions(detail.value.instructions ?? '')
       if (boxes.status === 'fulfilled') {
         setBox(best(boxes.value))
-        setBoxed(true)
+      }
+      if (slk.status === 'fulfilled') {
+        setSlackConn(slk.value)
+        if (slk.value.connected) {
+          const [ans, chs] = await Promise.all([
+            answering(client, 'slack', signal).catch(() => null),
+            slackChannels(signal),
+          ])
+          if (!signal?.aborted) {
+            if (ans) {
+              setSlackDefault(ans.default || PRIMARY_BOT)
+              setSlackBound(ans.channels || {})
+            }
+            setSlackChans(chs)
+          }
+        }
       }
       if (nets.status === 'fulfilled') {
         const connected = nets.value.filter((n) => n.connected)
@@ -234,7 +304,7 @@ export function Panel({
           connected
             .filter((_, i) => {
               const r = bound[i]
-              return r.status === 'fulfilled' && r.value.default === bot.name
+              return r.status === 'fulfilled' && (r.value.default || PRIMARY_BOT) === bot.name
             })
             .map((n) => n.id),
         )
@@ -264,30 +334,114 @@ export function Panel({
     }
   }, [client, box?.status, bot.name])
 
-  const computer = async () => {
-    if (!client || busy) return
-    setBusy(true)
+  const promotePrimary = async () => {
+    if (!client || saving) return
+    setSaving(true)
     setWrong(null)
-    const win = box?.status === 'running' ? window.open('', '_blank') : null
     try {
-      if (box?.status === 'running') {
-        const g = await grant(client, box.id, box.class === 'desktop' ? 'screen' : 'terminal')
-        if (!win) return setWrong(t('The browser kept the new tab from opening.'))
-        if (!g.url?.startsWith('https://')) {
-          win.close()
-          return setWrong(t('The platform opened no window onto it.'))
-        }
-        win.opener = null
-        win.location.href = g.url
-      } else if (!box || box.status === 'error') {
-        await client.sandboxes.lease({ class: 'desktop', project: disk(bot.name) })
-        await survey()
-      }
+      await setPrimaryBot(client, bot.name)
+      await onBotChanged?.()
+      await survey()
     } catch (e) {
-      win?.close()
-      setWrong(say(e, t('{name}’s computer', { name: displayName }), 'save', t))
+      setWrong(say(e, displayName, 'save', t))
     } finally {
-      setBusy(false)
+      setSaving(false)
+    }
+  }
+
+  const assignLayer = async (lv: number) => {
+    if (!client || saving) return
+    setSaving(true)
+    setWrong(null)
+    try {
+      await updateBotMeta(client, bot.name, { layer: lv })
+      await onBotChanged?.()
+    } catch (e) {
+      setWrong(say(e, displayName, 'save', t))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const assignGroup = async (groupId: string) => {
+    if (!client || saving) return
+    setSaving(true)
+    setWrong(null)
+    try {
+      await updateBotMeta(client, bot.name, { groupId })
+      await onBotChanged?.()
+    } catch (e) {
+      setWrong(say(e, displayName, 'save', t))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const connectSlack = async () => {
+    setSlackBusy(true)
+    setSlackNote(null)
+    try {
+      const url = await slackAuthorizeUrl()
+      if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer')
+        setSlackNote(t('Approve Slack in the opened tab — channels sync automatically when connected.'))
+      } else {
+        setConnectorsOpen(true)
+      }
+    } catch {
+      setConnectorsOpen(true)
+    } finally {
+      setSlackBusy(false)
+    }
+  }
+
+  const syncSlack = async () => {
+    setSlackBusy(true)
+    setSlackNote(null)
+    try {
+      const res = await slackSyncChannels()
+      setSlackNote(
+        res.ok
+          ? res.joined !== undefined
+            ? t('Synced @hanzo into {n} Slack channels.', { n: res.joined })
+            : t('Synced @hanzo into workspace Slack channels.')
+          : t('Could not sync channels — ensure Slack is connected by an org admin.'),
+      )
+      await survey()
+    } finally {
+      setSlackBusy(false)
+    }
+  }
+
+  const toggleSlackDefault = async (on: boolean) => {
+    if (!client || slackBusy) return
+    setSlackBusy(true)
+    try {
+      const target = on ? bot.name : PRIMARY_BOT
+      const ans = await setAnswering(client, { transport: 'slack', default: target })
+      setSlackDefault(ans.default || PRIMARY_BOT)
+      await survey()
+    } catch (e) {
+      setWrong(say(e, t('Slack responder'), 'save', t))
+    } finally {
+      setSlackBusy(false)
+    }
+  }
+
+  const toggleSlackChannel = async (channelId: string) => {
+    if (!client || slackBusy) return
+    setSlackBusy(true)
+    try {
+      const boundToMe = slackBound[channelId] === bot.name
+      const ans = await setAnswering(
+        client,
+        boundToMe ? { transport: 'slack', unbind: [channelId] } : { transport: 'slack', channels: { [channelId]: bot.name } },
+      )
+      setSlackBound(ans.channels || {})
+    } catch (e) {
+      setWrong(say(e, t('Slack channel routing'), 'save', t))
+    } finally {
+      setSlackBusy(false)
     }
   }
 
@@ -325,10 +479,13 @@ export function Panel({
         </XStack>
       </XStack>
 
-      <YStack items="center" gap={12} pt={2} pb={18} px={14}>
-        <Face bot={bot} size={68} />
+      <YStack items="center" gap={8} pt={2} pb={18} px={14}>
+        <Face bot={bot} size={68} starred={isPrimary} />
         <Text {...CLIP} maxW="100%" fontSize={18} lineHeight={23} fontWeight="600" color={INK}>
           {displayName}
+        </Text>
+        <Text fontSize={12} lineHeight={16} color={DIM}>
+          {isPrimary ? t('Primary Bot · Layer 0 (Directs all bots)') : t('Layer {lv} Bot', { lv: currentLayer })}
         </Text>
         <XStack
           data-parity-key="bots.panel.tabs"
@@ -367,9 +524,269 @@ export function Panel({
       </YStack>
 
       {tab === 'activity' ? (
-        <YStack px={15} pb={24} gap={20}>
+        <YStack px={15} pb={24} gap={18}>
+          {/* Hierarchy & Layer Coordination */}
+          <YStack gap={8} data-parity-key="bots.panel.hierarchy">
+            <Text {...LABEL} px={4}>
+              {t('Hierarchy & Coordination')}
+            </Text>
+            <YStack {...CARD}>
+              <Row
+                mark={isPrimary ? <Star size={16} color={INK} aria-hidden /> : <Layers size={16} color={DIM} aria-hidden />}
+                title={isPrimary ? t('Primary Bot (Max 1)') : t('Subordinate Bot')}
+                line={
+                  isPrimary
+                    ? t('Directs worker bots & layered Bot Groups')
+                    : t('Directed by Primary Bot ({primary})', { primary: PRIMARY_BOT })
+                }
+                last={isPrimary && groups.length === 0}
+              >
+                {!isPrimary ? (
+                  <XStack
+                    render="button"
+                    {...{ type: 'button' }}
+                    disabled={saving}
+                    onClick={() => void promotePrimary()}
+                    height={26}
+                    px={9}
+                    rounded={999}
+                    items="center"
+                    bg={GROUND}
+                    borderWidth={1}
+                    borderColor={LINE}
+                    cursor="pointer"
+                    hoverStyle={{ bg: PICKED }}
+                  >
+                    <Text fontSize={11} lineHeight={15} fontWeight="500" color={INK}>
+                      {t('Make Primary')}
+                    </Text>
+                  </XStack>
+                ) : null}
+              </Row>
+
+              {!isPrimary ? (
+                <VoiceRow
+                  label={t('Layer')}
+                  value={`Layer ${currentLayer}`}
+                  options={['Layer 1', 'Layer 2', 'Layer 3']}
+                  onSelect={(opt) => void assignLayer(Number(opt.replace('Layer ', '')) || 1)}
+                  last={groups.length === 0}
+                />
+              ) : null}
+
+              {groups.length > 0 ? (
+                <XStack minH={44} px={14} items="center" justify="space-between">
+                  <Text fontSize={14} lineHeight={19} color={INK}>
+                    {t('Group')}
+                  </Text>
+                  <XStack items="center" gap={6}>
+                    {assignedGroup && onPickGroup ? (
+                      <XStack
+                        render="button"
+                        {...{ type: 'button' }}
+                        onClick={() => onPickGroup(toGroupRef(assignedGroup.name))}
+                        px={8}
+                        py={3}
+                        rounded={999}
+                        bg={PICKED}
+                        borderWidth={1}
+                        borderColor={LINE}
+                        cursor="pointer"
+                      >
+                        <Text fontSize={11} lineHeight={15} color={INK}>
+                          {t('Open')}
+                        </Text>
+                      </XStack>
+                    ) : null}
+                    <DropdownMenu placement="bottom-end" offset={6}>
+                      <DropdownMenuTrigger asChild>
+                        <XStack
+                          render="button"
+                          {...{ type: 'button' }}
+                          items="center"
+                          gap={5}
+                          px={6}
+                          py={4}
+                          rounded={6}
+                          bg="transparent"
+                          borderWidth={0}
+                          cursor="pointer"
+                          hoverStyle={{ bg: PICKED }}
+                        >
+                          <Text fontSize={13} lineHeight={18} color={INK}>
+                            {assignedGroup ? assignedGroup.name : t('None')}
+                          </Text>
+                          <ChevronDown size={14} color={DIM} aria-hidden />
+                        </XStack>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent minW={170}>
+                        <DropdownMenuItem onSelect={() => void assignGroup('')}>
+                          <Text fontSize="$3" color="$ink">
+                            {t('None')}
+                          </Text>
+                        </DropdownMenuItem>
+                        {groups.map((g) => (
+                          <DropdownMenuItem key={g.id} onSelect={() => void assignGroup(g.id)}>
+                            <Text fontSize="$3" color="$ink">
+                              {`${g.name} (L${g.layer || 1})`}
+                            </Text>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </XStack>
+                </XStack>
+              ) : null}
+            </YStack>
+          </YStack>
+
+          {/* Slack Sync ("Add to Slack" like @hanzo) */}
+          <YStack gap={8} data-parity-key="bots.panel.slack">
+            <XStack items="center" justify="space-between" px={4}>
+              <Text {...LABEL}>{t('Slack Agent Sync')}</Text>
+              {slackConn.connected ? (
+                <XStack
+                  render="button"
+                  {...{ type: 'button' }}
+                  disabled={slackBusy}
+                  onClick={() => void syncSlack()}
+                  items="center"
+                  gap={4}
+                  px={6}
+                  py={2}
+                  rounded={6}
+                  bg="transparent"
+                  borderWidth={0}
+                  cursor="pointer"
+                  hoverStyle={{ bg: PICKED }}
+                >
+                  <RefreshCw size={11} color={DIM} aria-hidden />
+                  <Text fontSize={11} lineHeight={15} color={DIM}>
+                    {t('Sync channels')}
+                  </Text>
+                </XStack>
+              ) : null}
+            </XStack>
+
+            <YStack {...CARD}>
+              <Row
+                mark={<Network transport="slack" size={20} />}
+                title={slackConn.connected ? (slackConn.account ? `Slack · ${slackConn.account}` : t('Slack Connected')) : t('Add @hanzo to Slack')}
+                line={
+                  slackConn.connected
+                    ? slackDefault === bot.name
+                      ? t('Answers @hanzo in Slack by default')
+                      : t('Default responder: {def}', { def: slackDefault })
+                    : t('Sync channels, threads, and DMs like @hanzo')
+                }
+                last={!slackConn.connected}
+              >
+                {slackConn.connected ? (
+                  <Switch
+                    aria-label={t('Answer @hanzo in Slack with {name}', { name: displayName })}
+                    checked={slackDefault === bot.name}
+                    disabled={slackBusy}
+                    onCheckedChange={(on: boolean) => void toggleSlackDefault(on)}
+                  />
+                ) : (
+                  <XStack
+                    render="button"
+                    {...{ type: 'button' }}
+                    disabled={slackBusy}
+                    onClick={() => void connectSlack()}
+                    height={28}
+                    px={10}
+                    rounded={999}
+                    items="center"
+                    gap={5}
+                    bg={INK}
+                    borderWidth={1}
+                    borderColor={INK}
+                    cursor="pointer"
+                  >
+                    <ExternalLink size={11} color="var(--background)" aria-hidden />
+                    <Text fontSize={11} lineHeight={15} fontWeight="500" color="var(--background)">
+                      {t('Add to Slack')}
+                    </Text>
+                  </XStack>
+                )}
+              </Row>
+
+              {slackConn.connected && slackChans.length > 0 ? (
+                <YStack px={13} py={9} gap={6}>
+                  <Text fontSize={11} lineHeight={15} color={DIM}>
+                    {t('Bind channels directly to {name}:', { name: displayName })}
+                  </Text>
+                  <XStack flexWrap="wrap" gap={5}>
+                    {slackChans.slice(0, 8).map((ch) => {
+                      const mine = slackBound[ch.id] === bot.name
+                      return (
+                        <XStack
+                          key={ch.id}
+                          render="button"
+                          {...{ type: 'button' }}
+                          disabled={slackBusy}
+                          onClick={() => void toggleSlackChannel(ch.id)}
+                          height={24}
+                          px={8}
+                          rounded={999}
+                          items="center"
+                          bg={mine ? INK : GROUND}
+                          borderWidth={1}
+                          borderColor={mine ? INK : LINE}
+                          cursor="pointer"
+                        >
+                          <Text fontSize={11} lineHeight={15} color={mine ? 'var(--background)' : INK}>
+                            {`#${ch.name}`}
+                          </Text>
+                        </XStack>
+                      )
+                    })}
+                  </XStack>
+                </YStack>
+              ) : null}
+            </YStack>
+
+            {slackNote ? (
+              <Text fontSize={11} lineHeight={16} color={DIM} px={4}>
+                {slackNote}
+              </Text>
+            ) : null}
+          </YStack>
+
+          {/* Dedicated Desktop Sandbox Computer (always visible for every bot!) */}
+          <YStack gap={8} data-parity-key="bots.panel.computer">
+            <Text {...LABEL} px={4}>
+              {t('Desktop Computer')}
+            </Text>
+            <XStack
+              {...CARD}
+              render="button"
+              {...{ type: 'button' }}
+              onClick={() => setComputerOpen(true)}
+              aria-label={t('Open {name}’s desktop computer', { name: displayName })}
+              minH={60}
+              px={13}
+              py={10}
+              items="center"
+              gap={12}
+              cursor="pointer"
+              hoverStyle={{ bg: PICKED }}
+            >
+              <YStack flex={1} minW={0} items="flex-start">
+                <Text {...CLIP} fontSize={14} lineHeight={19} color={INK}>
+                  {t("Bot's computer")}
+                </Text>
+                <Text {...CLIP} fontSize={12} lineHeight={17} color={DIM}>
+                  {stateLabel(box, t)}
+                </Text>
+              </YStack>
+              <ComputerScreen awake={box?.status === 'running'} />
+            </XStack>
+          </YStack>
+
           {cron || answers.length ? (
-            <YStack gap={10} data-parity-key="bots.panel.upcoming">
+            <YStack gap={8} data-parity-key="bots.panel.upcoming">
               <Text {...LABEL} px={4}>
                 {t('Upcoming')}
               </Text>
@@ -410,7 +827,7 @@ export function Panel({
             </YStack>
           ) : null}
 
-          <YStack gap={10} data-parity-key="bots.panel.connectors">
+          <YStack gap={8} data-parity-key="bots.panel.connectors">
             <XStack items="center" justify="space-between" px={4}>
               <Text {...LABEL}>{t('Connectors')}</Text>
               <XStack
@@ -449,7 +866,7 @@ export function Panel({
             >
               <YStack flex={1} minW={0} items="flex-start">
                 <Text {...CLIP} fontSize={14} lineHeight={19} color={INK}>
-                  {answers.length ? t('{n} channels connected', { n: answers.length }) : t('Connect Slack, WhatsApp, Stripe…')}
+                  {answers.length ? t('{n} channels connected', { n: answers.length }) : t('Connect Slack, GitHub, Linear, Stripe…')}
                 </Text>
                 <Text {...CLIP} fontSize={12} lineHeight={17} color={DIM}>
                   {t('External apps, socials & MCP tools')}
@@ -459,40 +876,7 @@ export function Panel({
             </XStack>
           </YStack>
 
-          {boxed ? (
-            <YStack gap={10} data-parity-key="bots.panel.computer">
-              <Text {...LABEL} px={4}>
-                {t('Computer')}
-              </Text>
-              <XStack
-                {...CARD}
-                render="button"
-                {...{ type: 'button' }}
-                onClick={computer}
-                disabled={busy || box?.status === 'pending'}
-                aria-label={t(box?.status === 'running' ? 'Open {name}’s computer' : 'Wake {name}’s computer', { name: displayName })}
-                minH={60}
-                px={13}
-                py={10}
-                items="center"
-                gap={12}
-                cursor="pointer"
-                hoverStyle={{ bg: PICKED }}
-              >
-                <YStack flex={1} minW={0} items="flex-start">
-                  <Text {...CLIP} fontSize={14} lineHeight={19} color={INK}>
-                    {t("Bot's computer")}
-                  </Text>
-                  <Text {...CLIP} fontSize={13} lineHeight={18} color={DIM}>
-                    {busy ? t('Waking') : state(box, t)}
-                  </Text>
-                </YStack>
-                <ComputerScreen awake={box?.status === 'running'} />
-              </XStack>
-            </YStack>
-          ) : null}
-
-          <YStack gap={10} data-parity-key="bots.panel.voice">
+          <YStack gap={8} data-parity-key="bots.panel.voice">
             <Text {...LABEL} px={4}>
               {t('Voice chat')}
             </Text>
@@ -509,23 +893,25 @@ export function Panel({
             </Text>
           ) : null}
 
-          <XStack px={8} pt={4}>
-            <Text
-              render="button"
-              {...{ type: 'button' }}
-              onClick={() => setDeleting(true)}
-              bg="transparent"
-              borderWidth={0}
-              p={0}
-              cursor="pointer"
-              fontSize={13}
-              lineHeight={18}
-              color={DIM}
-              hoverStyle={{ color: INK }}
-            >
-              {t('Delete {name}', { name: displayName })}
-            </Text>
-          </XStack>
+          {!isPrimary ? (
+            <XStack px={8} pt={4}>
+              <Text
+                render="button"
+                {...{ type: 'button' }}
+                onClick={() => setDeleting(true)}
+                bg="transparent"
+                borderWidth={0}
+                p={0}
+                cursor="pointer"
+                fontSize={13}
+                lineHeight={18}
+                color={DIM}
+                hoverStyle={{ color: INK }}
+              >
+                {t('Delete {name}', { name: displayName })}
+              </Text>
+            </XStack>
+          ) : null}
         </YStack>
       ) : (
         <YStack px={15} pb={24} gap={12} data-parity-key="bots.panel.library">
@@ -582,10 +968,22 @@ export function Panel({
           </XStack>
         </DialogContent>
       </Dialog>
+
+      <ComputerDialog
+        open={computerOpen}
+        onOpenChange={setComputerOpen}
+        bot={ext}
+        box={box}
+        onUpdated={async () => {
+          await survey()
+          await onBotChanged?.()
+        }}
+      />
+
       <ConnectorsDialog
         open={connectorsOpen}
         onOpenChange={setConnectorsOpen}
-        defaultFilter="channels"
+        defaultFilter="all"
         onConnected={() => void survey()}
       />
     </YStack>

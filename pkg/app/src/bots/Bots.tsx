@@ -1,70 +1,70 @@
 'use client'
 
-// The Bots app: make a bot, open it, talk to it.
-//
-// Three columns, as the desktop app draws them: the roster (the bots as a grid
-// of faces, then the rest with their last word, then you), the thread with the
-// open bot, and the panel of what that bot has. Every row, message and switch is
-// a platform record — `/v1/agents` and the runs it records — and a section with
-// nothing behind it is not drawn.
-//
-// The same component is the app on hanzo.bot (hanzo.ai's /bots) and on
-// hanzo.team, so a bot made in one is in the other: one list, one thread, one
-// API, read with the reader's own token.
-//
-// Below a tablet the columns are one at a time: the roster, then the thread a
-// press opens (a step in the history, so Back returns to the roster), with the
-// panel over it.
+// The Bots app on hanzo.bot and hanzo.team:
+// - Starts every workspace with up to 1 Primary Bot (default name `"hanzo"`, Layer 0)
+//   who directs all subordinate bots (`agent_<name>`) and layered Bot Groups (`group_<name>`).
+// - Supports multi-layer Bot Groups (`?bot=group:<name>`) with pluggable Leader,
+//   Lux Quasar (Polaris/Aurora/Pulsar SHA3-384 dual-certificate finality), Majority,
+//   Weighted, Unanimous, Kai, and Custom policies.
+// - Connects @hanzo to Slack with channel sync & routing, real Connectors, and
+//   dedicated Desktop Sandbox Computers with full GUI Computer Use for every bot.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Agent, AgentRun } from '@hanzo/ai'
 import { useIam } from '@hanzo/iam/react'
 import { useI18n } from '@hanzo/i18n/react'
 import { XStack, YStack } from '@hanzo/gui'
-import { useAi } from '../lib/ai'
+import { ENSO, useAi } from '../lib/ai'
 import { useKept } from '../kept'
 import { say } from '../failure'
 import { Roster } from './Roster'
 import { Thread } from './Thread'
+import { GroupPanel, GroupThread, MakeGroupDialog } from './Groups'
 import { recordedRun, refusal, type Notice } from './refusal'
 import type { Pending } from './said'
 import { Panel } from './Panel'
 import { Make } from './Make'
-import { ALWAYS, ONCE, PARAM } from './api'
+import {
+  ALWAYS,
+  ONCE,
+  PARAM,
+  PRIMARY_BOT,
+  bootstrapPrimary,
+  deleteGroup,
+  groupNameOf,
+  isGroupRef,
+  listGroups,
+  toGroupRef,
+  type BotAgent,
+  type BotGroup,
+} from './api'
 import { instant } from './time'
 import { FLOOR, GROUND, LINE } from './ink'
-
 
 const named = (): string | null =>
   typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get(PARAM)
 
-/** Writes the open bot into the address: a new step when a phone enters a thread, else in place. */
 function address(name: string | null, step: boolean): void {
   const url = new URL(window.location.href)
   if (name) url.searchParams.set(PARAM, name)
   else url.searchParams.delete(PARAM)
   const to = `${url.pathname}${url.search}${url.hash}`
-  // Null, not the current state: Next's router stamps its own entries and syncs
-  // only a write that does not carry its stamp.
   if (step) window.history.pushState(null, '', to)
   else window.history.replaceState(null, '', to)
 }
 
-/** The newest run of each bot, from the org's feed (newest first). */
 function lastOf(feed: readonly AgentRun[]): Map<string, AgentRun> {
   const out = new Map<string, AgentRun>()
   for (const r of feed) if (r.agent && !out.has(r.agent)) out.set(r.agent, r)
   return out
 }
 
-/** Runs by id, oldest first: a late read never drops a run this page already drew. */
 function merged(a: readonly AgentRun[], b: readonly AgentRun[]): AgentRun[] {
   const by = new Map<string, AgentRun>()
   for (const r of [...a, ...b]) by.set(r.id, r)
   return [...by.values()].sort((x, y) => (instant(x.createdAt) ?? 0) - (instant(y.createdAt) ?? 0))
 }
 
-/** Whether a media query holds, kept current. False until mounted. */
 function useWide(query: string): boolean {
   const [on, setOn] = useState(false)
   useEffect(() => {
@@ -82,11 +82,7 @@ export function Bots({
   bot: held,
   onBot,
 }: {
-  /** The reader and the other apps at the roster's foot. A host whose own chrome
-   *  already holds both (hanzo.team's rail and bar) passes false. */
   foot?: boolean
-  /** The open bot, when the host's router holds the address (`?bot=`); with it,
-   *  `onBot` is how a press or Back moves it. Absent, the app keeps the address. */
   bot?: string | null
   onBot?: (name: string | null, step: boolean) => void
 } = {}) {
@@ -96,26 +92,26 @@ export function Bots({
   const live = Boolean(client && isAuthenticated && ready)
   const hosted = held !== undefined
 
-  const [bots, setBots] = useState<Agent[] | null>(null)
-  // The roster has been read once, so a name it lacks is not this org's.
+  const [bots, setBots] = useState<BotAgent[] | null>(null)
+  const [groups, setGroups] = useState<BotGroup[]>([])
   const [listed, setListed] = useState(false)
   const [feed, setFeed] = useState<AgentRun[]>([])
   const [unread, setUnread] = useState<string | null>(null)
   const [own, setOwn] = useState<string | null>(null)
   const [making, setMaking] = useState(false)
-  // The panel beside the thread, kept per browser; over the thread below a laptop.
+  const [makingGroup, setMakingGroup] = useState(false)
+  const [editingGroup, setEditingGroup] = useState<BotGroup | null>(null)
   const [side, setSide] = useKept('hanzo.bots.side', true)
   const [over, setOver] = useState(false)
   const wide = useWide('(min-width: 768px)')
   const laptop = useWide('(min-width: 1280px)')
 
-  // The address, read on arrival and on every Back and Forward.
   useEffect(() => {
     if (hosted) return
-    const read = () => setOwn(named())
-    read()
-    window.addEventListener('popstate', read)
-    return () => window.removeEventListener('popstate', read)
+    const readAddr = () => setOwn(named())
+    readAddr()
+    window.addEventListener('popstate', readAddr)
+    return () => window.removeEventListener('popstate', readAddr)
   }, [hosted])
 
   const name = hosted ? (held ?? null) : own
@@ -128,14 +124,34 @@ export function Bots({
     [hosted, onBot],
   )
 
+  const bootstrapped = useRef(false)
   const reading = useRef(0)
   const read = useCallback(async () => {
     if (!client) return
     const turn = ++reading.current
-    const [list, runs] = await Promise.allSettled([client.agents.list(), client.agents.runs({ limit: 200 })])
+    const [list, runs, grps] = await Promise.allSettled([
+      client.agents.list(),
+      client.agents.runs({ limit: 200 }),
+      listGroups(client),
+    ])
     if (turn !== reading.current) return
+    if (grps.status === 'fulfilled') setGroups(grps.value)
     if (list.status === 'fulfilled') {
-      setBots(list.value)
+      const loaded = list.value as BotAgent[]
+      const hasPrimary = loaded.some((b) => b.isPrimary || b.name.toLowerCase() === PRIMARY_BOT)
+      if (!hasPrimary && !bootstrapped.current) {
+        bootstrapped.current = true
+        const seeded = await bootstrapPrimary(client, PRIMARY_BOT, ENSO).catch(() => null)
+        if (seeded?.agent) {
+          const mergedBots = [seeded.agent, ...loaded.filter((b) => b.name !== seeded.agent.name)]
+          setBots(mergedBots)
+          setListed(true)
+          setUnread(null)
+          if (runs.status === 'fulfilled') setFeed(runs.value)
+          return
+        }
+      }
+      setBots(loaded)
       setListed(true)
       setUnread(null)
     } else {
@@ -151,28 +167,41 @@ export function Bots({
 
   const last = useMemo(() => lastOf(feed), [feed])
 
-  // The open bot is the one the address names. With none — or one this org does
-  // not keep — a laptop opens the one last spoken to (else the first) and writes
-  // it into the address, so it stays open while the feed moves; a phone stays on
-  // the roster.
-  const bot = useMemo<Agent | null>(() => (name && bots?.find((b) => b.name === name)) || null, [bots, name])
+  const activeGroup = useMemo<BotGroup | null>(() => {
+    if (!isGroupRef(name)) return null
+    const slug = groupNameOf(name!)
+    return groups.find((g) => g.name === slug || g.id === slug) ?? null
+  }, [groups, name])
+
+  const bot = useMemo<BotAgent | null>(() => {
+    if (!name || isGroupRef(name)) return null
+    return bots?.find((b) => b.name === name) ?? null
+  }, [bots, name])
+
   useEffect(() => {
-    if (!bots || bot) return
+    if (!bots || bot || activeGroup) return
     if (name) {
-      if (listed && !bots.some((b) => b.name === name)) move(null, false)
+      if (listed) {
+        if (isGroupRef(name) && !groups.some((g) => g.name === groupNameOf(name) || g.id === groupNameOf(name))) {
+          move(null, false)
+        } else if (!isGroupRef(name) && !bots.some((b) => b.name === name)) {
+          move(null, false)
+        }
+      }
       return
     }
     if (!wide || !bots.length) return
+    // Start with the workspace's Primary Bot ("hanzo") first so users immediately
+    // talk to their primary director bot, falling back to most recent or first bot.
+    const primary = bots.find((b) => b.isPrimary) ?? bots.find((b) => b.name.toLowerCase() === PRIMARY_BOT)
     const recent = feed.find((r) => r.agent && bots.some((b) => b.name === r.agent))?.agent
-    move(recent ?? bots[0].name, false)
-  }, [bots, bot, name, listed, wide, feed, move])
+    move(primary?.name ?? recent ?? bots[0].name, false)
+  }, [bots, groups, bot, activeGroup, name, listed, wide, feed, move])
 
-  // Whether this page stepped into the thread, so Back can step out of it.
   const stepped = useRef(false)
   const pick = useCallback(
     (next: string) => {
       setOver(false)
-      // A phone steps into the thread, so Back returns to the roster.
       const step = !wide && !name
       if (step) stepped.current = true
       move(next, step)
@@ -193,7 +222,8 @@ export function Bots({
   const [pending, setPending] = useState<Pending | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
   const [wrong, setWrong] = useState<string | null>(null)
-  const open = bot?.name ?? null
+  const openRef = activeGroup ? toGroupRef(activeGroup.name) : (bot?.name ?? null)
+  const openBotName = bot?.name ?? null
   const asking = useRef(0)
 
   const history = useCallback(
@@ -206,27 +236,21 @@ export function Bots({
   )
 
   useEffect(() => {
-    // Another bot is open: whatever the last one's run answers, it is not this thread's.
     asking.current += 1
     setRuns(null)
     setPending(null)
     setNotice(null)
     setWrong(null)
-    if (!client || !open) return
+    if (!client || !openBotName) return
     const stop = new AbortController()
-    history(open, stop.signal).catch((e) => {
+    history(openBotName, stop.signal).catch((e) => {
       if (stop.signal.aborted) return
       setRuns([])
       setWrong(say(e, t('this conversation'), 'read', t))
     })
     return () => stop.abort()
-  }, [client, open, history, t])
+  }, [client, openBotName, history, t])
 
-  /**
-   * Says `input` to the open bot. Answers whether the platform recorded it: a
-   * message it refused, or never received, is handed back to the composer so
-   * the thread holds only what was said.
-   */
   const send = useCallback(
     async (input: string): Promise<boolean> => {
       if (!client || !bot) return false
@@ -241,15 +265,12 @@ export function Bots({
         if (now()) setRuns((rs) => merged(rs ?? [], [ran]))
         return true
       } catch (e) {
-        // A thread since left: its words are not handed to the one now open.
         if (!now()) return true
-        const no = refusal(e, who, Date.now(), t, (bot as Agent & { period?: string }).period)
+        const no = refusal(e, who, Date.now(), t, bot.period)
         if (no) {
           setNotice(no)
           return false
         }
-        // A run that reached its model and failed is recorded and comes back as
-        // the body; it is drawn with its own error. Anything else never arrived.
         const ran = recordedRun<AgentRun>(e)
         if (ran) {
           setRuns((rs) => merged(rs ?? [], [ran]))
@@ -265,12 +286,6 @@ export function Bots({
     [client, bot, read, t],
   )
 
-  /**
-   * Runs on its schedule, or only when asked. The platform keeps no schedule for
-   * a bot that runs only when asked, so turning it back on states the schedule.
-   */
-  // The schedule each bot last had on this page. The platform keeps none for a bot
-  // that runs only when asked, so a schedule turned off is held here to turn back on.
   const [kept, setKept] = useState<Record<string, string>>({})
   const schedule = useCallback(
     async (on: boolean, cron: string) => {
@@ -282,7 +297,6 @@ export function Bots({
     [client, bot],
   )
 
-  /** Deletes the open bot and every run recorded against it. */
   const remove = useCallback(async () => {
     if (!client || !bot) return
     await client.agents.delete(bot.name)
@@ -293,10 +307,20 @@ export function Bots({
     await read()
   }, [client, bot, move, read])
 
+  const removeGroup = useCallback(async () => {
+    if (!client || !activeGroup) return
+    await deleteGroup(client, activeGroup.name)
+    setGroups((all) => all.filter((g) => g.name !== activeGroup.name))
+    setOver(false)
+    stepped.current = false
+    move(null, false)
+    await read()
+  }, [client, activeGroup, move, read])
+
   const made = useCallback(
     async (agent: Agent) => {
       setMaking(false)
-      setBots((all) => [...(all ?? []).filter((b) => b.name !== agent.name), agent])
+      setBots((all) => [...(all ?? []).filter((b) => b.name !== agent.name), agent as BotAgent])
       const step = !wide && !name
       if (step) stepped.current = true
       move(agent.name, step)
@@ -305,7 +329,20 @@ export function Bots({
     [move, read, wide, name],
   )
 
-  // Escape closes the panel over the thread, as it closes any dialog.
+  const savedGroup = useCallback(
+    async (group: BotGroup) => {
+      setMakingGroup(false)
+      setEditingGroup(null)
+      setGroups((all) => [...all.filter((g) => g.name !== group.name && g.id !== group.id), group])
+      const ref = toGroupRef(group.name)
+      const step = !wide && !name
+      if (step) stepped.current = true
+      move(ref, step)
+      await read()
+    },
+    [move, read, wide, name],
+  )
+
   useEffect(() => {
     if (!over) return
     const key = (e: KeyboardEvent) => e.key === 'Escape' && setOver(false)
@@ -317,19 +354,36 @@ export function Bots({
     if (laptop) setSide(false)
     setOver(false)
   }
-  const panel = bot ? (
+
+  const panel = activeGroup ? (
+    <GroupPanel
+      key={`grp:${activeGroup.name}`}
+      group={activeGroup}
+      groups={groups}
+      bots={bots ?? []}
+      onClose={close}
+      onEdit={() => setEditingGroup(activeGroup)}
+      onDelete={removeGroup}
+      onPickBot={pick}
+    />
+  ) : bot ? (
     <Panel
       key={bot.name}
       bot={bot}
+      groups={groups}
       runs={runs ?? []}
       kept={kept[bot.name] ?? ''}
       onClose={close}
       onSchedule={schedule}
       onDelete={remove}
+      onBotChanged={read}
+      onPickGroup={pick}
       focus={over && !laptop}
     />
   ) : null
+
   const shown = laptop ? side : over
+  const hasSelection = Boolean(bot || activeGroup)
 
   return (
     <XStack data-parity-key="bots.window" width="100%" height="100%" overflow="hidden" bg={FLOOR} position="relative">
@@ -341,16 +395,18 @@ export function Bots({
         bg={FLOOR}
         borderRightWidth={1}
         borderColor={LINE}
-        $max-md={{ width: '100%', borderRightWidth: 0, display: bot ? 'none' : 'flex' }}
+        $max-md={{ width: '100%', borderRightWidth: 0, display: hasSelection ? 'none' : 'flex' }}
       >
         <Roster
           bots={bots}
+          groups={groups}
           last={last}
-          open={open}
+          open={openRef}
           unread={unread}
           me={foot ? user : null}
           onPick={pick}
           onMake={() => setMaking(true)}
+          onMakeGroup={() => setMakingGroup(true)}
           disabled={!live}
         />
       </YStack>
@@ -361,30 +417,42 @@ export function Bots({
         minW={0}
         height="100%"
         bg={GROUND}
-        $max-md={{ display: bot ? 'flex' : 'none' }}
+        $max-md={{ display: hasSelection ? 'flex' : 'none' }}
       >
-        <Thread
-          bot={bot}
-          bots={bots ?? []}
-          runs={runs}
-          pending={pending}
-          notice={notice}
-          wrong={wrong}
-          side={shown}
-          live={live}
-          loaded={bots !== null}
-          onSend={send}
-          onDismiss={() => setNotice(null)}
-          onSide={() => (laptop ? setSide(!side) : setOver(!over))}
-          onBack={back}
-          onMake={() => setMaking(true)}
-        />
+        {activeGroup ? (
+          <GroupThread
+            group={activeGroup}
+            bots={bots ?? []}
+            side={shown}
+            onSide={() => (laptop ? setSide(!side) : setOver(!over))}
+            onBack={back}
+            onEdit={() => setEditingGroup(activeGroup)}
+            onPickBot={pick}
+          />
+        ) : (
+          <Thread
+            bot={bot}
+            bots={bots ?? []}
+            runs={runs}
+            pending={pending}
+            notice={notice}
+            wrong={wrong}
+            side={shown}
+            live={live}
+            loaded={bots !== null}
+            onSend={send}
+            onDismiss={() => setNotice(null)}
+            onSide={() => (laptop ? setSide(!side) : setOver(!over))}
+            onBack={back}
+            onMake={() => setMaking(true)}
+          />
+        )}
       </YStack>
 
       {laptop && side && panel ? (
         <YStack
           data-parity-key="bots.panel"
-          width={296}
+          width={300}
           shrink={0}
           height="100%"
           bg={GROUND}
@@ -401,12 +469,12 @@ export function Bots({
           data-parity-key="bots.panel.over"
           role="dialog"
           aria-modal
-          aria-label={bot?.name}
+          aria-label={activeGroup?.name || bot?.name}
           position="absolute"
           t={0}
           r={0}
           b={0}
-          width={296}
+          width={300}
           maxW="100%"
           z={10}
           bg={GROUND}
@@ -418,7 +486,19 @@ export function Bots({
         </YStack>
       ) : null}
 
-      {making ? <Make onDone={made} onCancel={() => setMaking(false)} /> : null}
+      {making ? <Make groups={groups} onDone={made} onCancel={() => setMaking(false)} /> : null}
+      {makingGroup || editingGroup ? (
+        <MakeGroupDialog
+          bots={bots ?? []}
+          groups={groups}
+          initial={editingGroup}
+          onDone={savedGroup}
+          onCancel={() => {
+            setMakingGroup(false)
+            setEditingGroup(null)
+          }}
+        />
+      ) : null}
     </XStack>
   )
 }

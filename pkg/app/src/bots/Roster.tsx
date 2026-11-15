@@ -1,8 +1,9 @@
 'use client'
 
-// The roster: search and new at the top, the bots as a 3x4 grid of faces, the
-// rest as rows with the last thing each said, and the reader + Preferences at
-// the foot.
+// The roster: search, + Group, and + New bot at the top; Primary Bot ("hanzo")
+// leading the 3x4 grid of faces; layered Bot Groups (Layer 1, Layer 2+) with
+// policy badges; the remaining bots as rows with their last word; and the reader
+// + Connectors + Preferences at the foot.
 
 import { useEffect, useMemo, useState } from 'react'
 import type { Agent, AgentRun } from '@hanzo/ai'
@@ -16,15 +17,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@hanzo/ui'
-import { Grid2x2Plus, Plus, Search, SlidersHorizontal, X } from 'lucide-react'
+import { Grid2x2Plus, Layers, Plus, Search, SlidersHorizontal, Users, X } from 'lucide-react'
 import { useSignOut } from '../lib/signout'
 import { PreferencesDialog } from '../PreferencesDialog'
-import { called, member } from '../team'
+import { called } from '../team'
 import { ConnectorsDialog } from './ConnectorsDialog'
 import { Face } from './face'
+import { PRIMARY_BOT, toGroupRef, type BotAgent, type BotGroup } from './api'
 import { CLIP, PILL, ROUND, WORD } from './kit'
 import { DIM, FLOOR, INK, LINE, PICKED, RAISED } from './ink'
-import { lastWord, split } from './grid'
+import { isStarredBot, lastWord, policyBadge, sortGroupsByLayer, split } from './grid'
 
 interface Me {
   name?: string
@@ -35,21 +37,25 @@ interface Me {
 
 export function Roster({
   bots,
+  groups = [],
   last,
   open,
   unread,
   me,
   onPick,
   onMake,
+  onMakeGroup,
   disabled,
 }: {
   bots: Agent[] | null
+  groups?: readonly BotGroup[]
   last: ReadonlyMap<string, AgentRun>
   open: string | null
   unread: string | null
   me: unknown
   onPick: (name: string) => void
   onMake: () => void
+  onMakeGroup?: () => void
   disabled: boolean
 }) {
   const { t } = useI18n()
@@ -68,24 +74,55 @@ export function Roster({
         )
       : all
   }, [bots, query])
+
+  const shownGroups = useMemo(() => {
+    const sorted = sortGroupsByLayer(groups)
+    const q = query.trim().toLowerCase()
+    if (!q) return sorted
+    return sorted.filter(
+      (g) =>
+        g.name.toLowerCase().includes(q) ||
+        (g.description ?? '').toLowerCase().includes(q) ||
+        policyBadge(g.policy).toLowerCase().includes(q),
+    )
+  }, [groups, query])
+
   const { grid, rows } = useMemo(() => split(shown, last), [shown, last])
 
   return (
     <YStack flex={1} minH={0} position="relative">
-      <XStack data-parity-key="bots.roster.bar" height={46} shrink={0} px={12} items="center" justify="flex-end" gap={8}>
-        <XStack
-          {...ROUND}
-          aria-label={t(seeking ? 'Close search' : 'Search bots')}
-          aria-pressed={seeking}
-          onClick={() => {
-            setSeeking(!seeking)
-            setQuery('')
-          }}
-        >
-          {seeking ? <X size={16} color={INK} aria-hidden /> : <Search size={16} color={INK} aria-hidden />}
+      <XStack data-parity-key="bots.roster.bar" height={46} shrink={0} px={12} items="center" justify="space-between" gap={8}>
+        <XStack items="center" gap={6} pl={2}>
+          <Text fontSize={12} lineHeight={16} fontWeight="600" color={DIM}>
+            {t('hanzo.bot')}
+          </Text>
         </XStack>
-        <XStack {...ROUND} aria-label={t('New bot')} onClick={onMake} disabled={disabled} opacity={disabled ? 0.5 : 1}>
-          <Plus size={18} color={INK} aria-hidden />
+        <XStack items="center" gap={6}>
+          <XStack
+            {...ROUND}
+            aria-label={t(seeking ? 'Close search' : 'Search bots')}
+            aria-pressed={seeking}
+            onClick={() => {
+              setSeeking(!seeking)
+              setQuery('')
+            }}
+          >
+            {seeking ? <X size={16} color={INK} aria-hidden /> : <Search size={16} color={INK} aria-hidden />}
+          </XStack>
+          {onMakeGroup ? (
+            <XStack
+              {...ROUND}
+              aria-label={t('New bot group')}
+              onClick={onMakeGroup}
+              disabled={disabled}
+              opacity={disabled ? 0.5 : 1}
+            >
+              <Users size={15} color={INK} aria-hidden />
+            </XStack>
+          ) : null}
+          <XStack {...ROUND} aria-label={t('New bot')} onClick={onMake} disabled={disabled} opacity={disabled ? 0.5 : 1}>
+            <Plus size={18} color={INK} aria-hidden />
+          </XStack>
         </XStack>
       </XStack>
 
@@ -96,7 +133,7 @@ export function Roster({
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={t('Search')}
+            placeholder={t('Search bots & groups')}
             aria-label={t('Search bots')}
             width="100%"
             height={34}
@@ -144,7 +181,9 @@ export function Roster({
               $max-md={{ px: 12, columnGap: 0, justify: 'space-between' }}
             >
               {grid.map((b) => {
+                const ext = b as BotAgent
                 const here = b.name === open
+                const isPrimary = Boolean(ext.isPrimary || b.name.toLowerCase() === PRIMARY_BOT)
                 const label = called(b.name)
                 return (
                   <YStack
@@ -153,15 +192,16 @@ export function Roster({
                     {...{ type: 'button' }}
                     data-parity-key="bots.tile"
                     data-name={b.name}
+                    data-primary={isPrimary ? 'true' : undefined}
                     aria-current={here}
-                    aria-label={label}
+                    aria-label={isPrimary ? `${label} (${t('Primary Bot')})` : label}
                     onClick={() => onPick(b.name)}
                     width={78}
-                    height={88}
+                    height={92}
                     rounded={11}
                     items="center"
                     pt={5}
-                    gap={5}
+                    gap={4}
                     bg={here ? PICKED : 'transparent'}
                     borderWidth={0}
                     cursor="pointer"
@@ -169,18 +209,140 @@ export function Roster({
                     focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
                     $max-md={{ width: '33%' }}
                   >
-                    <Face bot={b} size={56} starred={member(b.name)?.seat === 1} />
-                    <Text {...CLIP} maxW={72} fontSize={13} lineHeight={17} fontWeight={here ? '500' : '400'} color={INK}>
+                    <Face bot={b} size={54} starred={isStarredBot(b)} />
+                    <Text {...CLIP} maxW={72} fontSize={13} lineHeight={16} fontWeight={here || isPrimary ? '600' : '400'} color={INK}>
                       {label}
                     </Text>
+                    {isPrimary ? (
+                      <Text fontSize={10} lineHeight={11} color={DIM}>
+                        {t('Primary')}
+                      </Text>
+                    ) : null}
                   </YStack>
                 )
               })}
             </XStack>
           ) : null}
 
+          {shownGroups.length > 0 || (onMakeGroup && !disabled) ? (
+            <YStack data-parity-key="bots.groups" role="group" aria-label={t('Bot groups')} pt={14} pb={6}>
+              <XStack px={16} pb={6} items="center" justify="space-between">
+                <XStack items="center" gap={5}>
+                  <Layers size={12} color={DIM} aria-hidden />
+                  <Text fontSize={11} lineHeight={15} fontWeight="600" color={DIM}>
+                    {t('GROUPS & LAYERS')}
+                  </Text>
+                </XStack>
+                {onMakeGroup && !disabled ? (
+                  <XStack
+                    render="button"
+                    {...{ type: 'button' }}
+                    onClick={onMakeGroup}
+                    items="center"
+                    gap={3}
+                    px={6}
+                    py={2}
+                    rounded={6}
+                    bg="transparent"
+                    borderWidth={0}
+                    cursor="pointer"
+                    hoverStyle={{ bg: PICKED }}
+                  >
+                    <Plus size={11} color={DIM} aria-hidden />
+                    <Text fontSize={11} lineHeight={15} color={DIM}>
+                      {t('Group')}
+                    </Text>
+                  </XStack>
+                ) : null}
+              </XStack>
+
+              {shownGroups.length === 0 && onMakeGroup && !disabled ? (
+                <XStack
+                  render="button"
+                  {...{ type: 'button' }}
+                  onClick={onMakeGroup}
+                  mx={10}
+                  px={11}
+                  py={8}
+                  rounded={10}
+                  items="center"
+                  gap={9}
+                  bg={RAISED}
+                  borderWidth={1}
+                  borderColor={LINE}
+                  cursor="pointer"
+                  hoverStyle={{ bg: PICKED }}
+                >
+                  <Users size={15} color={DIM} aria-hidden />
+                  <YStack flex={1} minW={0} items="flex-start">
+                    <Text {...CLIP} fontSize={12} lineHeight={16} fontWeight="500" color={INK}>
+                      {t('Create a Bot Group')}
+                    </Text>
+                    <Text {...CLIP} fontSize={11} lineHeight={15} color={DIM}>
+                      {t('Leader, Lux Quasar, or Majority layers')}
+                    </Text>
+                  </YStack>
+                </XStack>
+              ) : null}
+
+              {shownGroups.map((g) => {
+                const ref = toGroupRef(g.name)
+                const here = open === ref
+                return (
+                  <XStack
+                    key={g.id || g.name}
+                    render="button"
+                    {...{ type: 'button' }}
+                    data-parity-key="bots.group.row"
+                    data-group={g.name}
+                    aria-current={here}
+                    onClick={() => onPick(ref)}
+                    height={52}
+                    mx={6}
+                    px={12}
+                    gap={10}
+                    items="center"
+                    rounded={10}
+                    bg={here ? PICKED : 'transparent'}
+                    borderWidth={0}
+                    cursor="pointer"
+                    hoverStyle={{ bg: here ? PICKED : 'var(--rail-hover, var(--muted))' }}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+                  >
+                    <YStack
+                      width={34}
+                      height={34}
+                      rounded={10}
+                      shrink={0}
+                      items="center"
+                      justify="center"
+                      bg={RAISED}
+                      borderWidth={1}
+                      borderColor={LINE}
+                    >
+                      <Users size={15} color={INK} aria-hidden />
+                    </YStack>
+                    <YStack flex={1} minW={0} items="flex-start">
+                      <XStack items="center" gap={6} maxW="100%">
+                        <Text {...CLIP} fontSize={13} lineHeight={18} fontWeight="500" color={INK}>
+                          {g.name}
+                        </Text>
+                        <Text fontSize={10} lineHeight={14} color={DIM}>
+                          {`L${g.layer || 1}`}
+                        </Text>
+                      </XStack>
+                      <Text {...CLIP} maxW="100%" fontSize={11} lineHeight={15} color={DIM}>
+                        {`${policyBadge(g.policy)} · ${g.members.length} bots`}
+                      </Text>
+                    </YStack>
+                  </XStack>
+                )
+              })}
+            </YStack>
+          ) : null}
+
           {rows.length ? (
-            <YStack data-parity-key="bots.rows" role="group" aria-label={t('More bots')} pt={16} pb={22}>
+            <YStack data-parity-key="bots.rows" role="group" aria-label={t('More bots')} pt={10} pb={22}>
               {rows.map((b) => {
                 const here = b.name === open
                 const label = called(b.name)

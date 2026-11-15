@@ -5,7 +5,7 @@ import { useI18n } from '@hanzo/i18n/react'
 import { useIam } from '@hanzo/iam/react'
 import { Input, Text, XStack, YStack } from '@hanzo/gui'
 import { Dialog, DialogContent, DialogTitle } from '@hanzo/ui'
-import { Check, ChevronRight, Plug, Plus, RefreshCw, Search, X } from 'lucide-react'
+import { Check, ChevronRight, ExternalLink, Plug, Plus, RefreshCw, Search, X } from 'lucide-react'
 import {
   siDropbox,
   siGithub,
@@ -19,11 +19,11 @@ import {
   siStripe,
   siSupabase,
 } from 'simple-icons'
-import { useKept } from '../kept'
 import { Network } from '../network'
 import { api } from '../lib/api'
 import { scope } from '../lib/session'
 import { enter } from '../lib/destination'
+import { slackSyncChannels } from './api'
 import { CLIP, PILL, ROUND, WORD } from './kit'
 import { DIM, FLOOR, GROUND, INK, LINE, PICKED, RAISED } from './ink'
 
@@ -33,6 +33,8 @@ type SectionId = 'popular' | 'channels' | 'business' | 'productivity'
 
 interface ConnectorDef {
   id: string
+  /** Backend provider id when multiple surfaces share one OAuth provider (e.g. gmail -> google). */
+  providerId?: string
   name: string
   description: string
   section: SectionId
@@ -43,35 +45,35 @@ interface ConnectorDef {
 
 export const CONNECTOR_CATALOG: readonly ConnectorDef[] = [
   // Popular
-  { id: 'gmail', name: 'Gmail', description: 'Read, draft, triage, and manage Gmail threads', section: 'popular', filter: 'productivity', network: 'gmail' },
-  { id: 'google-drive', name: 'Google Drive', description: 'Drive, Docs, Sheets, and Slides', section: 'popular', filter: 'productivity', icon: siGoogledrive },
-  { id: 'slack', name: 'Slack', description: 'Answer channels, threads, and workspace DMs', section: 'popular', filter: 'channels', network: 'slack' },
+  { id: 'slack', name: 'Slack', description: 'Sync @hanzo to Slack channels, threads, and workspace DMs', section: 'popular', filter: 'channels', network: 'slack' },
   { id: 'github', name: 'GitHub', description: 'Triage PRs, issues, CI runs, and release flows', section: 'popular', filter: 'productivity', icon: siGithub },
+  { id: 'linear', name: 'Linear', description: 'Track issues, cycles, projects, and triage', section: 'popular', filter: 'productivity', icon: siLinear },
+  { id: 'gmail', providerId: 'google', name: 'Gmail', description: 'Read, draft, triage, and manage Gmail threads', section: 'popular', filter: 'productivity', network: 'gmail' },
+  { id: 'google-drive', providerId: 'google', name: 'Google Drive', description: 'Drive, Docs, Sheets, and Slides', section: 'popular', filter: 'productivity', icon: siGoogledrive },
   { id: 'whatsapp', name: 'WhatsApp', description: 'Reply to customer and team chats on WhatsApp', section: 'popular', filter: 'channels', network: 'whatsapp' },
-  { id: 'supabase', name: 'Supabase', description: 'Manage and query Postgres databases', section: 'popular', filter: 'productivity', icon: siSupabase },
 
   // Messaging & Social
-  { id: 'telegram', name: 'Telegram', description: 'Run bots across Telegram chats and groups', section: 'channels', filter: 'channels', network: 'telegram' },
   { id: 'discord', name: 'Discord', description: 'Respond in community servers, channels, and threads', section: 'channels', filter: 'channels', network: 'discord' },
+  { id: 'telegram', name: 'Telegram', description: 'Run bots across Telegram chats and groups', section: 'channels', filter: 'channels', network: 'telegram' },
+  { id: 'teams', name: 'Microsoft Teams', description: 'Join organization channels and enterprise chats', section: 'channels', filter: 'channels', network: 'teams' },
   { id: 'x', name: 'X', description: 'Post updates, monitor mentions, and reply to DMs', section: 'channels', filter: 'channels', network: 'x' },
   { id: 'instagram', name: 'Instagram', description: 'Publish media and answer Instagram messages', section: 'channels', filter: 'channels', network: 'instagram' },
   { id: 'linkedin', name: 'LinkedIn', description: 'Schedule posts and manage company presence', section: 'channels', filter: 'channels', network: 'linkedin' },
-  { id: 'teams', name: 'Microsoft Teams', description: 'Join organization channels and enterprise chats', section: 'channels', filter: 'channels', network: 'teams' },
   { id: 'signal', name: 'Signal', description: 'Encrypted direct messages and group alerts', section: 'channels', filter: 'channels', network: 'signal' },
   { id: 'zoom', name: 'Zoom', description: 'Join meetings, summaries, and call transcripts', section: 'channels', filter: 'channels', network: 'zoom' },
 
   // Small Business
+  { id: 'stripe', name: 'Stripe', description: 'Accept payments, inspect invoices, and grow revenue', section: 'business', filter: 'business', icon: siStripe },
+  { id: 'hubspot', name: 'HubSpot', description: 'Insights to action in HubSpot CRM', section: 'business', filter: 'business', icon: siHubspot },
+  { id: 'shopify', name: 'Shopify', description: 'Orders, catalog inventory, and customer support', section: 'business', filter: 'business', icon: siShopify },
   { id: 'dropbox', name: 'Dropbox', description: 'Find, create, and organize shared files', section: 'business', filter: 'business', icon: siDropbox },
   { id: 'quickbooks', name: 'Intuit QuickBooks', description: 'Accounting, invoices, payments, and payroll', section: 'business', filter: 'business', icon: siQuickbooks },
-  { id: 'hubspot', name: 'HubSpot', description: 'Insights to action in HubSpot CRM', section: 'business', filter: 'business', icon: siHubspot },
-  { id: 'stripe', name: 'Stripe', description: 'Accept payments, inspect invoices, and grow revenue', section: 'business', filter: 'business', icon: siStripe },
-  { id: 'shopify', name: 'Shopify', description: 'Orders, catalog inventory, and customer support', section: 'business', filter: 'business', icon: siShopify },
 
   // Productivity & Developer
   { id: 'notion', name: 'Notion', description: 'Create docs, tasks, and databases', section: 'productivity', filter: 'productivity', icon: siNotion },
-  { id: 'google-calendar', name: 'Google Calendar', description: 'Read availability and schedule events', section: 'productivity', filter: 'productivity', icon: siGooglecalendar },
-  { id: 'linear', name: 'Linear', description: 'Track issues, cycles, projects, and triage', section: 'productivity', filter: 'productivity', icon: siLinear },
-  { id: 'outlook', name: 'Outlook', description: 'Read and send Microsoft 365 mail and invites', section: 'productivity', filter: 'productivity', network: 'outlook' },
+  { id: 'supabase', name: 'Supabase', description: 'Manage and query Postgres databases', section: 'productivity', filter: 'productivity', icon: siSupabase },
+  { id: 'google-calendar', providerId: 'google', name: 'Google Calendar', description: 'Read availability and schedule events', section: 'productivity', filter: 'productivity', icon: siGooglecalendar },
+  { id: 'outlook', providerId: 'microsoft', name: 'Outlook', description: 'Read and send Microsoft 365 mail and invites', section: 'productivity', filter: 'productivity', network: 'outlook' },
 ]
 
 const SECTIONS: readonly { id: SectionId; title: string }[] = [
@@ -82,8 +84,8 @@ const SECTIONS: readonly { id: SectionId; title: string }[] = [
 ]
 
 const FILTERS: readonly { id: ConnectorFilter; label: string }[] = [
-  { id: 'all', label: 'Public' },
-  { id: 'personal', label: 'Personal' },
+  { id: 'all', label: 'All' },
+  { id: 'personal', label: 'Connected' },
   { id: 'channels', label: 'Messaging & Social' },
   { id: 'business', label: 'Small Business' },
   { id: 'productivity', label: 'Productivity' },
@@ -93,6 +95,12 @@ interface ProviderState {
   connected: boolean
   available?: boolean
   account?: string
+  scope?: 'org' | 'user'
+  connectionId?: string
+}
+
+function backendId(item: ConnectorDef): string {
+  return (item.providerId || item.id).toLowerCase()
 }
 
 function Mark({ item }: { item: ConnectorDef }) {
@@ -146,18 +154,14 @@ export function ConnectorsCatalog({
 
   const [filter, setFilter] = useState<ConnectorFilter>(defaultFilter)
   const [query, setQuery] = useState('')
-  const [localSaved, setLocalSaved] = useKept<Record<string, ProviderState>>('hanzo.connectors.v1', {})
-  const [remoteRegistry, setRemoteRegistry] = useState<Record<string, ProviderState>>({})
+  const [registry, setRegistry] = useState<Record<string, ProviderState>>({})
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [pendingOAuth, setPendingOAuth] = useState<string | null>(null)
   const [configuring, setConfiguring] = useState<ConnectorDef | null>(null)
   const [secret, setSecret] = useState('')
   const [statusNote, setStatusNote] = useState<string | null>(null)
+  const [syncingSlack, setSyncingSlack] = useState(false)
   const [turn, setTurn] = useState(0)
-
-  const registry = useMemo<Record<string, ProviderState>>(
-    () => ({ ...(localSaved ?? {}), ...remoteRegistry }),
-    [localSaved, remoteRegistry],
-  )
 
   const load = useCallback(async () => {
     if (!signed) return
@@ -176,51 +180,87 @@ export function ConnectorsCatalog({
           connected: Boolean(p.connected),
           available: Boolean(p.available),
           account: String(link.account ?? link.label ?? ''),
+          scope: 'org',
         }
       }
     }
     if (connRes.status === 'fulfilled' && connRes.value?.connectors) {
       for (const c of connRes.value.connectors as Record<string, unknown>[]) {
-        const id = String(c.provider ?? c.id ?? '').toLowerCase()
-        if (!id) continue
-        next[id] = {
+        const rawId = String(c.id ?? '')
+        const prov = String(c.provider ?? rawId.split(':')[0] ?? '').toLowerCase()
+        if (!prov) continue
+        next[prov] = {
           connected: true,
-          available: next[id]?.available ?? true,
-          account: String(c.account ?? c.name ?? next[id]?.account ?? ''),
+          available: next[prov]?.available ?? true,
+          account: String(c.account ?? c.label ?? c.name ?? next[prov]?.account ?? ''),
+          scope: next[prov]?.connected ? next[prov]?.scope : 'user',
+          connectionId: rawId || `${prov}:default`,
         }
       }
     }
-    setRemoteRegistry(next)
-  }, [signed])
+    setRegistry(next)
+    if (pendingOAuth && next[pendingOAuth]?.connected) {
+      setPendingOAuth(null)
+      setStatusNote(t('Connected {name}.', { name: pendingOAuth }))
+      onConnected?.()
+    }
+  }, [signed, pendingOAuth, onConnected, t])
 
   useEffect(() => {
     void load()
   }, [turn, load])
+
+  // Re-check live provider status whenever the user returns from an OAuth popup/tab.
+  useEffect(() => {
+    if (!signed) return
+    const refresh = () => {
+      if (document.visibilityState === 'visible') void load()
+    }
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [signed, load])
+
+  useEffect(() => {
+    if (!pendingOAuth || !signed) return
+    const timer = window.setInterval(() => void load(), 3000)
+    return () => window.clearInterval(timer)
+  }, [pendingOAuth, signed, load])
+
+  const stateOf = useCallback(
+    (item: ConnectorDef): ProviderState | undefined => registry[item.id] ?? registry[backendId(item)],
+    [registry],
+  )
 
   const connectItem = async (item: ConnectorDef) => {
     if (!signed) {
       enter()
       return
     }
-    const state = registry[item.id]
+    const target = backendId(item)
+    const state = stateOf(item)
     setBusyId(item.id)
     setStatusNote(null)
+
     if (state?.connected) {
       try {
-        await fetch(`${api()}/v1/provider/${encodeURIComponent(item.id)}/disconnect`, {
-          method: 'POST',
-          headers: { ...scope(), 'Content-Type': 'application/json' },
-          body: '{}',
-        }).catch(() => null)
+        if (state.scope === 'user' && state.connectionId) {
+          await fetch(`${api()}/v1/connection/${encodeURIComponent(state.connectionId)}`, {
+            method: 'DELETE',
+            headers: scope(),
+          }).catch(() => null)
+        } else {
+          await fetch(`${api()}/v1/provider/${encodeURIComponent(target)}/disconnect`, {
+            method: 'POST',
+            headers: { ...scope(), 'Content-Type': 'application/json' },
+            body: '{}',
+          }).catch(() => null)
+        }
       } finally {
-        const copy = { ...(localSaved ?? {}) }
-        delete copy[item.id]
-        setLocalSaved(copy)
-        setRemoteRegistry((prev) => {
-          const next = { ...prev }
-          delete next[item.id]
-          return next
-        })
+        await load()
         setBusyId(null)
         onConnected?.()
       }
@@ -228,20 +268,36 @@ export function ConnectorsCatalog({
     }
 
     try {
-      const r = await fetch(`${api()}/v1/provider/${encodeURIComponent(item.id)}/connect`, {
-        method: 'POST',
-        headers: { ...scope(), 'Content-Type': 'application/json' },
-        body: '{}',
-      })
-      if (r.ok) {
-        const j = (await r.json()) as { authorizeUrl?: string }
-        if (j.authorizeUrl) {
-          window.open(j.authorizeUrl, '_blank', 'noopener,noreferrer')
+      // User-scoped Google / GitHub connectors also expose `/user/connect`.
+      const connectPaths =
+        target === 'google'
+          ? [`/v1/provider/google/connect`, `/v1/provider/google/user/connect`]
+          : [`/v1/provider/${encodeURIComponent(target)}/connect`]
+
+      for (const p of connectPaths) {
+        const r = await fetch(`${api()}${p}`, {
+          method: 'POST',
+          headers: { ...scope(), 'Content-Type': 'application/json' },
+          body: '{}',
+        })
+        if (r.ok) {
+          const j = (await r.json()) as { authorizeUrl?: string; connected?: boolean }
+          if (j.authorizeUrl) {
+            window.open(j.authorizeUrl, '_blank', 'noopener,noreferrer')
+            setPendingOAuth(target)
+            setStatusNote(
+              t('Complete {name} authorization in the opened tab — status updates automatically once approved.', {
+                name: item.name,
+              }),
+            )
+            return
+          }
+          if (j.connected) {
+            await load()
+            onConnected?.()
+            return
+          }
         }
-        setLocalSaved({ ...(localSaved ?? {}), [item.id]: { connected: true } })
-        setTurn((n) => n + 1)
-        onConnected?.()
-        return
       }
       setConfiguring(item)
       setSecret('')
@@ -255,27 +311,64 @@ export function ConnectorsCatalog({
 
   const saveCredential = async () => {
     if (!configuring || !secret.trim()) return
+    const target = backendId(configuring)
+    const token = secret.trim()
     setBusyId(configuring.id)
     setStatusNote(null)
     try {
-      const r = await fetch(`${api()}/v1/connection`, {
-        method: 'POST',
-        headers: { ...scope(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider: configuring.id,
-          name: configuring.name,
-          token: secret.trim(),
-        }),
-      }).catch(() => null)
-      setLocalSaved({
-        ...(localSaved ?? {}),
-        [configuring.id]: { connected: true, available: true },
-      })
-      setStatusNote(
-        r?.ok
-          ? t('Connected {name}.', { name: configuring.name })
-          : t('Connected {name} for this workspace.', { name: configuring.name }),
-      )
+      let ok = false
+      let detail = ''
+
+      // Telegram bot tokens bind directly on the org provider plane (`/v1/provider/telegram/connect`).
+      if (target === 'telegram') {
+        const r = await fetch(`${api()}/v1/provider/telegram/connect`, {
+          method: 'POST',
+          headers: { ...scope(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        })
+        ok = r.ok
+        if (!r.ok) {
+          const j = (await r.json().catch(() => ({}))) as { error?: { message?: string }; message?: string }
+          detail = j.error?.message || j.message || ''
+        }
+      } else {
+        // Try org-scoped apikey connect first, then per-user `/v1/connection/:provider/credential`.
+        const orgRes = await fetch(`${api()}/v1/provider/${encodeURIComponent(target)}/connect`, {
+          method: 'POST',
+          headers: { ...scope(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, apiKey: token }),
+        }).catch(() => null)
+
+        if (orgRes?.ok) {
+          const j = (await orgRes.json().catch(() => ({}))) as { authorizeUrl?: string }
+          if (!j.authorizeUrl) ok = true
+        }
+        if (!ok) {
+          const userRes = await fetch(`${api()}/v1/connection/${encodeURIComponent(target)}/credential`, {
+            method: 'POST',
+            headers: { ...scope(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ label: 'default', token }),
+          }).catch(() => null)
+          ok = Boolean(userRes?.ok)
+          if (userRes && !userRes.ok) {
+            const j = (await userRes.json().catch(() => ({}))) as { error?: { message?: string }; message?: string }
+            detail = j.error?.message || j.message || ''
+          }
+        }
+      }
+
+      if (!ok) {
+        setStatusNote(
+          detail ||
+            t('Could not verify credential for {name}. Check the token or workspace OAuth configuration.', {
+              name: configuring.name,
+            }),
+        )
+        return
+      }
+
+      await load()
+      setStatusNote(t('Connected {name}.', { name: configuring.name }))
       setConfiguring(null)
       setSecret('')
       onConnected?.()
@@ -284,15 +377,34 @@ export function ConnectorsCatalog({
     }
   }
 
+  const handleSlackSync = async () => {
+    setSyncingSlack(true)
+    setStatusNote(null)
+    try {
+      const res = await slackSyncChannels()
+      setStatusNote(
+        res.ok
+          ? res.joined !== undefined
+            ? t('Synced @hanzo across {n} Slack channels.', { n: res.joined })
+            : t('Synced @hanzo across workspace Slack channels.')
+          : t('Could not sync Slack channels. Make sure Slack is connected with org admin permissions.'),
+      )
+      onConnected?.()
+    } finally {
+      setSyncingSlack(false)
+    }
+  }
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return CONNECTOR_CATALOG.filter((item) => {
-      if (filter === 'personal' && !registry[item.id]?.connected) return false
+      const st = stateOf(item)
+      if (filter === 'personal' && !st?.connected) return false
       if (filter !== 'all' && filter !== 'personal' && item.filter !== filter) return false
       if (!q) return true
       return item.name.toLowerCase().includes(q) || item.description.toLowerCase().includes(q) || item.id.includes(q)
     })
-  }, [filter, query, registry])
+  }, [filter, query, stateOf])
 
   return (
     <YStack flex={1} minH={0} bg={embedded ? 'transparent' : GROUND}>
@@ -309,17 +421,17 @@ export function ConnectorsCatalog({
           <YStack gap={3}>
             {embedded ? (
               <Text fontSize={14} lineHeight={20} color={DIM}>
-                {t('Connect external apps, socials, and MCP servers to work across your tools.')}
+                {t('Sync Slack (@hanzo), GitHub, Linear, and MCP servers so your Primary Bot and groups act across your stack.')}
               </Text>
             ) : (
               <>
                 <DialogTitle>
                   <Text fontSize={21} lineHeight={27} fontWeight="600" color={INK}>
-                    {t('Connectors')}
+                    {t('Connectors & Channels')}
                   </Text>
                 </DialogTitle>
                 <Text fontSize={13} lineHeight={18} color={DIM}>
-                  {t('Connect external apps, socials, and channels to work across your tools.')}
+                  {t('Add @hanzo to Slack, link repos, and connect tools across every bot and group.')}
                 </Text>
               </>
             )}
@@ -386,9 +498,9 @@ export function ConnectorsCatalog({
               borderColor={INK}
               onClick={() =>
                 setConfiguring({
-                  id: 'custom-mcp',
-                  name: t('Custom MCP Server'),
-                  description: t('Connect any Model Context Protocol URL or bearer token'),
+                  id: 'openai',
+                  name: t('API Key Credential'),
+                  description: t('Store a verified provider API token in KMS'),
                   section: 'productivity',
                   filter: 'productivity',
                 })
@@ -396,7 +508,7 @@ export function ConnectorsCatalog({
             >
               <Plus size={13} color="var(--background)" aria-hidden />
               <Text {...WORD} fontSize={13} color="var(--background)">
-                {t('Add')}
+                {t('Add token')}
               </Text>
             </XStack>
 
@@ -446,9 +558,9 @@ export function ConnectorsCatalog({
                   {t('Connect {name}', { name: configuring.name })}
                 </Text>
                 <Text fontSize={12} lineHeight={17} color={DIM}>
-                  {configuring.id === 'custom-mcp'
-                    ? t('Enter an MCP server URL (https://…) or bearer credential.')
-                    : t('Paste an API key, webhook URL, or bot token for {name}.', { name: configuring.name })}
+                  {t('Paste an API key or bot token for {name}. Verified live before sealing in KMS.', {
+                    name: configuring.name,
+                  })}
                 </Text>
               </YStack>
             </XStack>
@@ -460,10 +572,10 @@ export function ConnectorsCatalog({
             <Input
               unstyled
               autoFocus
-              type={configuring.id === 'custom-mcp' ? 'url' : 'password'}
+              type="password"
               value={secret}
               onChange={(e) => setSecret(e.target.value)}
-              placeholder={configuring.id === 'custom-mcp' ? 'https://mcp.example.com/sse' : `${configuring.name} API key or token`}
+              placeholder={`${configuring.name} token`}
               aria-label={t('{name} credential', { name: configuring.name })}
               flex={1}
               height={36}
@@ -488,7 +600,7 @@ export function ConnectorsCatalog({
               onClick={() => void saveCredential()}
             >
               <Text {...WORD} fontSize={13} color="var(--background)">
-                {t('Connect')}
+                {t('Verify & Save')}
               </Text>
             </XStack>
           </XStack>
@@ -496,8 +608,8 @@ export function ConnectorsCatalog({
       ) : null}
 
       {statusNote ? (
-        <XStack px={embedded ? 0 : 28} py={9} bg={RAISED} borderBottomWidth={1} borderColor={LINE} items="center" justify="space-between">
-          <Text fontSize={12} lineHeight={17} color={DIM}>
+        <XStack px={embedded ? 0 : 28} py={9} bg={RAISED} borderBottomWidth={1} borderColor={LINE} items="center" justify="space-between" gap={8}>
+          <Text fontSize={12} lineHeight={17} color={INK}>
             {statusNote}
           </Text>
           <XStack render="button" {...{ type: 'button' }} onClick={() => setStatusNote(null)} bg="transparent" borderWidth={0} cursor="pointer">
@@ -521,16 +633,18 @@ export function ConnectorsCatalog({
 
               <XStack flexWrap="wrap" columnGap={24} rowGap={6}>
                 {items.map((item) => {
-                  const state = registry[item.id]
+                  const state = stateOf(item)
                   const connected = Boolean(state?.connected)
+                  const waiting = pendingOAuth === backendId(item)
                   const busy = busyId === item.id
+                  const isSlack = item.id === 'slack'
                   return (
                     <XStack
                       key={item.id}
                       data-connector={item.id}
                       width="calc(50% - 12px)"
                       $max-md={{ width: '100%' }}
-                      minH={56}
+                      minH={60}
                       px={10}
                       py={8}
                       rounded={12}
@@ -544,9 +658,39 @@ export function ConnectorsCatalog({
                           {item.name}
                         </Text>
                         <Text {...CLIP} fontSize={12} lineHeight={17} color={DIM}>
-                          {connected && state?.account ? `${t('Connected')} · ${state.account}` : item.description}
+                          {connected && state?.account
+                            ? `${t('Connected')} · ${state.account}`
+                            : waiting
+                              ? t('Waiting for authorization…')
+                              : item.description}
                         </Text>
                       </YStack>
+
+                      {isSlack && connected ? (
+                        <XStack
+                          render="button"
+                          {...{ type: 'button' }}
+                          disabled={syncingSlack}
+                          onClick={() => void handleSlackSync()}
+                          height={30}
+                          px={10}
+                          rounded={999}
+                          items="center"
+                          gap={5}
+                          bg={RAISED}
+                          borderWidth={1}
+                          borderColor={LINE}
+                          cursor="pointer"
+                          opacity={syncingSlack ? 0.5 : 1}
+                          hoverStyle={{ bg: PICKED }}
+                        >
+                          <RefreshCw size={12} color={INK} aria-hidden />
+                          <Text fontSize={12} lineHeight={16} fontWeight="500" color={INK}>
+                            {syncingSlack ? t('Syncing…') : t('Sync channels')}
+                          </Text>
+                        </XStack>
+                      ) : null}
+
                       <XStack
                         render="button"
                         {...{ type: 'button' }}
@@ -555,17 +699,17 @@ export function ConnectorsCatalog({
                         onClick={() => void connectItem(item)}
                         height={30}
                         minW={30}
-                        px={connected ? 10 : 0}
+                        px={connected || isSlack ? 11 : 8}
                         rounded={999}
                         items="center"
                         justify="center"
                         gap={5}
-                        bg={connected ? PICKED : 'transparent'}
-                        borderWidth={connected ? 1 : 0}
-                        borderColor={LINE}
+                        bg={connected ? PICKED : isSlack ? INK : RAISED}
+                        borderWidth={1}
+                        borderColor={connected ? LINE : isSlack ? INK : LINE}
                         cursor="pointer"
                         opacity={busy ? 0.5 : 1}
-                        hoverStyle={{ bg: PICKED }}
+                        hoverStyle={{ bg: connected ? PICKED : isSlack ? INK : PICKED, opacity: isSlack && !connected ? 0.9 : 1 }}
                       >
                         {connected ? (
                           <>
@@ -574,8 +718,20 @@ export function ConnectorsCatalog({
                               {t('Connected')}
                             </Text>
                           </>
+                        ) : isSlack ? (
+                          <>
+                            <ExternalLink size={12} color="var(--background)" aria-hidden />
+                            <Text fontSize={12} lineHeight={16} fontWeight="500" color="var(--background)">
+                              {t('Add to Slack')}
+                            </Text>
+                          </>
                         ) : (
-                          <Plus size={17} color={DIM} aria-hidden />
+                          <>
+                            <Plus size={14} color={INK} aria-hidden />
+                            <Text fontSize={12} lineHeight={16} fontWeight="500" color={INK}>
+                              {t('Connect')}
+                            </Text>
+                          </>
                         )}
                       </XStack>
                     </XStack>
@@ -590,7 +746,7 @@ export function ConnectorsCatalog({
           <YStack py={36} items="center" gap={8}>
             <Text fontSize={14} lineHeight={20} color={DIM}>
               {filter === 'personal' && !query
-                ? t('No personal connectors connected yet. Switch to Public to connect Slack, Stripe, Gmail, GitHub, and more.')
+                ? t('No connectors active yet. Switch to All to add @hanzo to Slack, connect GitHub, Linear, and more.')
                 : t('No connectors match “{query}”.', { query })}
             </Text>
           </YStack>

@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { Agent, AgentRun } from '@hanzo/ai'
 import { lines, partsOf } from './said'
-import { GRID, lastWord, split } from './grid'
+import { GRID, isStarredBot, lastWord, policyBadge, sortGroupsByLayer, split } from './grid'
+import { groupNameOf, isGroupRef, make, toGroupRef, type BotAgent, type BotGroup, type Client } from './api'
 import { nextPeriod, nextWeek, recordedRun, refusal } from './refusal'
 import { compose, fence, fits, MAX, texty } from './carry'
 
@@ -197,5 +198,48 @@ describe('a text file with a message', () => {
       { kind: 'prose', text: 'The brief now has 9 pages.' },
       { kind: 'image', alt: 'Comparables preview', src: '/preview.png' },
     ])
+  })
+})
+
+describe('primary bot, full computer-use tools, and layered bot groups', () => {
+  it('pins Primary Bot hanzo to slot #1 in the roster grid with a star badge', () => {
+    const dev = bot('dev', '2026-10-01T09:00:00')
+    const viBot = bot('vi', '2026-10-01T09:00:00')
+    const primary: BotAgent = { ...bot('hanzo', '2026-10-15T09:00:00'), isPrimary: true, layer: 0 }
+    const { grid } = split([dev, viBot, primary], new Map())
+    expect(grid[0].name).toBe('hanzo')
+    expect(isStarredBot(primary)).toBe(true)
+  })
+
+  it('creates new bots with tools: ["*"] so Desktop Computer Use and connectors work immediately', async () => {
+    const json = vi.fn().mockResolvedValue({ id: 'agt_1', name: 'ops', model: 'enso', tools: ['*'] })
+    const fakeClient = { http: { json } } as unknown as Client
+    await make(fakeClient, { name: 'ops', instructions: 'Run QA checks on desktop', model: 'enso', weekly: 15, layer: 2 })
+    expect(json).toHaveBeenCalledTimes(1)
+    expect(json.mock.calls[0][0]).toMatchObject({
+      method: 'POST',
+      path: '/v1/agents',
+      body: {
+        name: 'ops',
+        tools: ['*'],
+        layer: 2,
+        cap_micro_usd: 15_000_000,
+      },
+    })
+  })
+
+  it('sorts Bot Groups by layer ascending and formats Lux Quasar & Leader badges cleanly', () => {
+    const groups: BotGroup[] = [
+      { id: 'g3', name: 'qa-exec', layer: 3, members: ['cyber'], policy: { kind: 'majority' } },
+      { id: 'g1', name: 'core-eng', layer: 1, members: ['dev', 'des', 'opera'], policy: { kind: 'quasar', quasarProfile: 'pulsar' } },
+      { id: 'g2', name: 'design-pod', layer: 2, members: ['des', 'mark'], policy: { kind: 'leader', leader: 'des' } },
+    ]
+    const sorted = sortGroupsByLayer(groups)
+    expect(sorted.map((g) => g.name)).toEqual(['core-eng', 'design-pod', 'qa-exec'])
+    expect(policyBadge(sorted[0].policy)).toBe('Lux Quasar · Pulsar')
+    expect(policyBadge(sorted[1].policy)).toBe('Leader · des')
+    expect(policyBadge(sorted[2].policy)).toBe('Majority')
+    expect(isGroupRef(toGroupRef('core-eng'))).toBe(true)
+    expect(groupNameOf('group:core-eng')).toBe('core-eng')
   })
 })

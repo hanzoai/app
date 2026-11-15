@@ -1,22 +1,20 @@
 'use client'
 
-// Making a bot: a name, what it does, and what it may spend a week.
-//
-// The platform keeps every bot on a budget and refuses one without it, so the
-// budget is asked for here rather than chosen silently. Whatever the platform
-// refuses — a name already taken, a model it does not serve — is shown in its
-// own words.
+// Making a bot: a name, what it does, optional Bot Group / Layer assignment,
+// and what it may spend a week. Every bot is created with full tool access
+// (`tools: ['*']`) including Desktop Sandbox Computer Use and Connectors.
 
 import { useState, type FormEvent } from 'react'
 import type { Agent } from '@hanzo/ai'
 import { useI18n } from '@hanzo/i18n/react'
 import { Input, Text, XStack, YStack } from '@hanzo/gui'
-import { Dialog, DialogContent, DialogTitle } from '@hanzo/ui'
+import { Dialog, DialogContent, DialogTitle, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@hanzo/ui'
+import { ChevronDown } from 'lucide-react'
 import { ENSO, useAi } from '../lib/ai'
 import { plainly } from '../failure'
-import { NAME, make } from './api'
+import { NAME, make, updateGroup, type BotGroup } from './api'
 import { PILL, WORD } from './kit'
-import { DIM, INK, LINE, RAISED } from './ink'
+import { DIM, INK, LINE, PICKED, RAISED } from './ink'
 
 const FIELD = {
   unstyled: true,
@@ -32,19 +30,30 @@ const FIELD = {
   placeholderTextColor: '$placeholderColor',
 } as const
 
-export function Make({ onDone, onCancel }: { onDone: (a: Agent) => void | Promise<void>; onCancel: () => void }) {
+export function Make({
+  groups = [],
+  onDone,
+  onCancel,
+}: {
+  groups?: readonly BotGroup[]
+  onDone: (a: Agent) => void | Promise<void>
+  onCancel: () => void
+}) {
   const { t } = useI18n()
   const { client } = useAi()
   const [name, setName] = useState('')
   const [does, setDoes] = useState('')
+  const [groupId, setGroupId] = useState('')
+  const [layer, setLayer] = useState<number>(1)
   const [weekly, setWeekly] = useState('10')
   const [busy, setBusy] = useState(false)
   const [wrong, setWrong] = useState<string | null>(null)
 
   const dollars = Number(weekly)
   const named = NAME.test(name.trim())
-  // Up to ten thousand dollars a week: a cap is a guard, and past it a typo is a fortune.
   const ok = named && Number.isInteger(dollars) && dollars > 0 && dollars <= 10_000 && !busy
+
+  const selectedGroup = groups.find((g) => g.id === groupId || g.name === groupId) ?? null
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -52,7 +61,20 @@ export function Make({ onDone, onCancel }: { onDone: (a: Agent) => void | Promis
     setBusy(true)
     setWrong(null)
     try {
-      await onDone(await make(client, { name: name.trim(), instructions: does.trim(), model: ENSO, weekly: dollars }))
+      const created = await make(client, {
+        name: name.trim(),
+        instructions:
+          does.trim() ||
+          `You are ${name.trim()}, a Layer ${layer} worker bot directed by Primary Bot hanzo. Use your desktop sandbox computer and connected tools to complete tasks accurately.`,
+        model: ENSO,
+        weekly: dollars,
+        groupId: selectedGroup?.id || undefined,
+        layer: selectedGroup?.layer ?? layer,
+      })
+      if (selectedGroup && !selectedGroup.members.includes(created.name)) {
+        await updateGroup(client, selectedGroup.name, { members: [...selectedGroup.members, created.name] }).catch(() => null)
+      }
+      await onDone(created)
     } catch (err) {
       setWrong(plainly(err, t('this bot'), t))
     } finally {
@@ -65,7 +87,7 @@ export function Make({ onDone, onCancel }: { onDone: (a: Agent) => void | Promis
       <DialogContent
         data-parity-key="bots.make"
         width="calc(100vw - 32px)"
-        maxW={440}
+        maxW={460}
         bg="var(--popover)"
         rounded={20}
         p={20}
@@ -96,9 +118,85 @@ export function Make({ onDone, onCancel }: { onDone: (a: Agent) => void | Promis
             rows={4}
             value={does}
             onChange={(e) => setDoes(e.target.value)}
-            placeholder={t('What it does')}
+            placeholder={t('What it does (directed by Primary Bot hanzo, with full Desktop Computer Use)')}
             aria-label={t('What it does')}
           />
+
+          <XStack items="center" justify="space-between" gap={10} px={4}>
+            <Text fontSize={14} lineHeight={19} color={DIM}>
+              {t('Coordination Layer')}
+            </Text>
+            <XStack gap={6}>
+              {[1, 2, 3].map((lv) => {
+                const active = (selectedGroup?.layer ?? layer) === lv
+                return (
+                  <XStack
+                    key={lv}
+                    render="button"
+                    {...{ type: 'button' }}
+                    onClick={() => setLayer(lv)}
+                    height={28}
+                    px={10}
+                    rounded={999}
+                    items="center"
+                    bg={active ? PICKED : RAISED}
+                    borderWidth={1}
+                    borderColor={active ? INK : LINE}
+                    cursor="pointer"
+                  >
+                    <Text fontSize={12} lineHeight={16} fontWeight={active ? '600' : '400'} color={INK}>
+                      {`L${lv}`}
+                    </Text>
+                  </XStack>
+                )
+              })}
+            </XStack>
+          </XStack>
+
+          {groups.length > 0 ? (
+            <XStack items="center" justify="space-between" px={4}>
+              <Text fontSize={14} lineHeight={19} color={DIM}>
+                {t('Assign to Group')}
+              </Text>
+              <DropdownMenu placement="bottom-end" offset={6}>
+                <DropdownMenuTrigger asChild>
+                  <XStack
+                    render="button"
+                    {...{ type: 'button' }}
+                    height={30}
+                    px={11}
+                    rounded={999}
+                    items="center"
+                    gap={5}
+                    bg={RAISED}
+                    borderWidth={1}
+                    borderColor={LINE}
+                    cursor="pointer"
+                  >
+                    <Text fontSize={13} lineHeight={18} color={INK}>
+                      {selectedGroup ? `${selectedGroup.name} (L${selectedGroup.layer || 1})` : t('None')}
+                    </Text>
+                    <ChevronDown size={13} color={DIM} aria-hidden />
+                  </XStack>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent minW={180}>
+                  <DropdownMenuItem onSelect={() => setGroupId('')}>
+                    <Text fontSize="$3" color="$ink">
+                      {t('None')}
+                    </Text>
+                  </DropdownMenuItem>
+                  {groups.map((g) => (
+                    <DropdownMenuItem key={g.id} onSelect={() => setGroupId(g.id)}>
+                      <Text fontSize="$3" color="$ink">
+                        {`${g.name} (Layer ${g.layer || 1})`}
+                      </Text>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </XStack>
+          ) : null}
+
           <XStack items="center" gap={10} px={4}>
             <Text fontSize={15} lineHeight={20} color={DIM}>
               {t('Spend up to $')}
