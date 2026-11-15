@@ -504,6 +504,7 @@ export interface ComputerActionIn {
     | 'wait'
     | 'shell'
     | 'autofill'
+    | 'save_credential'
   x?: number
   y?: number
   toX?: number
@@ -511,17 +512,21 @@ export interface ComputerActionIn {
   dx?: number
   dy?: number
   text?: string
+  keys?: string
   key?: string
   url?: string
   command?: string
+  seconds?: number
   ms?: number
   credential?: string
-  field?: 'login' | 'username' | 'password' | 'totp' | 'secret'
+  field?: 'login' | 'login_totp' | 'username' | 'password' | 'totp' | 'secret'
   submit?: boolean
 }
 
 export interface ComputerActionOut {
-  action: string
+  ok?: boolean
+  text?: string
+  action?: string
   stdout?: string
   stderr?: string
   exitCode?: number

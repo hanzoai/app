@@ -114,11 +114,13 @@ export function ComputerDialog({
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
   const autoBootedRef = useRef(false)
+  const controlRef = useRef<'watching' | 'controlling'>('watching')
 
   const [localBox, setLocalBox] = useState<Sandbox | null>(box)
   const [expanded, setExpanded] = useState(false)
   const [mode, setMode] = useState<'screen' | 'terminal'>('screen')
   const [control, setControl] = useState<'watching' | 'controlling'>('watching')
+  controlRef.current = control
   const [phase, setPhase] = useState<'idle' | 'starting' | 'connecting' | 'live' | 'parked'>('idle')
   const [frameUrl, setFrameUrl] = useState<string | null>(null)
   const [snapDataUrl, setSnapDataUrl] = useState<string | null>(null)
@@ -207,7 +209,7 @@ export function ComputerDialog({
 
         if (leased.status === 'running') {
           const effectiveMode = leased.class === 'desktop' ? mode : 'terminal'
-          await openStream(leased.id, effectiveMode, control === 'watching')
+          await openStream(leased.id, effectiveMode, controlRef.current === 'watching')
         } else {
           // Poll up to ~25s while the sandbox container schedules & boots X11
           for (let attempt = 0; attempt < 12; attempt++) {
@@ -216,7 +218,11 @@ export function ComputerDialog({
             if (latest) setLocalBox(latest)
             if (latest?.status === 'running') {
               await onUpdated()
-              await openStream(latest.id, latest.class === 'desktop' ? mode : 'terminal', control === 'watching')
+              await openStream(
+                latest.id,
+                latest.class === 'desktop' ? mode : 'terminal',
+                controlRef.current === 'watching',
+              )
               break
             }
           }
@@ -231,10 +237,12 @@ export function ComputerDialog({
         setBusy(false)
       }
     },
-    [client, busy, bot, activeBox, onUpdated, mode, openStream, control, displayName, t],
+    [client, busy, bot, activeBox, onUpdated, mode, openStream, displayName, t],
   )
 
   // Auto-open live stream if running, or auto-boot/resume on open!
+  // Intentionally reads `controlRef.current` rather than depending on `control` so
+  // clicking `Take control` / `Watching` sends instant postMessage without reloading the iframe.
   useEffect(() => {
     if (!open) {
       autoBootedRef.current = false
@@ -250,7 +258,7 @@ export function ComputerDialog({
     if (activeBox?.id && activeBox.status === 'running') {
       autoBootedRef.current = true
       const effectiveMode = activeBox.class === 'desktop' ? mode : 'terminal'
-      void openStream(activeBox.id, effectiveMode, control === 'watching')
+      void openStream(activeBox.id, effectiveMode, controlRef.current === 'watching')
       return
     }
 
@@ -258,7 +266,7 @@ export function ComputerDialog({
       autoBootedRef.current = true
       void startOrResume(false)
     }
-  }, [open, activeBox?.id, activeBox?.status, activeBox?.class, mode, client, openStream, startOrResume, control])
+  }, [open, activeBox?.id, activeBox?.status, activeBox?.class, mode, client, openStream, startOrResume])
 
   const toggleControl = (nextControl: 'watching' | 'controlling') => {
     setControl(nextControl)
@@ -305,26 +313,57 @@ export function ComputerDialog({
     }
   }
 
-  const runAutofill = async (item: VaultItem, field: 'login' | 'username' | 'password' | 'totp' | 'secret') => {
+  const runAutofill = async (
+    item: VaultItem,
+    field: 'login' | 'login_totp' | 'username' | 'password' | 'totp' | 'secret',
+  ) => {
     if (!client || !activeBox?.id || runningTask) return
     setRunningTask(true)
     setError(null)
     setStatusToast(null)
     try {
-      await actComputer(client, {
+      const out = await actComputer(client, {
         id: activeBox.id,
         action: 'autofill',
         credential: item.id || item.domain || item.name,
         field,
-        submit: field === 'login' || field === 'totp',
+        submit: field === 'login' || field === 'login_totp' || field === 'totp',
       })
+      if (out.ok === false) {
+        setError(out.text || t('Could not autofill {name}.', { name: item.name }))
+        return
+      }
       setStatusToast(
-        field === 'totp'
-          ? t('Typed 6-digit 2FA code for {name} via KMS.', { name: item.name })
-          : t('Autofilled {name} via zero-knowledge KMS.', { name: item.name }),
+        out.text ||
+          (field === 'totp'
+            ? t('Typed 6-digit 2FA code for {name} via KMS.', { name: item.name })
+            : t('Autofilled {name} via zero-knowledge KMS.', { name: item.name })),
       )
     } catch (e) {
       setError(say(e, t('credential autofill'), 'save', t))
+    } finally {
+      setRunningTask(false)
+    }
+  }
+
+  const sealStagedAppCredential = async () => {
+    if (!client || !activeBox?.id || runningTask) return
+    setRunningTask(true)
+    setError(null)
+    setStatusToast(null)
+    try {
+      const out = await actComputer(client, {
+        id: activeBox.id,
+        action: 'save_credential',
+      })
+      if (out.ok === false) {
+        setError(out.text || t('No staged credential found at /dev/shm/.hanzo-credential.json.'))
+        return
+      }
+      await refreshVault()
+      setStatusToast(out.text || t('Sealed sandbox app credential into Hanzo KMS and shredded RAM file.'))
+    } catch (e) {
+      setError(say(e, t('sandbox credential save'), 'save', t))
     } finally {
       setRunningTask(false)
     }
@@ -336,8 +375,14 @@ export function ComputerDialog({
     setError(null)
     try {
       const out = await actComputer(client, { id: activeBox.id, action: 'screenshot' })
+      if (out.ok === false) {
+        setError(out.text || t('Could not capture desktop screenshot.'))
+        return
+      }
       if (out.image) {
-        setSnapDataUrl(`data:${out.mimeType || 'image/png'};base64,${out.image}`)
+        setSnapDataUrl(
+          out.image.startsWith('data:') ? out.image : `data:${out.mimeType || 'image/jpeg'};base64,${out.image}`,
+        )
         setStatusToast(t('Captured {w}×{h} frame.', { w: out.width || 1280, h: out.height || 800 }))
       }
     } catch (e) {
@@ -501,16 +546,24 @@ export function ComputerDialog({
                           </Text>
                         </XStack>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent minW={240}>
+                      <DropdownMenuContent minW={260}>
                         {logins.map((item) => (
-                          <DropdownMenuItem key={item.id} onSelect={() => void runAutofill(item, 'login')}>
+                          <DropdownMenuItem
+                            key={item.id}
+                            onSelect={() => void runAutofill(item, item.totpSecretKey ? 'login_totp' : 'login')}
+                          >
                             <YStack gap={1}>
                               <Text fontSize="$3" fontWeight="500" color="$ink">
                                 {`${item.name}${item.domain ? ` (${item.domain})` : ''}`}
                               </Text>
                               <Text fontSize="$1" color={DIM}>
                                 {item.username
-                                  ? t('Fill {user} + password via {src}', { user: item.username, src: item.source })
+                                  ? item.totpSecretKey
+                                    ? t('Fill {user} + password + 2FA via {src}', {
+                                        user: item.username,
+                                        src: item.source,
+                                      })
+                                    : t('Fill {user} + password via {src}', { user: item.username, src: item.source })
                                   : t('Fill password via {src}', { src: item.source })}
                               </Text>
                             </YStack>
@@ -521,7 +574,7 @@ export function ComputerDialog({
                           .map((item) => (
                             <DropdownMenuItem key={`${item.id}-totp`} onSelect={() => void runAutofill(item, 'totp')}>
                               <Text fontSize="$2" color="$ink">
-                                {t('2FA TOTP code · {name}', { name: item.name })}
+                                {t('2FA TOTP code only · {name}', { name: item.name })}
                               </Text>
                             </DropdownMenuItem>
                           ))}
@@ -532,6 +585,16 @@ export function ComputerDialog({
                             </Text>
                           </DropdownMenuItem>
                         ))}
+                        <DropdownMenuItem onSelect={() => void sealStagedAppCredential()}>
+                          <YStack gap={1}>
+                            <Text fontSize="$2" fontWeight="600" color="$ink">
+                              {t('Seal staged sandbox app login → KMS')}
+                            </Text>
+                            <Text fontSize="$1" color={DIM}>
+                              {t('Imports /dev/shm/.hanzo-credential.json & shreds RAM file')}
+                            </Text>
+                          </YStack>
+                        </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => setVaultOpen(true)}>
                           <Text fontSize="$2" fontWeight="600" color="$ink">
                             {vaultItems.length === 0
