@@ -49,6 +49,7 @@ import {
   grant,
   opened,
   parkComputer,
+  runDesktopAgent,
   updateBotMeta,
   type BotAgent,
 } from './api'
@@ -135,7 +136,13 @@ export function ComputerDialog({
   const [vaultItems, setVaultItems] = useState<VaultItem[]>([])
 
   useEffect(() => {
-    if (box) setLocalBox(box)
+    if (!box) return
+    setLocalBox((prev) => {
+      if (prev?.status === 'running' && box.status !== 'running') {
+        return prev
+      }
+      return box
+    })
   }, [box])
 
   const activeBox = localBox ?? box
@@ -403,13 +410,26 @@ export function ComputerDialog({
     // Automatically switch to Watching mode so the user sees the bot move the cursor live
     if (control === 'controlling') toggleControl('watching')
     try {
-      if (!bot.tools?.length) {
-        await updateBotMeta(client, bot.name, { tools: ['*'], computeRef: activeBox?.id || bot.computeRef }).catch(() => null)
+      if (activeBox?.id) {
+        const ran = await runDesktopAgent(activeBox.id, prompt, (step) => {
+          setStatusToast(step)
+        })
+        if (ran.savedCredential) {
+          await refreshVault()
+        }
+        setStatusToast(ran.output || t('Task completed on desktop computer.'))
+      } else {
+        if (!bot.tools?.length) {
+          await updateBotMeta(client, bot.name, { tools: ['*'], computeRef: bot.computeRef }).catch(() => null)
+        }
+        const ran = await client.http.json<{ output?: string; error?: string }>({
+          method: 'POST',
+          path: `/v1/agent/${encodeURIComponent(bot.name)}/run`,
+          body: { input: prompt },
+        })
+        setStatusToast(ran.output || ran.error || t('Task completed on desktop computer.'))
+        await onUpdated()
       }
-      const directive = `[Desktop Computer Use] Use your resumable desktop sandbox computer (computer_in_sandbox — screenshot, click, move, drag, type, key, scroll, navigate, autofill for KMS/1Password/LastPass logins, and shell) to complete this task while I watch live:\n\n${prompt}`
-      const ran = await client.agents.run(bot.name, directive)
-      setStatusToast(ran.output || ran.error || t('Task completed on desktop computer.'))
-      await onUpdated()
     } catch (err) {
       setError(say(err, t('desktop computer task'), 'save', t))
     } finally {

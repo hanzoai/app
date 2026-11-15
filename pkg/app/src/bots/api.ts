@@ -196,8 +196,8 @@ export async function bootstrapPrimary(
 /** Atomically promotes `ref` to be the org's sole Primary Bot (Layer 0). */
 export const setPrimaryBot = (c: Client, ref: string) =>
   c.http.json<BotAgent>({
-    method: 'PUT',
-    path: `/v1/agents/${encodeURIComponent(ref)}`,
+    method: 'PATCH',
+    path: `/v1/agent/${encodeURIComponent(ref)}`,
     body: { isPrimary: true, layer: 0 },
   })
 
@@ -208,8 +208,8 @@ export const updateBotMeta = (
   patch: { isPrimary?: boolean; groupId?: string; layer?: number; computeRef?: string; tools?: string[] },
 ) =>
   c.http.json<BotAgent>({
-    method: 'PUT',
-    path: `/v1/agents/${encodeURIComponent(ref)}`,
+    method: 'PATCH',
+    path: `/v1/agent/${encodeURIComponent(ref)}`,
     body: patch,
   })
 
@@ -241,7 +241,7 @@ export const createGroup = (c: Client, body: GroupDraft) =>
 
 export const updateGroup = (c: Client, ref: string, body: Partial<GroupDraft>) =>
   c.http.json<BotGroup>({
-    method: 'PUT',
+    method: 'PATCH',
     path: `/v1/agent/groups/${encodeURIComponent(groupNameOf(ref))}`,
     body,
   })
@@ -385,26 +385,36 @@ function bestSandbox(boxes: readonly Sandbox[]): Sandbox | null {
 /**
  * Finds the bot's existing desktop sandbox across both named project disks (`bot-<name>`)
  * and Free-tier persistent `disk: true` sandboxes bound via `bot.computeRef`.
+ * Always prefers an actively `running` desktop sandbox over a stopped/expired lease.
  */
 export async function findBotComputer(c: Client, bot: BotAgent, signal?: AbortSignal): Promise<Sandbox | null> {
   const opts = signal ? { signal } : undefined
+  let projectFallback: Sandbox | null = null
   try {
     const byProject = await c.sandboxes.list({ project: disk(bot.name) }, opts)
     const found = bestSandbox(byProject)
-    if (found) return found
+    if (found?.status === 'running') return found
+    projectFallback = found
   } catch {
-    // continue to computeRef lookup
+    // continue to org sandbox lookup
   }
-  if (bot.computeRef) {
-    try {
-      const all = await c.sandboxes.list(undefined, opts)
+  try {
+    const all = await c.sandboxes.list(undefined, opts)
+    if (bot.computeRef) {
       const exact = all.find((b) => b.id === bot.computeRef)
-      if (exact) return exact
-    } catch {
-      // ignore
+      if (exact?.status === 'running') return exact
+      if (exact && !projectFallback) projectFallback = exact
     }
+    // If the Primary Bot has an active desktop sandbox running under the Free-tier
+    // fallback (where project name was omitted), prefer that live running desktop!
+    if (bot.isPrimary || bot.name === PRIMARY_BOT) {
+      const runningDesktop = all.find((b) => b.class === 'desktop' && b.status === 'running')
+      if (runningDesktop) return runningDesktop
+    }
+  } catch {
+    // ignore
   }
-  return null
+  return projectFallback
 }
 
 function statusOfError(err: unknown): number {
@@ -542,6 +552,88 @@ export const actComputer = (c: Client, body: ComputerActionIn) =>
     path: '/v1/sandbox/computer',
     body,
   })
+
+/**
+ * Streams a live desktop computer-use turn (`POST /v1/sandbox/:id/agent`),
+ * executing screenshot, click, type, key, shell, save_credential, and KMS/TOTP
+ * autofill directly on the open sandbox while reporting step progress via `onStep`.
+ */
+export async function runDesktopAgent(
+  id: string,
+  message: string,
+  onStep?: (stepText: string) => void,
+  signal?: AbortSignal,
+): Promise<{ output: string; savedCredential: boolean }> {
+  const res = await fetch(`${api()}/v1/sandbox/${encodeURIComponent(id)}/agent`, {
+    method: 'POST',
+    headers: {
+      ...scope(),
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+    },
+    body: JSON.stringify({ message }),
+    signal,
+  })
+  if (!res.ok) {
+    const raw = await res.text().catch(() => '')
+    throw new Error(raw || `Desktop agent HTTP ${res.status}`)
+  }
+  const reader = res.body?.getReader()
+  if (!reader) {
+    return { output: '', savedCredential: false }
+  }
+  const dec = new TextDecoder()
+  let buf = ''
+  const sayings: string[] = []
+  let lastResult = ''
+  let savedCredential = false
+
+  while (true) {
+    const { value, done } = await reader.read()
+    if (done) break
+    buf += dec.decode(value, { stream: true })
+    let nl = buf.indexOf('\n')
+    while (nl >= 0) {
+      const line = buf.slice(0, nl).trim()
+      buf = buf.slice(nl + 1)
+      nl = buf.indexOf('\n')
+      if (!line.startsWith('data:')) continue
+      const payload = line.slice(5).trim()
+      if (!payload) continue
+      try {
+        const frame = JSON.parse(payload) as {
+          type?: string
+          text?: string
+          tool?: string
+          ok?: boolean
+        }
+        if (frame.type === 'act' && frame.tool) {
+          onStep?.(`Running ${frame.tool}…`)
+          if (frame.tool === 'save_credential') savedCredential = true
+        } else if (frame.type === 'result' && frame.text) {
+          lastResult = frame.text
+          onStep?.(frame.text)
+          if (frame.tool === 'save_credential' && frame.ok !== false) {
+            savedCredential = true
+          }
+        } else if (frame.type === 'say' && frame.text) {
+          sayings.push(frame.text)
+          onStep?.(frame.text)
+        } else if (frame.type === 'error' && frame.text) {
+          throw new Error(frame.text)
+        }
+      } catch (err) {
+        if (err instanceof Error && !err.message.includes('JSON')) {
+          throw err
+        }
+      }
+    }
+  }
+  return {
+    output: sayings.join(' ').trim() || lastResult,
+    savedCredential,
+  }
+}
 
 // ── Scheduled & Event-Driven Automations (`/v1/auto/automations`) ───────────
 

@@ -2,7 +2,18 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Agent, AgentRun } from '@hanzo/ai'
 import { lines, partsOf } from './said'
 import { GRID, isStarredBot, lastWord, policyBadge, sortGroupsByLayer, split } from './grid'
-import { groupNameOf, isGroupRef, make, opened, toGroupRef, type BotAgent, type BotGroup, type Client } from './api'
+import {
+  findBotComputer,
+  groupNameOf,
+  isGroupRef,
+  make,
+  opened,
+  toGroupRef,
+  updateBotMeta,
+  type BotAgent,
+  type BotGroup,
+  type Client,
+} from './api'
 import { nextPeriod, nextWeek, recordedRun, refusal } from './refusal'
 import { compose, fence, fits, MAX, texty } from './carry'
 
@@ -276,5 +287,28 @@ describe('opened', () => {
     at('http://localhost:3000')
     expect(opened(path, true)).toBe('http://localhost:3000/v1/sandbox/sbx_1/screen?ticket=t1&viewOnly=1')
     vi.unstubAllGlobals()
+  })
+
+  it('patches /v1/agent/:ref and prefers an actively running desktop over a stale stopped computeRef', async () => {
+    const json = vi.fn().mockResolvedValue({ id: 'agt_hanzo', name: 'hanzo', computeRef: 'm_live' })
+    const list = vi.fn().mockImplementation((query?: { project?: string }) => {
+      if (query?.project) return Promise.resolve([])
+      return Promise.resolve([
+        { id: 'm_old', class: 'desktop', status: 'stopped' },
+        { id: 'm_live', class: 'desktop', status: 'running' },
+      ])
+    })
+    const fakeClient = { http: { json }, sandboxes: { list } } as unknown as Client
+
+    await updateBotMeta(fakeClient, 'hanzo', { computeRef: 'm_live' })
+    expect(json).toHaveBeenCalledWith({
+      method: 'PATCH',
+      path: '/v1/agent/hanzo',
+      body: { computeRef: 'm_live' },
+    })
+
+    const primary: BotAgent = { ...bot('hanzo', '2026-10-15T09:00:00'), isPrimary: true, computeRef: 'm_old' }
+    const picked = await findBotComputer(fakeClient, primary)
+    expect(picked?.id).toBe('m_live')
   })
 })
