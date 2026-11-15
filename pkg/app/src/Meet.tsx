@@ -280,7 +280,7 @@ export function Meet() {
   // by /v1/audio/speech. Speaking over the reply stops it (the machine's
   // barge-in). Every browser that can record takes part, not only the ones with
   // a working SpeechRecognition — Chromium on Linux and Firefox have none.
-  const ear = useMemo(() => speech({ ...base(), ...(token ? { token } : {}) }), [token])
+  const ear = useMemo(() => speech({ ...base(), ...(token ? { token } : { public: true }) }), [token])
   const handsFree = useVoice({
     speech: ear,
     onUtterance: (transcript) => void handleSpokenInput(transcript),

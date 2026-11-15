@@ -112,7 +112,7 @@ export function Thread({
   const pick = useRef<HTMLInputElement>(null)
 
   const { token } = useIamToken()
-  const ear = useMemo(() => speech({ ...base(), ...(token ? { token } : {}) }), [token])
+  const ear = useMemo(() => speech({ ...base(), ...(token ? { token } : { public: true }) }), [token])
   const voice = useVoice({ speech: ear, ...useDictation(draft, setDraft) })
 
   const now = Date.now()

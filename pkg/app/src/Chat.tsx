@@ -1417,7 +1417,7 @@ function Thread({
   // invents a credential — and a refusal is worn by `<Voice/>`, never passed off
   // as a transcript.
   const { token } = useIamToken();
-  const ear = useMemo(() => speech({ ...base(), ...(token ? { token } : {}) }), [token]);
+  const ear = useMemo(() => speech({ ...base(), ...(token ? { token } : { public: true }) }), [token]);
   // The language dictation listens in: the person's own (Settings › General), or the browser's.
   const [spoken, speakIn] = useLanguage(target);
   const voice = useVoice({ speech: ear, ...(spoken ? { language: spoken } : {}), ...useDictation(draft, setDraft) });
