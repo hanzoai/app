@@ -172,7 +172,7 @@ function ComputerScreen({ awake }: { awake: boolean }) {
       borderColor={LINE}
     >
       {awake ? (
-        <YStack width={10} height={10} rounded={999} bg="var(--state-online, #22c55e)" />
+        <YStack width={10} height={10} rounded={999} bg="var(--state-online)" />
       ) : (
         <>
           <Text position="absolute" t={2} r={6} fontSize={9} lineHeight={10} fontWeight="600" color={DIM}>

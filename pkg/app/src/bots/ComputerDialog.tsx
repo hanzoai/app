@@ -197,7 +197,7 @@ export function ComputerDialog({
                     width={7}
                     height={7}
                     rounded={999}
-                    bg={awake ? 'var(--state-online, #22c55e)' : waking ? 'var(--warning, #eab308)' : DIM}
+                    bg={awake ? 'var(--state-online)' : waking ? 'var(--chrome-dot-yellow)' : DIM}
                   />
                   <Text fontSize={12} lineHeight={16} color={DIM}>
                     {awake
@@ -317,7 +317,7 @@ export function ComputerDialog({
             </XStack>
           </XStack>
 
-          <YStack height={470} bg="var(--pure-black, #09090b)" items="center" justify="center" position="relative" overflow="hidden">
+          <YStack height={470} bg="var(--pure-black)" items="center" justify="center" position="relative" overflow="hidden">
             {snapDataUrl ? (
               <YStack width="100%" height="100%" items="center" justify="center" position="relative">
                 <YStack
