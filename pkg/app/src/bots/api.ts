@@ -358,6 +358,20 @@ export interface Grant {
 export const grant = (c: Client, id: string, kind: 'terminal' | 'screen') =>
   c.http.json<Grant>({ method: 'POST', path: `/v1/sandbox/${encodeURIComponent(id)}/${kind}/ticket` })
 
+/**
+ * Where a grant opens: its address on the API host, and for a screen whether it
+ * opens to watch or to control. Cloud answers a PATH
+ * (`/v1/sandbox/<id>/screen?ticket=…`, cloud apps/sandbox `ticketGrant`), and the
+ * API's host serves it, never the page's: on hanzo.bot the page's own host is the
+ * static site, which answers that path with a page that refuses to be framed, and
+ * a bot's computer read "hanzo.bot refused to connect".
+ */
+export function opened(url: string, viewOnly?: boolean): string {
+  const u = new URL(url, `${api()}/`)
+  if (viewOnly !== undefined) u.searchParams.set('viewOnly', viewOnly ? '1' : '0')
+  return u.toString()
+}
+
 function bestSandbox(boxes: readonly Sandbox[]): Sandbox | null {
   return (
     boxes.find((b) => b.status === 'running') ??

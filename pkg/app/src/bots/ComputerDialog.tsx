@@ -47,6 +47,7 @@ import {
   disk,
   findBotComputer,
   grant,
+  opened,
   parkComputer,
   updateBotMeta,
   type BotAgent,
@@ -92,17 +93,6 @@ function PulsingCluster({ label }: { label: string }) {
       </Text>
     </YStack>
   )
-}
-
-function appendViewParam(rawUrl: string, viewOnly: boolean): string {
-  try {
-    const u = new URL(rawUrl, typeof window !== 'undefined' ? window.location.origin : 'https://api.hanzo.ai')
-    u.searchParams.set('viewOnly', viewOnly ? '1' : '0')
-    return u.toString()
-  } catch {
-    const join = rawUrl.includes('?') ? '&' : '?'
-    return `${rawUrl}${join}viewOnly=${viewOnly ? '1' : '0'}`
-  }
 }
 
 export function ComputerDialog({
@@ -185,7 +175,7 @@ export function ComputerDialog({
       try {
         const g = await grant(client, targetId, kind)
         if (g.url) {
-          const finalUrl = kind === 'screen' ? appendViewParam(g.url, wantViewOnly) : g.url
+          const finalUrl = opened(g.url, kind === 'screen' ? wantViewOnly : undefined)
           setFrameUrl(finalUrl)
           // Terminal or older edge screen page without postMessage transitions smoothly after load
           window.setTimeout(() => {
