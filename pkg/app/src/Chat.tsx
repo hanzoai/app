@@ -76,6 +76,7 @@ import { Schedule } from "./Schedule";
 import { keepFile, useAttach, useKeep } from "./keep";
 import { useKept } from "./kept";
 import { dragWindow, toggleWindowMaximize } from "./WindowControls";
+import { WalletPill } from "./WalletPill";
 import {
   artifacts,
   lead,
@@ -1069,7 +1070,15 @@ function Thread({
   // only once the reader is turned away: a reply answered from a free model, or
   // a refusal.
   const held = paidPlan(limits);
-  const pause = notice && (notice.fallback || notice.refused) ? notice : null;
+  const alreadyEnso = model === ENSO || model.startsWith("enso") || rowOf(model)?.family === "enso";
+  const redundantEnso = Boolean(
+    notice &&
+      ((alreadyEnso && notice.reason === "paid_plan_required") ||
+        (!notice.refused &&
+          !spends(notice.reason) &&
+          (alreadyEnso || notice.reason === "paid_plan_required" || notice.fallback?.startsWith("enso")))),
+  );
+  const pause = notice && (notice.fallback || notice.refused) && !redundantEnso ? notice : null;
   // EVERY MODEL IS CHOSEN, never asked for: one the plan does not cover still
   // picks, and the gateway answers it with the policy's refusal or from Enso,
   // which the pane then shows. A turn the gateway refuses `plan_required`
@@ -1664,9 +1673,8 @@ function Thread({
   // answer that just stopped, once the conversation it belongs to has an id.
   const [finished, setFinished] = useState<{ id: string; text: string } | null>(null);
   useKeep(ai, !anonymous && !forgetful, kept ?? open, finished, artifacts);
-  // WHAT AN ANSWER MAKES OPENS BESIDE IT. With the panel open, a page or a
-  // picture an answer just finished writing is opened as a tab; with it shut,
-  // the answer's own Open does it.
+  // WHAT AN ANSWER MAKES OPENS BESIDE IT. A page or a picture an answer just
+  // finished writing is opened as a tab in the side panel.
   const writing = useRef(false);
   useEffect(() => {
     const was = writing.current;
@@ -1674,7 +1682,6 @@ function Thread({
     if (!was || chat.streaming) return;
     const done = [...turns.current].reverse().find((m) => m.role === "assistant");
     if (done && typeof done.content === "string" && done.content) setFinished({ id: String(done.id), text: done.content });
-    if (!panel) return;
     const answer = done;
     const made = typeof answer?.content === "string" ? artifacts(answer.content).filter(renders) : [];
     if (made.length) see(made[made.length - 1]!);
@@ -1903,9 +1910,18 @@ function Thread({
     const text = ask.trim();
     if (preparing || (!text && !files.length)) return;
     const isPrOrReview = /\b(pull request|pr\s*#?\d+|github\.com\/[^\s]+\/pull\/\d+|\/pull\/\d+|code[\s-]?review|ponytail|pony|review\s+(this\s+)?(pr|diff|patch|changes|commit))\b/i.test(text);
-    const ponyNote = isPrOrReview
-      ? 'Use the skill "code-review" (Ponytail Thermo-Nuclear Code Review + Code Judo): perform a rigorous multi-pass PR/diff review checking correctness, edge cases, race conditions, security, and maintainability.'
+    const isInteractiveDemo = /\b(make|build|create|design|generate|show)\b[\s\S]*\b(demo|website|web\s*app|landing\s*page|dashboard|interactive|prototype|ui|preview)\b/i.test(text);
+    const demoNote = isInteractiveDemo
+      ? "Build a complete, self-contained, interactive single-file HTML application inside a ```html demo.html code fence (with embedded modern dark-mode CSS and interactive JavaScript controls) so it renders live in the side-by-side Outputs preview panel. If the request is for a Hanzo demo, build an interactive Hanzo AI platform showcase featuring Enso & Zen frontier models, Hanzo Dev autonomous coding agents, Hanzo Bot, Hanzo Cloud, and Model Context Protocol (MCP) tools with working interactive tabs and live simulations rather than a plain text or Python snippet."
       : "";
+    const ponyNote = [
+      isPrOrReview
+        ? 'Use the skill "code-review" (Ponytail Thermo-Nuclear Code Review + Code Judo): perform a rigorous multi-pass PR/diff review checking correctness, edge cases, race conditions, security, and maintainability.'
+        : "",
+      demoNote,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
     if (isPrOrReview && !carry.gear.gear.skills.includes("code-review")) {
       carry.gear.toggle("skills", "code-review");
     }
@@ -2126,9 +2142,11 @@ function Thread({
 
   const families = useFamilies(mind, (id) => setAsk({ model: nameOf(id, listed) } as Ask));
   const [titlebarSlot, setTitlebarSlot] = useState<HTMLElement | null>(null);
+  const [titleSlot, setTitleSlot] = useState<HTMLElement | null>(null);
   useEffect(() => {
     if (typeof document === "undefined") return;
     setTitlebarSlot(document.getElementById("hanzo-titlebar-slot"));
+    setTitleSlot(document.getElementById("hanzo-titlebar-title"));
   }, [media.md]);
   const inTopChrome = Boolean(media.md && titlebarSlot);
   const composer: ComposerProps = {
@@ -2215,7 +2233,7 @@ function Thread({
       // WHAT GOES WITH THE MESSAGE, above the frame and at its width: the
       // pause and its ways past, one chip a file, and talk mode's words.
       head:
-        files.length || turnedAway || prepWrong || preparing || talk.open || talk.refusal || pause || simulatedResetAt ? (
+        files.length || turnedAway || prepWrong || preparing || talk.open || talk.refusal || banner || simulatedResetAt ? (
           <>
             {/* TURNED AWAY: what is used and until when, the ways past it, and
                 the usage page — the shell's Settings pane, or the builder's
@@ -2447,67 +2465,75 @@ function Thread({
           </XStack>
         </YStack>
       ) : null}
+      {inTopChrome && titleSlot
+        ? createPortal(
+            <XStack items="center" gap="$2" minW={0} flex={1} data-tauri-drag-region="false">
+              {editingTitle && shownTitle ? (
+                <Input
+                  data-slot="conversation-title-input"
+                  aria-label={t("Chat title")}
+                  value={titleDraft}
+                  autoFocus
+                  maxLength={200}
+                  size="sm"
+                  minW={160}
+                  maxW={360}
+                  onChangeText={setTitleDraft}
+                  onBlur={commitTitle}
+                  onKeyDown={(e: { key?: string; preventDefault?: () => void; stopPropagation?: () => void }) => {
+                    e.stopPropagation?.();
+                    if (e.key === "Enter") {
+                      e.preventDefault?.();
+                      commitTitle();
+                    } else if (e.key === "Escape") {
+                      e.preventDefault?.();
+                      setEditingTitle(false);
+                    }
+                  }}
+                />
+              ) : shownTitle ? (
+                <XStack
+                  render="button"
+                  data-slot="conversation-title"
+                  aria-label={shownTitle}
+                  items="center"
+                  gap="$1.5"
+                  px="$1.5"
+                  py="$0.5"
+                  rounded="$2"
+                  minW={0}
+                  shrink={1}
+                  cursor="pointer"
+                  hoverStyle={{ bg: "$hover" }}
+                  onPress={() => {
+                    setTitleDraft(shownTitle);
+                    setEditingTitle(true);
+                  }}
+                >
+                  <Text fontSize={13} lineHeight={18} fontWeight="500" color="$ink" numberOfLines={1} shrink={1} minW={0}>
+                    {shownTitle}
+                  </Text>
+                </XStack>
+              ) : (
+                <Text data-slot="page-title" fontSize={13} lineHeight={18} fontWeight="500" color="$ink" numberOfLines={1}>
+                  {t("Chat")}
+                </Text>
+              )}
+            </XStack>,
+            titleSlot,
+          )
+        : null}
       {inTopChrome && titlebarSlot
         ? createPortal(
             <XStack
               data-slot="chat-titlebar-portal"
-              flex={1}
-              minW={0}
               items="center"
-              justify="space-between"
-              gap={8}
+              justify="flex-end"
+              gap={6}
+              minW={0}
             >
-              <XStack items="center" gap="$2" minW={0} flex={1} data-tauri-drag-region="false">
-                {editingTitle && shownTitle ? (
-                  <Input
-                    data-slot="conversation-title-input"
-                    aria-label={t("Chat title")}
-                    value={titleDraft}
-                    autoFocus
-                    maxLength={200}
-                    size="sm"
-                    minW={160}
-                    maxW={360}
-                    onChangeText={setTitleDraft}
-                    onBlur={commitTitle}
-                    onKeyDown={(e: { key?: string; preventDefault?: () => void; stopPropagation?: () => void }) => {
-                      e.stopPropagation?.();
-                      if (e.key === "Enter") {
-                        e.preventDefault?.();
-                        commitTitle();
-                      } else if (e.key === "Escape") {
-                        e.preventDefault?.();
-                        setEditingTitle(false);
-                      }
-                    }}
-                  />
-                ) : shownTitle ? (
-                  <XStack
-                    render="button"
-                    data-slot="conversation-title"
-                    aria-label={shownTitle}
-                    items="center"
-                    gap="$1.5"
-                    px="$1.5"
-                    py="$0.5"
-                    rounded="$2"
-                    minW={0}
-                    shrink={1}
-                    cursor="pointer"
-                    hoverStyle={{ bg: "$hover" }}
-                    onPress={() => {
-                      setTitleDraft(shownTitle);
-                      setEditingTitle(true);
-                    }}
-                  >
-                    <Text fontSize={13} lineHeight={18} fontWeight="500" color="$ink" numberOfLines={1} shrink={1} minW={0}>
-                      {shownTitle}
-                    </Text>
-                  </XStack>
-                ) : null}
-              </XStack>
-
-              <XStack data-slot="conversation-controls" data-tauri-drag-region="false" items="center" gap={2} shrink={0}>
+              <XStack data-slot="conversation-controls" data-tauri-drag-region="false" items="center" gap={4} shrink={0}>
+                {!anonymous ? <WalletPill compact /> : null}
                 {anonymous ? (
                   <XStack items="center" gap="$2">
                     <Button

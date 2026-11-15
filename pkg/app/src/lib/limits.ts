@@ -130,6 +130,7 @@ export function paused(
   t: Say = english,
   f: Format = format('en-US'),
 ): { message: string; actions: LimitAction[] } | null {
+  if (!SPENT.has(n.reason) && !n.refused && n.fallback) return null
   const on = n.fallback ? t(' You’re chatting on {model}.', { model: name(n.fallback) }) : ''
   if (!SPENT.has(n.reason) && (n.reason || n.classes.length === 0)) return { message: n.message, actions: ways(n.actions, t) }
   const here = typeof window === 'undefined' ? undefined : window.location.href

@@ -113,7 +113,23 @@ describe('paused', () => {
   })
 
   it('keeps the server’s words for any other refusal', () => {
-    expect(paused(notice({ reason: 'paid_plan_required', message: 'This model needs a paid plan.' }), FREE, undefined, NOW)!.message).toBe('This model needs a paid plan.')
+    expect(paused(notice({ reason: 'paid_plan_required', message: 'This model needs a paid plan.', refused: true }), FREE, undefined, NOW)!.message).toBe('This model needs a paid plan.')
+  })
+
+  it('says nothing when a non-refused turn is already answered on Enso fallback without spent usage', () => {
+    expect(
+      paused(
+        notice({
+          reason: 'paid_plan_required',
+          fallback: 'enso-flash',
+          refused: false,
+          message: "This model needs a paid plan. You're chatting on Enso Flash.",
+        }),
+        FREE,
+        undefined,
+        NOW,
+      ),
+    ).toBeNull()
   })
 
   it('says every word through t', () => {
