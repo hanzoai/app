@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Agent, AgentRun } from '@hanzo/ai'
 import { lines, partsOf } from './said'
 import { GRID, isStarredBot, lastWord, policyBadge, sortGroupsByLayer, split } from './grid'
-import { groupNameOf, isGroupRef, make, toGroupRef, type BotAgent, type BotGroup, type Client } from './api'
+import { groupNameOf, isGroupRef, make, opened, toGroupRef, type BotAgent, type BotGroup, type Client } from './api'
 import { nextPeriod, nextWeek, recordedRun, refusal } from './refusal'
 import { compose, fence, fits, MAX, texty } from './carry'
 
@@ -241,5 +241,40 @@ describe('primary bot, full computer-use tools, and layered bot groups', () => {
     expect(policyBadge(sorted[2].policy)).toBe('Majority')
     expect(isGroupRef(toGroupRef('core-eng'))).toBe(true)
     expect(groupNameOf('group:core-eng')).toBe('core-eng')
+  })
+})
+
+// A bot's computer opens on the API host, never on the page's: cloud's grant is a
+// path, and on hanzo.bot the page's own host answers it with a page that refuses
+// to be framed ("hanzo.bot refused to connect").
+describe('opened', () => {
+  const at = (origin: string) => {
+    const u = new URL(origin)
+    vi.stubGlobal('window', { location: { hostname: u.hostname, origin: u.origin } })
+  }
+  const path = '/v1/sandbox/sbx_1/screen?ticket=t1'
+
+  it('opens a screen on api.hanzo.ai from hanzo.bot, hanzo.ai and hanzo.team', () => {
+    for (const origin of ['https://hanzo.bot', 'https://hanzo.ai', 'https://hanzo.team']) {
+      at(origin)
+      expect(opened(path, true)).toBe('https://api.hanzo.ai/v1/sandbox/sbx_1/screen?ticket=t1&viewOnly=1')
+      expect(opened(path, false)).toBe('https://api.hanzo.ai/v1/sandbox/sbx_1/screen?ticket=t1&viewOnly=0')
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('opens a terminal with no mode, and keeps an address that already names its host', () => {
+    at('https://hanzo.bot')
+    expect(opened('/v1/sandbox/sbx_1/terminal?ticket=t2')).toBe('https://api.hanzo.ai/v1/sandbox/sbx_1/terminal?ticket=t2')
+    expect(opened('https://api-dev.hanzo.ai/v1/sandbox/sbx_1/screen?ticket=t3', true)).toBe(
+      'https://api-dev.hanzo.ai/v1/sandbox/sbx_1/screen?ticket=t3&viewOnly=1',
+    )
+    vi.unstubAllGlobals()
+  })
+
+  it('stays on a dev server’s own origin, where its proxy reaches the API', () => {
+    at('http://localhost:3000')
+    expect(opened(path, true)).toBe('http://localhost:3000/v1/sandbox/sbx_1/screen?ticket=t1&viewOnly=1')
+    vi.unstubAllGlobals()
   })
 })
