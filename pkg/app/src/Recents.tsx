@@ -33,7 +33,7 @@ type Made = { id: string; title: string; updated: number; state: 'making' | 'don
  * 0.1.11): this browser's store, shared with Studio's panes. An older Studio has
  * none, and Design then lists nothing here, never Chat's.
  */
-const useMade = (studio as { useRecent?: (host: Host) => { rows: Made[]; error: string } }).useRecent
+const useMade = Reflect.get(studio, 'useRecent') as ((host: Host) => { rows: Made[]; error: string }) | undefined
 
 /** The menu's items: each section a heading and its options (recent.ts's phrases, drawn through `t`), the one in force checked; Select multiple where the rows carry a menu. */
 function items(mode: Mode, view: View, set: (v: View) => void, t: Say, select: boolean): NonNullable<DropdownMenuProps['items']> {

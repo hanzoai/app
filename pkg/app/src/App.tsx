@@ -96,8 +96,8 @@ import { FOOT, HEIGHT, TOP, useView } from './view'
 import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowControls'
 import { AppContextMenu } from './ContextMenu'
 
-const directorNav = (studioPkg as { directorNav?: typeof places }).directorNav ?? places
-const flowNav = (studioPkg as { flowNav?: typeof places }).flowNav ?? places
+const directorNav = (Reflect.get(studioPkg, 'directorNav') as typeof places | undefined) ?? places
+const flowNav = (Reflect.get(studioPkg, 'flowNav') as typeof places | undefined) ?? places
 
 /** Studio, fetched the first time the reader stands in it. */
 const Studio = lazy(() => import('@hanzo/studio').then((m) => ({ default: m.Studio })))
