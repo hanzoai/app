@@ -52,7 +52,15 @@ import {
   type BotAgent,
 } from './api'
 import { CLIP, PILL, ROUND, WORD } from './kit'
-import { DIM, FLOOR, GROUND, INK, LINE, PICKED, RAISED } from './ink'
+import { DIM } from './ink'
+
+// Always-dark translucent surfaces inside the pure-black desktop window chrome,
+// invariant across light and dark page themes.
+const FLOOR = 'var(--white-05)'
+const RAISED = 'var(--white-08)'
+const PICKED = 'var(--white-16)'
+const LINE = 'var(--white-15)'
+const INK = 'var(--pure-white)'
 
 function PulsingCluster({ label }: { label: string }) {
   const [step, setStep] = useState(0)
@@ -737,7 +745,7 @@ export function ComputerDialog({
                         objectFit="contain"
                       />
                       <XStack position="absolute" t={12} r={12}>
-                        <XStack {...PILL} height={30} px={12} onClick={() => setSnapDataUrl(null)}>
+                        <XStack {...PILL} height={30} px={12} bg={RAISED} borderColor={LINE} onClick={() => setSnapDataUrl(null)}>
                           <Text fontSize={12} lineHeight={16} color={INK}>
                             {t('Back to live desktop')}
                           </Text>
