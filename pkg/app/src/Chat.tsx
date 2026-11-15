@@ -65,7 +65,7 @@ import { useHydrated } from "./lib/hydrated";
 import { base, served } from "./lib/ai";
 import { onServed, type Served as Heard } from "./lib/served";
 import { refused as worded, speech, useDictation, useTalk, useVoice } from "@hanzo/voice";
-import { Check, ChevronDown, CircleAlert, FileText, Ghost, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, SquarePlus, X } from "lucide-react";
+import { Check, ChevronDown, CircleAlert, FileText, Ghost, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, X } from "lucide-react";
 import { ENSO } from "./lib/ai";
 import { openThread, empty as emptyOpen, useOpen } from "./open";
 import { Side } from "./Shell";
@@ -2579,8 +2579,8 @@ function Thread({
                         data-slot="header-private-chat"
                         aria-label={t("Private chat")}
                         aria-pressed={forgetful}
-                        width={28}
-                        height={28}
+                        width={32}
+                        height={32}
                         items="center"
                         justify="center"
                         rounded="$3"
@@ -2591,7 +2591,7 @@ function Thread({
                         onPress={() => setForgetful(!forgetful)}
                       >
                         <Ghost
-                          size={15}
+                          size={16}
                           strokeWidth={1.75}
                           color={forgetful ? "var(--foreground)" : "var(--muted-foreground)"}
                           fill={forgetful ? "currentColor" : "none"}
@@ -2614,27 +2614,6 @@ function Thread({
                   label={t("Summary")}
                 />
                 <PanelToggle open={panel} onToggle={() => setPanel(!panel)} />
-                <XStack
-                  render="button"
-                  data-slot="titlebar-new-chat"
-                  aria-label={t("New chat")}
-                  {...({ title: t("New chat") } as object)}
-                  width={28}
-                  height={28}
-                  items="center"
-                  justify="center"
-                  rounded="$3"
-                  bg="transparent"
-                  cursor="pointer"
-                  opacity={0.78}
-                  hoverStyle={{ bg: "$hover", opacity: 1 }}
-                  onPress={() => {
-                    emptyOpen();
-                    go("/chat");
-                  }}
-                >
-                  <SquarePlus size={15} strokeWidth={1.75} aria-hidden />
-                </XStack>
               </XStack>
             </XStack>,
             titlebarSlot,

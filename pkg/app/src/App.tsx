@@ -440,7 +440,7 @@ function Window({ bar, betas }: Hosted) {
               items="center"
               justify="space-between"
               pl={14}
-              pr={10}
+              pr={8}
               gap={6}
               {...(bar?.drag ?? null)}
             >

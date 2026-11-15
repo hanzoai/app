@@ -1229,8 +1229,8 @@ export function ThreadMore({ t: thread }: { t: Thread }) {
         aria-label={t('Conversation options')}
         {...({ title: t('More') } as object)}
         data-slot="conversation-options"
-        width={28}
-        height={28}
+        width={32}
+        height={32}
         rounded="$3"
         items="center"
         justify="center"
