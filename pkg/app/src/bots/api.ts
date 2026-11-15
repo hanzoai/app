@@ -7,9 +7,11 @@
 // the remainder: bootstrapping the org's Primary Bot (`hanzo`), creating a bot
 // with full computer/MCP tools and budget, multi-layer Bot Groups & consensus
 // policies (Leader, Lux Quasar, Majority, Weighted, Unanimous, Kai, Custom),
-// Slack workspace sync & channel routing, and desktop sandbox computer control.
+// Slack workspace sync & channel routing, resumable Desktop Sandbox Computers
+// (including Free-tier persistent `disk: true` fallback + KMS autofill), and
+// Scheduled + Event-Driven Automations (`/v1/auto/automations`).
 
-import type { Agent } from '@hanzo/ai'
+import type { Agent, Sandbox } from '@hanzo/ai'
 import { api } from '../lib/api'
 import { scope } from '../lib/session'
 import type { useAi } from '../lib/ai'
@@ -136,7 +138,7 @@ export interface Draft {
 
 /**
  * Makes a bot with full tool access (`tools: ['*']`) — including Desktop Sandbox
- * Computer Use (`computer_in_sandbox`), bash/files, Connectors, and Bot Coordination.
+ * Computer Use (`computer_in_sandbox`), bash/files, Connectors, KMS Autofill, and Bot Coordination.
  */
 export const make = (c: Client, d: Draft) =>
   c.http.json<BotAgent>({
@@ -185,7 +187,7 @@ export async function bootstrapPrimary(
       isPrimary: true,
       layer: 0,
       instructions:
-        'You are hanzo, the Primary Bot (Layer 0) for this workspace. Direct worker bots and Bot Groups across layers, operate your Desktop Sandbox Computer, and answer across Slack and connected tools.',
+        'You are hanzo, the Primary Bot (Layer 0) for this workspace. Direct worker bots and Bot Groups across layers, operate your resumable Desktop Sandbox Computer (including secure KMS login autofill), and answer across Slack and connected tools.',
     })
     return { agent: created, created: true }
   }
@@ -333,12 +335,14 @@ export async function slackChannels(signal?: AbortSignal): Promise<SlackChannel[
     const r = await fetch(`${api()}/v1/provider/slack/channels?types=public_channel`, { headers: scope(), signal })
     if (!r.ok) return []
     const j = (await r.json()) as { channels?: Array<Record<string, unknown>> }
-    return (j.channels ?? []).map((ch) => ({
-      id: String(ch.id ?? ''),
-      name: String(ch.name ?? ''),
-      isMember: Boolean(ch.is_member ?? ch.isMember),
-      isPrivate: Boolean(ch.is_private ?? ch.isPrivate),
-    })).filter((ch) => Boolean(ch.id && ch.name))
+    return (j.channels ?? [])
+      .map((ch) => ({
+        id: String(ch.id ?? ''),
+        name: String(ch.name ?? ''),
+        isMember: Boolean(ch.is_member ?? ch.isMember),
+        isPrivate: Boolean(ch.is_private ?? ch.isPrivate),
+      }))
+      .filter((ch) => Boolean(ch.id && ch.name))
   } catch {
     return []
   }
@@ -354,8 +358,120 @@ export interface Grant {
 export const grant = (c: Client, id: string, kind: 'terminal' | 'screen') =>
   c.http.json<Grant>({ method: 'POST', path: `/v1/sandbox/${encodeURIComponent(id)}/${kind}/ticket` })
 
-export const parkComputer = (c: Client, id: string) =>
-  c.http.json<unknown>({ method: 'POST', path: `/v1/sandbox/${encodeURIComponent(id)}/park`, body: {} })
+function bestSandbox(boxes: readonly Sandbox[]): Sandbox | null {
+  return (
+    boxes.find((b) => b.status === 'running') ??
+    boxes.find((b) => b.status === 'pending') ??
+    boxes.find((b) => (b.status as string) === 'paused' || (b.status as string) === 'parked') ??
+    boxes[0] ??
+    null
+  )
+}
+
+/**
+ * Finds the bot's existing desktop sandbox across both named project disks (`bot-<name>`)
+ * and Free-tier persistent `disk: true` sandboxes bound via `bot.computeRef`.
+ */
+export async function findBotComputer(c: Client, bot: BotAgent, signal?: AbortSignal): Promise<Sandbox | null> {
+  const opts = signal ? { signal } : undefined
+  try {
+    const byProject = await c.sandboxes.list({ project: disk(bot.name) }, opts)
+    const found = bestSandbox(byProject)
+    if (found) return found
+  } catch {
+    // continue to computeRef lookup
+  }
+  if (bot.computeRef) {
+    try {
+      const all = await c.sandboxes.list(undefined, opts)
+      const exact = all.find((b) => b.id === bot.computeRef)
+      if (exact) return exact
+    } catch {
+      // ignore
+    }
+  }
+  return null
+}
+
+function statusOfError(err: unknown): number {
+  if (!err || typeof err !== 'object') return 0
+  const rec = err as Record<string, unknown>
+  if (typeof rec.status === 'number') return rec.status
+  if (typeof rec.statusCode === 'number') return rec.statusCode
+  return 0
+}
+
+/**
+ * Boots or resumes the bot's persistent Desktop Sandbox Computer:
+ * 1. If a parked/existing sandbox id is known (`existing?.id` or `bot.computeRef`), resumes it in place.
+ * 2. Otherwise leases `{ class: 'desktop', project: 'bot-<name>', disk: true }`.
+ * 3. On `402` or `409` (e.g., Free-tier $0 account where named project volumes require balance),
+ *    seamlessly falls back to `{ class: 'desktop', disk: true }` (admitted on the Free daily allowance
+ *    with a persistent 2 GiB resumable disk!).
+ */
+export async function bootOrResumeComputer(
+  c: Client,
+  bot: BotAgent,
+  existing?: Sandbox | null,
+): Promise<Sandbox> {
+  const resumeId = existing?.id || bot.computeRef
+  let leased: Sandbox | null = null
+
+  if (resumeId) {
+    try {
+      leased = await c.http.json<Sandbox>({
+        method: 'POST',
+        path: '/v1/sandbox/lease',
+        body: { id: resumeId, class: 'desktop', disk: true },
+      })
+    } catch {
+      leased = null
+    }
+  }
+
+  if (!leased) {
+    try {
+      leased = await c.http.json<Sandbox>({
+        method: 'POST',
+        path: '/v1/sandbox/lease',
+        body: { class: 'desktop', project: disk(bot.name), disk: true },
+      })
+    } catch (err) {
+      const code = statusOfError(err)
+      if (code === 402 || code === 409) {
+        leased = await c.http.json<Sandbox>({
+          method: 'POST',
+          path: '/v1/sandbox/lease',
+          body: { class: 'desktop', disk: true },
+        })
+      } else {
+        throw err
+      }
+    }
+  }
+
+  if (leased?.id && (bot.computeRef !== leased.id || !bot.tools?.length)) {
+    await updateBotMeta(c, bot.name, { computeRef: leased.id, tools: ['*'] }).catch(() => null)
+  }
+  return leased
+}
+
+/** Parks a running desktop sandbox while preserving its persistent home volume (`disk: true`). */
+export async function parkComputer(c: Client, id: string): Promise<void> {
+  try {
+    await c.http.json<unknown>({
+      method: 'POST',
+      path: `/v1/sandbox/${encodeURIComponent(id)}/pause`,
+      body: {},
+    })
+  } catch {
+    await c.http.json<unknown>({
+      method: 'POST',
+      path: '/v1/sandbox/park',
+      body: { id },
+    })
+  }
+}
 
 export interface ComputerActionIn {
   id: string
@@ -373,6 +489,7 @@ export interface ComputerActionIn {
     | 'navigate'
     | 'wait'
     | 'shell'
+    | 'autofill'
   x?: number
   y?: number
   toX?: number
@@ -384,6 +501,9 @@ export interface ComputerActionIn {
   url?: string
   command?: string
   ms?: number
+  credential?: string
+  field?: 'login' | 'username' | 'password' | 'totp' | 'secret'
+  submit?: boolean
 }
 
 export interface ComputerActionOut {
@@ -402,4 +522,137 @@ export const actComputer = (c: Client, body: ComputerActionIn) =>
     method: 'POST',
     path: '/v1/sandbox/computer',
     body,
+  })
+
+// ── Scheduled & Event-Driven Automations (`/v1/auto/automations`) ───────────
+
+export interface AutomationSchedule {
+  kind: 'manual' | 'hourly' | 'daily' | 'weekdays' | 'weekly' | 'cron' | 'once'
+  at?: string
+  day?: string
+  cron?: string
+  tz?: string
+}
+
+export interface AutomationEventTrigger {
+  source: string
+  name: string
+}
+
+export interface BotAutomation {
+  id: string
+  name: string
+  instructions: string
+  schedule: AutomationSchedule
+  event?: AutomationEventTrigger | null
+  permissions: 'auto' | 'ask'
+  notify: boolean
+  enabled: boolean
+  source: string
+  next?: string | null
+  last?: { id: string; status: string; at: string; summary: string } | null
+  created: string
+  updated: string
+}
+
+export async function listBotAutomations(
+  c: Client,
+  botName?: string,
+  signal?: AbortSignal,
+): Promise<BotAutomation[]> {
+  try {
+    const res = await c.http.json<{ data?: BotAutomation[] }>({
+      path: '/v1/auto/automations',
+      signal,
+    })
+    const all = res.data ?? []
+    if (!botName) return all
+    const tag = `[bot:${botName.toLowerCase()}]`
+    return all.filter((a) => {
+      const lower = `${a.name} ${a.instructions}`.toLowerCase()
+      if (lower.includes('[bot:')) return lower.includes(tag)
+      return a.source === 'chat'
+    })
+  } catch {
+    return []
+  }
+}
+
+export async function parseAutomationWhen(
+  c: Client,
+  phrase: string,
+  tz?: string,
+): Promise<AutomationSchedule | null> {
+  try {
+    const zone = tz || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+    const res = await c.http.json<{ schedule?: AutomationSchedule }>({
+      method: 'POST',
+      path: '/v1/auto/when',
+      body: { when: phrase, tz: zone },
+    })
+    return res.schedule ?? null
+  } catch {
+    return null
+  }
+}
+
+export interface CreateBotAutomationIn {
+  botName: string
+  name: string
+  instructions: string
+  mode: 'schedule' | 'event'
+  schedule?: AutomationSchedule
+  event?: AutomationEventTrigger
+  model?: string
+  notify?: boolean
+}
+
+export async function createBotAutomation(c: Client, input: CreateBotAutomationIn): Promise<BotAutomation> {
+  const prefix = `[bot:${input.botName}]`
+  const taggedInstructions = input.instructions.includes(prefix)
+    ? input.instructions
+    : `${prefix} Acting as bot "${input.botName}", carry out this automation using your tools, connectors, and resumable desktop sandbox computer when needed:\n\n${input.instructions}`
+
+  const body: Record<string, unknown> = {
+    name: input.name.trim(),
+    instructions: taggedInstructions,
+    permissions: 'auto',
+    notify: input.notify ?? true,
+    enabled: true,
+    source: 'chat',
+  }
+  if (input.model) body.model = input.model
+  if (input.mode === 'event' && input.event) {
+    body.event = input.event
+    body.schedule = { kind: 'manual' }
+  } else {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+    body.schedule = input.schedule ?? { kind: 'daily', at: '09:00', tz: zone }
+  }
+
+  return c.http.json<BotAutomation>({
+    method: 'POST',
+    path: '/v1/auto/automations',
+    body,
+  })
+}
+
+export const toggleBotAutomation = (c: Client, id: string, enabled: boolean) =>
+  c.http.json<BotAutomation>({
+    method: 'PATCH',
+    path: `/v1/auto/automations/${encodeURIComponent(id)}`,
+    body: { enabled },
+  })
+
+export const runBotAutomation = (c: Client, id: string) =>
+  c.http.json<{ run: { id: string; status: string } }>({
+    method: 'POST',
+    path: `/v1/auto/automations/${encodeURIComponent(id)}/run`,
+    body: {},
+  })
+
+export const deleteBotAutomation = (c: Client, id: string) =>
+  c.http.json<unknown>({
+    method: 'DELETE',
+    path: `/v1/auto/automations/${encodeURIComponent(id)}`,
   })

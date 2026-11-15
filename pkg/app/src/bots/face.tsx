@@ -4,9 +4,9 @@
 //
 // Core team members resolve their memoji portrait via `roleOf(bot.name)` when
 // the agent row itself stores no custom avatar URL; people render their own
-// avatar or crisp initial disc. Lead seat #1 (`starred`) wears the subtle star
-// badge in the 3x4 roster grid.
+// avatar or crisp initial disc (ignoring auto-generated Gravatar identicons).
 
+import { useEffect, useState } from 'react'
 import type { Agent } from '@hanzo/ai'
 import { Text, YStack } from '@hanzo/gui'
 import { Star } from 'lucide-react'
@@ -14,6 +14,16 @@ import { Star } from 'lucide-react'
 import { roleOf } from '../cast'
 import { called } from '../team'
 import { FLOOR, INK } from './ink'
+
+export function cleanAvatarUrl(url?: string | null): string | undefined {
+  if (!url) return undefined
+  const u = url.trim()
+  if (!u) return undefined
+  // Strip auto-generated default Gravatar identicons so Hanzo renders its clean
+  // monochrome initial disc without making external gravatar.com requests.
+  if (u.includes('gravatar.com/avatar/') && u.includes('d=identicon')) return undefined
+  return u
+}
 
 export function Face({
   bot,
@@ -27,12 +37,25 @@ export function Face({
   starred?: boolean
 }) {
   const round = { width: size, height: size, shrink: 0, rounded: 9999, overflow: 'hidden' } as const
-  const src = bot.avatar || (!person ? roleOf(bot.name)?.portrait : undefined)
+  const candidate = cleanAvatarUrl(bot.avatar) || (!person ? roleOf(bot.name)?.portrait : undefined)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    setFailed(false)
+  }, [candidate])
+
+  const src = failed ? undefined : candidate
   const label = person ? (bot.name || '') : called(bot.name || '')
   const glyph = Math.round(size * (bot.emoji ? 0.5 : 0.42))
 
   const disc = src ? (
-    <YStack render="img" {...{ src, alt: '' }} aria-hidden {...round} objectFit="cover" />
+    <YStack
+      render="img"
+      {...{ src, alt: '', onError: () => setFailed(true) }}
+      aria-hidden
+      {...round}
+      objectFit="cover"
+    />
   ) : (
     <YStack
       aria-hidden

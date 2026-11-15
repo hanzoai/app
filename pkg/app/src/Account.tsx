@@ -194,6 +194,11 @@ function usePlan(org: string | null, enabled: boolean): string {
 /** The person's picture, or their initials. */
 export function Face({ host, size = 28 }: { host: Who; size?: number }) {
   const p = host.person
+  const cleanSrc = p?.avatar && !(p.avatar.includes('gravatar.com/avatar/') && p.avatar.includes('d=identicon')) ? p.avatar : undefined
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    setFailed(false)
+  }, [cleanSrc])
   return (
     <XStack
       width={size}
@@ -207,8 +212,8 @@ export function Face({ host, size = 28 }: { host: Who; size?: number }) {
       borderWidth={1}
       borderColor="$borderColor"
     >
-      {p?.avatar ? (
-        <img src={p.avatar} alt="" width={size} height={size} />
+      {cleanSrc && !failed ? (
+        <img src={cleanSrc} alt="" width={size} height={size} onError={() => setFailed(true)} />
       ) : (
         <SizableText fontSize={Math.max(10, Math.round(size * 0.39))} lineHeight={size} fontWeight="600" color="$ink">
           {initials(p?.name || p?.email || '')}

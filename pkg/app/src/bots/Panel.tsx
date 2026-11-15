@@ -2,17 +2,17 @@
 
 // The open bot's right inspector panel:
 // - Avatar, Primary Bot ("hanzo" · Layer 0) status, [Activity | Library] segmented tabs
+// - Sleek Desktop Sandbox Computer card (`Awake` / `Parked` / `Asleep` dark screen preview — no heart icon!)
+// - Scheduled & Event-Driven Automations (`/v1/auto/automations` + agent cron schedule, live toggle & Run now)
+// - Unified Secrets & Login Autofill (`1Password`, `LastPass`, `Hanzo KMS` synced with platform.hanzo.ai & hanzo.app)
 // - Hierarchy & Layer role card (Primary Bot promotion, Bot Group assignment, Layer 0..3)
 // - Slack Sync & Channel Routing card (one-click Add to Slack, Sync Channels, default @hanzo responder, #channel bindings)
-// - Upcoming routines & connected networks
-// - Connectors launcher
-// - Dedicated Desktop Sandbox Computer card opening ComputerDialog (live GUI + Terminal + Computer Use)
-// - Voice chat preferences
+// - Connectors launcher & Voice chat preferences
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import type { Agent, AgentRun, Sandbox } from '@hanzo/ai'
 import { useI18n } from '@hanzo/i18n/react'
-import { Text, XStack, YStack } from '@hanzo/gui'
+import { Input, Text, XStack, YStack } from '@hanzo/gui'
 import {
   Button,
   Dialog,
@@ -31,17 +31,23 @@ import {
   ExternalLink,
   FileText,
   Image as ImageIcon,
+  KeyRound,
   Layers,
+  Play,
   Plus,
   RefreshCw,
   Star,
+  Trash2,
   X,
+  Zap,
 } from 'lucide-react'
 import { useKept } from '../kept'
+import { api } from '../lib/api'
 import { useAi } from '../lib/ai'
 import { say } from '../failure'
 import { Network, of } from '../network'
 import { called } from '../team'
+import { VaultDialog, readVault, type VaultDoc } from '../vault'
 import { ComputerDialog } from './ComputerDialog'
 import { ConnectorsDialog } from './ConnectorsDialog'
 import { Face } from './face'
@@ -49,7 +55,12 @@ import {
   ALWAYS,
   PRIMARY_BOT,
   answering,
-  disk,
+  createBotAutomation,
+  deleteBotAutomation,
+  findBotComputer,
+  listBotAutomations,
+  parseAutomationWhen,
+  runBotAutomation,
   setAnswering,
   setPrimaryBot,
   slackAuthorizeUrl,
@@ -57,19 +68,38 @@ import {
   slackStatus,
   slackSyncChannels,
   toGroupRef,
+  toggleBotAutomation,
   updateBotMeta,
+  type AutomationSchedule,
   type BotAgent,
+  type BotAutomation,
   type BotGroup,
   type SlackChannel,
 } from './api'
 import { CARD, CLIP, LABEL, PILL, ROUND, WORD } from './kit'
-import { DIM, GROUND, INK, LINE, PICKED, RAISED } from './ink'
+import { DIM, FLOOR, GROUND, INK, LINE, PICKED, RAISED } from './ink'
 import { partsOf } from './said'
 import { cron as words } from './time'
 
 const VOICES = ['Liora', 'Aria', 'Sol', 'Koe', 'Nova', 'Echo'] as const
 const SPEEDS = ['0.9x', '1x', '1.25x', '1.5x', '2x'] as const
 const LANGUAGES = ['Auto-detect', 'English', 'Spanish', 'French', 'German', 'Japanese', 'Chinese'] as const
+
+const EVENT_TRIGGERS: readonly { id: string; source: string; name: string; label: string; hint: string }[] = [
+  { id: 'slack:mention', source: 'slack', name: 'mention', label: 'Slack · @mention', hint: 'Runs when @hanzo is mentioned in Slack' },
+  { id: 'slack:message', source: 'slack', name: 'message', label: 'Slack · Channel message', hint: 'Runs on new messages in bound channels' },
+  { id: 'github:push', source: 'github', name: 'push', label: 'GitHub · Push', hint: 'Runs when commits are pushed to a repository' },
+  { id: 'github:pull_request', source: 'github', name: 'pull_request', label: 'GitHub · Pull Request', hint: 'Runs when a PR opens or updates' },
+  { id: 'stripe:charge', source: 'stripe', name: 'charge', label: 'Stripe · Payment / Charge', hint: 'Runs when a customer payment settles' },
+  { id: 'webhook:inbound', source: 'webhook', name: 'inbound', label: 'Webhook · Inbound HTTP', hint: 'Runs whenever your webhook URL receives a POST' },
+]
+
+const SCHEDULE_PRESETS: readonly { id: string; label: string; schedule: AutomationSchedule }[] = [
+  { id: 'daily', label: 'Daily · 9:00 AM', schedule: { kind: 'daily', at: '09:00' } },
+  { id: 'weekdays', label: 'Weekdays · 9:00 AM', schedule: { kind: 'weekdays', at: '09:00' } },
+  { id: 'hourly', label: 'Every hour', schedule: { kind: 'hourly' } },
+  { id: 'weekly', label: 'Mondays · 9:00 AM', schedule: { kind: 'weekly', day: 'mon', at: '09:00' } },
+]
 
 function Row({
   mark,
@@ -92,7 +122,7 @@ function Row({
           {title}
         </Text>
         {line ? (
-          <Text {...CLIP} fontSize={13} lineHeight={18} color={DIM}>
+          <Text {...CLIP} fontSize={12} lineHeight={17} color={DIM}>
             {line}
           </Text>
         ) : null}
@@ -155,53 +185,69 @@ function VoiceRow({
   )
 }
 
-function ComputerScreen({ awake }: { awake: boolean }) {
+/**
+ * Sleek miniature desktop screen preview (matching reference `uploaded_media_1` — zero hearts!).
+ * Shows an illuminated dark violet/indigo screen preview when `Awake`, and a clean dark charcoal
+ * monitor surface when `Parked` or `Asleep`.
+ */
+function ComputerScreen({ awake, parked }: { awake: boolean; parked: boolean }) {
   return (
     <YStack
       aria-hidden
       width={56}
       height={36}
-      rounded={9}
+      rounded={8}
       shrink={0}
+      justify="flex-end"
       items="center"
-      justify="center"
+      pb={3}
       position="relative"
       overflow="hidden"
-      bg={PICKED}
+      bg={awake ? 'var(--secondary)' : FLOOR}
       borderWidth={1}
-      borderColor={LINE}
+      borderColor={awake ? 'var(--primary)' : LINE}
     >
-      {awake ? (
-        <YStack width={10} height={10} rounded={999} bg="var(--state-online)" />
-      ) : (
-        <>
-          <Text position="absolute" t={2} r={6} fontSize={9} lineHeight={10} fontWeight="600" color={DIM}>
-            z
-          </Text>
-          <svg width="20" height="18" viewBox="0 0 20 18" fill="none" aria-hidden="true">
-            <path
-              d="M10 16.2C10 16.2 2.5 11.4 2.5 6.3C2.5 3.8 4.4 2 6.7 2C8.1 2 9.3 2.7 10 3.8C10.7 2.7 11.9 2 13.3 2C15.6 2 17.5 3.8 17.5 6.3C17.5 11.4 10 16.2 10 16.2Z"
-              fill="currentColor"
-              opacity="0.34"
-            />
-            <circle cx="8.1" cy="7.9" r="0.9" fill="var(--pane-fill, var(--card))" />
-            <circle cx="11.9" cy="7.9" r="0.9" fill="var(--pane-fill, var(--card))" />
-          </svg>
-        </>
-      )}
+      <YStack
+        position="absolute"
+        t={0}
+        l={0}
+        r={0}
+        b={0}
+        bg={awake ? 'var(--primary)' : PICKED}
+        opacity={awake ? 0.24 : parked ? 0.45 : 0.2}
+      />
+      <XStack
+        width={22}
+        height={3}
+        rounded={999}
+        bg={awake ? 'var(--pure-white)' : DIM}
+        opacity={awake ? 0.65 : 0.28}
+      />
     </YStack>
   )
 }
 
-function stateLabel(box: Sandbox | null, t: (s: string) => string): string {
-  if (!box) return t('Asleep · click for Desktop GUI')
-  if (box.status === 'running') return t('Awake · Desktop GUI & Shell')
-  if (box.status === 'pending') return t('Waking desktop…')
-  return box.error || t('Parked · click to wake')
+function stateLabel(box: Sandbox | null, hasRef: boolean, t: (s: string) => string): string {
+  if (box?.status === 'running') return t('Awake')
+  if (box?.status === 'pending') return t('Starting desktop…')
+  if (box || hasRef) return t('Parked · click to resume')
+  return t('Ready · click to open')
 }
 
-const best = (boxes: readonly Sandbox[]): Sandbox | null =>
-  boxes.find((b) => b.status === 'running') ?? boxes.find((b) => b.status === 'pending') ?? boxes[0] ?? null
+function describeAutomation(a: BotAutomation, t: (s: string, p?: Record<string, unknown>) => string): string {
+  if (a.event?.source && a.event?.name) {
+    return `${t('On event')}: ${a.event.source}.${a.event.name}`
+  }
+  const s = a.schedule
+  if (!s || s.kind === 'manual') return a.enabled ? t('On demand') : t('Paused')
+  if (!a.enabled) return `${t('Paused')} · ${s.kind}${s.at ? ` ${s.at}` : ''}`
+  if (s.kind === 'hourly') return t('Every hour')
+  if (s.kind === 'daily') return t('Daily at {at}', { at: s.at || '09:00' })
+  if (s.kind === 'weekdays') return t('Weekdays at {at}', { at: s.at || '09:00' })
+  if (s.kind === 'weekly') return t('Weekly ({day}) at {at}', { day: s.day || 'mon', at: s.at || '09:00' })
+  if (s.kind === 'cron' && s.cron) return `Cron · ${s.cron}`
+  return s.kind
+}
 
 const POLL = 5000
 
@@ -243,6 +289,19 @@ export function Panel({
   const [wrong, setWrong] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [connectorsOpen, setConnectorsOpen] = useState(false)
+  const [vaultOpen, setVaultOpen] = useState(false)
+  const [vaultDoc, setVaultDoc] = useState<VaultDoc>({ items: [], providers: {}, secretKeys: [] })
+
+  // Scheduled + Event-driven Automations state
+  const [automations, setAutomations] = useState<BotAutomation[]>([])
+  const [autoModalOpen, setAutoModalOpen] = useState(false)
+  const [autoMode, setAutoMode] = useState<'schedule' | 'event'>('schedule')
+  const [autoName, setAutoName] = useState('')
+  const [autoInstructions, setAutoInstructions] = useState('')
+  const [autoPreset, setAutoPreset] = useState('weekdays')
+  const [autoCustomWhen, setAutoCustomWhen] = useState('')
+  const [autoEventId, setAutoEventId] = useState('slack:mention')
+  const [autoBusy, setAutoBusy] = useState(false)
 
   // Slack workspace + channel routing state
   const [slackConn, setSlackConn] = useState<{ connected: boolean; account?: string }>({ connected: false })
@@ -269,17 +328,19 @@ export function Panel({
     async (signal?: AbortSignal) => {
       if (!client) return
       const opts = signal ? { signal } : undefined
-      const [detail, nets, boxes, slk] = await Promise.allSettled([
+      const [detail, nets, foundBox, slk, autos, vdoc] = await Promise.allSettled([
         client.agents.get(bot.name, opts),
         client.transports.list(opts),
-        client.sandboxes.list({ project: disk(bot.name) }, opts),
+        findBotComputer(client, ext, signal),
         slackStatus(signal),
+        listBotAutomations(client, bot.name, signal),
+        readVault(signal),
       ])
       if (signal?.aborted) return
       if (detail.status === 'fulfilled') setInstructions(detail.value.instructions ?? '')
-      if (boxes.status === 'fulfilled') {
-        setBox(best(boxes.value))
-      }
+      if (foundBox.status === 'fulfilled') setBox(foundBox.value)
+      if (autos.status === 'fulfilled') setAutomations(autos.value)
+      if (vdoc.status === 'fulfilled') setVaultDoc(vdoc.value)
       if (slk.status === 'fulfilled') {
         setSlackConn(slk.value)
         if (slk.value.connected) {
@@ -310,7 +371,7 @@ export function Panel({
         )
       }
     },
-    [client, bot.name],
+    [client, bot.name, ext],
   )
 
   useEffect(() => {
@@ -323,16 +384,15 @@ export function Panel({
     if (!client || box?.status !== 'pending') return
     const stop = new AbortController()
     const tick = window.setInterval(() => {
-      client.sandboxes
-        .list({ project: disk(bot.name) }, { signal: stop.signal })
-        .then((boxes) => setBox(best(boxes)))
+      findBotComputer(client, ext, stop.signal)
+        .then((b) => setBox(b))
         .catch(() => undefined)
     }, POLL)
     return () => {
       window.clearInterval(tick)
       stop.abort()
     }
-  }, [client, box?.status, bot.name])
+  }, [client, box?.status, ext])
 
   const promotePrimary = async () => {
     if (!client || saving) return
@@ -445,6 +505,85 @@ export function Panel({
     }
   }
 
+  const submitAutomation = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!client || autoBusy || !autoName.trim() || !autoInstructions.trim()) return
+    setAutoBusy(true)
+    setWrong(null)
+    try {
+      const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+      let sched: AutomationSchedule | undefined
+      if (autoMode === 'schedule') {
+        if (autoCustomWhen.trim()) {
+          sched = (await parseAutomationWhen(client, autoCustomWhen.trim(), zone)) ?? undefined
+        }
+        if (!sched) {
+          const found = SCHEDULE_PRESETS.find((p) => p.id === autoPreset) ?? SCHEDULE_PRESETS[0]
+          sched = { ...found.schedule, tz: zone }
+        }
+      }
+      const evDef = EVENT_TRIGGERS.find((ev) => ev.id === autoEventId) ?? EVENT_TRIGGERS[0]
+
+      await createBotAutomation(client, {
+        botName: bot.name,
+        name: autoName.trim(),
+        instructions: autoInstructions.trim(),
+        mode: autoMode,
+        schedule: sched,
+        event: autoMode === 'event' ? { source: evDef.source, name: evDef.name } : undefined,
+        model: bot.model,
+      })
+      setAutoName('')
+      setAutoInstructions('')
+      setAutoCustomWhen('')
+      setAutoModalOpen(false)
+      await survey()
+    } catch (err) {
+      setWrong(say(err, t('automation'), 'save', t))
+    } finally {
+      setAutoBusy(false)
+    }
+  }
+
+  const handleToggleAuto = async (a: BotAutomation, enabled: boolean) => {
+    if (!client || autoBusy) return
+    setAutoBusy(true)
+    try {
+      await toggleBotAutomation(client, a.id, enabled)
+      setAutomations((list) => list.map((x) => (x.id === a.id ? { ...x, enabled } : x)))
+    } catch (err) {
+      setWrong(say(err, a.name, 'save', t))
+    } finally {
+      setAutoBusy(false)
+    }
+  }
+
+  const handleRunAutoNow = async (a: BotAutomation) => {
+    if (!client || autoBusy) return
+    setAutoBusy(true)
+    try {
+      await runBotAutomation(client, a.id)
+      await survey()
+    } catch (err) {
+      setWrong(say(err, a.name, 'save', t))
+    } finally {
+      setAutoBusy(false)
+    }
+  }
+
+  const handleDeleteAuto = async (a: BotAutomation) => {
+    if (!client || autoBusy) return
+    setAutoBusy(true)
+    try {
+      await deleteBotAutomation(client, a.id)
+      setAutomations((list) => list.filter((x) => x.id !== a.id))
+    } catch (err) {
+      setWrong(say(err, a.name, 'save', t))
+    } finally {
+      setAutoBusy(false)
+    }
+  }
+
   const routine = cron ? bot.description || instructions.split('\n')[0].trim() || displayName : ''
   const scheduleLine = cron
     ? activeSchedule
@@ -453,6 +592,25 @@ export function Panel({
         ? t('Paused')
         : `${t('Paused')} · ${words(cron, locale, t)}`
     : ''
+
+  const vaultSummary = useMemo(() => {
+    const logins = vaultDoc.items.filter((i) => i.kind === 'login').length
+    const keys = vaultDoc.items.filter((i) => i.kind !== 'login').length
+    const linked: string[] = []
+    if (vaultDoc.providers.onepassword?.connected) linked.push('1Password')
+    if (vaultDoc.providers.lastpass?.connected) linked.push('LastPass')
+    linked.push('KMS')
+    if (logins + keys === 0) {
+      return t('1Password, LastPass & KMS autofill')
+    }
+    return t('{logins} logins · {keys} keys ({srcs})', {
+      logins,
+      keys,
+      srcs: linked.join(', '),
+    })
+  }, [vaultDoc, t])
+
+  const selectedEventDef = EVENT_TRIGGERS.find((e) => e.id === autoEventId) ?? EVENT_TRIGGERS[0]
 
   const libraryItems = useMemo(() => {
     const items: Array<{ key: string; kind: 'doc' | 'image'; label: string; sub?: string; href?: string }> = []
@@ -525,6 +683,205 @@ export function Panel({
 
       {tab === 'activity' ? (
         <YStack px={15} pb={24} gap={18}>
+          {/* Resumable Desktop Sandbox Computer (no heart icon — sleek dark desktop preview!) */}
+          <YStack gap={8} data-parity-key="bots.panel.computer">
+            <Text {...LABEL} px={4}>
+              {t('Computer')}
+            </Text>
+            <XStack
+              {...CARD}
+              render="button"
+              {...{ type: 'button' }}
+              onClick={() => setComputerOpen(true)}
+              aria-label={t('Open {name}’s desktop computer', { name: displayName })}
+              minH={60}
+              px={13}
+              py={10}
+              items="center"
+              gap={12}
+              cursor="pointer"
+              hoverStyle={{ bg: PICKED }}
+            >
+              <YStack flex={1} minW={0} items="flex-start">
+                <Text {...CLIP} fontSize={14} lineHeight={19} color={INK}>
+                  {t("Bot's computer")}
+                </Text>
+                <Text {...CLIP} fontSize={12} lineHeight={17} color={DIM}>
+                  {stateLabel(box, Boolean(ext.computeRef), t)}
+                </Text>
+              </YStack>
+              <ComputerScreen awake={box?.status === 'running'} parked={Boolean(box || ext.computeRef)} />
+            </XStack>
+          </YStack>
+
+          {/* Automations (Scheduled & Event-Driven) */}
+          <YStack gap={8} data-parity-key="bots.panel.automations">
+            <XStack items="center" justify="space-between" px={4}>
+              <Text {...LABEL}>{t('Automations')}</Text>
+              <XStack
+                render="button"
+                {...{ type: 'button' }}
+                onClick={() => setAutoModalOpen(true)}
+                items="center"
+                gap={3}
+                px={6}
+                py={2}
+                rounded={6}
+                bg="transparent"
+                borderWidth={0}
+                cursor="pointer"
+                hoverStyle={{ bg: PICKED }}
+              >
+                <Plus size={12} color={DIM} aria-hidden />
+                <Text fontSize={12} lineHeight={16} color={DIM}>
+                  {t('Add')}
+                </Text>
+              </XStack>
+            </XStack>
+
+            <YStack {...CARD}>
+              {cron ? (
+                <Row
+                  mark={<Clock size={16} color={DIM} aria-hidden />}
+                  title={routine}
+                  line={scheduleLine}
+                  last={automations.length === 0}
+                >
+                  <Switch
+                    aria-label={t('Run {name} on its schedule', { name: displayName })}
+                    checked={activeSchedule}
+                    disabled={saving}
+                    onCheckedChange={(on: boolean) => {
+                      setWrong(null)
+                      setSaving(true)
+                      onSchedule(on, cron === 'paused' ? '0 9 * * *' : cron)
+                        .catch((e) => setWrong(say(e, t('{name}’s schedule', { name: displayName }), 'save', t)))
+                        .finally(() => setSaving(false))
+                    }}
+                  />
+                </Row>
+              ) : null}
+
+              {automations.map((a, idx) => {
+                const isEvent = Boolean(a.event?.source)
+                const isLast = idx === automations.length - 1
+                return (
+                  <Row
+                    key={a.id}
+                    mark={isEvent ? <Zap size={16} color={INK} aria-hidden /> : <Clock size={16} color={DIM} aria-hidden />}
+                    title={a.name}
+                    line={describeAutomation(a, t)}
+                    last={isLast}
+                  >
+                    <XStack items="center" gap={6}>
+                      <XStack
+                        render="button"
+                        {...{ type: 'button' }}
+                        aria-label={t('Run {name} now', { name: a.name })}
+                        disabled={autoBusy}
+                        onClick={() => void handleRunAutoNow(a)}
+                        width={26}
+                        height={26}
+                        rounded={999}
+                        items="center"
+                        justify="center"
+                        bg="transparent"
+                        borderWidth={0}
+                        cursor="pointer"
+                        hoverStyle={{ bg: PICKED }}
+                      >
+                        <Play size={12} color={DIM} aria-hidden />
+                      </XStack>
+                      <Switch
+                        aria-label={t('Toggle {name}', { name: a.name })}
+                        checked={a.enabled}
+                        disabled={autoBusy}
+                        onCheckedChange={(on: boolean) => void handleToggleAuto(a, on)}
+                      />
+                      <XStack
+                        render="button"
+                        {...{ type: 'button' }}
+                        aria-label={t('Delete {name}', { name: a.name })}
+                        disabled={autoBusy}
+                        onClick={() => void handleDeleteAuto(a)}
+                        width={24}
+                        height={24}
+                        rounded={999}
+                        items="center"
+                        justify="center"
+                        bg="transparent"
+                        borderWidth={0}
+                        cursor="pointer"
+                        hoverStyle={{ bg: PICKED }}
+                      >
+                        <Trash2 size={12} color={DIM} aria-hidden />
+                      </XStack>
+                    </XStack>
+                  </Row>
+                )
+              })}
+
+              {!cron && automations.length === 0 ? (
+                <XStack
+                  render="button"
+                  {...{ type: 'button' }}
+                  onClick={() => setAutoModalOpen(true)}
+                  minH={50}
+                  px={13}
+                  py={9}
+                  items="center"
+                  justify="space-between"
+                  gap={10}
+                  bg="transparent"
+                  borderWidth={0}
+                  cursor="pointer"
+                  hoverStyle={{ bg: PICKED }}
+                >
+                  <YStack flex={1} minW={0} items="flex-start">
+                    <Text {...CLIP} fontSize={14} lineHeight={19} color={INK}>
+                      {t('Scheduled & event-driven work')}
+                    </Text>
+                    <Text {...CLIP} fontSize={12} lineHeight={17} color={DIM}>
+                      {t('Run on cron schedules, Slack mentions, GitHub PRs, or webhooks')}
+                    </Text>
+                  </YStack>
+                  <ChevronRight size={15} color={DIM} aria-hidden />
+                </XStack>
+              ) : null}
+            </YStack>
+          </YStack>
+
+          {/* Unified Secrets, Logins & Autofill (`1Password`, `LastPass`, `Hanzo KMS`) */}
+          <YStack gap={8} data-parity-key="bots.panel.vault">
+            <Text {...LABEL} px={4}>
+              {t('Secrets & Login Autofill')}
+            </Text>
+            <XStack
+              {...CARD}
+              render="button"
+              {...{ type: 'button' }}
+              onClick={() => setVaultOpen(true)}
+              minH={52}
+              px={13}
+              py={9}
+              items="center"
+              gap={11}
+              cursor="pointer"
+              hoverStyle={{ bg: PICKED }}
+            >
+              <KeyRound size={17} color={INK} aria-hidden />
+              <YStack flex={1} minW={0} items="flex-start">
+                <Text {...CLIP} fontSize={14} lineHeight={19} color={INK}>
+                  {t('Unified Vault & Password Autofill')}
+                </Text>
+                <Text {...CLIP} fontSize={12} lineHeight={17} color={DIM}>
+                  {vaultSummary}
+                </Text>
+              </YStack>
+              <ChevronRight size={15} color={DIM} aria-hidden />
+            </XStack>
+          </YStack>
+
           {/* Hierarchy & Layer Coordination */}
           <YStack gap={8} data-parity-key="bots.panel.hierarchy">
             <Text {...LABEL} px={4}>
@@ -671,7 +1028,13 @@ export function Panel({
             <YStack {...CARD}>
               <Row
                 mark={<Network transport="slack" size={20} />}
-                title={slackConn.connected ? (slackConn.account ? `Slack · ${slackConn.account}` : t('Slack Connected')) : t('Add @hanzo to Slack')}
+                title={
+                  slackConn.connected
+                    ? slackConn.account
+                      ? `Slack · ${slackConn.account}`
+                      : t('Slack Connected')
+                    : t('Add @hanzo to Slack')
+                }
                 line={
                   slackConn.connected
                     ? slackDefault === bot.name
@@ -754,79 +1117,29 @@ export function Panel({
             ) : null}
           </YStack>
 
-          {/* Dedicated Desktop Sandbox Computer (always visible for every bot!) */}
-          <YStack gap={8} data-parity-key="bots.panel.computer">
-            <Text {...LABEL} px={4}>
-              {t('Desktop Computer')}
-            </Text>
-            <XStack
-              {...CARD}
-              render="button"
-              {...{ type: 'button' }}
-              onClick={() => setComputerOpen(true)}
-              aria-label={t('Open {name}’s desktop computer', { name: displayName })}
-              minH={60}
-              px={13}
-              py={10}
-              items="center"
-              gap={12}
-              cursor="pointer"
-              hoverStyle={{ bg: PICKED }}
-            >
-              <YStack flex={1} minW={0} items="flex-start">
-                <Text {...CLIP} fontSize={14} lineHeight={19} color={INK}>
-                  {t("Bot's computer")}
-                </Text>
-                <Text {...CLIP} fontSize={12} lineHeight={17} color={DIM}>
-                  {stateLabel(box, t)}
-                </Text>
-              </YStack>
-              <ComputerScreen awake={box?.status === 'running'} />
-            </XStack>
-          </YStack>
-
-          {cron || answers.length ? (
-            <YStack gap={8} data-parity-key="bots.panel.upcoming">
+          {/* Connected Networks */}
+          {answers.length ? (
+            <YStack gap={8} data-parity-key="bots.panel.networks">
               <Text {...LABEL} px={4}>
-                {t('Upcoming')}
+                {t('Connected Channels')}
               </Text>
-              {cron ? (
-                <YStack {...CARD}>
-                  <Row mark={<Clock size={16} color={DIM} aria-hidden />} title={routine} line={scheduleLine} last>
-                    <Switch
-                      aria-label={t('Run {name} on its schedule', { name: displayName })}
-                      checked={activeSchedule}
-                      disabled={saving}
-                      onCheckedChange={(on: boolean) => {
-                        setWrong(null)
-                        setSaving(true)
-                        onSchedule(on, cron === 'paused' ? '0 9 * * *' : cron)
-                          .catch((e) => setWrong(say(e, t('{name}’s schedule', { name: displayName }), 'save', t)))
-                          .finally(() => setSaving(false))
-                      }}
-                    />
+              <YStack {...CARD}>
+                {answers.map((id, i) => (
+                  <Row
+                    key={id}
+                    mark={<Network transport={id} size={18} />}
+                    title={of(id).name}
+                    line={t('Connected')}
+                    last={i === answers.length - 1}
+                  >
+                    <ChevronRight size={15} color={DIM} aria-hidden />
                   </Row>
-                </YStack>
-              ) : null}
-
-              {answers.length ? (
-                <YStack {...CARD} data-parity-key="bots.panel.networks">
-                  {answers.map((id, i) => (
-                    <Row
-                      key={id}
-                      mark={<Network transport={id} size={18} />}
-                      title={of(id).name}
-                      line={t('Connected')}
-                      last={i === answers.length - 1}
-                    >
-                      <ChevronRight size={15} color={DIM} aria-hidden />
-                    </Row>
-                  ))}
-                </YStack>
-              ) : null}
+                ))}
+              </YStack>
             </YStack>
           ) : null}
 
+          {/* Connectors */}
           <YStack gap={8} data-parity-key="bots.panel.connectors">
             <XStack items="center" justify="space-between" px={4}>
               <Text {...LABEL}>{t('Connectors')}</Text>
@@ -876,6 +1189,7 @@ export function Panel({
             </XStack>
           </YStack>
 
+          {/* Voice chat */}
           <YStack gap={8} data-parity-key="bots.panel.voice">
             <Text {...LABEL} px={4}>
               {t('Voice chat')}
@@ -920,7 +1234,9 @@ export function Panel({
               {libraryItems.map((item, i) => (
                 <Row
                   key={item.key}
-                  mark={item.kind === 'doc' ? <FileText size={16} color={DIM} aria-hidden /> : <ImageIcon size={16} color={DIM} aria-hidden />}
+                  mark={
+                    item.kind === 'doc' ? <FileText size={16} color={DIM} aria-hidden /> : <ImageIcon size={16} color={DIM} aria-hidden />
+                  }
                   title={item.label}
                   line={item.sub}
                   last={i === libraryItems.length - 1}
@@ -938,6 +1254,219 @@ export function Panel({
           )}
         </YStack>
       )}
+
+      {/* Create Scheduled or Event-Driven Automation Modal */}
+      <Dialog open={autoModalOpen} onOpenChange={setAutoModalOpen}>
+        <DialogContent
+          data-parity-key="bots.automations.dialog"
+          width="calc(100vw - 32px)"
+          maxW={540}
+          p={0}
+          showCloseButton={false}
+          bg={GROUND}
+          borderWidth={1}
+          borderColor={LINE}
+          rounded={18}
+          overflow="hidden"
+        >
+          <YStack p={20} gap={14} bg={GROUND}>
+            <XStack items="center" justify="space-between" gap={10}>
+              <DialogTitle>
+                <Text fontSize={18} lineHeight={24} fontWeight="600" color={INK}>
+                  {t('New Automation for {name}', { name: displayName })}
+                </Text>
+              </DialogTitle>
+              <XStack {...ROUND} width={30} height={30} aria-label={t('Close')} onClick={() => setAutoModalOpen(false)}>
+                <X size={15} color={INK} aria-hidden />
+              </XStack>
+            </XStack>
+
+            <XStack p={3} rounded={999} bg={RAISED} borderWidth={1} borderColor={LINE} gap={2}>
+              {(
+                [
+                  { id: 'schedule', label: t('Scheduled (Cron / Time)'), Icon: Clock },
+                  { id: 'event', label: t('Event-Driven (Webhook / App)'), Icon: Zap },
+                ] as const
+              ).map(({ id, label, Icon }) => {
+                const active = autoMode === id
+                return (
+                  <XStack
+                    key={id}
+                    render="button"
+                    {...{ type: 'button' }}
+                    onClick={() => setAutoMode(id)}
+                    flex={1}
+                    height={32}
+                    gap={6}
+                    rounded={999}
+                    items="center"
+                    justify="center"
+                    bg={active ? PICKED : 'transparent'}
+                    borderWidth={0}
+                    cursor="pointer"
+                  >
+                    <Icon size={13} color={active ? INK : DIM} aria-hidden />
+                    <Text fontSize={12} lineHeight={16} fontWeight={active ? '600' : '400'} color={active ? INK : DIM}>
+                      {label}
+                    </Text>
+                  </XStack>
+                )
+              })}
+            </XStack>
+
+            <YStack render="form" {...{ onSubmit: submitAutomation }} gap={12}>
+              <Input
+                unstyled
+                value={autoName}
+                onChange={(e) => setAutoName(e.target.value)}
+                placeholder={
+                  autoMode === 'schedule'
+                    ? t('Name (e.g., Daily Hanzo leadership update)')
+                    : t('Name (e.g., Triage new GitHub pull requests)')
+                }
+                aria-label={t('Automation name')}
+                width="100%"
+                px={13}
+                py={10}
+                rounded={10}
+                bg={RAISED}
+                borderWidth={1}
+                borderColor={LINE}
+                color={INK}
+                fontSize={14}
+                placeholderTextColor="$placeholderColor"
+              />
+
+              {autoMode === 'schedule' ? (
+                <YStack gap={8}>
+                  <XStack flexWrap="wrap" gap={6}>
+                    {SCHEDULE_PRESETS.map((p) => {
+                      const active = autoPreset === p.id && !autoCustomWhen.trim()
+                      return (
+                        <XStack
+                          key={p.id}
+                          render="button"
+                          {...{ type: 'button' }}
+                          onClick={() => {
+                            setAutoPreset(p.id)
+                            setAutoCustomWhen('')
+                          }}
+                          height={28}
+                          px={11}
+                          rounded={999}
+                          items="center"
+                          bg={active ? INK : RAISED}
+                          borderWidth={1}
+                          borderColor={active ? INK : LINE}
+                          cursor="pointer"
+                        >
+                          <Text fontSize={12} lineHeight={16} color={active ? 'var(--background)' : INK}>
+                            {t(p.label)}
+                          </Text>
+                        </XStack>
+                      )
+                    })}
+                  </XStack>
+                  <Input
+                    unstyled
+                    value={autoCustomWhen}
+                    onChange={(e) => setAutoCustomWhen(e.target.value)}
+                    placeholder={t('Or type any schedule in plain English (e.g., "Fridays at 4pm" or "every 2 hours")')}
+                    aria-label={t('Natural language schedule')}
+                    width="100%"
+                    px={13}
+                    py={9}
+                    rounded={10}
+                    bg={RAISED}
+                    borderWidth={1}
+                    borderColor={LINE}
+                    color={INK}
+                    fontSize={13}
+                    placeholderTextColor="$placeholderColor"
+                  />
+                </YStack>
+              ) : (
+                <YStack gap={8}>
+                  <XStack flexWrap="wrap" gap={6}>
+                    {EVENT_TRIGGERS.map((ev) => {
+                      const active = autoEventId === ev.id
+                      return (
+                        <XStack
+                          key={ev.id}
+                          render="button"
+                          {...{ type: 'button' }}
+                          onClick={() => setAutoEventId(ev.id)}
+                          height={28}
+                          px={11}
+                          rounded={999}
+                          items="center"
+                          bg={active ? INK : RAISED}
+                          borderWidth={1}
+                          borderColor={active ? INK : LINE}
+                          cursor="pointer"
+                        >
+                          <Text fontSize={12} lineHeight={16} color={active ? 'var(--background)' : INK}>
+                            {t(ev.label)}
+                          </Text>
+                        </XStack>
+                      )
+                    })}
+                  </XStack>
+                  <YStack px={12} py={8} rounded={10} bg={FLOOR} borderWidth={1} borderColor={LINE} gap={3}>
+                    <Text fontSize={12} lineHeight={16} color={INK}>
+                      {t(selectedEventDef.hint)}
+                    </Text>
+                    <Text fontSize={11} lineHeight={15} color={DIM}>
+                      {`POST ${api()}/v1/auto/hooks/${selectedEventDef.source}/${selectedEventDef.name}`}
+                    </Text>
+                  </YStack>
+                </YStack>
+              )}
+
+              <Input
+                unstyled
+                render="textarea"
+                rows={4}
+                value={autoInstructions}
+                onChange={(e) => setAutoInstructions(e.target.value)}
+                placeholder={t(
+                  'Instructions for {name}: what to check, which tools or desktop browser logins to use, and where to post the result…',
+                  { name: displayName },
+                )}
+                aria-label={t('Automation instructions')}
+                width="100%"
+                px={13}
+                py={10}
+                rounded={10}
+                bg={RAISED}
+                borderWidth={1}
+                borderColor={LINE}
+                color={INK}
+                fontSize={14}
+                placeholderTextColor="$placeholderColor"
+              />
+
+              <XStack justify="flex-end" gap={8} pt={4}>
+                <XStack {...PILL} onClick={() => setAutoModalOpen(false)}>
+                  <Text {...WORD}>{t('Cancel')}</Text>
+                </XStack>
+                <XStack
+                  {...PILL}
+                  {...{ type: 'submit' }}
+                  bg={INK}
+                  borderColor={INK}
+                  disabled={autoBusy || !autoName.trim() || !autoInstructions.trim()}
+                  opacity={autoBusy || !autoName.trim() || !autoInstructions.trim() ? 0.5 : 1}
+                >
+                  <Text {...WORD} color="var(--background)">
+                    {autoBusy ? t('Saving…') : t('Create Automation')}
+                  </Text>
+                </XStack>
+              </XStack>
+            </YStack>
+          </YStack>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={deleting} onOpenChange={setDeleting}>
         <DialogContent maxW={440} rounded={20} gap={14}>
@@ -985,6 +1514,12 @@ export function Panel({
         onOpenChange={setConnectorsOpen}
         defaultFilter="all"
         onConnected={() => void survey()}
+      />
+
+      <VaultDialog
+        open={vaultOpen}
+        onOpenChange={setVaultOpen}
+        onChanged={(doc) => setVaultDoc(doc)}
       />
     </YStack>
   )

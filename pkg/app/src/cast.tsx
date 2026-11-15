@@ -345,15 +345,16 @@ export function Face({
    */
   person?: boolean
 }) {
+  const cleanSrc = src && !(src.includes('gravatar.com/avatar/') && src.includes('d=identicon')) ? src : undefined
   const role = person ? undefined : roleOf(name)
   const cast = person ? undefined : role?.portrait || fallbackMemoji(name)
-  const [imgSrc, setImgSrc] = useState<string | undefined>(src || (emoji ? undefined : cast))
+  const [imgSrc, setImgSrc] = useState<string | undefined>(cleanSrc || (emoji ? undefined : cast))
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    setImgSrc(src || (emoji ? undefined : cast))
+    setImgSrc(cleanSrc || (emoji ? undefined : cast))
     setFailed(false)
-  }, [src, emoji, cast])
+  }, [cleanSrc, emoji, cast])
 
   const handleError = () => {
     if (failed) return
