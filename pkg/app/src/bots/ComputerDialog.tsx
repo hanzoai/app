@@ -361,10 +361,10 @@ export function ComputerDialog({
                 >
                   <Monitor size={24} color={INK} aria-hidden />
                 </YStack>
-                <Text fontSize={17} lineHeight={23} fontWeight="600" color={INK} text="center">
+                <Text fontSize={17} lineHeight={23} fontWeight="600" color="var(--pure-white)" text="center">
                   {waking ? t('Booting X11 Desktop Sandbox…') : t('Dedicated Desktop Sandbox Computer')}
                 </Text>
-                <Text fontSize={13} lineHeight={19} color={DIM} text="center">
+                <Text fontSize={13} lineHeight={19} color="var(--pure-white)" opacity={0.72} text="center">
                   {t(
                     'Every bot gets its own isolated Linux GUI desktop with Chromium, persistent workspace disk ({disk}), and full Computer Use — mouse clicks, drags, keyboard typing, live screenshots, and shell execution.',
                     { disk: disk(bot.name) },
@@ -372,14 +372,14 @@ export function ComputerDialog({
                 </Text>
                 <XStack
                   {...PILL}
-                  bg={INK}
-                  borderColor={INK}
+                  bg="var(--pure-white)"
+                  borderColor="var(--pure-white)"
                   disabled={busy || waking}
                   opacity={busy || waking ? 0.5 : 1}
                   onClick={() => void startComputer()}
                 >
-                  <Play size={14} color="var(--background)" aria-hidden />
-                  <Text {...WORD} color="var(--background)">
+                  <Play size={14} color="var(--pure-black)" aria-hidden />
+                  <Text {...WORD} color="var(--pure-black)">
                     {busy || waking ? t('Starting computer…') : t('Start Desktop Computer')}
                   </Text>
                 </XStack>

@@ -780,7 +780,7 @@ export function ConnectorsDialog({
         rounded={16}
         overflow="hidden"
       >
-        <YStack maxH="86vh" bg={GROUND}>
+        <YStack height="82vh" maxH="86vh" bg={GROUND}>
           <ConnectorsCatalog
             defaultFilter={defaultFilter}
             onClose={() => onOpenChange(false)}

@@ -847,10 +847,12 @@ export function GroupThread({
                           <Text fontSize={12} lineHeight={16} color={DIM}>
                             {showProps
                               ? t('Hide {n} bot proposals', { n: res.proposals.length })
-                              : t('Inspect {n} bot proposals & verdicts ({ms}ms)', {
-                                  n: res.proposals.length,
-                                  ms: res.durationMs,
-                                })}
+                              : res.durationMs
+                                ? t('Inspect {n} bot proposals & verdicts ({ms}ms)', {
+                                    n: res.proposals.length,
+                                    ms: res.durationMs,
+                                  })
+                                : t('Inspect {n} bot proposals & verdicts', { n: res.proposals.length })}
                           </Text>
                         </XStack>
 
