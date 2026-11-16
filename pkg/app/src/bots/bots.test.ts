@@ -17,6 +17,9 @@ import {
 import { nextPeriod, nextWeek, recordedRun, refusal } from './refusal'
 import { compose, fence, fits, MAX, texty } from './carry'
 
+// This browser works in one organization, which every pay address names.
+vi.mock('../lib/session', async (real) => ({ ...(await real<typeof import('../lib/session')>()), org: () => 'acme' }))
+
 const t = (s: string, v?: Record<string, unknown>) => s.replace(/\{(\w+)\}/g, (_, k) => String(v?.[k] ?? ''))
 const NOW = new Date('2026-11-12T11:30:00').getTime()
 const at = (s: string) => new Date(s).toISOString()
@@ -122,22 +125,94 @@ describe('a refusal about money', () => {
     })
   })
 
-  it('reads the run’s own 402 and offers the credits address it names', () => {
+  it('says an empty balance in its own words and sends Add credits to pay’s amount step, never the console page the 402 names', () => {
     const e = Object.assign(new Error('402'), {
       status: 402,
       body: { error: { code: 'insufficient_balance', message: 'Add credits at https://console.hanzo.ai/billing/credits', billingUrl: 'https://console.hanzo.ai/billing/credits' } },
     })
-    expect(refusal(e, 'Mark', NOW, t)).toEqual({
-      message: 'Add credits at https://console.hanzo.ai/billing/credits',
-      resets: null,
-      actions: [{ kind: 'topup', label: 'Add credits', url: 'https://console.hanzo.ai/billing/credits' }],
+    const no = refusal(e, 'Mark', NOW, t)!
+    expect(no.message).toBe('Your balance is empty.')
+    expect(no.resets).toBeNull()
+    expect(no.actions).toHaveLength(1)
+    const [add] = no.actions
+    expect(add.kind).toBe('topup')
+    expect(add.label).toBe('Add credits')
+    const url = new URL(add.url!)
+    expect(url.origin + url.pathname).toBe('https://hanzo.ai/pay/amount/card')
+    expect(url.searchParams.get('org')).toBe('acme')
+    expect(url.searchParams.get('returnUrl')).toBe(typeof window === 'undefined' ? null : window.location.href)
+  })
+
+  it('reads the zip problem shape the same way, and the meter’s billing envelope too', () => {
+    const problem = Object.assign(new Error('402'), {
+      status: 402,
+      body: { status: 402, code: 'insufficient_balance', message: 'Add credits at https://console.hanzo.ai/billing/credits', billingUrl: 'https://console.hanzo.ai/billing/credits' },
     })
+    const meter = Object.assign(new Error('402'), {
+      status: 402,
+      body: { error: { message: 'Insufficient balance. Please add credits at console.hanzo.ai', type: 'billing_error', code: 'insufficient_balance' } },
+    })
+    for (const e of [problem, meter]) {
+      const no = refusal(e, 'Mark', NOW, t)!
+      expect(no.message).toBe('Your balance is empty.')
+      expect(no.actions.map((a) => new URL(a.url!).pathname)).toEqual(['/pay/amount/card'])
+    }
+  })
+
+  it('offers Add credits for no plan and no credit, and for a spent Free allowance with when it comes back', () => {
+    const unpaid = Object.assign(new Error('402'), {
+      status: 402,
+      body: { error: 'payment_required', reason: 'unpaid', code: 'payment_required', message: 'no active subscription and no prepaid credit; subscribe or add credits at https://console.hanzo.ai/billing', billingUrl: 'https://console.hanzo.ai/billing' },
+    })
+    expect(refusal(unpaid, 'Mark', NOW, t)?.message).toBe('Your balance is empty.')
+    expect(refusal(unpaid, 'Mark', NOW, t)?.actions.map((a) => a.label)).toEqual(['Add credits'])
+    const spent = Object.assign(new Error('429'), {
+      status: 429,
+      body: { code: 'allowance_spent', message: 'Add credits at https://console.hanzo.ai/billing/credits', resets_at: '2026-11-13T00:00:00Z' },
+    })
+    expect(refusal(spent, 'Mark', NOW, t)).toMatchObject({ message: 'Usage reached.', resets: '2026-11-13T00:00:00Z' })
+    expect(refusal(spent, 'Mark', NOW, t)?.actions.map((a) => new URL(a.url!).pathname)).toEqual(['/pay/amount/card'])
+  })
+
+  it('says billing that could not be checked as the platform does, with no money asked for', () => {
+    const e = Object.assign(new Error('402'), {
+      status: 402,
+      body: { error: 'payment_required', reason: 'unresolved', code: 'payment_required', message: 'billing could not be verified; retry shortly' },
+    })
+    expect(refusal(e, 'Mark', NOW, t)).toEqual({ message: 'billing could not be verified; retry shortly', resets: null, actions: [] })
+  })
+
+  it('names the console as platform.hanzo.ai, and a spend cap’s page as what it is', () => {
+    const e = Object.assign(new Error('402'), {
+      status: 402,
+      body: { code: 'spend_cap_exceeded', message: 'Spend cap reached for this scope. Raise it at https://console.hanzo.ai/billing/budgets', billingUrl: 'https://console.hanzo.ai/billing/budgets' },
+    })
+    expect(refusal(e, 'Mark', NOW, t)).toEqual({
+      message: 'Spend cap reached for this scope. Raise it at https://platform.hanzo.ai/billing/budgets',
+      resets: null,
+      actions: [{ kind: 'upgrade', label: 'Raise the spend cap', url: 'https://platform.hanzo.ai/billing/budgets' }],
+    })
+  })
+
+  it('sends a top-up the gateway offers to pay as well', () => {
+    const e = Object.assign(new Error('429'), {
+      status: 429,
+      body: {
+        error: {
+          type: 'rate_limit_error',
+          code: 'usage_cap_exceeded',
+          message: 'Weekly usage limit reached.',
+          actions: [{ kind: 'topup', label: 'Add credits', url: 'https://console.hanzo.ai/billing/credits' }],
+        },
+      },
+    })
+    expect(refusal(e, 'Mark', NOW, t)?.actions.map((a) => new URL(a.url!).pathname)).toEqual(['/pay/amount/card'])
   })
 
   it('offers no address that is not one of ours', () => {
     const e = Object.assign(new Error('402'), {
       status: 402,
-      body: { error: { code: 'insufficient_balance', message: 'Pay here', billingUrl: 'https://evil.example/pay' } },
+      body: { error: { code: 'spend_cap_exceeded', message: 'Pay here', billingUrl: 'https://evil.example/pay' } },
     })
     expect(refusal(e, 'Mark', NOW, t)?.actions).toEqual([])
   })
