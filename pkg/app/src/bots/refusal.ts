@@ -3,6 +3,8 @@
 import { english, type Say } from '@hanzo/i18n'
 import type { LimitAction } from '@hanzo/ui/product/limits'
 import { billed, ours, say } from '../failure'
+import { payUrl } from '../lib/pay'
+import { org } from '../lib/session'
 
 /** A refusal the platform gave before a run: what it said, when it lifts, the ways past it. */
 export interface Notice {
@@ -30,21 +32,72 @@ export function nextPeriod(now: number, period = 'week'): string {
   return nextWeek(now)
 }
 
-type Body = { code?: unknown; message?: unknown; resets_at?: unknown; billingUrl?: unknown }
+type Body = { code?: unknown; reason?: unknown; message?: unknown; resets_at?: unknown; billingUrl?: unknown }
 
 /**
- * A refusal about money, as a notice: the gateway's billing envelope (its
- * message, when it lifts, its ways past), the bot's own weekly budget spent, or
- * the run's 402 for an org with no balance with the credits page it names (when
- * that page is one of ours). Any other failure is not a notice.
+ * The refusals money clears (cloud sdk/errmap.go `funded`): no balance, no
+ * subscription with no credit, and a spent Free-plan allowance. The platform
+ * says each with its console's credits page in the sentence and as
+ * `billingUrl`; a reader is told in the app's own words instead, with the one
+ * way past it, adding credit.
+ */
+const EMPTY = new Set(['insufficient_balance', 'payment_required'])
+const SPENT = 'allowance_spent'
+
+/**
+ * Where a reader adds credit: pay's amount step, for this browser's
+ * organization, coming back to this page — the address every other Add credits
+ * in the app opens (lib/limits.ts), and never the console page the platform
+ * names. Read at the moment of the refusal, since the organization moves with
+ * the switcher.
+ */
+export function topup(t: Say = english): LimitAction {
+  const here = typeof window === 'undefined' ? undefined : window.location.href
+  return { kind: 'topup', label: t('Add credits'), url: payUrl('/amount/card', { org: org(), returnUrl: here }) }
+}
+
+/**
+ * Hanzo's console, as a reader reaches it: platform.hanzo.ai. The platform
+ * names console.hanzo.ai in the pages its refusals send a person to, in the
+ * sentence and as `billingUrl`; both are read with the host a reader knows.
+ */
+const platform = (s: string): string => s.replace(/https:\/\/console\.hanzo\.ai(?=[/?#\s.,;)]|$)/g, 'https://platform.hanzo.ai')
+
+/** What an out-of-money refusal says, and its way past, or null for any other code. */
+function broke(code: unknown, reason: unknown, resets: string | null, t: Say): Notice | null {
+  // An unresolved 402 is billing that could not be checked, not money missing: its cure is a retry.
+  if (typeof code !== 'string' || reason === 'unresolved') return null
+  if (EMPTY.has(code)) return { message: t('Your balance is empty.'), resets: null, actions: [topup(t)] }
+  if (code === SPENT) return { message: t('Usage reached.'), resets, actions: [topup(t)] }
+  return null
+}
+
+/**
+ * A refusal about money, as a notice: no money (an empty balance, no plan and
+ * no credit, a spent Free allowance) in the app's words with pay's Add credits,
+ * the gateway's billing envelope (its message, when it lifts, its ways past,
+ * any top-up among them sent to pay), or the bot's own weekly budget spent.
+ * Any other failure is not a notice.
  */
 export function refusal(e: unknown, name: string, now: number, t: Say = english, period = 'week'): Notice | null {
   const no = billed(e)
-  if (no) return { message: no.message || say(e, t('your message to {name}', { name }), 'save', t), resets: no.resets_at, actions: no.actions }
+  // The gateway's envelope keeps its own words and ways, save an empty balance
+  // (whose sentence names the console) and a top-up, which is pay's.
+  if (no)
+    return EMPTY.has(no.code)
+      ? broke(no.code, undefined, no.resets_at, t)
+      : {
+          message: no.message ? platform(no.message) : say(e, t('your message to {name}', { name }), 'save', t),
+          resets: no.resets_at,
+          actions: no.actions.map((a) => (a.kind === 'topup' ? { ...a, url: topup(t).url } : a)),
+        }
   const status = (e as { status?: unknown } | null)?.status
   if (status !== 402 && status !== 429) return null
   const raw = (e as { body?: { error?: unknown; code?: unknown } } | null)?.body
   const body: Body = raw && typeof raw.error === 'object' && raw.error ? (raw.error as Body) : (raw as Body) ?? {}
+  const resets = typeof body.resets_at === 'string' ? body.resets_at : null
+  const money = broke(body.code, body.reason, resets, t)
+  if (money) return money
   if (body.code === BUDGET) {
     const spent =
       period === 'day'
@@ -54,11 +107,13 @@ export function refusal(e: unknown, name: string, now: number, t: Say = english,
           : t('{name} has spent this week’s budget.', { name })
     return { message: spent, resets: nextPeriod(now, period), actions: [] }
   }
+  // Any other refusal is the platform's own words, and the console page it names
+  // (a spend cap's budgets) is offered as what it is, never as Add credits.
   const url = ours(body.billingUrl)
   return {
-    message: typeof body.message === 'string' && body.message ? body.message : say(e, t('your message to {name}', { name }), 'save', t),
-    resets: typeof body.resets_at === 'string' ? body.resets_at : null,
-    actions: url ? [{ kind: 'topup', label: t('Add credits'), url }] : [],
+    message: typeof body.message === 'string' && body.message ? platform(body.message) : say(e, t('your message to {name}', { name }), 'save', t),
+    resets,
+    actions: url ? [{ kind: 'upgrade', label: body.code === 'spend_cap_exceeded' ? t('Raise the spend cap') : t('Open billing'), url: platform(url) }] : [],
   }
 }
 
