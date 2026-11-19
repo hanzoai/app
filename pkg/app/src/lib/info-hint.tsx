@@ -22,12 +22,14 @@ export function InfoHint({ text, size = 13, side = 'top' }: InfoHintProps) {
             m={0}
             borderWidth={0}
             bg="transparent"
-                        rounded="$10"
+            rounded="$10"
             cursor="help"
             focusVisibleStyle={{ outlineWidth: 1, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
           >
-            <Info size={size} color="var(--muted-foreground)" aria-hidden />
+            <Text color="$hint" hoverStyle={{ color: '$ink' }} display="flex">
+              <Info size={size} color="currentColor" aria-hidden />
+            </Text>
           </Box>
         </TooltipTrigger>
         <TooltipContent

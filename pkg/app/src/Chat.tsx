@@ -2227,7 +2227,7 @@ function Thread({
   // A BRANCH IS A NEW SAVED CHAT holding the conversation up to this answer.
   const branchTurn = useCallback(
     (turnId: string) => {
-      const kept = branched(turns.current, turnId, plainTurnText, !anonymous && !forgetful);
+      const kept = branched(turns.current, turnId, plainTurnText, { anonymous, forgetful });
       if (!kept) return;
       ai.threads.record(kept).then(
         (id) => {

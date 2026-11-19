@@ -11,12 +11,13 @@ const text = (m: (typeof chat)[number]) => m.content
 
 describe('branched', () => {
   it('keeps the chat up to the answer, user and assistant turns only', () => {
-    expect(branched(chat, 'a1', text, true)).toEqual([{ role: 'user', content: 'hi' }, { role: 'assistant', content: 'hello' }])
+    expect(branched(chat, 'a1', text, {})).toEqual([{ role: 'user', content: 'hi' }, { role: 'assistant', content: 'hello' }])
   })
-  it('saves nothing for an anonymous or private chat', () => {
-    expect(branched(chat, 'a1', text, false)).toBeNull()
+  it('saves nothing for an anonymous chat, or a private one', () => {
+    expect(branched(chat, 'a1', text, { anonymous: true })).toBeNull()
+    expect(branched(chat, 'a1', text, { forgetful: true })).toBeNull()
   })
   it('saves nothing for an empty chat', () => {
-    expect(branched([{ id: 's', role: 'system', content: 'x' }], 's', text, true)).toBeNull()
+    expect(branched([{ id: 's', role: 'system', content: 'x' }], 's', text, {})).toBeNull()
   })
 })

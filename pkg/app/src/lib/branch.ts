@@ -3,9 +3,9 @@ export function branched<T extends { id?: string; role: string }>(
   list: readonly T[],
   turnId: string,
   text: (turn: T) => string,
-  keeps: boolean,
+  chat: { anonymous?: boolean; forgetful?: boolean },
 ): { role: string; content: string }[] | null {
-  if (!keeps) return null
+  if (chat.anonymous || chat.forgetful) return null
   const at = list.findIndex((m) => m.id === turnId)
   const turns = (at >= 0 ? list.slice(0, at + 1) : list)
     .filter((m) => m.role === 'user' || m.role === 'assistant')
