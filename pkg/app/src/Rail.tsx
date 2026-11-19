@@ -1,66 +1,100 @@
 'use client'
 
-// The app's rail: its products as marks down the window's left edge, in one
-// order — Chat, Dev, Studio, Tabs, Library, Scheduled tasks, Customize — then
-// More (Team, on a host of its own, then the apps in beta this reader may open
-// and Betas, the list of every app in beta; none of it in Studio), and the
-// account at the foot. It
-// is how the app moves between its products; a phone's drawer holds it down its
-// start edge, as a laptop's window does, and its bar carries no switch of its
-// own. Every mark is @hanzo/build's `MARKS`, the one source the sidebars, the
-// bar, the palette and the landing pages draw from.
-//
-// Studio is the app's third mode (@hanzo/studio at /studio), each of the three
-// opened where the reader left it.
-//
-// Dev, Studio, Tabs and Team are products, named as they are in every
-// language; the rest of the rail's words go through `t`.
-//
-// A mark is a place, and a place owns the sidebar beside the rail: Chat its
-// conversations, Dev its own places (@hanzo/build `own`: New run, Projects,
-// Issues, Templates) and its runs, Studio its own; Library, Scheduled tasks and
-// Customize (@hanzo/build's Artifacts, Automations and Customize) each their
-// own (Sidebar.tsx); Settings is the site's pages at /settings, beside the app
-// (lib/host.ts `settings`). Nothing on the rail is listed inside Dev: one level
-// of the app a place, each lit while the reader is on it.
-//
-// It stands on the frame's floor, never cut as a pane (ground.ts): the rail and
-// the sidebar beside it are the window, and the content is the panel inset in
-// it.
-//
-// The sidebar's toggle leads it (`toggle`) where the host has no bar of its own:
-// a browser tab. A host that is a window draws the toggle in its bar beside Back
-// and Forward (App.tsx `bar`), and its rail starts with Chat. A phone has no
-// rail: its menu (Drawer.tsx) lists the places as rows (`rows`) under the mode's
-// own — Design, Studio, Tabs, then More, which Library, Scheduled tasks and
-// Customize lead there. Chat and Dev are the rail's marks beside them, and the
-// account is the menu's foot.
+// Folded left navigation rail (52px icons-only, shown when the unified sidebar
+// is folded, plus the compact phone drawer rail):
+// - Shared `useNavEntries()` model keeps Hanzo's exact product names & order
+//   (`Chat`, `Dev`, `Design`, `Studio` if opened, `Library`, `Scheduled tasks`,
+//   `Customize`, `Tabs`, `Betas`, and every hosted app or beta the reader may open;
+//   Developer mode hides none of them) across both the unified Sidebar and the 52px folded Rail.
+// - Strictly monochrome active chrome (`bg="$raised"`, `color="$ink"`).
+// - Every `render="button"` element uses `onClick` (never `onPress`).
 
 import { useI18n } from '@hanzo/i18n/react'
-import { Bot, CircleHelp, Compass, Ellipsis, FlaskConical, PanelLeft, Settings, Sparkles, Users } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
-import { Text, XStack, YStack } from '@hanzo/gui'
+import {
+  Bot,
+  CircleHelp,
+  Compass,
+  Ellipsis,
+  FlaskConical,
+  PanelLeft,
+  PanelLeftOpen,
+  Plus,
+  Settings,
+  Sparkles,
+  Users,
+  Workflow,
+} from 'lucide-react'
+import { useState, type DragEvent, type ReactNode } from 'react'
+import { XStack, YStack, Text } from '@hanzo/gui'
 import { MARKS, route, type Host } from '@hanzo/build'
-import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@hanzo/ui'
 import { SidebarItem } from '@hanzo/ui/chat'
+import { MoreMenu } from './MoreMenu'
 import { BetasDialog, useBetas } from './Betas'
 import { out } from './help'
 import { BETAS } from './lib/betas'
 import { HOSTED_APPS } from './lib/hosted'
 import { Account } from './Account'
-import { HEAD, MARK, RAIL, TOUCH_HEAD } from './ground'
-import { app, hosted, WORKSPACE, type Place } from './lib/host'
+import { useDevMode } from './lib/dev-mode'
+import { usePref } from './pref'
+import { HEAD, MARK, TOUCH_HEAD } from './ground'
+import { apex, app, design, flow, hosted, studio, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
+import { site } from './where'
 
 export { MARK }
 
+export const RAIL_FOLDED = 52
+
 /** A mark on a touch screen, px: a thumb's 44. */
 const TOUCH = 44
+
+/** Where the pinned apps are kept: on the account (`usePref`), under the key this browser has always used, so earlier pins stay. */
+export const NAV_PINNED_KEY = 'hanzo.nav.pinned'
+export const DEFAULT_PINNED_NAV: readonly string[] = ['chat', 'dev', 'design', 'library', 'tabs']
+
+const CORE_NAV_SET = new Set<string>(DEFAULT_PINNED_NAV)
+
+/** The reader's own order, with all 5 core apps (Chat, Dev, Design, Library, Tabs) anchored at the top and never dropped into More. */
+export function normalizePinnedNav(list: readonly string[]): string[] {
+  const ordered = [...new Set(list.filter(Boolean))]
+  return [...DEFAULT_PINNED_NAV.filter((id) => !ordered.includes(id)), ...ordered]
+}
+
+/** `list` with `id` pinned or unpinned; the core apps stay. */
+export function toggledPinnedNav(list: readonly string[], id: string): string[] {
+  if (!id || CORE_NAV_SET.has(id)) return normalizePinnedNav(list)
+  return normalizePinnedNav(list.includes(id) ? list.filter((item) => item !== id) : [...list, id])
+}
+
+/** `list` with `sourceId` moved to where `targetId` stands. */
+export function reorderedPinnedNav(list: readonly string[], sourceId: string, targetId: string): string[] {
+  if (!sourceId || !targetId || sourceId === targetId) return normalizePinnedNav(list)
+  const without = list.filter((id) => id !== sourceId)
+  const at = without.indexOf(targetId)
+  without.splice(at < 0 ? without.length : at, 0, sourceId)
+  return normalizePinnedNav(without)
+}
+
+/** What `usePinnedNav` answers, held once by the surface and handed to the Rail and the Sidebar, so a pin made in one is in the other. */
+export type Pins = ReturnType<typeof usePinnedNav>
+
+/** The pinned apps, a toggle for one and a reorder, kept on the account. */
+export function usePinnedNav(): [string[], (id: string) => void, (sourceId: string, targetId: string) => void] {
+  const [kept, keep] = usePref<string[]>(NAV_PINNED_KEY, [...DEFAULT_PINNED_NAV])
+  const pinned = normalizePinnedNav(Array.isArray(kept) ? kept : DEFAULT_PINNED_NAV)
+  return [pinned, (id) => keep(toggledPinnedNav(pinned, id)), (src, target) => keep(reorderedPinnedNav(pinned, src, target))]
+}
 
 /** The places the rail holds beside the products, by the builder address each opens. */
 export const RAISED = { library: '-/artifacts', scheduled: '-/automations', customize: '-/customize' } as const
 export type Raised = keyof typeof RAISED
 
-/** Which of them a builder address stands on, if any, and so takes the sidebar: an agent's page is Customize's, an automation Scheduled tasks'. */
+/** Which of them a builder address stands on, if any, and so takes the sidebar. */
 export function raised(at: string | null): Raised | null {
   if (at === null) return null
   const r = route(at)
@@ -70,28 +104,303 @@ export function raised(at: string | null): Raised | null {
   return null
 }
 
-/** One mark: an icon button named for where it goes (`label`, already in the reader's language), its name its tooltip, lit where the reader is. */
+export const fullNavUrl = (href: string): string => {
+  if (/^https?:\/\//.test(href)) return href
+  if (typeof window === 'undefined') return href
+  return new URL(site(href), window.location.href).href
+}
+
+export interface NavEntry {
+  id: string
+  slot: string
+  label: string
+  href: string
+  external?: boolean
+  pinnable?: boolean
+  on: boolean
+  icon: ReactNode
+  onPress: () => void
+}
+
+export function useNavEntries({
+  host,
+  mode,
+  at,
+  inside = null,
+  onChat,
+  onDev,
+  onDesign,
+  onStudio,
+  onTabs,
+  go,
+  pins,
+}: {
+  host: Host
+  mode: Place['mode']
+  at: string | null
+  inside?: string | null
+  pins: Pins
+  onChat: () => void
+  onDev: () => void
+  onDesign?: () => void
+  onStudio: () => void
+  onTabs: () => void
+  go: (address: string) => void
+}) {
+  const { t } = useI18n()
+  const [devMode] = useDevMode()
+  const [pinnedIds, togglePin] = pins
+  const { open: opened } = useBetas()
+
+  const anon = host.person === null
+  const here = mode === 'dev' ? raised(at) : null
+  const to = (p: string) => () => go(app(p))
+  const team = mode !== 'studio' && mode !== 'design'
+  const rawGranted = BETAS.filter((b) => b.href && b.embed === undefined && b.id !== 'studio' && b.id !== 'flow' && opened(b.id))
+  const rawApps = HOSTED_APPS.filter((a) => opened(a.id))
+  const reach = (address: string) => (address.startsWith('/') ? go(address) : out(address))
+  const pinnedSet = new Set(pinnedIds)
+  // Everything Hanzo showed before stays reachable without Developer mode (unpinned ones sit in More).
+  const apps = rawApps
+  const granted = rawGranted
+  const localTeamHref = typeof window !== 'undefined' && !apex(window.location.hostname) ? '/home' : WORKSPACE
+  const localBotsHref = typeof window !== 'undefined' && !apex(window.location.hostname) ? '/bots' : 'https://hanzo.bot'
+
+  const allEntries: NavEntry[] = [
+    {
+      id: 'chat',
+      slot: 'rail-chat',
+      label: t('Chat'),
+      href: talk(),
+      pinnable: false,
+      on: mode === 'chat',
+      icon: <MARKS.chat.icon size={17} aria-hidden />,
+      onPress: onChat,
+    },
+    {
+      id: 'dev',
+      slot: 'rail-dev',
+      label: 'Dev',
+      href: app(''),
+      pinnable: false,
+      on: mode === 'dev' && !here,
+      icon: <MARKS.dev.icon size={17} aria-hidden />,
+      onPress: onDev,
+    },
+    ...(anon
+      ? []
+      : [
+          {
+            id: 'design',
+            slot: 'rail-design',
+            label: 'Design',
+            href: design(''),
+            pinnable: false,
+            on: mode === 'design',
+            icon: <MARKS.design.icon size={17} aria-hidden />,
+            onPress: () => onDesign?.(),
+          } satisfies NavEntry,
+        ]),
+    {
+      id: 'library',
+      slot: 'rail-library',
+      label: t('Library'),
+      href: app(RAISED.library),
+      pinnable: false,
+      on: here === 'library',
+      icon: <MARKS.library.icon size={17} aria-hidden />,
+      onPress: to(RAISED.library),
+    },
+    ...(anon
+      ? []
+      : [
+          {
+            id: 'scheduled',
+            slot: 'rail-scheduled',
+            label: t('Scheduled tasks'),
+            href: app(RAISED.scheduled),
+            on: here === 'scheduled',
+            icon: <MARKS.scheduled.icon size={17} aria-hidden />,
+            onPress: to(RAISED.scheduled),
+          } satisfies NavEntry,
+          {
+            id: 'customize',
+            slot: 'rail-customize',
+            label: t('Customize'),
+            href: app(RAISED.customize),
+            on: here === 'customize',
+            icon: <MARKS.customize.icon size={17} aria-hidden />,
+            onPress: to(RAISED.customize),
+          } satisfies NavEntry,
+          ...(opened('studio')
+            ? [
+                {
+                  id: 'studio',
+                  slot: 'rail-studio',
+                  label: 'Studio',
+                  href: studio(''),
+                  on: mode === 'studio',
+                  icon: <MARKS.studio.icon size={17} aria-hidden />,
+                  onPress: onStudio,
+                } satisfies NavEntry,
+              ]
+            : []),
+          ...(opened('flow') || mode === 'flow'
+            ? [
+                {
+                  id: 'flow',
+                  slot: 'rail-flow',
+                  label: 'Flow',
+                  href: flow(''),
+                  on: mode === 'flow',
+                  icon: <Workflow size={17} aria-hidden />,
+                  onPress: () => go(flow('')),
+                } satisfies NavEntry,
+              ]
+            : []),
+          {
+            id: 'tabs',
+            slot: 'rail-tabs',
+            label: 'Tabs',
+            href: TERMINALS,
+            pinnable: false,
+            on: mode === 'tabs',
+            icon: <MARKS.tabs.icon size={17} aria-hidden />,
+            onPress: onTabs,
+          } satisfies NavEntry,
+          {
+            id: 'betas',
+            slot: 'rail-betas',
+            label: t('Betas'),
+            href: '/beta',
+            on: mode === 'beta',
+            icon: <FlaskConical size={17} aria-hidden />,
+            onPress: () => go('/beta'),
+          } satisfies NavEntry,
+          ...apps.map(
+            (a): NavEntry => ({
+              id: `app-${a.id}`,
+              slot: `rail-app-${a.id}`,
+              label: a.name,
+              href: hosted(a.id),
+              on: inside === a.id,
+              icon: <a.icon size={17} aria-hidden />,
+              onPress: () => go(hosted(a.id)),
+            }),
+          ),
+        ]),
+  ]
+
+  const externalEntries: NavEntry[] =
+    !anon && team
+      ? [
+          {
+            id: 'ext-team',
+            slot: 'rail-ext-team',
+            label: 'Team',
+            href: localTeamHref,
+            external: localTeamHref.startsWith('http'),
+            on: false,
+            icon: <Users size={17} aria-hidden />,
+            onPress: () => reach(localTeamHref),
+          },
+          {
+            id: 'ext-bots',
+            slot: 'rail-ext-bots',
+            label: 'Bot',
+            href: localBotsHref,
+            external: localBotsHref.startsWith('http'),
+            on: false,
+            icon: <Bot size={17} aria-hidden />,
+            onPress: () => reach(localBotsHref),
+          },
+          {
+            id: 'ext-market',
+            slot: 'rail-ext-market',
+            label: t('Marketplace'),
+            href: 'https://hanzo.market',
+            external: true,
+            on: false,
+            icon: <Compass size={17} aria-hidden />,
+            onPress: () => out('https://hanzo.market'),
+          },
+          ...granted.map(
+            (b): NavEntry => ({
+              id: `beta-${b.id}`,
+              slot: `rail-beta-${b.id}`,
+              label: b.name,
+              href: b.href as string,
+              external: !(b.href as string).startsWith('/'),
+              on: false,
+              icon: <Sparkles size={17} aria-hidden />,
+              onPress: () => reach(b.href as string),
+            }),
+          ),
+        ]
+      : []
+
+  const combinedById = new Map([...allEntries, ...externalEntries].map((item) => [item.id, item]))
+
+  // Anonymous visitors see the public trio (Chat, Dev, Library).
+  const pinnedEntries: NavEntry[] = anon
+    ? allEntries
+    : pinnedIds.map((id) => combinedById.get(id)).filter((item): item is NavEntry => Boolean(item))
+
+  const shownInPrimary = new Set(pinnedEntries.map((item) => item.id))
+  const moreEntries: NavEntry[] = anon
+    ? []
+    : [
+        ...allEntries.filter((item) => !shownInPrimary.has(item.id)),
+        ...externalEntries.filter((item) => !shownInPrimary.has(item.id)),
+      ]
+
+  return {
+    anon,
+    devMode,
+    team,
+    here,
+    apps,
+    granted,
+    pinnedIds,
+    pinnedSet,
+    togglePin,
+    allEntries,
+    externalEntries,
+    pinnedEntries,
+    moreEntries,
+    shownInPrimary,
+    reach,
+  }
+}
+
+/** One mark: an icon button named for where it goes (`label`), with optional instant Tooltip when folded. */
 export function Mark({
   label,
   on = false,
+  tooltip = false,
   onPress,
+  onClick,
   children,
   ...rest
 }: {
   label: string
   /** The reader is there. */
   on?: boolean
+  /** Render a styled Hanzo Tooltip when used in the folded icon rail. */
+  tooltip?: boolean
   onPress?: () => void
+  onClick?: () => void
   children: ReactNode
   [attribute: `data-${string}` | `aria-${string}`]: unknown
 }) {
-  return (
+  const handleClick = onClick ?? onPress
+  const button = (
     <XStack
       render="button"
       aria-label={label}
-      {...({ title: label } as object)}
+      {...(tooltip ? {} : ({ title: label } as object))}
       aria-current={on ? 'page' : undefined}
-      onPress={onPress}
+      onClick={handleClick}
       width={MARK}
       height={MARK}
       rounded={12}
@@ -99,69 +408,46 @@ export function Mark({
       justify="center"
       shrink={0}
       cursor="pointer"
-      opacity={on ? 1 : 0.7}
-      bg={on ? '$edge' : 'transparent'}
-      hoverStyle={{ bg: on ? '$edge' : '$hover', opacity: 1 }}
+      opacity={on ? 1 : 0.76}
+      bg={on ? '$raised' : 'transparent'}
+      hoverStyle={{ bg: on ? '$raised' : '$hover', opacity: 1 }}
       pressStyle={{ bg: '$raised' }}
       focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
-      // A thumb's 44px on a touch screen.
       $touchable={{ width: TOUCH, height: TOUCH }}
       {...rest}
     >
       {children}
     </XStack>
   )
-}
 
-/** A place as a phone's menu lists it (`label`, already in the reader's language): a row on the sidebar's pitch, a thumb's 44 on a touch screen, lit where the reader is. */
-function Row({
-  label,
-  on = false,
-  onPress,
-  icon,
-  ...rest
-}: {
-  label: string
-  on?: boolean
-  onPress?: () => void
-  icon: ReactNode
-  [attribute: `data-${string}` | `aria-${string}`]: unknown
-}) {
+  if (!tooltip) return button
+
   return (
-    <SidebarItem
-      rounded="$4"
-      minH={31}
-      py={0}
-      px="$2"
-      $touchable={{ minH: 44 }}
-      active={on}
-      icon={
-        icon ? (
-          <XStack width={20} height={20} items="center" justify="center" shrink={0}>
-            {icon}
-          </XStack>
-        ) : null
-      }
-      onPress={onPress}
-      onKeyDown={(e: { key?: string; preventDefault?: () => void }) => {
-        if (!onPress || (e.key !== 'Enter' && e.key !== ' ')) return
-        e.preventDefault?.()
-        onPress()
-      }}
-      {...rest}
-    >
-      <Text fontSize="$3" color={on ? '$ink' : '$quiet'}>
-        {label}
-      </Text>
-    </SidebarItem>
+    <Tooltip placement="right" offset={8}>
+      <TooltipTrigger asChild>{button}</TooltipTrigger>
+      <TooltipContent
+        maxW={240}
+        px="$2.5"
+        py="$1.5"
+        rounded="$3"
+        bg="var(--popover)"
+        borderWidth={1}
+        borderColor="$edge"
+        z="var(--z-tooltip)"
+      >
+        <Text fontFamily="$body" fontSize="$1" fontWeight="500" color="$ink">
+          {label}
+        </Text>
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
-/** The sidebar's toggle: the same mark wherever a host draws it. Its icon is the sidebar at the start edge, mirrored right to left. */
+/** The sidebar's toggle: the same mark wherever a host draws it. */
 export function Toggle({ open, onPress, label }: { open: boolean; onPress: () => void; label?: string }) {
   const { t } = useI18n()
   return (
-    <Mark label={label ?? t(open ? 'Close sidebar' : 'Open sidebar')} data-slot="sidebar-toggle" aria-expanded={open} onPress={onPress}>
+    <Mark label={label ?? t(open ? 'Close sidebar' : 'Open sidebar')} data-slot="sidebar-toggle" aria-expanded={open} onClick={onPress}>
       <PanelLeft size={18} aria-hidden data-i18n-mirror />
     </Mark>
   )
@@ -173,8 +459,10 @@ export function Rail({
   at,
   open,
   toggle,
+  onOpen,
+  onNew,
+  compact = false,
   inside = null,
-  rows = false,
   onChat,
   onDev,
   onDesign,
@@ -182,8 +470,11 @@ export function Rail({
   onTabs,
   go,
   onOrg,
+  pins,
 }: {
   host: Host
+  /** The pinned apps, held by the surface. */
+  pins: Pins
   mode: Place['mode']
   /** Dev's builder address, or null outside Dev. */
   at: string | null
@@ -191,10 +482,14 @@ export function Rail({
   open: boolean
   /** Lead with the sidebar's toggle; absent where the host's bar holds it. */
   toggle?: () => void
+  /** Expand the folded rail back into the unified sidebar. */
+  onOpen?: () => void
+  /** Primary + New action when folded. */
+  onNew?: () => void
+  /** Force compact icons-only layout without expand header (e.g. inside narrow phone drawer). */
+  compact?: boolean
   /** The hosted app (lib/hosted) the reader is in, if any. */
   inside?: string | null
-  /** Listed as rows in a phone's menu rather than marks down the window's edge. */
-  rows?: boolean
   /** To Chat, Dev, Design and Studio, each where the reader left it. */
   onChat: () => void
   onDev: () => void
@@ -207,208 +502,226 @@ export function Rail({
   onOrg: (org: string) => void
 }) {
   const { t, dir } = useI18n()
-  const anon = host.person === null
-  const here = mode === 'dev' ? raised(at) : null
-  const to = (p: string) => () => go(app(p))
-  // The products on hosts of their own, behind More; on a phone the raised places lead it.
-  // Studio offers no Team, so on a laptop it draws no More.
-  const team = mode !== 'studio' && mode !== 'design'
-  const { open: opened } = useBetas()
   const [betas, setBetas] = useState(false)
-  // The apps in beta this reader may open, each where it lives; those that draw inside the app have marks of their own.
-  const granted = BETAS.filter((b) => b.href && b.embed === undefined && b.id !== 'studio' && opened(b.id))
-  const apps = HOSTED_APPS.filter((a) => opened(a.id))
-  // A link out of the app, or a place in it.
-  const reach = (address: string) => (address.startsWith('/') ? go(address) : out(address))
-  const rest: NonNullable<DropdownMenuProps['items']> = [
-    ...(rows
-      ? [
-          { key: 'library', label: t('Library'), icon: <MARKS.library.icon size={16} aria-hidden />, onSelect: to(RAISED.library) },
-          { key: 'scheduled', label: t('Scheduled tasks'), icon: <MARKS.scheduled.icon size={16} aria-hidden />, onSelect: to(RAISED.scheduled) },
-          { key: 'customize', label: t('Customize'), icon: <MARKS.customize.icon size={16} aria-hidden />, onSelect: to(RAISED.customize) },
-          ...(team ? [{ type: 'separator' as const, key: 'raised' }] : []),
-        ]
-      : []),
-    ...(team
-      ? [
-          { key: 'bot', label: 'Bot', icon: <Bot size={16} aria-hidden />, onSelect: () => out('https://hanzo.bot') },
-          { key: 'team', label: 'Team', icon: <Users size={16} aria-hidden />, onSelect: () => out(WORKSPACE) },
-          { key: 'market', label: t('Marketplace'), icon: <Compass size={16} aria-hidden />, onSelect: () => out('https://hanzo.market') },
-          ...granted.map((b) => ({ key: `beta-${b.id}`, label: b.name, icon: <Sparkles size={16} aria-hidden />, onSelect: () => reach(b.href as string) })),
-        ]
-      : []),
-  ]
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [dropId, setDropId] = useState<string | null>(null)
+  const nav = useNavEntries({
+    host,
+    mode,
+    at,
+    inside,
+    onChat,
+    onDev,
+    onDesign,
+    onStudio,
+    onTabs,
+    go,
+    pins,
+  })
+  const { anon, apps, pinnedEntries, allEntries, externalEntries, shownInPrimary, reach } = nav
+
   const betasDialog = <BetasDialog open={betas} onOpenChange={setBetas} go={reach} />
-  if (rows)
-    return (
-      <YStack data-slot="places" render="nav" aria-label={t('Products')} pt="$2" shrink={0}>
-        <YStack role="list" gap={2}>
-          {anon ? null : (
-            <YStack role="listitem">
-              <Row label="Design" on={mode === 'design'} onPress={onDesign} data-slot="place-design" icon={<MARKS.design.icon size={16} aria-hidden />} />
-            </YStack>
-          )}
-          {!anon && opened('studio') ? (
-            <YStack role="listitem">
-              <Row label="Studio" on={mode === 'studio'} onPress={onStudio} data-slot="place-studio" icon={<MARKS.studio.icon size={16} aria-hidden />} />
-            </YStack>
-          ) : null}
-          {anon ? null : (
-            <YStack role="listitem">
-              <Row label="Tabs" on={mode === 'tabs'} onPress={onTabs} data-slot="place-tabs" icon={<MARKS.tabs.icon size={16} aria-hidden />} />
-            </YStack>
-          )}
-          {apps.map((a) => (
-            <YStack role="listitem" key={a.id}>
-              <Row label={a.name} on={inside === a.id} onPress={() => go(hosted(a.id))} data-slot={`place-app-${a.id}`} icon={<a.icon size={16} aria-hidden />} />
-            </YStack>
-          ))}
-          {anon ? null : (
-            <YStack role="listitem">
-              <DropdownMenu placement="bottom-start" minWidth={220} trigger={<Row label={t('More')} data-slot="place-more" aria-haspopup="menu" icon={<Ellipsis size={16} aria-hidden />} />} items={rest} />
-            </YStack>
-          )}
-        </YStack>
-        {betasDialog}
-      </YStack>
-    )
+
+  const unpinnedActive = allEntries.filter((item) => !shownInPrimary.has(item.id) && item.on)
+  const visibleMarks = [...pinnedEntries, ...unpinnedActive]
+  const overflowBuiltIn = allEntries.filter((item) => !shownInPrimary.has(item.id) && !item.on)
+  const overflowExternal = externalEntries.filter((item) => !shownInPrimary.has(item.id))
+
+  const foldedEntries = [...overflowBuiltIn, ...overflowExternal]
+
+  const expandHandler = onOpen ?? toggle
+  const newLabel = mode === 'dev' ? t('New run') : mode === 'design' ? t('New design') : t('New chat')
+  const handleNew =
+    onNew ??
+    (() => {
+      if (mode === 'dev') go(app(''))
+      else if (mode === 'design') go(design(''))
+      else if (mode === 'studio') go(studio(''))
+      else go(talk())
+    })
+
   return (
-    <YStack
-      data-slot="rail"
-      render="nav"
-      aria-label={t('Products')}
-      width={RAIL}
-      flex={1}
-      // As tall as the window and no taller: its marks scroll inside it (below), never the page.
-      minH={0}
-      // The first mark stands at the pane's top edge, one head row high (HEAD), and the last at its foot:
-      // the frame and drawer already leave `--pane-gap` below, so pb=0 aligns the account hover box symmetrically
-      // with the inner pane's bottom corner.
-      pt={(HEAD - MARK) / 2 + 2}
-      pb={0}
-      gap={3}
-      shrink={0}
-      items="center"
-      $touchable={{ pt: (TOUCH_HEAD - TOUCH) / 2, pb: 0 }}
-    >
-      {toggle ? (
-        <YStack>
-          <Toggle open={open} onPress={toggle} />
-        </YStack>
-      ) : null}
-      {/* The marks take what the toggle and the account leave, and scroll inside it: a short window
-          with every product's mark scrolled the whole page and put the account below the fold. */}
-      <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden" items="center" gap={4} width="100%" $platform-web={{ scrollbarWidth: 'none' }}>
-      <Mark label={t('Chat')} on={mode === 'chat'} onPress={onChat} data-slot="rail-chat">
-        <MARKS.chat.icon size={18} aria-hidden />
-      </Mark>
-      <Mark label="Dev" on={mode === 'dev' && !here} onPress={onDev} data-slot="rail-dev">
-        <MARKS.dev.icon size={18} aria-hidden />
-      </Mark>
-      {anon ? null : (
-        <Mark label="Design" on={mode === 'design'} onPress={onDesign} data-slot="rail-design">
-          <MARKS.design.icon size={18} aria-hidden />
-        </Mark>
-      )}
-      {!anon && opened('studio') ? (
-        <Mark label="Studio" on={mode === 'studio'} onPress={onStudio} data-slot="rail-studio">
-          <MARKS.studio.icon size={18} aria-hidden />
-        </Mark>
-      ) : null}
-      {anon ? null : (
-        <Mark label="Tabs" on={mode === 'tabs'} onPress={onTabs} data-slot="rail-tabs">
-          <MARKS.tabs.icon size={18} aria-hidden />
-        </Mark>
-      )}
-      {apps.map((a) => (
-        <Mark key={a.id} label={a.name} on={inside === a.id} onPress={() => go(hosted(a.id))} data-slot={`rail-app-${a.id}`}>
-          <a.icon size={18} aria-hidden />
-        </Mark>
-      ))}
-      <Mark label={t('Library')} on={here === 'library'} onPress={to(RAISED.library)} data-slot="rail-library">
-        <MARKS.library.icon size={18} aria-hidden />
-      </Mark>
-      {anon ? null : (
-        <Mark label={t('Scheduled tasks')} on={here === 'scheduled'} onPress={to(RAISED.scheduled)} data-slot="rail-scheduled">
-          <MARKS.scheduled.icon size={18} aria-hidden />
-        </Mark>
-      )}
-      {anon ? null : (
-        <Mark label={t('Customize')} on={here === 'customize'} onPress={to(RAISED.customize)} data-slot="rail-customize">
-          <MARKS.customize.icon size={18} aria-hidden />
-        </Mark>
-      )}
-      {anon ? null : (
-        <Mark label={t('Betas')} on={mode === 'beta'} onPress={() => go('/beta')} data-slot="rail-betas">
-          <FlaskConical size={18} aria-hidden />
-        </Mark>
-      )}
-      {betasDialog}
-      {!anon && rest.length ? (
-        <DropdownMenu
-          // Toward the content: right of the rail, left of it right to left.
-          placement={dir === 'rtl' ? 'left-start' : 'right-start'}
-          minWidth={220}
-          trigger={
-            <XStack
-              render="button"
-              aria-label={t('More')}
-              {...({ title: t('More') } as object)}
-              data-slot="rail-more"
-              width={MARK}
-              height={MARK}
-              rounded={12}
-              items="center"
-              justify="center"
-              cursor="pointer"
-              opacity={0.62}
-              hoverStyle={{ bg: '$hover', opacity: 1 }}
-              pressStyle={{ bg: '$raised' }}
-              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
-              $touchable={{ width: 44, height: 44 }}
-            >
-              <Ellipsis size={18} aria-hidden />
-            </XStack>
-          }
-          items={rest}
-        />
-      ) : null}
-      </YStack>
-      {anon ? (
-        <YStack gap={4} items="center">
+    <TooltipProvider delay={90}>
+      <YStack
+        data-slot="rail"
+        data-expanded="false"
+        render="nav"
+        aria-label={t('Products')}
+        width={RAIL_FOLDED}
+        flex={1}
+        minH={0}
+        pt={(HEAD - MARK) / 2 + 2}
+        pb={0}
+        gap={4}
+        shrink={0}
+        items="center"
+        $touchable={{ pt: (TOUCH_HEAD - TOUCH) / 2, pb: 0 }}
+      >
+        {/* Top expand button (only in folded desktop rail, never duplicated in compact drawer rail) */}
+        {!compact && expandHandler ? (
           <Mark
-            label={t('See plans and pricing')}
-            data-slot="anon-pricing"
-            onPress={() => {
-              if (typeof window !== 'undefined') window.location.assign('/pricing')
-            }}
+            label={t('Open sidebar')}
+            data-slot="rail-expand"
+            tooltip
+            onClick={expandHandler}
           >
-            <Sparkles size={18} aria-hidden />
+            <PanelLeftOpen size={18} aria-hidden data-i18n-mirror />
           </Mark>
+        ) : null}
+
+        {/* Primary + New icon button when folded */}
+        {!compact && mode !== 'beta' && mode !== 'hosted' ? (
           <Mark
-            label={t('Help')}
-            data-slot="anon-help"
-            onPress={() => {
-              if (typeof window !== 'undefined') window.open('https://docs.hanzo.ai', '_blank', 'noopener,noreferrer')
-            }}
+            label={newLabel}
+            data-slot="rail-new"
+            tooltip
+            onClick={handleNew}
           >
-            <CircleHelp size={18} aria-hidden />
+            <Plus size={18} aria-hidden />
           </Mark>
-          <Mark
-            label={t('Settings')}
-            data-slot="anon-settings"
-            onPress={() => {
-              if (typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('hanzo:anon-settings', { detail: { open: true } }))
+        ) : null}
+
+        {/* Scrollable icons-only product list (drag with grab cursor to reorder) */}
+        <YStack
+          flex={1}
+          minH={0}
+          overflowY="auto"
+          overflowX="hidden"
+          items="center"
+          gap={4}
+          width="100%"
+          $platform-web={{ scrollbarWidth: 'none' }}
+        >
+          {visibleMarks.map((item) => {
+            const isDragging = dragId === item.id
+            const isDropTarget = dropId === item.id && dragId !== null && dragId !== item.id
+            return (
+              <YStack
+                key={item.id}
+                width="100%"
+                items="center"
+                opacity={isDragging ? 0.4 : 1}
+                borderTopWidth={isDropTarget ? 2 : 0}
+                borderColor="var(--foreground)"
+                pt={isDropTarget ? 2 : 0}
+                $platform-web={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+                {...({
+                  draggable: !anon,
+                  onDragStart: (e: DragEvent) => {
+                    setDragId(item.id)
+                    e.dataTransfer?.setData('text/plain', item.id)
+                    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
+                  },
+                  onDragOver: (e: DragEvent) => {
+                    if (!dragId || dragId === item.id) return
+                    e.preventDefault()
+                    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+                    if (dropId !== item.id) setDropId(item.id)
+                  },
+                  onDragLeave: () => {
+                    if (dropId === item.id) setDropId(null)
+                  },
+                  onDrop: (e: DragEvent) => {
+                    e.preventDefault()
+                    const src = dragId || e.dataTransfer?.getData('text/plain')
+                    if (src && src !== item.id) pins[2](src, item.id)
+                    setDragId(null)
+                    setDropId(null)
+                  },
+                  onDragEnd: () => {
+                    setDragId(null)
+                    setDropId(null)
+                  },
+                } as object)}
+              >
+                <Mark
+                  label={item.label}
+                  on={item.on}
+                  tooltip
+                  onClick={item.onPress}
+                  data-slot={item.slot}
+                  data-nav-id={item.id}
+                >
+                  {item.icon}
+                </Mark>
+              </YStack>
+            )
+          })}
+          {!anon && foldedEntries.length > 0 ? (
+            <MoreMenu
+              placement={dir === 'rtl' ? 'left-start' : 'right-start'}
+              minWidth={220}
+              maxHeight={420}
+              entries={foldedEntries}
+              onPin={nav.togglePin}
+              t={t}
+              trigger={
+                <XStack
+                  render="button"
+                  aria-label={t('More')}
+                  {...({ title: t('More') } as object)}
+                  data-slot="rail-more"
+                  width={MARK}
+                  height={MARK}
+                  rounded={12}
+                  items="center"
+                  justify="center"
+                  cursor="pointer"
+                  opacity={0.68}
+                  hoverStyle={{ bg: '$hover', opacity: 1 }}
+                  pressStyle={{ bg: '$raised' }}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+                  $touchable={{ width: TOUCH, height: TOUCH }}
+                >
+                  <Ellipsis size={18} aria-hidden />
+                </XStack>
               }
-            }}
-          >
-            <Settings size={18} aria-hidden />
-          </Mark>
+            />
+          ) : null}
+          {betasDialog}
         </YStack>
-      ) : (
-        <Account host={host} narrow onOrg={onOrg} />
-      )}
-    </YStack>
+
+        {anon ? (
+          <YStack gap={4} items="center" pb="$1">
+            <Mark
+              label={t('See plans and pricing')}
+              data-slot="anon-pricing"
+              tooltip
+              onClick={() => {
+                if (typeof window !== 'undefined') window.location.assign('/pricing')
+              }}
+            >
+              <Sparkles size={18} aria-hidden />
+            </Mark>
+            <Mark
+              label={t('Help')}
+              data-slot="anon-help"
+              tooltip
+              onClick={() => {
+                if (typeof window !== 'undefined') window.open('https://docs.hanzo.ai', '_blank', 'noopener,noreferrer')
+              }}
+            >
+              <CircleHelp size={18} aria-hidden />
+            </Mark>
+            <Mark
+              label={t('Settings')}
+              data-slot="anon-settings"
+              tooltip
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('hanzo:anon-settings', { detail: { open: true } }))
+                }
+              }}
+            >
+              <Settings size={18} aria-hidden />
+            </Mark>
+          </YStack>
+        ) : (
+          <YStack width="100%" items="center" pt="$1">
+            <Account host={host} narrow onOrg={onOrg} />
+          </YStack>
+        )}
+      </YStack>
+    </TooltipProvider>
   )
 }

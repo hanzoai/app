@@ -40,7 +40,7 @@ import {
 import type { AiClient, Thread, ThreadChange } from '@hanzo/ai'
 export type { Thread }
 import { useAi } from '@hanzo/ai/react'
-import { Archive, ArchiveRestore, Check, CheckSquare, Clock, ExternalLink, FolderInput, Link2, MoreHorizontal, Pencil, Pin, PinOff, Share2, Trash2, X } from 'lucide-react'
+import { Archive, ArchiveRestore, Check, CheckSquare, Clock, Download, ExternalLink, FolderInput, Link2, MoreHorizontal, Pencil, Pin, PinOff, Share2, Trash2, X } from 'lucide-react'
 import {
   Button,
   ContextMenu,
@@ -66,6 +66,7 @@ import {
   toast,
 } from '@hanzo/ui'
 import { empty } from './open'
+import { said as told } from './lib/attach'
 import { say } from './lib/org'
 import { talk } from './lib/host'
 import { BAD } from './lib/mix'
@@ -206,19 +207,77 @@ async function copy(id: string, t: Say, toUrl: (id: string) => string = href): P
   }
 }
 
+/** Triggers a browser download of a Markdown document. */
+function downloadMarkdown(filename: string, markdown: string): void {
+  if (typeof document === 'undefined' || typeof URL === 'undefined') return
+  const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+/** Safe filename derived from a conversation title, falling back to `hanzo-chat.md`. */
+function slugFilename(title: string): string {
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48)
+  return `${slug || 'hanzo-chat'}.md`
+}
+
+/** Formats a conversation's turns and metadata as clean Markdown. */
+function formatThreadMarkdown(
+  thread: Thread,
+  messages: readonly { role: string; content: string }[],
+  link: string,
+  untitled: string,
+): string {
+  const heading = titleOf(thread, untitled)
+  const lines: string[] = [`# ${heading}`, '']
+  if (thread.updatedAt) lines.push(`- Updated: ${thread.updatedAt}`)
+  if (thread.pinned) lines.push('- Pinned: yes')
+  if (thread.archived) lines.push('- Archived: yes')
+  if (link) lines.push(`- Link: ${link}`)
+  const visible = messages.filter((m) => m.role === 'user' || m.role === 'assistant')
+  for (const m of visible) {
+    const clean = m.role === 'user' ? told(m.content) : { text: m.content, carried: null, cites: [] }
+    const body = clean.text.trim()
+    const files = clean.carried?.attached?.map((f) => f.name) ?? []
+    if (!body && !files.length) continue
+    lines.push('', '---', '', m.role === 'user' ? '### You' : '### Assistant', '')
+    if (body) lines.push(body)
+    if (files.length) lines.push('', `_Attachments: ${files.join(', ')}_`)
+  }
+  return `${lines.join('\n')}\n`
+}
+
 /** The one colour in the menu: Delete's — design's destructive mixed toward the theme's ink, 4.5:1 on either theme's panel. */
 const DANGER = BAD
 
 const mac = (): boolean => typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent)
 
-type Dialogue = 'rename' | 'delete' | 'share' | 'organize'
+type Dialogue = 'rename' | 'delete' | 'batch-delete' | 'share' | 'organize'
 
 /** What a row needs of the list's menu. */
 interface Menus {
+  /** This menu's own id: its rows carry it (`data-menu-of`), wherever they are drawn (a portal under the app's row). */
+  list: string
   /** The conversation the ⋯ that was just pressed belongs to, and the ⋯. */
   aim: (t: Thread, from: HTMLElement) => void
   /** The conversation whose menu is open, or null. */
   open: string | null
+  /** The conversation currently being renamed inline, or null. */
+  renaming: string | null
+  /** Commit an inline rename (empty string ignored). */
+  commitRename: (t: Thread, next: string) => void
+  /** Cancel an inline rename. */
+  cancelRename: () => void
   /** Currently multi-selected conversation IDs. */
   selected: Set<string>
   /** Whether iOS-style selection mode is active. */
@@ -246,6 +305,11 @@ interface Menus {
 }
 
 const Rows = createContext<Menus | null>(null)
+
+/** A menu's rows in page order, wherever each is drawn: its list, or under the app's own sidebar row. */
+function listRows(list: string): Element[] {
+  return typeof document === 'undefined' ? [] : [...document.querySelectorAll(`[data-thread][data-menu-of="${CSS.escape(list)}"]`)]
+}
 
 /** One entry of the menu: an act — its keys printed, and named for assistive technology — or the line before Delete. */
 type Entry =
@@ -311,7 +375,10 @@ export function ConversationMenu({
   active = null,
   onGone = empty,
   onSchedule,
+  onExport,
   customActions,
+  canShare = !customActions,
+  canExport = Boolean(onExport || !customActions),
   hrefOf = href,
   primary = true,
   children,
@@ -320,12 +387,16 @@ export function ConversationMenu({
   active?: string | null
   onGone?: () => void
   onSchedule?: (t: Thread) => void
+  onExport?: (t: Thread) => void | Promise<void>
   customActions?: ThreadActions
+  canShare?: boolean
+  canExport?: boolean
   hrefOf?: (id: string) => string
   primary?: boolean
   children: ReactElement
 }) {
   const { t } = useI18n()
+  const ai = useAi()
   const defaultAct = useThreadActions()
   const act = customActions ?? defaultAct
   // The conversation the pane holds NOW: a delete answered after the reader moved on leaves the conversation they moved to.
@@ -335,6 +406,7 @@ export function ConversationMenu({
   const list = useId()
   const [menu, setMenu] = useState<'point' | 'dots' | null>(null)
   const [dialogue, setDialogue] = useState<Dialogue | null>(null)
+  const [renaming, setRenaming] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [selectMode, setSelectMode] = useState(false)
   const [organizeGroup, setOrganizeGroup] = useState('')
@@ -345,9 +417,10 @@ export function ConversationMenu({
   const selecting = selectMode || selected.size > 0
 
   const orderedIds = useCallback((): string[] => {
-    const root = typeof document !== 'undefined' ? document.querySelector(`[data-menu="${list}"]`) : null
-    if (!root) return [...threads.keys()]
-    return [...root.querySelectorAll('[data-thread]')].map((el) => el.getAttribute('data-thread') ?? '').filter(Boolean)
+    if (typeof document === 'undefined') return [...threads.keys()]
+    const own = listRows(list)
+    if (!own.length) return [...threads.keys()]
+    return own.map((el) => el.getAttribute('data-thread') ?? '').filter(Boolean)
   }, [list, threads])
 
   const selectRange = useCallback(
@@ -402,7 +475,7 @@ export function ConversationMenu({
       const dy = Math.abs(e.clientY - dragStartYRef.current)
       const hit = typeof document !== 'undefined' ? document.elementFromPoint(e.clientX, e.clientY)?.closest?.('[data-thread]') : null
       const hitId = hit?.getAttribute('data-thread') ?? null
-      const inThisList = hit ? Boolean(hit.closest(`[data-menu="${list}"]`)) : false
+      const inThisList = hit ? hit.getAttribute('data-menu-of') === list : false
       if (dy > 6 || (hitId && inThisList && hitId !== startId)) {
         didDragSelectRef.current = true
         window.getSelection?.()?.removeAllRanges?.()
@@ -464,6 +537,49 @@ export function ConversationMenu({
     [act, onGone],
   )
 
+  const archiveOne = useCallback(
+    async (target: Thread) => {
+      const wasArchived = Boolean(target.archived)
+      const ok = await act.archive(target)
+      if (!ok) return
+      if (!wasArchived) {
+        const archivedSnapshot: Thread = { ...target, archived: true }
+        toast(t('Archived chat'), {
+          duration: 5000,
+          action: {
+            label: t('Undo'),
+            onClick: () => {
+              void act.archive(archivedSnapshot)
+            },
+          },
+        })
+      } else {
+        toast.success(t('Unarchived chat'))
+      }
+    },
+    [act, t],
+  )
+
+  const exportThread = useCallback(
+    async (target: Thread) => {
+      try {
+        if (onExport) {
+          await onExport(target)
+          toast.success(t('Exported Markdown'))
+          return
+        }
+        const detail = await ai.threads.get(target.id, { signal: AbortSignal.timeout(WAIT) })
+        const untitledLabel = t('Untitled')
+        const markdown = formatThreadMarkdown(target, detail?.messages ?? [], hrefOf(target.id), untitledLabel)
+        downloadMarkdown(slugFilename(titleOf(target, untitledLabel)), markdown)
+        toast.success(t('Exported Markdown'))
+      } catch {
+        toast.error(t('Could not export chat'))
+      }
+    },
+    [ai, hrefOf, onExport, t],
+  )
+
   const batchArchive = useCallback(
     (targets: Thread[]) => {
       if (!targets.length) return
@@ -471,9 +587,32 @@ export function ConversationMenu({
       setSelectMode(false)
       setSelected(new Set())
       setMenu(null)
-      void Promise.all(targets.map((th) => (Boolean(th.archived) === allArchived ? act.archive(th) : Promise.resolve(true))))
+      const toToggle = targets.filter((th) => Boolean(th.archived) === allArchived)
+      void Promise.all(toToggle.map((th) => act.archive(th))).then((results) => {
+        const succeeded = toToggle.filter((_, i) => results[i])
+        if (!succeeded.length) return
+        if (!allArchived) {
+          const snapshots = succeeded.map((th) => ({ ...th, archived: true }))
+          toast(
+            snapshots.length === 1 ? t('Archived chat') : t('Archived {n} chats', { n: snapshots.length }),
+            {
+              duration: 5000,
+              action: {
+                label: t('Undo'),
+                onClick: () => {
+                  void Promise.all(snapshots.map((th) => act.archive(th)))
+                },
+              },
+            },
+          )
+        } else {
+          toast.success(
+            succeeded.length === 1 ? t('Unarchived chat') : t('Unarchived {n} chats', { n: succeeded.length }),
+          )
+        }
+      })
     },
-    [act],
+    [act, t],
   )
 
   const batchPin = useCallback(
@@ -522,7 +661,8 @@ export function ConversationMenu({
       }
       if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault()
-        batchRemove(selectedThreads)
+        setMenu(null)
+        setDialogue('batch-delete')
         return
       }
       if ((e.metaKey || e.ctrlKey) && (e.key === 'a' || e.key === 'A')) {
@@ -550,10 +690,41 @@ export function ConversationMenu({
   // What a right-click or a long-press landed on, before the menu decides to open.
   const pointed = useRef<Thread | null>(null)
 
-  const ask = useCallback((d: Dialogue, t: Thread) => {
-    setAimed(t.id)
-    setMenu(null)
-    setDialogue(d)
+  const ask = useCallback(
+    (d: Dialogue, thread: Thread) => {
+      setAimed(thread.id)
+      setMenu(null)
+      if (d === 'rename' && typeof document !== 'undefined') {
+        const hasRow = listRows(list).some(
+          (el) => el.getAttribute('data-thread') === thread.id,
+        )
+        if (hasRow) {
+          setDialogue(null)
+          setRenaming(thread.id)
+          return
+        }
+      }
+      setRenaming(null)
+      setDialogue(d)
+    },
+    [list],
+  )
+
+  const commitRename = useCallback(
+    (thread: Thread, next: string) => {
+      setRenaming(null)
+      const trimmed = next.trim()
+      if (!trimmed || trimmed === titleOf(thread, t('Untitled'))) return
+      void act.rename(thread, trimmed)
+    },
+    [act, t],
+  )
+
+  const cancelRename = useCallback(() => {
+    setRenaming(null)
+    requestAnimationFrame(() => {
+      if (from.current?.isConnected) from.current.focus()
+    })
   }, [])
 
   const aim = useCallback((t: Thread, el: HTMLElement) => {
@@ -593,7 +764,7 @@ export function ConversationMenu({
   const keys = useRef<Keys | null>(null)
   keys.current = {
     open: menu !== null,
-    held: dialogue !== null,
+    held: dialogue !== null || renaming !== null,
     target: () => (menu !== null ? subject : active ? (threads.get(active) ?? null) : null),
     act: (a, t) => {
       // With no menu open, focus goes back to wherever the keys were pressed.
@@ -607,8 +778,12 @@ export function ConversationMenu({
 
   const rows = useMemo<Menus>(
     () => ({
+      list,
       aim,
       open: menu ? aimed : null,
+      renaming,
+      commitRename,
+      cancelRename,
       selected,
       selecting,
       setSelectMode,
@@ -622,7 +797,7 @@ export function ConversationMenu({
       clearSelect,
       hrefOf,
     }),
-    [aim, menu, aimed, selected, selecting, active, selectRange, toggleSelect, clearSelect, hrefOf],
+    [list, aim, menu, aimed, renaming, commitRename, cancelRename, selected, selecting, active, selectRange, toggleSelect, clearSelect, hrefOf],
   )
 
   // The menu is named by its conversation: gui would name it by its trigger, the
@@ -659,7 +834,7 @@ export function ConversationMenu({
         },
         {
           key: 'batch-select-all',
-          label: allSelected ? t('Deselect All') : t('Select All ({n})', { n: threads.size }),
+          label: allSelected ? t('Deselect all') : t('Select all ({n})', { n: threads.size }),
           icon: <CheckSquare size={16} aria-hidden />,
           shortcut: apple ? '⌘A' : 'Ctrl+A',
           run: () => {
@@ -678,10 +853,12 @@ export function ConversationMenu({
         {
           key: 'batch-delete',
           label: t('Delete ({n})', { n: selectedThreads.length }),
-          icon: <Trash2 size={16} color={DANGER} aria-hidden />,
+          icon: <Trash2 size={16} aria-hidden />,
           shortcut: '⌫',
-          destructive: true,
-          run: () => batchRemove(selectedThreads),
+          run: () => {
+            setMenu(null)
+            setDialogue('batch-delete')
+          },
         },
       ]
     : subject
@@ -702,18 +879,28 @@ export function ConversationMenu({
             keys: named('pin'),
             run: () => void act.pin(subject),
           },
-          { key: 'share', label: t('Share…'), icon: <Share2 size={16} aria-hidden />, run: () => ask('share', subject) },
+          ...(canShare ? [{ key: 'share', label: t('Share…'), icon: <Share2 size={16} aria-hidden />, run: () => ask('share', subject) }] : []),
           ...(onSchedule ? [{ key: 'schedule', label: t('Schedule…'), icon: <Clock size={16} aria-hidden />, run: () => onSchedule(subject) }] : []),
           { key: 'copy', label: t('Copy link'), icon: <Link2 size={16} aria-hidden />, run: () => void copy(subject.id, t, hrefOf) },
           { key: 'tab', label: t('Open in new tab'), icon: <ExternalLink size={16} aria-hidden />, run: () => away(subject.id, hrefOf) },
+          ...(canExport
+            ? [
+                {
+                  key: 'export',
+                  label: t('Export as Markdown'),
+                  icon: <Download size={16} aria-hidden />,
+                  run: () => void exportThread(subject),
+                },
+              ]
+            : []),
           {
             key: 'archive',
             label: t(subject.archived ? 'Unarchive' : 'Archive'),
             icon: subject.archived ? <ArchiveRestore size={16} aria-hidden /> : <Archive size={16} aria-hidden />,
-            run: () => void act.archive(subject),
+            run: () => void archiveOne(subject),
           },
           { key: 'gone', line: true },
-          { key: 'delete', label: t('Delete'), icon: <Trash2 size={16} color={DANGER} aria-hidden />, destructive: true, run: () => ask('delete', subject) },
+          { key: 'delete', label: t('Delete'), icon: <Trash2 size={16} aria-hidden />, run: () => ask('delete', subject) },
         ]
       : []
 
@@ -780,9 +967,9 @@ export function ConversationMenu({
           p="$2"
           mt="$2"
           rounded="$4"
-          bg="$raised"
+          bg="$panel"
           borderWidth={1}
-          borderColor="$borderColor"
+          borderColor="var(--border-strong)"
           // Pinned to the list's foot, over the rows (their marks sit at 2).
           position="sticky"
           b={0}
@@ -792,113 +979,157 @@ export function ConversationMenu({
             boxShadow: 'var(--shadow-lg)',
           }}
         >
-          <XStack items="center" justify="space-between" px="$1">
+          <XStack items="center" justify="space-between" gap="$2" px="$1">
             <XStack
               render="button"
+              {...({ type: 'button' } as object)}
               cursor="pointer"
-              onPress={() => {
+              px="$1.5"
+              py="$0.5"
+              rounded="$2"
+              onClick={() => {
                 if (allSelected) setSelected(new Set())
                 else setSelected(new Set(orderedIds()))
               }}
-              hoverStyle={{ opacity: 0.8 }}
+              hoverStyle={{ bg: '$hover' }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              $max-sm={{ minH: 44, items: 'center' }}
             >
-              <SizableText size="$1" fontWeight="600" color="$soft">
-                {allSelected ? t('Deselect All') : t('Select All')}
+              <SizableText size="$1" fontWeight="500" color="$soft">
+                {allSelected ? t('Deselect all') : t('Select all')}
               </SizableText>
             </XStack>
             <SizableText size="$1" fontWeight="600" color="$ink" numberOfLines={1}>
-              {t('{n} Selected', { n: selectedThreads.length })}
+              {t('{n} selected', { n: selectedThreads.length })}
             </SizableText>
             <XStack
               render="button"
+              {...({ type: 'button' } as object)}
               aria-label={t('Clear selection')}
               cursor="pointer"
-              onPress={clearSelect}
-              hoverStyle={{ opacity: 0.8 }}
+              px="$1.5"
+              py="$0.5"
+              rounded="$2"
+              onClick={clearSelect}
+              hoverStyle={{ bg: '$hover' }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              $max-sm={{ minH: 44, items: 'center' }}
             >
-              <SizableText size="$1" fontWeight="700" color="$ink">
+              <SizableText size="$1" fontWeight="600" color="$ink">
                 {t('Done')}
               </SizableText>
             </XStack>
           </XStack>
-          <XStack items="center" justify="space-between" gap="$1" pt="$0.5">
+          <XStack items="center" justify="space-between" gap="$1" pt="$0.5" flexWrap="wrap">
             <XStack
               render="button"
+              {...({ type: 'button' } as object)}
               aria-label={t(allPinned ? 'Unpin selected' : 'Pin selected')}
               disabled={!selectedThreads.length}
               opacity={selectedThreads.length ? 1 : 0.4}
               flex={1}
+              minW={52}
               height={28}
+              px="$1.5"
               rounded="$3"
               items="center"
               justify="center"
               gap={4}
+              borderWidth={1}
+              borderColor="transparent"
               cursor={selectedThreads.length ? 'pointer' : 'default'}
-              hoverStyle={selectedThreads.length ? { bg: '$hover' } : undefined}
-              onPress={() => batchPin(selectedThreads)}
+              transition="quickest"
+              hoverStyle={selectedThreads.length ? { bg: '$hover', borderColor: 'var(--border-strong)' } : undefined}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              $max-sm={{ minH: 44 }}
+              onClick={() => batchPin(selectedThreads)}
             >
-              {allPinned ? <PinOff size={13} aria-hidden /> : <Pin size={13} aria-hidden />}
+              {allPinned ? <PinOff size={13} color="var(--foreground)" aria-hidden /> : <Pin size={13} color="var(--foreground)" aria-hidden />}
               <SizableText size="$1" fontWeight="500" color="$ink">
                 {t(allPinned ? 'Unpin' : 'Pin')}
               </SizableText>
             </XStack>
             <XStack
               render="button"
+              {...({ type: 'button' } as object)}
               aria-label={t(allArchived ? 'Unarchive selected' : 'Archive selected')}
               disabled={!selectedThreads.length}
               opacity={selectedThreads.length ? 1 : 0.4}
               flex={1}
+              minW={56}
               height={28}
+              px="$1.5"
               rounded="$3"
               items="center"
               justify="center"
               gap={4}
+              borderWidth={1}
+              borderColor="transparent"
               cursor={selectedThreads.length ? 'pointer' : 'default'}
-              hoverStyle={selectedThreads.length ? { bg: '$hover' } : undefined}
-              onPress={() => batchArchive(selectedThreads)}
+              transition="quickest"
+              hoverStyle={selectedThreads.length ? { bg: '$hover', borderColor: 'var(--border-strong)' } : undefined}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              $max-sm={{ minH: 44 }}
+              onClick={() => batchArchive(selectedThreads)}
             >
-              {allArchived ? <ArchiveRestore size={13} aria-hidden /> : <Archive size={13} aria-hidden />}
+              {allArchived ? <ArchiveRestore size={13} color="var(--foreground)" aria-hidden /> : <Archive size={13} color="var(--foreground)" aria-hidden />}
               <SizableText size="$1" fontWeight="500" color="$ink">
                 {t(allArchived ? 'Unarchive' : 'Archive')}
               </SizableText>
             </XStack>
             <XStack
               render="button"
+              {...({ type: 'button' } as object)}
               aria-label={t('Organize selected')}
               disabled={!selectedThreads.length}
               opacity={selectedThreads.length ? 1 : 0.4}
               flex={1}
+              minW={52}
               height={28}
+              px="$1.5"
               rounded="$3"
               items="center"
               justify="center"
               gap={4}
+              borderWidth={1}
+              borderColor="transparent"
               cursor={selectedThreads.length ? 'pointer' : 'default'}
-              hoverStyle={selectedThreads.length ? { bg: '$hover' } : undefined}
-              onPress={() => setDialogue('organize')}
+              transition="quickest"
+              hoverStyle={selectedThreads.length ? { bg: '$hover', borderColor: 'var(--border-strong)' } : undefined}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              $max-sm={{ minH: 44 }}
+              onClick={() => setDialogue('organize')}
             >
-              <FolderInput size={13} aria-hidden />
+              <FolderInput size={13} color="var(--foreground)" aria-hidden />
               <SizableText size="$1" fontWeight="500" color="$ink">
                 {t('Group')}
               </SizableText>
             </XStack>
             <XStack
               render="button"
+              {...({ type: 'button' } as object)}
               aria-label={t('Delete selected')}
               disabled={!selectedThreads.length}
               opacity={selectedThreads.length ? 1 : 0.4}
               flex={1}
+              minW={56}
               height={28}
+              px="$1.5"
               rounded="$3"
               items="center"
               justify="center"
               gap={4}
+              borderWidth={1}
+              borderColor="transparent"
               cursor={selectedThreads.length ? 'pointer' : 'default'}
-              hoverStyle={selectedThreads.length ? { bg: '$hover' } : undefined}
-              onPress={() => batchRemove(selectedThreads)}
+              transition="quickest"
+              hoverStyle={selectedThreads.length ? { bg: '$hover', borderColor: 'var(--border-strong)' } : undefined}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              $max-sm={{ minH: 44 }}
+              onClick={() => setDialogue('batch-delete')}
             >
-              <Trash2 size={13} color={DANGER} aria-hidden />
-              <SizableText size="$1" fontWeight="500" color={DANGER}>
+              <Trash2 size={13} color="var(--foreground)" aria-hidden />
+              <SizableText size="$1" fontWeight="500" color="$ink">
                 {t('Delete')}
               </SizableText>
             </XStack>
@@ -921,7 +1152,7 @@ export function ConversationMenu({
         onCloseAutoFocus={after}
         remove={(t) => {
           // Focus goes on to the row after it, or the one before, not to the page.
-          const rows = [...(document.querySelector(`[data-menu="${list}"]`)?.querySelectorAll('[data-thread]') ?? [])]
+          const rows = listRows(list)
           const at = rows.findIndex((row) => row.getAttribute('data-thread') === t.id)
           if (at >= 0) from.current = own(rows[at + 1] ?? rows[at - 1] ?? null)
           void act.remove(t).then((ok) => {
@@ -929,9 +1160,54 @@ export function ConversationMenu({
           })
         }}
       />
-      <ShareDialog thread={subject?.id ?? null} open={dialogue === 'share'} onOpenChange={shut} onCloseAutoFocus={after} />
+      <Dialog open={dialogue === 'batch-delete'} onOpenChange={shut}>
+        <DialogContent maxW={440} width="calc(100vw - 24px)" rounded="$6" gap="$3" onCloseAutoFocus={after}>
+          <DialogTitle>
+            {selectedThreads.length === 1
+              ? t('Delete chat?')
+              : t('Delete {n} chats?', { n: selectedThreads.length })}
+          </DialogTitle>
+          <SizableText size="$2" color="$soft">
+            {selectedThreads.length === 1
+              ? t('“{title}” is deleted for good, with every link it was shared by. To keep it out of the list instead, archive it.', {
+                  title: titleOf(selectedThreads[0]!, t('Untitled')),
+                })
+              : t('{n} selected chats are deleted for good, with every link they were shared by. To keep them out of the list instead, archive them.', {
+                  n: selectedThreads.length,
+                })}
+          </SizableText>
+          <XStack gap="$2" justify="flex-end" flexWrap="wrap">
+            <Button
+              size="sm"
+              variant="outline"
+              rounded={999}
+              borderColor="var(--border-strong)"
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              $max-sm={{ minH: 44 }}
+              onPress={() => shut(false)}
+            >
+              {t('Cancel')}
+            </Button>
+            <Button
+              size="sm"
+              rounded={999}
+              bg="var(--state-error)"
+              borderColor="var(--state-error)"
+              color="var(--pure-white)"
+              hoverStyle={{ bg: 'var(--state-error)', opacity: 0.9 }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              $max-sm={{ minH: 44 }}
+              disabled={!selectedThreads.length}
+              onPress={() => batchRemove(selectedThreads)}
+            >
+              {t('Delete')}
+            </Button>
+          </XStack>
+        </DialogContent>
+      </Dialog>
+      {canShare ? <ShareDialog thread={subject?.id ?? null} open={dialogue === 'share'} onOpenChange={shut} onCloseAutoFocus={after} /> : null}
       <Dialog open={dialogue === 'organize'} onOpenChange={shut}>
-        <DialogContent maxW={440} rounded="$6" gap="$3" onCloseAutoFocus={after}>
+        <DialogContent maxW={440} width="calc(100vw - 24px)" rounded="$6" gap="$3" onCloseAutoFocus={after}>
           <DialogTitle>{t('Organize {n} chats', { n: selectedThreads.length })}</DialogTitle>
           <SizableText size="$2" color="$soft">
             {t('Group and tag the selected chats under a shared project or topic label.')}
@@ -942,6 +1218,9 @@ export function ConversationMenu({
             onChangeText={setOrganizeGroup}
             placeholder={t('e.g. Research, Architecture, Q4 Launch')}
             aria-label={t('Group or project name')}
+            borderColor="var(--border-strong)"
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+            $max-sm={{ minH: 44 }}
             maxLength={40}
             onKeyDown={(e: { key?: string; keyCode?: number; nativeEvent?: { isComposing?: boolean } }) => {
               if (e.key === 'Enter' && !e.nativeEvent?.isComposing && e.keyCode !== 229 && organizeGroup.trim()) {
@@ -949,13 +1228,23 @@ export function ConversationMenu({
               }
             }}
           />
-          <XStack gap="$2" justify="flex-end">
-            <Button size="sm" variant="outline" rounded={999} onPress={() => shut(false)}>
+          <XStack gap="$2" justify="flex-end" flexWrap="wrap">
+            <Button
+              size="sm"
+              variant="outline"
+              rounded={999}
+              borderColor="var(--border-strong)"
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              $max-sm={{ minH: 44 }}
+              onPress={() => shut(false)}
+            >
               {t('Cancel')}
             </Button>
             <Button
               size="sm"
               rounded={999}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              $max-sm={{ minH: 44 }}
               disabled={!organizeGroup.trim()}
               onPress={() => batchOrganize(selectedThreads, organizeGroup)}
             >
@@ -1004,6 +1293,80 @@ function Face({
  * always on a touch screen, which has no hover to find it by; the rest of the
  * time the age reads there.
  */
+/** Inline rename field drawn directly inside a ThreadRow: Enter saves, Escape cancels, empty string ignored. */
+function InlineRename({
+  initial,
+  onSave,
+  onCancel,
+}: {
+  initial: string
+  onSave: (title: string) => void
+  onCancel: () => void
+}) {
+  const { t } = useI18n()
+  const [words, setWords] = useState(initial)
+  const doneRef = useRef(false)
+  const commit = () => {
+    if (doneRef.current) return
+    doneRef.current = true
+    const clean = words.trim()
+    if (!clean) {
+      onCancel()
+      return
+    }
+    onSave(clean)
+  }
+  const cancel = () => {
+    if (doneRef.current) return
+    doneRef.current = true
+    onCancel()
+  }
+  return (
+    <XStack px="$1" py="$0.5" items="center" width="100%" minW={0}>
+      <Input
+        data-slot="thread-inline-rename"
+        size="sm"
+        autoFocus
+        value={words}
+        onChangeText={setWords}
+        aria-label={t('Chat title')}
+        maxLength={80}
+        flex={1}
+        minW={0}
+        height={29}
+        rounded={8}
+        bg="$panel"
+        color="$ink"
+        borderWidth={1}
+        borderColor="var(--border-strong)"
+        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+        $touchable={{ minH: 44 }}
+        $max-sm={{ minH: 44 }}
+        onFocus={(e: { target?: { select?: () => void } }) => e.target?.select?.()}
+        onBlur={commit}
+        onKeyDown={(e: {
+          key?: string
+          keyCode?: number
+          nativeEvent?: { isComposing?: boolean }
+          preventDefault?: () => void
+          stopPropagation?: () => void
+        }) => {
+          e.stopPropagation?.()
+          if (e.key === 'Escape') {
+            e.preventDefault?.()
+            cancel()
+            return
+          }
+          if (e.key === 'Enter' && !e.nativeEvent?.isComposing && e.keyCode !== 229) {
+            e.preventDefault?.()
+            commit()
+          }
+        }}
+      />
+    </XStack>
+  )
+}
+
 export function ThreadRow({
   t: thread,
   active = false,
@@ -1027,12 +1390,31 @@ export function ThreadRow({
   // What the ⋯ is for, said after its name: the row's title.
   const about = useId()
   const isSelected = menus.selected.has(thread.id)
-  // The ⋯ and the age share one place: whichever shows, the other gives way.
-  const shown = active || isSelected || menus.open === thread.id || focused
+  const isRenaming = menus.renaming === thread.id
+  // The ⋯ and the age share one place: on hover, focus, or when the row's menu is open, ⋯ replaces the age.
+  const menuOrFocus = menus.open === thread.id || focused
   // gui types these handlers by React Native's event; on the web they carry the DOM's.
   const aim = (e: unknown) => menus.aim(thread, (e as MouseEvent<HTMLElement>).currentTarget)
   // A new tab for the row itself, never for its ⋯.
   const onDots = (target: EventTarget | null) => Boolean((target as Element | null)?.closest?.('[data-slot="thread-options"]'))
+  if (isRenaming) {
+    return (
+      <YStack
+        {...(listed ? { role: 'listitem' } : null)}
+        position="relative"
+        rounded="$4"
+        data-thread={thread.id}
+        data-menu-of={menus.list}
+        data-renaming=""
+      >
+        <InlineRename
+          initial={titleOf(thread, t('Untitled'))}
+          onSave={(next) => menus.commitRename(thread, next)}
+          onCancel={menus.cancelRename}
+        />
+      </YStack>
+    )
+  }
   return (
     <YStack
       {...(listed ? { role: 'listitem' } : null)}
@@ -1045,8 +1427,10 @@ export function ThreadRow({
         ...(isSelected ? { backgroundColor: 'var(--glass)' } : null),
       }}
       data-thread={thread.id}
+      data-menu-of={menus.list}
       data-selected={isSelected ? '' : undefined}
       data-pinned={thread.pinned ? '' : undefined}
+      data-archived={thread.archived ? '' : undefined}
       onPointerDownCapture={(down: unknown) => {
         const e = down as MouseEvent<HTMLElement> & { pointerType?: string }
         if (e.button !== 0 || onDots(e.target)) return
@@ -1135,7 +1519,7 @@ export function ThreadRow({
           items="center"
           justify="center"
           pointerEvents="none"
-          z={2}
+          z="var(--z-raised)"
           aria-hidden
         >
           <XStack
@@ -1166,7 +1550,8 @@ export function ThreadRow({
           b={0}
           items="center"
           pointerEvents="none"
-          opacity={shown ? 0 : 1}
+          opacity={menuOrFocus ? 0 : 1}
+          $group-hover={{ opacity: 0 }}
           $touchable={{ opacity: 0 }}
         >
           {aside}
@@ -1188,11 +1573,15 @@ export function ThreadRow({
             items="center"
             justify="center"
             cursor="pointer"
-            bg="transparent"
-            display="none"
-            // A thumb's 44px on a touch screen (lib/tap.ts), centred on the row and over its edges.
-            // On desktop, right-clicking the row opens the context menu directly without a "..." button.
-            $touchable={{ display: 'flex', opacity: 1, minW: 44, minH: 44 }}
+            bg={menus.open === thread.id ? '$hover' : 'transparent'}
+            display="flex"
+            opacity={menuOrFocus ? 1 : 0}
+            $group-hover={{ opacity: 1 }}
+            focusStyle={{ opacity: 1 }}
+            focusVisibleStyle={{ opacity: 1, outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+            $touchable={{ opacity: 1, minW: 44, minH: 44 }}
+            $max-sm={{ opacity: 1, minW: 44, minH: 44 }}
+            transition="quickest"
             hoverStyle={{ bg: '$hover' }}
             // Before gui's own press handler, which opens the menu and stops there.
             onPointerDownCapture={aim}
@@ -1200,7 +1589,7 @@ export function ThreadRow({
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
           >
-            <MoreHorizontal size={15} aria-hidden />
+            <MoreHorizontal size={15} color="var(--muted-foreground)" aria-hidden />
           </XStack>
         </DropdownMenuTrigger>
       </XStack>
@@ -1237,8 +1626,10 @@ export function ThreadMore({ t: thread }: { t: Thread }) {
         cursor="pointer"
         bg={isOpen ? '$hover' : 'transparent'}
         opacity={isOpen || focused || hovered ? 1 : 0.72}
+        transition="quickest"
         hoverStyle={{ bg: '$hover', opacity: 1 }}
-        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor', opacity: 1 }}
+        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)', opacity: 1 }}
+        $max-sm={{ minW: 44, minH: 44 }}
         // Before gui's own press handler, which opens the menu and stops there.
         onPointerDownCapture={aim}
         onKeyDownCapture={aim}
@@ -1284,24 +1675,46 @@ function Rename({
   }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent maxW={440} rounded="$6" gap="$3" onCloseAutoFocus={onCloseAutoFocus}>
+      <DialogContent maxW={440} width="calc(100vw - 24px)" rounded="$6" gap="$3" onCloseAutoFocus={onCloseAutoFocus}>
         <DialogTitle>{t('Rename chat')}</DialogTitle>
         <Input
           autoFocus
           value={words}
           onChangeText={setWords}
           aria-label={t('Chat title')}
+          borderColor="var(--border-strong)"
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+          $max-sm={{ minH: 44 }}
           maxLength={80}
           onKeyDown={(e: { key?: string; keyCode?: number; nativeEvent?: { isComposing?: boolean } }) => {
+            if (e.key === 'Escape') {
+              onOpenChange(false)
+              return
+            }
             // An Enter that ends an IME composition writes the word; it does not save.
             if (e.key === 'Enter' && !e.nativeEvent?.isComposing && e.keyCode !== 229) submit()
           }}
         />
-        <XStack gap="$2" justify="flex-end">
-          <Button size="sm" variant="outline" rounded={999} onPress={() => onOpenChange(false)}>
+        <XStack gap="$2" justify="flex-end" flexWrap="wrap">
+          <Button
+            size="sm"
+            variant="outline"
+            rounded={999}
+            borderColor="var(--border-strong)"
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+            $max-sm={{ minH: 44 }}
+            onPress={() => onOpenChange(false)}
+          >
             {t('Cancel')}
           </Button>
-          <Button size="sm" rounded={999} disabled={!words.trim()} onPress={submit}>
+          <Button
+            size="sm"
+            rounded={999}
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+            $max-sm={{ minH: 44 }}
+            disabled={!words.trim()}
+            onPress={submit}
+          >
             {t('Save')}
           </Button>
         </XStack>
@@ -1327,21 +1740,34 @@ function Delete({
   const { t } = useI18n()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent maxW={440} rounded="$6" gap="$3" onCloseAutoFocus={onCloseAutoFocus}>
+      <DialogContent maxW={440} width="calc(100vw - 24px)" rounded="$6" gap="$3" onCloseAutoFocus={onCloseAutoFocus}>
         <DialogTitle>{t('Delete chat?')}</DialogTitle>
         <SizableText size="$2" color="$soft">
           {t('“{title}” is deleted for good, with every link it was shared by. To keep it out of the list instead, archive it.', {
             title: thread ? titleOf(thread, t('Untitled')) : '',
           })}
         </SizableText>
-        <XStack gap="$2" justify="flex-end">
-          <Button size="sm" variant="outline" rounded={999} onPress={() => onOpenChange(false)}>
+        <XStack gap="$2" justify="flex-end" flexWrap="wrap">
+          <Button
+            size="sm"
+            variant="outline"
+            rounded={999}
+            borderColor="var(--border-strong)"
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+            $max-sm={{ minH: 44 }}
+            onPress={() => onOpenChange(false)}
+          >
             {t('Cancel')}
           </Button>
           <Button
             size="sm"
-            variant="destructive"
             rounded={999}
+            bg="var(--state-error)"
+            borderColor="var(--state-error)"
+            color="var(--pure-white)"
+            hoverStyle={{ bg: 'var(--state-error)', opacity: 0.9 }}
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+            $max-sm={{ minH: 44 }}
             disabled={!thread}
             onPress={() => {
               // Once: a second press while the dialog closes would ask the store to delete it again.

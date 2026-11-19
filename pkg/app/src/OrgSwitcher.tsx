@@ -100,7 +100,12 @@ export function OrgSwitcherDropdown({
       }
     }
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        onClose()
+        queueMicrotask(() => (triggerRef?.current as HTMLElement | null)?.focus?.())
+      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     document.addEventListener('keydown', handleKeyDown)
@@ -267,6 +272,8 @@ export function TopOrgSelector() {
         paddingInlineStart={6}
         paddingInlineEnd={8}
         aria-label={t('Switch organization')}
+        aria-expanded={open}
+        aria-haspopup="menu"
       >
         {/* The disc behind the mark is neutral. A brand colour here is the ORG's
             to supply — `face` is its own logo when IAM holds one — and a fixed
@@ -314,7 +321,7 @@ export function TopOrgSelector() {
 export function Tiles() {
   const { t } = useI18n()
   const { orgs, active, choose } = useOrgList()
-  if (orgs.length === 0) return null
+  if (orgs.length <= 1) return null
   return (
     <YStack data-slot="org-tiles" role="group" aria-label={t('Organizations')} items="center" gap={10} pt={10} pb={6}>
       {orgs.map((o) => {

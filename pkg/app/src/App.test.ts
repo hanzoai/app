@@ -12,11 +12,11 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 // names itself: what is under test is which parts Betas, Tabs and Chat draw,
 // not how each is drawn. A part that takes places says how many groups it got.
 const { part, stub, state, through } = vi.hoisted(() => {
-  type Part = { children?: ReactNode; 'data-slot'?: string; pt?: unknown; pb?: unknown; paddingInlineEnd?: unknown }
+  type Part = { children?: ReactNode; 'data-slot'?: string; pt?: unknown; pb?: unknown; paddingInlineEnd?: unknown; display?: unknown }
   const through = ({ children }: { children?: ReactNode }) => createElement(Fragment, null, children)
   // The frame's padding is what these tests read, so it is written on the stand-in.
-  const part = ({ children, 'data-slot': slot, pt, pb, paddingInlineEnd }: Part) =>
-    createElement('div', { 'data-slot': slot, 'data-pt': pt as string | undefined, 'data-pb': pb as string | undefined, 'data-pe': paddingInlineEnd as string | undefined }, children)
+  const part = ({ children, 'data-slot': slot, pt, pb, paddingInlineEnd, display }: Part) =>
+    createElement('div', { 'data-slot': slot, 'data-pt': pt as string | undefined, 'data-pb': pb as string | undefined, 'data-pe': paddingInlineEnd as string | undefined, 'data-display': display as string | undefined }, children)
   const stub = (slot: string) => (props: { places?: unknown[]; children?: ReactNode }) =>
     createElement('div', { 'data-slot': slot, 'data-places': props.places === undefined ? 'none' : String(props.places.length) }, props.children)
   const state = { path: '/beta', drawer: 'shut' as 'shut' | 'open' }
@@ -43,12 +43,14 @@ vi.mock('./Learning', () => ({ Learning: () => null }))
 vi.mock('./dev', () => ({ isPlans: () => false, leave: () => {}, useDevHost: () => ({ go: () => {}, path: '', token: () => '' }) }))
 vi.mock('./Gate', () => ({ Gate: through }))
 vi.mock('./host', () => ({ useHost: () => ({ router: { back: () => {}, forward: () => {}, push: () => {} }, path: state.path }) }))
-vi.mock('./kept', () => ({ useKept: () => [false, () => {}] }))
+vi.mock('./kept', () => ({ useKept: (_k: string, initial: unknown) => [initial, () => {}] }))
 vi.mock('./Rail', () => ({
   Mark: ({ 'data-slot': slot }: { 'data-slot'?: string }) => (slot ? createElement('div', { 'data-slot': slot }) : null),
   raised: () => null,
   Rail: stub('rail'),
-  Toggle: () => null,
+  RAIL_FOLDED: 52,
+  usePinnedNav: () => [[], () => {}, () => {}],
+  Toggle: ({ 'data-slot': slot = 'sidebar-toggle' }: { 'data-slot'?: string }) => createElement('div', { 'data-slot': slot }),
 }))
 vi.mock('./Drawer', () => ({
   Foot: () => null,
@@ -136,10 +138,12 @@ describe('Betas and hosted apps keep the sidebar column', () => {
     expect(html).toMatch(/data-slot="drawer"[^>]*>.*data-slot="app-column" data-places="0"/)
   })
 
-  test('a phone’s menu draws the rail down its start edge, every product a mark, and no foot of its own', () => {
+  test('a phone’s menu is one sidebar column: no side-by-side rail, and no foot of its own', () => {
     state.drawer = 'open'
     const html = draw('/chat')
-    expect(html).toMatch(/data-slot="drawer"[^>]*>.*data-slot="drawer-rail".*data-slot="app-column"/)
+    // First Build: a single unified drawer sidebar replaced the rail-beside-column menu.
+    expect(html).not.toContain('data-slot="drawer-rail"')
+    expect(html).toMatch(/data-slot="drawer"[^>]*>.*data-slot="app-column"/)
     expect(html).not.toContain('data-slot="drawer-foot"')
     expect(html).not.toContain('data-slot="drawer-chat"')
   })
@@ -175,9 +179,10 @@ describe('Betas and hosted apps keep the sidebar column', () => {
 describe('the pane keeps one gap all round', () => {
   const frame = (html: string) => html.match(/<div[^>]*data-slot="frame"[^>]*>/)![0]
 
-  test('above, below and at its end the frame leaves the same gap', () => {
+  test('below and at its end the frame leaves the gap; Chat and Dev sit flush with the top bar', () => {
     const tag = frame(draw('/chat'))
-    expect(tag).toContain('data-pt="var(--pane-gap)"')
+    // First Build: Chat/Dev have a title bar above, so no gap above the frame.
+    expect(tag).toContain('data-pt="0"')
     expect(tag).toContain('data-pb="var(--pane-gap)"')
     expect(tag).toContain('data-pe="var(--pane-gap)"')
   })
@@ -190,10 +195,13 @@ describe('the pane keeps one gap all round', () => {
     for (const path of ['/beta', '/tabs']) expect(frame(draw(path))).toContain('data-pt="var(--pane-gap)"')
   })
 
-  test('only a desktop window bar draws back and forward', () => {
+  test('only a desktop window bar draws back and forward, and web hides the duplicate title-bar toggle', () => {
     expect(draw('/chat')).not.toContain('data-slot="back"')
     expect(draw('/chat')).not.toContain('data-slot="forward"')
+    const webStart = draw('/chat').match(/<div data-slot="title-bar-start"[^>]*>([\s\S]*?)<\/div>/)?.[0] ?? ''
+    expect(webStart).toContain('data-slot="sidebar-toggle"') // mobile drawer toggle only; desktop toggle omitted on web
     expect(draw('/chat', undefined, {})).toContain('data-slot="back"')
     expect(draw('/chat', undefined, {})).toContain('data-slot="forward"')
+    expect(draw('/chat')).toContain('data-display="none"') // desktop rail hidden while sidebar is open
   })
 })

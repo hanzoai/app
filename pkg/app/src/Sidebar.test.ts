@@ -1,12 +1,8 @@
-import { cloneElement, createElement, isValidElement, type ReactElement, type ReactNode } from 'react'
+import { cloneElement, createElement, Fragment, isValidElement, type ReactElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, test, vi } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 
-// The drawing libraries are not under test and do not load outside a bundler.
-// A part draws its children as a div, or, given `render`, as that element, the
-// way gui draws a part into the element it is handed. A menu draws its trigger
-// and then each item's label, in order, as if open.
-const { part, menu } = vi.hoisted(() => {
+const { part, menu, menuItem, menuLabel, menuBack, menuSeparator, through, devState } = vi.hoisted(() => {
   type Part = {
     children?: ReactNode
     render?: ReactElement | string
@@ -16,18 +12,24 @@ const { part, menu } = vi.hoisted(() => {
     'aria-current'?: string
     'data-slot'?: string
     role?: string
-    /** A sidebar row's: lit, as @hanzo/ui's SidebarItem marks it. */
+    'data-item'?: string
     active?: boolean
   }
-  const part = ({ children, render, icon, label, 'aria-label': named, 'aria-current': current, 'data-slot': slot, role, active }: Part) => {
-    const attrs = { 'data-slot': slot, 'aria-label': label ?? named, 'aria-current': current ?? (active ? 'page' : undefined), role }
+  const devState = { on: false, opened: new Set(['finance']) }
+  const through = ({ children }: { children?: ReactNode }) => createElement(Fragment, null, children)
+  const part = ({ children, render, icon, label, 'aria-label': named, 'aria-current': current, 'data-slot': slot, 'data-item': item, role, active }: Part) => {
+    const attrs = { 'data-slot': slot, 'data-item': item, 'aria-label': label ?? named, 'aria-current': current ?? (active ? 'page' : undefined), role }
     const kids = [icon, children].filter((k) => k != null)
     if (isValidElement(render)) return cloneElement(render, attrs, ...kids)
     return createElement(typeof render === 'string' ? render : 'div', attrs, ...kids)
   }
-  const menu = ({ trigger, items }: { trigger: ReactElement; items: { key: string; label?: string; description?: string }[] }) =>
-    createElement('div', { 'data-slot': 'menu' }, trigger, ...items.map((i) => createElement('span', { key: i.key, 'data-item': i.key }, `${i.label} ${i.description ?? ''}`)))
-  return { part, menu }
+  const menu = ({ trigger, items, children }: { trigger: ReactElement; items?: { key: string; label?: string; description?: string }[]; children?: ReactNode }) =>
+    createElement('div', { 'data-slot': 'menu' }, trigger, ...(items ?? []).map((i) => createElement('span', { key: i.key, 'data-item': i.key }, `${i.label} ${i.description ?? ''}`)), children)
+  const menuItem = ({ children, actions, page, 'aria-current': current, 'data-item': key }: { children?: ReactNode; actions?: ReactNode; page?: string; 'aria-current'?: string; 'data-item'?: string }) => createElement('span', { 'data-item': key, 'data-page': page, 'aria-current': current }, children, actions)
+  const menuLabel = ({ label, children }: { label?: string; children?: ReactNode }) => createElement('section', { 'aria-label': label }, createElement('b', { 'data-heading': '' }, label), children)
+  const menuBack = ({ children }: { children?: ReactNode }) => createElement('span', { 'data-back': '' }, children)
+  const menuSeparator = () => createElement('hr', { 'data-sep': '' })
+  return { part, menu, menuItem, menuLabel, menuBack, menuSeparator, through, devState }
 })
 
 const { MARKS } = vi.hoisted(() => {
@@ -36,11 +38,27 @@ const { MARKS } = vi.hoisted(() => {
   return { MARKS: { chat: one, dev: one, design: one, studio: one, tabs: one, library: one, scheduled: one, customize: one } }
 })
 vi.mock('@hanzo/gui', () => ({ Text: part, XStack: part, YStack: part }))
-vi.mock('@hanzo/ui', () => ({ DropdownMenu: menu, Switch: part }))
+vi.mock('@hanzo/ui', () => ({
+  Button: part,
+  DropdownMenu: menu,
+  DropdownMenuContent: through,
+  DropdownMenuItem: menuItem,
+  DropdownMenuSection: menuLabel,
+  DropdownMenuPage: through,
+  DropdownMenuBack: menuBack,
+  DropdownMenuSeparator: menuSeparator,
+  Switch: part,
+  Text: part,
+  Tooltip: through,
+  TooltipContent: part,
+  TooltipProvider: through,
+  TooltipTrigger: through,
+  View: part,
+  toast: { success: () => {}, error: () => {} },
+}))
 vi.mock('@hanzo/ui/chat', () => ({ Sidebar: part, SidebarIconButton: part, SidebarItem: part, StatusDot: () => null }))
 vi.mock('@hanzogui/shell', () => ({ HanzoMark: () => null }))
-// The reader holds beta.finance and nothing else.
-vi.mock('./Betas', () => ({ BetasDialog: () => null, useBetas: () => ({ open: (id: string) => id === 'finance' }) }))
+vi.mock('./Betas', () => ({ BetasDialog: () => null, useBetas: () => ({ open: (id: string) => devState.opened.has(id) }) }))
 vi.mock('@hanzo/build', () => {
   const route = (at: string) =>
     at === '-/artifacts'
@@ -52,7 +70,7 @@ vi.mock('@hanzo/build', () => {
           : at.startsWith('-/settings')
             ? { kind: 'settings', section: 'general' }
             : { kind: 'new' }
-  const group = (id: string, label: string, names: string[]) => ({ id, label, links: names.map((n) => ({ id: n.toLowerCase(), label: n, icon: null })) })
+  const group = (id: string, label: string, names: string[]) => ({ id, label, links: names.map((n) => ({ id: n === 'New run' ? 'new' : n.toLowerCase(), label: n, icon: null })) })
   return {
     MARKS,
     DOTS: {},
@@ -71,32 +89,56 @@ vi.mock('./Account', () => ({ Made: () => null, Account: () => createElement('di
 vi.mock('./Recents', () => ({
   Recents: ({ mode, host }: { mode: string; host: { name?: string } }) => createElement('div', { 'data-slot': 'recents', 'data-mode': mode, 'data-host': host.name ?? '' }),
 }))
-vi.mock('./Setup', () => ({ Setup: () => null }))
-vi.mock('./span', () => ({ useSpan: () => ({ ref: null, style: {}, span: 272, move: () => {}, keep: () => {} }) }))
+vi.mock('./Setup', () => ({ Setup: () => createElement('div', { 'data-slot': 'setup-card' }) }))
+vi.mock('./span', () => ({ useSpan: () => ({ ref: null, style: {}, span: 256, move: () => {}, keep: () => {} }) }))
+vi.mock('./lib/dev-mode', () => ({ useDevMode: () => [devState.on, () => {}], rememberSettingsReturn: () => {} }))
 
 import { AnonSettingsPane, Sidebar } from './Sidebar'
-import { Rail } from './Rail'
+import { moreGroups } from './MoreMenu'
+import { Rail, type Pins } from './Rail'
 import { TABS, WORKSPACE, type Place } from './lib/host'
 
 const hostAt = (path = '') => ({ go: () => {}, path }) as unknown as Parameters<typeof Sidebar>[0]['host']
 const host = hostAt()
 const noop = () => {}
+const pins: Pins = [['chat', 'dev', 'design', 'library', 'tabs'], noop, noop]
 
-const column = (mode: Place['mode'], path = '') => renderToStaticMarkup(createElement(Sidebar, { host: hostAt(path), mode, thread: null, go: noop, onShut: noop, onBack: noop }))
-const rail = (mode: Place['mode'], toggle?: () => void, where: string | null = null) =>
-  renderToStaticMarkup(createElement(Rail, { host, mode, at: where, open: true, toggle, onChat: noop, onDev: noop, onDesign: noop, onStudio: noop, onTabs: noop, go: noop, onOrg: noop }))
+const column = (mode: Place['mode'], path = '', held: Pins = pins) => renderToStaticMarkup(createElement(Sidebar, { pins: held, host: hostAt(path), mode, thread: null, go: noop, onShut: noop, onBack: noop }))
+const rail = (mode: Place['mode'], onOpen?: () => void, where: string | null = null) =>
+  renderToStaticMarkup(
+    createElement(Rail, {
+      pins,
+      host,
+      mode,
+      at: where,
+      open: false,
+      onOpen,
+      onNew: noop,
+      onChat: noop,
+      onDev: noop,
+      onDesign: noop,
+      onStudio: noop,
+      onTabs: noop,
+      go: noop,
+      onOrg: noop,
+    }),
+  )
 
-/** Where a string first stands in the markup, failing when it is absent. */
 const at = (html: string, s: string): number => {
   const i = html.indexOf(s)
   expect(i, s).toBeGreaterThanOrEqual(0)
   return i
 }
 
-describe('the rail', () => {
-  test('Chat, Dev, Design, Tabs, Library, Scheduled tasks, Customize, then More, and the account at the foot', () => {
+beforeEach(() => {
+  devState.on = false
+  devState.opened = new Set(['finance'])
+})
+
+describe('the folded rail', () => {
+  test('Pinned items (Chat, Dev, Design, Library, Tabs), then More, and the account at the foot; Dev places stay in Dev sidebar', () => {
     const html = rail('chat')
-    const order = ['Chat', 'Dev', 'Design', 'Tabs', 'Library', 'Scheduled tasks', 'Customize', 'More'].map((n) => at(html, `aria-label="${n}"`))
+    const order = ['Chat', 'Dev', 'Design', 'Library', 'Tabs', 'More'].map((n) => at(html, `aria-label="${n}"`))
     expect(order).toEqual([...order].sort((a, b) => a - b))
     expect(at(html, 'data-slot="me"')).toBeGreaterThan(order.at(-1)!)
     for (const place of ['Templates', 'Projects', 'Issues', 'Machines', 'Environments']) {
@@ -107,12 +149,12 @@ describe('the rail', () => {
   test('in anonymous mode (person === null), hides Design, Tabs, Scheduled tasks, Customize, and Betas on the rail', () => {
     const anonHost = { ...host, person: null } as unknown as Parameters<typeof Sidebar>[0]['host']
     const html = renderToStaticMarkup(
-      createElement(Rail, { host: anonHost, mode: 'chat', at: null, open: true, onChat: noop, onDev: noop, onDesign: noop, onStudio: noop, onTabs: noop, go: noop, onOrg: noop }),
+      createElement(Rail, { pins, host: anonHost, mode: 'chat', at: null, open: false, onChat: noop, onDev: noop, onDesign: noop, onStudio: noop, onTabs: noop, go: noop, onOrg: noop }),
     )
     for (const kept of ['Chat', 'Dev', 'Library']) {
       expect(html).toContain(`aria-label="${kept}"`)
     }
-    for (const hidden of ['Design', 'Studio', 'Tabs', 'Scheduled tasks', 'Customize', 'Betas', 'More']) {
+    for (const hidden of ['Design', 'Studio', 'Tabs', 'Terminals', 'Scheduled tasks', 'Automations', 'Customize', 'Extensions', 'Betas', 'More', 'Build']) {
       expect(html).not.toContain(`aria-label="${hidden}"`)
     }
   })
@@ -123,7 +165,6 @@ describe('the rail', () => {
     expect(library).toMatch(/aria-label="Library" aria-current="page"/)
     expect(library).not.toMatch(/aria-label="Dev" aria-current="page"/)
     expect(rail('dev', undefined, '-/customize')).toMatch(/aria-label="Customize" aria-current="page"/)
-    // Machines, which the builder files under its Settings, is Dev's own place: Settings is the site's, at /settings.
     expect(rail('dev', undefined, '-/settings/machines')).toMatch(/aria-label="Dev" aria-current="page"/)
   })
 
@@ -133,66 +174,35 @@ describe('the rail', () => {
     expect(rail('dev')).toMatch(/aria-label="Dev" aria-current="page"/)
   })
 
-  test('the sidebar toggle leads it where the host asks, and only there', () => {
-    expect(rail('chat')).not.toContain('sidebar-toggle')
+  test('the expand button leads the rail when folded and calls onOpen', () => {
+    expect(rail('chat')).not.toContain('rail-expand')
     const html = rail('chat', noop)
-    expect(at(html, 'data-slot="sidebar-toggle"')).toBeLessThan(at(html, 'aria-label="Chat"'))
-    expect(html).toContain('aria-label="Close sidebar"')
+    expect(at(html, 'data-slot="rail-expand"')).toBeLessThan(at(html, 'aria-label="Chat"'))
+    expect(html).toContain('aria-label="Open sidebar"')
   })
 
-  test('More holds the products on hosts of their own, and none of Dev’s places; Tabs is drawn in the app', () => {
+  test('folded More holds unpinned items in exact order plus external products, and none of Dev’s places', () => {
     const html = rail('chat')
-    expect(at(html, 'data-item="team"')).toBeGreaterThan(at(html, 'aria-label="More"'))
-    for (const k of ['tabs', 'projects', 'templates', 'issues', 'machines', 'environments', 'library', 'scheduled', 'customize']) expect(html).not.toContain(`data-item="${k}"`)
+    expect(at(html, 'aria-label="Library"')).toBeLessThan(at(html, 'aria-label="More"'))
+    expect(at(html, 'data-item="scheduled"')).toBeLessThan(at(html, 'data-item="customize"'))
+    expect(at(html, 'data-item="ext-team"')).toBeGreaterThan(at(html, 'aria-label="More"'))
+    // A beta the reader may open shows without Developer mode, as before; one they may not open does not.
+    expect(at(html, 'data-item="beta-finance"')).toBeGreaterThan(at(html, 'data-item="ext-team"'))
+    expect(html).not.toContain('data-item="beta-erp"')
+    devState.on = true
+    expect(rail('chat')).toContain('data-item="beta-finance"')
+    for (const k of ['projects', 'templates', 'issues', 'machines', 'environments']) expect(html).not.toContain(`data-item="${k}"`)
     expect(html, 'nothing on the rail leaves for tabs.hanzo.ai').not.toContain(TABS)
     expect(TABS).toBe('https://tabs.hanzo.ai')
     expect(WORKSPACE).toBe('https://hanzo.team')
   })
-
-  test('More holds the apps in beta the reader may open', () => {
-    const html = rail('chat')
-    expect(at(html, 'data-item="beta-finance"')).toBeGreaterThan(at(html, 'data-item="team"'))
-    expect(html, 'an app in beta the reader was not granted').not.toContain('data-item="beta-erp"')
-  })
-
-  test('Studio offers no Team: no More on a laptop, and a phone’s More holds the raised places alone', () => {
-    const html = rail('studio')
-    expect(html).not.toContain('data-item="team"')
-    expect(html).not.toContain('aria-label="More"')
-    const rows = renderToStaticMarkup(createElement(Rail, { host, mode: 'studio', at: null, open: true, rows: true, onChat: noop, onDev: noop, onStudio: noop, onTabs: noop, go: noop, onOrg: noop }))
-    expect(rows).toContain('data-item="library"')
-    expect(rows).not.toContain('data-item="team"')
-    expect(rows).not.toContain('data-item="raised"')
-  })
 })
 
 describe('a phone’s menu', () => {
-  const rows = (mode: Place['mode'], where: string | null = null) =>
-    renderToStaticMarkup(createElement(Rail, { host, mode, at: where, open: true, rows: true, onChat: noop, onDev: noop, onDesign: noop, onStudio: noop, onTabs: noop, go: noop, onOrg: noop }))
-
-  test('lists the places as rows: Design, Tabs, then More, which the rail’s own places lead', () => {
-    const html = rows('chat')
-    expect(html).toContain('data-slot="places"')
-    expect(at(html, 'data-slot="place-design"')).toBeLessThan(at(html, 'data-slot="place-tabs"'))
-    expect(at(html, 'data-slot="place-tabs"')).toBeLessThan(at(html, 'data-slot="place-more"'))
-    const more = ['library', 'scheduled', 'customize', 'team', 'beta-finance'].map((k) => at(html, `data-item="${k}"`))
-    expect(more).toEqual([...more].sort((a, b) => a - b))
-  })
-
-  test('holds neither Chat nor Dev, which are the rail’s marks beside it, nor the account, which is the foot’s', () => {
-    const html = rows('chat')
-    for (const slot of ['rail-chat', 'rail-dev', 'me', 'bar-mode']) expect(html).not.toContain(`data-slot="${slot}"`)
-  })
-
-  test('lights the place the reader is in', () => {
-    expect(rows('design')).toMatch(/data-slot="place-design" aria-current="page"/)
-    expect(rows('tabs')).toMatch(/data-slot="place-tabs" aria-current="page"/)
-    expect(rows('chat')).not.toContain('aria-current="page"')
-  })
-
   test('in the drawer the column holds its own rows, then the places, then Recents, and the foot last', () => {
     const html = renderToStaticMarkup(
       createElement(Sidebar, {
+        pins,
         host,
         mode: 'chat',
         thread: null,
@@ -211,37 +221,115 @@ describe('a phone’s menu', () => {
   })
 })
 
-describe('the sidebar', () => {
-  test('carries no switch between the modes: the rail is how the app moves', () => {
-    for (const mode of ['chat', 'dev'] as const) {
-      const html = column(mode)
-      expect(html).not.toContain('Switch Hanzo')
-      expect(html).not.toContain('mode-switch')
-    }
+describe('the unified desktop sidebar', () => {
+  test('eliminates duplicate bottom-left column-settings/column-upgrade rows, renders Account at foot, and gates Setup behind Developer mode', () => {
+    const simpleHtml = column('chat')
+    expect(simpleHtml).not.toContain('data-slot="column-settings"')
+    expect(simpleHtml).not.toContain('data-slot="column-upgrade"')
+    expect(simpleHtml).not.toContain('data-slot="setup-card"')
+    expect(simpleHtml).toContain('data-slot="sidebar-account"')
+    expect(simpleHtml).toContain('data-slot="me"')
+
+    devState.on = true
+    const devHtml = column('chat')
+    expect(devHtml).not.toContain('data-slot="column-settings"')
+    expect(devHtml).toContain('data-slot="setup-card"')
   })
 
-  test('Chat: its name, the bell and the search, New chat, then Recents', () => {
+  test('carries one fold button, Activity bell, Search, primary New action, Pinned products, Recents, the More row under it, and Account', () => {
     const html = column('chat')
     expect(at(html, 'Hanzo')).toBeLessThan(at(html, 'aria-label="Activity"'))
     expect(at(html, 'aria-label="Activity"')).toBeLessThan(at(html, 'aria-label="Search"'))
-    expect(at(html, 'aria-label="Search"')).toBeLessThan(at(html, 'New chat'))
-    expect(at(html, 'New chat')).toBeLessThan(at(html, 'data-slot="recents"'))
-    expect(html, 'Tabs lives behind the rail’s More').not.toContain(TABS)
+    expect(at(html, 'aria-label="Search"')).toBeLessThan(at(html, 'data-slot="sidebar-fold"'))
+    expect(at(html, 'data-slot="sidebar-fold"')).toBeLessThan(at(html, 'New chat'))
+    expect(at(html, 'New chat')).toBeLessThan(at(html, 'data-slot="sidebar-nav"'))
+    expect(at(html, 'data-slot="rail-pinned"')).toBeLessThan(at(html, 'data-slot="recents"'))
+    expect(at(html, 'data-slot="recents"')).toBeLessThan(at(html, 'data-slot="place-more"'))
+    expect(at(html, 'data-slot="place-more"')).toBeLessThan(at(html, 'data-slot="sidebar-account"'))
+    expect(html).not.toContain('data-slot="nav-latest"')
+    // First Build: Tabs is a locked top-5 app, an internal /tabs page, not tabs.hanzo.ai.
+    expect(html, 'Tabs is locked in the top 5 main apps').toContain('data-slot="rail-tabs"')
   })
 
-  test('Dev: its name, then its own places, then Recents; nothing the rail holds', () => {
+  test('Dev: renders New run, indents Dev sub-links (Projects, Issues, Templates) right beneath active Dev row, then Recents; no duplicate column', () => {
     const html = column('dev')
-    expect(at(html, '>Dev<')).toBeLessThan(at(html, 'New run'))
-    expect(at(html, 'New run')).toBeLessThan(at(html, 'Templates'))
+    expect(at(html, 'New run')).toBeLessThan(at(html, 'data-slot="rail-dev"'))
+    expect(at(html, 'data-slot="rail-dev"')).toBeLessThan(at(html, 'data-slot="nav-sublinks"'))
+    expect(at(html, 'data-slot="nav-sublinks"')).toBeLessThan(at(html, 'Templates'))
     expect(at(html, 'Templates')).toBeLessThan(at(html, 'data-slot="recents"'))
-    for (const word of ['Library', 'Scheduled tasks', 'Customize', '>Make<', '>Run<', '>Setup<']) expect(html).not.toContain(word)
+    expect(html).not.toContain('data-slot="app-places"')
+    expect(html).toContain('data-slot="nav-item-options"')
+    // The top 5 are locked: they carry no Pin item; only apps in More do.
+    expect(html).not.toContain('data-item="pin"')
     expect(html).not.toContain(TABS)
+  })
+
+  test('More shrinks as places are pinned and goes away when none is left in it', () => {
+    const inMore = [...column('chat').matchAll(/data-item="pin-([^"]+)"/g)].map((m) => m[1])
+    expect(inMore).toContain('scheduled')
+    const pinnedOne = column('chat', '', [[...pins[0], 'scheduled'], noop, noop])
+    expect(pinnedOne).not.toContain('data-item="pin-scheduled"')
+    expect(pinnedOne).toContain('data-item="pin-customize"')
+    expect(pinnedOne).toContain('data-slot="place-more"')
+    const all = column('chat', '', [[...pins[0], ...inMore], noop, noop])
+    expect(all).not.toContain('data-slot="place-more"')
+  })
+
+  test('More is one row under Recents that opens a menu: every other place in it, each pinnable, none listed inline', () => {
+    const html = column('chat')
+    expect(html.match(/data-slot="place-more"/g)).toHaveLength(1)
+    for (const k of ['scheduled', 'customize', 'betas', 'ext-team', 'ext-bots', 'ext-market', 'beta-finance']) {
+      expect(html, k).toContain(`data-item="${k}"`)
+    }
+    // One pin button per row, as the row's own control (no "Pin X to top" rows), named for the sidebar.
+    expect(html).toContain('data-item="pin-scheduled"')
+    expect(html).not.toMatch(/Pin [^"<]* to top</)
+    expect(html).toMatch(/data-page="pin"/)
+    expect(html).toContain('data-item="pin-to-scheduled"')
+    const headings = [...html.matchAll(/data-heading="">([^<]*)</g)].map((m) => m[1])
+    expect(headings.slice(0, 2)).toEqual(['Workspace', 'Business'])
+    // The five locked apps are never offered for pinning, and the menu's entries are not drawn as rows in the column.
+    expect(html).not.toContain('data-item="pin-chat"')
+    expect(html).not.toContain('aria-label="Scheduled tasks"')
+    expect(column('dev', '-/customize')).not.toContain('data-slot="place-more"')
+  })
+
+  test('an app that lives in More draws its own row and sub-links in the list while the reader is in it (Studio)', () => {
+    devState.opened = new Set(['finance', 'studio'])
+    const places = [{ id: 'studio', label: '', links: [{ id: 'new', label: 'New creation', icon: null }, { id: 'gallery', label: 'Gallery', icon: null }] }]
+    const html = renderToStaticMarkup(createElement(Sidebar, { pins, host: hostAt(''), mode: 'studio', thread: null, go: noop, onShut: noop, onBack: noop, places }))
+    expect(at(html, 'data-slot="rail-pinned"')).toBeLessThan(at(html, 'data-slot="rail-studio"'))
+    expect(at(html, 'data-slot="rail-studio"')).toBeLessThan(at(html, 'data-slot="nav-sublinks"'))
+    expect(at(html, 'data-slot="nav-sublinks"')).toBeLessThan(at(html, 'Gallery'))
+    expect(at(html, 'Gallery')).toBeLessThan(at(html, 'data-slot="place-more"'))
+    // Not lit twice: the More row stays plain, the menu still lists Studio.
+    expect(html).not.toMatch(/data-slot="place-more"[^>]*aria-current/)
+    expect(html).toContain('data-item="studio"')
+    expect(column('chat')).not.toContain('data-slot="rail-studio"')
+  })
+
+  test('the phone’s drawer lists the five apps and the grouped More, with Recents below', () => {
+    const html = renderToStaticMarkup(createElement(Sidebar, { pins, host: hostAt(''), mode: 'chat', thread: null, go: noop, onShut: noop, onBack: noop, drawer: true }))
+    const places = ['Chat', 'Dev', 'Design', 'Library', 'Tabs'].map((n) => at(html, `aria-label="${n}"`))
+    expect(places).toEqual([...places].sort((a, b) => a - b))
+    expect(at(html, 'aria-label="Tabs"')).toBeLessThan(at(html, 'aria-label="More"'))
+    expect(at(html, 'data-item="scheduled"')).toBeGreaterThan(at(html, 'aria-label="More"'))
+    expect(html).toContain('data-item="pin-scheduled"')
+  })
+
+  test('moreGroups: Workspace first, then Hanzo’s own group names in order, empty groups gone, every entry exactly once', () => {
+    const entry = (id: string) => ({ id, slot: `rail-${id}`, label: id.toUpperCase(), href: `/${id}`, on: false, icon: null, onPress: () => {} })
+    const ids = ['scheduled', 'app-crm', 'beta-finance', 'ext-team', 'ext-bots', 'ext-market', 'beta-kms', 'betas', 'app-analytics']
+    const groups = moreGroups(ids.map(entry), (k) => k)
+    expect(groups.map((g) => g.label)).toEqual(['Workspace', 'Business', 'Data', 'Agents', 'Security'])
+    expect(groups.map((g) => g.items.map((i) => i.id))).toEqual([['scheduled', 'betas'], ['app-crm', 'beta-finance', 'ext-team', 'ext-market'], ['app-analytics'], ['ext-bots'], ['beta-kms']])
+    expect(groups.flatMap((g) => g.items.map((i) => i.id)).sort()).toEqual([...ids].sort())
   })
 
   test('a place the rail holds takes the sidebar: Back, the name, its own rows, and nothing of Dev’s', () => {
     const customize = column('dev', '-/customize')
     expect(at(customize, 'aria-label="Back"')).toBeLessThan(at(customize, '>Customize<'))
-    for (const word of ['New run', 'data-slot="recents"', 'aria-label="Search"']) expect(customize).not.toContain(word)
+    for (const word of ['New run', 'data-slot="recents"']) expect(customize).not.toContain(word)
     expect(at(customize, '>Customize<')).toBeLessThan(at(customize, 'Agents'))
     expect(at(customize, 'Agents')).toBeLessThan(at(customize, 'Bots'))
     expect(at(customize, 'Bots')).toBeLessThan(at(customize, 'Skills'))
@@ -300,17 +388,17 @@ describe('the sidebar', () => {
     expect(column('flow')).not.toContain('data-slot="recents"')
     expect(column('design')).not.toContain('data-slot="recents"')
     const made = { ...hostAt(''), name: 'Design' }
-    const design = renderToStaticMarkup(createElement(Sidebar, { host: hostAt(''), mode: 'design', thread: null, go: noop, onShut: noop, onBack: noop, made }))
+    const design = renderToStaticMarkup(createElement(Sidebar, { pins, host: hostAt(''), mode: 'design', thread: null, go: noop, onShut: noop, onBack: noop, made }))
     expect(design).toContain('data-slot="recents" data-mode="design" data-host="Design"')
     expect(column('chat')).toContain('data-slot="recents" data-mode="chat"')
     expect(column('dev')).toContain('data-slot="recents" data-mode="dev"')
   })
 
-  test('Tabs lists its actions and sandboxes without Chat’s Recents', () => {
+  test('Tabs lists Terminal, Desktop, and Browser inside indented sublinks without Chat’s Recents', () => {
     const html = column('tabs')
-    expect(html).toContain('>Tabs<')
-    expect(html).toContain('New terminal')
-    expect(html).toContain('Sandboxes')
+    expect(html).toContain('Terminal')
+    expect(html).toContain('Desktop')
+    expect(html).toContain('Browser')
     expect(html).not.toContain('data-slot="recents"')
   })
 })
