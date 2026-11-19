@@ -38,7 +38,7 @@ const DEFAULT_PREFERENCES: ChatPreferences = {
   effortVersion: EFFORT_SCHEMA_VERSION,
 }
 
-/** The effort Dev takes for one chosen here (@hanzo/build `EFFORTS`: Auto, High, Max), or null for Instant, Low and Medium, which only Chat offers. */
+/** The effort Dev takes for one chosen here (@hanzo/build `EFFORTS`: Auto, Low (shown as Fast), High, Max), or null for Instant and Medium, which only Chat offers. */
 export function shared(effort: Effort): Level | null {
   return DEV.some((e) => e.id === effort) ? (effort as Level) : null
 }

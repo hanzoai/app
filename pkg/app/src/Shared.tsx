@@ -42,7 +42,7 @@ function target(): Target {
   return share ? { share } : null
 }
 
-const MEASURE = 'var(--container-prose, 48rem)'
+const MEASURE = 680
 
 export function Shared() {
   const { t } = useI18n()
@@ -96,19 +96,21 @@ export function Shared() {
 
   return (
     <YStack role="main" height="100dvh" overflowY="auto" bg="$background">
-      <XStack height={48} px="$4" items="center" justify="space-between" borderBottomWidth={1} borderColor="$borderColor" shrink={0}>
-        <Anchor href="/" aria-label={brand()}>
-          <Text fontSize="$4" fontWeight="600" color="$ink">
-            {brand()}
-          </Text>
-        </Anchor>
-        {shown.kind === 'read' && shown.shared.full ? (
-          <Text fontSize="$1" color="$soft">
-            {t('Shared with you · Read only')}
-          </Text>
-        ) : null}
-      </XStack>
-      <YStack width="100%" maxW={MEASURE} mx="auto" px="$4" py="$6" gap="$4">
+      <YStack borderBottomWidth={1} borderColor="$borderColor" shrink={0}>
+        <XStack width="100%" maxW={MEASURE} mx="auto" minH={52} px="$4" $max-sm={{ px: '$3' }} items="center" justify="space-between" gap="$3">
+          <Anchor href="/" aria-label={brand()}>
+            <Text fontSize="$4" fontWeight="600" color="$ink">
+              {brand()}
+            </Text>
+          </Anchor>
+          {shown.kind === 'read' && shown.shared.full ? (
+            <Text fontSize="$1" color="$soft">
+              {t('Shared with you · Read only')}
+            </Text>
+          ) : null}
+        </XStack>
+      </YStack>
+      <YStack flex={1} width="100%" maxW={MEASURE} mx="auto" self="center" px="$4" $max-sm={{ px: '$3', py: '$5' }} py="$7" gap="$6">
         <Body state={shown} signedIn={Boolean(isAuthenticated)} onOpen={() => setAgreed(true)} />
       </YStack>
     </YStack>
@@ -119,22 +121,26 @@ function Body({ state, signedIn, onOpen }: { state: State; signedIn: boolean; on
   const { t } = useI18n()
   if (state.kind === 'reading') {
     return (
-      <Text fontSize="$3" color="$soft" aria-live="polite">
-        {t('Opening the chat.')}
-      </Text>
+      <YStack flex={1} width="100%" maxW={460} mx="auto" self="center" items="center" justify="center" pt="$6" pb="$16" $max-sm={{ pb: '$12' }}>
+        <Text fontSize="$3" color="$soft" text="center" aria-live="polite">
+          {t('Opening the chat.')}
+        </Text>
+      </YStack>
     )
   }
   if (state.kind === 'missing' || state.kind === 'gone') {
     return (
-      <YStack gap="$3" items="flex-start">
-        <Text render="h1" fontSize="$7" fontWeight="600" color="$ink">
-          {t('This chat is no longer shared.')}
-        </Text>
-        <Text fontSize="$3" color="$soft">
-          {state.kind === 'missing' ? t('The link is incomplete. Ask for it again.') : t('The link was turned off, or it was never a link to a chat.')}
-        </Text>
+      <YStack flex={1} width="100%" maxW={480} mx="auto" self="center" items="center" justify="center" pt="$6" pb="$16" $max-sm={{ pb: '$12' }} gap="$5">
+        <YStack items="center" gap="$1.5">
+          <Text render="h1" m={0} fontSize="$7" lineHeight="$8" fontWeight="600" letterSpacing={-0.42} color="$ink" text="center">
+            {t('This chat is no longer shared.')}
+          </Text>
+          <Text fontSize="$3" color="$soft" lineHeight="$4" text="center">
+            {state.kind === 'missing' ? t('The link is incomplete. Ask for it again.') : t('The link was turned off, or it was never a link to a chat.')}
+          </Text>
+        </YStack>
         <Anchor href="/">
-          <Button size="sm" variant="outline">
+          <Button size="sm" variant="outline" minH={36} $max-sm={{ minH: 44 }} borderColor="var(--border-strong)">
             {t('Go to {brand}', { brand: brand() })}
           </Button>
         </Anchor>
@@ -142,18 +148,24 @@ function Body({ state, signedIn, onOpen }: { state: State; signedIn: boolean; on
     )
   }
   if (state.kind === 'ask') {
-    return <Ask signedIn={signedIn} />
+    return (
+      <YStack flex={1} width="100%" maxW={480} mx="auto" self="center" justify="center" pt="$6" pb="$16" $max-sm={{ pb: '$12' }}>
+        <Ask signedIn={signedIn} />
+      </YStack>
+    )
   }
   if (state.kind === 'wrong') {
     return (
-      <YStack gap="$3" items="flex-start">
-        <Text render="h1" fontSize="$6" fontWeight="600" color="$ink">
-          {t('This chat could not be opened.')}
-        </Text>
-        <Text role="alert" fontSize="$3" color="$soft">
-          {state.said}
-        </Text>
-        <Button size="sm" onClick={() => window.location.reload()}>
+      <YStack flex={1} width="100%" maxW={480} mx="auto" self="center" items="center" justify="center" pt="$6" pb="$16" $max-sm={{ pb: '$12' }} gap="$5">
+        <YStack items="center" gap="$1.5">
+          <Text render="h1" m={0} fontSize="$7" lineHeight="$8" fontWeight="600" letterSpacing={-0.42} color="$ink" text="center">
+            {t('This chat could not be opened.')}
+          </Text>
+          <Text role="alert" fontSize="$3" color="$soft" lineHeight="$4" text="center">
+            {state.said}
+          </Text>
+        </YStack>
+        <Button size="sm" variant="primary" minH={36} $max-sm={{ minH: 44 }} onClick={() => window.location.reload()}>
           {t('Try again')}
         </Button>
       </YStack>
@@ -163,22 +175,24 @@ function Body({ state, signedIn, onOpen }: { state: State; signedIn: boolean; on
   const by = shared.by || t('The person who shared it')
   if (!shared.full) {
     return (
-      <>
-        <Text render="h1" fontSize="$7" lineHeight="$7" fontWeight="600" color="$ink">
+      <YStack gap="$5">
+        <Text render="h1" m={0} fontSize="$7" lineHeight="$8" fontWeight="600" letterSpacing={-0.42} color="$ink">
           {shared.title}
         </Text>
         {shared.confirm ? (
-          <YStack gap="$3" p="$4" rounded="$4" borderWidth={1} borderColor="$borderColor" bg="$backgroundHover" role="region" aria-label={t('Open the chat')}>
-            <Text fontSize="$4" fontWeight="600" color="$ink">
-              {shared.by ? t('{name} shared this chat with you', { name: shared.by }) : t('This chat was shared with you')}
-            </Text>
-            <Text fontSize="$2" color="$soft">
-              {shared.by
-                ? t('Opening it shows {name} the name you signed in with, and keeps it under Shared with you.', { name: shared.by })
-                : t('Opening it shows them the name you signed in with, and keeps it under Shared with you.')}
-            </Text>
+          <YStack gap="$4" p="$5" $max-sm={{ p: '$4' }} rounded="$5" borderWidth={1} borderColor="$edge" bg="$panel" role="region" aria-label={t('Open the chat')}>
+            <YStack gap="$1.5">
+              <Text fontSize="$4" fontWeight="600" color="$ink">
+                {shared.by ? t('{name} shared this chat with you', { name: shared.by }) : t('This chat was shared with you')}
+              </Text>
+              <Text fontSize="$2" color="$soft" lineHeight="$3">
+                {shared.by
+                  ? t('Opening it shows {name} the name you signed in with, and keeps it under Shared with you.', { name: shared.by })
+                  : t('Opening it shows them the name you signed in with, and keeps it under Shared with you.')}
+              </Text>
+            </YStack>
             <XStack>
-              <Button size="sm" onClick={onOpen}>
+              <Button size="sm" variant="primary" minH={36} $max-sm={{ minH: 44 }} onClick={onOpen}>
                 {t('Open — {name} will see your name', { name: by })}
               </Button>
             </XStack>
@@ -186,30 +200,32 @@ function Body({ state, signedIn, onOpen }: { state: State; signedIn: boolean; on
         ) : (
           <Ask signedIn={signedIn} />
         )}
-      </>
+      </YStack>
     )
   }
   return (
     <>
-      <Text render="h1" fontSize="$7" lineHeight="$7" fontWeight="600" color="$ink">
-        {shared.title}
-      </Text>
-      {shared.by ? (
-        <Text fontSize="$2" color="$soft">
-          {t('Shared by {name}', { name: shared.by })}
+      <YStack gap="$1.5">
+        <Text render="h1" m={0} fontSize="$7" lineHeight="$8" fontWeight="600" letterSpacing={-0.42} color="$ink">
+          {shared.title}
         </Text>
-      ) : null}
+        {shared.by ? (
+          <Text fontSize="$2" color="$soft">
+            {t('Shared by {name}', { name: shared.by })}
+          </Text>
+        ) : null}
+      </YStack>
       {/* Each `li` is a gui stack, so it draws no marker: the list needs no list-style of its own. */}
-      <YStack gap="$4" render="ol" m={0} p={0} aria-label={t('Messages')}>
+      <YStack gap="$5" render="ol" m={0} p={0} aria-label={t('Messages')}>
         {shared.messages.map((turn, i) => (
-          <YStack render="li" key={i} gap="$1">
-            <Text fontSize="$1" color="$soft" textTransform="uppercase">
+          <YStack render="li" key={i} gap="$1.5">
+            <Text fontSize="$1" fontWeight="500" color="$soft">
               {turn.role === 'user' ? t('Asked') : turn.model ? t('Answered · {model}', { model: turn.model }) : t('Recorded by the person who shared this')}
             </Text>
             {turn.role === 'assistant' && turn.model ? (
               <Prose text={turn.content} />
             ) : (
-              <Text fontSize="$3" color="$ink" whiteSpace="pre-wrap">
+              <Text fontSize="$3" lineHeight="$4" color="$ink" whiteSpace="pre-wrap">
                 {turn.content}
               </Text>
             )}
@@ -230,15 +246,17 @@ function Ask({ signedIn }: { signedIn: boolean }) {
   const { t } = useI18n()
   if (signedIn) {
     return (
-      <YStack gap="$3" p="$4" rounded="$4" borderWidth={1} borderColor="$borderColor" bg="$backgroundHover" role="region" aria-label={t('Sign in to read the chat')}>
-        <Text fontSize="$4" fontWeight="600" color="$ink">
-          {t('Sign in again to read this chat')}
-        </Text>
-        <Text fontSize="$2" color="$soft">
-          {t('Your session has ended; signing in brings you straight back here. The person who shared it will see that you opened it.')}
-        </Text>
+      <YStack gap="$4" p="$5" $max-sm={{ p: '$4' }} rounded="$5" borderWidth={1} borderColor="$edge" bg="$panel" role="region" aria-label={t('Sign in to read the chat')}>
+        <YStack gap="$1.5">
+          <Text fontSize="$4" fontWeight="600" color="$ink">
+            {t('Sign in again to read this chat')}
+          </Text>
+          <Text fontSize="$2" color="$soft" lineHeight="$3">
+            {t('Your session has ended; signing in brings you straight back here. The person who shared it will see that you opened it.')}
+          </Text>
+        </YStack>
         <XStack gap="$2">
-          <Button size="sm" onClick={() => enter(LOGIN)}>
+          <Button size="sm" variant="primary" minH={36} $max-sm={{ minH: 44 }} onClick={() => enter(LOGIN)}>
             {t('Sign in')}
           </Button>
         </XStack>
@@ -246,18 +264,20 @@ function Ask({ signedIn }: { signedIn: boolean }) {
     )
   }
   return (
-    <YStack gap="$3" p="$4" rounded="$4" borderWidth={1} borderColor="$borderColor" bg="$backgroundHover" role="region" aria-label={t('Sign in to read the chat')}>
-      <Text fontSize="$4" fontWeight="600" color="$ink">
-        {t('Sign in to read this chat')}
-      </Text>
-      <Text fontSize="$2" color="$soft">
-        {t('A free Hanzo account opens it, and you come straight back here. The person who shared it will see that you opened it.')}
-      </Text>
+    <YStack gap="$4" p="$5" $max-sm={{ p: '$4' }} rounded="$5" borderWidth={1} borderColor="$edge" bg="$panel" role="region" aria-label={t('Sign in to read the chat')}>
+      <YStack gap="$1.5">
+        <Text fontSize="$4" fontWeight="600" color="$ink">
+          {t('Sign in to read this chat')}
+        </Text>
+        <Text fontSize="$2" color="$soft" lineHeight="$3">
+          {t('A free Hanzo account opens it, and you come straight back here. The person who shared it will see that you opened it.')}
+        </Text>
+      </YStack>
       <XStack gap="$2" flexWrap="wrap">
-        <Button size="sm" onClick={() => enter(signUp())}>
+        <Button size="sm" variant="primary" minH={36} $max-sm={{ minH: 44 }} onClick={() => enter(signUp())}>
           {t('Sign up to view')}
         </Button>
-        <Button size="sm" variant="outline" onClick={() => enter(LOGIN)}>
+        <Button size="sm" variant="outline" minH={36} $max-sm={{ minH: 44 }} borderColor="var(--border-strong)" onClick={() => enter(LOGIN)}>
           {t('Sign in')}
         </Button>
       </XStack>

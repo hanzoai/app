@@ -1,155 +1,499 @@
 'use client'
 
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useI18n } from '@hanzo/i18n/react'
-import { ArrowUpRight } from 'lucide-react'
-import { Anchor, Button, Popover, PopoverContent, PopoverTrigger, Progress, SizableText, Text, XStack, YStack } from '@hanzo/ui'
+import { ArrowUpRight, Gauge, Sparkles } from 'lucide-react'
+import {
+  Anchor,
+  Box,
+  Button,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Progress,
+  ProgressRing,
+  Text,
+  View,
+  XStack,
+  YStack,
+} from '@hanzo/ui'
 import { ComposerStatusProvider } from '@hanzo/ui/chat'
-import { UsageMeter } from '@hanzo/ui/product/UsageMeter'
+import { CLASSES, classesLabel } from '@hanzo/ui/product/limits'
 import type { UseLimits } from '@hanzo/ui/product/useLimits'
 import { label } from '@hanzo/build/plan'
 import { showSettings } from './open'
-import { hasSession, org, subject, bearer, scope } from './lib/session'
-import { fetchCloudUsage, type CloudUsageOverview } from '@hanzo/usage'
-import { api } from './lib/api'
-import { useHost } from './host'
-import { tokensOf, type Tokens } from './lib/tokens'
+import { settings } from './lib/host'
+import { hasSession, org, subject } from './lib/session'
+import { cents } from './lib/org'
 import { payPage } from './lib/pay'
-import { useLimits } from './lib/limits'
+import { resets, useLimits } from './lib/limits'
+import { useTier } from './lib/tier'
+import { rememberSettingsReturn, useDevMode } from './lib/dev-mode'
 import { contextOf, readTokens, subscribeTokens, tokenKey, type Turn } from './lib/tokens'
 
-export interface ContextUsage { model: string; window?: number; messages: readonly Turn[]; draft?: string; tools?: unknown }
+export interface ContextUsage {
+  model: string
+  window?: number
+  messages: readonly Turn[]
+  draft?: string
+  tools?: unknown
+}
 
-/**
- * A Button that is a link: `asChild` draws the Anchor with the Button's classes,
- * so each says what it owns — the box is the Button's (its props over its size),
- * the label's line the Anchor's (over the line its own size sets). gui types a
- * line height as a number or a token; `normal` is the value the page reads.
- */
-const LINK_BOX = { display: 'inline-flex', items: 'center', justify: 'center', height: '100%', width: '100%' } as const
-const LINK_LINE = { lineHeight: 'normal' } as object
+const HOVER_CLOSE_MS = 150
+const STRONG = 'var(--border-strong)' as const
+const FOCUS_RING = { outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' } as const
 
-/** The account control, shared by Chat, Dev and Studio through the composer slot. */
+/** Crisp monochrome bar color; warning/error appear only at >=85% or 100% capped. */
+function barColor(percent: number, capped = false): `var(--${string})` {
+  if (capped || percent >= 100) return 'var(--state-error)'
+  if (percent >= 85) return 'var(--state-warning)'
+  return 'var(--foreground)'
+}
+
+/** Compact live usage symbol + hover breakdown shared by Chat, Dev, and Studio. */
 export function UsageControl({ context, read }: { context?: ContextUsage; read?: UseLimits }) {
   const { t, format } = useI18n()
+  const [devMode] = useDevMode()
   const [open, setOpen] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hoverOpenedAt = useRef(0)
+
+  const signedIn = hasSession()
   const currentOrg = org()
-  const identity = `${currentOrg}:${subject()}`
-  const { path } = useHost()
-  const run = path?.match(/^\/dev\/run\/([^/]+)/)?.[1]
-  const [account, setAccount] = useState<{ key: string; data?: CloudUsageOverview; error?: string } | null>(null)
-  const [runUsage, setRunUsage] = useState<{ key: string; value: Tokens } | null>(null)
-  useEffect(() => {
-    if (!open || !currentOrg || !bearer()) return
-    const abort = new AbortController()
-    const scoped: typeof fetch = (input, init) => {
-      const headers = new Headers(init?.headers)
-      for (const [k, v] of Object.entries(scope())) headers.set(k, v)
-      headers.set('X-Org-Id', currentOrg)
-      return fetch(input, { ...init, headers })
-    }
-    const refresh = () => {
-      void fetchCloudUsage({ baseUrl: api(), token: bearer()!, range: '30d', org: currentOrg, signal: abort.signal, fetch: scoped }).then(
-        (data) => { if (!abort.signal.aborted) setAccount(data.scope?.org === currentOrg && !data.scope.allOrgs ? { key: identity, data } : { key: identity, error: t('Account usage did not match this organization.') }) },
-        () => { if (!abort.signal.aborted) setAccount({ key: identity, error: t('Account usage is unavailable. See all usage to retry.') }) },
-      )
-      if (run) void scoped(`${api()}/v1/agent/sessions/${encodeURIComponent(decodeURIComponent(run))}`, { signal: abort.signal }).then(async (response) => {
-        if (!response.ok) return
-        const data = await response.json()
-        for (const event of [...(data.recent ?? [])].reverse()) {
-          let payload = event.payload
-          if (typeof payload === 'string') { try { payload = JSON.parse(payload) } catch { continue } }
-          const value = tokensOf(payload?.usage)
-          if (value && !abort.signal.aborted) { setRunUsage({ key: `${identity}:${run}`, value }); break }
-        }
-      }).catch(() => {})
-    }
-    refresh()
-    const timer = setInterval(refresh, 15000)
-    window.addEventListener('focus', refresh)
-    return () => { abort.abort(); clearInterval(timer); window.removeEventListener('focus', refresh) }
-  }, [open, identity, run, t])
-  const aggregate = account?.key === identity ? account : null
-  // Chat lends its existing read. Other surfaces read only when the popover opens.
-  const fallback = useLimits(!read && open && hasSession(), org())
+  const fallback = useLimits(!read && signedIn, currentOrg)
   const usage = read ?? fallback
   const { limits, answered } = usage
+  const { tier } = useTier(signedIn && Boolean(currentOrg), currentOrg)
+
+  const key = signedIn && context ? tokenKey(currentOrg, context.model, context.messages, subject() ?? '') : ''
+  const counted = useSyncExternalStore(subscribeTokens, () => (key ? readTokens(key) : null), () => null)
+
+  useEffect(() => {
+    return () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    setNow(Date.now())
+    const id = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(id)
+  }, [open])
+
+  const clearCloseTimer = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current)
+      closeTimer.current = null
+    }
+  }
+
+  const handleMouseEnter = () => {
+    clearCloseTimer()
+    if (!open) {
+      hoverOpenedAt.current = Date.now()
+      setOpen(true)
+      if (read) read.reload()
+    }
+  }
+
+  const handleMouseLeave = () => {
+    clearCloseTimer()
+    closeTimer.current = setTimeout(() => {
+      setOpen(false)
+    }, HOVER_CLOSE_MS)
+  }
+
+  if (!signedIn) return null
+
   const estimate = context ? contextOf(context.messages, context.draft, context.tools) : null
-  const key = context ? tokenKey(org(), context.model, context.messages, subject() ?? '') : ''
-  const counted = useSyncExternalStore(subscribeTokens, () => readTokens(key), () => null)
-  const tokens = counted ?? (runUsage?.key === `${identity}:${run}` ? runUsage.value : null)
   const capacity = context?.window && context.window > 0 ? context.window : null
-  const percent = estimate && capacity ? Math.round(estimate.total / capacity * 100) : null
-  const plan = limits?.plan ? label(limits.plan) : null
-  const highest = limits ? Math.max(0, ...Object.values(limits.classes).flatMap((c) => c ? [c.percent, ...(c.window ? [c.window.percent] : [])] : [])) : null
-  const title = plan ? `${plan.name}${plan.tag ? ` ${plan.tag}` : ''}` : t('Plan usage')
-  const toggle = (on: boolean) => { setOpen(on); if (on && read) read.reload() }
+  const contextPercent = estimate && capacity ? Math.round((estimate.total / capacity) * 100) : null
+
+  const classEntries = limits ? Object.values(limits.classes).filter(Boolean) : []
+  const windows = classEntries.flatMap((c) => (c?.window ? [c.window] : []))
+  const highestWindow = windows.length ? windows.reduce((best, w) => (w.percent > best.percent ? w : best), windows[0]!) : null
+  const highestWeekly = classEntries.length
+    ? Math.max(0, ...classEntries.map((c) => c?.percent ?? 0))
+    : null
+  const highest =
+    highestWindow || highestWeekly !== null
+      ? Math.max(highestWindow?.percent ?? 0, highestWeekly ?? 0)
+      : null
+
+  const livePercent = highest !== null ? Math.round(highest) : contextPercent
+  const showPercent = livePercent !== null && livePercent > 0
+  const isCapped = limits?.state === 'limited' || (livePercent !== null && livePercent >= 100)
+  const isNear = !isCapped && livePercent !== null && livePercent >= 85
+
+  const toneColor = isCapped
+    ? 'var(--state-error)'
+    : isNear
+      ? 'var(--state-warning)'
+      : '$aside'
+
+  const ringColor = isCapped
+    ? 'var(--state-error)'
+    : isNear
+      ? 'var(--state-warning)'
+      : showPercent
+        ? 'var(--foreground)'
+        : 'var(--text-secondary)'
+
+  const planInfo = limits?.plan
+    ? label(limits.plan)
+    : tier?.plan
+      ? label(tier.plan)
+      : null
+  const planBadge = planInfo
+    ? `${planInfo.name}${planInfo.tag ? ` ${planInfo.tag}` : ''}`
+    : tier?.tier?.displayName || t('Free')
+
+  const formatReset = (iso: string | null | undefined): string | null => {
+    if (!iso) return null
+    const at = Date.parse(iso)
+    if (Number.isFinite(at) && at > now) {
+      const diffMins = Math.floor((at - now) / 60_000)
+      if (diffMins < 1) return t('Resets in <1m')
+      if (diffMins < 60) return t('Resets in {m}m', { m: diffMins })
+      if (diffMins < 24 * 60) {
+        const hours = Math.floor(diffMins / 60)
+        const mins = diffMins % 60
+        return mins > 0
+          ? t('Resets in {h}h {m}m', { h: hours, m: mins })
+          : t('Resets in {h}h', { h: hours })
+      }
+      const days = Math.floor(diffMins / (24 * 60))
+      return t('Resets in {d}d', { d: days })
+    }
+    const r = resets(iso, now, format)
+    if (!r) return null
+    if (r.date) {
+      return r.time
+        ? t('Resets {date} at {time}', { date: r.date, time: r.time })
+        : t('Resets {date}', { date: r.date })
+    }
+    return r.time ? t('Resets at {time}', { time: r.time }) : t('Resets at midnight')
+  }
+
+  const sessionPercent = highestWindow?.percent ?? contextPercent ?? livePercent ?? 0
+  const sessionCapped = highestWindow?.state === 'limited' || sessionPercent >= 100
+  const windowResetText = formatReset(highestWindow?.resets_at)
+
+  const weeklyRows = limits
+    ? CLASSES.flatMap((c) => {
+        const k = limits.classes[c]
+        return k ? [{ id: c, name: classesLabel([c], t), limit: k }] : []
+      })
+    : []
+
+  const showSafetyNet =
+    isCapped ||
+    isNear ||
+    weeklyRows.some(({ limit }) => limit.state === 'limited' || limit.percent >= 85)
+
+  const hasCredits = typeof tier?.balance?.effectiveAvailable === 'number'
+  const creditsLabel = hasCredits
+    ? cents(tier!.balance.effectiveAvailable, tier!.balance.currency || 'usd')
+    : null
+
   const integer = (n: number) => format.number(n, { maximumFractionDigits: 0 })
-  const metric = (name: string, n: number) => <XStack key={name} justify="space-between" gap="$3"><Text fontSize="$2" color="$soft">{name}</Text><Text fontSize="$2" color="$ink" fontVariant={['tabular-nums']}><bdi>{integer(n)}</bdi></Text></XStack>
+
+  const toggle = (next: boolean) => {
+    clearCloseTimer()
+    setOpen(next)
+    if (next && read) read.reload()
+  }
+
+  const openSettingsTab = (section: 'billing' | 'usage') => {
+    setOpen(false)
+    rememberSettingsReturn()
+    showSettings(section)
+  }
 
   return (
-    <Popover open={open} onOpenChange={toggle} placement="top-end">
-      <PopoverTrigger asChild>
-        {/* A word in the quiet line under the composer (composer-status), as its neighbours are. */}
+    <Popover open={open} onOpenChange={toggle} placement="top-end" allowFlip stayInFrame>
+      <PopoverTrigger asChild disablePressTrigger>
         <XStack
-          render="button"
-          {...{ type: 'button' }}
+          render={<button type="button" />}
+          onClick={() => {
+            if (open && Date.now() - hoverOpenedAt.current < 500) {
+              clearCloseTimer()
+              return
+            }
+            toggle(!open)
+          }}
           items="center"
+          justify="center"
+          gap="$1.5"
           height={28}
-          px={5}
-          rounded={8}
-          bg="transparent"
-          hoverStyle={{ bg: '$hover' }}
+          px="$2"
+          rounded="$3"
+          borderWidth={1}
+          borderColor={open ? STRONG : 'transparent'}
+          bg={open ? '$hover' : 'transparent'}
+          hoverStyle={{ bg: '$hover', borderColor: STRONG }}
+          focusVisibleStyle={FOCUS_RING}
           transition="quickest"
           cursor="pointer"
-          $max-sm={{ height: 36 }}
-          aria-label={t('Context, tokens and plan usage')}
+          $max-sm={{ height: 44, minH: 44 }}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          aria-label={
+            showPercent
+              ? t('Usage: {percent}% used ({plan})', { percent: livePercent, plan: planBadge })
+              : t('Plan usage ({plan})', { plan: planBadge })
+          }
           data-slot="composer-usage"
         >
-          <SizableText size="$3" color={highest !== null && highest >= 95 ? '$bad' : '$soft'}>
-            {percent !== null ? `${percent}%` : highest !== null ? `${Math.round(highest)}%` : t('Usage')}
-          </SizableText>
+          {showPercent ? (
+            <ProgressRing
+              size="sm"
+              value={livePercent}
+              barColor={ringColor}
+              aria-label={t('{percent}% used', { percent: livePercent })}
+            />
+          ) : (
+            <Gauge size={15} color={ringColor} aria-hidden />
+          )}
+          {showPercent ? (
+            <Text
+              fontSize="$1"
+              lineHeight={14}
+              fontWeight="500"
+              color={toneColor}
+              fontVariant={['tabular-nums']}
+              numberOfLines={1}
+            >
+              {livePercent}%
+            </Text>
+          ) : null}
         </XStack>
       </PopoverTrigger>
-      <PopoverContent solid width={360} maxW="calc(100vw - 24px)" maxH="min(680px, calc(100dvh - 100px))" overflowY="auto" aria-label={t('Context, tokens and plan usage')} data-slot="composer-usage-panel">
-        <YStack gap="$4" minW={0}>
-          <XStack justify="space-between" items="center" gap="$3">
-            <Text fontSize="$3" fontWeight="600" color="$ink">{t('Usage')}</Text>
-            <Button type="button" size="sm" variant="link" onClick={() => { setOpen(false); showSettings('usage') }} data-slot="composer-see-usage">{t('See all usage')} <ArrowUpRight size={13} /></Button>
+      <PopoverContent
+        solid
+        bg="var(--popover)"
+        borderWidth={1}
+        borderColor={STRONG}
+        boxShadow="var(--shadow-floating)"
+        rounded="$4"
+        p="$3"
+        width={260}
+        maxW="calc(100vw - 24px)"
+        z="var(--z-popover)"
+        onMouseEnter={clearCloseTimer}
+        onMouseLeave={handleMouseLeave}
+        onKeyDown={(e: { key?: string; preventDefault?: () => void }) => {
+          if (e.key === 'Escape') {
+            e.preventDefault?.()
+            setOpen(false)
+          }
+        }}
+        aria-label={t('Usage breakdown')}
+        data-slot="composer-usage-panel"
+      >
+        <YStack gap="$2.5" minW={0}>
+          {/* Compact header: Plan badge + Prepaid balance on one line */}
+          <XStack justify="space-between" items="center" gap="$2">
+            <XStack items="center" gap="$1.5" minW={0}>
+              <Text fontFamily="$body" fontSize="$2" fontWeight="600" color="$ink">
+                {t('Usage')}
+              </Text>
+              <XStack
+                px="$1.5"
+                py={1}
+                rounded="$10"
+                bg="$panel"
+                borderWidth={1}
+                borderColor={STRONG}
+                items="center"
+                justify="center"
+                shrink={0}
+              >
+                <Text fontFamily="$body" fontSize="$1" fontWeight="500" color="$ink" numberOfLines={1}>
+                  {planBadge}
+                </Text>
+              </XStack>
+            </XStack>
+            {creditsLabel ? (
+              <Anchor
+                href={payPage('/amount/card')}
+                data-slot="composer-buy-credits"
+                fontFamily="$body"
+                fontSize="$1"
+                fontWeight="500"
+                color="$ink"
+                fontVariant={['tabular-nums']}
+                hoverStyle={{ opacity: 0.75, textDecorationLine: 'none' }}
+                focusVisibleStyle={FOCUS_RING}
+                textDecorationLine="none"
+              >
+                {creditsLabel}
+              </Anchor>
+            ) : null}
           </XStack>
-          {context && estimate ? (
-            <YStack gap="$2" data-slot="composer-context">
-              <XStack justify="space-between" gap="$2"><Text fontSize="$2" fontWeight="600">{t('Context · estimated')}</Text><Text fontSize="$1" color="$soft">{capacity ? t('{used} / {max} tokens', { used: integer(estimate.total), max: integer(capacity) }) : t('{used} tokens', { used: integer(estimate.total) })}</Text></XStack>
-              {percent !== null ? <Progress value={Math.min(100, percent)} height={5} aria-label={t('Estimated context used')} indicatorColor={percent >= 90 ? '$bad' : '$good'} /> : null}
-              {estimate.rows.filter((r) => r.tokens > 0).map((r) => metric(t(r.name), r.tokens))}
-              <Text fontSize="$1" color="$soft">{t('Text estimate; model tokenization and attachments can change the total.')}</Text>
-              {!capacity ? <Text fontSize="$1" color="$soft">{t('This model does not report a context capacity.')}</Text> : null}
-            </YStack>
+
+          {/* Session bar */}
+          <YStack gap="$1" data-slot="composer-current-window">
+            <XStack justify="space-between" items="baseline" gap="$2">
+              <Text fontFamily="$body" fontSize="$1" color="$aside">
+                {t('Session')}
+              </Text>
+              <Text fontFamily="$body" fontSize="$1" color="$ink" fontVariant={['tabular-nums']}>
+                {Math.round(sessionPercent)}%
+                {windowResetText ? ` · ${windowResetText.replace(/^Resets in\s+/i, '')}` : ''}
+              </Text>
+            </XStack>
+            <Progress
+              value={Math.min(100, sessionPercent)}
+              height={3}
+              indicatorColor={barColor(sessionPercent, sessionCapped)}
+              aria-label={t('Session allowance usage')}
+            />
+          </YStack>
+
+          {/* Weekly summary bar (single calm bar — full breakdown lives in Settings → Usage) */}
+          {(() => {
+            const topWeekly = weeklyRows.reduce<(typeof weeklyRows)[number] | null>(
+              (best, row) => (!best || row.limit.percent > best.limit.percent ? row : best),
+              null,
+            )
+            if (!topWeekly) return null
+            const pct = Math.round(topWeekly.limit.percent)
+            const capped = topWeekly.limit.state === 'limited' || pct >= 100
+            const resetLine = formatReset(topWeekly.limit.resets_at)
+            return (
+              <YStack gap="$1" data-slot="composer-plan-usage">
+                <XStack justify="space-between" items="baseline" gap="$2">
+                  <Text fontFamily="$body" fontSize="$1" color="$aside">
+                    {t('Weekly')}
+                  </Text>
+                  <Text
+                    fontFamily="$body"
+                    fontSize="$1"
+                    color={capped ? 'var(--state-error)' : pct >= 85 ? 'var(--state-warning)' : '$ink'}
+                    fontVariant={['tabular-nums']}
+                  >
+                    {pct}%{resetLine ? ` · ${resetLine.replace(/^Resets in\s+/i, '')}` : ''}
+                  </Text>
+                </XStack>
+                <Progress
+                  value={Math.min(100, pct)}
+                  height={3}
+                  indicatorColor={barColor(pct, capped)}
+                  aria-label={t('Weekly allowance: {percent}% used', { percent: pct })}
+                />
+              </YStack>
+            )
+          })()}
+
+          {/* Credit-low safety net — shown ONLY at >=85% or 100% */}
+          {showSafetyNet ? (
+            <XStack
+              data-slot="composer-credit-safety-net"
+              role="status"
+              bg="$panel"
+              borderWidth={1}
+              borderColor={STRONG}
+              rounded="$3"
+              px="$2"
+              py="$1.5"
+              items="center"
+              justify="space-between"
+              gap="$2"
+            >
+              <Text fontFamily="$body" fontSize="$1" color="$ink" numberOfLines={1} grow={1} shrink={1}>
+                {t('Running low on allowance')}
+              </Text>
+              <Box
+                render={<button type="button" />}
+                data-slot="composer-safety-add-credits"
+                onClick={() => {
+                  setOpen(false)
+                  window.location.assign(payPage('/cart'))
+                }}
+                px="$2"
+                py={2}
+                rounded="$2"
+                bg="$raised"
+                borderWidth={1}
+                borderColor={STRONG}
+                cursor="pointer"
+                hoverStyle={{ bg: '$hover' }}
+                focusVisibleStyle={FOCUS_RING}
+              >
+                <Text fontFamily="$body" fontSize="$1" fontWeight="600" color="$ink">
+                  {t('Top up')}
+                </Text>
+              </Box>
+            </XStack>
           ) : null}
-          <YStack gap="$2" data-slot="composer-reported-tokens">
-            <Text fontSize="$2" fontWeight="600">{t('Last response · reported tokens')}</Text>
-            {tokens ? <>{metric(t('Input'), tokens.input)}{metric(t('Output'), tokens.output)}{tokens.cached !== undefined ? metric(t('Cached input'), tokens.cached) : null}{tokens.reasoning !== undefined ? metric(t('Reasoning'), tokens.reasoning) : null}{metric(t('Total'), tokens.total)}</> : <Text fontSize="$2" color="$soft">{t('No token counts reported for this conversation yet. See all usage for account totals.')}</Text>}
-          </YStack>
-          <YStack gap="$2" data-slot="composer-account-usage">
-            <Text fontSize="$2" fontWeight="600">{t('Account · last 30 days')}</Text>
-            {aggregate?.data ? <>{metric(t('Tokens'), aggregate.data.totals.tokens)}{metric(t('Input'), aggregate.data.totals.promptTokens)}{metric(t('Output'), aggregate.data.totals.completionTokens)}{metric(t('Requests'), aggregate.data.totals.requests)}</> : <Text fontSize="$2" color="$soft">{aggregate?.error ?? t('Reading account usage…')}</Text>}
-          </YStack>
-          <YStack gap="$2" data-slot="composer-plan-usage">
-            <Text fontSize="$2" fontWeight="600">{title}</Text>
-            {limits ? <UsageMeter limits={limits} size="sm" /> : <Text fontSize="$2" color="$soft">{t(answered ? 'Plan usage is unavailable. Try again.' : 'Reading plan usage…')}</Text>}
-            {answered && !limits ? <Button type="button" size="sm" variant="link" onClick={usage.reload}>{t('Retry')}</Button> : null}
-          </YStack>
-          <XStack gap="$3" justify="space-between" flexWrap="wrap">
-            <Button asChild size="sm" {...LINK_BOX}>
-              <Anchor href={payPage('/cart')} data-slot="composer-upgrade" {...LINK_LINE}>
-                {t('Upgrade plan')}
-              </Anchor>
-            </Button>
-            <Button asChild size="sm" variant="outline" {...LINK_BOX}>
-              <Anchor href={payPage('/amount/card')} data-slot="composer-buy-credits" {...LINK_LINE}>
-                {t('Buy credits')}
-              </Anchor>
-            </Button>
+
+          {devMode && counted ? (
+            <XStack justify="space-between" items="center">
+              <Text fontFamily="$body" fontSize="$1" color="$hint">
+                {t('Last turn')}
+              </Text>
+              <Text fontFamily="$mono" fontSize="$1" color="$aside" fontVariant={['tabular-nums']}>
+                {integer(counted.total)} tok
+              </Text>
+            </XStack>
+          ) : null}
+
+          {/* Compact single-row footer */}
+          <XStack justify="space-between" items="center" pt="$2" borderTopWidth={1} borderColor="$edge" gap="$2">
+            <XStack
+              render={<button type="button" />}
+              data-slot="composer-upgrade"
+              onClick={() => {
+                setOpen(false)
+                window.location.assign(payPage('/cart'))
+              }}
+              items="center"
+              justify="center"
+              gap="$1.5"
+              px="$2.5"
+              py="$1"
+              minH={28}
+              $max-sm={{ minH: 40 }}
+              rounded="$2"
+              bg="var(--primary)"
+              borderWidth={0}
+              cursor="pointer"
+              hoverStyle={{ opacity: 0.9 }}
+              focusVisibleStyle={FOCUS_RING}
+            >
+              <Sparkles size={12} color="var(--primary-foreground)" aria-hidden />
+              <Text fontFamily="$body" fontSize="$1" fontWeight="600" color="var(--primary-foreground)" numberOfLines={1}>
+                {t('Upgrade')}
+              </Text>
+            </XStack>
+            <XStack items="center" gap="$1">
+              <XStack
+                render={<button type="button" />}
+                data-slot="composer-see-usage"
+                onClick={() => openSettingsTab('usage')}
+                items="center"
+                justify="center"
+                gap={4}
+                px="$2"
+                py="$1"
+                minH={28}
+                $max-sm={{ minH: 40 }}
+                rounded="$2"
+                bg="transparent"
+                borderWidth={0}
+                cursor="pointer"
+                hoverStyle={{ bg: '$hover' }}
+                focusVisibleStyle={FOCUS_RING}
+              >
+                <Text fontFamily="$body" fontSize="$1" fontWeight="500" color="$aside" numberOfLines={1}>
+                  {t('Details')}
+                </Text>
+                <ArrowUpRight size={12} color="var(--text-secondary)" aria-hidden />
+              </XStack>
+            </XStack>
           </XStack>
         </YStack>
       </PopoverContent>

@@ -82,6 +82,11 @@ export function topUpUrl(model?: string): string {
   return payUrl("/amount/card", { org: org(), returnUrl: back.toString() });
 }
 
+/** A fixed top-up, in whole dollars: pay's confirm page for the card with the amount filled, as Settings' Billing opens it. */
+export function topUpAmountUrl(dollars: number, returnUrl: string): string {
+  return payUrl("/confirm/card", { amount: dollars.toFixed(2), org: org(), returnUrl });
+}
+
 /** Leaves for the top-up. */
 export function topUp(model?: string): void {
   window.location.assign(topUpUrl(model));

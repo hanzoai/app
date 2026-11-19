@@ -26,6 +26,7 @@ import { useIam } from '@hanzo/iam/react'
 import { hasSession } from './lib/session'
 import { useAi } from './lib/ai'
 import { brand } from './where'
+import { useDevMode } from './lib/dev-mode'
 
 /** A listing reachable over HTTP is one this app can connect on its own. */
 const reachable = (listing: McpListing): boolean =>
@@ -88,11 +89,13 @@ function Card({
   installed,
   onInstall,
   busy,
+  devMode,
 }: {
   listing: McpListing
   installed: boolean
   onInstall: () => void
   busy: boolean
+  devMode: boolean
 }) {
   const { t } = useI18n()
   const canInstall = reachable(listing)
@@ -102,8 +105,9 @@ function Card({
       gap="$3"
       p="$4"
       borderWidth={1}
-      borderColor="$borderColor"
-      rounded="$4"
+      borderColor="$edge"
+      bg="var(--surface-card)"
+      rounded="$5"
     >
       <XStack gap="$3" items="flex-start">
         <Mark listing={listing} />
@@ -111,9 +115,11 @@ function Card({
           <Text fontSize="$3" fontWeight="500" color="$ink" numberOfLines={1}>
             {label(listing)}
           </Text>
-          <Text fontSize="$1" color="$soft" numberOfLines={1}>
-            {listing.vendor ?? ''}
-          </Text>
+          {devMode && listing.vendor ? (
+            <Text fontSize="$1" color="$soft" numberOfLines={1}>
+              {listing.vendor}
+            </Text>
+          ) : null}
         </YStack>
       </XStack>
 
@@ -139,18 +145,19 @@ function Card({
           borderWidth={1}
           borderColor="$borderColor"
           hoverStyle={{ bg: '$hover' }}
+          cursor="pointer"
         >
           <Text fontSize="$2" color="$ink">
-            {busy ? t('Installing') : t('Install')}
+            {busy ? t('Installing…') : t('Install')}
           </Text>
         </Box>
       ) : (
-        // Honest, and specific: this is not "unavailable", it is a package that
-        // needs a process. Naming which one keeps the row useful.
         <Text fontSize="$1" color="$soft">
-          {t('Ships as a {kind} package — needs a runner before it can be connected.', {
-            kind: (listing.packages ?? [])[0]?.registry ?? 'stdio',
-          })}
+          {devMode
+            ? t('Ships as a {kind} package — run locally via Hanzo CLI or Desktop.', {
+                kind: (listing.packages ?? [])[0]?.registry ?? 'stdio',
+              })
+            : t('Runs on your computer — open Hanzo Desktop to connect.')}
         </Text>
       )}
     </YStack>
@@ -159,6 +166,7 @@ function Card({
 
 export function Market({ scope }: { scope: 'all' | 'installed' }) {
   const { t } = useI18n()
+  const [devMode] = useDevMode()
   const { client } = useAi()
 // SIGNED IN IS THE CREDENTIAL, NOT THE PROFILE. This gated on `user`, which is
 // the answer to a userinfo REQUEST — and `IamProvider` swallows that request's
@@ -281,8 +289,8 @@ export function Market({ scope }: { scope: 'all' | 'installed' }) {
             />
           </XStack>
           <XStack
-            render="button"
-            onPress={() => window.open('https://hanzo.market', '_blank', 'noopener,noreferrer')}
+            render={<button type="button" />}
+            onClick={() => window.open('https://hanzo.market', '_blank', 'noopener,noreferrer')}
             height={36}
             px="$3"
             rounded="$3"
@@ -303,19 +311,17 @@ export function Market({ scope }: { scope: 'all' | 'installed' }) {
       </YStack>
 
       {!listings ? (
-        <Empty>{t('Reading the shelf.')}</Empty>
+        <Empty>{t('Loading integrations…')}</Empty>
       ) : shown.length === 0 ? (
         <Empty>
           {scope === 'installed'
-            ? t('No agents installed yet.')
+            ? t('No integrations installed yet.')
             : ask
-              ? t('Nothing in the registry matches that.')
-              : t('The shelf is empty — the catalog has not been synced yet.')}
+              ? t('No matching integrations found.')
+              : t('No integrations available right now.')}
         </Empty>
       ) : (
         <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden" p="$5" gap="$3">
-          {/* The count is the whole match, not the page — the server says so and
-              a card grid that implies otherwise reads as a complete catalogue. */}
           <Text fontSize="$1" color="$soft">
             {scope === 'installed'
               ? t('{count} installed', { count: shown.length })
@@ -330,6 +336,7 @@ export function Market({ scope }: { scope: 'all' | 'installed' }) {
                 listing={listing}
                 installed={installed.has(listing.id)}
                 busy={busy === listing.id}
+                devMode={devMode}
                 onInstall={() => void install(listing)}
               />
             ))}

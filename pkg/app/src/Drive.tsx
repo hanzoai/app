@@ -1,11 +1,11 @@
 'use client'
 
+import { landing as arrive } from './lib/landing'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRight,
   ChevronDown,
   ChevronRight,
-  Clock,
   Cloud,
   Download,
   File as FileIcon,
@@ -33,7 +33,7 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react'
-import { Box, Button, Text, View, XStack, YStack } from '@hanzo/ui'
+import { Box, Button, Skeleton, Text, toast, View, XStack, YStack } from '@hanzo/ui'
 import { useIam, useOrganizations } from '@hanzo/iam/react'
 import { useI18n } from '@hanzo/i18n/react'
 import type { Say } from '@hanzo/i18n'
@@ -77,7 +77,8 @@ import {
   type WorkFile,
 } from './lib/files'
 import { checkoutUrl } from './lib/pay'
-import { BAD, mix } from './lib/mix'
+import { mix } from './lib/mix'
+import { useDevMode } from './lib/dev-mode'
 
 interface Bucket {
   name: string
@@ -109,7 +110,7 @@ interface Project {
 
 const blame = (e: unknown, t: Say): string => {
   const text = e instanceof Error ? e.message : String(e ?? '')
-  return text || t('The store did not say what went wrong.')
+  return text || t('Something went wrong. Please try again.')
 }
 
 /** A size as a row shows it; nothing is a dash. */
@@ -140,7 +141,7 @@ async function putBytes(client: Client, bucket: string, key: string, body: Blob,
     path: objects(bucket),
     body: { bucket, key },
   })
-  if (!grant?.url) throw new Error(t('The store issued no upload address.'))
+  if (!grant?.url) throw new Error(t('Could not start upload.'))
   const sent = await fetch(grant.url, {
     method: grant.method || 'PUT',
     body,
@@ -151,7 +152,7 @@ async function putBytes(client: Client, bucket: string, key: string, body: Blob,
 
 async function urlFor(client: Client, bucket: string, key: string, t: Say): Promise<string> {
   const grant = await client.http.json<{ url: string }>({ path: `${objects(bucket)}/${wire(key)}` })
-  if (!grant?.url) throw new Error(t('The store issued no download address.'))
+  if (!grant?.url) throw new Error(t('Could not start download.'))
   return grant.url
 }
 
@@ -177,19 +178,27 @@ const FILES = 'minmax(200px, 2fr) 120px 140px 100px 48px'
 const PROJECTS = 'minmax(220px, 2fr) 120px 140px 100px 48px'
 
 /** A column heading. */
-const HEAD = { fontSize: '$1', fontWeight: '600', color: '$faint', letterSpacing: 0.6, textTransform: 'uppercase' } as const
+const HEAD = { fontSize: '$1', fontWeight: '500', color: '$soft' } as const
 /** A row's name: one line, cut with an ellipsis. */
 const NAME = { fontSize: '$2', fontWeight: '500', color: '$ink', numberOfLines: 1 } as const
 /** A row's kind, set as a tag. */
-const CHIP = { fontSize: '$1', color: '$soft', bg: '$hover', px: 8, py: 2, rounded: 4 } as const
+const CHIP = { fontFamily: '$mono', fontSize: '$1', color: '$soft', bg: '$hover', px: 8, py: 2, rounded: 4 } as const
 /** A quiet cell: the date and the size. */
 const CELL = { fontSize: '$2', color: '$soft' } as const
 
 /** A row's "more" control. */
 function More({ onPress }: { onPress: (e: { stopPropagation: () => void }) => void }) {
-  const { t, locale } = useI18n()
+  const { t } = useI18n()
   return (
-    <Button variant="ghost" size="icon-sm" onClick={onPress} aria-label={t('More')} title={t('More')}>
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+      $max-sm={{ minW: 44, minH: 44 }}
+      onClick={onPress}
+      aria-label={t('More')}
+      title={t('More')}
+    >
       <MoreHorizontal size={15} />
     </Button>
   )
@@ -208,10 +217,99 @@ function Pick({
   onPress: () => void
 }) {
   return (
-    <Button variant="ghost" size="sm" width="100%" justify="flex-start" {...(tone ? { color: tone } : null)} onClick={onPress}>
+    <Button
+      variant="ghost"
+      size="sm"
+      width="100%"
+      justify="flex-start"
+      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+      $max-sm={{ minH: 44 }}
+      {...(tone ? { color: tone } : null)}
+      onClick={onPress}
+    >
       <Icon size={13} />
       {label}
     </Button>
+  )
+}
+
+/** Calm monochrome layout-matched skeleton for bucket rows at Drive root. */
+function DriveBucketSkeleton({ label }: { label: string }) {
+  return (
+    <YStack role="status" aria-busy={true} aria-label={label}>
+      {[0, 1, 2].map((i) => (
+        <XStack
+          key={i}
+          items="center"
+          justify="space-between"
+          px={16}
+          py={13}
+          borderBottomWidth={i === 2 ? 0 : 1}
+          borderColor="$edge"
+          gap="$3"
+        >
+          <XStack items="center" gap="$2.5" flex={1} minW={0}>
+            <Skeleton layout="block" width={17} height={17} rounded="$2" shrink={0} />
+            <Skeleton layout="block" width={i === 0 ? 156 : i === 1 ? 128 : 142} height={13} rounded="$2" />
+          </XStack>
+          <Skeleton layout="block" width={64} height={12} rounded="$2" shrink={0} />
+        </XStack>
+      ))}
+    </YStack>
+  )
+}
+
+/** Calm monochrome layout-matched skeleton for Drive file rows or grid cards. */
+function DriveEntriesSkeleton({ grid = false, label }: { grid?: boolean; label: string }) {
+  if (grid) {
+    return (
+      <View
+        role="status"
+        aria-busy={true}
+        aria-label={label}
+        display="grid"
+        gridTemplateColumns="repeat(auto-fill, minmax(180px, 1fr))"
+        $max-sm={{ gridTemplateColumns: '1fr' }}
+        gap="$3"
+      >
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <YStack key={i} p="$3.5" rounded="$4" bg="$panel" borderWidth={1} borderColor="$edge" gap="$2.5">
+            <XStack items="center" justify="space-between" width="100%">
+              <Skeleton layout="block" width={18} height={18} rounded="$2" />
+              <Skeleton layout="block" width={40} height={16} rounded="$2" />
+            </XStack>
+            <Skeleton layout="block" width={i % 2 === 0 ? '82%' : '68%'} height={13} rounded="$2" />
+            <Skeleton layout="block" width={54} height={11} rounded="$2" />
+          </YStack>
+        ))}
+      </View>
+    )
+  }
+  return (
+    <YStack role="status" aria-busy={true} aria-label={label}>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <View
+          key={i}
+          display="grid"
+          gridTemplateColumns={FILES}
+          minW="min-content"
+          px={16}
+          py={12}
+          items="center"
+          borderBottomWidth={i === 4 ? 0 : 1}
+          borderColor="$edge"
+        >
+          <XStack items="center" gap="$2.5" minW={0} pr="$2">
+            <Skeleton layout="block" width={16} height={16} rounded="$2" shrink={0} />
+            <Skeleton layout="block" width={i % 2 === 0 ? 180 : 140} height={13} rounded="$2" />
+          </XStack>
+          <Skeleton layout="block" width={46} height={18} rounded="$2" />
+          <Skeleton layout="block" width={74} height={12} rounded="$2" />
+          <Skeleton layout="block" width={48} height={12} rounded="$2" />
+          <View />
+        </View>
+      ))}
+    </YStack>
   )
 }
 
@@ -231,11 +329,12 @@ const VEIL = mix('var(--background)', 90, 'srgb')
 // The sections the store can actually answer. `shared`, `starred` and `trash`
 // were drawn too, and the object store has no such concept — three doors onto
 // the same listing, which is worse than three fewer doors.
-type NavSection = 'my-drive' | 'recent' | 'local'
-type ViewMode = 'list' | 'grid' | 'details'
+type NavSection = 'my-drive' | 'local'
+type ViewMode = 'list' | 'grid'
 
 export function Drive() {
   const { t, locale } = useI18n()
+  const [devMode] = useDevMode()
   const { client } = useAi()
   const { user, isAuthenticated } = useIam()
   const ready = Boolean(client && isAuthenticated)
@@ -265,8 +364,18 @@ export function Drive() {
   // Below md the side column is a drawer over the files, opened from the bar.
   const [menu, setMenu] = useState(false)
   const [itemMenuKey, setItemMenuKey] = useState<string | null>(null)
-  const [naming, setNaming] = useState<{ kind: 'folder' | 'rename' | 'file' | 'clone'; key?: string; value: string } | null>(null)
+  const [naming, setNaming] = useState<{ kind: 'folder' | 'rename' | 'file' | 'clone'; entry?: Entry; value: string } | null>(null)
   const [projects, setProjects] = useState<Project[] | null>(null)
+  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(() => new Set())
+  const deleteTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+
+  useEffect(() => {
+    const timers = deleteTimersRef.current
+    return () => {
+      for (const timer of timers.values()) clearTimeout(timer)
+      timers.clear()
+    }
+  }, [])
 
   const [localWorkspaces, setLocalWorkspaces] = useState<LocalWorkspace[]>(getLocalWorkspaces)
   const [activeWs, setActiveWs] = useState<LocalWorkspace | null>(getActiveWorkspace)
@@ -280,6 +389,30 @@ export function Drive() {
       setActiveWs(getActiveWorkspace())
     })
   }, [])
+
+  useEffect(() => {
+    if (!newMenuOpen && !itemMenuKey && !menu) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setNewMenuOpen(false)
+        setItemMenuKey(null)
+        setMenu(false)
+      }
+    }
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as Element | null
+      if (!target?.closest?.('[data-drive-menu]')) {
+        setNewMenuOpen(false)
+        setItemMenuKey(null)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('mousedown', onDown)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('mousedown', onDown)
+    }
+  }, [newMenuOpen, itemMenuKey, menu])
 
   const loadLocalEntries = useCallback(() => {
     if (!activeWs) {
@@ -355,8 +488,11 @@ export function Drive() {
   // projects, and the toolbar's verbs all act on an OPEN bucket — so opening
   // the org's first one is what makes New, upload and the listing agree about
   // where they are. It is also what a drive does: the files, on arrival.
+  const didAutoOpenRef = useRef(false)
   useEffect(() => {
-    if (!bucket && landing) openBucket(landing)
+    const step = arrive(didAutoOpenRef.current, bucket, landing)
+    didAutoOpenRef.current = step.done
+    if (step.open) openBucket(step.open)
   }, [bucket, landing, openBucket])
 
   // THE INDEX'S WORD on this bucket's files, read again every few seconds while
@@ -581,19 +717,25 @@ export function Drive() {
   )
 
   const handleCloneRepo = useCallback(
-    (repoUrl: string) => {
+    async (repoUrl: string) => {
       const clean = repoUrl.trim()
-      if (!clean) return
+      if (!clean || busy) return
       setNaming(null)
-      void run(t('Cloning {name}', { name: clean }), async () => {
+      setBusy(t('Cloning {name}', { name: clean }))
+      setFailed(null)
+      try {
         const ws = await cloneRemoteRepo(clean)
         setNavSection('local')
         setActiveWorkspace(ws)
         setLocalPrefix('')
         loadLocalEntries()
-      })
+      } catch (e) {
+        setFailed(blame(e, t))
+      } finally {
+        setBusy(null)
+      }
     },
-    [run, loadLocalEntries, t],
+    [busy, loadLocalEntries, t],
   )
 
   const handleOpenLocalFile = useCallback(async () => {
@@ -629,13 +771,35 @@ export function Drive() {
       const clean = to.trim().replace(/^\/+|\/+$/g, '')
       if (!clean || !client || !activeBucket || entry.isDir) return
       const from = `${prefix}${entry.key}`
-      // The store has no copy, so a rename is the three verbs it does have.
-      void run(t('Renaming {name}', { name: entry.key }), async () => {
+      const toKey = clean.includes('/') ? clean : `${prefix}${clean}`
+      if (toKey === from) {
+        setNaming(null)
+        return
+      }
+      const fromName = entry.key.replace(/\/+$/, '')
+      // The store has no copy, so a rename/move is the three verbs it does have.
+      void run(t('Moving {name}', { name: fromName }), async () => {
         const src = await fetch(await urlFor(client, activeBucket, from, t))
-        if (!src.ok) throw new Error(t('{name} could not be read ({status}).', { name: entry.key, status: src.status }))
+        if (!src.ok) throw new Error(t('{name} could not be read ({status}).', { name: fromName, status: src.status }))
         const body = await src.blob()
-        await putBytes(client, activeBucket, `${prefix}${clean}`, body, t, body.type || undefined)
+        await putBytes(client, activeBucket, toKey, body, t, body.type || undefined)
         await remove(client, activeBucket, from)
+        toast(t('Moved {name} to {target}', { name: fromName, target: clean }), {
+          duration: 5000,
+          action: {
+            label: t('Undo'),
+            onClick: () => {
+              void run(t('Restoring {name}', { name: fromName }), async () => {
+                const moved = await fetch(await urlFor(client, activeBucket, toKey, t))
+                if (!moved.ok) throw new Error(t('{name} could not be read ({status}).', { name: clean, status: moved.status }))
+                const movedBody = await moved.blob()
+                await putBytes(client, activeBucket, from, movedBody, t, movedBody.type || undefined)
+                await remove(client, activeBucket, toKey)
+                toast.success(t('Restored {name}', { name: fromName }))
+              })
+            },
+          },
+        })
       })
       setNaming(null)
     },
@@ -646,27 +810,124 @@ export function Drive() {
     (entry: Entry) => {
       if (!client || !activeBucket) return
       const key = `${prefix}${entry.key}`
+      const deleteId = `cloud:${activeBucket}:${key}`
+      const cleanName = entry.key.replace(/\/+$/, '')
+      const existing = deleteTimersRef.current.get(deleteId)
+      if (existing) clearTimeout(existing)
+
+      setPendingDeletes((prev) => {
+        const next = new Set(prev)
+        next.add(deleteId)
+        return next
+      })
+
       // A deleted file leaves the index too, so search and chat stop citing it.
       const unindex = async (k: string) => {
         const f = index.get(k)
         if (f) await forget(client, f.id).catch(() => {})
       }
-      void run(t('Deleting {name}', { name: entry.key }), async (say) => {
-        if (!entry.isDir) {
-          await remove(client, activeBucket, key)
-          return unindex(key)
-        }
-        const root = key.endsWith('/') ? key : `${key}/`
-        const out = await client.http.json<{ objects?: Entry[] }>({ path: objects(activeBucket), query: { prefix: root, recursive: 'true' } })
-        for (const e of (out?.objects ?? []).filter((x) => !x.isDir)) {
-          say(t('Deleting {name}', { name: e.key }))
-          await remove(client, activeBucket, root + e.key)
-          await unindex(root + e.key)
-        }
-        await remove(client, activeBucket, root).catch(() => {})
+
+      const timer = setTimeout(() => {
+        deleteTimersRef.current.delete(deleteId)
+        void run(t('Deleting {name}', { name: cleanName }), async (say) => {
+          try {
+            if (!entry.isDir) {
+              await remove(client, activeBucket, key)
+              await unindex(key)
+            } else {
+              const root = key.endsWith('/') ? key : `${key}/`
+              const out = await client.http.json<{ objects?: Entry[] }>({ path: objects(activeBucket), query: { prefix: root, recursive: 'true' } })
+              for (const e of (out?.objects ?? []).filter((x) => !x.isDir)) {
+                say(t('Deleting {name}', { name: e.key }))
+                await remove(client, activeBucket, root + e.key)
+                await unindex(root + e.key)
+              }
+              await remove(client, activeBucket, root).catch(() => {})
+            }
+          } finally {
+            setPendingDeletes((prev) => {
+              const next = new Set(prev)
+              next.delete(deleteId)
+              return next
+            })
+          }
+        })
+      }, 5000)
+
+      deleteTimersRef.current.set(deleteId, timer)
+
+      toast(t('Deleted {name}', { name: cleanName }), {
+        duration: 5000,
+        action: {
+          label: t('Undo'),
+          onClick: () => {
+            const pending = deleteTimersRef.current.get(deleteId)
+            if (pending) {
+              clearTimeout(pending)
+              deleteTimersRef.current.delete(deleteId)
+            }
+            setPendingDeletes((prev) => {
+              const next = new Set(prev)
+              next.delete(deleteId)
+              return next
+            })
+            toast.success(t('Restored {name}', { name: cleanName }))
+          },
+        },
       })
     },
     [client, activeBucket, prefix, run, index, t],
+  )
+
+  const handleDeleteLocal = useCallback(
+    (entry: LocalEntry) => {
+      const deleteId = `local:${entry.path}`
+      const existing = deleteTimersRef.current.get(deleteId)
+      if (existing) clearTimeout(existing)
+
+      setPendingDeletes((prev) => {
+        const next = new Set(prev)
+        next.add(deleteId)
+        return next
+      })
+
+      const timer = setTimeout(() => {
+        deleteTimersRef.current.delete(deleteId)
+        deleteLocalPath(entry.path)
+          .then(() => loadLocalEntries())
+          .catch((err) => setFailed(blame(err, t)))
+          .finally(() => {
+            setPendingDeletes((prev) => {
+              const next = new Set(prev)
+              next.delete(deleteId)
+              return next
+            })
+          })
+      }, 5000)
+
+      deleteTimersRef.current.set(deleteId, timer)
+
+      toast(t('Deleted {name}', { name: entry.name }), {
+        duration: 5000,
+        action: {
+          label: t('Undo'),
+          onClick: () => {
+            const pending = deleteTimersRef.current.get(deleteId)
+            if (pending) {
+              clearTimeout(pending)
+              deleteTimersRef.current.delete(deleteId)
+            }
+            setPendingDeletes((prev) => {
+              const next = new Set(prev)
+              next.delete(deleteId)
+              return next
+            })
+            toast.success(t('Restored {name}', { name: entry.name }))
+          },
+        },
+      })
+    },
+    [loadLocalEntries, t],
   )
 
   // DOWNLOAD follows a presigned GET. The object's platform address answers a
@@ -710,10 +971,16 @@ export function Drive() {
 
   const filteredEntries = useMemo(() => {
     if (!entries) return null
-    if (!searchQuery.trim()) return entries
+    const live = entries.filter((e) => !pendingDeletes.has(`cloud:${activeBucket ?? ''}:${prefix}${e.key}`))
+    if (!searchQuery.trim()) return live
     const q = searchQuery.toLowerCase()
-    return entries.filter((e) => e.key.toLowerCase().includes(q))
-  }, [entries, searchQuery])
+    return live.filter((e) => e.key.toLowerCase().includes(q))
+  }, [entries, searchQuery, pendingDeletes, activeBucket, prefix])
+
+  const visibleLocalEntries = useMemo(() => {
+    if (!localEntries) return null
+    return localEntries.filter((e) => !pendingDeletes.has(`local:${e.path}`))
+  }, [localEntries, pendingDeletes])
 
   // Breadcrumbs
   const crumbs = useMemo(() => {
@@ -788,20 +1055,25 @@ export function Drive() {
 
       {/* Top Header Bar */}
       <XStack
-        height={56}
+        minH={56}
         items="center"
         justify="space-between"
+        gap="$3"
         px="$5"
+        py="$2"
+        $max-md={{ px: '$3', gap: '$2' }}
         borderBottomWidth={1}
-        borderColor="$borderColor"
+        borderColor="$edge"
         shrink={0}
       >
         {/* On a phone the side column folds into a drawer, and this opens it. */}
-        <XStack width={220} shrink={1}>
+        <XStack width={220} shrink={1} $max-md={{ width: 'auto', shrink: 0 }}>
           <View display="none" $max-md={{ display: 'flex' }}>
             <Button
               variant="ghost"
               size="icon-sm"
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              $max-sm={{ minW: 44, minH: 44 }}
               onClick={() => setMenu((v) => !v)}
               aria-label={t('Drive menu')}
               aria-expanded={menu}
@@ -819,27 +1091,49 @@ export function Drive() {
           gap="$2"
           width={460}
           maxW="45%"
+          $max-md={{ flex: 1, width: 'auto', maxW: '100%', minW: 0 }}
           height={38}
+          $max-sm={{ minH: 44 }}
           px="$3"
           rounded={8}
           bg="$panel"
           borderWidth={1}
-          borderColor="var(--border-control)"
+          borderColor="var(--border-strong)"
+          focusWithinStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
         >
           <Search size={15} color="var(--muted-foreground)" aria-hidden />
           <Text
             render={<input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t('Search Drive')} aria-label={t('Search Drive')} />}
             {...BARE}
+            minW={0}
           />
         </XStack>
 
         {/* Right Header Actions: Upload, +, User Avatar */}
-        <XStack items="center" gap="$3">
-          <Button size="icon-sm" onClick={() => fileInputRef.current?.click()} aria-label={t('Upload')} title={t('Upload')}>
+        <XStack items="center" gap="$2" shrink={0}>
+          <Button
+            size="icon-sm"
+            variant="outline"
+            borderColor="var(--border-strong)"
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+            $max-sm={{ minW: 44, minH: 44 }}
+            onClick={() => fileInputRef.current?.click()}
+            aria-label={t('Upload')}
+            title={t('Upload')}
+          >
             <Upload size={15} />
           </Button>
 
-          <Button size="icon-sm" onClick={() => setNaming({ kind: 'folder', value: '' })} aria-label={t('Add Folder')} title={t('Add Folder')}>
+          <Button
+            size="icon-sm"
+            variant="outline"
+            borderColor="var(--border-strong)"
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+            $max-sm={{ minW: 44, minH: 44 }}
+            onClick={() => setNaming({ kind: 'folder', value: '' })}
+            aria-label={t('New folder')}
+            title={t('New folder')}
+          >
             <Plus size={16} />
           </Button>
 
@@ -851,8 +1145,9 @@ export function Drive() {
             rounded={9999}
             bg="$raised"
             borderWidth={1}
-            borderColor="$borderColor"
+            borderColor="$edge"
             display="flex"
+            $max-sm={{ display: 'none' }}
             items="center"
             justify="center"
             fontSize="$2"
@@ -904,11 +1199,15 @@ export function Drive() {
         >
           <YStack gap="$4">
             {/* + New Button with Dropdown */}
-            <View position="relative">
+            <View position="relative" data-drive-menu="new">
               <Button
                 size="lg"
+                variant="outline"
                 width="100%"
                 justify="space-between"
+                borderColor="var(--border-strong)"
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                $max-sm={{ minH: 44 }}
                 onClick={() => setNewMenuOpen((v) => !v)}
                 aria-expanded={newMenuOpen}
               >
@@ -930,7 +1229,7 @@ export function Drive() {
                   width="100%"
                   bg="var(--popover)"
                   borderWidth={1}
-                  borderColor="$borderColor"
+                  borderColor="var(--border-strong)"
                   rounded={10}
                   boxShadow="var(--shadow-lg)"
                   z="var(--z-dropdown)"
@@ -1000,17 +1299,19 @@ export function Drive() {
                         <Upload size={14} />
                         {t('Import local file…')}
                       </Button>
-                      <Button
-                        {...ITEM}
-                        onClick={() => {
-                          setNewMenuOpen(false)
-                          setMenu(false)
-                          setNaming({ kind: 'clone', value: '' })
-                        }}
-                      >
-                        <FolderGit2 size={14} />
-                        {t('Clone remote repo…')}
-                      </Button>
+                      {devMode ? (
+                        <Button
+                          {...ITEM}
+                          onClick={() => {
+                            setNewMenuOpen(false)
+                            setMenu(false)
+                            setNaming({ kind: 'clone', value: '' })
+                          }}
+                        >
+                          <FolderGit2 size={14} />
+                          {t('Clone remote repo…')}
+                        </Button>
+                      ) : null}
                     </>
                   ) : (
                     <>
@@ -1059,18 +1360,22 @@ export function Drive() {
                         <FolderInput size={14} />
                         {t('Folder upload')}
                       </Button>
-                      <View height={1} bg="$borderColor" my={4} />
-                      <Button
-                        {...ITEM}
-                        onClick={() => {
-                          setNewMenuOpen(false)
-                          setMenu(false)
-                          setNaming({ kind: 'clone', value: '' })
-                        }}
-                      >
-                        <FolderGit2 size={14} />
-                        {t('Clone remote repo…')}
-                      </Button>
+                      {devMode ? (
+                        <>
+                          <View height={1} bg="$borderColor" my={4} />
+                          <Button
+                            {...ITEM}
+                            onClick={() => {
+                              setNewMenuOpen(false)
+                              setMenu(false)
+                              setNaming({ kind: 'clone', value: '' })
+                            }}
+                          >
+                            <FolderGit2 size={14} />
+                            {t('Clone remote repo…')}
+                          </Button>
+                        </>
+                      ) : null}
                     </>
                   )}
                 </YStack>
@@ -1080,9 +1385,8 @@ export function Drive() {
             {/* Navigation links */}
             <YStack gap="$1">
               {[
-                { id: 'my-drive', label: t('My Drive'), icon: HardDrive },
-                { id: 'local', label: t('Local Folders'), icon: Laptop },
-                { id: 'recent', label: t('Recent'), icon: Clock },
+                { id: 'my-drive', label: t('My drive'), icon: HardDrive },
+                { id: 'local', label: t('Local folders'), icon: Laptop },
               ].map((item) => {
                 const isActive = navSection === item.id && !bucket && !prefix
                 const Icon = item.icon
@@ -1096,6 +1400,8 @@ export function Drive() {
                     px={12}
                     color={isActive ? '$ink' : '$soft'}
                     fontWeight={isActive ? '600' : '500'}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                    $max-sm={{ minH: 44 }}
                     onClick={() => {
                       setNavSection(item.id as NavSection)
                       openBucket(null)
@@ -1112,8 +1418,8 @@ export function Drive() {
 
             {/* Local Workspaces Sub-list when Local Folders is active or has folders */}
             {navSection === 'local' || localWorkspaces.length > 0 ? (
-              <YStack gap="$1" pl="$2" borderLeftWidth={1} borderColor="$borderColor" ml="$3">
-                <Text fontSize={11} fontWeight="600" color="$faint" letterSpacing={0.5} mb={2}>
+              <YStack gap="$1" pl="$2" borderLeftWidth={1} borderColor="$edge" ml="$3">
+                <Text fontSize={11} fontWeight="500" color="$soft" mb={2}>
                   {t('Workspaces')}
                 </Text>
                 {localWorkspaces.map((ws) => {
@@ -1125,9 +1431,12 @@ export function Drive() {
                       justify="space-between"
                       px="$2"
                       py="$1"
+                      $max-sm={{ minH: 44 }}
                       rounded={6}
                       bg={isCur ? '$hover' : 'transparent'}
+                      transition="quickest"
                       hoverStyle={{ bg: '$hover' }}
+                      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                       cursor="pointer"
                       onPress={() => {
                         setActiveWorkspace(ws)
@@ -1136,7 +1445,7 @@ export function Drive() {
                       }}
                     >
                       <XStack items="center" gap="$2" minW={0} flex={1}>
-                        <Folder size={13} color={isCur ? 'var(--primary)' : 'var(--muted-foreground)'} />
+                        <Folder size={13} color={isCur ? 'var(--foreground)' : 'var(--muted-foreground)'} />
                         <Text fontSize="$2" fontWeight={isCur ? '600' : '400'} color={isCur ? '$ink' : '$soft'} numberOfLines={1}>
                           {ws.name}
                         </Text>
@@ -1144,10 +1453,12 @@ export function Drive() {
                       <Button
                         variant="ghost"
                         size="icon-sm"
+                        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                         onClick={(e) => {
                           e.stopPropagation()
                           removeLocalWorkspace(ws.id)
                         }}
+                        aria-label={t('Remove {name}', { name: ws.name })}
                         title={t('Remove')}
                       >
                         <Trash2 size={11} color="var(--muted-foreground)" />
@@ -1163,6 +1474,8 @@ export function Drive() {
                   px={8}
                   py={4}
                   color="$soft"
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  $max-sm={{ minH: 44 }}
                   onClick={() => {
                     void pickLocalFolder().then((ws) => {
                       if (ws) {
@@ -1180,12 +1493,12 @@ export function Drive() {
 
             {/* Storage Progress Section */}
             <YStack gap="$2" mt="$2" px="$2">
-              <Text fontSize={11} fontWeight="600" color="$faint" letterSpacing={0.6}>
+              <Text fontSize={11} fontWeight="500" color="$soft">
                 {t('Storage')}
               </Text>
-              <Text fontSize={12} color="$quiet">
-                {usage
-                  ? usage.capped
+              {usage ? (
+                <Text fontSize={12} color="$quiet">
+                  {usage.capped
                     ? t(usage.files === 1 ? 'over {size} in {count} file' : 'over {size} in {count} files', {
                         size: weigh(usage.bytes),
                         count: usage.files.toLocaleString(locale),
@@ -1193,9 +1506,11 @@ export function Drive() {
                     : t(usage.files === 1 ? '{size} in {count} file' : '{size} in {count} files', {
                         size: weigh(usage.bytes),
                         count: usage.files.toLocaleString(locale),
-                      })
-                  : t('Measuring…')}
-              </Text>
+                      })}
+                </Text>
+              ) : (
+                <Skeleton layout="block" width={112} height={14} rounded="$2" />
+              )}
               <Button asChild size="sm" mt={8}>
                 <a href={checkoutUrl()} target="_blank" rel="noreferrer">
                   {t('Manage storage')}
@@ -1204,29 +1519,31 @@ export function Drive() {
             </YStack>
           </YStack>
 
-          {/* Bottom Card: Hanzo Drive Enterprise promo */}
+          {/* Bottom Card: Hanzo Drive info */}
           <YStack px={14} py={12} rounded={10} borderWidth={1} borderColor="$borderColor" bg="$panel" gap={6}>
             <XStack items="center" gap="$2">
               <Cloud size={16} color="var(--foreground)" />
               <Text fontSize="$2" fontWeight="600" color="$ink">{t('Hanzo Drive')}</Text>
             </XStack>
             <Text fontSize="$1" color="$soft">
-              {[userEmail, activeBucket].filter(Boolean).join(' · ')}
+              {(devMode ? [userEmail, activeBucket] : [userEmail]).filter(Boolean).join(' · ')}
             </Text>
-            <Button asChild variant="link" size="sm" px={0} mt={4} justify="flex-start">
-              <a href="https://docs.hanzo.ai/docs/openapi/s3/" target="_blank" rel="noreferrer">
-                {t('Documentation')}
-                <ArrowRight size={12} />
-              </a>
-            </Button>
+            {devMode ? (
+              <Button asChild variant="link" size="sm" px={0} mt={4} justify="flex-start">
+                <a href="https://docs.hanzo.ai/docs/openapi/s3/" target="_blank" rel="noreferrer">
+                  {t('S3 API docs')}
+                  <ArrowRight size={12} />
+                </a>
+              </Button>
+            ) : null}
           </YStack>
         </YStack>
 
         {/* Main Content Area */}
-        <YStack flex={1} minH={0} px="$6" py="$5" overflowY="auto" overflowX="hidden" gap="$5">
+        <YStack flex={1} minH={0} minW={0} px="$6" py="$5" $max-sm={{ px: '$3', py: '$4' }} overflowY="auto" overflowX="hidden" gap="$5">
           {/* Breadcrumb / Location Bar */}
           {navSection === 'local' && activeWs ? (
-            <XStack items="center" gap="$2" pb="$2" borderBottomWidth={1} borderColor="$borderColor">
+            <XStack items="center" gap="$2" pb="$2" flexWrap="wrap" borderBottomWidth={1} borderColor="$edge">
               <Button
                 {...CRUMB}
                 color="$soft"
@@ -1234,7 +1551,7 @@ export function Drive() {
                   setLocalPrefix('')
                 }}
               >
-                {t('Local Folders')}
+                {t('Local folders')}
               </Button>
               <ChevronRight size={13} color="var(--muted-foreground)" />
               <Button
@@ -1260,7 +1577,7 @@ export function Drive() {
                 : null}
             </XStack>
           ) : bucket || prefix ? (
-            <XStack items="center" gap="$2" pb="$2" borderBottomWidth={1} borderColor="$borderColor">
+            <XStack items="center" gap="$2" pb="$2" flexWrap="wrap" borderBottomWidth={1} borderColor="$edge">
               <Button
                 {...CRUMB}
                 color="$soft"
@@ -1291,32 +1608,33 @@ export function Drive() {
           ) : null}
 
           {/* Heading + View Mode Pill */}
-          <XStack items="center" justify="space-between">
-            <YStack gap="$1">
-              <Text render="h1" fontSize={26} fontWeight="700" color="$ink">
-                {navSection === 'local' ? (activeWs ? activeWs.name : t('Local Folders')) : t('Drive')}
+          <XStack items="center" justify="space-between" flexWrap="wrap" gap="$3">
+            <YStack gap="$1" minW={0} flex={1}>
+              <Text render="h1" fontSize="$7" fontWeight="700" color="$ink" numberOfLines={1}>
+                {navSection === 'local' ? (activeWs ? activeWs.name : t('Local folders')) : t('Drive')}
               </Text>
-              <Text fontSize={13} color="$soft">
+              <Text fontSize="$2" color="$soft">
                 {navSection === 'local'
                   ? activeWs
                     ? activeWs.path
-                    : t('Edit local files, add files & folders, and code locally.')
-                  : t('Secure. Private. Built for builders.')}
+                    : t('Browse and edit files directly in folders on your computer.')
+                  : t('Your cloud files and local folders in one place.')}
               </Text>
             </YStack>
 
-            {/* View Mode Toggle Pill (List, Grid, Details) */}
-            <XStack items="center" bg="$panel" rounded={8} borderWidth={1} borderColor="$borderColor" p={2} gap={2}>
+            {/* View Mode Toggle Pill (List, Grid) */}
+            <XStack items="center" bg="$panel" rounded={8} borderWidth={1} borderColor="var(--border-strong)" p={2} gap={2} shrink={0}>
               {([
-                ['list', t('List View'), List],
-                ['grid', t('Grid View'), LayoutGrid],
-                ['details', t('Details View'), MoreHorizontal],
+                ['list', t('List view'), List],
+                ['grid', t('Grid view'), LayoutGrid],
               ] as const).map(([mode, label, Icon]) => (
                 <Button
                   key={mode}
                   variant={viewMode === mode ? 'secondary' : 'ghost'}
                   size="icon-sm"
                   color={viewMode === mode ? '$ink' : '$soft'}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  $max-sm={{ minW: 44, minH: 44 }}
                   onClick={() => setViewMode(mode)}
                   aria-label={label}
                   aria-pressed={viewMode === mode}
@@ -1332,17 +1650,22 @@ export function Drive() {
           {naming ? (
             <XStack
               items="center"
+              flexWrap="wrap"
               gap="$3"
-              py={10} px={14}
+              py={10}
+              px={14}
               rounded={8}
               borderWidth={1}
-              borderColor="var(--border-control)"
+              borderColor="var(--border-strong)"
               bg="$panel"
+              focusWithinStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
             >
               {naming.kind === 'file' ? (
-                <FileCode size={16} color="var(--primary)" />
+                <FileCode size={16} color="var(--foreground)" />
               ) : naming.kind === 'clone' ? (
-                <FolderGit2 size={16} color="var(--primary)" />
+                <FolderGit2 size={16} color="var(--foreground)" />
+              ) : naming.kind === 'rename' ? (
+                <FolderInput size={16} color="var(--foreground)" />
               ) : (
                 <Folder size={16} color="var(--foreground)" />
               )}
@@ -1357,6 +1680,7 @@ export function Drive() {
                       if (e.key === 'Enter') {
                         if (naming.kind === 'file') handleCreateFile(naming.value)
                         else if (naming.kind === 'clone') handleCloneRepo(naming.value)
+                        else if (naming.kind === 'rename' && naming.entry) handleRename(naming.entry, naming.value)
                         else handleCreateFolder(naming.value)
                       }
                     }}
@@ -1365,6 +1689,8 @@ export function Drive() {
                         ? t('File name (e.g. {example})', { example: 'index.ts' })
                         : naming.kind === 'clone'
                         ? t('owner/repo or Git URL (e.g. {example})', { example: 'hanzoai/desktop' })
+                        : naming.kind === 'rename'
+                        ? t('New name or path (e.g. folder/file.md)')
                         : t('Folder name')
                     }
                     aria-label={
@@ -1372,26 +1698,33 @@ export function Drive() {
                         ? t('File name')
                         : naming.kind === 'clone'
                           ? t('Clone remote repository')
-                          : t('Folder name')
+                          : naming.kind === 'rename'
+                            ? t('Move or rename file')
+                            : t('Folder name')
                     }
                   />
                 }
                 {...BARE}
+                minW={140}
               />
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  if (naming.kind === 'file') handleCreateFile(naming.value)
-                  else if (naming.kind === 'clone') handleCloneRepo(naming.value)
-                  else handleCreateFolder(naming.value)
-                }}
-              >
-                {t(naming.kind === 'clone' ? 'Clone' : 'Create')}
-              </Button>
-              <Button variant="ghost" size="sm" color="$soft" onClick={() => setNaming(null)}>
-                {t('Cancel')}
-              </Button>
+              <XStack items="center" gap="$2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  $max-sm={{ minH: 44 }}
+                  onClick={() => {
+                    if (naming.kind === 'file') handleCreateFile(naming.value)
+                    else if (naming.kind === 'clone') handleCloneRepo(naming.value)
+                    else if (naming.kind === 'rename' && naming.entry) handleRename(naming.entry, naming.value)
+                    else handleCreateFolder(naming.value)
+                  }}
+                >
+                  {t(naming.kind === 'clone' ? 'Clone' : naming.kind === 'rename' ? 'Move' : 'Create')}
+                </Button>
+                <Button variant="ghost" size="sm" color="$soft" $max-sm={{ minH: 44 }} onClick={() => setNaming(null)}>
+                  {t('Cancel')}
+                </Button>
+              </XStack>
             </XStack>
           ) : null}
 
@@ -1416,6 +1749,40 @@ export function Drive() {
             <Text fontSize="$2" color="$soft" data-slot="drive-busy">{t('{status}…', { status: busy })}</Text>
           ) : null}
 
+          {/* Error alert banner (always visible across Local, Bucket, and Root views) */}
+          {failed ? (
+            <XStack
+              role="alert"
+              items="center"
+              justify="space-between"
+              flexWrap="wrap"
+              gap="$3"
+              px={16}
+              py={12}
+              rounded="$4"
+              borderWidth={1}
+              borderColor="var(--border-strong)"
+              bg="var(--surface-card)"
+            >
+              <Text fontSize="$2" color="var(--state-error)" flex={1} minW={0}>
+                {failed}
+              </Text>
+              <Button
+                size="sm"
+                variant="outline"
+                borderColor="var(--border-strong)"
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                $max-sm={{ minH: 44 }}
+                onClick={() => {
+                  setFailed(null)
+                  setReload((n) => n + 1)
+                }}
+              >
+                {t('Try again')}
+              </Button>
+            </XStack>
+          ) : null}
+
           {/* What the files say about the search, passage by passage. */}
           {hits && hits.length ? <Hits hits={hits} onOpen={(p) => showContents(p.file.id, p.section.id)} /> : null}
 
@@ -1430,11 +1797,11 @@ export function Drive() {
                 gap="$4"
                 borderWidth={1}
                 borderStyle="dashed"
-                borderColor="$borderColor"
+                borderColor="$edge"
                 rounded={12}
                 bg="$panel"
               >
-                <Laptop size={40} color="var(--primary)" />
+                <Laptop size={40} color="var(--foreground)" />
                 <YStack items="center" gap="$1" maxW={460}>
                   <Text fontSize={18} fontWeight="600" color="$ink" text="center">
                     {t('No local folder opened')}
@@ -1443,8 +1810,10 @@ export function Drive() {
                     {t('Open a local folder on your computer to browse, create, edit, and save files directly in Hanzo Desktop.')}
                   </Text>
                 </YStack>
-                <XStack items="center" gap="$2">
+                <XStack items="center" justify="center" flexWrap="wrap" gap="$2">
                   <Button
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                    $max-sm={{ minH: 44 }}
                     onClick={() => {
                       void pickLocalFolder().then((ws) => {
                         if (ws) {
@@ -1455,27 +1824,35 @@ export function Drive() {
                     }}
                   >
                     <FolderPlus size={16} />
-                    {t('Open Local Folder…')}
+                    {t('Open local folder…')}
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setNaming({ kind: 'clone', value: '' })}
-                  >
-                    <FolderGit2 size={16} />
-                    {t('Clone Remote Repo…')}
-                  </Button>
+                  {devMode ? (
+                    <Button
+                      variant="outline"
+                      borderColor="var(--border-strong)"
+                      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                      $max-sm={{ minH: 44 }}
+                      onClick={() => setNaming({ kind: 'clone', value: '' })}
+                    >
+                      <FolderGit2 size={16} />
+                      {t('Clone remote repo…')}
+                    </Button>
+                  ) : null}
                 </XStack>
               </YStack>
             ) : (
-              <YStack gap="$2">
-                <XStack items="center" justify="space-between" pb="$1">
+              <YStack gap="$2.5">
+                <XStack items="center" justify="space-between" flexWrap="wrap" gap="$2" pb="$1">
                   <Text fontSize={12} fontWeight="600" color="$soft">
-                    {localPrefix ? t('Folder: {path}', { path: localPrefix }) : t('Root Files & Directories')}
+                    {localPrefix ? t('Folder: {path}', { path: localPrefix }) : t('Files and folders')}
                   </Text>
-                  <XStack items="center" gap="$2">
+                  <XStack items="center" flexWrap="wrap" gap="$2">
                     <Button
                       variant="outline"
                       size="sm"
+                      borderColor="var(--border-strong)"
+                      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                      $max-sm={{ minH: 44 }}
                       onClick={() => setNaming({ kind: 'file', value: '' })}
                     >
                       <FilePlus size={13} />
@@ -1484,6 +1861,9 @@ export function Drive() {
                     <Button
                       variant="outline"
                       size="sm"
+                      borderColor="var(--border-strong)"
+                      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                      $max-sm={{ minH: 44 }}
                       onClick={() => setNaming({ kind: 'folder', value: '' })}
                     >
                       <FolderPlus size={13} />
@@ -1492,59 +1872,56 @@ export function Drive() {
                     <Button
                       variant="outline"
                       size="sm"
+                      borderColor="var(--border-strong)"
+                      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                      $max-sm={{ minH: 44 }}
                       onClick={() => void handleImportLocalFile()}
                     >
                       <Upload size={13} />
                       {t('Import file')}
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setNaming({ kind: 'clone', value: '' })}
-                    >
-                      <FolderGit2 size={13} />
-                      {t('Clone repo')}
-                    </Button>
+                    {devMode ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        borderColor="var(--border-strong)"
+                        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                        $max-sm={{ minH: 44 }}
+                        onClick={() => setNaming({ kind: 'clone', value: '' })}
+                      >
+                        <FolderGit2 size={13} />
+                        {t('Clone repo')}
+                      </Button>
+                    ) : null}
                   </XStack>
                 </XStack>
-                <YStack borderWidth={1} borderColor="$borderColor" rounded={8} overflowX="auto" overflowY="hidden">
+                {viewMode === 'grid' && visibleLocalEntries === null ? (
+                  <DriveEntriesSkeleton grid label={t('Loading files')} />
+                ) : viewMode === 'grid' && visibleLocalEntries && visibleLocalEntries.length > 0 ? (
                   <View
                     display="grid"
-                    gridTemplateColumns={FILES}
-                    minW="min-content"
-                    px={16}
-                    py={10}
-                    borderBottomWidth={1}
-                    borderColor="$borderColor"
+                    gridTemplateColumns="repeat(auto-fill, minmax(180px, 1fr))"
+                    $max-sm={{ gridTemplateColumns: '1fr' }}
+                    gap="$3"
                   >
-                    <Text {...HEAD}>{t('Name')}</Text>
-                    <Text {...HEAD}>{t('Type')}</Text>
-                    <Text {...HEAD}>{t('Updated')}</Text>
-                    <Text {...HEAD}>{t('Size')}</Text>
-                    <View />
-                  </View>
-
-                  {!localEntries || localEntries.length === 0 ? (
-                    <Text py={36} px={16} text="center" fontSize="$2" color="$faint">
-                      {t('Empty folder')}
-                    </Text>
-                  ) : (
-                    localEntries.map((e) => {
-                      const ext = e.name.split('.').pop() || ''
+                    {visibleLocalEntries.map((e) => {
+                      const ext = e.name.includes('.') ? e.name.split('.').pop()?.toLowerCase() || '' : ''
                       return (
-                        <View
+                        <YStack
                           key={e.path}
-                          display="grid"
-                          gridTemplateColumns={FILES}
-                          minW="min-content"
-                          px={16}
-                          py={11}
-                          items="center"
+                          render="button"
+                          {...({ type: 'button' } as object)}
+                          p="$3.5"
+                          rounded="$4"
+                          bg="$panel"
+                          borderWidth={1}
+                          borderColor="$edge"
+                          gap="$2"
+                          items="flex-start"
                           cursor="pointer"
-                          borderBottomWidth={1}
-                          borderColor="$borderColor"
-                          transition="100ms"
-                          hoverStyle={{ bg: '$hover' }}
+                          transition="quickest"
+                          hoverStyle={{ bg: '$hover', borderColor: 'var(--border-strong)' }}
+                          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                           onClick={() => {
                             if (e.isDir) {
                               setLocalPrefix(localPrefix ? `${localPrefix}/${e.name}` : e.name)
@@ -1553,68 +1930,389 @@ export function Drive() {
                             }
                           }}
                         >
-                          <XStack items="center" gap="$3" minW={0} pr="$2">
+                          <XStack items="center" justify="space-between" width="100%">
                             {e.isDir ? (
-                              <Folder size={16} color="var(--foreground)" />
+                              <Folder size={18} color="var(--foreground)" />
                             ) : (
-                              <FileCode size={16} color="var(--muted-foreground)" />
+                              <FileCode size={18} color="var(--muted-foreground)" />
                             )}
-                            <Text {...NAME}>{e.name}</Text>
+                            <Text {...CHIP}>{e.isDir ? t('Folder') : ext || t('File')}</Text>
+                          </XStack>
+                          <Text {...NAME} text="start" width="100%">
+                            {e.name}
+                          </Text>
+                          <Text fontSize="$1" color="$soft">
+                            {e.isDir ? t('Folder') : weigh(e.size)}
+                          </Text>
+                        </YStack>
+                      )
+                    })}
+                  </View>
+                ) : (
+                  <YStack borderWidth={1} borderColor="$edge" rounded={8} overflowX="auto" overflowY="hidden">
+                    <View
+                      display="grid"
+                      gridTemplateColumns={FILES}
+                      minW="min-content"
+                      px={16}
+                      py={10}
+                      borderBottomWidth={1}
+                      borderColor="$edge"
+                    >
+                      <Text {...HEAD}>{t('Name')}</Text>
+                      <Text {...HEAD}>{t('Type')}</Text>
+                      <Text {...HEAD}>{t('Updated')}</Text>
+                      <Text {...HEAD}>{t('Size')}</Text>
+                      <View />
+                    </View>
+
+                    {visibleLocalEntries === null ? (
+                      <DriveEntriesSkeleton label={t('Loading files')} />
+                    ) : visibleLocalEntries.length === 0 ? (
+                      <YStack py={40} px={16} items="center" gap="$2">
+                        <Text fontSize="$2" color="$soft" text="center">
+                          {t('This folder is empty.')}
+                        </Text>
+                      </YStack>
+                    ) : (
+                      visibleLocalEntries.map((e) => {
+                        const ext = e.name.includes('.') ? e.name.split('.').pop()?.toLowerCase() || '' : ''
+                        const openLocal = () => {
+                          if (e.isDir) {
+                            setLocalPrefix(localPrefix ? `${localPrefix}/${e.name}` : e.name)
+                          } else {
+                            setEditingFile({ path: e.path, name: e.name })
+                          }
+                        }
+                        return (
+                          <View
+                            key={e.path}
+                            role="button"
+                            tabIndex={0}
+                            display="grid"
+                            gridTemplateColumns={FILES}
+                            minW="min-content"
+                            px={16}
+                            py={11}
+                            items="center"
+                            cursor="pointer"
+                            borderBottomWidth={1}
+                            borderColor="$edge"
+                            transition="100ms"
+                            hoverStyle={{ bg: '$hover' }}
+                            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)', outlineOffset: -2 }}
+                            onClick={openLocal}
+                            onKeyDown={(ev: { key?: string; target?: unknown; currentTarget?: unknown; preventDefault?: () => void }) => {
+                              if (ev.target !== ev.currentTarget) return
+                              if (ev.key === 'Enter' || ev.key === ' ') {
+                                ev.preventDefault?.()
+                                openLocal()
+                              }
+                            }}
+                          >
+                            <XStack items="center" gap="$3" minW={0} pr="$2">
+                              {e.isDir ? (
+                                <Folder size={16} color="var(--foreground)" />
+                              ) : (
+                                <FileCode size={16} color="var(--muted-foreground)" />
+                              )}
+                              <Text {...NAME}>{e.name}</Text>
+                            </XStack>
+
+                            <View items="flex-start">
+                              <Text {...CHIP}>{e.isDir ? t('Folder') : ext || t('File')}</Text>
+                            </View>
+
+                            <Text {...CELL}>
+                              {e.lastModified ? when(e.lastModified, locale) : '—'}
+                            </Text>
+
+                            <Text {...CELL}>
+                              {e.isDir ? '—' : weigh(e.size)}
+                            </Text>
+
+                            <View position="relative" data-drive-menu={e.path} onClick={(evt) => evt.stopPropagation()}>
+                              <More
+                                onPress={(evt) => {
+                                  evt.stopPropagation()
+                                  setItemMenuKey(itemMenuKey === e.path ? null : e.path)
+                                }}
+                              />
+                              {itemMenuKey === e.path ? (
+                                <YStack
+                                  position="absolute"
+                                  r={0}
+                                  t="100%"
+                                  z="var(--z-dropdown)"
+                                  width={160}
+                                  bg="var(--popover)"
+                                  borderWidth={1}
+                                  borderColor="var(--border-strong)"
+                                  rounded={8}
+                                  boxShadow="var(--shadow-lg)"
+                                  p={4}
+                                  gap={2}
+                                >
+                                  {!e.isDir ? (
+                                    <Pick
+                                      icon={FileCode}
+                                      label={t('Edit file')}
+                                      onPress={() => {
+                                        setItemMenuKey(null)
+                                        setEditingFile({ path: e.path, name: e.name })
+                                      }}
+                                    />
+                                  ) : null}
+                                  <Pick
+                                    icon={Trash2}
+                                    label={t('Delete')}
+                                    tone="var(--state-error)"
+                                    onPress={() => {
+                                      setItemMenuKey(null)
+                                      handleDeleteLocal(e)
+                                    }}
+                                  />
+                                </YStack>
+                              ) : null}
+                            </View>
+                          </View>
+                        )
+                      })
+                    )}
+                  </YStack>
+                )}
+              </YStack>
+            )
+          ) : bucket || prefix ? (
+            <YStack gap="$2">
+              {viewMode === 'grid' && filteredEntries === null && !failed ? (
+                <DriveEntriesSkeleton grid label={t('Loading files')} />
+              ) : viewMode === 'grid' && filteredEntries && filteredEntries.length > 0 ? (
+                <View
+                  display="grid"
+                  gridTemplateColumns="repeat(auto-fill, minmax(180px, 1fr))"
+                  $max-sm={{ gridTemplateColumns: '1fr' }}
+                  gap="$3"
+                >
+                  {filteredEntries.map((e) => {
+                    const isFolder = e.isDir || e.key.endsWith('/')
+                    const cleanName = e.key.replace(/\/+$/, '')
+                    const ext = cleanName.includes('.') ? cleanName.split('.').pop()?.toLowerCase() || '' : ''
+                    return (
+                      <YStack
+                        key={e.key}
+                        render="button"
+                        {...({ type: 'button' } as object)}
+                        p="$3.5"
+                        rounded="$4"
+                        bg="$panel"
+                        borderWidth={1}
+                        borderColor="$edge"
+                        gap="$2"
+                        items="flex-start"
+                        cursor="pointer"
+                        transition="quickest"
+                        hoverStyle={{ bg: '$hover', borderColor: 'var(--border-strong)' }}
+                        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                        onClick={() => {
+                          if (isFolder) setPrefix(`${prefix}${cleanName}/`)
+                          else handleDownload(e)
+                        }}
+                      >
+                        <XStack items="center" justify="space-between" width="100%">
+                          <Glyph entry={e} size={18} />
+                          <Text {...CHIP}>{isFolder ? t('Folder') : ext || t('File')}</Text>
+                        </XStack>
+                        <Text {...NAME} text="start" width="100%">
+                          {cleanName}
+                        </Text>
+                        <Text fontSize="$1" color="$soft">
+                          {isFolder ? t('Folder') : weigh(e.size)}
+                        </Text>
+                      </YStack>
+                    )
+                  })}
+                </View>
+              ) : (
+                <YStack borderWidth={1} borderColor="$edge" rounded={8} overflowX="auto" overflowY="hidden">
+                  {/* Table Header */}
+                  <View
+                    display="grid"
+                    gridTemplateColumns={FILES}
+                    minW="min-content"
+                    px={16}
+                    py={10}
+                    borderBottomWidth={1}
+                    borderColor="$edge"
+                  >
+                    <Text {...HEAD}>{t('Name')}</Text>
+                    <Text {...HEAD}>{t('Type')}</Text>
+                    <Text {...HEAD}>{t('Updated ↓')}</Text>
+                    <Text {...HEAD}>{t('Size')}</Text>
+                    <View />
+                  </View>
+
+                  {/* Table Rows, Calm Shimmer Skeleton, or Empty State */}
+                  {filteredEntries === null && !failed ? (
+                    <DriveEntriesSkeleton label={t('Loading files')} />
+                  ) : !filteredEntries || filteredEntries.length === 0 ? (
+                    <YStack py={44} px={16} items="center" gap="$3">
+                      <Text text="center" fontSize="$2" color="$soft">
+                        {searchQuery.trim()
+                          ? t('No files match “{query}”.', { query: searchQuery.trim() })
+                          : t('No files in this folder yet.')}
+                      </Text>
+                      {!searchQuery.trim() ? (
+                        <XStack gap="$2" flexWrap="wrap" justify="center">
+                          <Button
+                            size="sm"
+                            rounded={999}
+                            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                            $max-sm={{ minH: 44 }}
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            <Upload size={13} />
+                            {t('Upload files')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            rounded={999}
+                            borderColor="var(--border-strong)"
+                            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                            $max-sm={{ minH: 44 }}
+                            onClick={() => setNaming({ kind: 'folder', value: '' })}
+                          >
+                            <FolderPlus size={13} />
+                            {t('New folder')}
+                          </Button>
+                        </XStack>
+                      ) : null}
+                    </YStack>
+                  ) : (
+                    filteredEntries.map((e) => {
+                      const isFolder = e.isDir || e.key.endsWith('/')
+                      const cleanName = e.key.replace(/\/+$/, '')
+                      const ext = cleanName.includes('.') ? cleanName.split('.').pop()?.toLowerCase() || '' : ''
+                      const openEntry = () => {
+                        if (isFolder) {
+                          setPrefix(`${prefix}${cleanName}/`)
+                        } else {
+                          handleDownload(e)
+                        }
+                      }
+                      return (
+                        <View
+                          key={e.key}
+                          role="button"
+                          tabIndex={0}
+                          display="grid"
+                          gridTemplateColumns={FILES}
+                          minW="min-content"
+                          px={16}
+                          py={11}
+                          items="center"
+                          cursor="pointer"
+                          borderBottomWidth={1}
+                          borderColor="$edge"
+                          transition="100ms"
+                          hoverStyle={{ bg: '$hover' }}
+                          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)', outlineOffset: -2 }}
+                          onClick={openEntry}
+                          onKeyDown={(ev: { key?: string; target?: unknown; currentTarget?: unknown; preventDefault?: () => void }) => {
+                            if (ev.target !== ev.currentTarget) return
+                            if (ev.key === 'Enter' || ev.key === ' ') {
+                              ev.preventDefault?.()
+                              openEntry()
+                            }
+                          }}
+                        >
+                          <XStack items="center" gap="$2.5" minW={0}>
+                            <Glyph entry={e} size={16} />
+                            <YStack minW={0}>
+                              <Text {...NAME}>{cleanName}</Text>
+                              {!isFolder && index.get(prefix + e.key) ? <Badge f={index.get(prefix + e.key)!} /> : null}
+                            </YStack>
                           </XStack>
 
-                          <Text fontSize="$2" color="$soft" numberOfLines={1}>
-                            {e.isDir ? t('Folder') : ext.toUpperCase() || t('File')}
-                          </Text>
+                          <View items="flex-start">
+                            <Text {...CHIP}>{isFolder ? t('Folder') : ext || t('File')}</Text>
+                          </View>
 
-                          <Text {...CELL}>
-                            {e.lastModified ? when(e.lastModified, locale) : '—'}
-                          </Text>
+                          <Text {...CELL}>{when(e.lastModified, locale)}</Text>
 
-                          <Text {...CELL}>
-                            {e.isDir ? '—' : weigh(e.size)}
-                          </Text>
+                          <Text {...CELL}>{weigh(e.size)}</Text>
 
-                          <View position="relative" onClick={(evt) => evt.stopPropagation()}>
+                          <View position="relative" items="flex-start" data-drive-menu={e.key}>
                             <More
-                              onPress={(evt) => {
-                                evt.stopPropagation()
-                                setItemMenuKey(itemMenuKey === e.path ? null : e.path)
+                              onPress={(ev) => {
+                                ev.stopPropagation()
+                                setItemMenuKey(itemMenuKey === e.key ? null : e.key)
                               }}
                             />
-                            {itemMenuKey === e.path ? (
+
+                            {itemMenuKey === e.key ? (
                               <YStack
                                 position="absolute"
                                 r={0}
                                 t="100%"
-                                z="var(--z-dropdown)"
-                                width={160}
                                 bg="var(--popover)"
                                 borderWidth={1}
-                                borderColor="$borderColor"
+                                borderColor="var(--border-strong)"
                                 rounded={8}
                                 boxShadow="var(--shadow-lg)"
+                                z="var(--z-dropdown)"
                                 p={4}
-                                gap={2}
+                                minW={148}
+                                onClick={(ev: { stopPropagation: () => void }) => ev.stopPropagation()}
                               >
-                                {!e.isDir ? (
-                                  <Pick
-                                    icon={FileCode}
-                                    label={t('Edit file')}
-                                    onPress={() => {
-                                      setItemMenuKey(null)
-                                      setEditingFile({ path: e.path, name: e.name })
-                                    }}
-                                  />
+                                {!isFolder && index.get(prefix + e.key) ? (
+                                  <>
+                                    <Pick
+                                      icon={ListTree}
+                                      label={t('Contents')}
+                                      onPress={() => {
+                                        setItemMenuKey(null)
+                                        setContents({ file: index.get(prefix + e.key)! })
+                                      }}
+                                    />
+                                    <Pick
+                                      icon={MessageSquare}
+                                      label={t('Ask in chat')}
+                                      onPress={() => {
+                                        setItemMenuKey(null)
+                                        askInChat(index.get(prefix + e.key)!)
+                                      }}
+                                    />
+                                  </>
+                                ) : null}
+                                {!isFolder ? (
+                                  <>
+                                    <Pick
+                                      icon={FolderInput}
+                                      label={t('Move or rename')}
+                                      onPress={() => {
+                                        setItemMenuKey(null)
+                                        setNaming({ kind: 'rename', entry: e, value: `${prefix}${cleanName}` })
+                                      }}
+                                    />
+                                    <Pick
+                                      icon={Download}
+                                      label={t('Download')}
+                                      onPress={() => {
+                                        setItemMenuKey(null)
+                                        handleDownload(e)
+                                      }}
+                                    />
+                                  </>
                                 ) : null}
                                 <Pick
                                   icon={Trash2}
                                   label={t('Delete')}
-                                  tone={BAD}
+                                  tone="var(--state-error)"
                                   onPress={() => {
                                     setItemMenuKey(null)
-                                    deleteLocalPath(e.path)
-                                      .then(() => loadLocalEntries())
-                                      .catch((err) => setFailed(blame(err, t)))
+                                    handleDelete(e)
                                   }}
                                 />
                               </YStack>
@@ -1625,197 +2323,54 @@ export function Drive() {
                     })
                   )}
                 </YStack>
-              </YStack>
-            )
-          ) : bucket || prefix ? (
-            <YStack gap="$2">
-              <YStack borderWidth={1} borderColor="$borderColor" rounded={8} overflowX="auto" overflowY="hidden">
-                {/* Table Header */}
-                <View
-                  display="grid"
-                  gridTemplateColumns={FILES}
-                  minW="min-content"
-                  px={16}
-                  py={10}
-                  borderBottomWidth={1}
-                  borderColor="$borderColor"
-                >
-                  <Text {...HEAD}>{t('NAME')}</Text>
-                  <Text {...HEAD}>{t('TYPE')}</Text>
-                  <Text {...HEAD}>{t('UPDATED ↓')}</Text>
-                  <Text {...HEAD}>{t('SIZE')}</Text>
-                  <View />
-                </View>
-
-                {/* Table Rows or None */}
-                {!filteredEntries || filteredEntries.length === 0 ? (
-                  <Text py={36} px={16} text="center" fontSize="$2" color="$faint">
-                    {t('None')}
-                  </Text>
-                ) : (
-                  filteredEntries.map((e) => {
-                    const isFolder = e.isDir || e.key.endsWith('/')
-                    const cleanName = e.key.replace(/\/+$/, '')
-                    return (
-                      <View
-                        key={e.key}
-                        display="grid"
-                        gridTemplateColumns={FILES}
-                        minW="min-content"
-                        px={16}
-                        py={11}
-                        items="center"
-                        cursor="pointer"
-                        borderBottomWidth={1}
-                        borderColor="$borderColor"
-                        transition="100ms"
-                        hoverStyle={{ bg: '$hover' }}
-                        onClick={() => {
-                          if (isFolder) {
-                            setPrefix(`${prefix}${cleanName}/`)
-                          } else {
-                            handleDownload(e)
-                          }
-                        }}
-                      >
-                        <XStack items="center" gap="$2.5" minW={0}>
-                          <Glyph entry={e} size={16} />
-                          <YStack minW={0}>
-                            <Text {...NAME}>{cleanName}</Text>
-                            {!isFolder && index.get(prefix + e.key) ? <Badge f={index.get(prefix + e.key)!} /> : null}
-                          </YStack>
-                        </XStack>
-
-                        <View items="flex-start">
-                          <Text {...CHIP}>{isFolder ? t('Folder') : cleanName.split('.').pop()?.toUpperCase() || t('File')}</Text>
-                        </View>
-
-                        <Text {...CELL}>{when(e.lastModified, locale)}</Text>
-
-                        <Text {...CELL}>{weigh(e.size)}</Text>
-
-                        <View position="relative" items="flex-start">
-                          <More
-                            onPress={(ev) => {
-                              ev.stopPropagation()
-                              setItemMenuKey(itemMenuKey === e.key ? null : e.key)
-                            }}
-                          />
-
-                          {itemMenuKey === e.key ? (
-                            <YStack
-                              position="absolute"
-                              r={0}
-                              t="100%"
-                              bg="var(--popover)"
-                              borderWidth={1}
-                              borderColor="$borderColor"
-                              rounded={8}
-                              boxShadow="var(--shadow-lg)"
-                              z="var(--z-dropdown)"
-                              p={4}
-                              minW={140}
-                              onClick={(ev: { stopPropagation: () => void }) => ev.stopPropagation()}
-                            >
-                              {!isFolder && index.get(prefix + e.key) ? (
-                                <>
-                                  <Pick
-                                    icon={ListTree}
-                                    label={t('Contents')}
-                                    onPress={() => {
-                                      setItemMenuKey(null)
-                                      setContents({ file: index.get(prefix + e.key)! })
-                                    }}
-                                  />
-                                  <Pick
-                                    icon={MessageSquare}
-                                    label={t('Ask in chat')}
-                                    onPress={() => {
-                                      setItemMenuKey(null)
-                                      askInChat(index.get(prefix + e.key)!)
-                                    }}
-                                  />
-                                </>
-                              ) : null}
-                              {!isFolder ? (
-                                <Pick
-                                  icon={Download}
-                                  label={t('Download')}
-                                  onPress={() => {
-                                    setItemMenuKey(null)
-                                    handleDownload(e)
-                                  }}
-                                />
-                              ) : null}
-                              <Pick
-                                icon={Trash2}
-                                label={t('Delete')}
-                                tone={BAD}
-                                onPress={() => {
-                                  setItemMenuKey(null)
-                                  handleDelete(e)
-                                }}
-                              />
-                            </YStack>
-                          ) : null}
-                        </View>
-                      </View>
-                    )
-                  })
-                )}
-              </YStack>
+              )}
             </YStack>
           ) : (
             /* Root View: Storage Buckets + Projects (Unified VFS) */
             <>
               {/* Storage Buckets Section */}
               <YStack gap="$2.5">
-                <Text fontSize={12} fontWeight="600" color="$soft">
-                  {t('Storage Buckets')}
+                <Text fontSize="$1" fontWeight="600" color="$soft">
+                  {devMode ? t('Storage buckets') : t('Cloud storage')}
                 </Text>
 
-                <YStack borderWidth={1} borderColor="$borderColor" rounded={8} overflowX="auto" overflowY="hidden">
-                  {failed ? (
-                    <Text {...NOTE}>
-                      {failed}
-                      <Button
-                        size="sm"
-                        mx="auto"
-                        mt={10}
-                        onClick={() => {
-                          setFailed(null)
-                          setReload((n) => n + 1)
-                        }}
-                      >
-                        {t('Try again')}
-                      </Button>
-                    </Text>
-                  ) : !buckets ? (
-                    <Text {...NOTE}>{t('Reading your storage…')}</Text>
-                  ) : buckets.length === 0 ? (
-                    <Text {...NOTE}>{t('No buckets yet.')}</Text>
+                <YStack borderWidth={1} borderColor="$edge" rounded={8} overflowX="auto" overflowY="hidden">
+                  {!buckets && !failed ? (
+                    <DriveBucketSkeleton label={t('Loading your files')} />
+                  ) : !buckets || buckets.length === 0 ? (
+                    <Text {...NOTE}>{devMode ? t('No buckets yet.') : t('No cloud folders yet.')}</Text>
                   ) : (
                     buckets.map((b) => (
                       <XStack
                         key={b.name}
+                        render="button"
+                        {...({ type: 'button' } as object)}
                         onClick={() => openBucket(b.name)}
+                        width="100%"
                         items="center"
                         justify="space-between"
                         px={16}
                         py={12}
+                        $max-sm={{ minH: 48 }}
                         cursor="pointer"
                         bg="transparent"
+                        borderWidth={0}
+                        borderBottomWidth={1}
+                        borderColor="$edge"
                         transition="100ms"
                         hoverStyle={{ bg: '$hover' }}
+                        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)', outlineOffset: -2 }}
                       >
-                        <XStack items="center" gap="$2.5">
+                        <XStack items="center" gap="$2.5" minW={0} flex={1}>
                           <Folder size={17} color="var(--foreground)" />
-                          <Text fontSize="$2" fontWeight="500" color="$ink">{getBucketDisplayName(b, t)}</Text>
+                          <Text fontSize="$2" fontWeight="500" color="$ink" numberOfLines={1}>
+                            {getBucketDisplayName(b, t)}
+                          </Text>
                         </XStack>
 
-                        <XStack items="center" gap="$4">
-                          <Text fontSize="$2" color="$faint">{when(b.createdAt, locale)}</Text>
-                          <More onPress={(e) => e.stopPropagation()} />
+                        <XStack items="center" gap="$3" shrink={0}>
+                          <Text fontSize="$2" color="$soft">{when(b.createdAt, locale)}</Text>
+                          <ChevronRight size={14} color="var(--muted-foreground)" aria-hidden />
                         </XStack>
                       </XStack>
                     ))
@@ -1823,13 +2378,13 @@ export function Drive() {
                 </YStack>
               </YStack>
 
-              {/* Projects (Unified VFS) Section */}
+              {/* Projects Section */}
               <YStack gap="$2.5">
-                <Text fontSize={12} fontWeight="600" color="$soft">
-                  {t('Projects (Unified VFS)')}
+                <Text fontSize="$1" fontWeight="600" color="$soft">
+                  {devMode ? t('Projects (unified VFS)') : t('Projects')}
                 </Text>
 
-                <YStack borderWidth={1} borderColor="$borderColor" rounded={8} overflowX="auto" overflowY="hidden">
+                <YStack borderWidth={1} borderColor="$edge" rounded={8} overflowX="auto" overflowY="hidden">
                   {/* Table Header */}
                   <View
                     display="grid"
@@ -1838,59 +2393,74 @@ export function Drive() {
                     px={16}
                     py={10}
                     borderBottomWidth={1}
-                    borderColor="$borderColor"
+                    borderColor="$edge"
                   >
-                    <Text {...HEAD}>{t('NAME')}</Text>
-                    <Text {...HEAD}>{t('TYPE')}</Text>
-                    <Text {...HEAD}>{t('UPDATED ↓')}</Text>
-                    <Text {...HEAD}>{t('SIZE')}</Text>
+                    <Text {...HEAD}>{t('Name')}</Text>
+                    <Text {...HEAD}>{t('Type')}</Text>
+                    <Text {...HEAD}>{t('Updated ↓')}</Text>
+                    <Text {...HEAD}>{t('Size')}</Text>
                     <View />
                   </View>
 
-                  {/* Table Rows or None */}
+                  {/* Table Rows or Calm Empty State */}
                   {filteredProjects.length === 0 ? (
-                    <Text py={36} px={16} text="center" fontSize="$2" color="$faint">
-                      {t('None')}
+                    <Text py={36} px={16} text="center" fontSize="$2" color="$soft">
+                      {searchQuery.trim()
+                        ? t('No projects match “{query}”.', { query: searchQuery.trim() })
+                        : t('No projects yet.')}
                     </Text>
                   ) : (
-                    filteredProjects.map((p) => (
-                      <View
-                        key={p.id}
-                        onClick={() => {
-                          const targetBucket = buckets[0]?.name || 'hanzo'
-                          openBucket(targetBucket)
-                          setPrefix(`projects/${p.name || p.id}/`)
-                        }}
-                        display="grid"
-                        gridTemplateColumns={PROJECTS}
-                        minW="min-content"
-                        px={16}
-                        py={11}
-                        items="center"
-                        cursor="pointer"
-                        borderBottomWidth={1}
-                        borderColor="$borderColor"
-                        transition="100ms"
-                        hoverStyle={{ bg: '$hover' }}
-                      >
-                        <XStack items="center" gap="$2.5" minW={0}>
-                          <Folder size={16} color="var(--foreground)" />
-                          <Text {...NAME}>{p.name}</Text>
-                        </XStack>
+                    filteredProjects.map((p) => {
+                      const openProject = () => {
+                        const targetBucket = buckets?.[0]?.name || 'hanzo'
+                        openBucket(targetBucket)
+                        setPrefix(`projects/${p.name || p.id}/`)
+                      }
+                      return (
+                        <View
+                          key={p.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={openProject}
+                          onKeyDown={(ev: { key?: string; target?: unknown; currentTarget?: unknown; preventDefault?: () => void }) => {
+                            if (ev.target !== ev.currentTarget) return
+                            if (ev.key === 'Enter' || ev.key === ' ') {
+                              ev.preventDefault?.()
+                              openProject()
+                            }
+                          }}
+                          display="grid"
+                          gridTemplateColumns={PROJECTS}
+                          minW="min-content"
+                          px={16}
+                          py={11}
+                          items="center"
+                          cursor="pointer"
+                          borderBottomWidth={1}
+                          borderColor="$edge"
+                          transition="100ms"
+                          hoverStyle={{ bg: '$hover' }}
+                          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)', outlineOffset: -2 }}
+                        >
+                          <XStack items="center" gap="$2.5" minW={0}>
+                            <Folder size={16} color="var(--foreground)" />
+                            <Text {...NAME}>{p.name}</Text>
+                          </XStack>
 
-                        <View items="flex-start">
-                          <Text {...CHIP}>{p.type}</Text>
+                          <View items="flex-start">
+                            <Text {...CHIP}>{p.type}</Text>
+                          </View>
+
+                          <Text {...CELL}>{p.updated}</Text>
+
+                          <Text {...CELL}>{p.size}</Text>
+
+                          <XStack items="center" justify="flex-end">
+                            <ChevronRight size={14} color="var(--muted-foreground)" aria-hidden />
+                          </XStack>
                         </View>
-
-                        <Text {...CELL}>{p.updated}</Text>
-
-                        <Text {...CELL}>{p.size}</Text>
-
-                        <View items="flex-start">
-                          <More onPress={(e) => e.stopPropagation()} />
-                        </View>
-                      </View>
-                    ))
+                      )
+                    })
                   )}
                 </YStack>
               </YStack>
@@ -1918,7 +2488,7 @@ export function Drive() {
           l={0}
           r={0}
           b={0}
-          z={1000}
+          z="var(--z-modal)"
           bg={VEIL}
           borderWidth={2}
           borderStyle="dashed"

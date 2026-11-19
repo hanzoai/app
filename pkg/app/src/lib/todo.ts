@@ -40,6 +40,8 @@ export interface Card {
   dueAt?: number
   createdAt: number
   updatedAt: number
+  /** Kept on this device only: the server did not take it. */
+  local?: boolean
 }
 
 /**
@@ -207,6 +209,11 @@ export async function board(
   }
 }
 
+/** The board a card goes to: its own, else the one on screen ("all" is not a board), else the first the store named. */
+export function targetOf(own: string | undefined, shown: string, keys: string[]): string {
+  return own || (shown && shown !== 'all' ? shown : '') || keys[0] || ''
+}
+
 /** The boards themselves — a project is a repository on the forge. */
 export async function projects(
   client?: AiClient | null,
@@ -273,6 +280,7 @@ export async function open(
     labels: card.labels ?? ['task'],
     createdAt: Date.now(),
     updatedAt: Date.now(),
+    local: true,
   }
 
   if (client) {

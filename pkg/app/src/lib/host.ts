@@ -126,13 +126,22 @@ export const SETTINGS = '/settings'
 /** The organization's settings. */
 const ORGANIZATION = `${SETTINGS}/organization`
 
-/** Settings' pages, by the name a surface asks for each: General at /settings, the organization's under it. */
+/** Settings' pages, by the name a surface asks for each: Personal, AI, Billing, and Workspace routes under /settings. */
 const PAGES: Readonly<Record<string, string>> = {
-  general: SETTINGS,
+  account: `${SETTINGS}/account`,
+  general: `${SETTINGS}/account`,
+  security: `${SETTINGS}/security`,
+  appearance: `${SETTINGS}/appearance`,
+  notifications: `${SETTINGS}/notifications`,
+  personalization: `${SETTINGS}/ai/personalization`,
+  memory: `${SETTINGS}/ai/memory`,
+  models: `${SETTINGS}/ai/models`,
+  capabilities: `${SETTINGS}/ai/capabilities`,
+  customize: `${SETTINGS}/ai/customize`,
+  billing: `${SETTINGS}/billing`,
+  usage: `${SETTINGS}/usage`,
   organization: ORGANIZATION,
   members: `${ORGANIZATION}/members`,
-  billing: `${ORGANIZATION}/billing`,
-  usage: `${ORGANIZATION}/usage`,
   keys: `${ORGANIZATION}/keys`,
 }
 

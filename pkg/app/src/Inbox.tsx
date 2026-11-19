@@ -33,12 +33,11 @@ import { useI18n } from '@hanzo/i18n/react'
 import { useInbox } from '@hanzo/ai/react'
 import { ChannelHeader } from '@hanzo/ui/agents'
 import { Composer } from '@hanzo/ui/chat'
-import { Box, Text, XStack, YStack } from '@hanzo/ui'
+import { Box, Skeleton, Text, XStack, YStack } from '@hanzo/ui'
 import { useIam } from '@hanzo/iam/react'
-import { Plus } from 'lucide-react'
+import { ArrowLeft, Plus, User } from 'lucide-react'
 import { useAi } from './lib/ai'
 import { useOpen } from './open'
-import { Face } from './cast'
 import { plainly } from './failure'
 import { channelName, Network, of, speaker } from './network'
 import {
@@ -47,7 +46,6 @@ import {
   type Conversation,
 } from './conversations'
 import { Directory } from './Directory'
-import { BAD } from './lib/mix'
 
 /** Unix SECONDS, which is what the platform sends. Milliseconds here read as 1970. */
 const when = (seconds: number, locale: string): string =>
@@ -84,10 +82,37 @@ function stamp(seconds: number, locale: string): string {
  * everybody, so it told nobody apart while looking like somebody's initials.
  * A disc with nothing to say says '?', which is what it means.
  */
-function Sender({ transport, size = 36 }: { transport: string; size?: number }) {
+function senderInitial(raw?: string): string | null {
+  const clean = (raw ?? '').trim().replace(/^[#@]+/, '')
+  if (!clean) return null
+  // Skip opaque transport IDs (e.g. Slack U0123ABC) so everyone doesn't share 'U'.
+  if (/^[UWCDGB][A-Z0-9]{6,}$/.test(clean) || /^\d+$/.test(clean)) return null
+  const first = clean.charAt(0)
+  return /\p{L}/u.test(first) ? first.toUpperCase() : null
+}
+
+function Sender({ transport, name, size = 36 }: { transport: string; name?: string; size?: number }) {
+  const initial = senderInitial(name)
   return (
     <YStack width={size} height={size} shrink={0} position="relative">
-      <Face size={size} />
+      <YStack
+        width={size}
+        height={size}
+        rounded="$10"
+        bg="var(--surface-card-emphasis)"
+        borderWidth={1}
+        borderColor="$edge"
+        items="center"
+        justify="center"
+      >
+        {initial ? (
+          <Text fontSize={size >= 36 ? '$2' : '$1'} fontWeight="600" color="$aside">
+            {initial}
+          </Text>
+        ) : (
+          <User size={Math.round(size * 0.44)} color="var(--text-secondary)" aria-hidden />
+        )}
+      </YStack>
       <YStack position="absolute" b={-2} insetInlineEnd={-2}>
         <Network transport={transport} size={Math.round(size * 0.46)} />
       </YStack>
@@ -103,18 +128,23 @@ function Connect() {
     <>
       <Box
         render="button"
+        {...({ type: 'button' } as object)}
         onClick={() => setModalOpen(true)}
         px="$3"
         py="$2"
         rounded="$3"
         borderWidth={1}
-        borderColor="$borderColor"
-        hoverStyle={{ bg: '$hover' }}
+        borderColor="var(--border-strong)"
+        bg="transparent"
+        transition="quickest"
+        hoverStyle={{ bg: '$hover', borderColor: '$ink' }}
+        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+        $max-sm={{ minH: 44, display: 'flex', items: 'center' }}
         cursor="pointer"
       >
         <XStack items="center" gap="$1.5">
-          <Plus size={13} aria-hidden />
-          <Text fontSize="$2" color="$ink">
+          <Plus size={13} color="var(--foreground)" aria-hidden />
+          <Text fontSize="$2" fontWeight="500" color="$ink">
             {t('Connect an app')}
           </Text>
         </XStack>
@@ -145,6 +175,83 @@ function Empty({ children, offer }: { children: string; offer?: boolean }) {
   )
 }
 
+/** Calm monochrome layout-matched skeleton for the two-column inbox while messages load. */
+function InboxSkeleton({ span = 320 }: { span?: number }) {
+  const { t } = useI18n()
+  return (
+    <XStack
+      role="status"
+      aria-busy={true}
+      aria-label={t('Loading messages')}
+      flex={1}
+      minH={0}
+      minW={0}
+      overflow="hidden"
+    >
+      <YStack
+        flex={1}
+        $md={{ width: span, flex: 0, shrink: 0, borderInlineEndWidth: 1 }}
+        minW={0}
+        minH={0}
+        borderColor="$edge"
+      >
+        <XStack
+          minH={48}
+          shrink={0}
+          items="center"
+          justify="space-between"
+          px="$3"
+          py="$2"
+          gap="$2"
+          borderBottomWidth={1}
+          borderColor="$edge"
+        >
+          <Text render="h1" fontSize="$3" fontWeight="600" color="$ink">
+            {t('Inbox')}
+          </Text>
+          <Skeleton layout="block" width={104} height={28} rounded="$3" shrink={0} />
+        </XStack>
+        <YStack flex={1} minH={0} overflow="hidden">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <XStack key={i} gap="$3" items="center" p="$3" minH={62} borderBottomWidth={1} borderColor="$edge">
+              <Skeleton layout="block" width={36} height={36} rounded="$10" shrink={0} />
+              <YStack flex={1} minW={0} gap="$1.5">
+                <XStack items="center" justify="space-between" gap="$2">
+                  <Skeleton layout="block" width={i % 2 === 0 ? '48%' : '58%'} height={13} rounded="$2" />
+                  <Skeleton layout="block" width={36} height={10} rounded="$2" shrink={0} />
+                </XStack>
+                <Skeleton layout="block" width={i % 2 === 0 ? '82%' : '70%'} height={11} rounded="$2" />
+              </YStack>
+            </XStack>
+          ))}
+        </YStack>
+      </YStack>
+
+      <YStack display="none" $md={{ display: 'flex' }} flex={1} minW={0} minH={0}>
+        <XStack minH={48} shrink={0} items="center" justify="space-between" px="$4" borderBottomWidth={1} borderColor="$edge">
+          <Skeleton layout="block" width={150} height={15} rounded="$2" />
+          <Skeleton layout="block" width={68} height={12} rounded="$2" />
+        </XStack>
+        <YStack flex={1} minH={0} p="$4" gap="$4">
+          {[0, 1, 2].map((i) => (
+            <XStack key={i} gap="$3" items="flex-start">
+              <Skeleton layout="block" width={32} height={32} rounded="$10" shrink={0} />
+              <YStack flex={1} minW={0} gap="$1.5">
+                <XStack gap="$2" items="center">
+                  <Skeleton layout="block" width={110} height={13} rounded="$2" />
+                  <Skeleton layout="block" width={54} height={10} rounded="$2" />
+                </XStack>
+                <Skeleton layout="block" width={i === 1 ? '72%' : '86%'} height={12} rounded="$2" />
+                <Skeleton layout="block" width={i === 1 ? '44%' : '58%'} height={12} rounded="$2" />
+              </YStack>
+            </XStack>
+          ))}
+        </YStack>
+      </YStack>
+    </XStack>
+  )
+}
+
 /** The list, which stays on screen while you read down it. */
 function Arrivals({
   conversations,
@@ -157,17 +264,20 @@ function Arrivals({
 }) {
   const { t, locale } = useI18n()
   return (
-    <YStack flex={1} minH={0}>
+    <YStack flex={1} minH={0} minW={0}>
       <XStack
-        height={48}
+        minH={48}
         shrink={0}
         items="center"
+        justify="space-between"
+        flexWrap="wrap"
         px="$3"
+        py="$2"
         gap="$2"
         borderBottomWidth={1}
-        borderColor="$borderColor"
+        borderColor="$edge"
       >
-        <Text flex={1} fontSize="$3" fontWeight="600" color="$ink">
+        <Text flex={1} minW={0} fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1}>
           {t('Inbox')}
         </Text>
         <Connect />
@@ -181,18 +291,24 @@ function Arrivals({
           <Box
             key={one.key}
             render="button"
+            {...({ type: 'button' } as object)}
             onClick={() => onPick(one.key)}
             aria-current={one.key === open}
             display="block"
             width="100%"
+            minH={60}
+            $max-sm={{ minH: 64 }}
             cursor="pointer"
+            borderWidth={0}
             borderBottomWidth={1}
-            borderColor="var(--borderColor, var(--white-08))"
-            bg={one.key === open ? 'var(--raised, var(--white-06))' : 'transparent'}
-            hoverStyle={{ bg: '$hover' }}
+            borderColor="$edge"
+            bg={one.key === open ? '$raised' : 'transparent'}
+            transition="quickest"
+            hoverStyle={{ bg: one.key === open ? '$raised' : '$hover' }}
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)', outlineOffset: -2 }}
           >
             <XStack gap="$3" items="center" p="$3">
-              <Sender transport={one.transport} />
+              <Sender transport={one.transport} name={one.title} />
               {/* A gui Stack has no textAlign, and a `<button>` centres its text:
                   `alignItems` sets the lines at the start, and the title, which is
                   as wide as the row, says `start` itself. */}
@@ -229,9 +345,11 @@ function Arrivals({
 function Reading({
   channel,
   reload,
+  onBack,
 }: {
   channel: ReturnType<typeof useInbox>['channels'][number]
   reload: () => void
+  onBack?: () => void
 }) {
   const { t, locale } = useI18n()
   const { client } = useAi()
@@ -277,32 +395,55 @@ function Reading({
   }, [client, draft, sending, channel.transport, channel.channelId, reload, t])
 
   return (
-    <YStack flex={1} minH={0}>
+    <YStack flex={1} minH={0} minW={0}>
       {/* A channel is named by its own address, not by whoever spoke in it last.
           One person is the handle we hold for them; several is the network's
           id for the channel, which useInbox already groups on and which is the
           only thing that tells two channels on one network apart. */}
-      <ChannelHeader
-        name={channelName(channel)}
-      >
-        <XStack items="center" gap="$1.5">
-          <Network transport={channel.transport} size={14} />
-          <Text fontSize="$2" color="$soft">
-            {of(channel.transport).name}
-          </Text>
-        </XStack>
-      </ChannelHeader>
+      <XStack items="center" borderBottomWidth={1} borderColor="$edge" minW={0}>
+        {onBack ? (
+          <XStack
+            render="button"
+            {...({ type: 'button' } as object)}
+            aria-label={t('Back to inbox')}
+            onClick={onBack}
+            display="flex"
+            $md={{ display: 'none' }}
+            minW={44}
+            minH={44}
+            ml="$1.5"
+            rounded="$3"
+            items="center"
+            justify="center"
+            cursor="pointer"
+            hoverStyle={{ bg: '$hover' }}
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+          >
+            <ArrowLeft size={16} color="var(--foreground)" aria-hidden />
+          </XStack>
+        ) : null}
+        <YStack flex={1} minW={0}>
+          <ChannelHeader name={channelName(channel)}>
+            <XStack items="center" gap="$1.5">
+              <Network transport={channel.transport} size={14} />
+              <Text fontSize="$2" color="$soft">
+                {of(channel.transport).name}
+              </Text>
+            </XStack>
+          </ChannelHeader>
+        </YStack>
+      </XStack>
 
-      <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden" p="$4" gap="$3">
+      <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden" p="$4" $max-sm={{ p: '$3' }} gap="$3">
         {/* Oldest first, so a conversation reads down the way it happened. The
             page arrives newest-first because that is how a cursor pages. */}
         {[...channel.messages]
           .sort((a, b) => a.createdAt - b.createdAt)
           .map((message) => (
-            <XStack key={message.id} gap="$3" items="flex-start">
-              <Sender transport={channel.transport} size={32} />
+            <XStack key={message.id} gap="$3" items="flex-start" minW={0}>
+              <Sender transport={channel.transport} name={speaker(channel.transport, message.sender)} size={32} />
               <YStack flex={1} minW={0} gap="$1">
-                <XStack gap="$2" items="baseline">
+                <XStack gap="$2" items="baseline" flexWrap="wrap">
                   <Text fontSize="$3" fontWeight="500" color="$ink">
                     {speaker(channel.transport, message.sender)}
                   </Text>
@@ -310,7 +451,7 @@ function Reading({
                     <bdi>{when(message.createdAt, locale)}</bdi>
                   </Text>
                 </XStack>
-                <Text fontSize="$3" color="$ink">
+                <Text fontSize="$3" color="$ink" lineHeight="$4">
                   {message.text}
                 </Text>
               </YStack>
@@ -318,7 +459,7 @@ function Reading({
           ))}
       </YStack>
 
-      <YStack p="$3" gap="$2" borderTopWidth={1} borderColor="$borderColor">
+      <YStack p="$3" $max-sm={{ p: '$2.5' }} gap="$2" borderTopWidth={1} borderColor="$edge" minW={0}>
         {/* NO CHANNEL ID, NO REPLY. The send route addresses a channel and refuses a
             body without one, so a composer here would take what somebody typed
             and drop it — which is the thing this pane refused to do while there
@@ -334,7 +475,7 @@ function Reading({
               label={t('Reply on {network}', { network: of(channel.transport).name })}
             />
             {failed ? (
-              <Text fontSize="$2" color={BAD}>
+              <Text role="alert" fontSize="$2" color="var(--state-error)">
                 {failed}
               </Text>
             ) : null}
@@ -368,14 +509,17 @@ function InboxGrip({
       aria-label={t('Resize inbox channel list')}
       aria-valuenow={span}
       tabIndex={0}
+      display="none"
+      $md={{ display: 'flex' }}
       position="absolute"
       t={0}
       b={0}
       insetInlineEnd={-3}
       width={6}
-      z={10}
+      z="var(--z-raised)"
       cursor="col-resize"
-      hoverStyle={{ bg: '$borderColor' }}
+      hoverStyle={{ bg: 'var(--border-strong)' }}
+      focusVisibleStyle={{ bg: 'var(--ring)' }}
       onPointerDown={(e: React.PointerEvent<HTMLDivElement>) => {
         e.currentTarget.setPointerCapture(e.pointerId)
         held.current = e.clientX * way - span
@@ -411,7 +555,7 @@ function ReadingInbox() {
 
   const open = useMemo(() => conversationOf(conversations, channel), [conversations, channel])
 
-  if (loading && conversations.length === 0) return <Empty>{t('Reading your messages.')}</Empty>
+  if (loading && conversations.length === 0) return <InboxSkeleton span={listSpan} />
 
   if (conversations.length === 0) {
     return (
@@ -422,7 +566,7 @@ function ReadingInbox() {
   }
 
   return (
-    <XStack flex={1} minH={0} position="relative">
+    <XStack flex={1} minH={0} minW={0} overflow="hidden" position="relative">
       {/* THE LIST IS A COLUMN, not the whole pane. On a phone there is space for
           one of the two, so what is open takes it and the list is a step back;
           from a tablet up they stand side by side, which is the shape the
@@ -431,8 +575,9 @@ function ReadingInbox() {
         display={open ? 'none' : 'flex'}
         $md={{ display: 'flex', width: listSpan, shrink: 0, borderInlineEndWidth: 1 }}
         flex={1}
+        minW={0}
         minH={0}
-        borderColor="$borderColor"
+        borderColor="$edge"
         position="relative"
       >
         <Arrivals conversations={conversations} open={channel} onPick={openChannel} />
@@ -442,7 +587,7 @@ function ReadingInbox() {
       {/* An arrival is replied to on the transport it came in on. */}
       {open ? (
         <YStack flex={1} minW={0} minH={0}>
-          <Reading channel={open.arrival} reload={reload} />
+          <Reading channel={open.arrival} reload={reload} onBack={() => openChannel(null)} />
         </YStack>
       ) : (
         <YStack display="none" $md={{ display: 'flex' }} flex={1} minW={0}>
@@ -463,6 +608,6 @@ function ReadingInbox() {
  */
 export function Inbox() {
   const { isLoading } = useIam()
-  if (isLoading) return <Empty>&nbsp;</Empty>
+  if (isLoading) return <InboxSkeleton />
   return <ReadingInbox />
 }

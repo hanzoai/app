@@ -24,12 +24,11 @@
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { ArrowUpRight, Compass, FlaskConical } from 'lucide-react'
-import { phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { useIam } from '@hanzo/iam/react'
 import { Button, Dialog, DialogContent, DialogTitle, Text, XStack, YStack } from '@hanzo/ui'
 import { api } from './lib/api'
-import { BETAS, GROUPS, opens, type Beta, type Group } from './lib/betas'
+import { BETAS, GROUPS, HEADING, opens, type Beta } from './lib/betas'
 import { useHydrated } from './lib/hydrated'
 import { bearer, scope, superAdmin } from './lib/session'
 import { hosted } from './lib/host'
@@ -45,17 +44,6 @@ interface Said {
 }
 
 const NONE: Said = { flags: {}, asked: [], public: [], blocked: false }
-
-/** A group's heading as the list draws it: authored English, drawn through `t`. */
-const HEADING: Record<Group, string> = {
-  Business: phrase('Business'),
-  Data: phrase('Data'),
-  Agents: phrase('Agents'),
-  'Build & run': phrase('Build & run'),
-  Security: phrase('Security'),
-  Creative: phrase('Creative'),
-  Models: phrase('Models'),
-}
 
 /** One read per token, shared by every caller on the page. */
 let held: { token: string; said: Said; at: number } | null = null
@@ -176,35 +164,55 @@ export function Ask({ beta, go }: { beta: Beta; go?: (href: string) => void }) {
   if (open(beta.id)) {
     const to = beta.embed !== undefined ? hosted(beta.id) : beta.href
     return to && go ? (
-      <Button size="sm" rounded={999} onPress={() => go(to)} data-slot="beta-open">
+      <Button
+        size="sm"
+        variant="secondary"
+        rounded="$3"
+        minH={36}
+        borderColor="var(--border-strong)"
+        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+        $max-sm={{ minH: 44 }}
+        onPress={() => go(to)}
+        data-slot="beta-open"
+      >
         {t('Open')}
       </Button>
     ) : (
-      <Text fontSize="$2" color="$color11" data-slot="beta-on">
-        {t('You’re in')}
-      </Text>
+      <XStack items="center" gap="$1.5" px="$2.5" py="$1" rounded={999} bg="$raised" borderWidth={1} borderColor="$edge" data-slot="beta-on">
+        <YStack width={7} height={7} rounded={999} bg="var(--state-online)" aria-hidden />
+        <Text fontSize="$1" fontWeight="500" color="$ink">
+          {t('You’re in')}
+        </Text>
+      </XStack>
     )
   }
   if (promoted(beta.id)) {
     return (
-      <Text fontSize="$2" color="$color11" text="right" maxW={200} data-slot="beta-optin">
+      <Text fontSize="$1" color="$soft" data-slot="beta-optin">
         {t(blocked ? 'Turned off by your organization' : 'Turn on experimental features in Settings')}
       </Text>
     )
   }
   if (asked(beta.id)) {
     return (
-      <Text fontSize="$2" color="$color11" data-slot="beta-requested">
-        {t('Requested')}
-      </Text>
+      <XStack items="center" gap="$1.5" px="$2.5" py="$1" rounded={999} bg="$raised" borderWidth={1} borderColor="$edge" data-slot="beta-requested">
+        <YStack width={6} height={6} rounded={999} bg="$soft" aria-hidden />
+        <Text fontSize="$1" fontWeight="500" color="$aside">
+          {t('Requested')}
+        </Text>
+      </XStack>
     )
   }
   return (
-    <YStack items="flex-end" gap="$1">
+    <YStack items="flex-start" gap="$1">
       <Button
         size="sm"
-        rounded={999}
+        rounded="$3"
+        minH={36}
         variant="outline"
+        borderColor="var(--border-strong)"
+        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+        $max-sm={{ minH: 44 }}
         disabled={busy}
         data-slot="beta-request"
         onPress={() => {
@@ -218,7 +226,7 @@ export function Ask({ beta, go }: { beta: Beta; go?: (href: string) => void }) {
         {t(busy ? 'Requesting…' : 'Request access')}
       </Button>
       {wrong ? (
-        <Text fontSize="$1" color="$red10">
+        <Text role="alert" fontSize="$1" color="var(--state-error)">
           {wrong}
         </Text>
       ) : null}
@@ -226,37 +234,77 @@ export function Ask({ beta, go }: { beta: Beta; go?: (href: string) => void }) {
   )
 }
 
-/** Every app in beta, by group, each with its action. */
+/** Every app in beta, by group, each rendered as a responsive 2-column desktop / 1-column mobile card with status indicator. */
 export function BetasList({ go }: { go?: (href: string) => void }) {
   const { t } = useI18n()
-  const { promoted } = useBetas()
+  const { open, asked, promoted } = useBetas()
   return (
-    <YStack gap="$4" data-slot="betas">
+    <YStack gap="$6" minW={0} data-slot="betas">
       {GROUPS.map((group) => (
-        <YStack key={group} gap="$2">
-          <Text fontSize="$1" color="$color10" textTransform="uppercase" letterSpacing={0.6}>
+        <YStack key={group} gap="$3" minW={0}>
+          <Text render="h2" m={0} fontSize="$4" fontWeight="600" color="$ink">
             {t(HEADING[group])}
           </Text>
-          {BETAS.filter((b) => b.group === group).map((b) => (
-            <XStack key={b.id} items="center" gap="$3" data-beta={b.id}>
-              <YStack flex={1} minW={0}>
-                <XStack items="center" gap="$2">
-                  <Text fontSize="$3" fontWeight="500">
-                    {b.name}
-                  </Text>
-                  {promoted(b.id) ? (
-                    <Text fontSize="$1" color="$color11" data-slot="beta-public">
-                      {t('Public beta')}
+          <XStack
+            display="grid"
+            gridTemplateColumns="repeat(2, minmax(0, 1fr))"
+            $max-sm={{ gridTemplateColumns: 'minmax(0, 1fr)' }}
+            gap="$3"
+            minW={0}
+          >
+            {BETAS.filter((b) => b.group === group).map((b) => {
+              const isOpen = open(b.id)
+              const isPublic = promoted(b.id)
+              const isAsked = asked(b.id)
+              return (
+                <YStack
+                  key={b.id}
+                  data-beta={b.id}
+                  p="$4"
+                  rounded="$5"
+                  bg="$panel"
+                  borderWidth={1}
+                  borderColor="$edge"
+                  gap="$4"
+                  justify="space-between"
+                  minW={0}
+                  transition="quickest"
+                  hoverStyle={{ bg: '$hover', borderColor: 'var(--border-strong)' }}
+                >
+                  <YStack gap="$1.5" minW={0}>
+                    <XStack items="center" justify="space-between" gap="$2" flexWrap="wrap">
+                      <XStack items="center" gap="$2" minW={0} flex={1}>
+                        <YStack
+                          width={7}
+                          height={7}
+                          rounded={999}
+                          shrink={0}
+                          bg={isOpen ? 'var(--state-online)' : isAsked ? '$aside' : '$edge'}
+                          aria-hidden
+                        />
+                        <Text fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1}>
+                          {b.name}
+                        </Text>
+                      </XStack>
+                      {isPublic ? (
+                        <XStack px="$2" py="$0.5" rounded={999} bg="$raised" borderWidth={1} borderColor="$edge" data-slot="beta-public">
+                          <Text fontSize="$1" fontWeight="500" color="$aside">
+                            {t('Public beta')}
+                          </Text>
+                        </XStack>
+                      ) : null}
+                    </XStack>
+                    <Text fontSize="$2" color="$soft" lineHeight="$3">
+                      {t(b.line)}
                     </Text>
-                  ) : null}
-                </XStack>
-                <Text fontSize="$2" color="$color11">
-                  {t(b.line)}
-                </Text>
-              </YStack>
-              <Ask beta={b} go={go} />
-            </XStack>
-          ))}
+                  </YStack>
+                  <XStack items="center" justify="flex-end" flexWrap="wrap" gap="$2">
+                    <Ask beta={b} go={go} />
+                  </XStack>
+                </YStack>
+              )
+            })}
+          </XStack>
         </YStack>
       ))}
     </YStack>
@@ -268,27 +316,33 @@ export function BetasDialog({ open, onOpenChange, go }: { open: boolean; onOpenC
   const { t } = useI18n()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent maxW={520} rounded="$6" gap="$3">
-        <DialogTitle>{t('Betas')}</DialogTitle>
-        <Text fontSize="$2" color="$color11">
-          {t('Apps we have not opened to everyone yet. Ask for the ones you want and we will let you in.')}
-        </Text>
-        <YStack maxH="60vh" overflowY="auto" overflowX="hidden" paddingInlineEnd="$2">
+      <DialogContent maxW={680} width="calc(100vw - 24px)" rounded="$6" gap="$4">
+        <YStack gap="$1.5">
+          <DialogTitle>{t('Betas')}</DialogTitle>
+          <Text fontSize="$2" color="$soft" lineHeight="$3" maxW={540}>
+            {t('Apps we have not opened to everyone yet. Ask for the ones you want and we will let you in.')}
+          </Text>
+        </YStack>
+        <YStack maxH="62vh" overflowY="auto" overflowX="hidden" paddingInlineEnd="$1">
           <BetasList go={go} />
         </YStack>
-        <XStack items="center" justify="space-between" pt="$3" borderTopWidth={1} borderColor="$borderColor" flexWrap="wrap" gap="$2">
-          <Text fontSize="$2" color="$color11">
+        <XStack items="center" justify="space-between" pt="$3" borderTopWidth={1} borderColor="$edge" flexWrap="wrap" gap="$3">
+          <Text fontSize="$2" color="$soft">
             {t('Looking for community plugins and MCP tools?')}
           </Text>
           <Button
             size="sm"
             variant="outline"
-            rounded={999}
+            rounded="$3"
+            minH={36}
+            borderColor="var(--border-strong)"
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+            $max-sm={{ minH: 44 }}
             onPress={() => window.open('https://hanzo.market', '_blank', 'noopener,noreferrer')}
           >
             <XStack items="center" gap="$1.5">
               <Compass size={14} aria-hidden />
-              <Text fontSize="$2">{t('Explore on hanzo.market')}</Text>
+              <Text fontSize="$2" color="$ink">{t('Explore on hanzo.market')}</Text>
               <ArrowUpRight size={13} aria-hidden />
             </XStack>
           </Button>
@@ -302,22 +356,20 @@ export function BetasDialog({ open, onOpenChange, go }: { open: boolean; onOpenC
 export function BetasPane({ go }: { go?: (href: string) => void }) {
   const { t } = useI18n()
   return (
-    <YStack flex={1} minH={0} maxW={900} mx="auto" width="100%" gap="$5" pb="$8">
-      <YStack gap="$1.5" pt="$2">
-        <XStack items="center" gap="$2">
-          <FlaskConical size={22} color="var(--primary)" aria-hidden />
-          <Text fontSize="$6" fontWeight="600" color="$color12">
-            {t('Ecosystem Betas & Early Access')}
+    <YStack flex={1} minH={0} minW={0} maxW={960} mx="auto" width="100%" px="$4" pt="$6" pb="$9" $max-sm={{ px: '$3', pt: '$4', pb: '$7' }} gap="$6">
+      <YStack gap="$1.5" maxW={600}>
+        <XStack items="center" gap="$2.5">
+          <FlaskConical size={20} color="var(--foreground)" aria-hidden />
+          <Text render="h1" m={0} fontSize="$7" lineHeight="$8" fontWeight="600" letterSpacing={-0.42} color="$ink">
+            {t('Ecosystem betas & early access')}
           </Text>
         </XStack>
-        <Text fontSize="$3" color="$color11" lineHeight="$5">
+        <Text fontSize="$3" color="$soft" lineHeight="$4">
           {t('Preview upcoming releases, manage early access requests for your account, and explore models and developer tools.')}
         </Text>
       </YStack>
 
-      <YStack rounded="$4" borderWidth={1} borderColor="$borderColor" bg="$background" p="$4" $md={{ p: '$6' }} gap="$4">
-        <BetasList go={go} />
-      </YStack>
+      <BetasList go={go} />
     </YStack>
   )
 }

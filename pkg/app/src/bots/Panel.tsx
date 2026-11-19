@@ -22,7 +22,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Switch,
 } from '@hanzo/ui'
 import {
   ChevronDown,
@@ -89,8 +88,8 @@ const EVENT_TRIGGERS: readonly { id: string; source: string; name: string; label
   { id: 'slack:mention', source: 'slack', name: 'mention', label: 'Slack · @mention', hint: 'Runs when @hanzo is mentioned in Slack' },
   { id: 'slack:message', source: 'slack', name: 'message', label: 'Slack · Channel message', hint: 'Runs on new messages in bound channels' },
   { id: 'github:push', source: 'github', name: 'push', label: 'GitHub · Push', hint: 'Runs when commits are pushed to a repository' },
-  { id: 'github:pull_request', source: 'github', name: 'pull_request', label: 'GitHub · Pull Request', hint: 'Runs when a PR opens or updates' },
-  { id: 'stripe:charge', source: 'stripe', name: 'charge', label: 'Stripe · Payment / Charge', hint: 'Runs when a customer payment settles' },
+  { id: 'github:pull_request', source: 'github', name: 'pull_request', label: 'GitHub · Pull request', hint: 'Runs when a PR opens or updates' },
+  { id: 'stripe:charge', source: 'stripe', name: 'charge', label: 'Stripe · Payment or charge', hint: 'Runs when a customer payment settles' },
   { id: 'webhook:inbound', source: 'webhook', name: 'inbound', label: 'Webhook · Inbound HTTP', hint: 'Runs whenever your webhook URL receives a POST' },
 ]
 
@@ -100,6 +99,51 @@ const SCHEDULE_PRESETS: readonly { id: string; label: string; schedule: Automati
   { id: 'hourly', label: 'Every hour', schedule: { kind: 'hourly' } },
   { id: 'weekly', label: 'Mondays · 9:00 AM', schedule: { kind: 'weekly', day: 'mon', at: '09:00' } },
 ]
+
+function PanelSwitch({
+  checked,
+  disabled,
+  onCheckedChange,
+  'aria-label': ariaLabel,
+}: {
+  checked: boolean
+  disabled?: boolean
+  onCheckedChange: (next: boolean) => void
+  'aria-label': string
+}) {
+  return (
+    <XStack
+      render={<button type="button" role="switch" aria-checked={checked} disabled={disabled} />}
+      aria-label={ariaLabel}
+      disabled={disabled}
+      onClick={() => {
+        if (!disabled) onCheckedChange(!checked)
+      }}
+      width={36}
+      height={20}
+      p={2}
+      rounded={999}
+      borderWidth={1}
+      borderColor={checked ? 'var(--foreground)' : 'var(--border-strong)'}
+      bg={checked ? 'var(--foreground)' : 'var(--border)'}
+      items="center"
+      justify={checked ? 'flex-end' : 'flex-start'}
+      shrink={0}
+      opacity={disabled ? 0.5 : 1}
+      cursor={disabled ? 'not-allowed' : 'pointer'}
+      transition="quickest"
+      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)', outlineOffset: 2 }}
+    >
+      <YStack
+        width={14}
+        height={14}
+        rounded={999}
+        bg={checked ? 'var(--background)' : 'var(--muted-foreground)'}
+        aria-hidden
+      />
+    </XStack>
+  )
+}
 
 function Row({
   mark,
@@ -117,8 +161,8 @@ function Row({
   return (
     <XStack minH={52} px={13} py={9} gap={11} items="center" borderBottomWidth={last ? 0 : 1} borderColor={LINE}>
       {mark}
-      <YStack flex={1} minW={0}>
-        <Text {...CLIP} fontSize={14} lineHeight={19} color={INK}>
+      <YStack flex={1} minW={0} gap={2}>
+        <Text {...CLIP} fontSize={14} lineHeight={19} fontWeight="500" color={INK}>
           {title}
         </Text>
         {line ? (
@@ -153,8 +197,7 @@ function VoiceRow({
       <DropdownMenu placement="bottom-end" offset={6}>
         <DropdownMenuTrigger asChild>
           <XStack
-            render="button"
-            {...{ type: 'button' }}
+            render={<button type="button" />}
             items="center"
             gap={5}
             px={6}
@@ -163,7 +206,10 @@ function VoiceRow({
             bg="transparent"
             borderWidth={0}
             cursor="pointer"
+            transition="quickest"
             hoverStyle={{ bg: PICKED }}
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+            $max-sm={{ minH: 44 }}
           >
             <Text fontSize={14} lineHeight={19} color={INK}>
               {value}
@@ -186,9 +232,8 @@ function VoiceRow({
 }
 
 /**
- * Sleek miniature desktop screen preview (matching reference `uploaded_media_1` — zero hearts!).
- * Shows an illuminated dark violet/indigo screen preview when `Awake`, and a clean dark charcoal
- * monitor surface when `Parked` or `Asleep`.
+ * Miniature monochrome desktop screen preview that adapts cleanly to Dark & Light modes.
+ * Displays a `--state-online` dot when `Awake` and a calm neutral screen surface when `Parked` or `Asleep`.
  */
 function ComputerScreen({ awake, parked }: { awake: boolean; parked: boolean }) {
   return (
@@ -200,28 +245,30 @@ function ComputerScreen({ awake, parked }: { awake: boolean; parked: boolean }) 
       shrink={0}
       justify="flex-end"
       items="center"
-      pb={3}
+      pb={4}
       position="relative"
       overflow="hidden"
-      bg={awake ? 'var(--secondary)' : FLOOR}
+      bg={awake ? PICKED : FLOOR}
       borderWidth={1}
-      borderColor={awake ? 'var(--primary)' : LINE}
+      borderColor={awake ? 'var(--border-strong)' : LINE}
     >
-      <YStack
-        position="absolute"
-        t={0}
-        l={0}
-        r={0}
-        b={0}
-        bg={awake ? 'var(--primary)' : PICKED}
-        opacity={awake ? 0.24 : parked ? 0.45 : 0.2}
-      />
+      {awake ? (
+        <YStack
+          position="absolute"
+          t={5}
+          r={5}
+          width={6}
+          height={6}
+          rounded={999}
+          bg="var(--state-online)"
+        />
+      ) : null}
       <XStack
         width={22}
         height={3}
         rounded={999}
-        bg={awake ? 'var(--pure-white)' : DIM}
-        opacity={awake ? 0.65 : 0.28}
+        bg={awake ? INK : DIM}
+        opacity={awake ? 0.72 : parked ? 0.42 : 0.25}
       />
     </YStack>
   )
@@ -281,6 +328,7 @@ export function Panel({
   const currentLayer = isPrimary ? 0 : (ext.layer ?? 1)
 
   const [tab, setTab] = useState<'activity' | 'library'>('activity')
+  const [moreOpen, setMoreOpen] = useState(false)
   const [instructions, setInstructions] = useState('')
   const [answers, setAnswers] = useState<string[]>([])
   const [box, setBox] = useState<Sandbox | null>(null)
@@ -630,29 +678,40 @@ export function Panel({
   }, [runs, t])
 
   return (
-    <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden" aria-label={displayName} render="aside">
-      <XStack height={46} shrink={0} px={12} items="center" justify="flex-end">
-        <XStack {...ROUND} aria-label={t('Close')} onClick={onClose} {...{ autoFocus: focus }}>
+    <YStack flex={1} minW={300} $max-sm={{ minW: 0 }} minH={0} overflowY="auto" overflowX="hidden" pb={32} aria-label={displayName} render="aside">
+      <XStack minH={46} $max-sm={{ minH: 52, px: 10 }} shrink={0} px={12} items="center" justify="flex-end">
+        <XStack
+          {...ROUND}
+          borderColor="var(--border-strong)"
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+          $max-sm={{ width: 44, height: 44 }}
+          aria-label={t('Close')}
+          onClick={onClose}
+          {...{ autoFocus: focus }}
+        >
           <X size={16} color={INK} aria-hidden />
         </XStack>
       </XStack>
 
-      <YStack items="center" gap={8} pt={2} pb={18} px={14}>
+      <YStack items="center" gap={10} pt={2} pb={20} px={14}>
         <Face bot={bot} size={68} starred={isPrimary} />
-        <Text {...CLIP} maxW="100%" fontSize={18} lineHeight={23} fontWeight="600" color={INK}>
-          {displayName}
-        </Text>
-        <Text fontSize={12} lineHeight={16} color={DIM}>
-          {isPrimary ? t('Primary Bot · Layer 0 (Directs all bots)') : t('Layer {lv} Bot', { lv: currentLayer })}
-        </Text>
+        <YStack items="center" gap={2} maxW="100%">
+          <Text {...CLIP} maxW="100%" fontSize={17} lineHeight={22} fontWeight="600" letterSpacing={-0.34} color={INK}>
+            {displayName}
+          </Text>
+          <Text fontSize={12} lineHeight={16} color={DIM} text="center">
+            {isPrimary ? t('Primary bot · Layer 0 (directs all bots)') : t('Layer {lv} bot', { lv: currentLayer })}
+          </Text>
+        </YStack>
         <XStack
           data-parity-key="bots.panel.tabs"
           role="tablist"
+          mt={4}
           p={3}
           rounded={999}
           bg={RAISED}
           borderWidth={1}
-          borderColor={LINE}
+          borderColor="var(--border-strong)"
           gap={2}
         >
           {(['activity', 'library'] as const).map((id) => {
@@ -660,10 +719,10 @@ export function Panel({
             return (
               <XStack
                 key={id}
-                render="button"
-                {...{ type: 'button', role: 'tab', 'aria-selected': selected }}
+                render={<button type="button" role="tab" aria-selected={selected} />}
                 onClick={() => setTab(id)}
                 height={28}
+                $max-sm={{ minH: 40 }}
                 px={14}
                 rounded={999}
                 items="center"
@@ -671,6 +730,9 @@ export function Panel({
                 bg={selected ? PICKED : 'transparent'}
                 borderWidth={0}
                 cursor="pointer"
+                transition="quickest"
+                hoverStyle={{ bg: PICKED }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
               >
                 <Text fontSize={13} lineHeight={18} fontWeight={selected ? '500' : '400'} color={selected ? INK : DIM}>
                   {id === 'activity' ? t('Activity') : t('Library')}
@@ -682,16 +744,15 @@ export function Panel({
       </YStack>
 
       {tab === 'activity' ? (
-        <YStack px={15} pb={24} gap={18}>
-          {/* Resumable Desktop Sandbox Computer (no heart icon — sleek dark desktop preview!) */}
-          <YStack gap={8} data-parity-key="bots.panel.computer">
+        <YStack px={15} pb={32} gap={24}>
+          {/* Resumable Desktop Sandbox Computer */}
+          <YStack gap={6} data-parity-key="bots.panel.computer">
             <Text {...LABEL} px={4}>
               {t('Computer')}
             </Text>
             <XStack
               {...CARD}
-              render="button"
-              {...{ type: 'button' }}
+              render={<button type="button" />}
               onClick={() => setComputerOpen(true)}
               aria-label={t('Open {name}’s desktop computer', { name: displayName })}
               minH={60}
@@ -700,10 +761,12 @@ export function Panel({
               items="center"
               gap={12}
               cursor="pointer"
-              hoverStyle={{ bg: PICKED }}
+              transition="quickest"
+              hoverStyle={{ bg: PICKED, borderColor: 'var(--border-strong)' }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
             >
-              <YStack flex={1} minW={0} items="flex-start">
-                <Text {...CLIP} fontSize={14} lineHeight={19} color={INK}>
+              <YStack flex={1} minW={0} items="flex-start" gap={2}>
+                <Text {...CLIP} fontSize={14} lineHeight={19} fontWeight="500" color={INK}>
                   {t("Bot's computer")}
                 </Text>
                 <Text {...CLIP} fontSize={12} lineHeight={17} color={DIM}>
@@ -715,12 +778,11 @@ export function Panel({
           </YStack>
 
           {/* Automations (Scheduled & Event-Driven) */}
-          <YStack gap={8} data-parity-key="bots.panel.automations">
+          <YStack gap={6} data-parity-key="bots.panel.automations">
             <XStack items="center" justify="space-between" px={4}>
               <Text {...LABEL}>{t('Automations')}</Text>
               <XStack
-                render="button"
-                {...{ type: 'button' }}
+                render={<button type="button" />}
                 onClick={() => setAutoModalOpen(true)}
                 items="center"
                 gap={3}
@@ -730,7 +792,10 @@ export function Panel({
                 bg="transparent"
                 borderWidth={0}
                 cursor="pointer"
+                transition="quickest"
                 hoverStyle={{ bg: PICKED }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                $max-sm={{ minH: 44, px: 10 }}
               >
                 <Plus size={12} color={DIM} aria-hidden />
                 <Text fontSize={12} lineHeight={16} color={DIM}>
@@ -747,7 +812,7 @@ export function Panel({
                   line={scheduleLine}
                   last={automations.length === 0}
                 >
-                  <Switch
+                  <PanelSwitch
                     aria-label={t('Run {name} on its schedule', { name: displayName })}
                     checked={activeSchedule}
                     disabled={saving}
@@ -775,44 +840,49 @@ export function Panel({
                   >
                     <XStack items="center" gap={6}>
                       <XStack
-                        render="button"
-                        {...{ type: 'button' }}
+                        render={<button type="button" />}
                         aria-label={t('Run {name} now', { name: a.name })}
                         disabled={autoBusy}
                         onClick={() => void handleRunAutoNow(a)}
                         width={26}
                         height={26}
+                        $max-sm={{ width: 44, height: 44 }}
                         rounded={999}
                         items="center"
                         justify="center"
                         bg="transparent"
                         borderWidth={0}
                         cursor="pointer"
+                        transition="quickest"
                         hoverStyle={{ bg: PICKED }}
+                        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                       >
                         <Play size={12} color={DIM} aria-hidden />
                       </XStack>
-                      <Switch
+                      <PanelSwitch
                         aria-label={t('Toggle {name}', { name: a.name })}
                         checked={a.enabled}
                         disabled={autoBusy}
                         onCheckedChange={(on: boolean) => void handleToggleAuto(a, on)}
                       />
                       <XStack
-                        render="button"
-                        {...{ type: 'button' }}
+                        render={<button type="button" />}
                         aria-label={t('Delete {name}', { name: a.name })}
                         disabled={autoBusy}
                         onClick={() => void handleDeleteAuto(a)}
+                        ml={4}
                         width={24}
                         height={24}
+                        $max-sm={{ width: 44, height: 44 }}
                         rounded={999}
                         items="center"
                         justify="center"
                         bg="transparent"
                         borderWidth={0}
                         cursor="pointer"
+                        transition="quickest"
                         hoverStyle={{ bg: PICKED }}
+                        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                       >
                         <Trash2 size={12} color={DIM} aria-hidden />
                       </XStack>
@@ -823,9 +893,11 @@ export function Panel({
 
               {!cron && automations.length === 0 ? (
                 <XStack
-                  render="button"
-                  {...{ type: 'button' }}
+                  render={<button type="button" />}
                   onClick={() => setAutoModalOpen(true)}
+                  width="100%"
+                  minW={0}
+                  overflow="hidden"
                   minH={50}
                   px={13}
                   py={9}
@@ -835,190 +907,89 @@ export function Panel({
                   bg="transparent"
                   borderWidth={0}
                   cursor="pointer"
+                  transition="quickest"
                   hoverStyle={{ bg: PICKED }}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                 >
-                  <YStack flex={1} minW={0} items="flex-start">
-                    <Text {...CLIP} fontSize={14} lineHeight={19} color={INK}>
+                  <YStack flex={1} minW={0} items="flex-start" gap={2}>
+                    <Text {...CLIP} fontSize={14} lineHeight={19} fontWeight="500" color={INK}>
                       {t('Scheduled & event-driven work')}
                     </Text>
                     <Text {...CLIP} fontSize={12} lineHeight={17} color={DIM}>
                       {t('Run on cron schedules, Slack mentions, GitHub PRs, or webhooks')}
                     </Text>
                   </YStack>
-                  <ChevronRight size={15} color={DIM} aria-hidden />
+                  <XStack shrink={0} items="center">
+                    <ChevronRight size={15} color={DIM} aria-hidden />
+                  </XStack>
                 </XStack>
               ) : null}
             </YStack>
           </YStack>
 
-          {/* Unified Secrets, Logins & Autofill (`1Password`, `LastPass`, `Hanzo KMS`) */}
-          <YStack gap={8} data-parity-key="bots.panel.vault">
+          {/* Unified Secrets, Logins & Autofill */}
+          <YStack gap={6} data-parity-key="bots.panel.vault">
             <Text {...LABEL} px={4}>
-              {t('Secrets & Login Autofill')}
+              {t('Secrets & login autofill')}
             </Text>
             <XStack
               {...CARD}
-              render="button"
-              {...{ type: 'button' }}
+              render={<button type="button" />}
               onClick={() => setVaultOpen(true)}
+              width="100%"
+              minW={0}
+              overflow="hidden"
               minH={52}
               px={13}
               py={9}
               items="center"
               gap={11}
               cursor="pointer"
-              hoverStyle={{ bg: PICKED }}
+              transition="quickest"
+              hoverStyle={{ bg: PICKED, borderColor: 'var(--border-strong)' }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
             >
-              <KeyRound size={17} color={INK} aria-hidden />
-              <YStack flex={1} minW={0} items="flex-start">
-                <Text {...CLIP} fontSize={14} lineHeight={19} color={INK}>
-                  {t('Unified Vault & Password Autofill')}
+              <XStack shrink={0} items="center">
+                <KeyRound size={17} color={INK} aria-hidden />
+              </XStack>
+              <YStack flex={1} minW={0} items="flex-start" gap={2}>
+                <Text {...CLIP} fontSize={14} lineHeight={19} fontWeight="500" color={INK}>
+                  {t('Unified vault & password autofill')}
                 </Text>
                 <Text {...CLIP} fontSize={12} lineHeight={17} color={DIM}>
                   {vaultSummary}
                 </Text>
               </YStack>
-              <ChevronRight size={15} color={DIM} aria-hidden />
+              <XStack shrink={0} items="center">
+                <ChevronRight size={15} color={DIM} aria-hidden />
+              </XStack>
             </XStack>
           </YStack>
 
-          {/* Hierarchy & Layer Coordination */}
-          <YStack gap={8} data-parity-key="bots.panel.hierarchy">
-            <Text {...LABEL} px={4}>
-              {t('Hierarchy & Coordination')}
-            </Text>
-            <YStack {...CARD}>
-              <Row
-                mark={isPrimary ? <Star size={16} color={INK} aria-hidden /> : <Layers size={16} color={DIM} aria-hidden />}
-                title={isPrimary ? t('Primary Bot (Max 1)') : t('Subordinate Bot')}
-                line={
-                  isPrimary
-                    ? t('Directs worker bots & layered Bot Groups')
-                    : t('Directed by Primary Bot ({primary})', { primary: PRIMARY_BOT })
-                }
-                last={isPrimary && groups.length === 0}
-              >
-                {!isPrimary ? (
-                  <XStack
-                    render="button"
-                    {...{ type: 'button' }}
-                    disabled={saving}
-                    onClick={() => void promotePrimary()}
-                    height={26}
-                    px={9}
-                    rounded={999}
-                    items="center"
-                    bg={GROUND}
-                    borderWidth={1}
-                    borderColor={LINE}
-                    cursor="pointer"
-                    hoverStyle={{ bg: PICKED }}
-                  >
-                    <Text fontSize={11} lineHeight={15} fontWeight="500" color={INK}>
-                      {t('Make Primary')}
-                    </Text>
-                  </XStack>
-                ) : null}
-              </Row>
-
-              {!isPrimary ? (
-                <VoiceRow
-                  label={t('Layer')}
-                  value={`Layer ${currentLayer}`}
-                  options={['Layer 1', 'Layer 2', 'Layer 3']}
-                  onSelect={(opt) => void assignLayer(Number(opt.replace('Layer ', '')) || 1)}
-                  last={groups.length === 0}
-                />
-              ) : null}
-
-              {groups.length > 0 ? (
-                <XStack minH={44} px={14} items="center" justify="space-between">
-                  <Text fontSize={14} lineHeight={19} color={INK}>
-                    {t('Group')}
-                  </Text>
-                  <XStack items="center" gap={6}>
-                    {assignedGroup && onPickGroup ? (
-                      <XStack
-                        render="button"
-                        {...{ type: 'button' }}
-                        onClick={() => onPickGroup(toGroupRef(assignedGroup.name))}
-                        px={8}
-                        py={3}
-                        rounded={999}
-                        bg={PICKED}
-                        borderWidth={1}
-                        borderColor={LINE}
-                        cursor="pointer"
-                      >
-                        <Text fontSize={11} lineHeight={15} color={INK}>
-                          {t('Open')}
-                        </Text>
-                      </XStack>
-                    ) : null}
-                    <DropdownMenu placement="bottom-end" offset={6}>
-                      <DropdownMenuTrigger asChild>
-                        <XStack
-                          render="button"
-                          {...{ type: 'button' }}
-                          items="center"
-                          gap={5}
-                          px={6}
-                          py={4}
-                          rounded={6}
-                          bg="transparent"
-                          borderWidth={0}
-                          cursor="pointer"
-                          hoverStyle={{ bg: PICKED }}
-                        >
-                          <Text fontSize={13} lineHeight={18} color={INK}>
-                            {assignedGroup ? assignedGroup.name : t('None')}
-                          </Text>
-                          <ChevronDown size={14} color={DIM} aria-hidden />
-                        </XStack>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent minW={170}>
-                        <DropdownMenuItem onSelect={() => void assignGroup('')}>
-                          <Text fontSize="$3" color="$ink">
-                            {t('None')}
-                          </Text>
-                        </DropdownMenuItem>
-                        {groups.map((g) => (
-                          <DropdownMenuItem key={g.id} onSelect={() => void assignGroup(g.id)}>
-                            <Text fontSize="$3" color="$ink">
-                              {`${g.name} (L${g.layer || 1})`}
-                            </Text>
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </XStack>
-                </XStack>
-              ) : null}
-            </YStack>
-          </YStack>
-
-          {/* Slack Sync ("Add to Slack" like @hanzo) */}
-          <YStack gap={8} data-parity-key="bots.panel.slack">
+          {/* Slack Sync */}
+          <YStack gap={6} data-parity-key="bots.panel.slack">
             <XStack items="center" justify="space-between" px={4}>
-              <Text {...LABEL}>{t('Slack Agent Sync')}</Text>
+              <Text {...LABEL}>{t('Slack agent sync')}</Text>
               {slackConn.connected ? (
                 <XStack
-                  render="button"
-                  {...{ type: 'button' }}
+                  render={<button type="button" />}
                   disabled={slackBusy}
                   onClick={() => void syncSlack()}
                   items="center"
                   gap={4}
                   px={6}
                   py={2}
+                  $max-sm={{ minH: 44, px: 10 }}
                   rounded={6}
                   bg="transparent"
                   borderWidth={0}
                   cursor="pointer"
+                  transition="quickest"
                   hoverStyle={{ bg: PICKED }}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                 >
                   <RefreshCw size={11} color={DIM} aria-hidden />
-                  <Text fontSize={11} lineHeight={15} color={DIM}>
+                  <Text fontSize={12} lineHeight={16} color={DIM}>
                     {t('Sync channels')}
                   </Text>
                 </XStack>
@@ -1032,7 +1003,7 @@ export function Panel({
                   slackConn.connected
                     ? slackConn.account
                       ? `Slack · ${slackConn.account}`
-                      : t('Slack Connected')
+                      : t('Slack connected')
                     : t('Add @hanzo to Slack')
                 }
                 line={
@@ -1045,7 +1016,7 @@ export function Panel({
                 last={!slackConn.connected}
               >
                 {slackConn.connected ? (
-                  <Switch
+                  <PanelSwitch
                     aria-label={t('Answer @hanzo in Slack with {name}', { name: displayName })}
                     checked={slackDefault === bot.name}
                     disabled={slackBusy}
@@ -1053,12 +1024,12 @@ export function Panel({
                   />
                 ) : (
                   <XStack
-                    render="button"
-                    {...{ type: 'button' }}
+                    render={<button type="button" />}
                     disabled={slackBusy}
                     onClick={() => void connectSlack()}
-                    height={28}
-                    px={10}
+                    height={30}
+                    $max-sm={{ minH: 44 }}
+                    px={11}
                     rounded={999}
                     items="center"
                     gap={5}
@@ -1066,9 +1037,12 @@ export function Panel({
                     borderWidth={1}
                     borderColor={INK}
                     cursor="pointer"
+                    transition="quickest"
+                    hoverStyle={{ opacity: 0.9 }}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                   >
                     <ExternalLink size={11} color="var(--background)" aria-hidden />
-                    <Text fontSize={11} lineHeight={15} fontWeight="500" color="var(--background)">
+                    <Text fontSize={12} lineHeight={16} fontWeight="600" color="var(--background)">
                       {t('Add to Slack')}
                     </Text>
                   </XStack>
@@ -1076,30 +1050,34 @@ export function Panel({
               </Row>
 
               {slackConn.connected && slackChans.length > 0 ? (
-                <YStack px={13} py={9} gap={6}>
-                  <Text fontSize={11} lineHeight={15} color={DIM}>
+                <YStack px={13} py={10} gap={6}>
+                  <Text fontSize={12} lineHeight={16} color={DIM}>
                     {t('Bind channels directly to {name}:', { name: displayName })}
                   </Text>
-                  <XStack flexWrap="wrap" gap={5}>
+                  <XStack flexWrap="wrap" gap={6}>
                     {slackChans.slice(0, 8).map((ch) => {
                       const mine = slackBound[ch.id] === bot.name
                       return (
                         <XStack
                           key={ch.id}
-                          render="button"
-                          {...{ type: 'button' }}
+                          render={<button type="button" />}
+                          aria-pressed={mine}
                           disabled={slackBusy}
                           onClick={() => void toggleSlackChannel(ch.id)}
-                          height={24}
-                          px={8}
+                          height={26}
+                          $max-sm={{ minH: 40 }}
+                          px={9}
                           rounded={999}
                           items="center"
-                          bg={mine ? INK : GROUND}
+                          bg={mine ? PICKED : GROUND}
                           borderWidth={1}
-                          borderColor={mine ? INK : LINE}
+                          borderColor={mine ? 'var(--border-strong)' : LINE}
                           cursor="pointer"
+                          transition="quickest"
+                          hoverStyle={{ bg: PICKED }}
+                          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                         >
-                          <Text fontSize={11} lineHeight={15} color={mine ? 'var(--background)' : INK}>
+                          <Text fontSize={12} lineHeight={16} fontWeight={mine ? '600' : '400'} color={mine ? INK : DIM}>
                             {`#${ch.name}`}
                           </Text>
                         </XStack>
@@ -1111,17 +1089,17 @@ export function Panel({
             </YStack>
 
             {slackNote ? (
-              <Text fontSize={11} lineHeight={16} color={DIM} px={4}>
+              <Text fontSize={12} lineHeight={17} color={DIM} px={4}>
                 {slackNote}
               </Text>
             ) : null}
           </YStack>
 
-          {/* Connected Networks */}
+          {/* Connected Channels */}
           {answers.length ? (
-            <YStack gap={8} data-parity-key="bots.panel.networks">
+            <YStack gap={6} data-parity-key="bots.panel.networks">
               <Text {...LABEL} px={4}>
-                {t('Connected Channels')}
+                {t('Connected channels')}
               </Text>
               <YStack {...CARD}>
                 {answers.map((id, i) => (
@@ -1140,22 +1118,24 @@ export function Panel({
           ) : null}
 
           {/* Connectors */}
-          <YStack gap={8} data-parity-key="bots.panel.connectors">
+          <YStack gap={6} data-parity-key="bots.panel.connectors">
             <XStack items="center" justify="space-between" px={4}>
               <Text {...LABEL}>{t('Connectors')}</Text>
               <XStack
-                render="button"
-                {...{ type: 'button' }}
+                render={<button type="button" />}
                 onClick={() => setConnectorsOpen(true)}
                 items="center"
                 gap={3}
                 px={6}
                 py={2}
+                $max-sm={{ minH: 44, px: 10 }}
                 rounded={6}
                 bg="transparent"
                 borderWidth={0}
                 cursor="pointer"
+                transition="quickest"
                 hoverStyle={{ bg: PICKED }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
               >
                 <Plus size={12} color={DIM} aria-hidden />
                 <Text fontSize={12} lineHeight={16} color={DIM}>
@@ -1165,9 +1145,11 @@ export function Panel({
             </XStack>
             <XStack
               {...CARD}
-              render="button"
-              {...{ type: 'button' }}
+              render={<button type="button" />}
               onClick={() => setConnectorsOpen(true)}
+              width="100%"
+              minW={0}
+              overflow="hidden"
               minH={50}
               px={13}
               py={9}
@@ -1175,52 +1157,217 @@ export function Panel({
               justify="space-between"
               gap={10}
               cursor="pointer"
-              hoverStyle={{ bg: PICKED }}
+              transition="quickest"
+              hoverStyle={{ bg: PICKED, borderColor: 'var(--border-strong)' }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
             >
-              <YStack flex={1} minW={0} items="flex-start">
-                <Text {...CLIP} fontSize={14} lineHeight={19} color={INK}>
+              <YStack flex={1} minW={0} items="flex-start" gap={2}>
+                <Text {...CLIP} fontSize={14} lineHeight={19} fontWeight="500" color={INK}>
                   {answers.length ? t('{n} channels connected', { n: answers.length }) : t('Connect Slack, GitHub, Linear, Stripe…')}
                 </Text>
                 <Text {...CLIP} fontSize={12} lineHeight={17} color={DIM}>
                   {t('External apps, socials & MCP tools')}
                 </Text>
               </YStack>
-              <ChevronRight size={15} color={DIM} aria-hidden />
+              <XStack shrink={0} items="center">
+                <ChevronRight size={15} color={DIM} aria-hidden />
+              </XStack>
             </XStack>
           </YStack>
 
-          {/* Voice chat */}
-          <YStack gap={8} data-parity-key="bots.panel.voice">
-            <Text {...LABEL} px={4}>
-              {t('Voice chat')}
-            </Text>
-            <YStack {...CARD}>
-              <VoiceRow label={t('Voice')} value={voiceName} options={VOICES} onSelect={setVoiceName} />
-              <VoiceRow label={t('Speed')} value={voiceSpeed} options={SPEEDS} onSelect={setVoiceSpeed} />
-              <VoiceRow label={t('Language')} value={voiceLang} options={LANGUAGES} onSelect={setVoiceLang} last />
-            </YStack>
+          {/* Progressive Disclosure: Hierarchy & Voice Settings */}
+          <YStack gap={16}>
+            <XStack
+              {...CARD}
+              render={<button type="button" />}
+              aria-expanded={moreOpen}
+              onClick={() => setMoreOpen((v) => !v)}
+              width="100%"
+              minW={0}
+              minH={46}
+              px={13}
+              py={9}
+              items="center"
+              justify="space-between"
+              gap={10}
+              cursor="pointer"
+              transition="quickest"
+              hoverStyle={{ bg: PICKED, borderColor: 'var(--border-strong)' }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+            >
+              <YStack flex={1} minW={0} items="flex-start" gap={2}>
+                <Text {...CLIP} fontSize={14} lineHeight={19} fontWeight="500" color={INK}>
+                  {t('More settings')}
+                </Text>
+                <Text {...CLIP} fontSize={12} lineHeight={17} color={DIM}>
+                  {t('Layer {lv} · Voice: {voice}', { lv: currentLayer, voice: voiceName })}
+                </Text>
+              </YStack>
+              <XStack shrink={0} items="center">
+                {moreOpen ? <ChevronDown size={15} color={DIM} aria-hidden /> : <ChevronRight size={15} color={DIM} aria-hidden />}
+              </XStack>
+            </XStack>
+
+            {moreOpen ? (
+              <YStack gap={20}>
+                {/* Hierarchy & Layer Coordination */}
+                <YStack gap={6} data-parity-key="bots.panel.hierarchy">
+                  <Text {...LABEL} px={4}>
+                    {t('Hierarchy & coordination')}
+                  </Text>
+                  <YStack {...CARD}>
+                    <Row
+                      mark={isPrimary ? <Star size={16} color={INK} aria-hidden /> : <Layers size={16} color={DIM} aria-hidden />}
+                      title={isPrimary ? t('Primary bot (max 1)') : t('Subordinate bot')}
+                      line={
+                        isPrimary
+                          ? t('Directs worker bots & layered bot groups')
+                          : t('Directed by primary bot ({primary})', { primary: PRIMARY_BOT })
+                      }
+                      last={isPrimary && groups.length === 0}
+                    >
+                      {!isPrimary ? (
+                        <XStack
+                          render={<button type="button" />}
+                          disabled={saving}
+                          onClick={() => void promotePrimary()}
+                          height={28}
+                          $max-sm={{ minH: 44 }}
+                          px={10}
+                          rounded={999}
+                          items="center"
+                          bg={GROUND}
+                          borderWidth={1}
+                          borderColor="var(--border-strong)"
+                          cursor="pointer"
+                          transition="quickest"
+                          hoverStyle={{ bg: PICKED }}
+                          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                        >
+                          <Text fontSize={12} lineHeight={16} fontWeight="500" color={INK}>
+                            {t('Make primary')}
+                          </Text>
+                        </XStack>
+                      ) : null}
+                    </Row>
+
+                    {!isPrimary ? (
+                      <VoiceRow
+                        label={t('Layer')}
+                        value={`Layer ${currentLayer}`}
+                        options={['Layer 1', 'Layer 2', 'Layer 3']}
+                        onSelect={(opt) => void assignLayer(Number(opt.replace('Layer ', '')) || 1)}
+                        last={groups.length === 0}
+                      />
+                    ) : null}
+
+                    {groups.length > 0 ? (
+                      <XStack minH={44} px={14} items="center" justify="space-between" gap={8}>
+                        <Text fontSize={14} lineHeight={19} color={INK}>
+                          {t('Group')}
+                        </Text>
+                        <XStack items="center" gap={6}>
+                          {assignedGroup && onPickGroup ? (
+                            <XStack
+                              render={<button type="button" />}
+                              onClick={() => onPickGroup(toGroupRef(assignedGroup.name))}
+                              px={8}
+                              py={3}
+                              $max-sm={{ minH: 44, items: 'center' }}
+                              rounded={999}
+                              bg={PICKED}
+                              borderWidth={1}
+                              borderColor="var(--border-strong)"
+                              cursor="pointer"
+                              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                            >
+                              <Text fontSize={12} lineHeight={16} color={INK}>
+                                {t('Open')}
+                              </Text>
+                            </XStack>
+                          ) : null}
+                          <DropdownMenu placement="bottom-end" offset={6}>
+                            <DropdownMenuTrigger asChild>
+                              <XStack
+                                render={<button type="button" />}
+                                items="center"
+                                gap={5}
+                                px={6}
+                                py={4}
+                                $max-sm={{ minH: 44 }}
+                                rounded={6}
+                                bg="transparent"
+                                borderWidth={0}
+                                cursor="pointer"
+                                transition="quickest"
+                                hoverStyle={{ bg: PICKED }}
+                                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                              >
+                                <Text fontSize={13} lineHeight={18} color={INK}>
+                                  {assignedGroup ? assignedGroup.name : t('None')}
+                                </Text>
+                                <ChevronDown size={14} color={DIM} aria-hidden />
+                              </XStack>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent minW={170}>
+                              <DropdownMenuItem onSelect={() => void assignGroup('')}>
+                                <Text fontSize="$3" color="$ink">
+                                  {t('None')}
+                                </Text>
+                              </DropdownMenuItem>
+                              {groups.map((g) => (
+                                <DropdownMenuItem key={g.id} onSelect={() => void assignGroup(g.id)}>
+                                  <Text fontSize="$3" color="$ink">
+                                    {`${g.name} (L${g.layer || 1})`}
+                                  </Text>
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </XStack>
+                      </XStack>
+                    ) : null}
+                  </YStack>
+                </YStack>
+
+                {/* Voice chat */}
+                <YStack gap={6} data-parity-key="bots.panel.voice">
+                  <Text {...LABEL} px={4}>
+                    {t('Voice chat')}
+                  </Text>
+                  <YStack {...CARD}>
+                    <VoiceRow label={t('Voice')} value={voiceName} options={VOICES} onSelect={setVoiceName} />
+                    <VoiceRow label={t('Speed')} value={voiceSpeed} options={SPEEDS} onSelect={setVoiceSpeed} />
+                    <VoiceRow label={t('Language')} value={voiceLang} options={LANGUAGES} onSelect={setVoiceLang} last />
+                  </YStack>
+                </YStack>
+              </YStack>
+            ) : null}
           </YStack>
 
           {wrong ? (
-            <Text render="p" role="alert" px={8} m={0} fontSize={13} lineHeight={18} color={DIM}>
+            <Text render="p" role="alert" px={8} m={0} fontSize={13} lineHeight={18} color="var(--state-error)">
               {wrong}
             </Text>
           ) : null}
 
           {!isPrimary ? (
-            <XStack px={8} pt={4}>
+            <XStack px={4} pt={16} mt={4} borderTopWidth={1} borderColor={LINE}>
               <Text
-                render="button"
-                {...{ type: 'button' }}
+                render={<button type="button" />}
                 onClick={() => setDeleting(true)}
                 bg="transparent"
                 borderWidth={0}
-                p={0}
+                px={8}
+                py={6}
+                $max-sm={{ minH: 44 }}
+                rounded={8}
                 cursor="pointer"
                 fontSize={13}
                 lineHeight={18}
                 color={DIM}
-                hoverStyle={{ color: INK }}
+                hoverStyle={{ color: 'var(--state-error)', bg: PICKED }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
               >
                 {t('Delete {name}', { name: displayName })}
               </Text>
@@ -1228,7 +1375,7 @@ export function Panel({
           ) : null}
         </YStack>
       ) : (
-        <YStack px={15} pb={24} gap={12} data-parity-key="bots.panel.library">
+        <YStack px={15} pb={32} gap={12} data-parity-key="bots.panel.library">
           {libraryItems.length ? (
             <YStack {...CARD}>
               {libraryItems.map((item, i) => (
@@ -1259,54 +1406,72 @@ export function Panel({
       <Dialog open={autoModalOpen} onOpenChange={setAutoModalOpen}>
         <DialogContent
           data-parity-key="bots.automations.dialog"
-          width="calc(100vw - 32px)"
+          width="calc(100vw - 24px)"
           maxW={540}
+          $max-sm={{ maxW: 'calc(100vw - 24px)', rounded: 14 }}
+          maxH="90vh"
+          overflowY="auto"
           p={0}
           showCloseButton={false}
           bg={GROUND}
           borderWidth={1}
-          borderColor={LINE}
+          borderColor="var(--border-strong)"
           rounded={18}
           overflow="hidden"
         >
-          <YStack p={20} gap={14} bg={GROUND}>
+          <YStack p={22} $max-sm={{ p: 16 }} gap={18} bg={GROUND}>
             <XStack items="center" justify="space-between" gap={10}>
               <DialogTitle>
-                <Text fontSize={18} lineHeight={24} fontWeight="600" color={INK}>
-                  {t('New Automation for {name}', { name: displayName })}
+                <Text fontSize={17} lineHeight={23} fontWeight="600" letterSpacing={-0.34} color={INK}>
+                  {t('New automation for {name}', { name: displayName })}
                 </Text>
               </DialogTitle>
-              <XStack {...ROUND} width={30} height={30} aria-label={t('Close')} onClick={() => setAutoModalOpen(false)}>
+              <XStack
+                {...ROUND}
+                width={30}
+                height={30}
+                borderColor="var(--border-strong)"
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                $max-sm={{ width: 44, height: 44 }}
+                aria-label={t('Close')}
+                onClick={() => setAutoModalOpen(false)}
+              >
                 <X size={15} color={INK} aria-hidden />
               </XStack>
             </XStack>
 
-            <XStack p={3} rounded={999} bg={RAISED} borderWidth={1} borderColor={LINE} gap={2}>
+            <XStack p={3} rounded={14} bg={RAISED} borderWidth={1} borderColor="var(--border-strong)" gap={4} flexWrap="wrap">
               {(
                 [
-                  { id: 'schedule', label: t('Scheduled (Cron / Time)'), Icon: Clock },
-                  { id: 'event', label: t('Event-Driven (Webhook / App)'), Icon: Zap },
+                  { id: 'schedule', label: t('Scheduled (cron / time)'), Icon: Clock },
+                  { id: 'event', label: t('Event-driven (webhook / app)'), Icon: Zap },
                 ] as const
               ).map(({ id, label, Icon }) => {
                 const active = autoMode === id
                 return (
                   <XStack
                     key={id}
-                    render="button"
-                    {...{ type: 'button' }}
+                    render={<button type="button" />}
+                    aria-pressed={active}
                     onClick={() => setAutoMode(id)}
                     flex={1}
+                    minW={140}
                     height={32}
+                    $max-sm={{ minH: 44 }}
+                    px={10}
                     gap={6}
-                    rounded={999}
+                    rounded={10}
                     items="center"
                     justify="center"
                     bg={active ? PICKED : 'transparent'}
                     borderWidth={0}
                     cursor="pointer"
+                    transition="quickest"
+                    hoverStyle={{ bg: PICKED }}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                   >
                     <Icon size={13} color={active ? INK : DIM} aria-hidden />
-                    <Text fontSize={12} lineHeight={16} fontWeight={active ? '600' : '400'} color={active ? INK : DIM}>
+                    <Text fontSize={12} lineHeight={16} fontWeight={active ? '600' : '400'} color={active ? INK : DIM} numberOfLines={1}>
                       {label}
                     </Text>
                   </XStack>
@@ -1314,7 +1479,7 @@ export function Panel({
               })}
             </XStack>
 
-            <YStack render="form" {...{ onSubmit: submitAutomation }} gap={12}>
+            <YStack render="form" {...{ onSubmit: submitAutomation }} gap={14}>
               <Input
                 unstyled
                 value={autoName}
@@ -1328,10 +1493,12 @@ export function Panel({
                 width="100%"
                 px={13}
                 py={10}
+                $max-sm={{ minH: 44 }}
                 rounded={10}
                 bg={RAISED}
                 borderWidth={1}
-                borderColor={LINE}
+                borderColor="var(--border-strong)"
+                focusStyle={{ borderColor: 'var(--ring)' }}
                 color={INK}
                 fontSize={14}
                 placeholderTextColor="$placeholderColor"
@@ -1345,22 +1512,26 @@ export function Panel({
                       return (
                         <XStack
                           key={p.id}
-                          render="button"
-                          {...{ type: 'button' }}
+                          render={<button type="button" />}
+                          aria-pressed={active}
                           onClick={() => {
                             setAutoPreset(p.id)
                             setAutoCustomWhen('')
                           }}
-                          height={28}
+                          height={30}
+                          $max-sm={{ minH: 40 }}
                           px={11}
                           rounded={999}
                           items="center"
-                          bg={active ? INK : RAISED}
+                          bg={active ? PICKED : RAISED}
                           borderWidth={1}
-                          borderColor={active ? INK : LINE}
+                          borderColor={active ? 'var(--border-strong)' : LINE}
                           cursor="pointer"
+                          transition="quickest"
+                          hoverStyle={{ bg: PICKED }}
+                          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                         >
-                          <Text fontSize={12} lineHeight={16} color={active ? 'var(--background)' : INK}>
+                          <Text fontSize={12} lineHeight={16} fontWeight={active ? '600' : '400'} color={active ? INK : DIM}>
                             {t(p.label)}
                           </Text>
                         </XStack>
@@ -1376,10 +1547,12 @@ export function Panel({
                     width="100%"
                     px={13}
                     py={9}
+                    $max-sm={{ minH: 44 }}
                     rounded={10}
                     bg={RAISED}
                     borderWidth={1}
-                    borderColor={LINE}
+                    borderColor="var(--border-strong)"
+                    focusStyle={{ borderColor: 'var(--ring)' }}
                     color={INK}
                     fontSize={13}
                     placeholderTextColor="$placeholderColor"
@@ -1393,30 +1566,34 @@ export function Panel({
                       return (
                         <XStack
                           key={ev.id}
-                          render="button"
-                          {...{ type: 'button' }}
+                          render={<button type="button" />}
+                          aria-pressed={active}
                           onClick={() => setAutoEventId(ev.id)}
-                          height={28}
+                          height={30}
+                          $max-sm={{ minH: 40 }}
                           px={11}
                           rounded={999}
                           items="center"
-                          bg={active ? INK : RAISED}
+                          bg={active ? PICKED : RAISED}
                           borderWidth={1}
-                          borderColor={active ? INK : LINE}
+                          borderColor={active ? 'var(--border-strong)' : LINE}
                           cursor="pointer"
+                          transition="quickest"
+                          hoverStyle={{ bg: PICKED }}
+                          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                         >
-                          <Text fontSize={12} lineHeight={16} color={active ? 'var(--background)' : INK}>
+                          <Text fontSize={12} lineHeight={16} fontWeight={active ? '600' : '400'} color={active ? INK : DIM}>
                             {t(ev.label)}
                           </Text>
                         </XStack>
                       )
                     })}
                   </XStack>
-                  <YStack px={12} py={8} rounded={10} bg={FLOOR} borderWidth={1} borderColor={LINE} gap={3}>
+                  <YStack px={12} py={9} rounded={10} bg={FLOOR} borderWidth={1} borderColor={LINE} gap={3}>
                     <Text fontSize={12} lineHeight={16} color={INK}>
                       {t(selectedEventDef.hint)}
                     </Text>
-                    <Text fontSize={11} lineHeight={15} color={DIM}>
+                    <Text fontFamily="$mono" fontSize={11} lineHeight={15} color={DIM} numberOfLines={2}>
                       {`POST ${api()}/v1/auto/hooks/${selectedEventDef.source}/${selectedEventDef.name}`}
                     </Text>
                   </YStack>
@@ -1440,26 +1617,37 @@ export function Panel({
                 rounded={10}
                 bg={RAISED}
                 borderWidth={1}
-                borderColor={LINE}
+                borderColor="var(--border-strong)"
+                focusStyle={{ borderColor: 'var(--ring)' }}
                 color={INK}
                 fontSize={14}
                 placeholderTextColor="$placeholderColor"
               />
 
-              <XStack justify="flex-end" gap={8} pt={4}>
-                <XStack {...PILL} onClick={() => setAutoModalOpen(false)}>
+              <XStack justify="flex-end" gap={8} pt={6} flexWrap="wrap">
+                <XStack
+                  {...PILL}
+                  minH={36}
+                  borderColor="var(--border-strong)"
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  $max-sm={{ minH: 44 }}
+                  onClick={() => setAutoModalOpen(false)}
+                >
                   <Text {...WORD}>{t('Cancel')}</Text>
                 </XStack>
                 <XStack
                   {...PILL}
                   {...{ type: 'submit' }}
+                  minH={36}
                   bg={INK}
                   borderColor={INK}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  $max-sm={{ minH: 44 }}
                   disabled={autoBusy || !autoName.trim() || !autoInstructions.trim()}
                   opacity={autoBusy || !autoName.trim() || !autoInstructions.trim() ? 0.5 : 1}
                 >
-                  <Text {...WORD} color="var(--background)">
-                    {autoBusy ? t('Saving…') : t('Create Automation')}
+                  <Text {...WORD} fontWeight="600" color="var(--background)">
+                    {autoBusy ? t('Saving…') : t('Create automation')}
                   </Text>
                 </XStack>
               </XStack>
@@ -1469,28 +1657,41 @@ export function Panel({
       </Dialog>
 
       <Dialog open={deleting} onOpenChange={setDeleting}>
-        <DialogContent maxW={440} rounded={20} gap={14}>
-          <DialogTitle>{t('Delete {name}?', { name: displayName })}</DialogTitle>
-          <Text fontSize={15} lineHeight={22} color={DIM}>
-            {t('{name} and every message it was sent are deleted for good.', { name: displayName })}
-          </Text>
-          <XStack gap={8} justify="flex-end">
-            <Button size="sm" variant="outline" rounded={999} onPress={() => setDeleting(false)}>
+        <DialogContent maxW={440} width="calc(100vw - 24px)" rounded={20} gap={16}>
+          <YStack gap={6}>
+            <DialogTitle>{t('Delete {name}?', { name: displayName })}</DialogTitle>
+            <Text fontSize={14} lineHeight={20} color={DIM}>
+              {t('{name} and every message it was sent are deleted for good.', { name: displayName })}
+            </Text>
+          </YStack>
+          <XStack gap={8} justify="flex-end" flexWrap="wrap">
+            <Button
+              size="sm"
+              variant="outline"
+              rounded={999}
+              minH={36}
+              borderColor="var(--border-strong)"
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              $max-sm={{ minH: 44 }}
+              onClick={() => setDeleting(false)}
+            >
               {t('Cancel')}
             </Button>
             <XStack
               {...PILL}
-              height={34}
-              bg={INK}
-              borderColor={INK}
-              hoverStyle={{ bg: INK, opacity: 0.9 }}
+              height={36}
+              $max-sm={{ minH: 44 }}
+              bg="var(--state-error)"
+              borderColor="var(--state-error)"
+              hoverStyle={{ bg: 'var(--state-error)', opacity: 0.9 }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
               onClick={() => {
                 if (!deleting) return
                 setDeleting(false)
                 onDelete().catch((e) => setWrong(say(e, displayName, 'save', t)))
               }}
             >
-              <Text {...WORD} color="var(--background)">
+              <Text {...WORD} fontWeight="600" color="var(--pure-white)">
                 {t('Delete')}
               </Text>
             </XStack>

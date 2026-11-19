@@ -22,7 +22,7 @@ import { phrase, pieces, type Say } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useHost } from './host'
-import { ArrowLeft, Camera, Check, Plus, Sparkles, Upload, Users } from 'lucide-react'
+import { ArrowLeft, Camera, Check, ChevronDown, Plus, Sparkles, Upload, Users } from 'lucide-react'
 import { generateImages } from '@hanzo/ai'
 import { useAgents, useModels } from '@hanzo/ai/react'
 import { Box, Button, Input, Text, Textarea, View, XStack, YStack } from '@hanzo/ui'
@@ -45,7 +45,7 @@ const FIELD = {
   width: '100%',
   bg: 'transparent',
   borderWidth: 1,
-  borderColor: 'var(--border)',
+  borderColor: 'var(--border-strong)',
   rounded: 'var(--radius-md)',
   px: 10,
   py: 8,
@@ -53,6 +53,167 @@ const FIELD = {
   color: 'inherit',
   fontSize: '$2',
 } as const
+
+function CrewSelect({
+  id,
+  ariaLabel,
+  ariaDescribedBy,
+  value,
+  options,
+  onChange,
+  compact = false,
+}: {
+  id?: string
+  ariaLabel?: string
+  ariaDescribedBy?: string
+  value: string
+  options: ReadonlyArray<{ value: string; label: string }>
+  onChange: (next: string) => void
+  compact?: boolean
+}) {
+  const { t } = useI18n()
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const wrapRef = useRef<HTMLDivElement | null>(null)
+  const btnRef = useRef<HTMLButtonElement | null>(null)
+
+  const selected = options.find((o) => o.value === value) ?? options[0]
+  const showSearch = options.length > 7
+  const filtered = query.trim()
+    ? options.filter((o) => o.label.toLowerCase().includes(query.trim().toLowerCase()) || o.value.toLowerCase().includes(query.trim().toLowerCase()))
+    : options
+
+  useEffect(() => {
+    if (!open) {
+      setQuery('')
+      return
+    }
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        setOpen(false)
+        btnRef.current?.focus()
+      }
+    }
+    document.addEventListener('mousedown', onDown)
+    window.addEventListener('keydown', onKey, true)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      window.removeEventListener('keydown', onKey, true)
+    }
+  }, [open])
+
+  return (
+    <Box ref={wrapRef as never} position="relative" width={compact ? 'auto' : '100%'} minW={compact ? 110 : 0}>
+      <XStack
+        render={
+          <button
+            ref={btnRef}
+            id={id}
+            type="button"
+            role="combobox"
+            aria-expanded={open}
+            aria-haspopup="listbox"
+            aria-label={ariaLabel}
+            aria-describedby={ariaDescribedBy}
+          />
+        }
+        width="100%"
+        minH={36}
+        $max-sm={{ minH: 44 }}
+        px="$3"
+        py="$1.5"
+        gap="$2"
+        items="center"
+        justify="space-between"
+        rounded="$3"
+        bg="$background"
+        borderWidth={1}
+        borderColor="var(--border-strong)"
+        hoverStyle={{ bg: '$hover' }}
+        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)', outlineOffset: 2 }}
+        cursor="pointer"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <Text fontSize="$2" color="$ink" numberOfLines={1} grow={1} shrink={1} minW={0} text="start">
+          {selected ? selected.label : value}
+        </Text>
+        <ChevronDown size={14} color="var(--muted-foreground)" aria-hidden />
+      </XStack>
+      {open ? (
+        <YStack
+          role={'listbox' as never}
+          aria-label={ariaLabel}
+          position="absolute"
+          t="100%"
+          l={0}
+          mt={4}
+          minW={compact ? 160 : '100%'}
+          maxW="calc(100vw - 32px)"
+          p="$1.5"
+          gap={2}
+          rounded="$4"
+          bg="var(--popover)"
+          borderWidth={1}
+          borderColor="var(--border-strong)"
+          boxShadow="var(--shadow-floating)"
+          z="var(--z-popover, 40)"
+        >
+          {showSearch ? (
+            <Box mb="$1">
+              <Input
+                value={query}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
+                placeholder={t('Filter options…')}
+                aria-label={t('Filter options')}
+              />
+            </Box>
+          ) : null}
+          <YStack maxH={220} overflowY="auto" gap={2}>
+            {filtered.map((opt) => {
+              const active = opt.value === value
+              return (
+                <XStack
+                  key={opt.value}
+                  render={<button type="button" />}
+                  role="option"
+                  aria-selected={active}
+                  width="100%"
+                  minH={34}
+                  $max-sm={{ minH: 44 }}
+                  px="$2.5"
+                  py="$1.5"
+                  gap="$2"
+                  items="center"
+                  justify="space-between"
+                  rounded="$3"
+                  borderWidth={0}
+                  bg={active ? '$raised' : 'transparent'}
+                  hoverStyle={{ bg: active ? '$raised' : '$hover' }}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)', outlineOffset: -2 }}
+                  cursor="pointer"
+                  onClick={() => {
+                    onChange(opt.value)
+                    setOpen(false)
+                    btnRef.current?.focus()
+                  }}
+                >
+                  <Text fontSize="$2" fontWeight={active ? '500' : '400'} color="$ink" numberOfLines={1} grow={1} shrink={1} text="start">
+                    {opt.label}
+                  </Text>
+                  {active ? <Check size={14} color="var(--foreground)" aria-hidden /> : null}
+                </XStack>
+              )
+            })}
+          </YStack>
+        </YStack>
+      ) : null}
+    </Box>
+  )
+}
 /** The camera's veil over a face already chosen. */
 const VEIL = mix('var(--pure-black)', 55, 'srgb')
 
@@ -804,17 +965,14 @@ export function Hire({ onClose, onMade, start = false }: { onClose: () => void; 
               <Text render="label" htmlFor="hire-model" fontSize="$2" fontWeight="600">
                 {t('Model')}
               </Text>
-              <Text
-                render={<select id="hire-model" value={model} onChange={(e) => setModel(e.target.value)} aria-describedby="hire-model-wrong" />}
-                {...FIELD}
-              >
-                <option value="enso">enso</option>
-                {models.map((one) => (
-                  <option key={one.id} value={one.id}>
-                    {one.id}
-                  </option>
-                ))}
-              </Text>
+              <CrewSelect
+                id="hire-model"
+                ariaLabel={t('Model')}
+                ariaDescribedBy="hire-model-wrong"
+                value={model}
+                onChange={setModel}
+                options={[{ value: 'enso', label: 'enso' }, ...models.map((one) => ({ value: one.id, label: one.id }))]}
+              />
               <Said id="hire-model-wrong" text={shown('model')} />
             </YStack>
 
@@ -862,17 +1020,13 @@ export function Hire({ onClose, onMade, start = false }: { onClose: () => void; 
                         </Box>
                       ),
                       period: (
-                        <Text
-                          render={<select aria-label={t('Spending limit period')} value={period} onChange={(e) => setPeriod(e.target.value as Period)} />}
-                          {...FIELD}
-                          width="auto"
-                        >
-                          {PERIODS.map(([value, words]) => (
-                            <option key={value} value={value}>
-                              {t(words)}
-                            </option>
-                          ))}
-                        </Text>
+                        <CrewSelect
+                          compact
+                          ariaLabel={t('Spending limit period')}
+                          value={period}
+                          onChange={(next) => setPeriod(next as Period)}
+                          options={PERIODS.map(([val, words]) => ({ value: val, label: t(words) }))}
+                        />
                       ),
                     }}
                   />

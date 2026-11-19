@@ -17,7 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@hanzo/ui'
-import { Grid2x2Plus, Layers, Plus, Search, SlidersHorizontal, Users, X } from 'lucide-react'
+import { ArrowLeft, Grid2x2Plus, Layers, Plus, Search, SlidersHorizontal, Users, X } from 'lucide-react'
 import { useSignOut } from '../lib/signout'
 import { PreferencesDialog } from '../PreferencesDialog'
 import { called } from '../team'
@@ -91,15 +91,49 @@ export function Roster({
 
   return (
     <YStack flex={1} minH={0} position="relative">
-      <XStack data-parity-key="bots.roster.bar" height={46} shrink={0} px={12} items="center" justify="space-between" gap={8}>
-        <XStack items="center" gap={6} pl={2}>
-          <Text fontSize={12} lineHeight={16} fontWeight="600" color={DIM}>
-            {t('hanzo.bot')}
-          </Text>
+      <XStack
+        data-parity-key="bots.roster.bar"
+        minH={46}
+        $max-sm={{ minH: 52, px: 10 }}
+        shrink={0}
+        px={12}
+        items="center"
+        justify="space-between"
+        gap={8}
+      >
+        <XStack items="center" gap={6} pl={2} minW={0}>
+          {me ? (
+            <XStack
+              render={<a href="/chat" aria-label={t('Back to chat')} />}
+              items="center"
+              gap={6}
+              px={6}
+              py={4}
+              ml={-4}
+              rounded={8}
+              transition="quickest"
+              hoverStyle={{ bg: PICKED }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              $max-sm={{ minH: 44 }}
+              $platform-web={{ textDecoration: 'none' }}
+            >
+              <ArrowLeft size={14} color={DIM} aria-hidden />
+              <Text fontSize={13} lineHeight={18} fontWeight="600" color={INK}>
+                {t('hanzo.bot')}
+              </Text>
+            </XStack>
+          ) : (
+            <Text fontSize={13} lineHeight={18} fontWeight="600" color={DIM}>
+              {t('hanzo.bot')}
+            </Text>
+          )}
         </XStack>
-        <XStack items="center" gap={6}>
+        <XStack items="center" gap={6} shrink={0}>
           <XStack
             {...ROUND}
+            borderColor="var(--border-strong)"
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+            $max-sm={{ width: 44, height: 44 }}
             aria-label={t(seeking ? 'Close search' : 'Search bots')}
             aria-pressed={seeking}
             onClick={() => {
@@ -112,6 +146,9 @@ export function Roster({
           {onMakeGroup ? (
             <XStack
               {...ROUND}
+              borderColor="var(--border-strong)"
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              $max-sm={{ width: 44, height: 44 }}
               aria-label={t('New bot group')}
               onClick={onMakeGroup}
               disabled={disabled}
@@ -120,7 +157,16 @@ export function Roster({
               <Users size={15} color={INK} aria-hidden />
             </XStack>
           ) : null}
-          <XStack {...ROUND} aria-label={t('New bot')} onClick={onMake} disabled={disabled} opacity={disabled ? 0.5 : 1}>
+          <XStack
+            {...ROUND}
+            borderColor="var(--border-strong)"
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+            $max-sm={{ width: 44, height: 44 }}
+            aria-label={t('New bot')}
+            onClick={onMake}
+            disabled={disabled}
+            opacity={disabled ? 0.5 : 1}
+          >
             <Plus size={18} color={INK} aria-hidden />
           </XStack>
         </XStack>
@@ -133,15 +179,23 @@ export function Roster({
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setSeeking(false)
+                setQuery('')
+              }
+            }}
             placeholder={t('Search bots & groups')}
             aria-label={t('Search bots')}
             width="100%"
             height={34}
+            $max-sm={{ minH: 44 }}
             px={12}
             rounded={999}
             bg={RAISED}
             borderWidth={1}
-            borderColor={LINE}
+            borderColor="var(--border-strong)"
+            focusStyle={{ borderColor: 'var(--ring)' }}
             color={INK}
             fontSize={14}
             placeholderTextColor="$placeholderColor"
@@ -158,12 +212,38 @@ export function Roster({
           ) : null}
 
           {bots && bots.length === 0 && !unread && !disabled ? (
-            <YStack display="none" $max-md={{ display: 'flex' }} items="center" gap={16} pt={140} px={20}>
-              <Text render="h1" m={0} fontSize={22} lineHeight={28} fontWeight="500" color={INK}>
-                {t('Make your first bot')}
-              </Text>
-              <XStack {...PILL} onClick={onMake}>
-                <Text {...WORD}>{t('New bot')}</Text>
+            <YStack
+              display="none"
+              $max-md={{ display: 'flex' }}
+              flex={1}
+              items="center"
+              justify="center"
+              gap={18}
+              pt={24}
+              pb={64}
+              px={20}
+            >
+              <YStack items="center" gap={6} maxW={320}>
+                <Text render="h2" m={0} fontSize={21} lineHeight={26} fontWeight="600" letterSpacing={-0.42} color={INK} text="center">
+                  {t('Make your first bot')}
+                </Text>
+                <Text fontSize={14} lineHeight={20} color={DIM} text="center">
+                  {t('Give it instructions and tools, then message it right here.')}
+                </Text>
+              </YStack>
+              <XStack
+                {...PILL}
+                bg={INK}
+                borderColor={INK}
+                minH={38}
+                $max-sm={{ minH: 44, px: 18 }}
+                hoverStyle={{ opacity: 0.9 }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                onClick={onMake}
+              >
+                <Text {...WORD} fontWeight="600" color="var(--background)">
+                  {t('New bot')}
+                </Text>
               </XStack>
             </YStack>
           ) : null}
@@ -175,7 +255,8 @@ export function Roster({
               aria-label={t('Bots')}
               flexWrap="wrap"
               px={9}
-              pt={4}
+              pt={6}
+              pb={4}
               columnGap={3}
               rowGap={10}
               $max-md={{ px: 12, columnGap: 0, justify: 'space-between' }}
@@ -188,25 +269,26 @@ export function Roster({
                 return (
                   <YStack
                     key={b.id || b.name}
-                    render="button"
-                    {...{ type: 'button' }}
+                    render={<button type="button" />}
                     data-parity-key="bots.tile"
                     data-name={b.name}
                     data-primary={isPrimary ? 'true' : undefined}
                     aria-current={here}
-                    aria-label={isPrimary ? `${label} (${t('Primary Bot')})` : label}
+                    aria-label={isPrimary ? `${label} (${t('Primary bot')})` : label}
                     onClick={() => onPick(b.name)}
                     width={78}
-                    height={92}
+                    height={96}
                     rounded={11}
                     items="center"
                     pt={5}
-                    gap={4}
+                    gap={3}
                     bg={here ? PICKED : 'transparent'}
-                    borderWidth={0}
+                    borderWidth={1}
+                    borderColor={here ? 'var(--border-strong)' : 'transparent'}
                     cursor="pointer"
+                    transition="quickest"
                     hoverStyle={{ bg: here ? PICKED : 'var(--rail-hover, var(--muted))' }}
-                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                     $max-md={{ width: '33%' }}
                   >
                     <Face bot={b} size={54} starred={isStarredBot(b)} />
@@ -214,7 +296,7 @@ export function Roster({
                       {label}
                     </Text>
                     {isPrimary ? (
-                      <Text fontSize={10} lineHeight={11} color={DIM}>
+                      <Text fontSize={11} lineHeight={13} color={DIM}>
                         {t('Primary')}
                       </Text>
                     ) : null}
@@ -224,32 +306,52 @@ export function Roster({
             </XStack>
           ) : null}
 
-          {shownGroups.length > 0 || (onMakeGroup && !disabled) ? (
-            <YStack data-parity-key="bots.groups" role="group" aria-label={t('Bot groups')} pt={14} pb={6}>
-              <XStack px={16} pb={6} items="center" justify="space-between">
-                <XStack items="center" gap={5}>
+          {query.trim() && shown.length === 0 && shownGroups.length === 0 ? (
+            <YStack px={16} py={32} items="center" gap={6}>
+              <Text fontSize={13} lineHeight={18} color={DIM} text="center">
+                {t('No bots match “{query}”.', { query: query.trim() })}
+              </Text>
+            </YStack>
+          ) : null}
+
+          {shownGroups.length > 0 || (!query.trim() && onMakeGroup && !disabled) ? (
+            <YStack
+              data-parity-key="bots.groups"
+              role="group"
+              aria-label={t('Bot groups')}
+              mt={grid.length ? 14 : 4}
+              pt={grid.length ? 14 : 6}
+              pb={6}
+              borderTopWidth={grid.length ? 1 : 0}
+              borderColor={LINE}
+              gap={4}
+            >
+              <XStack px={16} pb={4} items="center" justify="space-between">
+                <XStack items="center" gap={6}>
                   <Layers size={12} color={DIM} aria-hidden />
-                  <Text fontSize={11} lineHeight={15} fontWeight="600" color={DIM}>
-                    {t('GROUPS & LAYERS')}
+                  <Text fontSize={12} lineHeight={16} fontWeight="600" color={DIM}>
+                    {t('Groups & layers')}
                   </Text>
                 </XStack>
                 {onMakeGroup && !disabled ? (
                   <XStack
-                    render="button"
-                    {...{ type: 'button' }}
+                    render={<button type="button" />}
                     onClick={onMakeGroup}
                     items="center"
-                    gap={3}
-                    px={6}
-                    py={2}
+                    gap={4}
+                    px={7}
+                    py={3}
                     rounded={6}
                     bg="transparent"
                     borderWidth={0}
                     cursor="pointer"
+                    transition="quickest"
                     hoverStyle={{ bg: PICKED }}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                    $max-sm={{ minH: 44, px: 10 }}
                   >
-                    <Plus size={11} color={DIM} aria-hidden />
-                    <Text fontSize={11} lineHeight={15} color={DIM}>
+                    <Plus size={12} color={DIM} aria-hidden />
+                    <Text fontSize={12} lineHeight={16} color={DIM}>
                       {t('Group')}
                     </Text>
                   </XStack>
@@ -258,28 +360,30 @@ export function Roster({
 
               {shownGroups.length === 0 && onMakeGroup && !disabled ? (
                 <XStack
-                  render="button"
-                  {...{ type: 'button' }}
+                  render={<button type="button" />}
                   onClick={onMakeGroup}
                   mx={10}
-                  px={11}
-                  py={8}
+                  px={12}
+                  py={9}
+                  $max-sm={{ minH: 48 }}
                   rounded={10}
                   items="center"
-                  gap={9}
+                  gap={10}
                   bg={RAISED}
                   borderWidth={1}
                   borderColor={LINE}
                   cursor="pointer"
-                  hoverStyle={{ bg: PICKED }}
+                  transition="quickest"
+                  hoverStyle={{ bg: PICKED, borderColor: 'var(--border-strong)' }}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                 >
                   <Users size={15} color={DIM} aria-hidden />
-                  <YStack flex={1} minW={0} items="flex-start">
-                    <Text {...CLIP} fontSize={12} lineHeight={16} fontWeight="500" color={INK}>
-                      {t('Create a Bot Group')}
+                  <YStack flex={1} minW={0} items="flex-start" gap={2}>
+                    <Text {...CLIP} fontSize={13} lineHeight={17} fontWeight="500" color={INK}>
+                      {t('Create a bot group')}
                     </Text>
-                    <Text {...CLIP} fontSize={11} lineHeight={15} color={DIM}>
-                      {t('Leader, Lux Quasar, or Majority layers')}
+                    <Text {...CLIP} fontSize={12} lineHeight={16} color={DIM}>
+                      {t('Leader, Lux Quasar, or majority layers')}
                     </Text>
                   </YStack>
                 </XStack>
@@ -291,23 +395,24 @@ export function Roster({
                 return (
                   <XStack
                     key={g.id || g.name}
-                    render="button"
-                    {...{ type: 'button' }}
+                    render={<button type="button" />}
                     data-parity-key="bots.group.row"
                     data-group={g.name}
                     aria-current={here}
                     onClick={() => onPick(ref)}
-                    height={52}
+                    minH={54}
                     mx={6}
                     px={12}
+                    py={8}
                     gap={10}
                     items="center"
                     rounded={10}
                     bg={here ? PICKED : 'transparent'}
                     borderWidth={0}
                     cursor="pointer"
+                    transition="quickest"
                     hoverStyle={{ bg: here ? PICKED : 'var(--rail-hover, var(--muted))' }}
-                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                   >
                     <YStack
                       width={34}
@@ -322,16 +427,16 @@ export function Roster({
                     >
                       <Users size={15} color={INK} aria-hidden />
                     </YStack>
-                    <YStack flex={1} minW={0} items="flex-start">
+                    <YStack flex={1} minW={0} items="flex-start" gap={2}>
                       <XStack items="center" gap={6} maxW="100%">
                         <Text {...CLIP} fontSize={13} lineHeight={18} fontWeight="500" color={INK}>
                           {g.name}
                         </Text>
-                        <Text fontSize={10} lineHeight={14} color={DIM}>
+                        <Text fontSize={11} lineHeight={15} color={DIM} shrink={0}>
                           {`L${g.layer || 1}`}
                         </Text>
                       </XStack>
-                      <Text {...CLIP} maxW="100%" fontSize={11} lineHeight={15} color={DIM}>
+                      <Text {...CLIP} maxW="100%" fontSize={12} lineHeight={16} color={DIM}>
                         {`${policyBadge(g.policy)} · ${g.members.length} bots`}
                       </Text>
                     </YStack>
@@ -342,7 +447,20 @@ export function Roster({
           ) : null}
 
           {rows.length ? (
-            <YStack data-parity-key="bots.rows" role="group" aria-label={t('More bots')} pt={10} pb={22}>
+            <YStack
+              data-parity-key="bots.rows"
+              role="group"
+              aria-label={t('More bots')}
+              mt={14}
+              pt={14}
+              pb={24}
+              borderTopWidth={grid.length || shownGroups.length || (onMakeGroup && !disabled) ? 1 : 0}
+              borderColor={LINE}
+              gap={4}
+            >
+              <Text px={16} pb={4} fontSize={12} lineHeight={16} fontWeight="600" color={DIM}>
+                {t('More bots')}
+              </Text>
               {rows.map((b) => {
                 const here = b.name === open
                 const label = called(b.name)
@@ -350,31 +468,32 @@ export function Roster({
                 return (
                   <XStack
                     key={b.id || b.name}
-                    render="button"
-                    {...{ type: 'button' }}
+                    render={<button type="button" />}
                     data-parity-key="bots.row"
                     data-name={b.name}
                     aria-current={here}
                     onClick={() => onPick(b.name)}
-                    height={56}
+                    minH={56}
                     mx={6}
                     px={12}
+                    py={8}
                     gap={10}
                     items="center"
                     rounded={10}
                     bg={here ? PICKED : 'transparent'}
                     borderWidth={0}
                     cursor="pointer"
+                    transition="quickest"
                     hoverStyle={{ bg: here ? PICKED : 'var(--rail-hover, var(--muted))' }}
-                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                   >
                     <Face bot={b} size={36} />
-                    <YStack flex={1} minW={0} items="flex-start">
+                    <YStack flex={1} minW={0} items="flex-start" gap={2}>
                       <Text {...CLIP} maxW="100%" fontSize={14} lineHeight={19} fontWeight="500" color={INK}>
                         {label}
                       </Text>
                       {word ? (
-                        <Text {...CLIP} maxW="100%" fontSize={13} lineHeight={18} color={DIM}>
+                        <Text {...CLIP} maxW="100%" fontSize={12} lineHeight={17} color={DIM}>
                           {word}
                         </Text>
                       ) : null}
@@ -428,21 +547,36 @@ function Foot({ me }: { me: Me | null }) {
   if (!me) return null
   return (
     <>
-      <XStack data-parity-key="bots.me" height={52} shrink={0} px={12} items="center" gap={6} borderTopWidth={1} borderColor={LINE}>
+      <XStack
+        data-parity-key="bots.me"
+        minH={52}
+        $max-sm={{ minH: 56, px: 10 }}
+        shrink={0}
+        px={12}
+        items="center"
+        gap={6}
+        borderTopWidth={1}
+        borderColor={LINE}
+      >
         <DropdownMenu placement="top-start" offset={8}>
           <DropdownMenuTrigger asChild>
             <XStack
-              render="button"
-              {...{ type: 'button' }}
+              render={<button type="button" />}
               aria-label={t('Account: {name}', { name })}
               flex={1}
               minW={0}
+              minH={36}
+              $max-sm={{ minH: 44 }}
               items="center"
               gap={9}
+              px={4}
+              rounded={8}
               bg="transparent"
               borderWidth={0}
-              p={0}
               cursor="pointer"
+              transition="quickest"
+              hoverStyle={{ bg: PICKED }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
             >
               <Face bot={{ name, avatar: me.avatar }} size={30} person />
               <Text {...CLIP} fontSize={14} lineHeight={19} fontWeight="500" color={INK}>
@@ -464,6 +598,17 @@ function Foot({ me }: { me: Me | null }) {
               </YStack>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => { window.location.href = '/chat' }}>
+              <Text fontSize="$3" color="$ink">
+                {t('Chat')}
+              </Text>
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => { window.location.href = '/home' }}>
+              <Text fontSize="$3" color="$ink">
+                {t('Team')}
+              </Text>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => setConnectorsOpen(true)}>
               <Text fontSize="$3" color="$ink">
                 {t('Connectors')}
@@ -482,11 +627,25 @@ function Foot({ me }: { me: Me | null }) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <XStack {...ROUND} aria-label={t('Connectors')} onClick={() => setConnectorsOpen(true)}>
+        <XStack
+          {...ROUND}
+          borderColor="var(--border-strong)"
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+          $max-sm={{ width: 44, height: 44 }}
+          aria-label={t('Connectors')}
+          onClick={() => setConnectorsOpen(true)}
+        >
           <Grid2x2Plus size={16} color={INK} aria-hidden />
         </XStack>
 
-        <XStack {...ROUND} aria-label={t('Preferences')} onClick={() => setPrefsOpen(true)}>
+        <XStack
+          {...ROUND}
+          borderColor="var(--border-strong)"
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+          $max-sm={{ width: 44, height: 44 }}
+          aria-label={t('Preferences')}
+          onClick={() => setPrefsOpen(true)}
+        >
           <SlidersHorizontal size={15} color={INK} aria-hidden />
         </XStack>
       </XStack>

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { chord, named, said, typing, type Press } from './chord'
+import { chord, globalAction, named, said, typing, type Press } from './chord'
 
 const on = (tagName: string, extra: Record<string, unknown> = {}) => ({ tagName, closest: () => null, ...extra }) as unknown as EventTarget
 
@@ -71,5 +71,32 @@ describe('the keys a conversation answers to', () => {
     expect(said('pin', false)).toBe('Ctrl+Alt+P')
     expect(named('rename')).toBe('Control+Alt+R')
     expect(named('pin')).toBe('Control+Alt+P')
+  })
+})
+
+describe('the workspace keys', () => {
+  const mod = (key: string, extra: Partial<Press> = {}) => press(key, `Key${key.toUpperCase()}`, { ctrlKey: false, altKey: false, metaKey: true, ...extra })
+
+  test('Cmd+Shift+O, Cmd+B, Cmd+Shift+L and Cmd+Shift+D each name their act, and Ctrl does the same off a Mac', () => {
+    expect(globalAction(mod('o', { shiftKey: true }))).toBe('new-chat')
+    expect(globalAction(mod('b'))).toBe('toggle-sidebar')
+    expect(globalAction(mod('l', { shiftKey: true }))).toBe('toggle-theme')
+    expect(globalAction(mod('d', { shiftKey: true }))).toBe('toggle-dev-mode')
+    expect(globalAction(mod('b', { metaKey: false, ctrlKey: true }))).toBe('toggle-sidebar')
+  })
+
+  test('a bare letter, the wrong shift, or Alt asks nothing', () => {
+    expect(globalAction(mod('b', { metaKey: false }))).toBeNull()
+    expect(globalAction(mod('o'))).toBeNull()
+    expect(globalAction(mod('b', { shiftKey: true }))).toBeNull()
+    expect(globalAction(mod('b', { altKey: true }))).toBeNull()
+  })
+
+  test('never while typing, inside a dialog, held down, composing, or already answered', () => {
+    expect(globalAction(mod('b', { target: on('TEXTAREA') }))).toBeNull()
+    expect(globalAction(mod('b', { target: on('DIV', { closest: () => ({}) }) }))).toBeNull()
+    expect(globalAction(mod('b', { repeat: true }))).toBeNull()
+    expect(globalAction(mod('b', { isComposing: true }))).toBeNull()
+    expect(globalAction(mod('b', { defaultPrevented: true }))).toBeNull()
   })
 })

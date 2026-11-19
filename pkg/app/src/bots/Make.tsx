@@ -128,13 +128,18 @@ export function Make({
             </Text>
             <XStack gap={6}>
               {[1, 2, 3].map((lv) => {
+                const locked = Boolean(selectedGroup)
                 const active = (selectedGroup?.layer ?? layer) === lv
                 return (
                   <XStack
                     key={lv}
                     render="button"
-                    {...{ type: 'button' }}
-                    onClick={() => setLayer(lv)}
+                    {...{ type: 'button', disabled: locked }}
+                    aria-pressed={active}
+                    aria-disabled={locked}
+                    onClick={() => {
+                      if (!locked) setLayer(lv)
+                    }}
                     height={28}
                     px={10}
                     rounded={999}
@@ -142,7 +147,9 @@ export function Make({
                     bg={active ? PICKED : RAISED}
                     borderWidth={1}
                     borderColor={active ? INK : LINE}
-                    cursor="pointer"
+                    opacity={locked ? 0.5 : 1}
+                    cursor={locked ? 'not-allowed' : 'pointer'}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                   >
                     <Text fontSize={12} lineHeight={16} fontWeight={active ? '600' : '400'} color={INK}>
                       {`L${lv}`}

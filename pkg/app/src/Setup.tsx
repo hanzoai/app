@@ -32,7 +32,7 @@ import { scope } from './lib/session'
 import { enter } from './lib/destination'
 import { brand, site } from './where'
 import { GOOGLE_ACCOUNTS_KEY, GOOGLE_KEY, accounts, connect, drop, keep } from './lib/gmail'
-import { GOOD } from './lib/mix'
+import { BAD, GOOD } from './lib/mix'
 import { RETURN, awaitAnswer } from './lib/oauth'
 
 export const LATER_KEY = 'hanzo.onboarding.later'
@@ -43,6 +43,7 @@ export const PLUGIN_KEY = 'hanzo.onboarding.plugin'
 
 /** Where plugins and connectors live: Dev's Customize. */
 const PLUGINS = '-/customize/plugins'
+const FOCUS_RING = { outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' } as const
 
 /** What GET /v1/provider (the org's providers) and GET /v1/connection (the reader's own) say is connected. */
 export interface Linked {
@@ -354,11 +355,39 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
     }
   }
 
+  const notifyConnected = (provider: string) => {
+    void import('@hanzo/ui').then((mod) => {
+      if ('toast' in mod && typeof mod.toast?.success === 'function') {
+        mod.toast.success(t('{provider} connected', { provider }))
+      }
+    })
+  }
+
+  const dismissSetup = () => {
+    setModalOpen(false)
+    setLater(true)
+    void import('@hanzo/ui').then((mod) => {
+      if ('toast' in mod && typeof mod.toast === 'function') {
+        mod.toast(t('Quick setup hidden'), {
+          id: 'hanzo:setup-dismissed',
+          duration: 5000,
+          action: {
+            label: t('Undo'),
+            onClick: () => {
+              setLater(false)
+            },
+          },
+        })
+      }
+    })
+  }
+
   // 1. Connect GitHub
   const handleConnectGithub = () =>
     connectOAuthProvider('github', 'GitHub', () => {
       setGithubDone(true)
       setStep(slackDone ? 3 : 2)
+      notifyConnected('GitHub')
     })
 
   // Let go of GitHub, so another account can be connected, as Projects does: the
@@ -403,12 +432,14 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
     connectOAuthProvider('slack', 'Slack', () => {
       setSlackDone(true)
       setStep(3)
+      notifyConnected('Slack')
     })
 
   // Google Workspace, the private beta (Drive, Docs, Sheets, Gmail & Calendar; one or many accounts)
   const handleConnectGoogle = () =>
     connectOAuthProvider('google', 'Google', () => {
       setGoogleDone(true)
+      notifyConnected('Google Workspace')
     })
 
   return (
@@ -438,26 +469,43 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
           </XStack>
           <XStack items="center" gap="$1" shrink={0}>
             <Box
-              render="button"
+              render={<button type="button" title={t('Expand onboarding popup')} />}
               aria-label={t('Expand onboarding popup')}
               onClick={() => setModalOpen(true)}
-              p="$1"
+              width={26}
+              height={26}
+              $max-sm={{ width: 44, height: 44 }}
               rounded={999}
+              display="flex"
+              items="center"
+              justify="center"
+              bg="transparent"
+              borderWidth={0}
               hoverStyle={{ bg: '$hover' }}
+              focusVisibleStyle={FOCUS_RING}
               cursor="pointer"
             >
-              <Maximize2 size={13} aria-hidden color="$soft" />
+              <Maximize2 size={13} aria-hidden color="var(--muted-foreground)" />
             </Box>
             <Box
-              render="button"
-              aria-label={t('Dismiss')}
-              onClick={() => setLater(true)}
-              p="$1"
+              render={<button type="button" title={t('Dismiss quick setup')} />}
+              data-slot="setup-dismiss"
+              aria-label={t('Dismiss quick setup')}
+              onClick={dismissSetup}
+              width={26}
+              height={26}
+              $max-sm={{ width: 44, height: 44 }}
               rounded={999}
+              display="flex"
+              items="center"
+              justify="center"
+              bg="transparent"
+              borderWidth={0}
               hoverStyle={{ bg: '$hover' }}
+              focusVisibleStyle={FOCUS_RING}
               cursor="pointer"
             >
-              <X size={13} aria-hidden color="$soft" />
+              <X size={14} aria-hidden color="var(--muted-foreground)" />
             </Box>
           </XStack>
         </XStack>
@@ -467,31 +515,43 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
           <Box
             render="button"
             aria-label={t('Step 1: Connect GitHub')}
+            aria-current={activeStep === 1 ? 'step' : undefined}
             onClick={() => setStep(1)}
             flex={1}
             height={6}
             rounded={3}
+            borderWidth={0}
             bg={githubDone ? GOOD : activeStep === 1 ? '$ink' : '$edge'}
+            hoverStyle={{ opacity: 0.85 }}
+            focusVisibleStyle={FOCUS_RING}
             cursor="pointer"
           />
           <Box
             render="button"
             aria-label={t('Step 2: Connect Slack')}
+            aria-current={activeStep === 2 ? 'step' : undefined}
             onClick={() => setStep(2)}
             flex={1}
             height={6}
             rounded={3}
+            borderWidth={0}
             bg={slackDone ? GOOD : activeStep === 2 ? '$ink' : '$edge'}
+            hoverStyle={{ opacity: 0.85 }}
+            focusVisibleStyle={FOCUS_RING}
             cursor="pointer"
           />
           <Box
             render="button"
             aria-label={t('Step 3: Connect a plugin')}
+            aria-current={activeStep === 3 ? 'step' : undefined}
             onClick={() => setStep(3)}
             flex={1}
             height={6}
             rounded={3}
+            borderWidth={0}
             bg={pluginDone ? GOOD : activeStep === 3 ? '$ink' : '$edge'}
+            hoverStyle={{ opacity: 0.85 }}
+            focusVisibleStyle={FOCUS_RING}
             cursor="pointer"
           />
         </XStack>
@@ -523,6 +583,8 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                       render="button"
                       aria-label={t('Remove {account}', { account: acct })}
                       onClick={() => removeGoogleAccount(acct)}
+                      rounded="$1"
+                      focusVisibleStyle={FOCUS_RING}
                       cursor="pointer"
                     >
                       <X size={11} color="$soft" aria-hidden />
@@ -538,9 +600,11 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                     onClick={handleConnectGoogle}
                     px="$2.5"
                     py="$1"
+                    $max-sm={{ minH: 44 }}
                     rounded="$3"
                     bg="$edge"
                     hoverStyle={{ bg: '$hover' }}
+                    focusVisibleStyle={FOCUS_RING}
                     cursor="pointer"
                   >
                     <XStack items="center" gap="$1">
@@ -553,12 +617,14 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
               ) : null}
               <Box
                 render="button"
-                onClick={() => setLater(true)}
+                onClick={dismissSetup}
                 px="$2.5"
                 py="$1"
+                $max-sm={{ minH: 44 }}
                 rounded="$3"
                 bg="$edge"
                 hoverStyle={{ bg: '$hover' }}
+                focusVisibleStyle={FOCUS_RING}
                 items="center"
                 justify="center"
                 cursor="pointer"
@@ -592,9 +658,13 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                 aria-disabled={busy === 'github'}
                 px="$2.5"
                 py="$1"
+                $max-sm={{ minH: 44 }}
                 rounded="$3"
                 bg="var(--accent)"
+                borderWidth={1}
+                borderColor="var(--border-strong)"
                 hoverStyle={{ bg: 'var(--accent-hover)' }}
+                focusVisibleStyle={FOCUS_RING}
                 cursor="pointer"
                 opacity={busy === 'github' ? 0.6 : 1}
               >
@@ -609,9 +679,11 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                   aria-disabled={busy === 'github'}
                   px="$2"
                   py="$1"
+                  $max-sm={{ minH: 44 }}
                   rounded="$3"
                   bg="transparent"
                   hoverStyle={{ bg: '$hover' }}
+                  focusVisibleStyle={FOCUS_RING}
                   cursor="pointer"
                 >
                   <Text fontSize="$1" color={dropping ? '$ink' : '$soft'}>{dropping ? t('Confirm disconnect') : t('Disconnect')}</Text>
@@ -622,9 +694,11 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                 onClick={() => setStep(2)}
                 px="$2"
                 py="$1"
+                $max-sm={{ minH: 44 }}
                 rounded="$3"
                 bg="transparent"
                 hoverStyle={{ bg: '$hover' }}
+                focusVisibleStyle={FOCUS_RING}
                 cursor="pointer"
               >
                 <Text fontSize="$1" color="$soft">{t('Skip')}</Text>
@@ -656,9 +730,13 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                 aria-disabled={busy === 'slack'}
                 px="$2.5"
                 py="$1"
+                $max-sm={{ minH: 44 }}
                 rounded="$3"
                 bg="var(--accent)"
+                borderWidth={1}
+                borderColor="var(--border-strong)"
                 hoverStyle={{ bg: 'var(--accent-hover)' }}
+                focusVisibleStyle={FOCUS_RING}
                 cursor="pointer"
                 opacity={busy === 'slack' ? 0.6 : 1}
               >
@@ -671,9 +749,11 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                 onClick={() => setStep(3)}
                 px="$2"
                 py="$1"
+                $max-sm={{ minH: 44 }}
                 rounded="$3"
                 bg="transparent"
                 hoverStyle={{ bg: '$hover' }}
+                focusVisibleStyle={FOCUS_RING}
                 cursor="pointer"
               >
                 <Text fontSize="$1" color="$soft">{t('Skip')}</Text>
@@ -704,9 +784,13 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                 onClick={openPlugins}
                 px="$2.5"
                 py="$1"
+                $max-sm={{ minH: 44 }}
                 rounded="$3"
                 bg="var(--accent)"
+                borderWidth={1}
+                borderColor="var(--border-strong)"
                 hoverStyle={{ bg: 'var(--accent-hover)' }}
+                focusVisibleStyle={FOCUS_RING}
                 cursor="pointer"
               >
                 <Text fontSize="$1" fontWeight="600" color="var(--accent-foreground)">
@@ -715,12 +799,14 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
               </Box>
               <Box
                 render="button"
-                onClick={() => setLater(true)}
+                onClick={dismissSetup}
                 px="$2"
                 py="$1"
+                $max-sm={{ minH: 44 }}
                 rounded="$3"
                 bg="transparent"
                 hoverStyle={{ bg: '$hover' }}
+                focusVisibleStyle={FOCUS_RING}
                 cursor="pointer"
               >
                 <Text fontSize="$1" color="$soft">
@@ -768,9 +854,11 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                           render="button"
                           aria-label={t('Remove {account}', { account: acct })}
                           onClick={() => removeGoogleAccount(acct)}
+                          rounded="$1"
+                          focusVisibleStyle={FOCUS_RING}
                           cursor="pointer"
                         >
-                          <X size={11} color="$soft" aria-hidden />
+                          <X size={11} color="var(--muted-foreground)" aria-hidden />
                         </Box>
                       </XStack>
                     ))}
@@ -783,9 +871,13 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                     aria-disabled={busy === 'google'}
                     px="$2.5"
                     py="$1"
+                    $max-sm={{ minH: 44 }}
                     rounded="$3"
                     bg="var(--accent)"
+                    borderWidth={1}
+                    borderColor="var(--border-strong)"
                     hoverStyle={{ bg: 'var(--accent-hover)' }}
+                    focusVisibleStyle={FOCUS_RING}
                     cursor="pointer"
                     opacity={busy === 'google' ? 0.6 : 1}
                   >
@@ -804,7 +896,7 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
         )}
 
         {errorMsg ? (
-          <Text fontSize="$1" color="$red10">
+          <Text fontSize="$1" color={BAD}>
             {errorMsg}
           </Text>
         ) : null}
@@ -856,9 +948,11 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                     aria-disabled={busy === 'github'}
                     px="$2"
                     py="$1"
+                    $max-sm={{ minH: 44 }}
                     rounded="$3"
                     bg="transparent"
                     hoverStyle={{ bg: '$hover' }}
+                    focusVisibleStyle={FOCUS_RING}
                     cursor="pointer"
                   >
                     <Text fontSize="$1" color={dropping ? '$ink' : '$soft'}>{dropping ? t('Confirm disconnect') : t('Disconnect')}</Text>
@@ -870,9 +964,13 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                   onClick={handleConnectGithub}
                   px="$3"
                   py="$1.5"
+                  $max-sm={{ minH: 44 }}
                   rounded="$3"
                   bg="var(--accent)"
+                  borderWidth={1}
+                  borderColor="var(--border-strong)"
                   hoverStyle={{ bg: 'var(--accent-hover)' }}
+                  focusVisibleStyle={FOCUS_RING}
                   cursor="pointer"
                 >
                   <Text fontSize="$2" fontWeight="600" color="var(--accent-foreground)">
@@ -911,9 +1009,13 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                   onClick={handleConnectSlack}
                   px="$3"
                   py="$1.5"
+                  $max-sm={{ minH: 44 }}
                   rounded="$3"
                   bg="var(--accent)"
+                  borderWidth={1}
+                  borderColor="var(--border-strong)"
                   hoverStyle={{ bg: 'var(--accent-hover)' }}
+                  focusVisibleStyle={FOCUS_RING}
                   cursor="pointer"
                 >
                   <Text fontSize="$2" fontWeight="600" color="var(--accent-foreground)">
@@ -952,9 +1054,13 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                   onClick={openPlugins}
                   px="$3"
                   py="$1.5"
+                  $max-sm={{ minH: 44 }}
                   rounded="$3"
                   bg="var(--accent)"
+                  borderWidth={1}
+                  borderColor="var(--border-strong)"
                   hoverStyle={{ bg: 'var(--accent-hover)' }}
+                  focusVisibleStyle={FOCUS_RING}
                   cursor="pointer"
                 >
                   <Text fontSize="$2" fontWeight="600" color="var(--accent-foreground)">
@@ -991,9 +1097,13 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                       onClick={handleConnectGoogle}
                       px="$3"
                       py="$1.5"
+                      $max-sm={{ minH: 44 }}
                       rounded="$3"
                       bg="var(--accent)"
+                      borderWidth={1}
+                      borderColor="var(--border-strong)"
                       hoverStyle={{ bg: 'var(--accent-hover)' }}
+                      focusVisibleStyle={FOCUS_RING}
                       cursor="pointer"
                     >
                       <Text fontSize="$2" fontWeight="600" color="var(--accent-foreground)">
@@ -1025,9 +1135,11 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                             render="button"
                             aria-label={t('Remove {account}', { account: acct })}
                             onClick={() => removeGoogleAccount(acct)}
+                            rounded="$1"
+                            focusVisibleStyle={FOCUS_RING}
                             cursor="pointer"
                           >
-                            <X size={12} color="$soft" aria-hidden />
+                            <X size={12} color="var(--muted-foreground)" aria-hidden />
                           </Box>
                         </XStack>
                       ))}
@@ -1037,16 +1149,35 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
             ) : null}
           </YStack>
 
-          <XStack justify="flex-end" pt="$2">
+          <XStack justify="space-between" items="center" gap="$2" pt="$2" flexWrap="wrap">
             <Box
-              render="button"
+              render={<button type="button" />}
+              data-slot="setup-modal-dismiss"
+              onClick={dismissSetup}
+              px="$3"
+              py="$2"
+              $max-sm={{ minH: 44 }}
+              rounded="$3"
+              bg="transparent"
+              borderWidth={0}
+              hoverStyle={{ bg: '$hover' }}
+              focusVisibleStyle={FOCUS_RING}
+              cursor="pointer"
+            >
+              <Text fontSize="$2" color="$soft">{t('Don’t show again')}</Text>
+            </Box>
+            <Box
+              render={<button type="button" />}
               onClick={() => setModalOpen(false)}
               px="$4"
               py="$2"
+              $max-sm={{ minH: 44 }}
               rounded="$3"
+              bg="transparent"
               borderWidth={1}
-              borderColor="$borderColor"
+              borderColor="var(--border-strong)"
               hoverStyle={{ bg: '$hover' }}
+              focusVisibleStyle={FOCUS_RING}
               cursor="pointer"
             >
               <Text fontSize="$2" fontWeight="500" color="$ink">{t('Close')}</Text>

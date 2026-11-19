@@ -93,7 +93,7 @@ describe('the app host', () => {
     host().go(path({ kind: 'settings', section: 'notifications' }))
     expect(assign).not.toHaveBeenCalled()
     expect(moved, 'not a move inside the app').toEqual([])
-    expect(routed).toEqual(['/settings/organization/billing', '/settings'])
+    expect(routed).toEqual(['/settings/billing', '/settings/notifications']) // First Build: personal Billing & credits page
   })
 
   test('moves inside the app to every other place', () => {

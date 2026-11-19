@@ -46,7 +46,11 @@ export function Face({
 
   const src = failed ? undefined : candidate
   const label = person ? (bot.name || '') : called(bot.name || '')
-  const glyph = Math.round(size * (bot.emoji ? 0.5 : 0.42))
+  const words = label.trim().split(/\s+/).filter(Boolean)
+  const initials = person && words.length >= 2
+    ? `${words[0].charAt(0)}${words[words.length - 1].charAt(0)}`.toUpperCase()
+    : (label || '?').trim().charAt(0).toUpperCase()
+  const glyph = Math.round(size * (bot.emoji ? 0.5 : person && initials.length > 1 ? 0.36 : 0.42))
 
   const disc = src ? (
     <YStack
@@ -62,11 +66,13 @@ export function Face({
       {...round}
       items="center"
       justify="center"
-      bg={person ? 'var(--info, var(--secondary))' : 'var(--secondary)'}
+      bg="var(--raised)"
+      borderWidth={1}
+      borderColor="var(--border)"
       {...{ userSelect: 'none' }}
     >
-      <Text color={person ? 'var(--pure-white, var(--foreground))' : INK} fontSize={glyph} lineHeight={glyph} fontWeight="600">
-        {bot.emoji || (label || '?').trim().charAt(0).toUpperCase()}
+      <Text color={INK} fontSize={glyph} lineHeight={glyph} fontWeight="600">
+        {bot.emoji || initials}
       </Text>
     </YStack>
   )

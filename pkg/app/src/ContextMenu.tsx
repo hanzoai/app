@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useI18n } from '@hanzo/i18n/react'
-import { SizableText, Text, XStack, YStack } from '@hanzo/gui'
+import { SizableText, Text, View, XStack, YStack } from '@hanzo/gui'
 import { toast } from '@hanzo/ui'
 import {
   Archive,
+  ArchiveRestore,
   CheckSquare,
   Clock,
   Code2,
@@ -20,6 +21,7 @@ import {
   PanelLeft,
   Pencil,
   Pin,
+  PinOff,
   Play,
   Plus,
   RotateCcw,
@@ -35,7 +37,10 @@ import {
   WandSparkles,
 } from 'lucide-react'
 import type { Host } from '@hanzo/build'
-import { app, design, settings, studio, talk, TERMINALS, type Place } from './lib/host'
+import { app, design, flow, settings, studio, talk, TERMINALS, type Place } from './lib/host'
+import { rememberSettingsReturn } from './lib/dev-mode'
+import { useOpen } from './open'
+import { usePinnedNav } from './Rail'
 import { site } from './where'
 
 type MenuEntry =
@@ -44,6 +49,7 @@ type MenuEntry =
       label: string
       icon: ReactNode
       shortcut?: string
+      destructive?: boolean
       run: () => void
     }
   | { key: string; line: true }
@@ -54,6 +60,9 @@ interface MenuState {
   title?: string
   entries: MenuEntry[]
 }
+
+const SAFE_BOTTOM = 'calc(12px + env(safe-area-inset-bottom, 0px))' as `var(--${string})`
+const FOCUS_RING = { outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' } as const
 
 const isMac = (): boolean =>
   typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent)
@@ -68,11 +77,11 @@ const placePath = (id: string, mode: Place['mode']): string | null => {
     case 'new':
       return mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'studio' ? studio('') : talk()
     case 'projects':
-      return app('projects')
+      return app('-/projects')
     case 'issues':
-      return app('issues')
+      return app('-/issues')
     case 'templates':
-      return app('templates')
+      return app('-/templates')
     case 'agents':
       return app('-/customize/agents')
     case 'bots':
@@ -105,6 +114,9 @@ const railPath = (slot: string): string | null => {
     case 'rail-studio':
     case 'place-studio':
       return studio('')
+    case 'rail-flow':
+    case 'place-flow':
+      return flow('')
     case 'rail-tabs':
     case 'place-tabs':
       return TERMINALS
@@ -141,9 +153,31 @@ export function AppContextMenu({
   go: (address: string) => void
 }) {
   const { t } = useI18n()
+  const { thread: activeThread } = useOpen()
   const [state, setState] = useState<MenuState | null>(null)
+  const [compact, setCompact] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 640 : false,
+  )
   const panelRef = useRef<HTMLElement | null>(null)
+  const openerRef = useRef<HTMLElement | null>(null)
   const apple = isMac()
+  const [pins, togglePin] = usePinnedNav()
+
+  const closeMenu = useCallback((restoreFocus = false) => {
+    setState(null)
+    if (restoreFocus) {
+      queueMicrotask(() => openerRef.current?.focus?.())
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+    const mq = window.matchMedia('(max-width: 639px)')
+    const sync = () => setCompact(mq.matches)
+    sync()
+    mq.addEventListener?.('change', sync)
+    return () => mq.removeEventListener?.('change', sync)
+  }, [])
 
   const copyLink = async (path: string) => {
     try {
@@ -166,8 +200,9 @@ export function AppContextMenu({
       const windowRoot = target.closest('[data-slot="window"]')
       if (!windowRoot) return
 
-      // Let ConversationMenu handle [data-thread] rows, and never override native menu in inputs, SVGs, or active text selections
-      if (target.closest('[data-thread], [role="menu"], [role="dialog"], svg')) return
+      // Let ConversationMenu handle [data-thread] rows, and never override native menu in inputs, standalone SVGs, or active text selections
+      if (target.closest('[data-thread], [role="menu"], [role="dialog"]')) return
+      if (target.closest('svg') && !target.closest('button, a, [role="button"], [data-slot^="rail-"], [data-place-id], [data-project]')) return
       const htmlEl = target as HTMLElement
       if (
         htmlEl.isContentEditable ||
@@ -237,6 +272,7 @@ export function AppContextMenu({
         if (placeEl) {
           const slot = placeEl.getAttribute('data-slot') ?? ''
           const placeId = placeEl.getAttribute('data-place-id') ?? (slot === 'app-new' ? 'new' : '')
+          const pinTargetId = placeId && placeId !== 'new' ? placeId : slot.startsWith('place-') && slot !== 'place-more' && slot !== 'place-back' && slot !== 'place-name' ? slot.slice('place-'.length) : ''
           const label = placeEl.textContent?.trim() || placeEl.getAttribute('aria-label') || t('Open')
           const routeTo = placeId ? placePath(placeId, mode) : railPath(slot)
           title = label
@@ -246,6 +282,17 @@ export function AppContextMenu({
             icon: <FolderGit2 size={15} aria-hidden />,
             run: () => placeEl.click(),
           })
+          if (pinTargetId) {
+            const pinned = pins.includes(pinTargetId)
+            entries.push({
+              key: 'place-pin',
+              label: pinned ? t('Unpin') : t('Pin to top'),
+              icon: pinned ? <PinOff size={15} aria-hidden /> : <Pin size={15} aria-hidden />,
+              run: () => {
+                togglePin(pinTargetId)
+              },
+            })
+          }
           if (routeTo) {
             entries.push(
               {
@@ -272,7 +319,7 @@ export function AppContextMenu({
             },
             {
               key: 'place-search',
-              label: t('Search & Commands…'),
+              label: t('Search & commands…'),
               icon: <Search size={15} aria-hidden />,
               shortcut: apple ? '⌘K' : 'Ctrl+K',
               run: onSeek,
@@ -291,7 +338,9 @@ export function AppContextMenu({
       if (!entries.length) {
         const railEl = target.closest('[data-slot^="rail-"]') as HTMLElement | null
         const slot = railEl?.getAttribute('data-slot') ?? ''
-        if (railEl && slot && slot !== 'rail-marks' && slot !== 'rail-more') {
+        const ignoredSlots = new Set(['rail', 'rail-marks', 'rail-more', 'rail-pinned', 'rail-unpinned', 'rail-fold-toggle', 'rail-item-options', 'rail-expand', 'rail-new'])
+        if (railEl && slot && !ignoredSlots.has(slot)) {
+          const navId = railEl.getAttribute('data-nav-id') ?? slot.replace(/^rail-/, '')
           const label = railEl.getAttribute('aria-label') || t('Open')
           const routeTo = railPath(slot)
           title = label
@@ -301,6 +350,17 @@ export function AppContextMenu({
             icon: <ExternalLink size={15} aria-hidden />,
             run: () => railEl.click(),
           })
+          if (navId && !navId.startsWith('anon-')) {
+            const pinned = pins.includes(navId)
+            entries.push({
+              key: 'rail-pin',
+              label: pinned ? t('Unpin') : t('Pin to top'),
+              icon: pinned ? <PinOff size={15} aria-hidden /> : <Pin size={15} aria-hidden />,
+              run: () => {
+                togglePin(navId)
+              },
+            })
+          }
           if (routeTo) {
             entries.push(
               {
@@ -330,7 +390,7 @@ export function AppContextMenu({
                 key: 'rail-dev-projects',
                 label: t('Projects'),
                 icon: <FolderGit2 size={15} aria-hidden />,
-                run: () => go(app('projects')),
+                run: () => go(app('-/projects')),
               },
             )
           } else if (slot === 'rail-chat') {
@@ -380,14 +440,14 @@ export function AppContextMenu({
           },
           {
             key: 'sidebar-select-all',
-            label: t('Select All'),
+            label: t('Select all'),
             icon: <CheckSquare size={15} aria-hidden />,
             shortcut: apple ? '⌘A' : 'Ctrl+A',
             run: () => window.dispatchEvent(new CustomEvent('hanzo:recents-select', { detail: { mode: 'all' } })),
           },
           {
             key: 'sidebar-search',
-            label: t('Search & Commands…'),
+            label: t('Search & commands…'),
             icon: <Search size={15} aria-hidden />,
             shortcut: apple ? '⌘K' : 'Ctrl+K',
             run: onSeek,
@@ -397,7 +457,7 @@ export function AppContextMenu({
             key: 'sidebar-projects',
             label: t('Projects'),
             icon: <FolderGit2 size={15} aria-hidden />,
-            run: () => go(app('projects')),
+            run: () => go(app('-/projects')),
           },
           {
             key: 'sidebar-shut',
@@ -506,6 +566,20 @@ export function AppContextMenu({
               { key: 'sep-turn-q', line: true },
             )
           }
+          const activeId =
+            activeThread ||
+            (window.location.pathname.startsWith('/chat/')
+              ? decodeURIComponent(window.location.pathname.slice('/chat/'.length))
+              : '')
+          const activeRow =
+            activeId && typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+              ? document.querySelector(`[data-thread="${CSS.escape(activeId)}"]`)
+              : activeId
+                ? Array.from(document.querySelectorAll('[data-thread]')).find((el) => el.getAttribute('data-thread') === activeId) ?? null
+                : null
+          const isPinned = Boolean(activeRow?.hasAttribute('data-pinned'))
+          const isArchived = Boolean(activeRow?.hasAttribute('data-archived'))
+          const convPath = activeId ? talk(activeId) : window.location.pathname + window.location.search
           entries.push(
             {
               key: 'conv-rename',
@@ -515,8 +589,8 @@ export function AppContextMenu({
             },
             {
               key: 'conv-pin',
-              label: t('Pin'),
-              icon: <Pin size={15} aria-hidden />,
+              label: isPinned ? t('Unpin') : t('Pin'),
+              icon: isPinned ? <PinOff size={15} aria-hidden /> : <Pin size={15} aria-hidden />,
               run: () => dispatchChat('pin'),
             },
             {
@@ -535,25 +609,26 @@ export function AppContextMenu({
               key: 'conv-copy-link',
               label: t('Copy link'),
               icon: <Link2 size={15} aria-hidden />,
-              run: () => void copyLink(window.location.pathname + window.location.search),
+              run: () => void copyLink(convPath),
             },
             {
               key: 'conv-open-tab',
               label: t('Open in new tab'),
               icon: <ExternalLink size={15} aria-hidden />,
-              run: () => openNewTab(window.location.pathname + window.location.search),
+              run: () => openNewTab(convPath),
             },
             {
               key: 'conv-archive',
-              label: t('Archive'),
-              icon: <Archive size={15} aria-hidden />,
+              label: isArchived ? t('Unarchive') : t('Archive'),
+              icon: isArchived ? <ArchiveRestore size={15} aria-hidden /> : <Archive size={15} aria-hidden />,
               run: () => dispatchChat('archive'),
             },
             { key: 'sep-conv-del', line: true },
             {
               key: 'conv-delete',
               label: t('Delete'),
-              icon: <Trash2 size={15} aria-hidden />,
+              icon: <Trash2 size={15} color="var(--state-error)" aria-hidden />,
+              destructive: true,
               run: () => dispatchChat('delete'),
             },
           )
@@ -577,7 +652,7 @@ export function AppContextMenu({
           },
           {
             key: 'stage-search',
-            label: t('Search & Commands…'),
+            label: t('Search & commands…'),
             icon: <Search size={15} aria-hidden />,
             shortcut: apple ? '⌘K' : 'Ctrl+K',
             run: onSeek,
@@ -587,7 +662,7 @@ export function AppContextMenu({
             key: 'stage-projects',
             label: t('Projects'),
             icon: <FolderGit2 size={15} aria-hidden />,
-            run: () => go(app('projects')),
+            run: () => go(app('-/projects')),
           },
           {
             key: 'stage-design',
@@ -617,7 +692,7 @@ export function AppContextMenu({
                       : host.theme === 'light'
                   return {
                     key: 'stage-theme',
-                    label: t(isLight ? 'Switch to Dark theme' : 'Switch to Light theme'),
+                    label: isLight ? t('Switch to dark theme') : t('Switch to light theme'),
                     icon: isLight ? <Moon size={15} aria-hidden /> : <Sun size={15} aria-hidden />,
                     run: () => host.chooseTheme?.(isLight ? 'dark' : 'light'),
                   }
@@ -634,7 +709,8 @@ export function AppContextMenu({
                 window.dispatchEvent(new CustomEvent('hanzo:anon-settings'))
                 return
               }
-              go(settings())
+              rememberSettingsReturn()
+              go(settings('account'))
             },
           },
         )
@@ -642,45 +718,152 @@ export function AppContextMenu({
 
       if (!entries.length) return
       e.preventDefault()
+      openerRef.current =
+        document.activeElement instanceof HTMLElement && document.activeElement !== document.body
+          ? document.activeElement
+          : (target.closest('button, a, [role="button"], [tabindex]') as HTMLElement | null)
       const vw = window.innerWidth
       const vh = window.innerHeight
       const menuW = 240
       const menuH = entries.length * 32 + 24
       const x = Math.max(8, Math.min(e.clientX, vw - menuW - 8))
       const y = Math.max(8, Math.min(e.clientY, vh - menuH - 8))
+      setCompact(vw < 640)
       setState({ x, y, title, entries })
     }
 
     window.addEventListener('contextmenu', onContextMenu)
     return () => window.removeEventListener('contextmenu', onContextMenu)
-  }, [apple, closed, go, host, mode, onNewChat, onSeek, onToggleSidebar, t])
+  }, [activeThread, apple, closed, go, host, mode, onNewChat, onSeek, onToggleSidebar, pins, togglePin, t])
 
   useEffect(() => {
     if (!state) return
-    const onPointerDown = (e: MouseEvent) => {
+    const onPointerDown = (e: Event) => {
       if (panelRef.current?.contains(e.target as Node)) return
-      setState(null)
+      closeMenu(false)
     }
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault()
-        setState(null)
+        closeMenu(true)
       }
     }
-    const onScroll = () => setState(null)
-    window.addEventListener('mousedown', onPointerDown, true)
+    const onScroll = (e: Event) => {
+      if (panelRef.current?.contains(e.target as Node)) return
+      closeMenu(false)
+    }
+    const onBlur = () => closeMenu(false)
+    window.addEventListener('pointerdown', onPointerDown, true)
     window.addEventListener('keydown', onKeyDown, true)
     window.addEventListener('scroll', onScroll, true)
-    window.addEventListener('blur', onScroll)
+    window.addEventListener('blur', onBlur)
     return () => {
-      window.removeEventListener('mousedown', onPointerDown, true)
+      window.removeEventListener('pointerdown', onPointerDown, true)
       window.removeEventListener('keydown', onKeyDown, true)
       window.removeEventListener('scroll', onScroll, true)
-      window.removeEventListener('blur', onScroll)
+      window.removeEventListener('blur', onBlur)
     }
-  }, [state])
+  }, [state, closeMenu])
 
   if (!state) return null
+
+  const items = state.entries.map((entry) =>
+    'line' in entry ? (
+      <XStack key={entry.key} height={1} bg="$borderColor" my="$1" mx="$1" role="separator" />
+    ) : (
+      <XStack
+        key={entry.key}
+        render={<button type="button" />}
+        role="menuitem"
+        width="100%"
+        px="$2.5"
+        py={compact ? '$2' : '$1.5'}
+        minH={compact ? 44 : 30}
+        $max-sm={{ minH: 44 }}
+        rounded="$3"
+        borderWidth={0}
+        items="center"
+        gap="$2.5"
+        cursor="pointer"
+        bg="transparent"
+        hoverStyle={{ bg: '$hover' }}
+        focusStyle={{ bg: '$hover' }}
+        focusVisibleStyle={FOCUS_RING}
+        onClick={() => {
+          closeMenu(false)
+          entry.run()
+        }}
+      >
+        <XStack width={16} height={16} items="center" justify="center" shrink={0} opacity={entry.destructive ? 1 : 0.85}>
+          {entry.icon}
+        </XStack>
+        <Text flex={1} minW={0} fontSize={compact ? '$3' : '$2'} color={entry.destructive ? 'var(--state-error)' : '$ink'} numberOfLines={1} text="start">
+          {entry.label}
+        </Text>
+        {entry.shortcut && !compact ? (
+          <SizableText size="$1" color="$soft" aria-hidden data-i18n-ltr>
+            {entry.shortcut}
+          </SizableText>
+        ) : null}
+      </XStack>
+    ),
+  )
+
+  if (compact) {
+    return (
+      <>
+        <View
+          data-slot="app-context-menu-scrim"
+          position="fixed"
+          inset={0}
+          bg="var(--surface-scrim)"
+          z="var(--z-overlay)"
+          onClick={() => closeMenu(true)}
+        />
+        <YStack
+          ref={(node: unknown) => {
+            panelRef.current = (node as HTMLElement | null) ?? null
+          }}
+          role="menu"
+          aria-label={state.title ?? t('Application menu')}
+          data-slot="app-context-menu"
+          data-presentation="sheet"
+          position="fixed"
+          b={0}
+          l={8}
+          r={8}
+          width="calc(100vw - 16px)"
+          maxW="100vw"
+          maxH="75dvh"
+          overflowY="auto"
+          pt="$2"
+          px="$2"
+          pb={SAFE_BOTTOM}
+          borderTopLeftRadius="$5"
+          borderTopRightRadius="$5"
+          borderBottomLeftRadius={0}
+          borderBottomRightRadius={0}
+          bg="var(--popover)"
+          borderWidth={1}
+          borderColor="var(--border-strong)"
+          boxShadow="var(--shadow-floating)"
+          z="var(--z-modal)"
+        >
+          <XStack justify="center" pt="$1" pb="$2" shrink={0} aria-hidden data-slot="sheet-handle">
+            <View width={36} height={4} rounded="$10" bg="$edge" />
+          </XStack>
+          {state.title ? (
+            <Text fontSize="$2" fontWeight="600" color="$aside" px="$2.5" pb="$1.5" numberOfLines={1}>
+              {state.title}
+            </Text>
+          ) : null}
+          <YStack gap="$0.5" minW={0}>
+            {items}
+          </YStack>
+        </YStack>
+      </>
+    )
+  }
 
   return (
     <YStack
@@ -692,57 +875,24 @@ export function AppContextMenu({
       data-slot="app-context-menu"
       minW={228}
       maxW={280}
+      maxH="75dvh"
+      overflowY="auto"
       p="$1.5"
       rounded="$4"
-      bg="$raised"
+      bg="var(--popover)"
       borderWidth={1}
-      borderColor="$borderColor"
-      z={100000}
+      borderColor="var(--border-strong)"
+      boxShadow="var(--shadow-floating)"
+      z="var(--z-popover)"
       position="fixed"
       l={state.x}
       t={state.y}
       $platform-web={{
         backdropFilter: 'blur(20px)',
-        boxShadow: 'var(--shadow-lg)',
+        boxShadow: 'var(--shadow-floating)',
       }}
     >
-      {state.entries.map((entry) =>
-        'line' in entry ? (
-          <XStack key={entry.key} height={1} bg="$borderColor" my="$1" mx="$1" role="separator" />
-        ) : (
-          <XStack
-            key={entry.key}
-            render="button"
-            role="menuitem"
-            px="$2.5"
-            py="$1.5"
-            minH={30}
-            rounded="$3"
-            items="center"
-            gap="$2.5"
-            cursor="pointer"
-            bg="transparent"
-            hoverStyle={{ bg: '$hover' }}
-            focusStyle={{ bg: '$hover' }}
-            onPress={() => {
-              setState(null)
-              entry.run()
-            }}
-          >
-            <XStack width={16} height={16} items="center" justify="center" shrink={0} opacity={0.85}>
-              {entry.icon}
-            </XStack>
-            <Text flex={1} minW={0} fontSize="$2" color="$ink" numberOfLines={1} text="start">
-              {entry.label}
-            </Text>
-            {entry.shortcut ? (
-              <SizableText size="$1" color="$soft" aria-hidden data-i18n-ltr>
-                {entry.shortcut}
-              </SizableText>
-            ) : null}
-          </XStack>
-        ),
-      )}
+      {items}
     </YStack>
   )
 }

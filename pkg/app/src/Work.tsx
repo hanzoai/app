@@ -13,7 +13,8 @@
 // gets one `tree` read, and `nest` is not needed here because the server
 // already materialises the nesting. A root with no children costs no request.
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Plus } from 'lucide-react'
 import { useAi, useSession, useSessions } from '@hanzo/ai/react'
 import { useOpen } from './open'
 import { asked, KEY } from './watch'
@@ -29,8 +30,9 @@ import {
   type Run,
   type RunStatus,
 } from '@hanzo/ui/agents'
-import { Text, XStack, YStack } from '@hanzo/ui'
+import { Box, Button, Skeleton, Text, XStack, YStack } from '@hanzo/ui'
 import { useIam } from '@hanzo/iam/react'
+import { enter, LOGIN } from './lib/destination'
 import { useI18n } from '@hanzo/i18n/react'
 import type { Say } from '@hanzo/i18n'
 import { Composer } from '@hanzo/ui/chat'
@@ -40,6 +42,99 @@ import { Bar } from './progress'
 /** The server's four statuses, plus the honest fallback for anything else. */
 const STATUS = (s?: string): RunStatus =>
   s === 'running' || s === 'paused' || s === 'done' || s === 'error' ? s : 'unknown'
+
+type RunFilter = 'all' | 'running' | 'review' | 'done' | 'failed'
+
+/** Format elapsed duration in crisp human units: `14s`, `2m 10s`, `1h 4m`. */
+function formatDuration(startedAt?: string, endedAt?: string, nowMs = Date.now()): string | null {
+  if (!startedAt) return null
+  const start = Date.parse(startedAt)
+  const end = endedAt ? Date.parse(endedAt) : nowMs
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null
+  const totalSec = Math.max(0, Math.floor((end - start) / 1000))
+  if (totalSec < 60) return `${totalSec}s`
+  if (totalSec < 3600) {
+    const mins = Math.floor(totalSec / 60)
+    const secs = totalSec % 60
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`
+  }
+  const hours = Math.floor(totalSec / 3600)
+  const mins = Math.floor((totalSec % 3600) / 60)
+  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
+}
+
+function statusLabel(status: RunStatus, t: Say): string {
+  switch (status) {
+    case 'running':
+      return t('Running')
+    case 'paused':
+      return t('Needs review')
+    case 'done':
+      return t('Done')
+    case 'error':
+      return t('Failed')
+    default:
+      return t('Queued')
+  }
+}
+
+function matchesFilter(status: RunStatus, filter: RunFilter): boolean {
+  if (filter === 'all') return true
+  if (filter === 'running') return status === 'running'
+  if (filter === 'review') return status === 'paused'
+  if (filter === 'done') return status === 'done'
+  return status === 'error'
+}
+
+/** Calm monochrome layout-matched skeleton for the runs sidebar list. */
+function RunsSkeleton({ label }: { label: string }) {
+  return (
+    <YStack role="status" aria-busy={true} aria-label={label} gap="$2.5" p="$3" width="100%">
+      <Skeleton layout="block" width={72} height={11} rounded="$2" />
+      {[0, 1, 2, 3].map((i) => (
+        <XStack
+          key={i}
+          items="center"
+          gap="$2.5"
+          p="$2.5"
+          rounded="$3"
+          borderWidth={1}
+          borderColor="$edge"
+          bg="$panel"
+        >
+          <Skeleton layout="block" width={8} height={8} rounded={9999} shrink={0} />
+          <YStack flex={1} minW={0} gap="$1.5">
+            <Skeleton layout="block" width={i % 2 === 0 ? '78%' : '64%'} height={13} rounded="$2" />
+            <Skeleton layout="block" width={i % 2 === 0 ? '48%' : '38%'} height={10} rounded="$2" />
+          </YStack>
+          <Skeleton layout="block" width={36} height={11} rounded="$2" shrink={0} />
+        </XStack>
+      ))}
+    </YStack>
+  )
+}
+
+/** Calm monochrome layout-matched skeleton for the full Mission Control workspace. */
+function WorkWorkspaceSkeleton({ label }: { label: string }) {
+  return (
+    <YStack role="status" aria-busy={true} aria-label={label} flex={1} minH={0} width="100%" overflow="hidden" $lg={{ flexDirection: 'row' }}>
+      <YStack width="100%" height={200} shrink={0} borderBottomWidth={1} borderColor="$edge" $lg={{ width: 280, height: '100%', borderBottomWidth: 0, borderRightWidth: 1 }}>
+        <RunsSkeleton label={label} />
+      </YStack>
+      <YStack flex={1} minW={0} minH={0} p="$5" gap="$4">
+        <XStack items="center" justify="space-between" gap="$3">
+          <Skeleton layout="block" width={220} height={20} rounded="$2" />
+          <Skeleton layout="block" width={68} height={20} rounded="$10" />
+        </XStack>
+        <YStack gap="$3" p="$4" rounded="$4" borderWidth={1} borderColor="$edge" bg="$panel">
+          <Skeleton layout="block" width="60%" height={14} rounded="$2" />
+          <Skeleton layout="block" width="88%" height={12} rounded="$2" />
+          <Skeleton layout="block" width="72%" height={12} rounded="$2" />
+        </YStack>
+      </YStack>
+    </YStack>
+  )
+}
 
 /**
  * A session as the board reads it.
@@ -78,21 +173,27 @@ const previewOf = (preview: string | undefined, t: Say): string | undefined => {
   }
 }
 
-const toRun = (s: Session, t: Say, children: Run[] = []): Run => ({
-  id: s.id,
-  agent: s.agent || s.title || s.id,
-  status: STATUS(s.status),
-  doing: previewOf(s.lastEvent?.preview, t),
-  target: s.target,
-  project: s.project,
-  children,
-})
+const toRun = (s: Session, t: Say, nowMs: number, children: Run[] = []): Run => {
+  const status = STATUS(s.status)
+  const ended = status === 'running' ? undefined : (s.endedAt || s.updatedAt)
+  const elapsed = formatDuration(s.startedAt || s.createdAt, ended, nowMs)
+  const meta = [s.target, elapsed].filter(Boolean).join(' · ')
+  return {
+    id: s.id,
+    agent: s.title || s.agent || s.id,
+    status,
+    doing: previewOf(s.lastEvent?.preview, t),
+    target: meta || undefined,
+    project: s.project,
+    children,
+  }
+}
 
 /** Flatten the server's tree into the board's, dropping the node we asked for. */
-const kidsOf = (node: TreeNode | null, t: Say): Run[] =>
+const kidsOf = (node: TreeNode | null, t: Say, nowMs: number): Run[] =>
   // `children` is NULL on a leaf, not `[]` — the guard is load-bearing.
   (node?.children ?? []).map((child) =>
-    child.session ? toRun(child.session, t, kidsOf(child, t)) : null,
+    child.session ? toRun(child.session, t, nowMs, kidsOf(child, t, nowMs)) : null,
   ).filter((r): r is Run => r !== null)
 
 function Watching({ idle }: { idle?: ReactNode }) {
@@ -106,6 +207,17 @@ function Watching({ idle }: { idle?: ReactNode }) {
   // and the list is re-read when the id changes so the new row is there to open.
   const { session: open, openSession: setOpen } = useOpen()
   const [trees, setTrees] = useState<Record<string, Run[]>>({})
+  const [filter, setFilter] = useState<RunFilter>('all')
+  const [nowMs, setNowMs] = useState(() => Date.now())
+
+  const safeSessions = useMemo(() => (Array.isArray(sessions) ? sessions : []), [sessions])
+  const hasRunning = useMemo(() => safeSessions.some((s) => STATUS(s?.status) === 'running'), [safeSessions])
+
+  useEffect(() => {
+    if (!hasRunning) return
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [hasRunning])
 
   // A run the address names opens on arrival: Home's "{n} failed" sends
   // /work?session=<id> (./watch). The param is then dropped, the way Chat drops
@@ -127,27 +239,69 @@ function Watching({ idle }: { idle?: ReactNode }) {
   // One `tree` read per root that says it has children. Roots without a
   // fan-out are left alone, so an org of solo runs costs exactly one request.
   useEffect(() => {
-    const safeSessions = Array.isArray(sessions) ? sessions : []
     const swarms = safeSessions.filter((s) => (s?.children ?? 0) > 0)
     if (!swarms.length) return
     const stop = new AbortController()
+    const snapshotNow = Date.now()
     void Promise.all(
       swarms.map((s) =>
         ai.sessions
           .tree(s.id, { signal: stop.signal })
-          .then((node) => [s.id, kidsOf(node, t)] as const)
+          .then((node) => [s.id, kidsOf(node, t, snapshotNow)] as const)
           .catch(() => [s.id, [] as Run[]] as const),
       ),
     ).then((pairs) => {
       if (!stop.signal.aborted) setTrees(Object.fromEntries(pairs))
     })
     return () => stop.abort()
-  }, [ai, sessions, t])
+  }, [ai, safeSessions, t])
 
   const runs = useMemo(
-    () => sessions.map((s) => toRun(s, t, trees[s.id] ?? [])),
-    [sessions, trees, t],
+    () => safeSessions.map((s) => toRun(s, t, nowMs, trees[s.id] ?? [])),
+    [safeSessions, trees, t, nowMs],
   )
+
+  const counts = useMemo(() => {
+    let running = 0
+    let review = 0
+    let done = 0
+    let failed = 0
+    for (const r of runs) {
+      if (r.status === 'running') running += 1
+      else if (r.status === 'paused') review += 1
+      else if (r.status === 'done') done += 1
+      else if (r.status === 'error') failed += 1
+    }
+    return { all: runs.length, running, review, done, failed }
+  }, [runs])
+
+  const visibleRuns = useMemo(() => runs.filter((r) => matchesFilter(r.status, filter)), [runs, filter])
+
+  const [composing, setComposing] = useState(false)
+  const didAutoSelectRef = useRef(false)
+
+  useEffect(() => {
+    if (open) setComposing(false)
+  }, [open])
+
+  // Auto-select the first active (or most recent) run on mount/load so /work opens directly to live activity.
+  useEffect(() => {
+    if (didAutoSelectRef.current || composing || open || runs.length === 0) return
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has(KEY)) return
+    const latest = runs.find((r) => r.status === 'running') ?? runs[0]
+    if (latest) {
+      didAutoSelectRef.current = true
+      setOpen(latest.id)
+    }
+  }, [composing, open, runs, setOpen])
+
+  const filterPills: ReadonlyArray<{ id: RunFilter; label: string; count: number }> = [
+    { id: 'all', label: t('All'), count: counts.all },
+    { id: 'running', label: t('Running'), count: counts.running },
+    { id: 'review', label: t('Needs review'), count: counts.review },
+    { id: 'done', label: t('Done'), count: counts.done },
+    { id: 'failed', label: t('Failed'), count: counts.failed },
+  ]
 
   return (
     // A COLUMN THAT BECOMES A ROW, never a wrapped row. `flexWrap` put the
@@ -157,35 +311,16 @@ function Watching({ idle }: { idle?: ReactNode }) {
     // the 220px board reserved 424 and the pane began 204px below the bottom of
     // the list. That gap is what made /dev read as broken. Stating the axis
     // per breakpoint is the same layout with no line-box arithmetic in it.
-    <YStack flex={1} minH={0} width="100%" $lg={{ flexDirection: 'row' }}>
+    <YStack flex={1} minH={0} width="100%" overflow="hidden" $lg={{ flexDirection: 'row' }}>
       <YStack
-        // AN EMPTY BOARD DRAWS NOTHING ACROSS THE TOP. As a full-width strip it
-        // reserved 270px and a hairline for one line of grey text, and pushed
-        // the pane's own content most of a screen down — a narrow window's
-        // whole budget spent saying there is nothing to show. As a COLUMN it is
-        // still worth drawing empty, because a column with a heading is where a
-        // reader looks for the list; a strip is not.
-        display={runs.length === 0 ? 'none' : 'flex'}
+        // AN EMPTY BOARD DRAWS NOTHING ACROSS THE TOP once settled. While loading,
+        // keep it mounted so the calm shimmer skeleton shows without layout jump.
+        display={runs.length === 0 && !loading ? 'none' : 'flex'}
         width="100%"
-        // A STRIP HAS A HEIGHT, and `maxHeight` could not give it one. The
-        // board inside is a ScrollView at `flex: 1 1 0` — a zero basis — so in
-        // a column with an auto height it measured 1px and the strip vanished.
-        // "Up to 220" is not expressible over a child that contributes nothing;
-        // 220 is.
         height={220}
+        $sm={{ height: 248 }}
         shrink={0}
         borderBottomWidth={1}
-        // A COLUMN NEEDS A WINDOW WIDE ENOUGH FOR TWO. At 640 this took 300 of
-        // the 316px left after the rail and the sidebar, so the pane beside it
-        // was 32px wide and the run itself was unreadable — a narrow strip with
-        // a rule down it, which is what a squeezed column looks like. Above
-        // 1024 there is space for both; below it the board is a strip across the
-        // top and the run has the whole width under it.
-        //
-        // STATE THE VALUE, NEVER `undefined`. gui emits nothing for an
-        // undefined value, so the base cap this block used to lift SURVIVED
-        // into `$lg` and the full-height column described here was a 220px stub
-        // at every width — measured in the browser at 1280.
         $lg={{
           display: 'flex',
           width: 300,
@@ -196,16 +331,146 @@ function Watching({ idle }: { idle?: ReactNode }) {
         }}
         borderColor="$borderColor"
       >
-        <AgentBoard
-          runs={runs}
-          active={open ?? undefined}
-          onOpen={setOpen}
-          empty={
-            <Text fontSize="$2" color="$soft">
-              {loading ? t('Reading runs…') : t('No runs yet. Start one and it appears here.')}
+        <YStack gap="$2" px="$3" pt="$3" pb="$2.5" borderBottomWidth={1} borderColor="$edge" shrink={0}>
+          <XStack items="center" justify="space-between" gap="$2">
+            <XStack items="center" gap="$2" minW={0} flex={1}>
+            <Text fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1}>
+              {t('Runs')}
             </Text>
-          }
-        />
+            <XStack
+              data-slot="work-run-count"
+              items="center"
+              gap="$1.5"
+              px="$2"
+              py={2}
+              rounded="$10"
+              bg="$panel"
+              borderWidth={1}
+              borderColor="var(--border-strong)"
+              shrink={0}
+            >
+              {counts.running > 0 ? (
+                <YStack data-motion="pulse" width={6} height={6} rounded={9999} bg="var(--state-success)" shrink={0} aria-hidden />
+              ) : null}
+              <Text fontFamily="$mono" fontSize="$1" fontWeight="500" color="$ink" fontVariant={['tabular-nums']}>
+                {counts.running > 0 ? t('{count} live', { count: counts.running }) : String(counts.all)}
+              </Text>
+            </XStack>
+            </XStack>
+            <Box
+              render={<button type="button" />}
+              data-slot="work-new-run"
+              aria-label={t('New run')}
+              onClick={() => {
+                didAutoSelectRef.current = true
+                setComposing(true)
+                setOpen(null)
+              }}
+              px="$2"
+              py="$1"
+              minH={26}
+              $max-sm={{ minH: 44, px: '$2.5' }}
+              rounded="$2"
+              borderWidth={1}
+              borderColor="var(--border-strong)"
+              bg={composing && !open ? '$panel' : 'transparent'}
+              display="inline-flex"
+              items="center"
+              gap="$1"
+              shrink={0}
+              cursor="pointer"
+              hoverStyle={{ bg: '$hover' }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+            >
+              <Plus size={12} color="var(--foreground)" aria-hidden />
+              <Text fontSize="$1" fontWeight="500" color="$ink" numberOfLines={1}>
+                {t('New run')}
+              </Text>
+            </Box>
+          </XStack>
+
+          <XStack data-slot="work-status-filters" items="center" gap="$1" flexWrap="wrap" role="group" aria-label={t('Filter runs by status')}>
+            {filterPills.map((pill) => {
+              const active = filter === pill.id
+              return (
+                <Box
+                  key={pill.id}
+                  render={<button type="button" />}
+                  aria-pressed={active}
+                  onClick={() => setFilter(pill.id)}
+                  px="$2"
+                  py="$1"
+                  rounded="$10"
+                  minH={26}
+                  $max-sm={{ minH: 44, px: '$2.5' }}
+                  display="inline-flex"
+                  items="center"
+                  gap="$1"
+                  cursor="pointer"
+                  borderWidth={1}
+                  borderColor={active ? 'var(--border-strong)' : '$edge'}
+                  bg={active ? '$raised' : 'transparent'}
+                  hoverStyle={{ bg: active ? '$raised' : '$hover' }}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                >
+                  <Text fontSize="$1" fontWeight={active ? '600' : '500'} color={active ? '$ink' : '$quiet'}>
+                    {pill.label}
+                  </Text>
+                  {pill.count > 0 && pill.id !== 'all' ? (
+                    <Text fontFamily="$mono" fontSize="$1" color="$soft" fontVariant={['tabular-nums']}>
+                      {pill.count}
+                    </Text>
+                  ) : null}
+                </Box>
+              )
+            })}
+          </XStack>
+        </YStack>
+
+        {loading && runs.length === 0 ? (
+          <RunsSkeleton label={t('Loading runs')} />
+        ) : (
+          <AgentBoard
+            runs={visibleRuns}
+            active={open ?? undefined}
+            onOpen={(id) => {
+              setComposing(false)
+              setOpen(id)
+            }}
+            empty={
+              runs.length > 0 && filter !== 'all' ? (
+                <YStack gap="$2" items="flex-start">
+                  <Text fontSize="$2" color="$soft">
+                    {t('No runs in this state.')}
+                  </Text>
+                  <Box
+                    render={<button type="button" />}
+                    onClick={() => setFilter('all')}
+                    px="$2.5"
+                    py="$1.5"
+                    minH={32}
+                    $max-sm={{ minH: 44 }}
+                    rounded="$2"
+                    borderWidth={1}
+                    borderColor="var(--border-strong)"
+                    bg="transparent"
+                    hoverStyle={{ bg: '$hover' }}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                    cursor="pointer"
+                  >
+                    <Text fontSize="$1" fontWeight="500" color="$ink">
+                      {t('Show all runs')}
+                    </Text>
+                  </Box>
+                </YStack>
+              ) : (
+                <Text fontSize="$2" color="$soft">
+                  {t('No runs yet. Start one and it appears here.')}
+                </Text>
+              )
+            }
+          />
+        )}
       </YStack>
       {/*
         `minWidth={0}` is load-bearing. A flex child's default `min-width: auto`
@@ -217,8 +482,19 @@ function Watching({ idle }: { idle?: ReactNode }) {
       {/* The pane takes what the board leaves — the rest of the column below
           $lg, the rest of the row above it. `minHeight: 0` is what lets a
           scrolling child inside it actually scroll instead of growing. */}
-      <YStack width="100%" flex={1} minW={0} minH={0} $lg={{ width: 'auto' }}>
-        {open ? <Watch key={open} id={open} /> : (idle ?? <Idle runs={runs.length} />)}
+      <YStack width="100%" flex={1} minW={0} minH={0} overflow="hidden" $lg={{ width: 'auto' }}>
+        {open ? <Watch key={open} id={open} /> : loading && runs.length === 0 ? (
+          <YStack flex={1} minH={0} p="$5" gap="$4" role="status" aria-busy={true} aria-label={t('Loading runs')}>
+            <Skeleton layout="block" width={200} height={20} rounded="$2" />
+            <YStack gap="$2.5" p="$4" rounded="$4" borderWidth={1} borderColor="$edge" bg="$panel">
+              <Skeleton layout="block" width="55%" height={14} rounded="$2" />
+              <Skeleton layout="block" width="84%" height={12} rounded="$2" />
+              <Skeleton layout="block" width="68%" height={12} rounded="$2" />
+            </YStack>
+          </YStack>
+        ) : composing ? (
+          <Idle runs={0} />
+        ) : (idle ?? <Idle runs={runs.length} />)}
       </YStack>
     </YStack>
   )
@@ -314,6 +590,17 @@ function Watch({ id }: { id: string }) {
   const { steps: shown, message } = useMemo(() => steps(events), [events])
   const status = STATUS(session?.status)
   const finished = status === 'done' || status === 'error'
+  const [tickNow, setTickNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (status !== 'running') return
+    const timer = window.setInterval(() => setTickNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [status])
+  const elapsed = formatDuration(
+    session?.startedAt || session?.createdAt,
+    status === 'running' ? undefined : (session?.endedAt || session?.updatedAt),
+    tickNow,
+  )
 
   const steer = useCallback(
     async (command: Command) => {
@@ -358,9 +645,25 @@ function Watch({ id }: { id: string }) {
   }, [ai, draft, id, t])
 
   return (
-    <XStack flex={1} minH={0} flexWrap="wrap">
-      <YStack flex={1} minH={0} minW={0}>
-        <ChannelHeader name={session?.title || session?.agent || id} artifacts={0} />
+    <YStack flex={1} minH={0} minW={0} overflow="hidden" $xl={{ flexDirection: 'row' }}>
+      <YStack flex={1} minH={0} minW={0} overflow="hidden">
+        <ChannelHeader name={session?.title || session?.agent || id} artifacts={0}>
+          <XStack items="center" gap="$2">
+            <XStack items="center" gap="$1.5" px="$2" py={2} rounded="$10" bg="$panel" borderWidth={1} borderColor="$edge">
+              {status === 'running' ? (
+                <YStack data-motion="pulse" width={6} height={6} rounded={9999} bg="var(--state-success)" shrink={0} aria-hidden />
+              ) : null}
+              <Text fontSize="$1" fontWeight="500" color={status === 'error' ? 'var(--state-error)' : '$quiet'}>
+                {statusLabel(status, t)}
+              </Text>
+            </XStack>
+            {elapsed ? (
+              <Text fontFamily="$mono" fontSize="$1" color="$quiet" fontVariant={['tabular-nums']}>
+                {elapsed}
+              </Text>
+            ) : null}
+          </XStack>
+        </ChannelHeader>
         {/* How far, under the name. `Bar` draws nothing when the run says
             nothing, so this costs a row only once there is something to say —
             and it is the SAME bar the home and the chat draw. */}
@@ -376,7 +679,7 @@ function Watch({ id }: { id: string }) {
             ) : null}
           </ProgressBlock>
         </YStack>
-        <YStack p="$3" gap="$2" borderTopWidth={1} borderColor="$borderColor">
+        <YStack p="$3" gap="$2" borderTopWidth={1} borderColor="$borderColor" shrink={0}>
           <Steer
             onCommand={(c) => void steer(c)}
             withhold={finished ? ['pause', 'resume', 'stop'] : []}
@@ -396,10 +699,14 @@ function Watch({ id }: { id: string }) {
           each is honest-empty until the run has actually produced one. */}
       <YStack
         width="100%"
+        height={190}
+        $max-sm={{ height: 168 }}
+        shrink={0}
         p="$3"
         borderTopWidth={1}
-        $sm={{ width: 420, shrink: 0, borderTopWidth: 0, borderLeftWidth: 1 }}
+        $xl={{ width: 360, height: '100%', shrink: 0, borderTopWidth: 0, borderLeftWidth: 1 }}
         borderColor="$borderColor"
+        overflow="hidden"
       >
         <Pane
           tabs={[
@@ -409,7 +716,7 @@ function Watch({ id }: { id: string }) {
           ]}
         />
       </YStack>
-    </XStack>
+    </YStack>
   )
 }
 
@@ -439,15 +746,21 @@ function Nothing({ what }: { what: 'changes' | 'preview' | 'summary' }) {
 export function Work({ idle }: { idle?: ReactNode }) {
   const { t } = useI18n()
   const { user, isLoading } = useIam()
-  if (isLoading || !user) {
+  if (isLoading) {
+    return <WorkWorkspaceSkeleton label={t('Loading runs')} />
+  }
+  if (!user) {
     return (
       <YStack flex={1} items="center" justify="center" p="$6" gap="$2">
         <Text render="h1" fontSize="$5" fontWeight="600" color="$ink">
           {t('Agents')}
         </Text>
         <Text fontSize="$3" color="$soft" text="center">
-          {isLoading ? '\u00a0' : t('Sign in to watch your agents work.')}
+          {t('Sign in to watch your agents work.')}
         </Text>
+        <Button size="sm" variant="primary" rounded="$3" minH={36} $max-sm={{ minH: 44 }} mt="$2" onClick={() => enter(LOGIN)}>
+          {t('Sign in')}
+        </Button>
       </YStack>
     )
   }
