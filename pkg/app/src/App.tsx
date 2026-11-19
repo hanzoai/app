@@ -83,7 +83,7 @@ import { Layer, Lift, useDrawer } from './Drawer'
 import { empty, openThread, showSettings, useOpen } from './open'
 import { Split } from './Shell'
 import { Search } from './Search'
-import { summons } from './seek'
+import { summons, togglesSidebar } from './seek'
 import { BAR, floor, pane, RAIL, SIDE } from './ground'
 import { org as currentOrg, pick } from './lib/session'
 import { payUrl } from './lib/pay'
@@ -328,6 +328,11 @@ function Window({ bar, betas }: Hosted) {
         setFinding((open) => !open)
         return
       }
+      if (togglesSidebar(e)) {
+        e.preventDefault()
+        setClosed(!closed)
+        return
+      }
       if (typing(e)) return
       const mod = e.metaKey || e.ctrlKey
       if (mod && !e.shiftKey && !e.altKey && e.key === ',') {
@@ -349,7 +354,7 @@ function Window({ bar, betas }: Hosted) {
     }
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
-  }, [bar, router, move])
+  }, [bar, closed, setClosed, router, move, host])
 
   const back = () => move(away.current || app(''))
   const toChat = () => move(last.chat || talk())

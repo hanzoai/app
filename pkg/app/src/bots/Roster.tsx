@@ -1,11 +1,12 @@
 'use client'
 
-// The roster: search, + Group, and + New bot at the top; Primary Bot ("hanzo")
-// leading the 3x4 grid of faces; layered Bot Groups (Layer 1, Layer 2+) with
-// policy badges; the remaining bots as rows with their last word; and the reader
-// + Connectors + Preferences at the foot.
+// The roster: search, density/column menu, + Group, and + New bot at the top;
+// Pinned Bots in a 1→2→3 column resizable grid with 4 avatar sizes (xs/sm/md/lg);
+// a monochrome hairline divider; layered Bot Groups (GROUPS & LAYERS); unpinned
+// bots in single-column rows; a subtle /flow Workflows entry; and the reader +
+// Connectors + Preferences at the foot.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Agent, AgentRun } from '@hanzo/ai'
 import { useI18n } from '@hanzo/i18n/react'
 import { Input, Text, XStack, YStack } from '@hanzo/gui'
@@ -17,7 +18,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@hanzo/ui'
-import { Grid2x2Plus, Layers, Plus, Search, SlidersHorizontal, Users, X } from 'lucide-react'
+import {
+  Check,
+  Grid2x2Plus,
+  Layers,
+  LayoutGrid,
+  Pin,
+  PinOff,
+  Plus,
+  Search,
+  SlidersHorizontal,
+  Users,
+  Workflow,
+  X,
+} from 'lucide-react'
+import { useKept } from '../kept'
+import { FLOW } from '../lib/host'
 import { useSignOut } from '../lib/signout'
 import { PreferencesDialog } from '../PreferencesDialog'
 import { called } from '../team'
@@ -26,7 +42,23 @@ import { Face } from './face'
 import { PRIMARY_BOT, toGroupRef, type BotAgent, type BotGroup } from './api'
 import { CLIP, PILL, ROUND, WORD } from './kit'
 import { DIM, FLOOR, INK, LINE, PICKED, RAISED } from './ink'
-import { isStarredBot, lastWord, policyBadge, sortGroupsByLayer, split } from './grid'
+import {
+  avatarSizePx,
+  BOT_AVATAR_PX,
+  BOT_ICON_SIZES,
+  defaultPinnedNames,
+  isBotIconSize,
+  isStarredBot,
+  lastWord,
+  partitionPinned,
+  policyBadge,
+  resolveColumns,
+  ROSTER_WIDTH_DEFAULT,
+  sortGroupsByLayer,
+  togglePinnedBot,
+  type BotIconSize,
+  type RosterColumnPref,
+} from './grid'
 
 interface Me {
   name?: string
@@ -35,6 +67,15 @@ interface Me {
   avatar?: string
 }
 
+const SIZE_LABELS: Record<BotIconSize, string> = {
+  xs: 'XS',
+  sm: 'SM',
+  md: 'MD',
+  lg: 'LG',
+}
+
+const COL_OPTIONS: readonly RosterColumnPref[] = ['auto', 1, 2, 3] as const
+
 export function Roster({
   bots,
   groups = [],
@@ -42,9 +83,11 @@ export function Roster({
   open,
   unread,
   me,
+  width = ROSTER_WIDTH_DEFAULT,
   onPick,
   onMake,
   onMakeGroup,
+  onWorkflows,
   disabled,
 }: {
   bots: Agent[] | null
@@ -53,14 +96,26 @@ export function Roster({
   open: string | null
   unread: string | null
   me: unknown
+  /** Live sidebar width in px, driving the 1 → 2 → 3 column Pinned Bots grid. */
+  width?: number
   onPick: (name: string) => void
   onMake: () => void
   onMakeGroup?: () => void
+  onWorkflows?: () => void
   disabled: boolean
 }) {
   const { t } = useI18n()
   const [seeking, setSeeking] = useState(false)
   const [query, setQuery] = useState('')
+  const [storedSize, setIconSize] = useKept<BotIconSize>('hanzo.bots.roster.iconSize', 'md')
+  const [storedCols, setColPref] = useKept<RosterColumnPref>('hanzo.bots.roster.cols', 'auto')
+  const [pinnedNames, setPinnedNames] = useKept<string[] | null>('hanzo.bots.roster.pinned', null)
+
+  const iconSize: BotIconSize = isBotIconSize(storedSize) ? storedSize : 'md'
+  const colPref: RosterColumnPref =
+    storedCols === 'auto' || storedCols === 1 || storedCols === 2 || storedCols === 3 ? storedCols : 'auto'
+  const cols = resolveColumns(width, colPref)
+  const avatarPx = avatarSizePx(iconSize)
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -87,17 +142,86 @@ export function Roster({
     )
   }, [groups, query])
 
-  const { grid, rows } = useMemo(() => split(shown, last), [shown, last])
+  const { pinned, unpinned } = useMemo(() => partitionPinned(shown, last, pinnedNames), [shown, last, pinnedNames])
+
+  const togglePin = useCallback(
+    (name: string) => {
+      const base = pinnedNames ?? defaultPinnedNames(bots ?? [])
+      setPinnedNames(togglePinnedBot(base, name))
+    },
+    [bots, pinnedNames, setPinnedNames],
+  )
+
+  const openWorkflows = () => {
+    if (onWorkflows) {
+      onWorkflows()
+      return
+    }
+    if (typeof window !== 'undefined') window.location.assign(FLOW)
+  }
+
+  const showWorkflows = !query.trim() || 'workflows'.includes(query.trim().toLowerCase()) || 'flow'.includes(query.trim().toLowerCase())
 
   return (
     <YStack flex={1} minH={0} position="relative">
       <XStack data-parity-key="bots.roster.bar" height={46} shrink={0} px={12} items="center" justify="space-between" gap={8}>
-        <XStack items="center" gap={6} pl={2}>
-          <Text fontSize={12} lineHeight={16} fontWeight="600" color={DIM}>
+        <XStack items="center" gap={6} pl={2} minW={0}>
+          <Text {...CLIP} fontSize={12} lineHeight={16} fontWeight="600" color={DIM}>
             {t('hanzo.bot')}
           </Text>
         </XStack>
-        <XStack items="center" gap={6}>
+        <XStack items="center" gap={6} shrink={0}>
+          <DropdownMenu placement="bottom-end" offset={6}>
+            <DropdownMenuTrigger asChild>
+              <XStack
+                {...ROUND}
+                data-slot="bots-density-trigger"
+                aria-label={t('Sidebar layout')}
+              >
+                <LayoutGrid size={14} color={INK} aria-hidden />
+              </XStack>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent minW={196} aria-label={t('Sidebar layout')}>
+              <DropdownMenuLabel>
+                <Text fontSize={11} color={DIM} fontWeight="600">
+                  {t('Avatar size')}
+                </Text>
+              </DropdownMenuLabel>
+              {BOT_ICON_SIZES.map((sz) => {
+                const active = iconSize === sz
+                return (
+                  <DropdownMenuItem key={sz} data-slot={`bots-size-${sz}`} onSelect={() => setIconSize(sz)}>
+                    <XStack flex={1} items="center" justify="space-between" gap={8}>
+                      <Text fontSize={13} color={INK} fontWeight={active ? '600' : '400'}>
+                        {`${SIZE_LABELS[sz]} · ${BOT_AVATAR_PX[sz]}px`}
+                      </Text>
+                      {active ? <Check size={13} color={INK} aria-hidden /> : null}
+                    </XStack>
+                  </DropdownMenuItem>
+                )
+              })}
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>
+                <Text fontSize={11} color={DIM} fontWeight="600">
+                  {t('Pinned columns')}
+                </Text>
+              </DropdownMenuLabel>
+              {COL_OPTIONS.map((opt) => {
+                const active = colPref === opt
+                const label = opt === 'auto' ? t('Auto (1–3)') : opt === 1 ? t('1 column') : t('{n} columns', { n: opt })
+                return (
+                  <DropdownMenuItem key={String(opt)} data-slot={`bots-cols-${opt}`} onSelect={() => setColPref(opt)}>
+                    <XStack flex={1} items="center" justify="space-between" gap={8}>
+                      <Text fontSize={13} color={INK} fontWeight={active ? '600' : '400'}>
+                        {label}
+                      </Text>
+                      {active ? <Check size={13} color={INK} aria-hidden /> : null}
+                    </XStack>
+                  </DropdownMenuItem>
+                )
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <XStack
             {...ROUND}
             aria-label={t(seeking ? 'Close search' : 'Search bots')}
@@ -168,60 +292,181 @@ export function Roster({
             </YStack>
           ) : null}
 
-          {grid.length ? (
-            <XStack
-              data-parity-key="bots.grid"
-              role="group"
-              aria-label={t('Bots')}
-              flexWrap="wrap"
-              px={9}
-              pt={4}
-              columnGap={3}
-              rowGap={10}
-              $max-md={{ px: 12, columnGap: 0, justify: 'space-between' }}
+          {pinned.length ? (
+            <YStack
+              data-slot="bots-pinned"
+              data-cols={cols}
+              data-icon-size={iconSize}
+              data-avatar-px={avatarPx}
+              pt={2}
+              pb={10}
             >
-              {grid.map((b) => {
-                const ext = b as BotAgent
-                const here = b.name === open
-                const isPrimary = Boolean(ext.isPrimary || b.name.toLowerCase() === PRIMARY_BOT)
-                const label = called(b.name)
-                return (
-                  <YStack
-                    key={b.id || b.name}
-                    render="button"
-                    {...{ type: 'button' }}
-                    data-parity-key="bots.tile"
-                    data-name={b.name}
-                    data-primary={isPrimary ? 'true' : undefined}
-                    aria-current={here}
-                    aria-label={isPrimary ? `${label} (${t('Primary Bot')})` : label}
-                    onClick={() => onPick(b.name)}
-                    width={78}
-                    height={92}
-                    rounded={11}
-                    items="center"
-                    pt={5}
-                    gap={4}
-                    bg={here ? PICKED : 'transparent'}
-                    borderWidth={0}
-                    cursor="pointer"
-                    hoverStyle={{ bg: here ? PICKED : 'var(--rail-hover, var(--muted))' }}
-                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
-                    $max-md={{ width: '33%' }}
-                  >
-                    <Face bot={b} size={54} starred={isStarredBot(b)} />
-                    <Text {...CLIP} maxW={72} fontSize={13} lineHeight={16} fontWeight={here || isPrimary ? '600' : '400'} color={INK}>
-                      {label}
-                    </Text>
-                    {isPrimary ? (
-                      <Text fontSize={10} lineHeight={11} color={DIM}>
-                        {t('Primary')}
-                      </Text>
-                    ) : null}
-                  </YStack>
-                )
-              })}
-            </XStack>
+              <XStack px={14} pb={6} items="center" justify="space-between">
+                <XStack items="center" gap={5}>
+                  <Pin size={11} color={DIM} aria-hidden />
+                  <Text fontSize={11} lineHeight={15} fontWeight="600" color={DIM}>
+                    {t('PINNED')}
+                  </Text>
+                </XStack>
+                <Text fontSize={10} lineHeight={14} color={DIM}>
+                  {`${SIZE_LABELS[iconSize]} · ${cols}c`}
+                </Text>
+              </XStack>
+
+              <YStack
+                data-parity-key="bots.grid"
+                role="group"
+                aria-label={t('Pinned bots')}
+                display="grid"
+                gridTemplateColumns={`repeat(${cols}, minmax(0, 1fr))`}
+                $max-md={colPref === 'auto' ? { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' } : undefined}
+                px={8}
+                gap={cols === 1 ? 4 : 6}
+                minW={0}
+              >
+                {pinned.map((b) => {
+                  const ext = b as BotAgent
+                  const here = b.name === open
+                  const isPrimary = Boolean(ext.isPrimary || b.name.toLowerCase() === PRIMARY_BOT)
+                  const label = called(b.name)
+                  const nameFont = iconSize === 'xs' ? 11 : iconSize === 'sm' ? 12 : 13
+                  if (cols === 1) {
+                    return (
+                      <XStack
+                        key={b.id || b.name}
+                        data-parity-key="bots.tile"
+                        data-name={b.name}
+                        data-primary={isPrimary ? 'true' : undefined}
+                        items="center"
+                        gap={8}
+                        px={8}
+                        py={iconSize === 'xs' ? 5 : 6}
+                        rounded={10}
+                        bg={here ? PICKED : 'transparent'}
+                        hoverStyle={{ bg: here ? PICKED : 'var(--rail-hover, var(--muted))' }}
+                      >
+                        <XStack
+                          render="button"
+                          {...{ type: 'button' }}
+                          aria-current={here}
+                          aria-label={isPrimary ? `${label} (${t('Primary Bot')})` : label}
+                          onClick={() => onPick(b.name)}
+                          flex={1}
+                          minW={0}
+                          items="center"
+                          gap={8}
+                          p={0}
+                          bg="transparent"
+                          borderWidth={0}
+                          cursor="pointer"
+                          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+                        >
+                          <Face bot={b} size={avatarPx} starred={isStarredBot(b)} />
+                          <YStack flex={1} minW={0} items="flex-start">
+                            <Text {...CLIP} maxW="100%" fontSize={nameFont} lineHeight={16} fontWeight={here || isPrimary ? '600' : '500'} color={INK}>
+                              {label}
+                            </Text>
+                            {isPrimary ? (
+                              <Text fontSize={10} lineHeight={12} color={DIM}>
+                                {t('Primary')}
+                              </Text>
+                            ) : null}
+                          </YStack>
+                        </XStack>
+                        <XStack
+                          render="button"
+                          {...{ type: 'button' }}
+                          data-slot="bots-unpin"
+                          aria-label={t('Unpin {name}', { name: label })}
+                          onClick={() => togglePin(b.name)}
+                          width={22}
+                          height={22}
+                          shrink={0}
+                          rounded={6}
+                          items="center"
+                          justify="center"
+                          bg="transparent"
+                          borderWidth={0}
+                          cursor="pointer"
+                          opacity={0.55}
+                          hoverStyle={{ opacity: 1, bg: PICKED }}
+                        >
+                          <PinOff size={11} color={DIM} aria-hidden />
+                        </XStack>
+                      </XStack>
+                    )
+                  }
+                  return (
+                    <YStack
+                      key={b.id || b.name}
+                      position="relative"
+                      data-parity-key="bots.tile"
+                      data-name={b.name}
+                      data-primary={isPrimary ? 'true' : undefined}
+                      rounded={10}
+                      bg={here ? PICKED : 'transparent'}
+                      hoverStyle={{ bg: here ? PICKED : 'var(--rail-hover, var(--muted))' }}
+                    >
+                      <YStack
+                        render="button"
+                        {...{ type: 'button' }}
+                        aria-current={here}
+                        aria-label={isPrimary ? `${label} (${t('Primary Bot')})` : label}
+                        onClick={() => onPick(b.name)}
+                        width="100%"
+                        minW={0}
+                        rounded={10}
+                        items="center"
+                        pt={iconSize === 'xs' ? 6 : 8}
+                        pb={iconSize === 'xs' ? 5 : 7}
+                        px={4}
+                        gap={iconSize === 'xs' ? 3 : 5}
+                        bg="transparent"
+                        borderWidth={0}
+                        cursor="pointer"
+                        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+                      >
+                        <Face bot={b} size={avatarPx} starred={isStarredBot(b)} />
+                        <Text {...CLIP} maxW="100%" fontSize={nameFont} lineHeight={15} fontWeight={here || isPrimary ? '600' : '400'} color={INK}>
+                          {label}
+                        </Text>
+                        {isPrimary ? (
+                          <Text fontSize={10} lineHeight={11} color={DIM}>
+                            {t('Primary')}
+                          </Text>
+                        ) : null}
+                      </YStack>
+                      <XStack
+                        render="button"
+                        {...{ type: 'button' }}
+                        data-slot="bots-unpin"
+                        aria-label={t('Unpin {name}', { name: label })}
+                        onClick={() => togglePin(b.name)}
+                        position="absolute"
+                        t={3}
+                        r={3}
+                        width={18}
+                        height={18}
+                        rounded={5}
+                        items="center"
+                        justify="center"
+                        bg="transparent"
+                        borderWidth={0}
+                        cursor="pointer"
+                        opacity={0.45}
+                        hoverStyle={{ opacity: 1, bg: PICKED }}
+                      >
+                        <PinOff size={10} color={DIM} aria-hidden />
+                      </XStack>
+                    </YStack>
+                  )
+                })}
+              </YStack>
+            </YStack>
+          ) : null}
+
+          {pinned.length ? (
+            <YStack data-slot="bots-divider" mx={10} borderTopWidth={1} borderColor={LINE} />
           ) : null}
 
           {shownGroups.length > 0 || (onMakeGroup && !disabled) ? (
@@ -341,52 +586,121 @@ export function Roster({
             </YStack>
           ) : null}
 
-          {rows.length ? (
-            <YStack data-parity-key="bots.rows" role="group" aria-label={t('More bots')} pt={10} pb={22}>
-              {rows.map((b) => {
+          {unpinned.length ? (
+            <YStack data-slot="bots-unpinned" data-parity-key="bots.rows" role="group" aria-label={t('All bots')} pt={10} pb={12}>
+              <XStack px={16} pb={6} items="center">
+                <Text fontSize={11} lineHeight={15} fontWeight="600" color={DIM}>
+                  {t('BOTS')}
+                </Text>
+              </XStack>
+              {unpinned.map((b) => {
                 const here = b.name === open
                 const label = called(b.name)
                 const word = lastWord(last.get(b.name)) || b.description || ''
                 return (
                   <XStack
                     key={b.id || b.name}
-                    render="button"
-                    {...{ type: 'button' }}
                     data-parity-key="bots.row"
                     data-name={b.name}
-                    aria-current={here}
-                    onClick={() => onPick(b.name)}
-                    height={56}
+                    height={52}
                     mx={6}
-                    px={12}
-                    gap={10}
+                    px={10}
+                    gap={8}
                     items="center"
                     rounded={10}
                     bg={here ? PICKED : 'transparent'}
-                    borderWidth={0}
-                    cursor="pointer"
                     hoverStyle={{ bg: here ? PICKED : 'var(--rail-hover, var(--muted))' }}
-                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
                   >
-                    <Face bot={b} size={36} />
-                    <YStack flex={1} minW={0} items="flex-start">
-                      <Text {...CLIP} maxW="100%" fontSize={14} lineHeight={19} fontWeight="500" color={INK}>
-                        {label}
-                      </Text>
-                      {word ? (
-                        <Text {...CLIP} maxW="100%" fontSize={13} lineHeight={18} color={DIM}>
-                          {word}
+                    <XStack
+                      render="button"
+                      {...{ type: 'button' }}
+                      aria-current={here}
+                      onClick={() => onPick(b.name)}
+                      flex={1}
+                      minW={0}
+                      height="100%"
+                      gap={10}
+                      items="center"
+                      p={0}
+                      bg="transparent"
+                      borderWidth={0}
+                      cursor="pointer"
+                      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+                    >
+                      <Face bot={b} size={32} />
+                      <YStack flex={1} minW={0} items="flex-start">
+                        <Text {...CLIP} maxW="100%" fontSize={13} lineHeight={18} fontWeight="500" color={INK}>
+                          {label}
                         </Text>
-                      ) : null}
-                    </YStack>
+                        {word ? (
+                          <Text {...CLIP} maxW="100%" fontSize={12} lineHeight={16} color={DIM}>
+                            {word}
+                          </Text>
+                        ) : null}
+                      </YStack>
+                    </XStack>
+                    <XStack
+                      render="button"
+                      {...{ type: 'button' }}
+                      data-slot="bots-pin"
+                      aria-label={t('Pin {name}', { name: label })}
+                      onClick={() => togglePin(b.name)}
+                      width={24}
+                      height={24}
+                      shrink={0}
+                      rounded={6}
+                      items="center"
+                      justify="center"
+                      bg="transparent"
+                      borderWidth={0}
+                      cursor="pointer"
+                      opacity={0.5}
+                      hoverStyle={{ opacity: 1, bg: PICKED }}
+                    >
+                      <Pin size={12} color={DIM} aria-hidden />
+                    </XStack>
                   </XStack>
                 )
               })}
             </YStack>
           ) : null}
+
+          {showWorkflows ? (
+            <YStack data-slot="bots-workflows" pt={6} pb={14}>
+              <YStack mx={10} mb={8} borderTopWidth={1} borderColor={LINE} />
+              <XStack
+                render="button"
+                {...{ type: 'button' }}
+                data-slot="bots-workflows-link"
+                aria-label={t('Workflows')}
+                onClick={openWorkflows}
+                height={38}
+                $touchable={{ minH: 44 }}
+                mx={6}
+                px={12}
+                gap={10}
+                minW={0}
+                items="center"
+                rounded={10}
+                bg="transparent"
+                borderWidth={0}
+                cursor="pointer"
+                hoverStyle={{ bg: 'var(--rail-hover, var(--muted))' }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+              >
+                <Workflow size={15} color={DIM} aria-hidden />
+                <Text {...CLIP} flex={1} text="left" fontSize={13} lineHeight={18} fontWeight="500" color={INK}>
+                  {t('Workflows')}
+                </Text>
+                <Text fontSize={11} lineHeight={14} color={DIM}>
+                  {FLOW}
+                </Text>
+              </XStack>
+            </YStack>
+          ) : null}
         </YStack>
 
-        {rows.length ? (
+        {unpinned.length ? (
           <YStack
             aria-hidden
             pointerEvents="none"
