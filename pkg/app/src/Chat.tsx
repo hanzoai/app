@@ -1697,9 +1697,10 @@ function Thread({
   const latest = useRef(send);
   latest.current = (text: string) => send(text);
 
-  // THE COMPOSER KEEPS THE DRAFT PER CONVERSATION (its `draftKey`) AND THE SENT
-  // PROMPTS (its own history), so switching routes or chats never loses a
-  // half-written prompt. This holds the text it edits.
+  // THE COMPOSER'S DRAFT IS HELD HERE, so an arriving question can be typed into
+  // it. `Chat` owns a draft of its own and spreads `composer` after it, so
+  // passing value/onChange/onSend takes that ownership over rather than fighting
+  // it.
   const [draft, setDraft] = useState("");
   // FILES WITH THE NEXT MESSAGE, held by `pane.ts` for this conversation: the
   // paperclip, a drop anywhere on the pane, a paste into the field and the
@@ -2751,13 +2752,6 @@ function Thread({
   const composer: ComposerProps = {
       value: draft,
       onChange: setDraft,
-      // Private chats write nothing, a draft included.
-      draftKey: forgetful ? undefined : `chat:${open ?? "new"}`,
-      // Plain text over 4,000 characters attaches as a text file chip.
-      onLargePaste: (pasted) => {
-        void hold(at, [new File([pasted], "pasted-text.txt", { type: "text/plain" })], via);
-        if (via.org) toast.success(t("Long paste attached as pasted-text.txt"));
-      },
       onSend: () => submit(),
       onStop: chat.stop,
       busy: chat.streaming || anonBusy,
@@ -2829,13 +2823,7 @@ function Thread({
           ) : null}
           <XStack items="center" gap="$1" shrink={0} minW={0}>
             <Tune
-              mind={{
-                ...mind,
-                models: filteredListed,
-                allowThirdParty: chatPrefs.allowThirdPartyModels,
-                hiddenThirdPartyCount: mind.hiddenThirdPartyCount,
-                setAllowThirdParty: (v) => setChatPrefs({ allowThirdPartyModels: v, thirdPartyChosen: true }),
-              }}
+              mind={{ ...mind, models: filteredListed }}
               effort={{
                 value: chatPrefs.effort || "auto",
                 set: (eff) => {
