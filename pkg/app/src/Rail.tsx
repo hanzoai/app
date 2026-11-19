@@ -83,21 +83,22 @@ export function reorderedPinnedNav(list: readonly string[], sourceId: string, ta
 /** What `usePinnedNav` answers, held once by the surface and handed to the Rail and the Sidebar, so a pin made in one is in the other. */
 export type Pins = ReturnType<typeof usePinnedNav>
 
-/** `list` with `id` swapped one place up (-1) or down (1): the keyboard's way to the order a drag makes. */
-export function shiftedPinnedNav(list: readonly string[], id: string, delta: -1 | 1): string[] {
+/** `list` with `id` swapped with its neighbour one place up (-1) or down (1) among `visible`, the pins the reader sees (one may be hidden): the keyboard's way to the order a drag makes. */
+export function shiftedPinnedNav(list: readonly string[], id: string, delta: -1 | 1, visible: readonly string[] = list): string[] {
   const next = normalizePinnedNav(list)
+  const other = visible[visible.indexOf(id) + delta]
   const from = next.indexOf(id)
-  const to = from + delta
-  if (from < 0 || to < 0 || to >= next.length) return next
+  const to = other === undefined ? -1 : next.indexOf(other)
+  if (from < 0 || to < 0) return next
   ;[next[from], next[to]] = [next[to]!, next[from]!]
   return next
 }
 
-/** The pinned apps, a toggle for one and a reorder, kept on the account. */
-export function usePinnedNav(): [string[], (id: string) => void, (sourceId: string, targetId: string) => void, (id: string, delta: -1 | 1) => void] {
+/** The pinned apps, a toggle for one, a reorder and a move, kept on the account. */
+export function usePinnedNav(): [string[], (id: string) => void, (sourceId: string, targetId: string) => void, (id: string, delta: -1 | 1, visible?: readonly string[]) => void] {
   const [kept, keep] = usePref<string[]>(NAV_PINNED_KEY, [...DEFAULT_PINNED_NAV])
   const pinned = normalizePinnedNav(Array.isArray(kept) ? kept : DEFAULT_PINNED_NAV)
-  return [pinned, (id) => keep(toggledPinnedNav(pinned, id)), (src, target) => keep(reorderedPinnedNav(pinned, src, target)), (id, delta) => keep(shiftedPinnedNav(pinned, id, delta))]
+  return [pinned, (id) => keep(toggledPinnedNav(pinned, id)), (src, target) => keep(reorderedPinnedNav(pinned, src, target)), (id, delta, visible) => keep(shiftedPinnedNav(pinned, id, delta, visible))]
 }
 
 /** The places the rail holds beside the products, by the builder address each opens. */

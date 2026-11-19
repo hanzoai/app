@@ -186,7 +186,7 @@ import type { Who } from "./Account";
 import { Search, type Action } from "./Search";
 import { tidy } from "./lib/title";
 import { summons } from "./seek";
-import { SkipLink } from "./SkipLink";
+import { MAIN, SkipLink } from "./SkipLink";
 import { useSidebar } from "./rail-open";
 import { useGlobalKeys } from "./keys";
 import { useDevHost } from "./dev";
@@ -1775,9 +1775,7 @@ export function Split({
   return (
     <>
       <YStack
-        id="main-content"
-        tabIndex={-1}
-        render="main"
+        {...MAIN}
         data-slot="pane"
         gridArea="pane"
         position="relative"

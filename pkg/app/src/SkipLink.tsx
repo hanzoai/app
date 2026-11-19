@@ -3,12 +3,15 @@
 import { useI18n } from '@hanzo/i18n/react'
 import { Text, XStack } from '@hanzo/gui'
 
+/** What marks the page's main area: `Split` spreads it on its pane and the skip link points at it, so the two cannot part. */
+export const MAIN = { id: 'main-content', tabIndex: -1, render: 'main' } as const
+
 /** The first stop for the keyboard: out of the sidebar and into the page (`Split` draws `#main-content`). Off screen until focused. */
 export function SkipLink() {
   const { t } = useI18n()
   return (
     <XStack
-      render={<a href="#main-content" />}
+      render={<a href={`#${MAIN.id}`} />}
       data-slot="skip-link"
       position="fixed"
       t={-80}

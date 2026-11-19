@@ -25,6 +25,7 @@ import { useI18n } from '@hanzo/i18n/react'
 import { tidy } from './lib/title'
 import { InlineRename } from './InlineRename'
 import { archiveWithUndo } from './archive'
+import { useRenaming } from './renaming'
 import {
   createContext,
   useCallback,
@@ -614,22 +615,7 @@ export function ConversationMenu({
     [list],
   )
 
-  const commitRename = useCallback(
-    (thread: Thread, next: string) => {
-      setRenaming(null)
-      const trimmed = next.trim()
-      if (!trimmed || trimmed === titleOf(thread, t('Untitled'))) return
-      void act.rename(thread, trimmed)
-    },
-    [act, t],
-  )
-
-  const cancelRename = useCallback(() => {
-    setRenaming(null)
-    requestAnimationFrame(() => {
-      if (from.current?.isConnected) from.current.focus()
-    })
-  }, [])
+  const { commit: commitRename, cancel: cancelRename } = useRenaming(from, setRenaming, (thread, title) => void act.rename(thread, title), t('Untitled'))
 
   const aim = useCallback((t: Thread, el: HTMLElement) => {
     from.current = el

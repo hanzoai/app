@@ -147,6 +147,11 @@ describe('folded 52px icons-only rail with monochrome chrome', () => {
     expect(shiftedPinnedNav(withCrm, 'app-crm', -1)).toEqual(['chat', 'dev', 'design', 'library', 'app-crm', 'tabs'])
     expect(shiftedPinnedNav(withCrm, 'chat', -1)).toEqual(withCrm)
     expect(shiftedPinnedNav(withCrm, 'app-crm', 1)).toEqual(withCrm)
+    // A pinned app the reader is not offered (a beta they have no access to) is stepped over, so a move is always seen.
+    const kept = ['chat', 'dev', 'ghost', 'design', 'library', 'tabs']
+    const seen = kept.filter((id) => id !== 'ghost')
+    expect(shiftedPinnedNav(kept, 'design', -1, seen)).toEqual(['chat', 'design', 'ghost', 'dev', 'library', 'tabs'])
+    expect(shiftedPinnedNav(kept, 'dev', 1, seen)).toEqual(['chat', 'design', 'ghost', 'dev', 'library', 'tabs'])
     // A pin kept by an earlier version (a bare list under the same key) still reads, locked apps restored.
     expect(normalizePinnedNav(['app-crm', 'chat'])).toEqual(['dev', 'design', 'library', 'tabs', 'app-crm', 'chat'])
   })

@@ -986,6 +986,8 @@ export function Sidebar({
     return []
   }
 
+  // The pinned apps as the reader sees them: one that is not offered here is not a place to move to.
+  const seen = nav.pinnedEntries.map((e) => e.id)
   const renderNavEntryWithSublinks = (item: NavEntry, allowDrop: boolean) => {
     const subGroups = item.on ? subGroupsFor(item.id) : []
     const canDrag = !anon
@@ -998,8 +1000,8 @@ export function Sidebar({
           onMove={
             canDrag && allowDrop && pinnedSet.has(item.id)
               ? {
-                  up: pinnedIds.indexOf(item.id) > 0 ? () => movePin(item.id, -1) : undefined,
-                  down: pinnedIds.indexOf(item.id) < pinnedIds.length - 1 ? () => movePin(item.id, 1) : undefined,
+                  up: seen.indexOf(item.id) > 0 ? () => movePin(item.id, -1, seen) : undefined,
+                  down: seen.indexOf(item.id) < seen.length - 1 ? () => movePin(item.id, 1, seen) : undefined,
                 }
               : undefined
           }
