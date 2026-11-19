@@ -1,5 +1,6 @@
 import { cloneElement, createElement, Fragment, isValidElement, type ReactElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { Window } from 'happy-dom'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 const { part, menu, menuItem, menuLabel, menuBack, menuSeparator, through, devState } = vi.hoisted(() => {
@@ -101,7 +102,7 @@ import { TABS, WORKSPACE, type Place } from './lib/host'
 const hostAt = (path = '') => ({ go: () => {}, path }) as unknown as Parameters<typeof Sidebar>[0]['host']
 const host = hostAt()
 const noop = () => {}
-const pins: Pins = [['chat', 'dev', 'design', 'library', 'tabs'], noop, noop]
+const pins: Pins = [['chat', 'dev', 'design', 'library', 'tabs'], noop, noop, noop]
 
 const column = (mode: Place['mode'], path = '', held: Pins = pins) => renderToStaticMarkup(createElement(Sidebar, { pins: held, host: hostAt(path), mode, thread: null, go: noop, onShut: noop, onBack: noop }))
 const rail = (mode: Place['mode'], onOpen?: () => void, where: string | null = null) =>
@@ -199,7 +200,7 @@ describe('the folded rail', () => {
 })
 
 describe('a phone’s menu', () => {
-  test('in the drawer the column holds its own rows, then the places, then Recents, and the foot last', () => {
+  test('in the drawer the column lists the apps, then Recents, and the foot last', () => {
     const html = renderToStaticMarkup(
       createElement(Sidebar, {
         pins,
@@ -215,8 +216,8 @@ describe('a phone’s menu', () => {
       }),
     )
     expect(at(html, 'Hanzo')).toBeLessThan(at(html, 'aria-label="Search"'))
-    expect(at(html, 'New chat')).toBeLessThan(at(html, 'data-slot="places"'))
-    expect(at(html, 'data-slot="places"')).toBeLessThan(at(html, 'data-slot="recents"'))
+    expect(at(html, 'New chat')).toBeLessThan(at(html, 'data-slot="rail-pinned"'))
+    expect(at(html, 'data-slot="rail-pinned"')).toBeLessThan(at(html, 'data-slot="recents"'))
     expect(at(html, 'data-slot="recents"')).toBeLessThan(at(html, 'data-slot="drawer-foot"'))
   })
 })
@@ -267,12 +268,34 @@ describe('the unified desktop sidebar', () => {
   test('More shrinks as places are pinned and goes away when none is left in it', () => {
     const inMore = [...column('chat').matchAll(/data-item="pin-([^"]+)"/g)].map((m) => m[1])
     expect(inMore).toContain('scheduled')
-    const pinnedOne = column('chat', '', [[...pins[0], 'scheduled'], noop, noop])
+    const pinnedOne = column('chat', '', [[...pins[0], 'scheduled'], noop, noop, noop])
     expect(pinnedOne).not.toContain('data-item="pin-scheduled"')
     expect(pinnedOne).toContain('data-item="pin-customize"')
     expect(pinnedOne).toContain('data-slot="place-more"')
-    const all = column('chat', '', [[...pins[0], ...inMore], noop, noop])
+    const all = column('chat', '', [[...pins[0], ...inMore], noop, noop, noop])
     expect(all).not.toContain('data-slot="place-more"')
+  })
+
+  test('a pinned app can be moved up and down from its menu, not only by dragging: the first has no Move up, the last no Move down', () => {
+    const moves = (held: Pins) => {
+      const html = column('chat', '', held)
+      return [...html.matchAll(/data-item="move-(up|down)"/g)].map((m) => m[1])
+    }
+    const two: Pins = [['chat', 'dev'], noop, noop, noop]
+    // Five locked apps are all pinned: four can go up, four can go down, one of each end is missing.
+    expect(moves(pins)).toEqual(['down', 'up', 'down', 'up', 'down', 'up', 'down', 'up'])
+    expect(moves(two).length).toBeGreaterThan(0)
+  })
+
+  test('every list item sits in a list, in each sidebar a person can be in', () => {
+    const places = [{ id: 'g', label: 'Gallery', links: [{ id: 'a', label: 'A', icon: () => null }] }]
+    for (const html of [column('chat'), column('dev'), column('dev', '-/customize'), renderToStaticMarkup(createElement(Sidebar, { pins, host: hostAt(''), mode: 'studio', thread: null, go: noop, onShut: noop, onBack: noop, places: places as never }))]) {
+      const doc = new Window().document
+      doc.body.innerHTML = html
+      const items = [...doc.querySelectorAll('[role="listitem"]')]
+      expect(items.length).toBeGreaterThan(0)
+      for (const item of items) expect(item.closest('[role="list"]')).not.toBeNull()
+    }
   })
 
   test('More is one row under Recents that opens a menu: every other place in it, each pinnable, none listed inline', () => {

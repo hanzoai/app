@@ -26,7 +26,7 @@ const { part, stub, state, through } = vi.hoisted(() => {
 vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s }) }))
 vi.mock('lucide-react', () => ({ ArrowLeft: () => null, ArrowRight: () => null, Clapperboard: () => null, RefreshCw: () => null, Sparkles: () => null, Workflow: () => null }))
 vi.mock('@hanzo/ai/react', () => ({ AiProvider: through }))
-vi.mock('@hanzo/gui', () => ({ XStack: part, YStack: part }))
+vi.mock('@hanzo/gui', () => ({ Text: part, XStack: part, YStack: part }))
 vi.mock('@hanzo/ui', () => ({ Button: part, Text: part }))
 vi.mock('@hanzo/build', () => ({ MARKS,
   Builder: stub('builder'),

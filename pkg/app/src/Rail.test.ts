@@ -61,13 +61,13 @@ vi.mock('./help', () => ({ out: (href: string) => state.went.push(href) }))
 vi.mock('./Account', () => ({ Account: () => null }))
 vi.mock('./lib/dev-mode', () => ({ useDevMode: () => [state.devMode, () => {}] }))
 
-const { DEFAULT_PINNED_NAV, normalizePinnedNav, Rail, reorderedPinnedNav, toggledPinnedNav } = await import('./Rail')
+const { DEFAULT_PINNED_NAV, normalizePinnedNav, Rail, reorderedPinnedNav, shiftedPinnedNav, toggledPinnedNav } = await import('./Rail')
 
 const host = {} as never
 const draw5 = (props: { mode?: 'chat' | 'hosted'; inside?: string | null; compact?: boolean } = {}) =>
   renderToStaticMarkup(
     createElement(Rail, {
-      pins: [[...DEFAULT_PINNED_NAV], state.pin, () => {}],
+      pins: [[...DEFAULT_PINNED_NAV], state.pin, () => {}, () => {}],
       host,
       mode: props.mode ?? 'chat',
       at: null,
@@ -144,6 +144,9 @@ describe('folded 52px icons-only rail with monochrome chrome', () => {
     expect(toggledPinnedNav(withCrm, 'chat')).toEqual(withCrm)
     expect(reorderedPinnedNav(withCrm, 'app-crm', 'dev')).toEqual(['chat', 'app-crm', 'dev', 'design', 'library', 'tabs'])
     expect(toggledPinnedNav(withCrm, 'app-crm')).toEqual([...DEFAULT_PINNED_NAV])
+    expect(shiftedPinnedNav(withCrm, 'app-crm', -1)).toEqual(['chat', 'dev', 'design', 'library', 'app-crm', 'tabs'])
+    expect(shiftedPinnedNav(withCrm, 'chat', -1)).toEqual(withCrm)
+    expect(shiftedPinnedNav(withCrm, 'app-crm', 1)).toEqual(withCrm)
     // A pin kept by an earlier version (a bare list under the same key) still reads, locked apps restored.
     expect(normalizePinnedNav(['app-crm', 'chat'])).toEqual(['dev', 'design', 'library', 'tabs', 'app-crm', 'chat'])
   })

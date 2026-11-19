@@ -64,7 +64,6 @@ export function MoreMenu({ entries, onPin, t, trigger, ...rest }: { entries: Nav
                         // For a mouse or finger only: the keyboard has the page below, so a screen reader is not told of a row it cannot reach.
                         <XStack
                           render="button"
-                          role="presentation"
                           aria-hidden
                           tabIndex={-1}
                           data-item={`pin-${item.id}`}
@@ -75,7 +74,10 @@ export function MoreMenu({ entries, onPin, t, trigger, ...rest }: { entries: Nav
                           rounded={6}
                           cursor="pointer"
                           hoverStyle={{ bg: '$hover' }}
-                          onPress={() => pin(item)}
+                          onClick={(e: { stopPropagation: () => void }) => {
+                            e.stopPropagation()
+                            pin(item)
+                          }}
                         >
                           <Pin size={14} aria-hidden />
                         </XStack>

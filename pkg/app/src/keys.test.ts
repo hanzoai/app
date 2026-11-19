@@ -1,11 +1,10 @@
 // @vitest-environment happy-dom
 // The workspace's global keys are handled once (keys.ts), for the app and for every Shell view.
-import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
 vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s }) }))
 
-const { handle } = await import('./keys')
+const { handle, useGlobalKeys } = await import('./keys')
 
 const say = (s: string) => s
 const press = (init: KeyboardEventInit & { key: string }, target: EventTarget = document.body) => {
@@ -64,12 +63,41 @@ describe('the global keys', () => {
     expect(on.say).toHaveBeenLastCalledWith('Developer mode disabled')
   })
 
-  test('App and Shell do not keep a handler of their own for these keys', () => {
-    for (const file of ['./App.tsx', './Shell.tsx']) {
-      const source = readFileSync(new URL(file, import.meta.url), 'utf8')
-      expect(source, file).toContain('useGlobalKeys(')
-      expect(source, file).not.toContain('globalAction')
-      expect(source, file).not.toContain('writeAppearance')
+  test('a press already answered, or one still composing, is left alone', () => {
+    const on = keys()
+    const answered = press({ key: 'k', metaKey: true })
+    answered.preventDefault()
+    expect(handle(answered, on, say)).toBe(false)
+    expect(handle(press({ key: 'b', metaKey: true, isComposing: true }), on, say)).toBe(false)
+    expect(handle(press({ key: ',', metaKey: true, isComposing: true }), on, say)).toBe(false)
+    const settled = press({ key: ',', metaKey: true })
+    settled.preventDefault()
+    expect(handle(settled, on, say)).toBe(false)
+    expect(on.find).not.toHaveBeenCalled()
+    expect(on.sidebar).not.toHaveBeenCalled()
+    expect(on.settings).not.toHaveBeenCalled()
+  })
+})
+
+describe('the hook', () => {
+  test('listens on the window once while mounted, with the latest handlers, and stops when unmounted', async () => {
+    const { act, createElement } = await import('react')
+    const { createRoot } = await import('react-dom/client')
+    const first = keys()
+    const second = keys()
+    const Probe = ({ on }: { on: ReturnType<typeof keys> }) => {
+      useGlobalKeys(on)
+      return null
     }
+    const box = document.createElement('div')
+    const root = createRoot(box)
+    act(() => root.render(createElement(Probe, { on: first })))
+    act(() => root.render(createElement(Probe, { on: second })))
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, bubbles: true, cancelable: true }))
+    expect(first.sidebar).not.toHaveBeenCalled()
+    expect(second.sidebar).toHaveBeenCalledTimes(1)
+    act(() => root.unmount())
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, bubbles: true, cancelable: true }))
+    expect(second.sidebar).toHaveBeenCalledTimes(1)
   })
 })

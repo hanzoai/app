@@ -75,25 +75,6 @@ const Note = ({ children }: { children: string }) => (
   </SizableText>
 )
 
-/** Triggers a clean Markdown file download from readable metadata. */
-function saveMarkdown(title: string, lines: string[]): void {
-  if (typeof document === 'undefined' || typeof URL === 'undefined') return
-  const slug = title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 48)
-  const blob = new Blob([`${lines.join('\n')}\n`], { type: 'text/markdown;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `${slug || 'hanzo-chat'}.md`
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
-}
-
 export function Recents({
   host,
   mode,
@@ -190,19 +171,6 @@ function Designs({ host, view, keep }: { host: Host; view: View; keep: (v: View)
     [],
   )
   const designHref = (id: string) => new URL(site(design(studio.path({ kind: 'chat', id }))), window.location.href).href
-  const exportDesign = (t: Thread) => {
-    const found = visibleMade.find((m) => m.id === t.id)
-    const heading = t.title || UNTITLED
-    const lines = [
-      `# ${heading}`,
-      '',
-      '- Mode: Design',
-      ...(found?.state ? [`- Status: ${found.state}`] : []),
-      ...(t.updatedAt ? [`- Updated: ${t.updatedAt}`] : []),
-      `- Link: ${designHref(t.id)}`,
-    ]
-    saveMarkdown(heading, lines)
-  }
   const failed = useMemo(() => (error ? new Error(error) : null), [error])
   const at = studio.route(host.path)
   const held = at.kind === 'chat' ? at.id : null
@@ -220,7 +188,6 @@ function Designs({ host, view, keep }: { host: Host; view: View; keep: (v: View)
       held={held}
       onNew={() => host.go('')}
       customActions={designActions}
-      onExport={exportDesign}
       hrefOf={designHref}
     />
   )
@@ -395,20 +362,6 @@ function Runs({ host, view, keep, onOpen }: { host: Host; view: View; keep: (v: 
     [host],
   )
   const runHref = (id: string) => new URL(site(app(id)), window.location.href).href
-  const exportRun = (t: Thread) => {
-    const found = visibleSessions.find((s) => s.id === t.id)
-    const heading = t.title || UNTITLED_RUN
-    const lines = [
-      `# ${heading}`,
-      '',
-      '- Mode: Dev',
-      ...(found?.status ? [`- Status: ${found.status}`] : []),
-      ...(t.updatedAt ? [`- Updated: ${t.updatedAt}`] : []),
-      ...(found?.pr ? [`- Pull request: ${found.pr}`] : []),
-      `- Link: ${runHref(t.id)}`,
-    ]
-    saveMarkdown(heading, lines)
-  }
   return (
     <List
       mode="dev"
@@ -423,7 +376,6 @@ function Runs({ host, view, keep, onOpen }: { host: Host; view: View; keep: (v: 
       held={run}
       onNew={() => host.go('')}
       customActions={devActions}
-      onExport={exportRun}
       hrefOf={runHref}
     />
   )
@@ -442,7 +394,6 @@ function List({
   held = null,
   onNew,
   customActions,
-  onExport,
   hrefOf,
   unreadIds,
 }: {
@@ -463,7 +414,6 @@ function List({
   /** Custom actions for non-Chat threads (e.g. Dev runs). */
   customActions?: ThreadActions
   /** Custom Markdown export for non-Chat threads (e.g. Dev runs, Design). */
-  onExport?: (t: Thread) => void | Promise<void>
   /** Address builder for Copy link / Open in new tab. */
   hrefOf?: (id: string) => string
   /** Background-updated conversation IDs showing a blue unread dot. */
@@ -664,7 +614,6 @@ function List({
         onGone={onNew}
         customActions={customActions}
         canShare={mode === 'chat'}
-        onExport={onExport}
         hrefOf={hrefOf}
         primary={primary}
       >

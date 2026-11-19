@@ -162,6 +162,7 @@ function NavMenuRow({
   item,
   pinned,
   onTogglePin,
+  onMove,
   draggable = false,
   dragging = false,
   dropTarget = false,
@@ -175,6 +176,8 @@ function NavMenuRow({
   item: NavEntry
   pinned: boolean
   onTogglePin: (id: string) => void
+  /** Where a drag cannot go: a pinned row's way up or down the order by keyboard. Absent for the end it is already at. */
+  onMove?: { up?: () => void; down?: () => void }
   draggable?: boolean
   dragging?: boolean
   dropTarget?: boolean
@@ -207,6 +210,8 @@ function NavMenuRow({
           },
         ]
       : []),
+    ...(onMove?.up ? [{ key: 'move-up', label: t('Move up'), icon: <ChevronUp size={15} aria-hidden />, onSelect: onMove.up }] : []),
+    ...(onMove?.down ? [{ key: 'move-down', label: t('Move down'), icon: <ChevronDown size={15} aria-hidden />, onSelect: onMove.down }] : []),
     {
       key: 'new-tab',
       label: t('Open in new tab'),
@@ -832,7 +837,7 @@ export function Sidebar({
 }) {
   const { t, dir } = useI18n()
   const [devMode, setDevMode] = useDevMode()
-  const [pinnedIds, togglePin, reorderPin] = pins
+  const [pinnedIds, togglePin, reorderPin, movePin] = pins
   const pinnedSet = useMemo(() => new Set(pinnedIds), [pinnedIds])
   const [dragId, setDragId] = useState<string | null>(null)
   const [dropId, setDropId] = useState<string | null>(null)
@@ -990,6 +995,14 @@ export function Sidebar({
           item={item}
           pinned={pinnedSet.has(item.id)}
           onTogglePin={togglePin}
+          onMove={
+            canDrag && allowDrop && pinnedSet.has(item.id)
+              ? {
+                  up: pinnedIds.indexOf(item.id) > 0 ? () => movePin(item.id, -1) : undefined,
+                  down: pinnedIds.indexOf(item.id) < pinnedIds.length - 1 ? () => movePin(item.id, 1) : undefined,
+                }
+              : undefined
+          }
           draggable={canDrag}
           dragging={dragId === item.id}
           dropTarget={allowDrop && dropId === item.id && dragId !== item.id}
@@ -1051,16 +1064,18 @@ export function Sidebar({
                     {group.label}
                   </Text>
                 ) : null}
-                {group.links.map((link) => (
-                  <PlaceRow
-                    key={link.id}
-                    link={link}
-                    mode={mode}
-                    makeIcon={Make}
-                    compact
-                    t={t}
-                  />
-                ))}
+                <YStack role="list" aria-label={group.label || undefined} gap={1}>
+                  {group.links.map((link) => (
+                    <PlaceRow
+                      key={link.id}
+                      link={link}
+                      mode={mode}
+                      makeIcon={Make}
+                      compact
+                      t={t}
+                    />
+                  ))}
+                </YStack>
               </YStack>
             ))}
           </YStack>

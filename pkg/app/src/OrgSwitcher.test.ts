@@ -7,13 +7,14 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 const { part } = vi.hoisted(() => ({
-  part: ({ children, ref }: { children?: ReactNode; ref?: Ref<HTMLDivElement> }) => createElement('div', { ref }, children),
+  part: ({ children, ref, 'data-slot': slot }: { children?: ReactNode; ref?: Ref<HTMLDivElement>; 'data-slot'?: string }) => createElement('div', { ref, 'data-slot': slot }, children),
 }))
 
 vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s }) }))
 vi.mock('lucide-react', () => ({ Check: () => null, ChevronDown: () => null, Plus: () => null, Settings: () => null }))
 vi.mock('@hanzogui/shell', () => ({ HanzoMark: () => null }))
-vi.mock('@hanzo/iam/react', () => ({ useOrganizations: () => ({ organizations: [], currentOrgId: null }) }))
+const { held } = vi.hoisted(() => ({ held: { orgs: [] as { id: string; name: string }[] } }))
+vi.mock('@hanzo/iam/react', () => ({ useOrganizations: () => ({ organizations: held.orgs, currentOrgId: null }) }))
 vi.mock('@hanzo/ui', () => ({ Avatar: () => null, Button: part }))
 vi.mock('@hanzo/gui', () => ({ Text: part, View: part, XStack: part, YStack: part }))
 vi.mock('./lib/account', () => ({ useAccount: () => ({ organizations: [] }) }))
@@ -22,7 +23,7 @@ vi.mock('./lib/session', () => ({ CHOOSE: 'choose', pick: () => {} }))
 vi.mock('./where', () => ({ site: (p: string) => p }))
 vi.mock('./lib/host', () => ({ settings: () => '/settings' }))
 
-const { OrgSwitcherDropdown } = await import('./OrgSwitcher')
+const { OrgSwitcherDropdown, Tiles } = await import('./OrgSwitcher')
 
 let root: Root
 let box: HTMLElement
@@ -62,5 +63,24 @@ describe('the organization menu and Escape', () => {
   test('another key does nothing', () => {
     act(() => void document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true })))
     expect(closed).not.toHaveBeenCalled()
+  })
+})
+
+describe('the org tiles', () => {
+  const tiles = () => {
+    act(() => root.render(createElement(Tiles)))
+    return box.querySelector('[data-slot="org-tiles"]')
+  }
+  afterEach(() => {
+    held.orgs = []
+  })
+
+  test('a person in one organization still has the tiles, and the plus to make or join another', () => {
+    held.orgs = [{ id: 'a', name: 'acme' }]
+    expect(tiles()).not.toBeNull()
+  })
+
+  test('a person with none has no tiles', () => {
+    expect(tiles()).toBeNull()
   })
 })

@@ -83,11 +83,21 @@ export function reorderedPinnedNav(list: readonly string[], sourceId: string, ta
 /** What `usePinnedNav` answers, held once by the surface and handed to the Rail and the Sidebar, so a pin made in one is in the other. */
 export type Pins = ReturnType<typeof usePinnedNav>
 
+/** `list` with `id` swapped one place up (-1) or down (1): the keyboard's way to the order a drag makes. */
+export function shiftedPinnedNav(list: readonly string[], id: string, delta: -1 | 1): string[] {
+  const next = normalizePinnedNav(list)
+  const from = next.indexOf(id)
+  const to = from + delta
+  if (from < 0 || to < 0 || to >= next.length) return next
+  ;[next[from], next[to]] = [next[to]!, next[from]!]
+  return next
+}
+
 /** The pinned apps, a toggle for one and a reorder, kept on the account. */
-export function usePinnedNav(): [string[], (id: string) => void, (sourceId: string, targetId: string) => void] {
+export function usePinnedNav(): [string[], (id: string) => void, (sourceId: string, targetId: string) => void, (id: string, delta: -1 | 1) => void] {
   const [kept, keep] = usePref<string[]>(NAV_PINNED_KEY, [...DEFAULT_PINNED_NAV])
   const pinned = normalizePinnedNav(Array.isArray(kept) ? kept : DEFAULT_PINNED_NAV)
-  return [pinned, (id) => keep(toggledPinnedNav(pinned, id)), (src, target) => keep(reorderedPinnedNav(pinned, src, target))]
+  return [pinned, (id) => keep(toggledPinnedNav(pinned, id)), (src, target) => keep(reorderedPinnedNav(pinned, src, target)), (id, delta) => keep(shiftedPinnedNav(pinned, id, delta))]
 }
 
 /** The places the rail holds beside the products, by the builder address each opens. */

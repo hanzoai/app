@@ -321,7 +321,7 @@ export function TopOrgSelector() {
 export function Tiles() {
   const { t } = useI18n()
   const { orgs, active, choose } = useOrgList()
-  if (orgs.length <= 1) return null
+  if (orgs.length === 0) return null
   return (
     <YStack data-slot="org-tiles" role="group" aria-label={t('Organizations')} items="center" gap={10} pt={10} pb={6}>
       {orgs.map((o) => {

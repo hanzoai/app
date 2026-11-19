@@ -81,6 +81,7 @@ import { useKept } from './kept'
 import { Mark, raised, Rail, RAIL_FOLDED, Toggle, usePinnedNav } from './Rail'
 import { Layer, Lift, useDrawer } from './Drawer'
 import { empty, openThread, showSettings, useOpen } from './open'
+import { SkipLink } from './SkipLink'
 import { Split } from './Shell'
 import { Search } from './Search'
 import { inDialog, typing as isTyping } from './chord'
@@ -119,8 +120,6 @@ const Terminals = lazy(() => import('./Terminals'))
 const Hosted = lazy(() => import('./Hosted').then((m) => ({ default: m.HostedPane })))
 /** Betas, fetched when opening /beta in the app. */
 const Betas = lazy(() => import('./Betas').then((m) => ({ default: m.BetasPane })))
-/** Keyboard shortcuts reference dialog, fetched on first Mod+/. */
-
 /** `/` is Chat on a new conversation. */
 const HOME: Place = { mode: 'chat', thread: null }
 
@@ -180,29 +179,10 @@ function Window({ bar, betas }: Hosted) {
   const [finding, setFinding] = useState(false)
   const [learning, setLearning] = useState(false)
   const [anonSettings, setAnonSettings] = useState(false)
-  const [offline, setOffline] = useState(false)
   const found = useCallback(() => setFinding(false), [])
   const closedRef = useRef(closed)
   closedRef.current = closed
   const flip = useCallback(() => setClosed(!closedRef.current), [setClosed])
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof navigator === 'undefined') return
-    setOffline(navigator.onLine === false)
-    const onOffline = () => setOffline(true)
-    const onOnline = () => setOffline(false)
-    window.addEventListener('offline', onOffline)
-    window.addEventListener('online', onOnline)
-    return () => {
-      window.removeEventListener('offline', onOffline)
-      window.removeEventListener('online', onOnline)
-    }
-  }, [])
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const onToggleSidebar = () => flip()
-    window.addEventListener('hanzo:toggle-sidebar', onToggleSidebar)
-    return () => window.removeEventListener('hanzo:toggle-sidebar', onToggleSidebar)
-  }, [flip])
   const pins = usePinnedNav()
   const dev = useDevHost()
   useEffect(() => {
@@ -416,51 +396,7 @@ function Window({ bar, betas }: Hosted) {
           // hidden overflow is still a scroller that a `scrollIntoView` inside the pane would move.
           $max-md={{ position: 'fixed', t: TOP, l: 0, r: 0, height: HEIGHT, ...({ overflow: 'clip' } as object) }}
         >
-          <XStack
-            render={<a href="#main-content" />}
-            data-slot="skip-link"
-            position="fixed"
-            t={-80}
-            l={12}
-            z="var(--z-notification)"
-            px="$3"
-            py="$2"
-            minH={44}
-            items="center"
-            rounded="$3"
-            bg="var(--popover)"
-            borderWidth={1}
-            borderColor="var(--border-strong)"
-            boxShadow="var(--shadow-floating)"
-            focusStyle={{ t: 12 }}
-            focusVisibleStyle={{ t: 12, outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
-          >
-            <Text fontSize="$2" fontWeight="600" color="$ink">
-              {t('Skip to main content')}
-            </Text>
-          </XStack>
-          {offline ? (
-            <XStack
-              data-slot="offline-banner"
-              role="status"
-              aria-live="polite"
-              shrink={0}
-              items="center"
-              justify="center"
-              gap="$2"
-              px="$3"
-              py="$1.5"
-              minH={32}
-              bg="$panel"
-              borderBottomWidth={1}
-              borderColor="var(--border-strong)"
-            >
-              <YStack width={6} height={6} rounded={9999} bg="$soft" shrink={0} aria-hidden />
-              <Text fontSize="$1" fontWeight="500" color="$ink" numberOfLines={1}>
-                {t('Offline — drafts stay saved locally and reconnect automatically.')}
-              </Text>
-            </XStack>
-          ) : null}
+          <SkipLink />
           <XStack
             data-slot="title-bar"
             height={BAR}

@@ -70,7 +70,6 @@ import {
   ChevronDown,
   LogOut,
   Sparkles,
-  WifiOff,
 } from "lucide-react";
 import {
   AiProvider,
@@ -187,6 +186,8 @@ import type { Who } from "./Account";
 import { Search, type Action } from "./Search";
 import { tidy } from "./lib/title";
 import { summons } from "./seek";
+import { SkipLink } from "./SkipLink";
+import { useSidebar } from "./rail-open";
 import { useGlobalKeys } from "./keys";
 import { useDevHost } from "./dev";
 import { called } from "./team";
@@ -1807,7 +1808,7 @@ export function Split({
         {!aside && !swap ? (
           <YStack
             data-slot="side-pull"
-            aria-label={t("Pull to open tabs")}
+            aria-hidden
             {...({ title: t("Drag to open split browser") } as object)}
             position="absolute"
             t={0}
@@ -2420,20 +2421,7 @@ function Frame({
   // hook it no longer runs.
   const hydrated = useHydrated();
   const [finding, setFinding] = useState(false);
-  const [offline, setOffline] = useState(false);
   const found = useCallback(() => setFinding(false), []);
-  useEffect(() => {
-    if (typeof window === "undefined" || typeof navigator === "undefined") return;
-    setOffline(navigator.onLine === false);
-    const onOffline = () => setOffline(true);
-    const onOnline = () => setOffline(false);
-    window.addEventListener("offline", onOffline);
-    window.addEventListener("online", onOnline);
-    return () => {
-      window.removeEventListener("offline", onOffline);
-      window.removeEventListener("online", onOnline);
-    };
-  }, []);
   /**
    * WHICH SETTINGS ROW IS OPEN, and null for none. ONE value, not two.
    *
@@ -2454,28 +2442,7 @@ function Frame({
    * the server sent "Close sidebar" and the client drew "Open sidebar" — and a
    * regenerated tree came back with the rail at zero width.
    */
-  const [asked, setAskedState] = useState(true);
-  // The same key as App.tsx's sidebar (`hanzo.build.rail`, true when shut), so the column does not jump between /chat and /home.
-  const setAsked = useCallback((next: boolean | ((prev: boolean) => boolean)) => {
-    setAskedState((prev) => {
-      const value = typeof next === "function" ? next(prev) : next;
-      try {
-        localStorage.setItem("hanzo.build.rail", JSON.stringify(!value));
-      } catch {
-        // ignore storage errors
-      }
-      return value;
-    });
-  }, []);
-  useEffect(() => {
-    let shut: string | null = null;
-    try {
-      shut = localStorage.getItem("hanzo.build.rail");
-    } catch {
-      // No store is the width of the window, which is a state and not a failure.
-    }
-    setAskedState(shut !== null ? shut !== "true" : window.innerWidth >= 768);
-  }, []);
+  const [asked, setAsked, setAway] = useSidebar();
   const [peeking, setPeeking] = useState(false);
 
   /**
@@ -2521,21 +2488,10 @@ function Frame({
   };
   const dismiss = () => {
     setPeeking(false);
-    if (typeof window !== "undefined" && window.innerWidth < 1024) {
-      setAsked(false);
-    }
+    if (typeof window !== "undefined" && window.innerWidth < 1024) setAway();
   };
   const onPick = typeof window !== "undefined" && window.innerWidth < 1024 ? dismiss : undefined;
   const { empty: emptyChat } = useOpen();
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const onToggleSidebar = () => {
-      setPeeking(false);
-      setAsked((open) => !open);
-    };
-    window.addEventListener("hanzo:toggle-sidebar", onToggleSidebar);
-    return () => window.removeEventListener("hanzo:toggle-sidebar", onToggleSidebar);
-  }, []);
   const dev = useDevHost();
   useGlobalKeys({
     find: () => setFinding((open) => !open),
@@ -3080,51 +3036,7 @@ function Frame({
 
   return (
     <YStack width="100%" height="100dvh" overflow="hidden" bg="$background" position="relative">
-      <XStack
-        render={<a href="#main-content" />}
-        data-slot="skip-link"
-        position="fixed"
-        t={-80}
-        l={12}
-        z="var(--z-notification)"
-        px="$3"
-        py="$2"
-        minH={44}
-        items="center"
-        rounded="$3"
-        bg="var(--popover)"
-        borderWidth={1}
-        borderColor="var(--border-strong)"
-        boxShadow="var(--shadow-floating)"
-        focusStyle={{ t: 12 }}
-        focusVisibleStyle={{ t: 12, outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
-      >
-        <Text fontSize="$2" fontWeight="600" color="$ink">
-          {t("Skip to main content")}
-        </Text>
-      </XStack>
-      {offline ? (
-        <XStack
-          data-slot="offline-banner"
-          role="status"
-          aria-live="polite"
-          shrink={0}
-          items="center"
-          justify="center"
-          gap="$2"
-          px="$3"
-          py="$1.5"
-          minH={32}
-          bg="$panel"
-          borderBottomWidth={1}
-          borderColor="var(--border-strong)"
-        >
-          <WifiOff size={13} color="var(--muted-foreground)" aria-hidden />
-          <Text fontSize="$1" fontWeight="500" color="$ink" numberOfLines={1}>
-            {t("Offline — drafts stay saved locally and reconnect automatically.")}
-          </Text>
-        </XStack>
-      ) : null}
+      <SkipLink />
     {/* THE SHELL IS A GRID: the rail down the left, the bar across the top, and
         under it the list, the pane and the side, each placed by its area. On a
         phone the grid turns — bar, pane, and the rail along the bottom as the tab

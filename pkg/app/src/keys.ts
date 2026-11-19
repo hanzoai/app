@@ -31,6 +31,8 @@ export type Stroke = Press & { preventDefault(): void }
  * with ⌘⇧L is saved to the account the way the menu's choice is.
  */
 export function handle(e: Stroke, on: Keys, t: (s: string) => string): boolean {
+  // A press something already answered, or one that is still composing a character, is not a command.
+  if (e.defaultPrevented || e.isComposing) return false
   if (summons(e)) {
     e.preventDefault()
     on.find()
