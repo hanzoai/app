@@ -49,31 +49,22 @@ describe('the app is two roots of paths', () => {
 
   test('Settings is one tree at /settings, the host\'s own pages, and no builder section is written under /dev', () => {
     expect(settings()).toBe(SETTINGS)
-    expect(settings('account')).toBe('/settings/account')
-    expect(settings('general')).toBe('/settings/account')
-    expect(settings('security')).toBe('/settings/security')
-    expect(settings('appearance')).toBe('/settings/appearance')
-    expect(settings('notifications')).toBe('/settings/notifications')
-    expect(settings('personalization')).toBe('/settings/ai/personalization')
-    expect(settings('memory')).toBe('/settings/ai/memory')
-    expect(settings('models')).toBe('/settings/ai/models')
-    expect(settings('capabilities')).toBe('/settings/ai/capabilities')
-    expect(settings('customize')).toBe('/settings/ai/customize')
-    expect(settings('billing')).toBe('/settings/billing')
-    expect(settings('usage')).toBe('/settings/usage')
+    expect(settings('general')).toBe('/settings')
     expect(settings('organization')).toBe('/settings/organization')
     expect(settings('members')).toBe('/settings/organization/members')
+    expect(settings('billing')).toBe('/settings/organization/billing')
+    expect(settings('usage')).toBe('/settings/organization/usage')
     expect(settings('keys')).toBe('/settings/organization/keys')
-    for (const none of ['privacy', 'integrations', 'toString', '__proto__']) {
+    for (const none of ['account', 'privacy', 'memory', 'notifications', 'integrations', 'toString', '__proto__']) {
       expect(paged(none), none).toBe(false)
       expect(settings(none), `${none} has no page of its own: General`).toBe(SETTINGS)
     }
-    expect(app('-/settings')).toBe('/settings/account')
-    expect(app('-/settings/usage')).toBe('/settings/usage')
+    expect(app('-/settings')).toBe('/settings')
+    expect(app('-/settings/usage')).toBe('/settings/organization/usage')
     expect(app('-/settings/members')).toBe('/settings/organization/members')
-    expect(app('-/settings/notifications')).toBe('/settings/notifications')
+    expect(app('-/settings/notifications')).toBe('/settings')
     for (const s of SECTIONS) expect(app(`-/settings/${s}`), s).not.toMatch(/^\/dev\/settings/)
-    for (const p of [settings(), settings('account'), settings('usage'), settings('organization')]) expect(place(p), `${p} is no place in the app`).toBeNull()
+    for (const p of [settings(), settings('usage'), settings('organization')]) expect(place(p), `${p} is no place in the app`).toBeNull()
   })
 
   test('a move reaches an address of the app by its history, and any other page through the router', () => {
@@ -84,7 +75,7 @@ describe('the app is two roots of paths', () => {
     visit(router, app('-/projects'))
     expect(pushState).toHaveBeenCalledWith(null, '', '/dev/projects')
     visit(router, app('-/settings/billing'))
-    expect(router.push).toHaveBeenCalledWith('/settings/billing')
+    expect(router.push).toHaveBeenCalledWith('/settings/organization/billing')
     visit(router, settings(), true)
     expect(router.replace).toHaveBeenCalledWith('/settings')
     expect(pushState).toHaveBeenCalledTimes(1)

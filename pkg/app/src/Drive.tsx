@@ -1,6 +1,6 @@
 'use client'
 
-import { landing as arrive } from './lib/landing'
+import { arrival as arrive } from './lib/arrival'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRight,

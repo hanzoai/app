@@ -77,15 +77,15 @@ describe('Go to', () => {
     expect(deep.find((r) => r.id === 'settings-billing')).toMatchObject({ label: 'Billing', where: 'Settings' })
     take(deep, 'settings-billing')
     expect(go).toHaveBeenCalledWith(settings('billing'))
-    expect(app(path({ kind: 'settings', section: 'billing' }))).toBe('/settings/billing') // First Build: personal Billing & credits page (exists in the host app)
+    expect(app(path({ kind: 'settings', section: 'billing' }))).toBe('/settings/organization/billing')
     take(deep, 'settings-general')
-    expect(go).toHaveBeenLastCalledWith('/settings/account') // General is the Account page now
+    expect(go).toHaveBeenLastCalledWith('/settings')
   })
 
   test('a section with no page of its own is not offered, and Settings itself opens /settings', () => {
     const go = vi.fn()
     const { top, deep } = places(host, go)
-    expect(deep.map((r) => r.id)).toContain('settings-account') // Account has its own page now
+    expect(deep.map((r) => r.id)).not.toContain('settings-account')
     expect(deep.map((r) => r.id)).not.toContain('settings-machines')
     take(top, 'settings')
     expect(go).toHaveBeenCalledWith('/settings')

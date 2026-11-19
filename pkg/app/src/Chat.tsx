@@ -54,7 +54,7 @@ import { given, tidy } from "./lib/title";
 import { useIam, useIamToken } from "@hanzo/iam/react";
 import { bearer, hasSession, named, org } from "./lib/session";
 import { api } from "./lib/api";
-import { app, dev, follow, go, talk as talkPath, visit } from "./lib/host";
+import { app, dev, follow, go, visit } from "./lib/host";
 import { useHost } from "./host";
 import { chats, house, paidPlan, paused, setCreditsAfterAllowance, spends, uncapped, useLimits } from "./lib/limits";
 import { LimitedBanner } from "@hanzo/ui/product/LimitedBanner";
@@ -65,10 +65,10 @@ import { useHydrated } from "./lib/hydrated";
 import { base, served } from "./lib/ai";
 import { onServed, type Served as Heard } from "./lib/served";
 import { refused as worded, speech, useDictation, useTalk, useVoice } from "@hanzo/voice";
-import { ArrowUpRight, CalendarClock, Check, Code2, Copy, Download, FileText, Ghost, GitBranch, Image as ImageMark, KanbanSquare, Library as LibraryMark, PanelRight, Paperclip, Pencil, RefreshCw, ShieldCheck, Sparkles, Upload, X } from "lucide-react";
-import { contextPercent } from "./lib/context";
+import { CalendarClock, Check, Code2, Copy, Download, FileText, Ghost, GitBranch, Image as ImageMark, KanbanSquare, Library as LibraryMark, PanelRight, Paperclip, Pencil, RefreshCw, ShieldCheck, Sparkles, Upload, X } from "lucide-react";
+import { branched } from "./lib/branch";
 import { openModelPicker } from "./lib/model-picker";
-import { open as openBoardCard, projects as boardProjects } from "./lib/todo";
+import { open as openBoardCard, home as boardHome } from "./lib/todo";
 import { useDevMode } from "./lib/dev-mode";
 import { InfoHint } from "./lib/info-hint";
 import { ENSO } from "./lib/ai";
@@ -524,46 +524,6 @@ function plainTurnText(m: ChatMessage): string {
   return "";
 }
 
-function formatChatMarkdown(title: string, list: readonly ChatMessage[]): string {
-  const lines: string[] = [`# ${title || "Hanzo Chat"}`, "", `_Exported ${new Date().toISOString()}_`];
-  for (const m of list) {
-    if (m.role !== "user" && m.role !== "assistant") continue;
-    const text = plainTurnText(m).trim();
-    if (!text) continue;
-    lines.push("", "---", "", m.role === "user" ? "### You" : "### Assistant", "", text);
-  }
-  return `${lines.join("\n")}\n`;
-}
-
-function triggerMarkdownDownload(markdown: string, filename = "hanzo-chat.md"): void {
-  if (typeof document === "undefined" || typeof URL === "undefined") return;
-  const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function buildHandoffPrompt(title: string, list: readonly ChatMessage[]): string {
-  const relevant = list
-    .filter((m) => m.role === "user" || m.role === "assistant")
-    .map((m) => ({ role: m.role, text: plainTurnText(m).trim() }))
-    .filter((m) => m.text.length > 0);
-  if (!relevant.length) return "";
-  const tail = relevant.slice(-6);
-  const heading = title ? `Continue from "${title}":` : "Continue from our previous conversation:";
-  const excerpts = tail.map((m) => {
-    const who = m.role === "user" ? "You" : "Assistant";
-    const body = m.text.length > 420 ? `${m.text.slice(0, 417).trimEnd()}…` : m.text;
-    return `${who}: ${body}`;
-  });
-  return `${heading}\n\n${excerpts.join("\n\n")}\n\nNext: `;
-}
-
 /** Quiet monochrome hover/focus-reveal actions under every completed assistant response. */
 function AssistantTurnActions({
   text,
@@ -571,7 +531,6 @@ function AssistantTurnActions({
   canRegenerate,
   onRegenerate,
   onBranch,
-  onExport,
   onOpen,
   onOpenInDev,
   onCreateBoardCard,
@@ -582,7 +541,6 @@ function AssistantTurnActions({
   canRegenerate: boolean;
   onRegenerate?: () => void;
   onBranch?: () => void;
-  onExport?: () => void;
   onOpen?: () => void;
   onOpenInDev?: () => void;
   onCreateBoardCard?: () => void;
@@ -684,17 +642,6 @@ function AssistantTurnActions({
           {...actionButton}
         >
           <GitBranch size={13} color="var(--muted-foreground)" aria-hidden />
-        </Box>
-      ) : null}
-      {onExport ? (
-        <Box
-          render={<button type="button" title={t("Export")} />}
-          data-slot="assistant-turn-export"
-          aria-label={t("Export as Markdown")}
-          onClick={onExport}
-          {...actionButton}
-        >
-          <Download size={13} color="var(--muted-foreground)" aria-hidden />
         </Box>
       ) : null}
       {onOpenInDev ? (
@@ -1789,24 +1736,23 @@ function Thread({
           ? `${firstLine.slice(0, 71).trimEnd()}…`
           : firstLine
         : t("Follow-up from Chat");
-      // The first board the org has, as the Board opens on.
-      void boardProjects(ai)
-        .then((ps) =>
-          openBoardCard(ai, ps[0]!.key, {
+      // The first board the server names; a card is not filed on a stand-in.
+      void boardHome(ai)
+        .then((key) => {
+          if (!key) return void toast.error(t("No board yet"));
+          return openBoardCard(ai, key, {
             title: cardTitle,
             description: turnText.slice(0, 1200),
             status: "todo",
             labels: ["chat"],
-          }),
-        )
-        .then((card) => {
-          // A card only this device holds is not on the Board.
-          if (card.local) throw new Error("local");
-          toast.success(t("Added to Board"), {
-            action: {
-              label: t("Open Board"),
-              onClick: () => visit(chatHost.router, "/board"),
-            },
+          }).then((card) => {
+            if (card.local) return void toast.error(t("Saved on this device only"));
+            toast.success(t("Added to Board"), {
+              action: {
+                label: t("Open Board"),
+                onClick: () => visit(chatHost.router, "/board"),
+              },
+            });
           });
         })
         .catch(() => toast.error(t("Could not add to Board")));
@@ -2278,40 +2224,11 @@ function Thread({
     }
   }, [titleDraft, shownTitle, mine, kept, open, anonymous, forgetful, currentThread, threadActions]);
 
-  const exportConversationMarkdown = useCallback(
-    (quiet = false, fallbackText?: string) => {
-      const hasTurns = said.some((m) => (m.role === "user" || m.role === "assistant") && plainTurnText(m).trim().length > 0);
-      const md = hasTurns
-        ? formatChatMarkdown(shownTitle || t("Hanzo Chat"), said)
-        : `# ${shownTitle || t("Hanzo Chat")}\n\n${(fallbackText ?? "").trim()}\n`;
-      triggerMarkdownDownload(md, "hanzo-chat.md");
-      if (!quiet) toast.success(t("Exported hanzo-chat.md"));
-    },
-    [said, shownTitle, t],
-  );
-
-  const startBranchedChat = useCallback(
-    (list: readonly ChatMessage[], toastMessage: string) => {
-      const handoff = buildHandoffPrompt(shownTitle, list);
-      setWalletRecovery(null);
-      emptyOpen();
-      setDraft(handoff);
-      go(talkPath());
-      toast.success(toastMessage);
-    },
-    [shownTitle],
-  );
-
   // A BRANCH IS A NEW SAVED CHAT holding the conversation up to this answer.
   const branchTurn = useCallback(
     (turnId: string) => {
-      const list = turns.current;
-      const at = list.findIndex((m) => m.id === turnId);
-      const kept = (at >= 0 ? list.slice(0, at + 1) : list)
-        .filter((m) => m.role === "user" || m.role === "assistant")
-        .map((m) => ({ role: m.role, content: plainTurnText(m) }))
-        .filter((m) => m.content.trim());
-      if (!kept.length) return;
+      const kept = branched(turns.current, turnId, plainTurnText, !anonymous && !forgetful);
+      if (!kept) return;
       ai.threads.record(kept).then(
         (id) => {
           reopen(id);
@@ -2320,21 +2237,8 @@ function Thread({
         () => toast.error(t("Could not branch this chat")),
       );
     },
-    [ai, reopen, t],
+    [ai, anonymous, forgetful, reopen, t],
   );
-
-  const continueInFreshChat = useCallback(() => {
-    startBranchedChat(turns.current, t("Continued in a fresh chat"));
-  }, [startBranchedChat, t]);
-
-  const contextUsage = useMemo(() => {
-    let chars = 0;
-    for (const m of said) {
-      if (typeof m.content === "string") chars += m.content.length;
-      else if (Array.isArray(m.content)) chars += words(m.content as Said).length;
-    }
-    return contextPercent(chars, rowOf(model)?.context_window);
-  }, [said, listed, model]);
 
   const currentThreadMap = useMemo(() => {
     const map = new Map(alone);
@@ -3044,39 +2948,7 @@ function Thread({
       ],
       slash: carry.skills,
       at: carry.plugins,
-      // Inline controls live inside the composer's bottom strip (`children` above), so the outer foot stays empty
-      // except when context exceeds 60% of the model's window.
-      status:
-        contextUsage !== null && contextUsage > 60 ? (
-          <Box
-            render={<button type="button" />}
-            data-slot="context-window-pill"
-            aria-label={t("{pct}% context · Continue in fresh chat", { pct: contextUsage })}
-            onClick={continueInFreshChat}
-            display="flex"
-            items="center"
-            justify="center"
-            minH={26}
-            px="$2.5"
-            py="$1"
-            rounded={999}
-            bg="var(--surface-card)"
-            borderWidth={1}
-            borderColor="var(--border)"
-            cursor="pointer"
-            transition="quickest"
-            hoverStyle={{ bg: "$hover", borderColor: "var(--border-strong)" }}
-            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
-            $max-sm={{ minH: 44 }}
-          >
-            <XStack items="center" gap="$1.5">
-              <Text fontSize="$1" color="$soft" numberOfLines={1}>
-                {t("{pct}% context · Continue in fresh chat", { pct: contextUsage })}
-              </Text>
-              <ArrowUpRight size={12} color="var(--muted-foreground)" aria-hidden />
-            </XStack>
-          </Box>
-        ) : undefined,
+      status: null,
       mode: null,
       mind: null,
       effort: undefined,
@@ -3303,7 +3175,6 @@ function Thread({
                     threads={currentThreadMap}
                     active={open || currentThread.id}
                     onSchedule={anonymous || forgetful ? undefined : () => setPlan(lastAsked())}
-                    onExport={() => exportConversationMarkdown(true)}
                   >
                     <XStack>
                       <ThreadMore t={currentThread} />
@@ -3570,7 +3441,6 @@ function Thread({
               threads={currentThreadMap}
               active={open || currentThread.id}
               onSchedule={anonymous || forgetful ? undefined : () => setPlan(lastAsked())}
-              onExport={() => exportConversationMarkdown(true)}
             >
               <XStack />
             </ConversationMenu>
@@ -3829,7 +3699,6 @@ function Thread({
                           canRegenerate={!chat.streaming && !anonBusy}
                           onRegenerate={() => redoTurn(turn.id, { mode: "retry" })}
                           onBranch={anonymous || forgetful ? undefined : () => branchTurn(turn.id)}
-                          onExport={() => exportConversationMarkdown(false, part.text)}
                           onOpen={opener(part.text)}
                           onOpenInDev={() => openInDev({ prompt: part.text })}
                           onCreateBoardCard={anonymous ? undefined : () => createBoardCardFromTurn(part.text)}
@@ -3865,7 +3734,6 @@ function Thread({
                     canRegenerate={!chat.streaming && !anonBusy}
                     onRegenerate={() => redoTurn(turn.id, { mode: "retry" })}
                     onBranch={anonymous || forgetful ? undefined : () => branchTurn(turn.id)}
-                    onExport={() => exportConversationMarkdown(false, said)}
                     onOpen={opener(said)}
                     onOpenInDev={() => openInDev({ prompt: said })}
                     onCreateBoardCard={anonymous ? undefined : () => createBoardCardFromTurn(said)}

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { open, targetOf } from './todo'
+import { home, open, projects, targetOf } from './todo'
 
 describe('targetOf', () => {
   it('goes to the card\'s own board first', () => {
@@ -29,5 +29,19 @@ describe('open', () => {
     store()
     const client = { http: { json: async () => ({ id: 'srv-1', title: 'x' }) } }
     expect((await open(client as never, 'hanzo', { title: 'x' })).local).toBeUndefined()
+  })
+})
+
+describe('home', () => {
+  const asked = (todo: unknown, dev: unknown) => ({
+    http: { json: async ({ path }: { path: string }) => { if (path.includes('todo')) return todo; return dev } },
+  }) as never
+  it('is the first board the server names, never a stand-in', async () => {
+    expect(await home(asked({ projects: [{ key: 'acme' }] }, []))).toBe('acme')
+    expect((await projects(asked({ projects: [{ key: 'acme' }] }, [])))[0]!.key).toBe('hanzo')
+  })
+  it('is null when the server names none or cannot be asked', async () => {
+    expect(await home(asked({ projects: [] }, []))).toBeNull()
+    expect(await home({ http: { json: async () => { throw new Error('down') } } } as never)).toBeNull()
   })
 })

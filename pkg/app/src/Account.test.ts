@@ -64,6 +64,7 @@ vi.mock('@hanzo/ui', () => ({
   DropdownMenuSubContent: Draw,
   DropdownMenuSubTrigger: Row,
   DropdownMenuTrigger: Draw,
+  Box: Draw,
   HoverCard: Draw,
   HoverCardContent: Draw,
   HoverCardTrigger: Draw,
