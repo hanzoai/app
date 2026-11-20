@@ -36,6 +36,7 @@ import {
   Send,
   Sparkles,
   Terminal,
+  X,
 } from 'lucide-react'
 import { useAi } from '../lib/ai'
 import { say } from '../failure'
@@ -54,15 +55,8 @@ import {
   type BotAgent,
 } from './api'
 import { CLIP, PILL, ROUND, WORD } from './kit'
-import { DIM } from './ink'
-
-// Always-dark translucent surfaces inside the pure-black desktop window chrome,
-// invariant across light and dark page themes.
-const FLOOR = 'var(--white-05)'
-const RAISED = 'var(--white-08)'
-const PICKED = 'var(--white-16)'
-const LINE = 'var(--white-15)'
-const INK = 'var(--pure-white)'
+import { DIM, EDGE, FLOOR, GROUND, INK, LINE, PICKED, RAISED } from './ink'
+import { useDevMode } from '../lib/dev-mode'
 
 function PulsingCluster({ label }: { label: string }) {
   const [step, setStep] = useState(0)
@@ -83,13 +77,13 @@ function PulsingCluster({ label }: { label: string }) {
               width={mid ? 7 : 4}
               height={mid ? 7 : 4}
               rounded={999}
-              bg="var(--pure-white)"
-              opacity={active ? 1 : 0.35}
+              bg={INK}
+              opacity={active ? 1 : 0.3}
             />
           )
         })}
       </XStack>
-      <Text fontSize={13} lineHeight={18} fontWeight="500" color="var(--pure-white)" opacity={0.58}>
+      <Text fontSize={13} lineHeight={18} fontWeight="500" color={DIM}>
         {label}
       </Text>
     </YStack>
@@ -110,6 +104,7 @@ export function ComputerDialog({
   onUpdated: () => void | Promise<void>
 }) {
   const { t } = useI18n()
+  const [devMode] = useDevMode()
   const { client } = useAi()
   const displayName = called(bot.name)
 
@@ -343,8 +338,12 @@ export function ComputerDialog({
       setStatusToast(
         out.text ||
           (field === 'totp'
-            ? t('Typed 6-digit 2FA code for {name} via KMS.', { name: item.name })
-            : t('Autofilled {name} via zero-knowledge KMS.', { name: item.name })),
+            ? devMode
+              ? t('Typed 6-digit 2FA code for {name} via KMS.', { name: item.name })
+              : t('Entered 6-digit verification code for {name}.', { name: item.name })
+            : devMode
+              ? t('Autofilled {name} via zero-knowledge KMS.', { name: item.name })
+              : t('Filled login for {name}.', { name: item.name })),
       )
     } catch (e) {
       setError(say(e, t('credential autofill'), 'save', t))
@@ -364,11 +363,21 @@ export function ComputerDialog({
         action: 'save_credential',
       })
       if (out.ok === false) {
-        setError(out.text || t('No staged credential found at /dev/shm/.hanzo-credential.json.'))
+        setError(
+          out.text ||
+            (devMode
+              ? t('No staged credential found at /dev/shm/.hanzo-credential.json.')
+              : t('No staged app login found to save.')),
+        )
         return
       }
       await refreshVault()
-      setStatusToast(out.text || t('Sealed sandbox app credential into Hanzo KMS and shredded RAM file.'))
+      setStatusToast(
+        out.text ||
+          (devMode
+            ? t('Sealed sandbox app credential into Hanzo KMS and shredded RAM file.')
+            : t('Saved login to your vault.')),
+      )
     } catch (e) {
       setError(say(e, t('sandbox credential save'), 'save', t))
     } finally {
@@ -437,6 +446,18 @@ export function ComputerDialog({
     }
   }
 
+  useEffect(() => {
+    if (!open || vaultOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onOpenChange(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, vaultOpen, onOpenChange])
+
   const logins = vaultItems.filter((i) => i.kind === 'login')
   const otherSecrets = vaultItems.filter((i) => i.kind !== 'login')
   const showBottomBar = phase === 'connecting' || phase === 'live' || awake
@@ -446,103 +467,92 @@ export function ComputerDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
           data-parity-key="bots.computer.dialog"
-          width={expanded ? '98vw' : '95vw'}
+          width="calc(100vw - 24px)"
           maxW={expanded ? 1480 : 1140}
+          $max-sm={{ width: 'calc(100vw - 24px)', maxW: 'calc(100vw - 24px)', rounded: 14 }}
           p={0}
           showCloseButton={false}
-          bg="var(--pure-black)"
+          bg={GROUND}
           borderWidth={1}
-          borderColor={LINE}
+          borderColor={EDGE}
           rounded={18}
           overflow="hidden"
         >
-          <YStack height={expanded ? '94vh' : '86vh'} maxH="95vh" bg="var(--pure-black)">
-            {/* Sleek macOS window top chrome (`• • •` left, native tools + expand/collapse right) */}
-            <XStack height={44} px={16} items="center" justify="space-between" gap={12} shrink={0}>
-              <XStack items="center" gap={12} minW={0}>
-                <XStack items="center" gap={8} shrink={0}>
-                  <YStack
-                    render="button"
-                    {...{ type: 'button' }}
-                    aria-label={t('Close computer window')}
-                    onClick={() => onOpenChange(false)}
-                    width={12}
-                    height={12}
-                    rounded={999}
-                    bg="var(--chrome-dot-red)"
-                    borderWidth={0}
-                    p={0}
-                    cursor="pointer"
-                  />
-                  <YStack
-                    render="button"
-                    {...{ type: 'button' }}
-                    aria-label={t('Park desktop computer')}
-                    onClick={() => (awake ? void handlePark() : onOpenChange(false))}
-                    width={12}
-                    height={12}
-                    rounded={999}
-                    bg="var(--chrome-dot-yellow)"
-                    borderWidth={0}
-                    p={0}
-                    cursor="pointer"
-                  />
-                  <YStack
-                    render="button"
-                    {...{ type: 'button' }}
-                    aria-label={expanded ? t('Exit fullscreen size') : t('Expand computer window')}
-                    onClick={() => setExpanded((v) => !v)}
-                    width={12}
-                    height={12}
-                    rounded={999}
-                    bg="var(--chrome-dot-green)"
-                    borderWidth={0}
-                    p={0}
-                    cursor="pointer"
-                  />
-                </XStack>
-
+          <YStack height={expanded ? '92vh' : '86vh'} maxH="94vh" bg={GROUND} minW={0}>
+            {/* Clean monochrome window top chrome */}
+            <XStack
+              minH={46}
+              px={14}
+              py={6}
+              $max-sm={{ px: 10, py: 8, gap: 8 }}
+              items="center"
+              justify="space-between"
+              flexWrap="wrap"
+              gap={10}
+              borderBottomWidth={1}
+              borderColor={LINE}
+              bg={FLOOR}
+              shrink={0}
+            >
+              <XStack items="center" gap={10} minW={0} flex={1}>
+                <YStack
+                  width={8}
+                  height={8}
+                  rounded={999}
+                  shrink={0}
+                  bg={awake ? 'var(--state-online)' : DIM}
+                  opacity={awake ? 1 : 0.45}
+                  aria-hidden
+                />
                 <DialogTitle>
-                  <Text {...CLIP} fontSize={12} lineHeight={16} fontWeight="500" color="var(--pure-white)" opacity={0.55}>
+                  <Text {...CLIP} fontSize="$2" lineHeight={18} fontWeight="500" color={INK}>
                     {awake
-                      ? `${displayName} · ${activeBox?.id ?? disk(bot.name)}`
+                      ? devMode
+                        ? `${displayName} · ${activeBox?.id ?? disk(bot.name)}`
+                        : `${displayName} · ${t('Cloud desktop')}`
                       : phase === 'parked'
-                        ? `${displayName} · ${t('Parked (resumable)')}`
-                        : `${displayName} · ${t('Desktop')}`}
+                        ? `${displayName} · ${t('Paused')}`
+                        : `${displayName} · ${t('Cloud desktop')}`}
                   </Text>
                 </DialogTitle>
               </XStack>
 
-              <XStack items="center" gap={6}>
+              <XStack items="center" gap={6} flexWrap="wrap" shrink={0}>
                 {awake && activeBox?.id ? (
                   <>
-                    <XStack
-                      render="button"
-                      {...{ type: 'button' }}
-                      aria-label={mode === 'screen' ? t('Switch to Terminal') : t('Switch to Desktop GUI')}
-                      onClick={() => {
-                        setSnapDataUrl(null)
-                        setMode((m) => (m === 'screen' ? 'terminal' : 'screen'))
-                      }}
-                      height={26}
-                      px={9}
-                      gap={5}
-                      rounded={999}
-                      items="center"
-                      bg={RAISED}
-                      borderWidth={1}
-                      borderColor={LINE}
-                      cursor="pointer"
-                    >
-                      {mode === 'screen' ? (
-                        <Terminal size={12} color="var(--pure-white)" aria-hidden />
-                      ) : (
-                        <Monitor size={12} color="var(--pure-white)" aria-hidden />
-                      )}
-                      <Text fontSize={11} lineHeight={15} color="var(--pure-white)" opacity={0.85}>
-                        {mode === 'screen' ? t('Terminal') : t('Desktop')}
-                      </Text>
-                    </XStack>
+                    {devMode || mode === 'terminal' ? (
+                      <XStack
+                        render="button"
+                        {...{ type: 'button' }}
+                        aria-label={mode === 'screen' ? t('Switch to terminal') : t('Switch to desktop')}
+                        onClick={() => {
+                          setSnapDataUrl(null)
+                          setMode((m) => (m === 'screen' ? 'terminal' : 'screen'))
+                        }}
+                        height={28}
+                        $max-sm={{ minH: 44 }}
+                        px={10}
+                        gap={5}
+                        rounded={999}
+                        items="center"
+                        bg={RAISED}
+                        borderWidth={1}
+                        borderColor={EDGE}
+                        cursor="pointer"
+                        transition="quickest"
+                        hoverStyle={{ bg: PICKED }}
+                        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                      >
+                        {mode === 'screen' ? (
+                          <Terminal size={12} color={INK} aria-hidden />
+                        ) : (
+                          <Monitor size={12} color={INK} aria-hidden />
+                        )}
+                        <Text fontSize="$1" lineHeight={15} color={INK}>
+                          {mode === 'screen' ? t('Terminal') : t('Desktop')}
+                        </Text>
+                      </XStack>
+                    ) : null}
 
                     <DropdownMenu placement="bottom-end" offset={6}>
                       <DropdownMenuTrigger asChild>
@@ -550,18 +560,22 @@ export function ComputerDialog({
                           render="button"
                           {...{ type: 'button' }}
                           aria-label={t('Autofill login or secret')}
-                          height={26}
-                          px={9}
+                          height={28}
+                          $max-sm={{ minH: 44 }}
+                          px={10}
                           gap={5}
                           rounded={999}
                           items="center"
                           bg={RAISED}
                           borderWidth={1}
-                          borderColor={LINE}
+                          borderColor={EDGE}
                           cursor="pointer"
+                          transition="quickest"
+                          hoverStyle={{ bg: PICKED }}
+                          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                         >
-                          <KeyRound size={12} color="var(--pure-white)" aria-hidden />
-                          <Text fontSize={11} lineHeight={15} color="var(--pure-white)" opacity={0.85}>
+                          <KeyRound size={12} color={INK} aria-hidden />
+                          <Text fontSize={11} lineHeight={15} color={INK}>
                             {t('Autofill')}
                           </Text>
                         </XStack>
@@ -605,21 +619,27 @@ export function ComputerDialog({
                             </Text>
                           </DropdownMenuItem>
                         ))}
-                        <DropdownMenuItem onSelect={() => void sealStagedAppCredential()}>
-                          <YStack gap={1}>
-                            <Text fontSize="$2" fontWeight="600" color="$ink">
-                              {t('Seal staged sandbox app login → KMS')}
-                            </Text>
-                            <Text fontSize="$1" color={DIM}>
-                              {t('Imports /dev/shm/.hanzo-credential.json & shreds RAM file')}
-                            </Text>
-                          </YStack>
-                        </DropdownMenuItem>
+                        {devMode ? (
+                          <DropdownMenuItem onSelect={() => void sealStagedAppCredential()}>
+                            <YStack gap={1}>
+                              <Text fontFamily="$body" fontSize="$2" fontWeight="600" color="$ink">
+                                {t('Seal staged sandbox app login → KMS')}
+                              </Text>
+                              <Text fontFamily="$body" fontSize="$1" color={DIM}>
+                                {t('Imports /dev/shm/.hanzo-credential.json & shreds RAM file')}
+                              </Text>
+                            </YStack>
+                          </DropdownMenuItem>
+                        ) : null}
                         <DropdownMenuItem onSelect={() => setVaultOpen(true)}>
-                          <Text fontSize="$2" fontWeight="600" color="$ink">
+                          <Text fontFamily="$body" fontSize="$2" fontWeight="600" color="$ink">
                             {vaultItems.length === 0
-                              ? t('+ Add 1Password, LastPass, or KMS logins…')
-                              : t('Manage Vault & Password Managers…')}
+                              ? devMode
+                                ? t('+ Add 1Password, LastPass, or KMS logins…')
+                                : t('Add saved logins…')
+                              : devMode
+                                ? t('Manage vault & password managers…')
+                                : t('Manage saved logins…')}
                           </Text>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -630,17 +650,20 @@ export function ComputerDialog({
                       {...{ type: 'button' }}
                       aria-label={t('Paste clipboard to desktop')}
                       onClick={() => void pasteClipboardToDesktop()}
-                      width={26}
-                      height={26}
+                      width={28}
+                      height={28}
+                      $max-sm={{ width: 44, height: 44 }}
                       rounded={999}
                       items="center"
                       justify="center"
                       bg="transparent"
                       borderWidth={0}
                       cursor="pointer"
-                      hoverStyle={{ bg: RAISED }}
+                      transition="quickest"
+                      hoverStyle={{ bg: PICKED }}
+                      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                     >
-                      <ClipboardPaste size={13} color="var(--pure-white)" opacity={0.7} aria-hidden />
+                      <ClipboardPaste size={13} color={DIM} aria-hidden />
                     </XStack>
 
                     <XStack
@@ -648,17 +671,20 @@ export function ComputerDialog({
                       {...{ type: 'button' }}
                       aria-label={t('Capture screenshot')}
                       onClick={() => void captureScreenshot()}
-                      width={26}
-                      height={26}
+                      width={28}
+                      height={28}
+                      $max-sm={{ width: 44, height: 44 }}
                       rounded={999}
                       items="center"
                       justify="center"
                       bg="transparent"
                       borderWidth={0}
                       cursor="pointer"
-                      hoverStyle={{ bg: RAISED }}
+                      transition="quickest"
+                      hoverStyle={{ bg: PICKED }}
+                      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                     >
-                      <Camera size={13} color="var(--pure-white)" opacity={0.7} aria-hidden />
+                      <Camera size={13} color={DIM} aria-hidden />
                     </XStack>
 
                     <XStack
@@ -669,17 +695,20 @@ export function ComputerDialog({
                         setSnapDataUrl(null)
                         void openStream(activeBox.id, mode, control === 'watching')
                       }}
-                      width={26}
-                      height={26}
+                      width={28}
+                      height={28}
+                      $max-sm={{ width: 44, height: 44 }}
                       rounded={999}
                       items="center"
                       justify="center"
                       bg="transparent"
                       borderWidth={0}
                       cursor="pointer"
-                      hoverStyle={{ bg: RAISED }}
+                      transition="quickest"
+                      hoverStyle={{ bg: PICKED }}
+                      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                     >
-                      <RefreshCw size={13} color="var(--pure-white)" opacity={0.7} aria-hidden />
+                      <RefreshCw size={13} color={DIM} aria-hidden />
                     </XStack>
 
                     {frameUrl ? (
@@ -688,17 +717,20 @@ export function ComputerDialog({
                         {...{ type: 'button' }}
                         aria-label={t('Open stream in new tab')}
                         onClick={() => window.open(frameUrl, '_blank', 'noopener,noreferrer')}
-                        width={26}
-                        height={26}
+                        width={28}
+                        height={28}
+                        $max-sm={{ width: 44, height: 44 }}
                         rounded={999}
                         items="center"
                         justify="center"
                         bg="transparent"
                         borderWidth={0}
                         cursor="pointer"
-                        hoverStyle={{ bg: RAISED }}
+                        transition="quickest"
+                        hoverStyle={{ bg: PICKED }}
+                        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                       >
-                        <ExternalLink size={13} color="var(--pure-white)" opacity={0.7} aria-hidden />
+                        <ExternalLink size={13} color={DIM} aria-hidden />
                       </XStack>
                     ) : null}
 
@@ -708,18 +740,22 @@ export function ComputerDialog({
                       aria-label={t('Park desktop')}
                       disabled={busy}
                       onClick={() => void handlePark()}
-                      height={26}
-                      px={9}
+                      height={28}
+                      $max-sm={{ minH: 44 }}
+                      px={10}
                       gap={4}
                       rounded={999}
                       items="center"
                       bg={RAISED}
                       borderWidth={1}
-                      borderColor={LINE}
+                      borderColor={EDGE}
                       cursor="pointer"
+                      transition="quickest"
+                      hoverStyle={{ bg: PICKED }}
+                      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                     >
-                      <Pause size={11} color="var(--pure-white)" aria-hidden />
-                      <Text fontSize={11} lineHeight={15} color="var(--pure-white)" opacity={0.85}>
+                      <Pause size={11} color={INK} aria-hidden />
+                      <Text fontSize={11} lineHeight={15} color={INK}>
                         {t('Park')}
                       </Text>
                     </XStack>
@@ -733,25 +769,41 @@ export function ComputerDialog({
                   onClick={() => setExpanded((v) => !v)}
                   width={28}
                   height={28}
-                  rounded={8}
+                  $max-sm={{ display: 'none' }}
+                  rounded={999}
                   items="center"
                   justify="center"
                   bg="transparent"
                   borderWidth={0}
                   cursor="pointer"
-                  hoverStyle={{ bg: RAISED }}
+                  transition="quickest"
+                  hoverStyle={{ bg: PICKED }}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                 >
                   {expanded ? (
-                    <Minimize2 size={14} color="var(--pure-white)" opacity={0.65} aria-hidden />
+                    <Minimize2 size={14} color={DIM} aria-hidden />
                   ) : (
-                    <Maximize2 size={14} color="var(--pure-white)" opacity={0.65} aria-hidden />
+                    <Maximize2 size={14} color={DIM} aria-hidden />
                   )}
+                </XStack>
+
+                <XStack
+                  {...ROUND}
+                  width={30}
+                  height={30}
+                  borderColor={EDGE}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  $max-sm={{ width: 44, height: 44 }}
+                  aria-label={t('Close computer window')}
+                  onClick={() => onOpenChange(false)}
+                >
+                  <X size={15} color={INK} aria-hidden />
                 </XStack>
               </XStack>
             </XStack>
 
-            {/* Main Desktop Screen Canvas (`Starting desktop` -> framed `Connecting` -> live X11 desktop) */}
-            <YStack flex={1} minH={0} px={10} pt={4} pb={showBottomBar ? 0 : 12} items="center" justify="center">
+            {/* Main Desktop Screen Canvas */}
+            <YStack flex={1} minH={0} px={10} pt={10} pb={showBottomBar ? 0 : 12} items="center" justify="center">
               {phase === 'starting' && !frameUrl ? (
                 <YStack flex={1} width="100%" items="center" justify="center">
                   <PulsingCluster label={t('Starting desktop')} />
@@ -769,28 +821,31 @@ export function ComputerDialog({
                   gap={14}
                   px={24}
                 >
-                  <Text fontSize={16} lineHeight={22} fontWeight="600" color="var(--pure-white)" text="center">
-                    {phase === 'parked' ? t('Desktop is parked') : t('{name}’s resumable desktop', { name: displayName })}
+                  <Text fontSize="$3" lineHeight={22} fontWeight="600" color={INK} text="center">
+                    {phase === 'parked' ? t('Desktop is paused') : t('{name}’s cloud desktop', { name: displayName })}
                   </Text>
-                  <Text fontSize={13} lineHeight={19} maxW={440} color="var(--pure-white)" opacity={0.62} text="center">
-                    {t(
-                      'Persistent home volume preserves open files, browser sessions, and tools across sleep/wake cycles.',
-                    )}
+                  <Text fontSize="$2" lineHeight={19} maxW={440} color={DIM} text="center">
+                    {devMode
+                      ? t('Persistent home volume preserves open files, browser sessions, and tools across sleep/wake cycles.')
+                      : t('Keeps open files, browser tabs, and logins ready whenever you resume.')}
                   </Text>
                   {error ? (
-                    <Text role="alert" fontSize={12} lineHeight={17} color="var(--pure-white)" opacity={0.75} text="center">
+                    <Text role="alert" fontSize={12} lineHeight={17} color="var(--state-error)" text="center">
                       {error}
                     </Text>
                   ) : null}
                   <XStack
                     {...PILL}
-                    bg="var(--pure-white)"
-                    borderColor="var(--pure-white)"
+                    bg={INK}
+                    borderColor={INK}
+                    hoverStyle={{ opacity: 0.9 }}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                    $max-sm={{ minH: 44 }}
                     disabled={busy}
                     onClick={() => void startOrResume(true)}
                   >
-                    <Play size={13} color="var(--pure-black)" aria-hidden />
-                    <Text {...WORD} color="var(--pure-black)">
+                    <Play size={13} color="var(--background)" aria-hidden />
+                    <Text {...WORD} color="var(--background)">
                       {phase === 'parked' ? t('Resume desktop') : t('Start desktop')}
                     </Text>
                   </XStack>
@@ -818,7 +873,16 @@ export function ComputerDialog({
                         objectFit="contain"
                       />
                       <XStack position="absolute" t={12} r={12}>
-                        <XStack {...PILL} height={30} px={12} bg={RAISED} borderColor={LINE} onClick={() => setSnapDataUrl(null)}>
+                        <XStack
+                          {...PILL}
+                          height={30}
+                          $max-sm={{ minH: 44 }}
+                          px={12}
+                          bg={RAISED}
+                          borderColor={EDGE}
+                          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                          onClick={() => setSnapDataUrl(null)}
+                        >
                           <Text fontSize={12} lineHeight={16} color={INK}>
                             {t('Back to live desktop')}
                           </Text>
@@ -847,25 +911,32 @@ export function ComputerDialog({
 
             {/* Optional Co-Working Task Drawer */}
             {promptOpen && awake ? (
-              <YStack px={16} pt={10} gap={8}>
-                <XStack render="form" {...{ onSubmit: (e: FormEvent) => void submitComputerTask(e) }} gap={8} items="center">
+              <YStack px={14} $max-sm={{ px: 10 }} pt={10} gap={8}>
+                <XStack render="form" {...{ onSubmit: (e: FormEvent) => void submitComputerTask(e) }} gap={8} items="center" flexWrap="wrap">
                   <Input
                     unstyled
                     autoFocus
                     value={task}
                     onChange={(e) => setTask(e.target.value)}
-                    placeholder={t(
-                      'Tell {name} what to do on this desktop (e.g., "Log in with my GitHub vault credentials and review open PRs")…',
-                      { name: displayName },
-                    )}
+                    placeholder={
+                      devMode
+                        ? t(
+                            'Tell {name} what to do on this desktop (e.g., "Log in with my GitHub vault credentials and review open PRs")…',
+                            { name: displayName },
+                          )
+                        : t('Tell {name} what to do on this desktop…', { name: displayName })
+                    }
                     aria-label={t('Co-work with {name} on desktop', { name: displayName })}
                     flex={1}
+                    minW={180}
                     height={36}
+                    $max-sm={{ minH: 44 }}
                     px={14}
                     rounded={999}
                     bg={RAISED}
                     borderWidth={1}
-                    borderColor={LINE}
+                    borderColor={EDGE}
+                    focusStyle={{ borderColor: 'var(--ring)' }}
                     color={INK}
                     fontSize={13}
                     placeholderTextColor="$placeholderColor"
@@ -874,14 +945,17 @@ export function ComputerDialog({
                     {...PILL}
                     {...{ type: 'submit' }}
                     height={36}
+                    $max-sm={{ minH: 44 }}
                     px={14}
-                    bg="var(--pure-white)"
-                    borderColor="var(--pure-white)"
+                    bg={INK}
+                    borderColor={INK}
+                    hoverStyle={{ opacity: 0.9 }}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                     disabled={!task.trim() || runningTask}
                     opacity={!task.trim() || runningTask ? 0.5 : 1}
                   >
-                    <Send size={12} color="var(--pure-black)" aria-hidden />
-                    <Text {...WORD} fontSize={12} color="var(--pure-black)">
+                    <Send size={12} color="var(--background)" aria-hidden />
+                    <Text {...WORD} fontSize={12} color="var(--background)">
                       {runningTask ? t('Working…') : t('Run on desktop')}
                     </Text>
                   </XStack>
@@ -889,25 +963,36 @@ export function ComputerDialog({
               </YStack>
             ) : null}
 
-            {/* Floating Bottom Control Dock (`👁 Watching` | `[Take control]` centerpiece matching reference) */}
+            {/* Floating Bottom Control Dock */}
             {showBottomBar ? (
-              <XStack height={58} px={16} items="center" justify="space-between" gap={12} shrink={0}>
-                <XStack flex={1} items="center" gap={8} minW={0}>
+              <XStack
+                minH={58}
+                px={14}
+                py={8}
+                $max-sm={{ px: 10, gap: 8, justify: 'center' }}
+                items="center"
+                justify="space-between"
+                flexWrap="wrap"
+                gap={10}
+                shrink={0}
+              >
+                <XStack flex={1} items="center" gap={8} minW={0} $max-sm={{ display: error || statusToast ? 'flex' : 'none', width: '100%', justify: 'center' }}>
                   {error ? (
-                    <Text {...CLIP} role="alert" fontSize={12} lineHeight={16} color="var(--pure-white)" opacity={0.75}>
+                    <Text {...CLIP} role="alert" fontSize={12} lineHeight={16} color="var(--state-error)">
                       {error}
                     </Text>
                   ) : statusToast ? (
-                    <Text {...CLIP} fontSize={12} lineHeight={16} color="var(--pure-white)" opacity={0.68}>
+                    <Text {...CLIP} fontSize={12} lineHeight={16} color={DIM}>
                       {statusToast}
                     </Text>
                   ) : null}
                 </XStack>
 
-                {/* Centerpiece pill: `👁 Watching` | `[Take control]` */}
+                {/* Centerpiece pill: `Watching` | `Take control` */}
                 <XStack
                   data-parity-key="bots.computer.control-pill"
                   height={38}
+                  $max-sm={{ minH: 44 }}
                   pl={14}
                   pr={5}
                   gap={12}
@@ -915,15 +1000,15 @@ export function ComputerDialog({
                   items="center"
                   bg={RAISED}
                   borderWidth={1}
-                  borderColor={LINE}
+                  borderColor={EDGE}
                 >
                   <XStack items="center" gap={7}>
                     {control === 'watching' ? (
-                      <Eye size={14} color="var(--pure-white)" opacity={0.75} aria-hidden />
+                      <Eye size={14} color={DIM} aria-hidden />
                     ) : (
                       <MousePointerClick size={14} color="var(--state-online)" aria-hidden />
                     )}
-                    <Text fontSize={13} lineHeight={18} fontWeight="500" color="var(--pure-white)" opacity={0.88}>
+                    <Text fontSize={13} lineHeight={18} fontWeight="500" color={INK}>
                       {control === 'watching' ? t('Watching') : t('In control')}
                     </Text>
                   </XStack>
@@ -934,15 +1019,19 @@ export function ComputerDialog({
                       {...{ type: 'button' }}
                       onClick={() => toggleControl('controlling')}
                       height={28}
+                      $max-sm={{ minH: 36 }}
                       px={13}
                       rounded={999}
                       items="center"
                       justify="center"
-                      bg="var(--pure-white)"
+                      bg={INK}
                       borderWidth={0}
                       cursor="pointer"
+                      transition="quickest"
+                      hoverStyle={{ opacity: 0.9 }}
+                      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                     >
-                      <Text fontSize={12} lineHeight={16} fontWeight="600" color="var(--pure-black)">
+                      <Text fontSize={12} lineHeight={16} fontWeight="600" color="var(--background)">
                         {t('Take control')}
                       </Text>
                     </XStack>
@@ -952,41 +1041,48 @@ export function ComputerDialog({
                       {...{ type: 'button' }}
                       onClick={() => toggleControl('watching')}
                       height={28}
+                      $max-sm={{ minH: 36 }}
                       px={13}
                       rounded={999}
                       items="center"
                       justify="center"
                       bg={PICKED}
                       borderWidth={1}
-                      borderColor={LINE}
+                      borderColor={EDGE}
                       cursor="pointer"
+                      transition="quickest"
+                      hoverStyle={{ bg: GROUND }}
+                      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                     >
-                      <Text fontSize={12} lineHeight={16} fontWeight="500" color="var(--pure-white)">
+                      <Text fontSize={12} lineHeight={16} fontWeight="500" color={INK}>
                         {t('Watch only')}
                       </Text>
                     </XStack>
                   )}
                 </XStack>
 
-                <XStack flex={1} items="center" justify="flex-end" gap={8}>
+                <XStack flex={1} items="center" justify="flex-end" gap={8} $max-sm={{ flex: 0, justify: 'center' }}>
                   {awake ? (
                     <XStack
                       render="button"
                       {...{ type: 'button' }}
                       onClick={() => setPromptOpen((v) => !v)}
                       height={30}
+                      $max-sm={{ minH: 44 }}
                       px={11}
                       gap={6}
                       rounded={999}
                       items="center"
                       bg={promptOpen ? PICKED : 'transparent'}
                       borderWidth={1}
-                      borderColor={promptOpen ? LINE : 'transparent'}
+                      borderColor={promptOpen ? EDGE : 'transparent'}
                       cursor="pointer"
-                      hoverStyle={{ bg: RAISED }}
+                      transition="quickest"
+                      hoverStyle={{ bg: RAISED, borderColor: EDGE }}
+                      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                     >
-                      <Sparkles size={12} color="var(--pure-white)" opacity={0.78} aria-hidden />
-                      <Text fontSize={12} lineHeight={16} color="var(--pure-white)" opacity={0.78}>
+                      <Sparkles size={12} color={DIM} aria-hidden />
+                      <Text fontSize={12} lineHeight={16} color={INK}>
                         {runningTask ? t('{name} working…', { name: displayName }) : t('Work with {name}', { name: displayName })}
                       </Text>
                     </XStack>

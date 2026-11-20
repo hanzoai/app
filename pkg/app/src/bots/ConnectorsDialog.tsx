@@ -78,16 +78,16 @@ export const CONNECTOR_CATALOG: readonly ConnectorDef[] = [
 
 const SECTIONS: readonly { id: SectionId; title: string }[] = [
   { id: 'popular', title: 'Popular' },
-  { id: 'channels', title: 'Messaging & Social' },
-  { id: 'business', title: 'Small Business' },
-  { id: 'productivity', title: 'Productivity & Developer' },
+  { id: 'channels', title: 'Messaging & social' },
+  { id: 'business', title: 'Small business' },
+  { id: 'productivity', title: 'Productivity & developer' },
 ]
 
 const FILTERS: readonly { id: ConnectorFilter; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'personal', label: 'Connected' },
-  { id: 'channels', label: 'Messaging & Social' },
-  { id: 'business', label: 'Small Business' },
+  { id: 'channels', label: 'Messaging & social' },
+  { id: 'business', label: 'Small business' },
   { id: 'productivity', label: 'Productivity' },
 ]
 
@@ -395,6 +395,21 @@ export function ConnectorsCatalog({
     }
   }
 
+  useEffect(() => {
+    if (embedded) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (configuring) {
+        e.preventDefault()
+        setConfiguring(null)
+        return
+      }
+      onClose?.()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [embedded, configuring, onClose])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return CONNECTOR_CATALOG.filter((item) => {
@@ -407,27 +422,28 @@ export function ConnectorsCatalog({
   }, [filter, query, stateOf])
 
   return (
-    <YStack flex={1} minH={0} bg={embedded ? 'transparent' : GROUND}>
+    <YStack flex={1} minH={0} minW={0} bg={embedded ? 'transparent' : GROUND}>
       <YStack
         px={embedded ? 0 : 28}
         pt={embedded ? 0 : 22}
+        $max-sm={{ px: embedded ? 0 : 14, pt: embedded ? 0 : 14 }}
         pb={14}
         gap={14}
         borderBottomWidth={1}
         borderColor={LINE}
         bg={embedded ? 'transparent' : FLOOR}
       >
-        <XStack items="center" justify="space-between" gap={12} flexWrap="wrap">
-          <YStack gap={3}>
+        <XStack items="flex-start" justify="space-between" gap={12} flexWrap="wrap" minW={0}>
+          <YStack gap={3} flex={1} minW={200}>
             {embedded ? (
               <Text fontSize={14} lineHeight={20} color={DIM}>
-                {t('Sync Slack (@hanzo), GitHub, Linear, and MCP servers so your Primary Bot and groups act across your stack.')}
+                {t('Sync Slack (@hanzo), GitHub, Linear, and MCP servers so your primary bot and groups act across your stack.')}
               </Text>
             ) : (
               <>
                 <DialogTitle>
                   <Text fontSize={21} lineHeight={27} fontWeight="600" color={INK}>
-                    {t('Connectors & Channels')}
+                    {t('Connectors & channels')}
                   </Text>
                 </DialogTitle>
                 <Text fontSize={13} lineHeight={18} color={DIM}>
@@ -437,17 +453,19 @@ export function ConnectorsCatalog({
             )}
           </YStack>
 
-          <XStack items="center" gap={8}>
+          <XStack items="center" gap={8} flexWrap="wrap" $max-sm={{ width: '100%' }}>
             <XStack
               height={34}
               width={220}
+              $max-sm={{ flex: 1, width: 'auto', minW: 140, minH: 44 }}
               px={11}
               gap={7}
               items="center"
               rounded={999}
               bg={RAISED}
               borderWidth={1}
-              borderColor={LINE}
+              borderColor="var(--border-strong)"
+              focusWithinStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
             >
               <Search size={14} color={DIM} aria-hidden />
               <Input
@@ -470,8 +488,10 @@ export function ConnectorsCatalog({
                   onClick={() => setQuery('')}
                   bg="transparent"
                   borderWidth={0}
-                  p={0}
+                  p={4}
+                  rounded={999}
                   cursor="pointer"
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                 >
                   <X size={13} color={DIM} aria-hidden />
                 </XStack>
@@ -482,6 +502,9 @@ export function ConnectorsCatalog({
               {...ROUND}
               width={34}
               height={34}
+              borderColor="var(--border-strong)"
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              $max-sm={{ width: 44, height: 44 }}
               aria-label={t('Refresh connectors')}
               onClick={() => setTurn((n) => n + 1)}
             >
@@ -493,13 +516,16 @@ export function ConnectorsCatalog({
               render="button"
               {...{ type: 'button' }}
               height={34}
+              $max-sm={{ minH: 44 }}
               px={14}
               bg={INK}
               borderColor={INK}
+              hoverStyle={{ opacity: 0.9 }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
               onClick={() =>
                 setConfiguring({
                   id: 'openai',
-                  name: t('API Key Credential'),
+                  name: t('API key credential'),
                   description: t('Store a verified provider API token in KMS'),
                   section: 'productivity',
                   filter: 'productivity',
@@ -513,7 +539,16 @@ export function ConnectorsCatalog({
             </XStack>
 
             {onClose ? (
-              <XStack {...ROUND} width={34} height={34} aria-label={t('Close connectors')} onClick={onClose}>
+              <XStack
+                {...ROUND}
+                width={34}
+                height={34}
+                borderColor="var(--border-strong)"
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                $max-sm={{ width: 44, height: 44 }}
+                aria-label={t('Close connectors')}
+                onClick={onClose}
+              >
                 <X size={15} color={INK} aria-hidden />
               </XStack>
             ) : null}
@@ -530,14 +565,17 @@ export function ConnectorsCatalog({
                 {...{ type: 'button', 'aria-pressed': active }}
                 onClick={() => setFilter(f.id)}
                 height={30}
+                $max-sm={{ minH: 40 }}
                 px={13}
                 rounded={999}
                 items="center"
                 bg={active ? PICKED : 'transparent'}
                 borderWidth={1}
-                borderColor={active ? LINE : 'transparent'}
+                borderColor={active ? 'var(--border-strong)' : 'transparent'}
                 cursor="pointer"
-                hoverStyle={{ bg: PICKED }}
+                transition="quickest"
+                hoverStyle={{ bg: PICKED, borderColor: 'var(--border-strong)' }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
               >
                 <Text fontSize={13} lineHeight={18} fontWeight={active ? '500' : '400'} color={active ? INK : DIM}>
                   {t(f.label)}
@@ -549,12 +587,20 @@ export function ConnectorsCatalog({
       </YStack>
 
       {configuring ? (
-        <YStack px={embedded ? 0 : 28} py={14} gap={10} bg={RAISED} borderBottomWidth={1} borderColor={LINE}>
+        <YStack
+          px={embedded ? 0 : 28}
+          $max-sm={{ px: embedded ? 0 : 14 }}
+          py={14}
+          gap={10}
+          bg={RAISED}
+          borderBottomWidth={1}
+          borderColor={LINE}
+        >
           <XStack items="center" justify="space-between" gap={10}>
-            <XStack items="center" gap={10}>
+            <XStack items="center" gap={10} flex={1} minW={0}>
               <Mark item={configuring} />
-              <YStack>
-                <Text fontSize={14} lineHeight={19} fontWeight="600" color={INK}>
+              <YStack flex={1} minW={0}>
+                <Text {...CLIP} fontSize={14} lineHeight={19} fontWeight="600" color={INK}>
                   {t('Connect {name}', { name: configuring.name })}
                 </Text>
                 <Text fontSize={12} lineHeight={17} color={DIM}>
@@ -564,26 +610,41 @@ export function ConnectorsCatalog({
                 </Text>
               </YStack>
             </XStack>
-            <XStack {...ROUND} width={28} height={28} aria-label={t('Cancel')} onClick={() => setConfiguring(null)}>
+            <XStack
+              {...ROUND}
+              width={28}
+              height={28}
+              borderColor="var(--border-strong)"
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              $max-sm={{ width: 44, height: 44 }}
+              aria-label={t('Cancel')}
+              onClick={() => setConfiguring(null)}
+            >
               <X size={14} color={DIM} aria-hidden />
             </XStack>
           </XStack>
-          <XStack gap={8} items="center">
+          <XStack gap={8} items="center" flexWrap="wrap">
             <Input
               unstyled
               autoFocus
               type="password"
               value={secret}
               onChange={(e) => setSecret(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && secret.trim()) void saveCredential()
+              }}
               placeholder={`${configuring.name} token`}
               aria-label={t('{name} credential', { name: configuring.name })}
               flex={1}
+              minW={180}
               height={36}
+              $max-sm={{ minH: 44 }}
               px={12}
               rounded={9}
               bg={GROUND}
               borderWidth={1}
-              borderColor={LINE}
+              borderColor="var(--border-strong)"
+              focusStyle={{ borderColor: 'var(--ring)' }}
               color={INK}
               fontSize={13}
               placeholderTextColor="$placeholderColor"
@@ -593,14 +654,16 @@ export function ConnectorsCatalog({
               render="button"
               {...{ type: 'button' }}
               height={36}
+              $max-sm={{ minH: 44 }}
               px={16}
               bg={INK}
               borderColor={INK}
               opacity={secret.trim() ? 1 : 0.45}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
               onClick={() => void saveCredential()}
             >
               <Text {...WORD} fontSize={13} color="var(--background)">
-                {t('Verify & Save')}
+                {t('Verify & save')}
               </Text>
             </XStack>
           </XStack>
@@ -608,17 +671,47 @@ export function ConnectorsCatalog({
       ) : null}
 
       {statusNote ? (
-        <XStack px={embedded ? 0 : 28} py={9} bg={RAISED} borderBottomWidth={1} borderColor={LINE} items="center" justify="space-between" gap={8}>
-          <Text fontSize={12} lineHeight={17} color={INK}>
+        <XStack
+          px={embedded ? 0 : 28}
+          $max-sm={{ px: embedded ? 0 : 14 }}
+          py={9}
+          bg={RAISED}
+          borderBottomWidth={1}
+          borderColor={LINE}
+          items="center"
+          justify="space-between"
+          gap={8}
+        >
+          <Text fontSize={12} lineHeight={17} color={INK} flex={1} minW={0}>
             {statusNote}
           </Text>
-          <XStack render="button" {...{ type: 'button' }} onClick={() => setStatusNote(null)} bg="transparent" borderWidth={0} cursor="pointer">
+          <XStack
+            render="button"
+            {...{ type: 'button' }}
+            aria-label={t('Dismiss')}
+            onClick={() => setStatusNote(null)}
+            bg="transparent"
+            borderWidth={0}
+            p={4}
+            rounded={999}
+            cursor="pointer"
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+          >
             <X size={13} color={DIM} aria-hidden />
           </XStack>
         </XStack>
       ) : null}
 
-      <YStack flex={1} minH={0} overflowY={embedded ? undefined : 'auto'} px={embedded ? 0 : 28} py={20} gap={24}>
+      <YStack
+        flex={1}
+        minH={0}
+        overflowY={embedded ? undefined : 'auto'}
+        overflowX="hidden"
+        px={embedded ? 0 : 28}
+        $max-sm={{ px: embedded ? 0 : 14, py: 14 }}
+        py={20}
+        gap={24}
+      >
         {SECTIONS.map((sec) => {
           const items = filtered.filter((i) => i.section === sec.id)
           if (!items.length) return null
@@ -644,16 +737,19 @@ export function ConnectorsCatalog({
                       data-connector={item.id}
                       width="calc(50% - 12px)"
                       $max-md={{ width: '100%' }}
+                      minW={0}
                       minH={60}
                       px={10}
                       py={8}
                       rounded={12}
                       items="center"
+                      flexWrap="wrap"
                       gap={12}
+                      transition="quickest"
                       hoverStyle={{ bg: RAISED }}
                     >
                       <Mark item={item} />
-                      <YStack flex={1} minW={0} gap={1}>
+                      <YStack flex={1} minW={120} gap={1}>
                         <Text {...CLIP} fontSize={14} lineHeight={19} fontWeight="500" color={INK}>
                           {item.name}
                         </Text>
@@ -666,73 +762,81 @@ export function ConnectorsCatalog({
                         </Text>
                       </YStack>
 
-                      {isSlack && connected ? (
+                      <XStack items="center" gap={6} flexWrap="wrap" shrink={0}>
+                        {isSlack && connected ? (
+                          <XStack
+                            render="button"
+                            {...{ type: 'button' }}
+                            disabled={syncingSlack}
+                            onClick={() => void handleSlackSync()}
+                            height={30}
+                            $max-sm={{ minH: 44 }}
+                            px={10}
+                            rounded={999}
+                            items="center"
+                            gap={5}
+                            bg={RAISED}
+                            borderWidth={1}
+                            borderColor="var(--border-strong)"
+                            cursor="pointer"
+                            opacity={syncingSlack ? 0.5 : 1}
+                            transition="quickest"
+                            hoverStyle={{ bg: PICKED }}
+                            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                          >
+                            <RefreshCw size={12} color={INK} aria-hidden />
+                            <Text fontSize={12} lineHeight={16} fontWeight="500" color={INK}>
+                              {syncingSlack ? t('Syncing…') : t('Sync channels')}
+                            </Text>
+                          </XStack>
+                        ) : null}
+
                         <XStack
                           render="button"
                           {...{ type: 'button' }}
-                          disabled={syncingSlack}
-                          onClick={() => void handleSlackSync()}
+                          aria-label={connected ? t('Disconnect {name}', { name: item.name }) : t('Connect {name}', { name: item.name })}
+                          disabled={busy}
+                          onClick={() => void connectItem(item)}
                           height={30}
-                          px={10}
+                          $max-sm={{ minH: 44 }}
+                          minW={30}
+                          px={connected || isSlack ? 11 : 10}
                           rounded={999}
                           items="center"
+                          justify="center"
                           gap={5}
-                          bg={RAISED}
+                          bg={connected ? PICKED : isSlack ? INK : RAISED}
                           borderWidth={1}
-                          borderColor={LINE}
+                          borderColor={connected ? 'var(--border-strong)' : isSlack ? INK : 'var(--border-strong)'}
                           cursor="pointer"
-                          opacity={syncingSlack ? 0.5 : 1}
-                          hoverStyle={{ bg: PICKED }}
+                          opacity={busy ? 0.5 : 1}
+                          transition="quickest"
+                          hoverStyle={{ bg: connected ? PICKED : isSlack ? INK : PICKED, opacity: isSlack && !connected ? 0.9 : 1 }}
+                          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                         >
-                          <RefreshCw size={12} color={INK} aria-hidden />
-                          <Text fontSize={12} lineHeight={16} fontWeight="500" color={INK}>
-                            {syncingSlack ? t('Syncing…') : t('Sync channels')}
-                          </Text>
+                          {connected ? (
+                            <>
+                              <Check size={13} color="var(--state-success)" aria-hidden />
+                              <Text fontSize={12} lineHeight={16} fontWeight="500" color={INK}>
+                                {t('Connected')}
+                              </Text>
+                            </>
+                          ) : isSlack ? (
+                            <>
+                              <ExternalLink size={12} color="var(--background)" aria-hidden />
+                              <Text fontSize={12} lineHeight={16} fontWeight="500" color="var(--background)">
+                                {t('Add to Slack')}
+                              </Text>
+                            </>
+                          ) : (
+                            <>
+                              <Plus size={14} color={INK} aria-hidden />
+                              <Text fontSize={12} lineHeight={16} fontWeight="500" color={INK}>
+                                {t('Connect')}
+                              </Text>
+                            </>
+                          )}
                         </XStack>
-                      ) : null}
-
-                      <XStack
-                        render="button"
-                        {...{ type: 'button' }}
-                        aria-label={connected ? t('Disconnect {name}', { name: item.name }) : t('Connect {name}', { name: item.name })}
-                        disabled={busy}
-                        onClick={() => void connectItem(item)}
-                        height={30}
-                        minW={30}
-                        px={connected || isSlack ? 11 : 8}
-                        rounded={999}
-                        items="center"
-                        justify="center"
-                        gap={5}
-                        bg={connected ? PICKED : isSlack ? INK : RAISED}
-                        borderWidth={1}
-                        borderColor={connected ? LINE : isSlack ? INK : LINE}
-                        cursor="pointer"
-                        opacity={busy ? 0.5 : 1}
-                        hoverStyle={{ bg: connected ? PICKED : isSlack ? INK : PICKED, opacity: isSlack && !connected ? 0.9 : 1 }}
-                      >
-                        {connected ? (
-                          <>
-                            <Check size={13} color={INK} aria-hidden />
-                            <Text fontSize={12} lineHeight={16} fontWeight="500" color={INK}>
-                              {t('Connected')}
-                            </Text>
-                          </>
-                        ) : isSlack ? (
-                          <>
-                            <ExternalLink size={12} color="var(--background)" aria-hidden />
-                            <Text fontSize={12} lineHeight={16} fontWeight="500" color="var(--background)">
-                              {t('Add to Slack')}
-                            </Text>
-                          </>
-                        ) : (
-                          <>
-                            <Plus size={14} color={INK} aria-hidden />
-                            <Text fontSize={12} lineHeight={16} fontWeight="500" color={INK}>
-                              {t('Connect')}
-                            </Text>
-                          </>
-                        )}
                       </XStack>
                     </XStack>
                   )
@@ -744,7 +848,7 @@ export function ConnectorsCatalog({
 
         {filtered.length === 0 ? (
           <YStack py={36} items="center" gap={8}>
-            <Text fontSize={14} lineHeight={20} color={DIM}>
+            <Text fontSize={14} lineHeight={20} color={DIM} text="center">
               {filter === 'personal' && !query
                 ? t('No connectors active yet. Switch to All to add @hanzo to Slack, connect GitHub, Linear, and more.')
                 : t('No connectors match “{query}”.', { query })}
@@ -770,13 +874,14 @@ export function ConnectorsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        width="94vw"
+        width="calc(100vw - 24px)"
         maxW={880}
+        $max-sm={{ width: 'calc(100vw - 24px)', maxW: 'calc(100vw - 24px)', rounded: 14 }}
         p={0}
         showCloseButton={false}
         bg={GROUND}
         borderWidth={1}
-        borderColor={LINE}
+        borderColor="var(--border-strong)"
         rounded={16}
         overflow="hidden"
       >

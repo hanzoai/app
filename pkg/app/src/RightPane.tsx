@@ -314,7 +314,7 @@ export function useSections({ at, said, held, deck, onCreate }: { at: string; sa
         id: 'outputs',
         title: t('Outputs'),
         action: (
-          <Box render="button" aria-label={t('Create a file or site')} onPress={onCreate} p="$1" rounded="$2" cursor="pointer" hoverStyle={{ bg: '$hover' }}>
+          <Box render={<button type="button" />} aria-label={t('Create a file or site')} onClick={onCreate} p="$1" rounded="$2" cursor="pointer" hoverStyle={{ bg: '$hover' }}>
             <Plus size={16} aria-hidden />
           </Box>
         ),
@@ -391,13 +391,15 @@ export function OutputsCard({
           </XStack>
           {s.lead ? (
             <XStack
-              render="button"
-              onPress={s.lead.run}
+              render={<button type="button" />}
+              onClick={s.lead.run}
               items="center"
               minH={28}
               px={6}
               mx={-6}
               rounded="$2"
+              borderWidth={0}
+              bg="transparent"
               cursor="pointer"
               hoverStyle={{ bg: '$hover' }}
             >
@@ -409,8 +411,8 @@ export function OutputsCard({
           {s.entries.map((e) => (
             <XStack
               key={e.id}
-              render="button"
-              onPress={
+              render={<button type="button" />}
+              onClick={
                 e.open
                   ? () => {
                       onOpen?.()

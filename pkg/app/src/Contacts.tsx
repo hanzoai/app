@@ -36,9 +36,10 @@ import { phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { useHost } from './host'
 import { Check, Plus, Search, UserPlus } from 'lucide-react'
-import { Box, Text, XStack, YStack } from '@hanzo/ui'
+import { Box, Button, Text, XStack, YStack } from '@hanzo/ui'
 import { useAi, useModels, usePeople, useThreads } from '@hanzo/ai/react'
 import { useIam, useOrganizations } from '@hanzo/iam/react'
+import { enter as enterSignIn, LOGIN } from './lib/destination'
 import { hasSession } from './lib/session'
 import { useHydrated } from './lib/hydrated'
 import { ENSO, served } from './lib/ai'
@@ -52,6 +53,7 @@ import { say } from './failure'
 import { openThread } from './open'
 import { spokenAt, start } from "./conversations"
 import type { Member } from "./roster"
+import { useDevMode } from "./lib/dev-mode"
 
 /** A preset, as `/v1/agent/chat/presets` publishes one. */
 interface Preset {
@@ -95,7 +97,7 @@ const TABS: { id: Kind | 'all'; label: string }[] = [
   { id: 'all', label: phrase('All') },
   { id: 'person', label: phrase('People') },
   { id: 'agent', label: phrase('Agents') },
-  { id: 'preset', label: phrase('Presets') },
+  { id: 'preset', label: phrase('Starter agents') },
 ]
 
 /** A–Z, or who you spoke to last. Two orders, and both are answerable. */
@@ -112,32 +114,55 @@ export function Contacts() {
   // and waits. Announcing "sign in" before hydration tells a signed-in reader
   // they are signed out for a frame.
   if (!hydrated) return <Alone>&nbsp;</Alone>
-  if (!signedIn) return <Alone>{t('Sign in to see who is in your organization.')}</Alone>
+  if (!signedIn) {
+    return (
+      <Alone
+        action={
+          <Button
+            size="sm"
+            variant="primary"
+            rounded="$3"
+            minH={36}
+            $max-sm={{ minH: 44 }}
+            mt="$2"
+            onClick={() => enterSignIn(LOGIN)}
+          >
+            {t('Sign in')}
+          </Button>
+        }
+      >
+        {t('Sign in to see who is in your organization.')}
+      </Alone>
+    )
+  }
   if (!currentOrgId) return <Alone>{t('This account is not in an organization yet.')}</Alone>
   return <Roster owner={currentOrgId} />
 }
 
 /** The app's one heading, for every state that has nothing to list. */
-function Alone({ children }: { children: React.ReactNode }) {
+function Alone({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
   const { t } = useI18n()
   return (
-    <YStack flex={1} items="center" justify="center" p="$6" gap="$3">
-      <Text render="h1" fontSize="$4" fontWeight="600" color="$ink">
+    <YStack flex={1} items="center" justify="center" px="$6" pt="$6" pb="$12" $max-sm={{ px: '$4', pb: '$8' }} gap="$1.5">
+      <Text render="h1" m={0} fontSize="$6" fontWeight="600" letterSpacing={-0.34} color="$ink" text="center">
         {t('Contacts')}
       </Text>
-      <Text fontSize="$3" color="$soft" maxW={420} text="center">
+      <Text fontSize="$3" color="$soft" maxW={460} lineHeight="$4" text="center">
         {children}
       </Text>
+      {action}
     </YStack>
   )
 }
 
 /** A read that answered no, said once, above whatever else is on screen. */
-function Note({ children }: { children: string }) {
+function Note({ children, error }: { children: string; error?: boolean }) {
   return (
-    <Text fontSize="$2" color="$soft" px="$3" py="$2">
-      {children}
-    </Text>
+    <YStack width="100%" maxW={960} mx="auto" px="$4" $max-sm={{ px: '$3' }} py="$2">
+      <Text role={error ? 'alert' : undefined} fontSize="$2" color={error ? 'var(--state-error)' : '$soft'}>
+        {children}
+      </Text>
+    </YStack>
   )
 }
 
@@ -149,6 +174,7 @@ function Note({ children }: { children: string }) {
  */
 function Roster({ owner }: { owner: string }) {
   const { t } = useI18n()
+  const [devMode] = useDevMode()
   const ai = useAi()
   const { router } = useHost()
   const { people, loading: reading, error: unread } = usePeople({ owner, service: false })
@@ -210,14 +236,12 @@ function Roster({ owner }: { owner: string }) {
         kind: 'agent',
         name: one.name,
         label: called(one.name),
-        note: one.description || one.model || '',
+        note: one.description || (devMode ? one.model : '') || '',
         avatar: one.avatar,
         emoji: one.emoji,
         at: spokenAt(threads, one.name),
       })
     }
-    // A preset the org has already installed IS the agent above it. Drawing
-    // both would offer to install what is already here.
     for (const one of presets ?? []) {
       if (agents.some((made) => made.name === one.id)) continue
       rows.push({
@@ -225,12 +249,12 @@ function Roster({ owner }: { owner: string }) {
         kind: 'preset',
         name: one.id,
         label: one.title || one.id,
-        note: t('Not installed'),
+        note: t('Starter agent'),
         at: 0,
       })
     }
     return rows
-  }, [people, agents, presets, threads, t])
+  }, [people, agents, presets, threads, devMode, t])
 
   const shown = useMemo(() => {
     const q = look.trim().toLowerCase()
@@ -296,139 +320,195 @@ function Roster({ owner }: { owner: string }) {
   }, [ai, busy, entries, picked, router])
 
   const waiting = (reading && people.length === 0) || (gathering && agents.length === 0)
+  const hasEmptyPrimary = !waiting && shown.length === 0 && !look.trim() && tab !== 'preset'
+  const headerPrimary = picked.length === 0 && !hasEmptyPrimary
 
   return (
-    <YStack flex={1} minH={0}>
-      <XStack
-        height={48}
-        shrink={0}
-        items="center"
-        gap="$2"
-        px="$3"
-        borderBottomWidth={1}
-        borderColor="$borderColor"
-      >
-        <Text render="h1" flex={1} fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1}>
-          {t('Contacts')}
-        </Text>
-        <Control onPress={() => setInviting(true)} icon={<UserPlus size={13} aria-hidden />}>
-          {t('Invite')}
-        </Control>
-        <Control onPress={() => setHiring(true)} icon={<Plus size={13} aria-hidden />}>
-          {t('New agent')}
-        </Control>
-      </XStack>
-
-      <XStack
-        shrink={0}
-        items="center"
-        gap="$2"
-        px="$3"
-        py="$2"
-        borderBottomWidth={1}
-        borderColor="$borderColor"
-        flexWrap="wrap"
-      >
+    <YStack flex={1} minH={0} minW={0} overflow="hidden">
+      <YStack shrink={0} borderBottomWidth={1} borderColor="$edge">
         <XStack
+          width="100%"
+          maxW={960}
+          mx="auto"
+          minH={56}
           items="center"
-          gap="$1.5"
-          flex={1}
-          minW={160}
-          px="$2"
-          borderWidth={1}
-          borderColor="$borderColor"
-          rounded="$3"
+          flexWrap="wrap"
+          gap="$3"
+          px="$4"
+          py="$2.5"
+          $max-sm={{ px: '$3' }}
         >
-          <Search size={13} aria-hidden />
           <Text
-            render={<input value={look} onChange={(e) => setLook(e.target.value)} placeholder={t('Search')} aria-label={t('Search contacts')} />}
+            render="h1"
+            m={0}
             flex={1}
-            minW={0}
-            bg="transparent"
-            borderWidth={0}
-            outlineStyle="none"
-            color="inherit"
-            fontSize="$2"
-            px={0}
-            py={6}
-          />
+            minW={120}
+            fontSize="$6"
+            fontWeight="600"
+            letterSpacing={-0.34}
+            color="$ink"
+            numberOfLines={1}
+          >
+            {t('Contacts')}
+          </Text>
+          <XStack items="center" gap="$2" flexWrap="wrap">
+            <Control onPress={() => setInviting(true)} icon={<UserPlus size={13} aria-hidden />}>
+              {t('Invite')}
+            </Control>
+            <Control onPress={() => setHiring(true)} icon={<Plus size={13} aria-hidden />} strong={headerPrimary}>
+              {t('New agent')}
+            </Control>
+          </XStack>
         </XStack>
-        {TABS.map((one) => (
-          <Pill key={one.id} on={tab === one.id} onPress={() => setTab(one.id)}>
-            {t(one.label)}
-          </Pill>
-        ))}
-        {/* WHICH KIND and IN WHAT ORDER are two questions, and the pills that
-            ask them are the same shape — so a rule stands between the groups.
-            Without it the row reads as six settings of one thing. */}
-        <Box width={1} height={18} bg="$borderColor" />
-        {/* TWO ORDERS, BOTH TRUE. A–Z is the name; Recent is the last
-            conversation that named them, which is the only activity the thread
-            store records about a contact. */}
-        <Pill on={order === 'name'} onPress={() => setOrder('name')}>
-          {t('A–Z')}
-        </Pill>
-        <Pill on={order === 'recent'} onPress={() => setOrder('recent')}>
-          {t('Recent')}
-        </Pill>
-      </XStack>
+      </YStack>
 
-      {unread ? <Note>{say(unread, t('your organization'), 'read', t)}</Note> : null}
-      {ungathered ? <Note>{say(ungathered, t("this org's agents"), 'read', t)}</Note> : null}
-      {unlisted ? <Note>{say(unlisted, t('the agent presets'), 'read', t)}</Note> : null}
-      {wrong ? <Note>{wrong}</Note> : null}
+      <YStack shrink={0} borderBottomWidth={1} borderColor="$edge">
+        <XStack
+          width="100%"
+          maxW={960}
+          mx="auto"
+          items="center"
+          gap="$3"
+          px="$4"
+          py="$2.5"
+          $max-sm={{ px: '$3', gap: '$2' }}
+          flexWrap="wrap"
+        >
+          <XStack
+            items="center"
+            gap="$2"
+            flex={1}
+            minW={180}
+            minH={36}
+            px="$2.5"
+            bg="$panel"
+            borderWidth={1}
+            borderColor="var(--border-strong)"
+            rounded="$3"
+            focusWithinStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+            $max-sm={{ minW: '100%', minH: 44 }}
+          >
+            <Search size={14} color="var(--muted-foreground)" aria-hidden />
+            <Text
+              render={<input value={look} onChange={(e) => setLook(e.target.value)} placeholder={t('Search')} aria-label={t('Search contacts')} />}
+              flex={1}
+              minW={0}
+              bg="transparent"
+              borderWidth={0}
+              outlineStyle="none"
+              color="$ink"
+              fontSize="$2"
+              px={0}
+              py={6}
+            />
+          </XStack>
+          <XStack items="center" gap="$3" flexWrap="wrap">
+            <XStack items="center" gap="$1.5" flexWrap="wrap">
+              {TABS.map((one) => (
+                <Pill key={one.id} on={tab === one.id} onPress={() => setTab(one.id)}>
+                  {t(one.label)}
+                </Pill>
+              ))}
+            </XStack>
+            {/* WHICH KIND and IN WHAT ORDER are two questions, and the pills that
+                ask them are the same shape — so a rule stands between the groups.
+                Without it the row reads as six settings of one thing. */}
+            <Box display="none" $sm={{ display: 'flex' }} width={1} height={18} bg="$edge" />
+            {/* TWO ORDERS, BOTH TRUE. A–Z is the name; Recent is the last
+                conversation that named them, which is the only activity the thread
+                store records about a contact. */}
+            <XStack items="center" gap="$1.5">
+              <Pill on={order === 'name'} onPress={() => setOrder('name')}>
+                {t('A–Z')}
+              </Pill>
+              <Pill on={order === 'recent'} onPress={() => setOrder('recent')}>
+                {t('Recent')}
+              </Pill>
+            </XStack>
+          </XStack>
+        </XStack>
+      </YStack>
+
+      {unread ? <Note error>{say(unread, t('your organization'), 'read', t)}</Note> : null}
+      {ungathered ? <Note error>{say(ungathered, t("this org's agents"), 'read', t)}</Note> : null}
+      {unlisted ? <Note error>{say(unlisted, t('starter agents'), 'read', t)}</Note> : null}
+      {wrong ? <Note error>{wrong}</Note> : null}
 
       <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden">
         {waiting && shown.length === 0 ? (
-          <Note>{t('Reading your directory.')}</Note>
+          <YStack flex={1} items="center" justify="center" pt="$6" pb="$12" px="$4">
+            <Text fontSize="$2" color="$soft">
+              {t('Loading contacts…')}
+            </Text>
+          </YStack>
         ) : shown.length === 0 ? (
-          <Note>
-            {look.trim()
-              ? t('Nobody here matches “{query}”.', { query: look.trim() })
-              : tab === 'agent'
-                ? t('No agents yet. New agent writes one.')
-                : tab === 'preset'
-                  ? t('Every preset this deployment publishes is installed.')
-                  : t('Nobody else in this organization yet. Invite sends the link.')}
-          </Note>
+          <YStack flex={1} items="center" justify="center" pt="$6" pb="$12" $max-sm={{ pb: '$8' }} px="$4" gap="$4">
+            <Text fontSize="$3" color="$soft" text="center" maxW={420} lineHeight="$4">
+              {look.trim()
+                ? t('Nobody here matches “{query}”.', { query: look.trim() })
+                : tab === 'agent'
+                  ? t('No agents yet. Create one to start working together.')
+                  : tab === 'preset'
+                    ? t('Every starter agent is already installed.')
+                    : t('Just you so far. Invite a teammate or add an agent.')}
+            </Text>
+            {look.trim() ? (
+              <Control onPress={() => setLook('')}>{t('Clear search')}</Control>
+            ) : tab === 'agent' ? (
+              <Control onPress={() => setHiring(true)} strong>
+                {t('New agent')}
+              </Control>
+            ) : tab !== 'preset' ? (
+              <Control onPress={() => setInviting(true)} strong>
+                {t('Invite')}
+              </Control>
+            ) : null}
+          </YStack>
         ) : (
-          shown.map((one) => (
-            <Row
-              key={one.key}
-              one={one}
-              on={picked.includes(one.key)}
-              busy={busy === one.key}
-              onPress={() =>
-                one.kind === 'preset'
-                  ? void install(one)
-                  : setPicked((was) =>
-                      was.includes(one.key)
-                        ? was.filter((k) => k !== one.key)
-                        : [...was, one.key],
-                    )
-              }
-            />
-          ))
+          <YStack width="100%" maxW={960} mx="auto">
+            {shown.map((one) => (
+              <Row
+                key={one.key}
+                one={one}
+                on={picked.includes(one.key)}
+                busy={busy === one.key}
+                onPress={() =>
+                  one.kind === 'preset'
+                    ? void install(one)
+                    : setPicked((was) =>
+                        was.includes(one.key)
+                          ? was.filter((k) => k !== one.key)
+                          : [...was, one.key],
+                      )
+                }
+              />
+            ))}
+          </YStack>
         )}
       </YStack>
 
       {picked.length > 0 ? (
-        <XStack
-          shrink={0}
-          items="center"
-          gap="$2"
-          p="$3"
-          borderTopWidth={1}
-          borderColor="$borderColor"
-        >
-          <Text flex={1} fontSize="$2" color="$soft" numberOfLines={1}>
-            {picked.length === 1 ? t('1 selected') : t('{n} selected', { n: picked.length })}
-          </Text>
-          <Control onPress={() => setPicked([])}>{t('Clear')}</Control>
-          <Control onPress={() => void enter()} strong>
-            {t(busy === 'conversation' ? 'Opening…' : 'Start conversation')}
-          </Control>
-        </XStack>
+        <YStack shrink={0} bg="$panel" borderTopWidth={1} borderColor="$edge">
+          <XStack
+            width="100%"
+            maxW={960}
+            mx="auto"
+            items="center"
+            flexWrap="wrap"
+            gap="$2"
+            px="$4"
+            py="$3"
+            $max-sm={{ px: '$3' }}
+          >
+            <Text flex={1} minW={100} fontSize="$2" color="$soft" numberOfLines={1}>
+              {picked.length === 1 ? t('1 selected') : t('{n} selected', { n: picked.length })}
+            </Text>
+            <Control onPress={() => setPicked([])}>{t('Clear')}</Control>
+            <Control onPress={() => void enter()} strong>
+              {t(busy === 'conversation' ? 'Opening…' : 'Start conversation')}
+            </Control>
+          </XStack>
+        </YStack>
       ) : null}
 
       {inviting ? <Invite owner={owner} onClose={() => setInviting(false)} /> : null}
@@ -452,7 +532,7 @@ function Row({
   const { t } = useI18n()
   return (
     <Box
-      render="button"
+      render={<button type="button" />}
       onClick={onPress}
       aria-label={one.label}
       aria-pressed={one.kind === 'preset' ? undefined : on}
@@ -461,28 +541,32 @@ function Row({
       cursor="pointer"
       borderWidth={0}
       borderBottomWidth={1}
-      borderBottomColor="var(--borderColor, var(--white-08))"
-      bg={on ? 'var(--raised, var(--white-06))' : 'transparent'}
+      borderBottomColor="$edge"
+      bg={on ? '$raised' : 'transparent'}
+      transition="quickest"
+      hoverStyle={{ bg: on ? '$raised' : '$hover' }}
+      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)', outlineOffset: -2 }}
+      $max-sm={{ minH: 56 }}
     >
-      <XStack gap="$3" items="center" p="$3">
-        <Face src={one.avatar} emoji={one.emoji} name={one.name} size={32} />
+      <XStack gap="$3" items="center" px="$4" py="$3" $max-sm={{ px: '$3' }}>
+        <Face src={one.avatar} emoji={one.emoji} name={one.name} size={34} />
         {/* A `<button>` centres its text; a row reads from its start. */}
-        <YStack flex={1} minW={0}>
-          <Text fontSize="$2" color="$ink" numberOfLines={1} text="start">
+        <YStack flex={1} minW={0} gap="$0.5">
+          <Text fontSize="$3" fontWeight="500" color="$ink" numberOfLines={1} text="start">
             {one.label}
           </Text>
           {one.note ? (
-            <Text fontSize="$1" color="$soft" numberOfLines={1} text="start">
+            <Text fontSize="$2" color="$soft" numberOfLines={1} text="start">
               {one.note}
             </Text>
           ) : null}
         </YStack>
         {one.kind === 'preset' ? (
-          <Text fontSize="$2" color="$soft">
+          <Text fontSize="$2" fontWeight="500" color="$aside" shrink={0}>
             {t(busy ? 'Installing…' : 'Install')}
           </Text>
         ) : on ? (
-          <Check size={14} aria-hidden />
+          <Check size={15} color="var(--foreground)" aria-hidden />
         ) : null}
       </XStack>
     </Box>
@@ -503,20 +587,32 @@ function Control({
 }) {
   return (
     <Box
-      render="button"
+      render={<button type="button" />}
       onClick={onPress}
-      px="$3"
-      py="$2"
+      display="inline-flex"
+      items="center"
+      justify="center"
+      minH={36}
+      px="$3.5"
+      py="$1.5"
       rounded="$3"
-      borderWidth={strong ? 0 : 1}
-      borderColor="$borderColor"
+      borderWidth={1}
+      borderColor={strong ? '$ink' : 'var(--border-strong)'}
       bg={strong ? '$ink' : 'transparent'}
-      hoverStyle={{ bg: strong ? '$ink' : '$hover' }}
+      $platform-web={{ color: strong ? 'var(--background)' : 'var(--foreground)' }}
+      transition="quickest"
+      hoverStyle={{ bg: strong ? '$ink' : '$hover', opacity: strong ? 0.9 : 1 }}
+      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+      $max-sm={{ minH: 44 }}
       cursor="pointer"
     >
       <XStack items="center" gap="$1.5">
-        {icon}
-        <Text fontSize="$2" color={strong ? '$background' : '$ink'} fontWeight={strong ? '600' : undefined} numberOfLines={1}>
+        {icon ? (
+          <Text display="inline-flex" items="center" color={strong ? '$background' : '$ink'}>
+            {icon}
+          </Text>
+        ) : null}
+        <Text fontSize="$2" color={strong ? '$background' : '$ink'} fontWeight={strong ? '600' : '500'} numberOfLines={1}>
           {children}
         </Text>
       </XStack>
@@ -536,18 +632,26 @@ function Pill({
 }) {
   return (
     <Box
-      render="button"
+      render={<button type="button" />}
       onClick={onPress}
       aria-pressed={on}
+      display="inline-flex"
+      items="center"
+      justify="center"
+      minH={32}
       px="$2.5"
-      py="$1.5"
+      py="$1"
       rounded="$3"
       borderWidth={1}
-      borderColor={on ? '$ink' : '$borderColor'}
-      hoverStyle={{ bg: '$hover' }}
+      borderColor={on ? '$ink' : 'var(--border-strong)'}
+      bg={on ? '$raised' : 'transparent'}
+      transition="quickest"
+      hoverStyle={{ bg: on ? '$raised' : '$hover' }}
+      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+      $max-sm={{ minH: 44 }}
       cursor="pointer"
     >
-      <Text fontSize="$2" color={on ? '$ink' : '$soft'} numberOfLines={1}>
+      <Text fontSize="$2" fontWeight={on ? '500' : '400'} color={on ? '$ink' : '$soft'} numberOfLines={1}>
         {children}
       </Text>
     </Box>
@@ -603,41 +707,50 @@ function Invite({ owner, onClose }: { owner: string; onClose: () => void }) {
       display="flex"
       items="center"
       justify="center"
-      p="$4"
-      bg="$sunken"
+      p="$3"
+      bg="var(--surface-scrim)"
       onClick={(e: React.MouseEvent) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
       <YStack
         role="dialog"
+        aria-modal
         aria-label={t('Invite')}
-        width="100%"
+        width="calc(100vw - 24px)"
         maxW={440}
-        gap="$3"
+        gap="$4"
         p="$5"
+        $max-sm={{ p: '$4' }}
         rounded="$6"
         borderWidth={1}
-        borderColor="$borderColor"
+        borderColor="var(--border-strong)"
         bg="$background"
+        boxShadow="var(--shadow-lg)"
       >
-        <Text fontSize="$5" fontWeight="600" color="$ink">
-          {t('Invite')}
-        </Text>
-        {link ? (
-          <>
-            <Text fontSize="$2" color="$soft">
-              {t('This link joins {owner}. It redeems once.', { owner })}
+        <YStack gap="$1.5">
+          <Text fontSize="$6" fontWeight="600" letterSpacing={-0.34} color="$ink">
+            {t('Invite')}
+          </Text>
+          {link ? (
+            <Text fontSize="$2" color="$soft" lineHeight="$3">
+              {t('Share this one-time link to invite someone to {owner}.', { owner })}
             </Text>
-            <XStack items="center" gap="$2">
-              <Text data-i18n-ltr flex={1} fontSize="$2" color="$ink" numberOfLines={1}>
-                {link}
-              </Text>
-              <Take text={link} says={t('the invitation link')} label={t('Copy')} />
-            </XStack>
-          </>
+          ) : (
+            <Text fontSize="$2" color="$soft" lineHeight="$3">
+              {t('Create a one-time invitation link for {owner}.', { owner })}
+            </Text>
+          )}
+        </YStack>
+        {link ? (
+          <XStack items="center" gap="$2" minW={0} p="$2.5" rounded="$3" bg="$panel" borderWidth={1} borderColor="$edge">
+            <Text data-i18n-ltr flex={1} minW={0} fontFamily="$mono" fontSize="$2" color="$ink" numberOfLines={1}>
+              {link}
+            </Text>
+            <Take text={link} says={t('the invitation link')} label={t('Copy')} />
+          </XStack>
         ) : (
-          <>
+          <YStack gap="$2">
             <Text
               render={
                 <input
@@ -652,28 +765,31 @@ function Invite({ owner, onClose }: { owner: string; onClose: () => void }) {
                 />
               }
               width="100%"
-              bg="transparent"
+              minH={38}
+              bg="$panel"
               borderWidth={1}
-              borderColor="var(--border)"
-              rounded="var(--radius-md)"
-              px={10}
+              borderColor="var(--border-strong)"
+              rounded="$3"
+              px={12}
               py={8}
+              $max-sm={{ minH: 44 }}
               outlineStyle="none"
-              color="inherit"
+              focusStyle={{ borderColor: 'var(--ring)' }}
+              color="$ink"
               fontSize="$2"
             />
             {wrong ? (
-              <Text fontSize="$2" color="$soft">
+              <Text role="alert" fontSize="$2" color="var(--state-error)">
                 {wrong}
               </Text>
             ) : null}
-          </>
+          </YStack>
         )}
-        <XStack justify="flex-end" gap="$2">
+        <XStack justify="flex-end" gap="$2" pt="$1" flexWrap="wrap">
           <Control onPress={onClose}>{t(link ? 'Done' : 'Cancel')}</Control>
           {link ? null : (
             <Control onPress={() => void make()} strong>
-              {t(busy ? 'Making…' : 'Make a link')}
+              {t(busy ? 'Creating…' : 'Create invite link')}
             </Control>
           )}
         </XStack>

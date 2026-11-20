@@ -40,7 +40,7 @@ import {
   useChat,
   type ChatMessage,
 } from "@hanzo/ai/react";
-import { Chat as ChatSurface, EFFORTS, Failure, Parts, Tune, useFamilies, words, type ComposerProps, type Said } from "@hanzo/ui/chat";
+import { Chat as ChatSurface, ChatHandoffProvider, EFFORTS, Failure, Parts, Tune, useFamilies, words, type ComposerProps, type Said } from "@hanzo/ui/chat";
 import { carriedIn, carrying, compose, partsOf, said as told, weigh } from "./lib/attach";
 import { download, dropped, fileOf, pct, readable, refOf, retrieve, type Api, type FileRef, type WorkFile } from "./lib/files";
 import { conversation, drop, hold, landed, localOf, spend, take, usePane, useWorkFile, type Held, type Via } from "./pane";
@@ -48,13 +48,13 @@ import { Face, brief as castBrief, join, roleOf, castTurn, roster as rosterLine,
 import { cleanForSpeech, speakAgent } from "./speech";
 import { AgentMaker, HOUSE, useAgentShelf, useCrew } from "./crew";
 import { called } from "./team";
-import { Anchor, Box, Button, Dialog, DialogContent, DialogTitle, Input, Text, Tooltip, TooltipContent, TooltipTrigger, View, VisuallyHidden, XStack, YStack, toast } from "@hanzo/ui";
+import { Box, Button, Dialog, DialogContent, DialogTitle, Input, Text, Tooltip, TooltipContent, TooltipTrigger, View, VisuallyHidden, XStack, YStack, toast } from "@hanzo/ui";
 import { useMedia } from "@hanzo/gui";
 import { given, tidy } from "./lib/title";
 import { useIam, useIamToken } from "@hanzo/iam/react";
 import { bearer, hasSession, named, org } from "./lib/session";
 import { api } from "./lib/api";
-import { app, dev, follow, go } from "./lib/host";
+import { app, dev, follow, go, visit } from "./lib/host";
 import { useHost } from "./host";
 import { chats, house, paidPlan, paused, setCreditsAfterAllowance, spends, uncapped, useLimits } from "./lib/limits";
 import { LimitedBanner } from "@hanzo/ui/product/LimitedBanner";
@@ -65,7 +65,12 @@ import { useHydrated } from "./lib/hydrated";
 import { base, served } from "./lib/ai";
 import { onServed, type Served as Heard } from "./lib/served";
 import { refused as worded, speech, useDictation, useTalk, useVoice } from "@hanzo/voice";
-import { Check, ChevronDown, CircleAlert, FileText, Ghost, Image as ImageMark, Library as LibraryMark, Paperclip, Sparkles, X } from "lucide-react";
+import { CalendarClock, Check, Code2, Copy, Download, FileText, Ghost, GitBranch, Image as ImageMark, KanbanSquare, Library as LibraryMark, PanelRight, Paperclip, Pencil, RefreshCw, ShieldCheck, Sparkles, Upload, X } from "lucide-react";
+import { branched } from "./lib/branch";
+import { openModelPicker } from "./lib/model-picker";
+import { open as openBoardCard, home as boardHome } from "./lib/todo";
+import { useDevMode } from "./lib/dev-mode";
+import { InfoHint } from "./lib/info-hint";
 import { ENSO } from "./lib/ai";
 import { openThread, empty as emptyOpen, useOpen } from "./open";
 import { Side } from "./Shell";
@@ -85,7 +90,6 @@ import {
   Panel,
   PanelToggle,
   renders,
-  Reply,
   Served,
   Summary,
   useDeck,
@@ -111,8 +115,8 @@ import {
   type Listen,
 } from "@hanzo/build";
 import type { ModelCatalogEntry as Model } from "@hanzo/ui/models/catalog";
-import { checkoutUrl, payUrl, topUp } from './lib/pay';
-import { Upgrade, useFree, type Ask } from './Upgrade';
+import { payUrl, topUp } from './lib/pay';
+import { requestUpgrade, Upgrade, useFree, type Ask } from './Upgrade';
 import { enter, LOGIN } from './lib/destination';
 import { first } from './lib/first';
 import { BAD } from "./lib/mix";
@@ -389,7 +393,19 @@ function Why({ text }: { text: string }) {
   if (!text) return null;
   return (
     <YStack gap="$1">
-      <XStack render="button" aria-expanded={open} onPress={() => setOpen((v) => !v)} cursor="pointer">
+      <XStack
+        render="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        cursor="pointer"
+        self="flex-start"
+        px="$1.5"
+        py="$0.5"
+        rounded="$2"
+        hoverStyle={{ bg: "$hover" }}
+        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+        $max-sm={{ minH: 44, items: "center" }}
+      >
         <Text fontSize="$2" color="$soft">
           {t(open ? "Hide details" : "Details")}
         </Text>
@@ -400,6 +416,284 @@ function Why({ text }: { text: string }) {
         </Text>
       ) : null}
     </YStack>
+  );
+}
+
+/** Subtle hover/focus-reveal actions for a user message: copy with check feedback, and inline edit. */
+function UserTurnActions({
+  text,
+  onEdit,
+  canEdit,
+}: {
+  text: string;
+  onEdit?: () => void;
+  canEdit: boolean;
+}) {
+  const { t } = useI18n();
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const id = window.setTimeout(() => setCopied(false), 1600);
+    return () => window.clearTimeout(id);
+  }, [copied]);
+
+  if (!text.trim()) return null;
+
+  return (
+    <XStack
+      data-slot="user-turn-actions"
+      items="center"
+      justify="flex-end"
+      gap="$1"
+      pt="$1"
+      opacity={copied ? 1 : 0}
+      $group-hover={{ opacity: 1 }}
+      focusWithinStyle={{ opacity: 1 }}
+      $touchable={{ opacity: 1 }}
+      $max-sm={{ opacity: 1 }}
+      transition="quickest"
+    >
+      <XStack
+        render="button"
+        {...({ type: "button", title: copied ? t("Copied") : t("Copy") } as object)}
+        data-slot="user-turn-copy"
+        aria-label={copied ? t("Copied") : t("Copy message")}
+        onClick={() => {
+          void navigator.clipboard?.writeText(text).then(
+            () => setCopied(true),
+            () => toast.error(t("Could not copy")),
+          );
+        }}
+        items="center"
+        justify="center"
+        gap="$1"
+        height={26}
+        minW={26}
+        px="$1.5"
+        rounded="$2"
+        cursor="pointer"
+        bg={copied ? "$raised" : "transparent"}
+        borderWidth={1}
+        borderColor={copied ? "var(--border-strong)" : "transparent"}
+        hoverStyle={{ bg: "$raised", borderColor: "var(--border-strong)" }}
+        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+        $max-sm={{ minW: 44, minH: 44 }}
+      >
+        {copied ? <Check size={13} color="var(--state-success)" aria-hidden /> : <Copy size={13} color="var(--muted-foreground)" aria-hidden />}
+        {copied ? (
+          <Text fontSize="$1" color="$ink">
+            {t("Copied")}
+          </Text>
+        ) : null}
+      </XStack>
+      {canEdit && onEdit ? (
+        <XStack
+          render="button"
+          {...({ type: "button", title: t("Edit") } as object)}
+          data-slot="user-turn-edit"
+          aria-label={t("Edit message")}
+          onClick={onEdit}
+          items="center"
+          justify="center"
+          width={26}
+          height={26}
+          rounded="$2"
+          cursor="pointer"
+          bg="transparent"
+          borderWidth={1}
+          borderColor="transparent"
+          hoverStyle={{ bg: "$raised", borderColor: "var(--border-strong)" }}
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+          $max-sm={{ minW: 44, minH: 44 }}
+        >
+          <Pencil size={13} color="var(--muted-foreground)" aria-hidden />
+        </XStack>
+      ) : null}
+    </XStack>
+  );
+}
+
+function plainTurnText(m: ChatMessage): string {
+  if (typeof m.content === "string") {
+    return m.role === "user" ? told(m.content).text : m.content;
+  }
+  if (Array.isArray(m.content)) {
+    return words(m.content as Said);
+  }
+  return "";
+}
+
+/** Quiet monochrome hover/focus-reveal actions under every completed assistant response. */
+function AssistantTurnActions({
+  text,
+  latest = false,
+  canRegenerate,
+  onRegenerate,
+  onBranch,
+  onOpen,
+  onOpenInDev,
+  onCreateBoardCard,
+  onSchedule,
+}: {
+  text: string;
+  latest?: boolean;
+  canRegenerate: boolean;
+  onRegenerate?: () => void;
+  onBranch?: () => void;
+  onOpen?: () => void;
+  onOpenInDev?: () => void;
+  onCreateBoardCard?: () => void;
+  onSchedule?: () => void;
+}) {
+  const { t } = useI18n();
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const id = window.setTimeout(() => setCopied(false), 1600);
+    return () => window.clearTimeout(id);
+  }, [copied]);
+
+  if (!text.trim()) return null;
+
+  const actionButton = {
+    display: "flex" as const,
+    items: "center" as const,
+    justify: "center" as const,
+    height: 26,
+    minW: 26,
+    px: "$1.5" as const,
+    rounded: "$2" as const,
+    cursor: "pointer" as const,
+    bg: "transparent" as const,
+    borderWidth: 1,
+    borderColor: "transparent" as const,
+    transition: "quickest" as const,
+    hoverStyle: { bg: "$hover" as const, borderColor: "var(--border-strong)" as const },
+    focusVisibleStyle: { outlineWidth: 2, outlineStyle: "solid" as const, outlineColor: "var(--ring)" as const },
+    $touchable: { minW: 44, minH: 44 },
+    "$max-sm": { minW: 44, minH: 44 },
+  };
+
+  return (
+    <XStack
+      data-slot="assistant-turn-actions"
+      items="center"
+      justify="flex-start"
+      gap="$1"
+      pt="$1"
+      flexWrap="wrap"
+      opacity={copied ? 1 : latest ? 0.65 : 0}
+      hoverStyle={{ opacity: 1 }}
+      $group-hover={{ opacity: 1 }}
+      focusWithinStyle={{ opacity: 1 }}
+      $touchable={{ opacity: 0.65 }}
+      $max-sm={{ opacity: 0.65 }}
+      transition="quickest"
+    >
+      <Box
+        render={<button type="button" title={copied ? t("Copied") : t("Copy")} />}
+        data-slot="assistant-turn-copy"
+        aria-label={copied ? t("Copied") : t("Copy response")}
+        onClick={() => {
+          void navigator.clipboard?.writeText(text).then(
+            () => {
+              setCopied(true);
+              toast.success(t("Copied to clipboard"));
+            },
+            () => toast.error(t("Could not copy")),
+          );
+        }}
+        {...actionButton}
+        bg={copied ? "$hover" : "transparent"}
+        borderColor={copied ? "var(--border-strong)" : "transparent"}
+      >
+        <XStack items="center" gap="$1">
+          {copied ? (
+            <Check size={13} color="var(--state-success)" aria-hidden />
+          ) : (
+            <Copy size={13} color="var(--muted-foreground)" aria-hidden />
+          )}
+          {copied ? (
+            <Text fontSize="$1" color="$ink">
+              {t("Copied")}
+            </Text>
+          ) : null}
+        </XStack>
+      </Box>
+      {canRegenerate && onRegenerate ? (
+        <Box
+          render={<button type="button" title={t("Regenerate")} />}
+          data-slot="assistant-turn-regenerate"
+          aria-label={t("Regenerate response")}
+          onClick={onRegenerate}
+          {...actionButton}
+        >
+          <RefreshCw size={13} color="var(--muted-foreground)" aria-hidden />
+        </Box>
+      ) : null}
+      {onBranch ? (
+        <Box
+          render={<button type="button" title={t("Branch")} />}
+          data-slot="assistant-turn-branch"
+          aria-label={t("Branch into a new chat")}
+          onClick={onBranch}
+          {...actionButton}
+        >
+          <GitBranch size={13} color="var(--muted-foreground)" aria-hidden />
+        </Box>
+      ) : null}
+      {onOpenInDev ? (
+        <Box
+          render={<button type="button" title={t("Open in Dev")} />}
+          data-slot="assistant-turn-dev"
+          aria-label={t("Open in Dev")}
+          onClick={onOpenInDev}
+          {...actionButton}
+        >
+          <Code2 size={13} color="var(--muted-foreground)" aria-hidden />
+        </Box>
+      ) : null}
+      {onCreateBoardCard ? (
+        <Box
+          render={<button type="button" title={t("Create Board card")} />}
+          data-slot="assistant-turn-board"
+          aria-label={t("Create Board card")}
+          onClick={onCreateBoardCard}
+          {...actionButton}
+        >
+          <KanbanSquare size={13} color="var(--muted-foreground)" aria-hidden />
+        </Box>
+      ) : null}
+      {onSchedule ? (
+        <Box
+          render={<button type="button" title={t("Schedule task")} />}
+          data-slot="assistant-turn-schedule"
+          aria-label={t("Schedule task")}
+          onClick={onSchedule}
+          {...actionButton}
+        >
+          <CalendarClock size={13} color="var(--muted-foreground)" aria-hidden />
+        </Box>
+      ) : null}
+      {onOpen ? (
+        <Box
+          render={<button type="button" title={t("Open in side panel")} />}
+          data-slot="assistant-turn-open"
+          aria-label={t("Open in side panel")}
+          onClick={onOpen}
+          {...actionButton}
+        >
+          <XStack items="center" gap="$1">
+            <PanelRight size={13} color="var(--muted-foreground)" aria-hidden />
+            <Text fontSize="$1" color="$soft">
+              {t("Open")}
+            </Text>
+          </XStack>
+        </Box>
+      ) : null}
+    </XStack>
   );
 }
 
@@ -591,7 +885,17 @@ function Chip({
     <>
       {onSave ? <Keep name={name} onSave={onSave} /> : null}
       {onRemove ? (
-        <Box render="button" aria-label={t("Remove {name}", { name })} onClick={onRemove} p="$1" rounded="$10" shrink={0} hoverStyle={{ bg: "$hover" }}>
+        <Box
+          render="button"
+          aria-label={t("Remove {name}", { name })}
+          onClick={onRemove}
+          p="$1"
+          rounded="$10"
+          shrink={0}
+          cursor="pointer"
+          hoverStyle={{ bg: "$hover" }}
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+        >
           <X size={12} aria-hidden />
         </Box>
       ) : null}
@@ -608,8 +912,19 @@ function Chip({
 
   if (kind === "file")
     return (
-      <XStack {...marks} self="center" items="center" gap="$1" paddingInlineEnd={onRemove ? "$1" : "$2.5"} rounded="$10" borderWidth={1} borderColor="$borderColor" maxW={320}>
-        <XStack render="button" aria-label={t("Open {name}", { name })} onClick={onOpen} items="center" gap="$1.5" paddingInlineStart="$2.5" py="$1" minW={0} cursor="pointer">
+      <XStack {...marks} self="center" items="center" gap="$1" paddingInlineEnd={onRemove ? "$1" : "$2.5"} rounded="$10" borderWidth={1} borderColor="$edge" hoverStyle={{ borderColor: "var(--border-strong)" }} maxW={320}>
+        <XStack
+          render="button"
+          aria-label={t("Open {name}", { name })}
+          onClick={onOpen}
+          items="center"
+          gap="$1.5"
+          paddingInlineStart="$2.5"
+          py="$1"
+          minW={0}
+          cursor="pointer"
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+        >
           <Paperclip size={12} aria-hidden color="var(--muted-foreground)" />
           <Text fontSize="$2" color="$ink" numberOfLines={1}>
             {name}
@@ -627,8 +942,17 @@ function Chip({
   const drawn = kind === "image" && picture && broken !== picture;
   const Glyph = kind === "pdf" ? FileText : ImageMark;
   return (
-    <XStack {...marks} items="center" gap="$1" p="$1" paddingInlineEnd={onRemove ? "$1" : "$2.5"} rounded="$4" borderWidth={1} borderColor="$borderColor" maxW={280}>
-      <XStack render="button" aria-label={t("Open {name}", { name })} onClick={onOpen} items="center" gap="$2" minW={0} cursor="pointer">
+    <XStack {...marks} items="center" gap="$1" p="$1" paddingInlineEnd={onRemove ? "$1" : "$2.5"} rounded="$4" borderWidth={1} borderColor="$edge" hoverStyle={{ borderColor: "var(--border-strong)" }} maxW={280}>
+      <XStack
+        render="button"
+        aria-label={t("Open {name}", { name })}
+        onClick={onOpen}
+        items="center"
+        gap="$2"
+        minW={0}
+        cursor="pointer"
+        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+      >
         <YStack
           data-slot="file-thumb"
           width={THUMB}
@@ -710,8 +1034,10 @@ function Keep({ name, onSave }: { name: string; onSave: () => Promise<unknown> }
       p="$1"
       rounded="$10"
       shrink={0}
+      cursor="pointer"
       opacity={state === "saving" ? 0.5 : 1}
       hoverStyle={{ bg: "$hover" }}
+      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
     >
       {state === "saved" ? <Check size={12} aria-hidden /> : <LibraryMark size={12} aria-hidden color={wrong ? BAD : undefined} />}
     </Box>
@@ -725,7 +1051,7 @@ function HeldChip({ one, onOpen, onRemove, onSave }: { one: Held; onOpen: (m: Ma
   const state = one.state === "uploading" ? one.state : (file?.status ?? one.state);
   const picture = usePicture(kindOf(one.name, one.type) === "image", one.href, file?.id, file);
   // The mark the column's Sources row opens for the same file, so both open it alike.
-  const mark: Mark = { id: one.id, name: one.name, kind: kindOf(one.name, one.type) === "image" ? "image" : "file", href: one.href || undefined, file: file?.id, mime: one.type };
+  const mark: Mark = { id: one.id, name: one.name, kind: kindOf(one.name, one.type) === "image" ? "image" : "file", href: one.href || picture || undefined, file: file?.id, mime: one.type };
   return (
     <Chip
       name={one.name}
@@ -748,7 +1074,7 @@ function TurnChip({ f, onOpen, onSave }: { f: FileRef; onOpen: (m: Mark) => void
   const api = useAi();
   const live = useWorkFile(f.id);
   const picture = usePicture(kindOf(f.name, f.type) === "image", "", f.id, live);
-  const mark: Mark = { id: f.id, name: f.name, kind: kindOf(f.name, f.type) === "image" ? "image" : "file", file: f.id, mime: f.type };
+  const mark: Mark = { id: f.id, name: f.name, kind: kindOf(f.name, f.type) === "image" ? "image" : "file", href: picture || undefined, file: f.id, mime: f.type };
   // The bytes on this machine where this document still holds them, else the workspace's copy.
   const save = onSave ? async () => onSave(localOf(f.id) || (await signedOf(api, f.id, live)), f.id) : undefined;
   return <Chip name={f.name} type={f.type} size={f.size} state={live?.status ?? "ready"} sent={1} file={live} picture={picture} onOpen={() => onOpen(mark)} onSave={save} />;
@@ -840,6 +1166,7 @@ function Thread({
   // pick of one Dev offers too moves Dev's, where it is made, and opening Chat
   // never resets Dev's.
   const [chatPrefs, setChatPrefs] = useChatPreferences();
+  const [devMode] = useDevMode();
   const [sidebarClosed] = useKept('hanzo.build.rail', false);
   const ai = useAi();
   const opened = useOpen();
@@ -921,17 +1248,48 @@ function Thread({
     },
     [deck, setPanel],
   );
+  const [lightbox, setLightbox] = useState<{ name: string; url: string; mime?: string } | null>(null);
+  const downloadLightbox = useCallback(() => {
+    if (!lightbox?.url || typeof document === "undefined") return;
+    const link = document.createElement("a");
+    link.href = lightbox.url;
+    link.download = lightbox.name || "image";
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }, [lightbox]);
+
   /**
-   * OPENS A FILE A MESSAGE CARRIES, by the road the Sources tab takes (`look`):
-   * a page tab in the side panel, the panel opened when it is shut — a column on
-   * a laptop, a sheet on a phone.
+   * OPENS A FILE A MESSAGE CARRIES: attached images open in a crisp full-clarity
+   * lightbox Dialog; other files open as a page tab in the side panel (`look`).
    */
   const openFile = useCallback(
     (m: Mark) => {
+      if (m.kind === "image") {
+        const direct = m.href || (m.file ? localOf(m.file) : "");
+        if (direct) {
+          setLightbox({ name: m.name, url: direct, mime: m.mime });
+          return;
+        }
+        if (m.file) {
+          const fileId = m.file;
+          setLightbox({ name: m.name, url: "", mime: m.mime });
+          void signedOf(ai, fileId).then(
+            (url) => setLightbox((cur) => (cur && cur.name === m.name && !cur.url ? { ...cur, url } : cur)),
+            () => {
+              setLightbox(null);
+              toast.error(t("Could not load image preview"));
+            },
+          );
+          return;
+        }
+      }
       void look(deck, m, ai);
       setPanel(true);
     },
-    [deck, ai, setPanel],
+    [deck, ai, setPanel, t],
   );
   /**
    * WHO YOU ARE TALKING TO, when it is somebody rather than the plain model.
@@ -1330,6 +1688,77 @@ function Thread({
   const [dragging, setDragging] = useState(false);
   const depth = useRef(0);
   useSeed(open ? initial : undefined, setDraft);
+  // Layer 4 cross-surface continuity: consume Design → Chat handoff if present.
+  useEffect(() => {
+    try {
+      const raw = typeof window !== "undefined" ? window.sessionStorage.getItem("hanzo.handoff.chat") : null;
+      if (!raw) return;
+      window.sessionStorage.removeItem("hanzo.handoff.chat");
+      const parsed = JSON.parse(raw) as { prompt?: string } | null;
+      if (parsed?.prompt?.trim()) setDraft(parsed.prompt.trim());
+    } catch {
+      // Ignore malformed handoff payloads.
+    }
+  }, [setDraft]);
+
+  const chatHost = useHost();
+  const openInDev = useCallback(
+    (payload: { prompt?: string; code?: string; language?: string; title?: string }) => {
+      try {
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem(
+            "hanzo.handoff.dev",
+            JSON.stringify({
+              prompt: payload.prompt ?? (payload.title ? `Continue working on ${payload.title}` : "Continue implementing this from Chat:"),
+              code: payload.code ?? "",
+              language: payload.language ?? "",
+              title: payload.title ?? "",
+              ts: Date.now(),
+            }),
+          );
+        }
+      } catch {
+        // Ignore storage failures.
+      }
+      visit(chatHost.router, app(""));
+    },
+    [chatHost.router],
+  );
+
+  const createBoardCardFromTurn = useCallback(
+    (turnText: string) => {
+      const firstLine = turnText
+        .split("\n")
+        .map((line) => line.replace(/^#+\s*/, "").replace(/[*_`]/g, "").trim())
+        .find(Boolean);
+      const cardTitle = firstLine
+        ? firstLine.length > 72
+          ? `${firstLine.slice(0, 71).trimEnd()}…`
+          : firstLine
+        : t("Follow-up from Chat");
+      // The first board the server names; a card is not filed on a stand-in.
+      void boardHome(ai)
+        .then((key) => {
+          if (!key) return void toast.error(t("No board yet"));
+          return openBoardCard(ai, key, {
+            title: cardTitle,
+            description: turnText.slice(0, 1200),
+            status: "todo",
+            labels: ["chat"],
+          }).then((card) => {
+            if (card.local) return void toast.error(t("Saved on this device only"));
+            toast.success(t("Added to Board"), {
+              action: {
+                label: t("Open Board"),
+                onClick: () => visit(chatHost.router, "/board"),
+              },
+            });
+          });
+        })
+        .catch(() => toast.error(t("Could not add to Board")));
+    },
+    [ai, chatHost.router, t],
+  );
 
   const [anonBusy, setAnonBusy] = useState(false);
   const [anonGateOpen, setAnonGateOpen] = useState(false);
@@ -1486,6 +1915,43 @@ function Thread({
   useEffect(() => {
     if (error && !chat.streaming) note({ error });
   }, [error, chat.streaming, note]);
+
+  // ZERO-LOST-WORK WALLET REFUSAL RECOVERY: when credits run out, restore the
+  // failed prompt back into the composer draft and show a 1-click recovery strip.
+  const lastSubmittedPromptRef = useRef("");
+  const handledWalletErrorRef = useRef<Error | null>(null);
+  const [walletRecovery, setWalletRecovery] = useState<{ error: Error; prompt: string } | null>(null);
+  useEffect(() => {
+    setWalletRecovery(null);
+  }, [open, emptied]);
+  useEffect(() => {
+    if (!error || chat.streaming) return;
+    if (!refusalOf(error).wallet) return;
+    if (handledWalletErrorRef.current === error) return;
+    handledWalletErrorRef.current = error;
+    const lastUserTurn = [...turns.current].reverse().find((m) => m.role === "user");
+    const fallbackPrompt = lastUserTurn ? plainTurnText(lastUserTurn).trim() : "";
+    const failedPrompt = lastSubmittedPromptRef.current.trim() || fallbackPrompt;
+    if (failedPrompt) {
+      setDraft((current) => (current.trim() ? current : failedPrompt));
+    }
+    setWalletRecovery({ error, prompt: failedPrompt });
+  }, [error, chat.streaming, setDraft]);
+  const switchModelFromRecovery = useCallback(() => {
+    if (!alreadyEnso && models.some((m) => m.id === ENSO)) {
+      mind.pick(ENSO);
+      toast.success(t("Switched to {model}", { model: nameOf(ENSO, listed) }));
+      setWalletRecovery(null);
+      return;
+    }
+    if (openModelPicker()) return;
+    const alt = models.find((m) => m.id !== model);
+    if (alt) {
+      mind.pick(alt.id);
+      toast.success(t("Switched to {model}", { model: nameOf(alt.id, listed) }));
+      setWalletRecovery(null);
+    }
+  }, [alreadyEnso, models, mind, listed, model, t]);
   // EVERY SEND THAT SETTLES re-reads the plan's limits: a stream that ended, a
   // stop, or a refusal — a 429 for a spent window included, which is read
   // again on the pass that delivers it. An error with no stream before it
@@ -1625,10 +2091,38 @@ function Thread({
   const [customTitle, setCustomTitle] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
+  const [editingTurnId, setEditingTurnId] = useState<string | null>(null);
+  const [editingTurnDraft, setEditingTurnDraft] = useState("");
   useEffect(() => {
     setCustomTitle("");
     setEditingTitle(false);
+    setEditingTurnId(null);
+    setEditingTurnDraft("");
   }, [open, emptied]);
+  const commitEditTurn = useCallback(
+    (turnId: string) => {
+      const next = editingTurnDraft.trim();
+      setEditingTurnId(null);
+      setEditingTurnDraft("");
+      if (!next) return;
+      const list = turns.current;
+      const uIdx = list.findIndex((m) => m.id === turnId);
+      if (uIdx < 0) return;
+      if (anonymous) {
+        apply.current((held) => held.slice(0, uIdx));
+        if (anonCountRef.current > 0) anonCountRef.current -= 1;
+        void sendAnon(next);
+        return;
+      }
+      setFailures((all) => {
+        const { [turnId]: _gone, ...rest } = all;
+        return rest;
+      });
+      apply.current((held) => held.slice(0, uIdx));
+      setQueued(next);
+    },
+    [editingTurnDraft, anonymous, sendAnon],
+  );
   const redoTurn = useCallback(
     (turnId: string, action?: { mode: "retry" | "think" | "web" | "prompt"; prompt?: string }) => {
       const list = turns.current;
@@ -1730,35 +2224,20 @@ function Thread({
     }
   }, [titleDraft, shownTitle, mine, kept, open, anonymous, forgetful, currentThread, threadActions]);
 
+  // A BRANCH IS A NEW SAVED CHAT holding the conversation up to this answer.
   const branchTurn = useCallback(
     (turnId: string) => {
-      const list = turns.current;
-      const aIdx = list.findIndex((m) => m.id === turnId);
-      const sliced = aIdx >= 0 ? list.slice(0, aIdx + 1) : list.slice();
-      const branchedTitle = `${shownTitle.replace(/\s*\(Branch\)$/i, "")} (Branch)`;
-      setCustomTitle(branchedTitle);
-      apply.current(sliced);
-      if (!anonymous && !forgetful) {
-        const toRecord = sliced
-          .filter((m) => m.role === "user" || m.role === "assistant")
-          .map((m) => ({
-            role: m.role as "user" | "assistant",
-            content: typeof m.content === "string" ? m.content : words(m.content as Said),
-          }));
-        if (toRecord.length) {
-          void ai.threads
-            .record(toRecord)
-            .then((newId) => {
-              if (newId) {
-                reopen(newId);
-                void ai.threads.update(newId, { title: branchedTitle }).catch(() => {});
-              }
-            })
-            .catch(() => {});
-        }
-      }
+      const kept = branched(turns.current, turnId, plainTurnText, { anonymous, forgetful });
+      if (!kept) return;
+      ai.threads.record(kept).then(
+        (id) => {
+          reopen(id);
+          toast.success(t("Branched into a new chat"));
+        },
+        () => toast.error(t("Could not branch this chat")),
+      );
     },
-    [shownTitle, anonymous, forgetful, ai, reopen],
+    [ai, anonymous, forgetful, reopen, t],
   );
 
   const currentThreadMap = useMemo(() => {
@@ -1831,7 +2310,25 @@ function Thread({
           break;
         case "archive":
           if (!anonymous && !forgetful && (mine || open)) {
-            void threadActions.archive(mine ?? currentThread);
+            const targetThread = mine ?? currentThread;
+            const wasArchived = Boolean(targetThread.archived);
+            void threadActions.archive(targetThread).then((ok) => {
+              if (!ok) return;
+              if (!wasArchived) {
+                const archivedSnapshot: Thread = { ...targetThread, archived: true };
+                toast(t("Archived chat"), {
+                  duration: 5000,
+                  action: {
+                    label: t("Undo"),
+                    onClick: () => {
+                      void threadActions.archive(archivedSnapshot);
+                    },
+                  },
+                });
+              } else {
+                toast.success(t("Unarchived chat"));
+              }
+            });
           }
           break;
         case "delete":
@@ -1909,6 +2406,8 @@ function Thread({
   const submit = (ask: string = draft) => {
     const text = ask.trim();
     if (preparing || (!text && !files.length)) return;
+    setWalletRecovery(null);
+    if (text) lastSubmittedPromptRef.current = text;
     const isPrOrReview = /\b(pull request|pr\s*#?\d+|github\.com\/[^\s]+\/pull\/\d+|\/pull\/\d+|code[\s-]?review|ponytail|pony|review\s+(this\s+)?(pr|diff|patch|changes|commit))\b/i.test(text);
     const isInteractiveDemo = /\b(make|build|create|design|generate|show)\b[\s\S]*\b(demo|website|web\s*app|landing\s*page|dashboard|interactive|prototype|ui|preview)\b/i.test(text);
     const demoNote = isInteractiveDemo
@@ -2074,11 +2573,14 @@ function Thread({
                   {t("Sign in to keep going")}
                 </Button>
               ) : (
-                <Anchor href={checkoutUrl()}>
-                  <Button size="sm" variant="outline">
-                    {t("Add credit")}
+                <>
+                  <Button size="sm" $max-sm={{ minH: 44 }} onPress={() => requestUpgrade()}>
+                    {t("Add credits")}
                   </Button>
-                </Anchor>
+                  <Button size="sm" variant="outline" borderColor="var(--border-strong)" $max-sm={{ minH: 44 }} onPress={switchModelFromRecovery}>
+                    {t("Switch model")}
+                  </Button>
+                </>
               )}
             </XStack>
           ) : null}
@@ -2149,6 +2651,8 @@ function Thread({
     setTitleSlot(document.getElementById("hanzo-titlebar-title"));
   }, [media.md]);
   const inTopChrome = Boolean(media.md && titlebarSlot);
+  const showAccessMode =
+    devMode || carry.on.length > 0 || cast.length > 0 || chatPrefs.approvalMode === "manual";
   const composer: ComposerProps = {
       value: draft,
       onChange: setDraft,
@@ -2166,42 +2670,62 @@ function Thread({
       // toggled ghost in the head and this frame are the whole of what says it.
       forgetful,
       children: anonymous ? undefined : (
-        <XStack flex={1} minW={0} items="center" justify="space-between" gap={6}>
-          <XStack
-            render="button"
-            data-slot="composer-access-mode"
-            data-mode={chatPrefs.approvalMode === "manual" ? "manual" : "auto"}
-            aria-label={chatPrefs.approvalMode === "manual" ? t("Manual approval") : t("Full access")}
-            items="center"
-            gap={5}
-            height={28}
-            px={6}
-            rounded={8}
-            cursor="pointer"
-            hoverStyle={{ bg: "$hover" }}
-            onPress={() => {
-              const next = chatPrefs.approvalMode === "manual" ? "auto" : "manual";
-              setChatPrefs({ approvalMode: next });
-              carry.mode.set(next);
-            }}
-          >
-            <CircleAlert
-              size={14}
-              strokeWidth={1.9}
-              color={chatPrefs.approvalMode === "manual" ? "var(--muted-foreground)" : "var(--foreground)"}
-              aria-hidden
-            />
-            <Text
-              fontSize={12.5}
-              lineHeight={16}
-              fontWeight="500"
-              color={chatPrefs.approvalMode === "manual" ? "var(--muted-foreground)" : "var(--foreground)"}
-              numberOfLines={1}
-            >
-              {chatPrefs.approvalMode === "manual" ? t("Manual approval") : t("Full access")}
-            </Text>
-          </XStack>
-          <XStack items="center" gap={2} shrink={0}>
+        <XStack
+          flex={1}
+          minW={0}
+          items="center"
+          justify={showAccessMode ? "space-between" : "flex-end"}
+          gap="$1.5"
+          flexWrap="wrap"
+        >
+          {showAccessMode ? (
+            <XStack items="center" gap="$0.5" minW={0}>
+              <XStack
+                render="button"
+                data-slot="composer-access-mode"
+                data-mode={chatPrefs.approvalMode === "manual" ? "manual" : "auto"}
+                aria-label={chatPrefs.approvalMode === "manual" ? t("Ask first") : t("Auto-run")}
+                items="center"
+                gap="$1"
+                height={28}
+                px="$1.5"
+                rounded="$3"
+                cursor="pointer"
+                borderWidth={1}
+                borderColor="transparent"
+                transition="quickest"
+                hoverStyle={{ bg: "$hover", borderColor: "var(--border-strong)" }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+                $max-sm={{ minH: 44 }}
+                onClick={() => {
+                  const next = chatPrefs.approvalMode === "manual" ? "auto" : "manual";
+                  setChatPrefs({ approvalMode: next });
+                  carry.mode.set(next);
+                }}
+              >
+                <ShieldCheck
+                  size={13.5}
+                  strokeWidth={1.8}
+                  color="var(--text-secondary)"
+                  aria-hidden
+                />
+                <Text
+                  fontSize="$1"
+                  lineHeight={16}
+                  fontWeight="500"
+                  color="$aside"
+                  numberOfLines={1}
+                >
+                  {chatPrefs.approvalMode === "manual" ? t("Ask first") : t("Auto-run")}
+                </Text>
+              </XStack>
+              <InfoHint
+                text={t("Controls whether Hanzo runs tools automatically or asks before each step.")}
+                size={13}
+              />
+            </XStack>
+          ) : null}
+          <XStack items="center" gap="$1" shrink={0} minW={0}>
             <Tune
               mind={{ ...mind, models: filteredListed }}
               effort={{
@@ -2217,12 +2741,10 @@ function Thread({
               limits={limits}
               onUpgrade={(id) => setAsk({ model: nameOf(id, listed) } as Ask)}
             />
-            <ChevronDown size={12} color="var(--muted-foreground)" aria-hidden />
           </XStack>
         </XStack>
       ),
-      // A file or an image pasted into the field is held like a picked one;
-      // words paste as words.
+      // A file or an image pasted into the field is held like a picked one.
       field: {
         onPaste: (e: React.ClipboardEvent) => {
           if (!e.clipboardData?.files?.length) return;
@@ -2231,10 +2753,72 @@ function Thread({
         },
       },
       // WHAT GOES WITH THE MESSAGE, above the frame and at its width: the
-      // pause and its ways past, one chip a file, and talk mode's words.
+      // pause and its ways past, wallet recovery, one chip a file, and talk mode's words.
       head:
-        files.length || turnedAway || prepWrong || preparing || talk.open || talk.refusal || banner || simulatedResetAt ? (
+        files.length || turnedAway || prepWrong || preparing || talk.open || talk.refusal || banner || simulatedResetAt || walletRecovery ? (
           <>
+            {walletRecovery ? (
+              <XStack
+                role="alert"
+                data-slot="wallet-recovery-strip"
+                items="center"
+                justify="space-between"
+                gap="$2.5"
+                flexWrap="wrap"
+                px="$3"
+                py="$2"
+                rounded="$4"
+                bg="var(--surface-card)"
+                borderWidth={1}
+                borderColor="var(--border-strong)"
+              >
+                <YStack gap="$0.5" flex={1} minW={180}>
+                  <Text fontSize="$2" fontWeight="600" color="$ink">
+                    {t("Out of credits — your prompt was kept in the composer")}
+                  </Text>
+                  <Text fontSize="$1" color="$soft">
+                    {t("Add credits to continue with this model, or switch to another model.")}
+                  </Text>
+                </YStack>
+                <XStack items="center" gap="$1.5" flexWrap="wrap">
+                  <Button
+                    size="xs"
+                    rounded={999}
+                    $max-sm={{ minH: 44 }}
+                    onPress={() => requestUpgrade()}
+                  >
+                    {t("Add credits")}
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    rounded={999}
+                    borderColor="var(--border-strong)"
+                    $max-sm={{ minH: 44 }}
+                    onPress={switchModelFromRecovery}
+                  >
+                    {t("Switch model")}
+                  </Button>
+                  <Box
+                    render={<button type="button" title={t("Dismiss")} />}
+                    aria-label={t("Dismiss")}
+                    onClick={() => setWalletRecovery(null)}
+                    display="flex"
+                    items="center"
+                    justify="center"
+                    width={28}
+                    height={28}
+                    rounded={999}
+                    cursor="pointer"
+                    hoverStyle={{ bg: "$hover" }}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+                    $max-sm={{ minW: 44, minH: 44 }}
+                  >
+                    <X size={14} color="var(--muted-foreground)" aria-hidden />
+                  </Box>
+                </XStack>
+              </XStack>
+            ) : null}
             {/* TURNED AWAY: what is used and until when, the ways past it, and
                 the usage page — the shell's Settings pane, or the builder's
                 Usage (dev.tsx answers the request there). */}
@@ -2326,7 +2910,6 @@ function Thread({
             carry.gear.set({ research: true });
             setDraft((prev) => (prev.trim() ? prev : t("Search the web for ")));
           },
-          sketch: () => take(at, via),
           thinking: {
             on: chatPrefs.effort === "max",
             set: (on: boolean) => {
@@ -2365,13 +2948,12 @@ function Thread({
       ],
       slash: carry.skills,
       at: carry.plugins,
-      // Inline controls live inside the composer's bottom strip (`children` above), so the outer foot stays empty.
+      status: null,
       mode: null,
       mind: null,
       effort: undefined,
       chips: anonymous ? undefined : families,
       defaults: { chips: false, mode: false, model: false },
-      status: null,
       limits,
       onUpgrade: (id) => setAsk({ model: nameOf(id, listed) } as Ask),
       voice,
@@ -2441,28 +3023,54 @@ function Thread({
       />
       {dragging ? (
         <YStack
+          data-slot="drop-veil"
           aria-hidden
           position="absolute"
           t={0}
           r={0}
           b={0}
           l={0}
-          z={10}
+          z={20}
+          p="$4"
           items="center"
           justify="center"
-          bg="var(--surface-scrim)"
-          borderWidth={2}
-          borderStyle="dashed"
-          borderColor="$borderColor"
-          rounded="var(--pane-round)"
+          bg="var(--background)"
+          opacity={0.94}
           pointerEvents="none"
         >
-          <XStack items="center" gap="$2" px="$4" py="$2.5" rounded="$10" bg="$background" borderWidth={1} borderColor="$borderColor">
-            <Paperclip size={15} aria-hidden />
-            <Text fontSize="$4" color="$ink">
-              {t("Drop files to attach")}
+          <YStack
+            items="center"
+            justify="center"
+            gap="$2"
+            px="$6"
+            py="$5"
+            maxW={420}
+            width="100%"
+            bg="var(--popover)"
+            borderWidth={2}
+            borderStyle="dashed"
+            borderColor="var(--border-strong)"
+            rounded="$5"
+          >
+            <XStack
+              width={44}
+              height={44}
+              rounded={999}
+              bg="$panel"
+              borderWidth={1}
+              borderColor="var(--border)"
+              items="center"
+              justify="center"
+            >
+              <Upload size={18} color="var(--foreground)" aria-hidden />
+            </XStack>
+            <Text fontSize="$4" fontWeight="600" color="$ink" text="center">
+              {t("Drop files, images, or PDFs to attach")}
             </Text>
-          </XStack>
+            <Text fontSize="$2" color="$soft" text="center">
+              {t("Release anywhere in this chat to include them with your next message.")}
+            </Text>
+          </YStack>
         </YStack>
       ) : null}
       {inTopChrome && titleSlot
@@ -2505,7 +3113,8 @@ function Thread({
                   shrink={1}
                   cursor="pointer"
                   hoverStyle={{ bg: "$hover" }}
-                  onPress={() => {
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+                  onClick={() => {
                     setTitleDraft(shownTitle);
                     setEditingTitle(true);
                   }}
@@ -2588,7 +3197,7 @@ function Thread({
                         cursor="pointer"
                         hoverStyle={{ bg: "$hover" }}
                         focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
-                        onPress={() => setForgetful(!forgetful)}
+                        onClick={() => setForgetful(!forgetful)}
                       >
                         <Ghost
                           size={16}
@@ -2652,7 +3261,8 @@ function Thread({
               autoFocus
               maxLength={200}
               size="sm"
-              minW={160}
+              flex={1}
+              minW={120}
               maxW={360}
               onChangeText={setTitleDraft}
               onBlur={commitTitle}
@@ -2681,7 +3291,9 @@ function Thread({
               shrink={1}
               cursor="pointer"
               hoverStyle={{ bg: "$hover" }}
-              onPress={() => {
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+              $max-sm={{ minH: 44 }}
+              onClick={() => {
                 setTitleDraft(shownTitle);
                 setEditingTitle(true);
               }}
@@ -2746,7 +3358,10 @@ function Thread({
                     rounded={999}
                     items="center"
                     justify="center"
+                    cursor="pointer"
                     hoverStyle={{ bg: "$hover" }}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+                    $max-sm={{ minW: 44, minH: 44 }}
                   >
                     <X size={13} aria-hidden color="var(--soft, var(--muted-foreground))" />
                   </Box>
@@ -2811,7 +3426,9 @@ function Thread({
               bg="transparent"
               cursor="pointer"
               hoverStyle={{ bg: "$hover" }}
-              onPress={() => window.location.assign(payUrl('/cart', { org: org(), returnUrl: window.location.href }))}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+              $max-sm={{ minH: 44 }}
+              onClick={() => window.location.assign(payUrl('/cart', { org: org(), returnUrl: window.location.href }))}
             >
               <Sparkles size={14} color="var(--muted-foreground)" aria-hidden />
               <Text fontSize={15} lineHeight={20} fontWeight="500" color="$soft" numberOfLines={1}>
@@ -2820,7 +3437,11 @@ function Thread({
             </XStack>
           ) : null}
           {said.length > 0 ? (
-            <ConversationMenu threads={currentThreadMap} active={open || currentThread.id} onSchedule={anonymous || forgetful ? undefined : () => setPlan(lastAsked())}>
+            <ConversationMenu
+              threads={currentThreadMap}
+              active={open || currentThread.id}
+              onSchedule={anonymous || forgetful ? undefined : () => setPlan(lastAsked())}
+            >
               <XStack />
             </ConversationMenu>
           ) : (
@@ -2842,7 +3463,8 @@ function Thread({
                   cursor="pointer"
                   hoverStyle={{ bg: "$hover" }}
                   focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
-                  onPress={() => setForgetful(!forgetful)}
+                  $max-sm={{ minW: 44, minH: 44 }}
+                  onClick={() => setForgetful(!forgetful)}
                 >
                   <Ghost size={16} strokeWidth={1.75} color={forgetful ? "var(--foreground)" : "var(--muted-foreground)"} fill={forgetful ? "currentColor" : "none"} aria-hidden />
                 </XStack>
@@ -2885,6 +3507,7 @@ function Thread({
 
       <XStack flex={1} minH={0} minW={0}>
         <YStack ref={talkRef} data-slot="talk" flex={1} minH={0} minW={0} position="relative">
+        <ChatHandoffProvider value={{ openInDev }}>
         <ChatSurface
           {...chat}
           messages={shown}
@@ -2902,16 +3525,42 @@ function Thread({
           // the backticks on screen. `Prose` is the site's one renderer, reading
           // with the same `marked` the legal pages parse with and drawing every
           // token in gui elements, and the shared view draws through it too.
+          // A user turn's Copy / Edit row sits under its bubble, never inside it (no dead gap in the bubble).
+          turnActions={(turn) => {
+            if (turn.role !== "user") return null;
+            if (String(turn.id).startsWith(`${FAILED}:`)) return null;
+            if (editingTurnId === turn.id) return null;
+            if (Array.isArray(turn.content)) {
+              const plain = words(turn.content as Said);
+              return plain.trim() ? <UserTurnActions text={plain} canEdit={false} /> : null;
+            }
+            const text = typeof turn.content === "string" ? turn.content : "";
+            if (!text) return null;
+            const read = told(text);
+            if (read.carried) return <UserTurnActions text={read.text} canEdit={false} />;
+            return (
+              <UserTurnActions
+                text={text}
+                canEdit={!chat.streaming && !anonBusy}
+                onEdit={() => {
+                  setEditingTurnId(turn.id);
+                  setEditingTurnDraft(text);
+                }}
+              />
+            );
+          }}
           body={(turn) => {
             if (String(turn.id).startsWith(`${FAILED}:`)) {
               const question = shown.find((one) => one.id === String(turn.id).slice(FAILED.length + 1));
               return question ? failure(question) : null;
             }
+            const isLastTurn = shown[shown.length - 1]?.id === turn.id;
+            const isStreamingThisTurn = Boolean((chat.streaming || anonBusy) && isLastTurn);
             // A QUESTION THAT CARRIED PICTURES draws them beside its words.
             if (turn.role === "user" && Array.isArray(turn.content)) {
               const parts = partsOf(turn.content);
               return (
-                <YStack gap="$1">
+                <YStack gap="$1" data-turn-id={String(turn.id)} data-turn-role={turn.role}>
                   <Parts parts={parts} prose={(text) => <Prose text={text} />} />
                 </YStack>
               );
@@ -2923,7 +3572,7 @@ function Thread({
               const read = told(said);
               if (read.carried)
                 return (
-                  <YStack gap="$1">
+                  <YStack gap="$1" data-turn-id={String(turn.id)} data-turn-role={turn.role}>
                     <Carried
                       text={read.text}
                       attached={read.carried.attached}
@@ -2933,6 +3582,56 @@ function Thread({
                     />
                   </YStack>
                 );
+              if (editingTurnId === turn.id) {
+                return (
+                  <YStack gap="$2" width="100%" minW={240} maxW={560} data-slot="user-turn-editor">
+                    <Input
+                      autoFocus
+                      value={editingTurnDraft}
+                      onChangeText={setEditingTurnDraft}
+                      aria-label={t("Edit message")}
+                      borderColor="var(--border-strong)"
+                      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+                      onKeyDown={(e: { key?: string; shiftKey?: boolean; nativeEvent?: { isComposing?: boolean }; preventDefault?: () => void }) => {
+                        if (e.key === "Escape") {
+                          e.preventDefault?.();
+                          setEditingTurnId(null);
+                          setEditingTurnDraft("");
+                        } else if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent?.isComposing) {
+                          e.preventDefault?.();
+                          commitEditTurn(turn.id);
+                        }
+                      }}
+                    />
+                    <XStack gap="$1.5" justify="flex-end" flexWrap="wrap">
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        rounded={999}
+                        onPress={() => {
+                          setEditingTurnId(null);
+                          setEditingTurnDraft("");
+                        }}
+                      >
+                        {t("Cancel")}
+                      </Button>
+                      <Button
+                        size="xs"
+                        rounded={999}
+                        disabled={!editingTurnDraft.trim()}
+                        onPress={() => commitEditTurn(turn.id)}
+                      >
+                        {t("Send")}
+                      </Button>
+                    </XStack>
+                  </YStack>
+                );
+              }
+              return (
+                <YStack gap="$1" data-turn-id={String(turn.id)} data-turn-role={turn.role}>
+                  <Prose text={said} />
+                </YStack>
+              );
             }
             // WHILE THE ANSWER HAS NO WORDS YET: who is answering (the agents the
             // question addresses, or the whole cast when it names nobody), and the
@@ -2963,6 +3662,8 @@ function Thread({
                 </YStack>
               );
             }
+            const latestAssistantId = [...shown].reverse().find((one) => one.role === "assistant")?.id;
+            const isLatestAssistant = turn.role === "assistant" && turn.id === latestAssistantId;
             // A CAST'S ANSWER IS SEVERAL PEOPLE'S. Each opens a line with their
             // name, as the brief asks, so each is drawn under their own face and
             // read in their own voice. A reply that names nobody is drawn whole.
@@ -2981,7 +3682,7 @@ function Thread({
               return (
                 <YStack gap="$3" data-turn-id={String(turn.id)} data-turn-role={turn.role}>
                   {parts.map((part, i) => (
-                    <YStack key={i} gap="$1">
+                    <YStack key={i} gap="$1.5">
                       {part.who ? (
                         <XStack items="center" gap="$2">
                           <Face src={faces[part.who]?.avatar} emoji={faces[part.who]?.emoji} name={part.who} size={20} />
@@ -2991,14 +3692,17 @@ function Thread({
                         </XStack>
                       ) : null}
                       <Prose text={part.text} />
-                      {part.text ? (
-                        <Reply
+                      {part.text && !isStreamingThisTurn ? (
+                        <AssistantTurnActions
                           text={part.text}
-                          title={shownTitle}
-                          listen={listen(part.who ?? withWhom ?? undefined)}
+                          latest={isLatestAssistant}
+                          canRegenerate={!chat.streaming && !anonBusy}
+                          onRegenerate={() => redoTurn(turn.id, { mode: "retry" })}
+                          onBranch={anonymous || forgetful ? undefined : () => branchTurn(turn.id)}
                           onOpen={opener(part.text)}
-                          onRedo={(act) => redoTurn(turn.id, act)}
-                          onBranch={() => branchTurn(turn.id)}
+                          onOpenInDev={() => openInDev({ prompt: part.text })}
+                          onCreateBoardCard={anonymous ? undefined : () => createBoardCardFromTurn(part.text)}
+                          onSchedule={anonymous ? undefined : () => setPlan(part.text)}
                         />
                       ) : null}
                     </YStack>
@@ -3015,25 +3719,25 @@ function Thread({
             const ms = (turn as unknown as { durationMs?: unknown }).durationMs;
             const worked = turn.role === "assistant" && typeof ms === "number" && ms >= 1000 ? ms : 0;
             return (
-              <YStack gap="$1.5" data-turn-id={String(turn.id)} data-turn-role={turn.role}>
+              <YStack gap="$2" data-turn-id={String(turn.id)} data-turn-role={turn.role}>
                 {worked ? (
                   <Text data-slot="worked-for" fontSize="$2" color="$soft">
                     {t("Worked for {n}s", { n: Math.round(worked / 1000) })}
                   </Text>
                 ) : null}
                 <Prose text={said} />
-                {/* UNDER AN ANSWER, the row Dev's answers have too (@hanzo/build
-                    `Reply`): copy the markdown as written, listen in the
-                    speaker's voice, and open what it wrote in the side panel.
-                    Only an answer, and only one with words in it. */}
-                {turn.role === "assistant" && said ? (
-                  <Reply
+                {/* Clean hover/focus-reveal monochrome action row under every completed assistant response. */}
+                {turn.role === "assistant" && said && !isStreamingThisTurn ? (
+                  <AssistantTurnActions
                     text={said}
-                    title={shownTitle}
-                    listen={listen(withWhom ?? undefined)}
+                    latest={isLatestAssistant}
+                    canRegenerate={!chat.streaming && !anonBusy}
+                    onRegenerate={() => redoTurn(turn.id, { mode: "retry" })}
+                    onBranch={anonymous || forgetful ? undefined : () => branchTurn(turn.id)}
                     onOpen={opener(said)}
-                    onRedo={(act) => redoTurn(turn.id, act)}
-                    onBranch={() => branchTurn(turn.id)}
+                    onOpenInDev={() => openInDev({ prompt: said })}
+                    onCreateBoardCard={anonymous ? undefined : () => createBoardCardFromTurn(said)}
+                    onSchedule={anonymous ? undefined : () => setPlan(said)}
                   />
                 ) : null}
                 {turn.role === "assistant" && said ? byline(turn.id) : null}
@@ -3049,7 +3753,7 @@ function Thread({
             heading === null ? undefined : (
               // From a tablet up its own height, centred with the composer as one pair; on a
               // phone it stands at the foot of the height above the composer, close above it.
-              <YStack data-slot="opening" items="center" justify="flex-end" width="100%" height="100%" pt="$6" pb="$2">
+              <YStack data-slot="opening" items="center" justify="flex-end" width="100%" height="100%" pt="$6" pb="$2" px="$4" $max-sm={{ px: "$3", pt: "$4" }}>
                 {/* THE PORTRAIT IS A DM'S, AND ONLY A DM'S. It used to draw for
                     everyone, because `withWhom || "jobs"` gave a reader who had
                     chosen nobody a 160px photograph of somebody — and the heading
@@ -3069,11 +3773,11 @@ function Thread({
                     height={160}
                     rounded={24}
                     overflow="hidden"
-                    borderWidth={2}
-                    borderColor="var(--white-15)"
-                    boxShadow="0 10px 24px color-mix(in srgb, var(--pure-black) 70%, transparent)"
+                    borderWidth={1}
+                    borderColor="var(--border-strong)"
+                    boxShadow="var(--shadow-lg)"
                     mb="$4"
-                    bg="var(--neutral-900)"
+                    bg="$raised"
                   >
                     <View render={<img src={portrait} alt={withWhom} />} width="100%" height="100%" objectFit="cover" />
                   </Box>
@@ -3101,7 +3805,8 @@ function Thread({
                   fontWeight="700"
                   color="$ink"
                   text="center"
-                  mb="$1"
+                  mb="$2"
+                  $max-sm={{ fontSize: "$6", lineHeight: "$6" }}
                 >
                   {join(cast, t) || heading || (firstName ? t("Good to see you, {name}. What’s next?", { name: firstName }) : t("What’s next?"))}
                 </Text>
@@ -3131,9 +3836,11 @@ function Thread({
           }
           // The transcript reads at the same measure as Composer (`--container-prose`, 48rem),
           // so user bubbles, assistant output cards, and the composer share exact left/right edges.
-          column={{ maxW: "var(--container-prose, 48rem)" as unknown as number }}
+          gap={28}
+          column={{ maxW: "var(--container-prose, 48rem)" as unknown as number, px: "$4", "$max-sm": { px: "$3" } }}
           composer={composer}
         />
+        </ChatHandoffProvider>
           <ToBottom within={talkBox} />
         </YStack>
         {dockSummary && summaryOpen ? (
@@ -3148,8 +3855,8 @@ function Thread({
       <AgentMaker />
       {carry.dialog}
       <Dialog open={anonPluginsOpen} onOpenChange={setAnonPluginsOpen}>
-        <DialogContent maxW={480} width="100%" gap="$3" data-slot="anon-plugins-dialog">
-          <DialogTitle>{t("Plugins & Skills")}</DialogTitle>
+        <DialogContent maxW={480} width="calc(100vw - 24px)" gap="$3" data-slot="anon-plugins-dialog">
+          <DialogTitle>{t("Plugins & skills")}</DialogTitle>
           <Text fontSize="$2" color="$soft">
             {t("Enable plugins and skills for this conversation, or type / and @ in the composer.")}
           </Text>
@@ -3158,15 +3865,17 @@ function Thread({
               <XStack
                 key={`plugin:${p.id}`}
                 render="button"
-                onPress={() => carry.plugins.pick(p.id)}
+                onClick={() => carry.plugins.pick(p.id)}
                 items="center"
                 justify="space-between"
                 p="$2.5"
                 rounded="$3"
                 borderWidth={1}
-                borderColor={p.on ? "$ink" : "$borderColor"}
+                borderColor={p.on ? "$ink" : "$edge"}
                 bg={p.on ? "$hover" : "transparent"}
-                hoverStyle={{ bg: "$hover" }}
+                hoverStyle={{ bg: "$hover", borderColor: "var(--border-strong)" }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+                $max-sm={{ minH: 44 }}
                 cursor="pointer"
               >
                 <XStack items="center" gap="$2.5" minW={0} flex={1}>
@@ -3191,15 +3900,17 @@ function Thread({
               <XStack
                 key={`skill:${s.id}`}
                 render="button"
-                onPress={() => carry.skills.pick(s.id)}
+                onClick={() => carry.skills.pick(s.id)}
                 items="center"
                 justify="space-between"
                 p="$2"
                 rounded="$3"
                 borderWidth={1}
-                borderColor={s.on ? "$ink" : "$borderColor"}
+                borderColor={s.on ? "$ink" : "$edge"}
                 bg={s.on ? "$hover" : "transparent"}
-                hoverStyle={{ bg: "$hover" }}
+                hoverStyle={{ bg: "$hover", borderColor: "var(--border-strong)" }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+                $max-sm={{ minH: 44 }}
                 cursor="pointer"
               >
                 <XStack items="center" gap="$2" minW={0} flex={1}>
@@ -3217,22 +3928,22 @@ function Thread({
         </DialogContent>
       </Dialog>
       <Dialog open={anonGateOpen} onOpenChange={setAnonGateOpen}>
-        <DialogContent maxW={480} rounded="$6" gap="$3.5">
+        <DialogContent maxW={480} width="calc(100vw - 24px)" rounded="$6" gap="$3.5">
           <DialogTitle>{t("Sign in to continue chatting")}</DialogTitle>
           <Text fontSize="$3" color="$soft" lineHeight="$4">
             {t("Sign in or create a free Hanzo account to save this conversation and continue chatting.")}
           </Text>
           <YStack gap="$2" pt="$1">
             <Button variant="primary" size="lg" width="100%" onPress={() => window.location.assign("/signup?next=%2Fchat")}>
-              {t("Create Free Account")}
+              {t("Create free account")}
             </Button>
             <Button variant="outline" size="default" width="100%" onPress={() => enter(LOGIN)}>
-              {t("Sign In")}
+              {t("Sign in")}
             </Button>
           </YStack>
           <YStack gap="$2" pt="$2.5" borderTopWidth={1} borderColor="$borderColor">
-            <Text fontSize="$1" fontFamily="$mono" color="$soft">
-              {t("NEED MORE CAPACITY? UPGRADE ANYTIME")}
+            <Text fontSize="$1" fontWeight="500" color="$soft">
+              {t("Need more capacity? Upgrade anytime")}
             </Text>
             <XStack gap="$2" flexWrap="wrap">
               {(
@@ -3244,10 +3955,9 @@ function Thread({
                 <XStack
                   key={label}
                   render="button"
-                  onPress={() => {
+                  onClick={() => {
                     setAnonGateOpen(false);
-                    setAsk({} as Ask);
-                    window.location.hash = "#pricing";
+                    requestUpgrade({ tier: label.toLowerCase() });
                   }}
                   flex={1}
                   minW={88}
@@ -3255,11 +3965,14 @@ function Thread({
                   py="$2"
                   rounded="$4"
                   borderWidth={1}
-                  borderColor="$borderColor"
+                  borderColor="var(--border-strong)"
                   items="center"
                   justify="center"
                   cursor="pointer"
-                  hoverStyle={{ bg: "$hover" }}
+                  transition="quickest"
+                  hoverStyle={{ bg: "$hover", borderColor: "$ink" }}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+                  $max-sm={{ minH: 44 }}
                 >
                   <Text fontSize="$2" fontWeight="600" color="$ink">
                     {label}
@@ -3267,6 +3980,86 @@ function Thread({
                 </XStack>
               ))}
             </XStack>
+          </YStack>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={lightbox !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setLightbox(null);
+        }}
+      >
+        <DialogContent
+          data-slot="image-lightbox"
+          showCloseButton={false}
+          maxW={900}
+          width="calc(100vw - 24px)"
+          maxH="90dvh"
+          p="$4"
+          gap="$3"
+          rounded="$5"
+          bg="var(--popover)"
+          borderWidth={1}
+          borderColor="var(--border-strong)"
+        >
+          <XStack items="center" justify="space-between" gap="$3">
+            <DialogTitle fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1} flex={1} minW={0}>
+              {lightbox?.name ?? t("Image preview")}
+            </DialogTitle>
+            <XStack items="center" gap="$2" shrink={0}>
+              <Button
+                size="sm"
+                variant="outline"
+                rounded={999}
+                borderColor="var(--border-strong)"
+                disabled={!lightbox?.url}
+                $max-sm={{ minH: 44 }}
+                onPress={downloadLightbox}
+              >
+                <Download size={14} aria-hidden />
+                {t("Download")}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                rounded={999}
+                borderColor="var(--border-strong)"
+                aria-label={t("Close")}
+                $max-sm={{ minH: 44 }}
+                onPress={() => setLightbox(null)}
+              >
+                <X size={14} aria-hidden />
+                {t("Close")}
+              </Button>
+            </XStack>
+          </XStack>
+          <YStack
+            items="center"
+            justify="center"
+            width="100%"
+            minH={220}
+            maxH="72dvh"
+            overflow="hidden"
+            rounded="$4"
+            bg="var(--background)"
+            borderWidth={1}
+            borderColor="var(--border)"
+            p="$2"
+          >
+            {lightbox?.url ? (
+              <View
+                render={<img src={lightbox.url} alt={lightbox.name} />}
+                maxW="100%"
+                maxH="68dvh"
+                objectFit="contain"
+                display="block"
+                rounded="$3"
+              />
+            ) : (
+              <Text fontSize="$2" color="$soft">
+                {t("Loading preview…")}
+              </Text>
+            )}
           </YStack>
         </DialogContent>
       </Dialog>

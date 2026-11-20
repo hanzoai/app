@@ -64,10 +64,52 @@ const SETUP = 'hanzo:org:template'
 
 interface Template { slug: string; title?: string; name?: string; category?: string; description?: string }
 
+/** Query parameters that reference an entity inside one specific organization. */
+const ORG_ENTITY_PARAMS = ['thread', 'session', 'channel', 'room', 'bucket'] as const
+
+/**
+ * Context-preserving pathname when switching organizations: keeps safe workspace
+ * routes (`/chat`, `/dev`, `/settings/billing`, `/board`, etc.) intact instead of
+ * snapping back to `/`, while stepping up out of org-specific entity deep IDs.
+ */
+function preservedPath(pathname: string, search = ''): string {
+  const clean = pathname.replace(/\/+$/, '') || '/'
+  let next = clean
+  if (clean.startsWith('/chat/') && clean !== '/chat/shared') {
+    next = '/chat'
+  } else if (clean.startsWith('/dev/run/')) {
+    next = '/dev'
+  } else if (clean.startsWith('/dev/projects/')) {
+    next = '/dev/projects'
+  } else if (clean.startsWith('/dev/automations/') && clean !== '/dev/automations/new') {
+    next = '/dev/automations'
+  }
+
+  if (!search) return next
+  const params = new URLSearchParams(search)
+  for (const key of ORG_ENTITY_PARAMS) params.delete(key)
+  const qs = params.toString()
+  return qs ? `${next}?${qs}` : next
+}
+
+/** Keeps the reader's current pathname on org switch, normalizing only org-specific deep entity IDs. */
+function preserveRouteOnOrgSwitch(): void {
+  if (typeof window === 'undefined') return
+  const currentAddress = `${window.location.pathname}${window.location.search}`
+  const safe = preservedPath(window.location.pathname, window.location.search)
+  if (safe !== currentAddress) {
+    window.history.replaceState(null, '', safe)
+    if (typeof window.dispatchEvent === 'function') {
+      const ev = typeof PopStateEvent !== 'undefined' ? new PopStateEvent('popstate') : new Event('popstate')
+      window.dispatchEvent(ev)
+    }
+  }
+}
+
 /** Checkout for a plan, coming back to this page. */
 function checkout(plan: SubscriptionPlan): string {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://hanzo.app'
-  const path = typeof window !== 'undefined' ? window.location.pathname : chat()
+  const path = typeof window !== 'undefined' ? preservedPath(window.location.pathname) : chat()
   return checkoutUrl(plan.id, `${origin}${path}`)
 }
 
@@ -177,9 +219,10 @@ export function Gate({
   }, [])
 
   const choose = useCallback((o: string) => {
+    if (current && o !== current) preserveRouteOnOrgSwitch()
     pick(o)
     setChoosing(false)
-  }, [])
+  }, [current])
 
   // The organization a link arrives for. hanzo.ai opens the workspace at
   // `?signin&org=<the org it is working in>` (Account.tsx); once signed in, an org
@@ -477,7 +520,7 @@ function Create() {
           <Text render="p" fontSize="$6" fontWeight="500" color="var(--foreground)" text="center">
             {t('No organizations yet')}
           </Text>
-          <Button variant="linkMuted" size="sm" mt={8} onClick={() => setDetails((d) => !d)}>
+          <Button variant="linkMuted" size="sm" mt={8} aria-expanded={details} onClick={() => setDetails((d) => !d)}>
             {t(details ? '- Details' : '+ Details')}
           </Button>
           {details ? (
@@ -493,6 +536,170 @@ function Create() {
   )
 }
 
+/** Monochrome custom dropdown selector — replaces native OS `<select>` menus cleanly. */
+function MonoSelect({
+  value,
+  options,
+  onChange,
+  label,
+  slotName,
+}: {
+  value: string
+  options: { value: string; label: string; meta?: string }[]
+  onChange: (value: string) => void
+  label: string
+  slotName: string
+}) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLElement | null>(null)
+  const triggerRef = useRef<HTMLElement | null>(null)
+
+  const close = useCallback((restoreFocus = false) => {
+    setOpen(false)
+    if (restoreFocus) queueMicrotask(() => triggerRef.current?.focus?.())
+  }, [])
+
+  useEffect(() => {
+    if (!open || typeof document === 'undefined') return
+    const onPointerDown = (e: Event) => {
+      if (rootRef.current?.contains(e.target as Node)) return
+      close(false)
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        close(true)
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown, true)
+    document.addEventListener('keydown', onKeyDown, true)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown, true)
+      document.removeEventListener('keydown', onKeyDown, true)
+    }
+  }, [open, close])
+
+  const selected = options.find((o) => o.value === value) ?? options[0]
+  const display = selected ? (selected.meta ? `${selected.label} · ${selected.meta}` : selected.label) : ''
+
+  return (
+    <YStack
+      ref={(node: unknown) => {
+        rootRef.current = (node as HTMLElement | null) ?? null
+      }}
+      position="relative"
+      width="100%"
+    >
+      <XStack
+        ref={(node: unknown) => {
+          triggerRef.current = (node as HTMLElement | null) ?? null
+        }}
+        render={<button type="button" />}
+        data-slot={slotName}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={label}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e: { key?: string; preventDefault?: () => void }) => {
+          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault?.()
+            setOpen(true)
+          }
+        }}
+        width="100%"
+        minH={44}
+        px={16}
+        py={12}
+        rounded={12}
+        borderWidth={1}
+        borderColor={open ? 'var(--border-strong)' : 'var(--border)'}
+        bg="var(--background)"
+        items="center"
+        justify="space-between"
+        gap={10}
+        cursor="pointer"
+        hoverStyle={{ bg: '$hover', borderColor: 'var(--border-strong)' }}
+        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+      >
+        <Text fontSize="$4" color="var(--foreground)" numberOfLines={1} flex={1} minW={0} text="start">
+          {display}
+        </Text>
+        <View shrink={0} $platform-web={{ color: muted }} aria-hidden>
+          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </View>
+      </XStack>
+      {open ? (
+        <YStack
+          role={'listbox' as never}
+          aria-label={label}
+          data-slot={`${slotName}-menu`}
+          position="absolute"
+          t="100%"
+          mt={6}
+          l={0}
+          r={0}
+          z="var(--z-popover)"
+          bg="var(--popover)"
+          borderWidth={1}
+          borderColor="var(--border-strong)"
+          boxShadow="var(--shadow-floating)"
+          rounded={12}
+          p={6}
+          gap={2}
+          maxH={260}
+          overflowY="auto"
+        >
+          {options.map((opt) => {
+            const active = opt.value === value
+            return (
+              <XStack
+                key={opt.value || '__empty'}
+                render={<button type="button" />}
+                role="option"
+                aria-selected={active}
+                onClick={() => {
+                  onChange(opt.value)
+                  close(true)
+                }}
+                width="100%"
+                minH={40}
+                $max-sm={{ minH: 44 }}
+                px={10}
+                py={8}
+                rounded={8}
+                borderWidth={1}
+                borderColor={active ? 'var(--border-strong)' : 'transparent'}
+                bg={active ? '$panel' : 'transparent'}
+                items="center"
+                justify="space-between"
+                gap={8}
+                cursor="pointer"
+                hoverStyle={{ bg: '$hover', borderColor: 'var(--border-strong)' }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+              >
+                <XStack items="center" gap={6} flex={1} minW={0}>
+                  <Text fontSize="$3" fontWeight={active ? '600' : '400'} color="var(--foreground)" numberOfLines={1} text="start">
+                    {opt.label}
+                  </Text>
+                  {opt.meta ? (
+                    <Text fontSize="$2" color={muted} numberOfLines={1} shrink={0}>
+                      · {opt.meta}
+                    </Text>
+                  ) : null}
+                </XStack>
+                {active ? <Check size={15} color="var(--foreground)" aria-hidden /> : null}
+              </XStack>
+            )
+          })}
+        </YStack>
+      ) : null}
+    </YStack>
+  )
+}
+
 /** Name it, pick what it runs and its plan: a paid plan goes to checkout, Free goes straight in. */
 function CreateDialog({ onClose }: { onClose: () => void }) {
   const { t } = useI18n()
@@ -505,7 +712,10 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
   const chosen = ladder.find((p) => p.id === rung) ?? ladder.find((p) => !p.priceMonthly) ?? ladder[0] ?? null
   const personal = priced(chosen)
   const [name, setName] = useState('')
-  const [kind, setKind] = useState<'org' | 'personal'>('org')
+  const [kind, setKind] = useState<'org' | 'personal'>(() => (alone ? 'personal' : 'org'))
+  useEffect(() => {
+    if (!alone && kind === 'personal') setKind('org')
+  }, [alone, kind])
   // A team organization runs on the per-seat Team plan; a personal one on the
   // rung chosen below, Free unless another is. Checkout sets the seats and the term.
   const { plan, price } = kind === 'org' ? team : personal
@@ -636,8 +846,8 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
           <View display="grid" gridTemplateColumns="repeat(auto-fit, minmax(220px, 1fr))" gap={10}>
             {(
               [
+                ['personal', phrase('Personal'), phrase('Just you. Starts free and opens right away.'), personal],
                 ['org', phrase('Organization'), phrase('A team. Invite members, share agents and credit.'), team],
-                ['personal', phrase('Personal'), phrase('Just you. Named after your account.'), personal],
               ] as const
             ).filter(([k]) => alone || k === 'org').map(([k, label, hint, offer]) => (
               <XStack
@@ -723,22 +933,24 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
         ) : null}
 
         {templates.length > 0 ? (
-          <View render="label" display="block" mt={20}>
+          <View display="block" mt={20}>
             <Text display="block" fontSize="$4" fontWeight="500" mb={8} color="var(--foreground)">
               {t('Template')}
             </Text>
-            <Text
-              render={<select value={template} onChange={(e) => setTemplate(e.target.value)} />}
-              {...FIELD}
-            >
-              <option value="">{t('None — start empty')}</option>
-              {templates.map((row) => (
-                <option key={row.slug} value={row.slug}>
-                  {row.title || row.name || row.slug}
-                  {row.category ? ` · ${row.category}` : ''}
-                </option>
-              ))}
-            </Text>
+            <MonoSelect
+              slotName="create-template-select"
+              label={t('Template')}
+              value={template}
+              onChange={setTemplate}
+              options={[
+                { value: '', label: t('None — start empty') },
+                ...templates.map((row) => ({
+                  value: row.slug,
+                  label: row.title || row.name || row.slug,
+                  meta: row.category,
+                })),
+              ]}
+            />
             <Text display="block" fontSize="$3" color={muted} mt={8}>
               {t('What it runs, set up as soon as the organization opens. Choose none to start empty.')}
             </Text>
@@ -803,6 +1015,28 @@ interface Listed {
   emoji?: string
   /** The wordmark a sign-in screen draws, the mark where no square one is set. */
   logo?: string
+  /** Whether this workspace is the owner's personal workspace (IAM `Organization.isPersonal`). */
+  isPersonal?: boolean
+  /** Optional workspace type if supplied on the org record. */
+  type?: string
+  /** Optional plan or tier slug if present on the org record. */
+  plan?: string
+  tier?: string
+}
+
+/** Workspace type (`Personal` vs `Team`) read off the org record when present. */
+function workspaceKind(rec?: Listed): 'personal' | 'team' | undefined {
+  if (!rec) return undefined
+  if (rec.isPersonal === true || rec.type === 'personal') return 'personal'
+  if (rec.isPersonal === false || rec.type === 'team' || rec.type === 'organization') return 'team'
+  return undefined
+}
+
+/** Plan label read off an org record when billing has not answered separately. */
+function recordPlan(rec?: Listed): string | undefined {
+  const raw = rec?.plan || rec?.tier
+  if (!raw) return undefined
+  return spoken(label(raw)) || raw
 }
 
 /** One page of IAM's organization list and the cursor that continues it. */
@@ -881,6 +1115,7 @@ interface Shown {
   mark: Listed | undefined
   role?: string
   plan?: string
+  kind?: 'personal' | 'team'
 }
 
 /** An organization's mark: its image, else its emoji, else its initial in its own hue (keyed on the slug, so a rename keeps it). */
@@ -899,27 +1134,29 @@ function Mark({ org }: { org: Shown }) {
   )
 }
 
-/** One organization: its mark, its name and slug, the reader's role and its plan; the current one checked. */
+/** One organization: its mark, name and slug, workspace type, reader's role, and plan; the current one checked. */
 function Choice({ org, current = false, note, disabled, onPress }: { org: Shown; current?: boolean; note?: string; disabled?: boolean; onPress: () => void }) {
   const { t } = useI18n()
   return (
     <View render="li" display="block">
       <XStack
-        render="button"
+        render={<button type="button" disabled={disabled} />}
         onClick={onPress}
         disabled={disabled}
         aria-current={current || undefined}
         width="100%"
+        minH={44}
         items="center"
         gap={12}
         px={12}
         py={10}
         rounded={12}
         borderWidth={1}
-        borderColor={current ? '$ink' : '$edge'}
-        bg="transparent"
+        borderColor={current ? 'var(--border-strong)' : '$edge'}
+        bg={current ? '$panel' : 'transparent'}
         cursor="pointer"
-        hoverStyle={{ bg: '$hover' }}
+        hoverStyle={{ bg: '$hover', borderColor: 'var(--border-strong)' }}
+        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
       >
         <Mark org={org} />
         <YStack flex={1} minW={0} gap={4}>
@@ -930,8 +1167,21 @@ function Choice({ org, current = false, note, disabled, onPress }: { org: Shown;
             <Text fontSize="$2" fontFamily="$mono" color="$soft" numberOfLines={1} {...{ 'data-i18n-ltr': '' }}>
               {org.name}
             </Text>
-            {org.role ? <Tag variant="outline">{said(org.role, t)}</Tag> : null}
-            {org.plan ? <Tag>{org.plan}</Tag> : null}
+            {org.kind ? (
+              <Tag variant="outline" color="gray" data-slot="org-kind-badge">
+                {org.kind === 'personal' ? t('Personal') : t('Team')}
+              </Tag>
+            ) : null}
+            {org.role ? (
+              <Tag variant="outline" color="gray" data-slot="org-role-badge">
+                {said(org.role, t)}
+              </Tag>
+            ) : null}
+            {org.plan ? (
+              <Tag variant="soft" color="gray" weight="medium" data-slot="org-plan-badge">
+                {org.plan}
+              </Tag>
+            ) : null}
             {note ? (
               <Text fontSize="$2" color="$soft">
                 {note}
@@ -981,7 +1231,8 @@ function Pick({
     display: marks[name]?.displayName || name,
     mark: marks[name],
     role: role(name) ?? '',
-    plan: plans[name],
+    plan: plans[name] || recordPlan(marks[name]),
+    kind: workspaceKind(marks[name]),
   }))
   const shown = mine.filter((o) => matches(o, q))
 
@@ -1099,6 +1350,7 @@ function Everyone({ q, skip }: { q: string; skip: string[] }) {
   const enter = (org: string) => {
     setStepping(org)
     setRefused(null)
+    preserveRouteOnOrgSwitch()
     support(org).catch((e: unknown) => {
       setRefused(e instanceof Error ? e.message : t('IAM did not step in.'))
       setStepping(null)
@@ -1118,7 +1370,13 @@ function Everyone({ q, skip }: { q: string; skip: string[] }) {
         {others.map((o) => (
           <Choice
             key={o.name}
-            org={{ name: o.name, display: o.displayName || o.name, mark: o }}
+            org={{
+              name: o.name,
+              display: o.displayName || o.name,
+              mark: o,
+              kind: workspaceKind(o),
+              plan: recordPlan(o),
+            }}
             note={stepping === o.name ? t('Stepping in…') : undefined}
             disabled={stepping !== null}
             onPress={() => enter(o.name)}
@@ -1198,6 +1456,7 @@ function Found({ onClose }: { onClose: () => void }) {
           throw new Error(t('{org} is made, and it is still called {org}: {reason}', { org: made, reason: say(err, t) }))
         })
       }
+      preserveRouteOnOrgSwitch()
       reopen(made)
     } catch (err) {
       setRefused(say(err, t))
@@ -1569,8 +1828,15 @@ function Start({
   )
 }
 
-/** Where a checkout from the setup returns: Home, on this origin. */
-const home = (): string => `${window.location.origin}${where().home}`
+/** Where a checkout from the setup returns: Home during initial `/start`, or the preserved pathname otherwise. */
+const home = (setup = true): string => {
+  if (typeof window === 'undefined') return ''
+  if (!setup) {
+    const path = preservedPath(window.location.pathname)
+    if (path && path !== '/start' && path !== '/login') return `${window.location.origin}${path}`
+  }
+  return `${window.location.origin}${where().home}`
+}
 
 /**
  * THE PLAN: how many seats, billed monthly or annually, then checkout.
@@ -1733,7 +1999,7 @@ function Plan({
         <XStack gap={10} flexWrap="wrap" mt={24}>
           {plan ? (
             <Button asChild variant="primary" size="lg">
-              <a href={cartUrl(plan.id, seats, term, org, home())}>{t('Continue to checkout')}</a>
+              <a href={cartUrl(plan.id, seats, term, org, home(setup))}>{t('Continue to checkout')}</a>
             </Button>
           ) : null}
           {members.length > 1 && onSwitch ? (

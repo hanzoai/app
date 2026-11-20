@@ -30,10 +30,11 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { phrase, type Say } from '@hanzo/i18n'
 import { useAgents, usePeople } from '@hanzo/ai/react'
-import { Box, Text, View, XStack, YStack } from '@hanzo/ui'
+import { Box, Button, DropdownMenu, Skeleton, Text, toast, View, XStack, YStack, type DropdownMenuProps } from '@hanzo/ui'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@hanzo/ui'
 import { useIam, useOrganizations } from '@hanzo/iam/react'
 import {
+  ArrowRightLeft,
   Calendar,
   CalendarClock,
   Check,
@@ -42,6 +43,7 @@ import {
   Columns3,
   ListChecks,
   ListFilter,
+  MoreHorizontal,
   SquareTerminal,
   Plus,
   Tag,
@@ -70,6 +72,7 @@ import {
   edit,
   open as openCard,
   projects as readProjects,
+  targetOf,
   sift,
   steps,
   tick,
@@ -77,6 +80,7 @@ import {
   type Sift,
 } from './lib/todo'
 import { BAD } from './lib/mix'
+import { useDevMode } from './lib/dev-mode'
 
 const DAY = 86400
 
@@ -187,8 +191,10 @@ function Act({
       rounded="$2"
       bg={on ? '$raised' : 'transparent'}
       borderWidth={1}
-      borderColor={on ? '$borderColor' : 'transparent'}
+      borderColor={on ? 'var(--border-strong)' : 'transparent'}
       hoverStyle={{ bg: '$hover' }}
+      cursor="pointer"
+      $touchable={{ minH: 44 }}
     >
       <XStack items="center" gap="$1.5">
         {Icon ? <Icon size={13} aria-hidden /> : null}
@@ -265,81 +271,154 @@ function Tile({
   card,
   who,
   onOpen,
+  onMove,
 }: {
   card: Card
   who?: { avatar?: string; emoji?: string; name: string }
   onOpen: () => void
+  onMove: (status: string) => void
 }) {
   const { t, locale } = useI18n()
   const list = steps(card.description)
   const done = list.filter((s) => s.done).length
   const late = card.dueAt ? card.dueAt * 1000 < Date.now() : false
+  const primaryColumns = COLUMNS.filter((c) => c.id !== 'canceled')
+  const menuItems: NonNullable<DropdownMenuProps['items']> = [
+    { type: 'label', key: 'move-label', label: t('Move to…') },
+    ...primaryColumns.map((col) => ({
+      key: `move-${col.id}`,
+      label: columnName(col.id, t) ?? col.label,
+      icon: <ArrowRightLeft size={14} aria-hidden />,
+      selected: card.status === col.id,
+      onSelect: () => {
+        if (card.status !== col.id) onMove(col.id)
+      },
+    })),
+  ]
+
   return (
     <View
       render={<div draggable />}
       onDragStart={(e: React.DragEvent) => e.dataTransfer.setData('text/plain', `${card.projectKey}#${card.number}`)}
       display="block"
+      width="100%"
+      shrink={0}
       cursor="grab"
     >
-      <Box
-        render="button"
-        onClick={onOpen}
+      <YStack
+        data-slot="board-card"
         width="100%"
-        p="$3"
-        gap="$2"
         rounded="$3"
         borderWidth={1}
-        borderColor="$borderColor"
-        bg="$raised"
+        borderColor="var(--border-strong)"
+        bg="var(--surface-card-emphasis)"
         hoverStyle={{ borderColor: '$ink' }}
+        overflow="hidden"
       >
-        <YStack gap="$2" width="100%">
-          {card.labels.length > 0 ? (
-            <XStack gap="$1" flexWrap="wrap">
-              {card.labels.slice(0, 4).map((l) => (
-                <Label key={l} name={l} />
-              ))}
-            </XStack>
-          ) : null}
+        <XStack items="flex-start" gap="$1.5" px="$3" pt="$2.5" pb="$2">
+          <Box
+            render={<button type="button" />}
+            onClick={onOpen}
+            flex={1}
+            minW={0}
+            p={0}
+            borderWidth={0}
+            bg="transparent"
+            cursor="pointer"
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+          >
+            <YStack gap="$2" width="100%" items="flex-start">
+              {card.labels.length > 0 ? (
+                <XStack gap="$1" flexWrap="wrap">
+                  {card.labels.slice(0, 4).map((l) => (
+                    <Label key={l} name={l} />
+                  ))}
+                </XStack>
+              ) : null}
 
-          <Text fontSize="$2" color="$ink" numberOfLines={3} text="left">
-            {card.title}
-          </Text>
-
-          <XStack items="center" gap="$2" flexWrap="wrap">
-            {card.dueAt ? (
-              <XStack items="center" gap="$1">
-                <CalendarClock size={12} aria-hidden />
-                <Text fontSize="$1" color={late ? BAD : '$soft'}>
-                  {when(card.dueAt, locale)}
-                </Text>
-              </XStack>
-            ) : null}
-            {list.length > 0 ? (
-              <XStack items="center" gap="$1">
-                <ListChecks size={12} aria-hidden />
-                <Text fontSize="$1" color={done === list.length ? '$ink' : '$soft'}>
-                  {t('{done}/{total}', { done: done.toLocaleString(locale), total: list.length.toLocaleString(locale) })}
-                </Text>
-              </XStack>
-            ) : null}
-            {card.priority && card.priority !== 'none' ? (
-              <Text fontSize="$1" color="$soft">
-                {priorityName(card.priority, t)}
+              <Text fontSize="$2" fontWeight="500" color="$ink" numberOfLines={3} text="left" width="100%">
+                {card.title}
               </Text>
-            ) : null}
-            <YStack flex={1} />
-            {card.assignee ? (
-              <Face
-                src={who?.avatar}
-                emoji={who?.emoji}
-                name={who?.name ?? card.assignee}
-                size={20}
-              />
-            ) : null}
-          </XStack>
-        </YStack>
-      </Box>
+
+              <XStack items="center" gap="$2" flexWrap="wrap" width="100%">
+                {card.dueAt ? (
+                  <XStack items="center" gap="$1">
+                    <CalendarClock size={12} aria-hidden />
+                    <Text fontSize="$1" color={late ? BAD : '$soft'}>
+                      {when(card.dueAt, locale)}
+                    </Text>
+                  </XStack>
+                ) : null}
+                {list.length > 0 ? (
+                  <XStack items="center" gap="$1">
+                    <ListChecks size={12} aria-hidden />
+                    <Text fontSize="$1" color={done === list.length ? '$ink' : '$soft'}>
+                      {t('{done}/{total}', { done: done.toLocaleString(locale), total: list.length.toLocaleString(locale) })}
+                    </Text>
+                  </XStack>
+                ) : null}
+                {card.priority && card.priority !== 'none' ? (
+                  <XStack
+                    items="center"
+                    gap="$1"
+                    px="$1.5"
+                    py={1}
+                    rounded="$2"
+                    bg={card.priority === 'urgent' ? 'var(--state-error)' : card.priority === 'high' ? '$raised' : 'transparent'}
+                    borderWidth={card.priority === 'urgent' || card.priority === 'high' ? 1 : 0}
+                    borderColor={card.priority === 'urgent' ? 'var(--state-error)' : 'var(--border-strong)'}
+                  >
+                    <Text
+                      fontSize="$1"
+                      fontWeight={card.priority === 'urgent' || card.priority === 'high' ? '600' : '400'}
+                      color={card.priority === 'urgent' ? 'var(--background)' : card.priority === 'high' ? '$ink' : '$soft'}
+                    >
+                      {priorityName(card.priority, t)}
+                    </Text>
+                  </XStack>
+                ) : null}
+                <YStack flex={1} />
+                {card.assignee ? (
+                  <Face
+                    src={who?.avatar}
+                    emoji={who?.emoji}
+                    name={who?.name ?? card.assignee}
+                    size={20}
+                  />
+                ) : null}
+              </XStack>
+            </YStack>
+          </Box>
+
+          <DropdownMenu
+            placement="bottom-end"
+            minWidth={172}
+            items={menuItems}
+            trigger={
+              <Box
+                render={<button type="button" />}
+                data-slot="board-card-menu"
+                aria-label={t('Move {title}', { title: card.title })}
+                width={26}
+                height={26}
+                $max-sm={{ minW: 44, minH: 44, width: 44, height: 44 }}
+                shrink={0}
+                rounded="$2"
+                display="flex"
+                items="center"
+                justify="center"
+                bg="transparent"
+                borderWidth={0}
+                cursor="pointer"
+                hoverStyle={{ bg: '$hover' }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              >
+                <MoreHorizontal size={14} color="var(--muted-foreground)" aria-hidden />
+              </Box>
+            }
+          />
+        </XStack>
+      </YStack>
     </View>
   )
 }
@@ -364,9 +443,10 @@ function Detail({
   people: { id: string; name: string; label: string; avatar?: string; emoji?: string; agent: boolean }[]
   agents: { id: string; name: string }[]
   onClose: () => void
-  onSaved: () => void
+  onSaved: (patch?: Partial<Card>) => void
 }) {
   const { t, locale } = useI18n()
+  const [devMode] = useDevMode()
   const { client } = useAi()
   const [panel, setPanel] = useState<'labels' | 'dates' | 'members' | null>(null)
   const [title, setTitle] = useState(card.title)
@@ -418,7 +498,7 @@ function Detail({
       setWrong(null)
       try {
         await edit(client, card.projectKey, card.number, patch)
-        onSaved()
+        onSaved(patch)
       } catch (e) {
         setWrong(e instanceof Error ? e.message : t('The change was refused'))
       } finally {
@@ -461,7 +541,19 @@ function Detail({
         <Text fontSize="$1" color="$soft" flex={1} numberOfLines={1}>
           {card.identifier}
         </Text>
-        <Box render="button" onClick={onClose} p="$1" rounded="$2" aria-label={t('Close')}>
+        <Box
+          render={<button type="button" />}
+          onClick={onClose}
+          p="$1.5"
+          $max-sm={{ minW: 44, minH: 44 }}
+          rounded="$2"
+          bg="transparent"
+          borderWidth={0}
+          cursor="pointer"
+          hoverStyle={{ bg: '$hover' }}
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+          aria-label={t('Close')}
+        >
           <X size={16} aria-hidden />
         </Box>
       </XStack>
@@ -511,8 +603,12 @@ function Detail({
             flex={1}
             minW={0}
             bg="transparent"
-            borderWidth={0}
+            borderWidth={1}
+            borderColor="transparent"
+            rounded={6}
+            px={4}
             outlineStyle="none"
+            focusStyle={{ borderColor: 'var(--ring)' }}
             color="inherit"
             fontSize="$7"
             fontWeight="600"
@@ -542,10 +638,8 @@ function Detail({
                 {t('None yet.')}
               </Text>
             )}
-            {/* THE COLOUR IS THE NAME'S, derived rather than stored, so the same
-                label is the same colour everywhere and nothing can drift. */}
             <Text fontSize="$1" color="$soft">
-              {t('A label is a word on the forge issue, and its colour comes from the word — so it reads the same here and there. Labels are added on the forge; this board does not write them yet.')}
+              {t('Labels sync with your project issues and keep the same color everywhere.')}
             </Text>
           </YStack>
         ) : null}
@@ -569,12 +663,8 @@ function Detail({
                 <Text render={<input type="date" value={asInput(card.dueAt)} readOnly />} {...DATE} />
               </YStack>
             </XStack>
-            {/* SAID PLAINLY rather than drawn as a control that writes nowhere.
-                A forge issue has no deadline of its own — the store takes the
-                due date from the issue's MILESTONE — so a per-card date needs a
-                decision about milestones before it can be written from here. */}
             <Text fontSize="$1" color="$soft">
-              {t("A card's dates come from its forge milestone, which is why they read here and cannot yet be set here.")}
+              {t("Dates sync from this card's project milestone.")}
             </Text>
           </YStack>
         ) : null}
@@ -624,7 +714,7 @@ function Detail({
                 if (!client || busy) return
                 setBusy(true)
                 void claim(client, card.projectKey, card.number)
-                  .then(onSaved)
+                  .then(() => onSaved())
                   .catch((e: Error) => setWrong(e.message))
                   .finally(() => setBusy(false))
               }}
@@ -663,6 +753,7 @@ function Detail({
             rounded={8}
             p={10}
             outlineStyle="none"
+            focusStyle={{ borderColor: 'var(--ring)' }}
             color="inherit"
             fontSize="$2"
           />
@@ -730,6 +821,7 @@ function Detail({
               px={8}
               py={6}
               outlineStyle="none"
+              focusStyle={{ borderColor: 'var(--ring)' }}
               color="inherit"
               fontSize="$2"
             />
@@ -987,6 +1079,7 @@ function Column({
   cards,
   people,
   onDrop,
+  onMoveCard,
   onOpen,
   onAdd,
   loading,
@@ -995,6 +1088,7 @@ function Column({
   cards: Card[]
   people: { name: string; label: string; avatar?: string; emoji?: string }[]
   onDrop: (ref: string, status: string) => void
+  onMoveCard: (card: Card, status: string) => void
   onOpen: (c: Card) => void
   /** Answers whether the card landed; the composer keeps the text if it did not. */
   onAdd: (status: string, title: string) => Promise<boolean>
@@ -1004,10 +1098,33 @@ function Column({
   const { t, locale } = useI18n()
   const [over, setOver] = useState(false)
   const [adding, setAdding] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [title, setTitle] = useState('')
+
+  const submitNewCard = () => {
+    const said = title.trim()
+    if (!said || submitting) return
+    setSubmitting(true)
+    // THE TEXT SURVIVES A REFUSAL. Clearing before the answer is
+    // how a failed save costs somebody the sentence they wrote.
+    void onAdd(column.id, said)
+      .then((landed) => {
+        if (!landed) return
+        setTitle('')
+        setAdding(false)
+      })
+      .finally(() => setSubmitting(false))
+  }
 
   return (
     <XStack
+      flex={1}
+      flexBasis={230}
+      minW={230}
+      height="100%"
+      maxH="100%"
+      items="flex-start"
+      $max-md={{ flex: 0, flexBasis: 272, width: 272, minW: 272, shrink: 0 }}
       onDragOver={(e: React.DragEvent) => {
         e.preventDefault()
         setOver(true)
@@ -1021,37 +1138,53 @@ function Column({
       }}
     >
       <YStack
-        width={300}
+        width="100%"
+        minH={0}
         gap="$2"
         p="$2"
         rounded="$3"
         borderWidth={1}
-        borderColor={over ? '$ink' : '$borderColor'}
-        bg="$hover"
+        borderColor={over ? '$ink' : 'var(--border)'}
+        bg="var(--surface-card)"
         maxH="100%"
       >
-        <XStack items="baseline" gap="$2" px="$2" pt="$1">
-          <Text fontSize="$2" fontWeight="600" color="$ink" flex={1}>
+        <XStack items="baseline" gap="$2" px="$2" pt="$1" shrink={0}>
+          <Text fontSize="$2" fontWeight="600" color="$ink" flex={1} numberOfLines={1}>
             {columnName(column.id, t) ?? column.label}
           </Text>
-          <Text fontSize="$1" color="$soft">
+          <Text fontFamily="$mono" fontSize="$1" color="$soft" fontVariant={['tabular-nums']}>
             {loading ? '' : cards.length.toLocaleString(locale)}
           </Text>
         </XStack>
 
-        <YStack gap="$2" overflowY="auto" overflowX="hidden" shrink={1}>
-          {cards.map((c) => (
-            <Tile
-              key={c.id}
-              card={c}
-              who={people.find((p) => p.name === c.assignee)}
-              onOpen={() => onOpen(c)}
-            />
-          ))}
+        {/* flexBasis="auto" + shrink={1} (NEVER flex={1}, which sets flex-basis: 0px
+            and collapses every card inside an auto-height column to 0px!). */}
+        <YStack width="100%" flexBasis="auto" shrink={1} minH={0} gap="$2" overflowY="auto" overflowX="hidden">
+          {loading ? (
+            <YStack gap="$2" role="status" aria-busy={true} aria-label={t('Loading cards')}>
+              {[0, 1].map((i) => (
+                <YStack key={i} p="$3" gap="$2" rounded="$3" borderWidth={1} borderColor="$edge" bg="$panel">
+                  <Skeleton layout="block" width={i === 0 ? '42%' : '30%'} height={14} rounded="$2" />
+                  <Skeleton layout="block" width={i === 0 ? '88%' : '76%'} height={13} rounded="$2" />
+                  <Skeleton layout="block" width="54%" height={11} rounded="$2" />
+                </YStack>
+              ))}
+            </YStack>
+          ) : (
+            cards.map((c) => (
+              <Tile
+                key={c.id}
+                card={c}
+                who={people.find((p) => p.name === c.assignee)}
+                onOpen={() => onOpen(c)}
+                onMove={(nextStatus) => onMoveCard(c, nextStatus)}
+              />
+            ))
+          )}
         </YStack>
 
         {adding ? (
-          <YStack gap="$2">
+          <YStack gap="$2" shrink={0}>
             <Text
               render={
                 <textarea
@@ -1065,15 +1198,7 @@ function Column({
                     }
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault()
-                      const said = title.trim()
-                      if (!said) return
-                      // THE TEXT SURVIVES A REFUSAL. Clearing before the answer is
-                      // how a failed save costs somebody the sentence they wrote.
-                      void onAdd(column.id, said).then((landed) => {
-                        if (!landed) return
-                        setTitle('')
-                        setAdding(false)
-                      })
+                      submitNewCard()
                     }
                   }}
                   placeholder={t('What needs doing?')}
@@ -1083,27 +1208,60 @@ function Column({
               // design's base sheet makes every textarea resizable; gui types no `resize`.
               $platform-web={{ resize: 'none' }}
               width="100%"
-              bg="var(--surface-card)"
+              bg="var(--surface-card-emphasis)"
               borderWidth={1}
-              borderColor="var(--border)"
+              borderColor="var(--border-strong)"
               rounded={8}
               p={8}
               outlineStyle="none"
+              focusStyle={{ borderColor: 'var(--ring)' }}
               color="inherit"
               fontSize="$2"
             />
+            <XStack items="center" gap="$1.5" justify="flex-end">
+              <Button
+                size="xs"
+                variant="outline"
+                rounded="$2"
+                minH={30}
+                $max-sm={{ minH: 44 }}
+                onClick={() => {
+                  setAdding(false)
+                  setTitle('')
+                }}
+              >
+                {t('Cancel')}
+              </Button>
+              <Button
+                size="xs"
+                variant="primary"
+                rounded="$2"
+                minH={30}
+                $max-sm={{ minH: 44 }}
+                disabled={!title.trim() || submitting}
+                onClick={submitNewCard}
+              >
+                {t('Add')}
+              </Button>
+            </XStack>
           </YStack>
         ) : (
           <Box
-            render="button"
+            render={<button type="button" />}
             onClick={() => setAdding(true)}
             width="100%"
             p="$2"
+            $max-sm={{ minH: 44 }}
             rounded="$2"
+            shrink={0}
+            bg="transparent"
+            borderWidth={0}
+            cursor="pointer"
             // THE WHOLE ROW LIGHTS, not the words — it is a full-width target and
             // a fill is what says so. The tint sits above the column's own
             // ground so the row reads as raised rather than merely tinted.
             hoverStyle={{ bg: '$raised' }}
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
           >
             <XStack items="center" gap="$1.5">
               <Plus size={13} aria-hidden />
@@ -1288,6 +1446,7 @@ function Filter({
 
 function Cards() {
   const { t, locale } = useI18n()
+  const [devMode] = useDevMode()
   const { client } = useAi()
   const { user } = useIam()
   const { currentOrgId } = useOrganizations()
@@ -1309,6 +1468,7 @@ function Cards() {
   const [want, setWant] = useState<Sift>({})
   const [filtering, setFiltering] = useState(false)
   const [nonce, bump] = useState(0)
+  const [overrides, setOverrides] = useState<Record<string, Partial<Card>>>({})
 
   // WHO CAN HAVE A CARD: the org's people and its agents, in one list, because
   // the store keeps one assignee and does not ask which kind of worker it is.
@@ -1343,7 +1503,7 @@ function Cards() {
         setKey((k) => k || ks[0] || '')
       })
       .catch(() => {})
-    void readBoard(client, key ? { key } : {}, stop.signal)
+    void readBoard(client, key && key !== 'all' ? { key } : {}, stop.signal)
       .then((rows) => live && (setCards(rows), setRefused(null)))
       .catch((e: Error) => live && (setCards([]), setRefused(say(e, t('this board'), 'read', t))))
     return () => {
@@ -1352,15 +1512,20 @@ function Cards() {
     }
   }, [client, key, nonce, t])
 
+  const liveCards = useMemo<Card[] | null>(() => {
+    if (!cards) return null
+    return cards.map((c) => (overrides[c.id] ? { ...c, ...overrides[c.id] } : c))
+  }, [cards, overrides])
+
   // THE AGENT NAMES, so "an agent did this" can be answered about a card whose
   // source says `team` but whose holder is a bot — which is what a person filing
   // work and handing it over actually looks like.
   const bots = useMemo(() => new Set(agents.map((a) => a.name)), [agents])
   const labels = useMemo(
-    () => [...new Set((cards ?? []).flatMap((c) => c.labels))].sort(),
-    [cards],
+    () => [...new Set((liveCards ?? []).flatMap((c) => c.labels))].sort(),
+    [liveCards],
   )
-  const shown = useMemo(() => sift(cards ?? [], want, me, bots), [cards, want, me, bots])
+  const shown = useMemo(() => sift(liveCards ?? [], want, me, bots), [liveCards, want, me, bots])
   const narrowed = Object.values(want).some((v) => (Array.isArray(v) ? v.length : v !== undefined))
 
   const filed = useMemo(() => {
@@ -1373,22 +1538,51 @@ function Cards() {
     return out
   }, [shown])
 
+  // Show the 4 primary workflow columns side-by-side; include Canceled only when it holds cards.
+  const visibleColumns = useMemo(
+    () => COLUMNS.filter((c) => c.id !== 'canceled' || (filed.get('canceled')?.length ?? 0) > 0),
+    [filed],
+  )
+
+  const moveCard = useCallback(
+    (card: Card, status: string) => {
+      const targetKey = targetOf(card.projectKey, key, keys)
+      if (!targetKey) return setRefused(t(NOWHERE))
+      setOverrides((prev) => ({ ...prev, [card.id]: { ...(prev[card.id] ?? {}), status } }))
+      toast.success(t('Moved to {column}', { column: columnName(status, t) ?? status }))
+      void edit(client, targetKey, card.number, { status })
+        .then(() => bump((x) => x + 1))
+        .catch((e: Error) => {
+          setOverrides((prev) => {
+            const next = { ...prev }
+            delete next[card.id]
+            return next
+          })
+          setRefused(say(e, t('this card'), 'save', t))
+        })
+    },
+    [client, key, keys, t],
+  )
+
   const move = useCallback(
     (ref: string, status: string) => {
       const [k, n] = ref.split('#')
+      const num = Number(n)
+      const matched = (liveCards ?? []).find((c) => c.number === num && (!k || c.projectKey === k))
+      if (matched) {
+        moveCard(matched, status)
+        return
+      }
       // THE CARD'S OWN REF FIRST, then the board on screen, then the first one
-      // the store named — and nothing after that. The chain used to end
-      // `|| currentOrgId || 'hanzo'`, which files a write against a board whose
-      // owner nobody established: an org id is not a project key, and `hanzo` is
-      // somebody's real board. A write with no name to write under is refused.
-      const targetKey = k || key || keys[0]
+      // the store named — and nothing after that.
+      const targetKey = targetOf(k, key, keys)
       if (!n) return
       if (!targetKey) return setRefused(t(NOWHERE))
-      void edit(client, targetKey, Number(n), { status })
+      void edit(client, targetKey, num, { status })
         .then(() => bump((x) => x + 1))
         .catch((e: Error) => setRefused(say(e, t('this card'), 'save', t)))
     },
-    [client, key, keys, t],
+    [client, key, keys, liveCards, moveCard, t],
   )
 
   /**
@@ -1396,7 +1590,7 @@ function Cards() {
    */
   const add = useCallback(
     async (status: string, title: string): Promise<boolean> => {
-      const targetKey = key || keys[0]
+      const targetKey = targetOf('', key, keys)
       if (!targetKey) {
         setRefused(t(NOWHERE))
         return false
@@ -1419,7 +1613,7 @@ function Cards() {
   )
 
   return (
-    <YStack flex={1} minH={0} position="relative">
+    <YStack flex={1} minH={0} height="100%" overflow="hidden" position="relative">
       <XStack
         height={52}
         shrink={0}
@@ -1438,7 +1632,7 @@ function Cards() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem key="all" value="all">
-              {t('All Boards')}
+              {t('All boards')}
             </SelectItem>
             {keys.map((k) => (
               <SelectItem key={k} value={k}>
@@ -1448,11 +1642,11 @@ function Cards() {
           </SelectContent>
         </Select>
         <YStack flex={1} />
-        {cards ? (
+        {liveCards ? (
           <Text fontSize="$1" color="$soft" display="none" $md={{ display: 'flex' }}>
             {narrowed
-              ? t('{shown} of {total}', { shown: shown.length.toLocaleString(locale), total: cards.length.toLocaleString(locale) })
-              : t('{count} cards', { count: cards.length.toLocaleString(locale) })}
+              ? t('{shown} of {total}', { shown: shown.length.toLocaleString(locale), total: liveCards.length.toLocaleString(locale) })
+              : t('{count} cards', { count: liveCards.length.toLocaleString(locale) })}
           </Text>
         ) : null}
         <Act
@@ -1461,18 +1655,20 @@ function Cards() {
           on={filtering || narrowed}
           onPress={() => setFiltering((v) => !v)}
         />
-        <XStack display="none" $md={{ display: 'flex' }}>
-          <Act
-            icon={SquareTerminal}
-            label={t('Tabs & Shell')}
-            on={Boolean(aside)}
-            onPress={() => showAside(aside ? null : "tasks")}
-          />
-        </XStack>
+        {devMode ? (
+          <XStack display="none" $md={{ display: 'flex' }}>
+            <Act
+              icon={SquareTerminal}
+              label={t('Tabs & shell')}
+              on={Boolean(aside)}
+              onPress={() => showAside(aside ? null : "tasks")}
+            />
+          </XStack>
+        ) : null}
       </XStack>
 
-      <XStack flex={1} minH={0}>
-        {view === 'planner' ? <Planner cards={cards ?? []} onOpen={setOpened} /> : null}
+      <XStack flex={1} minW={0} minH={0} overflow="hidden">
+        {view === 'planner' ? <Planner cards={liveCards ?? []} onOpen={setOpened} /> : null}
 
         {/* THE COLUMNS ARE ALWAYS DRAWN, and only the CARDS wait on the store.
             The board's shape is not data — the columns are the platform's own
@@ -1488,6 +1684,7 @@ function Cards() {
           flex={1}
           minW={0}
           minH={0}
+          overflow="hidden"
           // One view at a time: the planner is the other reading of these cards.
           display={view === 'planner' ? "none" : "flex"}
         >
@@ -1503,6 +1700,7 @@ function Cards() {
               borderWidth={1}
               borderColor="$borderColor"
               bg="$hover"
+              shrink={0}
             >
               {/* THE SENTENCE GIVES AND THE BUTTON DOES NOT. `flex: 1` alone
                   still floors a text box at its longest unbroken word, so a
@@ -1520,7 +1718,7 @@ function Cards() {
                 py="$1"
                 rounded="$2"
                 borderWidth={1}
-                borderColor="$borderColor"
+                borderColor="var(--border-strong)"
                 hoverStyle={{ bg: '$hover' }}
               >
                 <Text fontSize="$1" color="$ink">
@@ -1530,14 +1728,29 @@ function Cards() {
             </XStack>
           ) : null}
 
-          <XStack flex={1} minH={0} overflowX="auto" overflowY="auto" p="$4" gap="$3" items="flex-start">
-            {COLUMNS.map((c) => (
+          <XStack
+            flex={1}
+            minW={0}
+            minH={0}
+            overflowX="auto"
+            overflowY="hidden"
+            p="$4"
+            gap="$3"
+            items="stretch"
+            $max-md={{ p: '$3' }}
+            $platform-web={{
+              WebkitOverflowScrolling: 'touch',
+              overscrollBehaviorX: 'contain',
+            }}
+          >
+            {visibleColumns.map((c) => (
               <Column
                 key={c.id}
                 column={c}
                 cards={filed.get(c.id) ?? []}
                 people={roster}
                 onDrop={move}
+                onMoveCard={moveCard}
                 onOpen={setOpened}
                 onAdd={add}
                 loading={cards === null && !refused}
@@ -1558,6 +1771,8 @@ function Cards() {
         gap="$2"
         px="$3"
         py="$2"
+        bg="$background"
+        z="var(--z-raised)"
         borderTopWidth={1}
         borderColor="$borderColor"
       >
@@ -1575,7 +1790,7 @@ function Cards() {
         />
         <YStack flex={1} />
         <Text fontSize="$1" color="$soft" numberOfLines={1} display="none" $md={{ display: 'flex' }}>
-          {t('A card is a forge issue — moving it here moves it there.')}
+          {t('Cards stay in sync with your project issues.')}
         </Text>
       </XStack>
 
@@ -1585,11 +1800,20 @@ function Cards() {
 
       {opened ? (
         <Detail
-          card={cards?.find((c) => c.id === opened.id) ?? opened}
+          key={opened.id}
+          card={liveCards?.find((c) => c.id === opened.id) ?? opened}
           people={roster}
           agents={agents}
           onClose={() => setOpened(null)}
-          onSaved={() => bump((x) => x + 1)}
+          onSaved={(patch) => {
+            if (patch) {
+              setOverrides((prev) => ({
+                ...prev,
+                [opened.id]: { ...(prev[opened.id] ?? {}), ...patch },
+              }))
+            }
+            bump((x) => x + 1)
+          }}
         />
       ) : null}
     </YStack>

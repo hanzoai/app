@@ -7,14 +7,13 @@
  * and organization theme mods — stored and resolved for the organization in scope.
  */
 
-import { useState, useEffect } from 'react'
-import { phrase } from '@hanzo/i18n'
-import { LanguagePicker } from '@hanzo/i18n/react'
+import { useState, useEffect, useMemo } from 'react'
+import { locales, phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
-import { Box, Button, Input, Text, XStack, YStack } from '@hanzo/ui'
+import { Box, Button, Input, Popover, PopoverContent, PopoverTrigger, ScrollView, Text, XStack, YStack, toast } from '@hanzo/ui'
 import { Appearance, apply } from '@hanzo/appearance'
 import { useIam } from '@hanzo/iam/react'
-import { Check, Download, Laptop, Palette, Smartphone, Sparkles, Type, Upload } from 'lucide-react'
+import { Check, ChevronDown, Download, Laptop, Palette, Search, Smartphone, Sparkles, Type, Upload } from 'lucide-react'
 import {
   getActivePlatform,
   setActivePlatform,
@@ -37,6 +36,140 @@ import { brand } from './where'
 import { tap } from './lib/tap'
 
 const CHOICE = { rounded: 8, borderWidth: 1, borderStyle: 'solid', cursor: 'pointer' } as const
+
+/** Monochrome searchable Popover language selector — replaces native `<LanguagePicker />`. */
+function CustomLanguageSelect() {
+  const { locale, setLocale, t } = useI18n()
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const options = useMemo(
+    () =>
+      locales
+        .filter((l) => !l.review || l.code === locale)
+        .map((entry) => ({
+          code: entry.code,
+          label: entry.englishName && entry.englishName !== entry.name ? `${entry.name} (${entry.englishName})` : entry.name || entry.code,
+        })),
+    [locale],
+  )
+  const current = options.find((o) => o.code === locale) ?? options[0]
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return options
+    return options.filter((o) => o.label.toLowerCase().includes(q) || o.code.toLowerCase().includes(q))
+  }, [options, query])
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) setQuery('')
+      }}
+      placement="bottom-start"
+      allowFlip
+      stayInFrame
+    >
+      <PopoverTrigger asChild disablePressTrigger>
+        <XStack
+          render={<button type="button" />}
+          onClick={() => setOpen((prev) => !prev)}
+          data-slot="look-language-trigger"
+          aria-label={t('Language')}
+          aria-expanded={open}
+          items="center"
+          justify="space-between"
+          gap="$2"
+          minW={220}
+          maxW="100%"
+          minH={36}
+          $max-sm={{ minH: 44, width: '100%' }}
+          px="$3"
+          rounded="$3"
+          bg="$panel"
+          borderWidth={1}
+          borderColor="var(--border-strong)"
+          hoverStyle={{ bg: '$hover' }}
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+          cursor="pointer"
+        >
+          <Text fontSize="$2" color="$ink" numberOfLines={1} flex={1} text="left">
+            {current?.label ?? locale}
+          </Text>
+          <ChevronDown size={14} color="$soft" aria-hidden />
+        </XStack>
+      </PopoverTrigger>
+      <PopoverContent
+        solid
+        bg="var(--popover)"
+        borderWidth={1}
+        borderColor="var(--border-strong)"
+        boxShadow="var(--shadow-floating)"
+        rounded="$4"
+        p="$2"
+        width={260}
+        maxW="calc(100vw - 24px)"
+        z="var(--z-popover)"
+      >
+        <YStack gap="$1.5">
+          <XStack items="center" gap="$1.5" px="$2" height={32} rounded="$2" borderWidth={1} borderColor="$rim" bg="$background">
+            <Search size={13} color="$soft" aria-hidden />
+            <Input
+              unstyled
+              flex={1}
+              minW={0}
+              height={30}
+              p={0}
+              borderWidth={0}
+              bg="transparent"
+              fontSize="$2"
+              color="$ink"
+              placeholder={t('Search language')}
+              value={query}
+              onChangeText={setQuery}
+            />
+          </XStack>
+          <ScrollView maxH={220}>
+            <YStack gap={2}>
+              {filtered.map((opt) => {
+                const active = opt.code === locale
+                return (
+                  <XStack
+                    key={opt.code}
+                    render={<button type="button" />}
+                    onClick={() => {
+                      setLocale(opt.code)
+                      setOpen(false)
+                      setQuery('')
+                    }}
+                    items="center"
+                    justify="space-between"
+                    gap="$2"
+                    width="100%"
+                    minH={32}
+                    $max-sm={{ minH: 44 }}
+                    px="$2"
+                    rounded="$2"
+                    borderWidth={0}
+                    bg={active ? '$panel' : 'transparent'}
+                    hoverStyle={{ bg: '$hover' }}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                    cursor="pointer"
+                  >
+                    <Text fontSize="$2" color="$ink" fontWeight={active ? '600' : '400'} numberOfLines={1} flex={1} text="left">
+                      {opt.label}
+                    </Text>
+                    {active ? <Check size={14} color="$ink" aria-hidden /> : null}
+                  </XStack>
+                )
+              })}
+            </YStack>
+          </ScrollView>
+        </YStack>
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 const PLATFORM_OPTIONS: { id: PlatformId | 'auto'; label: string; note: string }[] = [
   { id: 'auto', label: phrase('Auto (System OS)'), note: phrase('Automatically detects your device operating system') },
@@ -143,10 +276,11 @@ export function Look() {
     try {
       const mod = importMod(modJson.trim())
       handleSelectMod(mod)
-      alert(t('Mod "{name}" successfully applied!', { name: mod.name }))
+      toast.success(t('Mod "{name}" successfully applied!', { name: mod.name }))
       setModJson('')
-    } catch (e: any) {
-      alert(t('Failed to import mod: {message}', { message: e.message }))
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      toast.error(t('Failed to import mod: {message}', { message }))
     }
   }
 
@@ -303,7 +437,7 @@ export function Look() {
           {t('The language Hanzo is shown in, on every Hanzo surface you sign in to.')}
         </Text>
         <XStack pt="$1">
-          <LanguagePicker />
+          <CustomLanguageSelect />
         </XStack>
       </YStack>
 

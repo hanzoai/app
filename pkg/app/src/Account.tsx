@@ -1,37 +1,12 @@
 'use client'
 
-// The account row and the menu it opens: the one account menu. The app's rail
-// draws it for Chat, Dev and Studio (Rail.tsx) and the shell's sidebar for every
-// other app (Shell.tsx).
-//
-// Top to bottom: who, with their plan, a row whose › opens the account itself;
-// then Upgrade plan, Personalization, Profile and Settings (⌘, / Ctrl+,); Beta,
-// the person's place on the beta waitlist (the site's /beta/status); then
-// Help ›, the site's own pages and the keyboard shortcuts (⌘/ / Ctrl+/ from
-// anywhere); and Log out. Every row opens a real destination: Settings'
-// pages through `showSettings` (open.ts), which the app answers with the
-// site's Settings at /settings (App.tsx) and the shell with its own pane; the plans on the
-// pay site (`leave`); the site's pages through `site()`, so hanzo.team names
-// hanzo.ai (help.ts).
-//
-// THE ACCOUNT'S › LEADS WITH THE PLAN: @hanzo/build's `Meter`, the plan by its
-// family (`Max` with `20x` beside it) and, on a plan, its windows as shares; the
-// free allowance left today on Free; the balance only for an account with no
-// plan, whose meter it is. Then every organization the token names — the
-// personal one first, with its plan — switched with `onOrg`; Create
-// organization, Organization settings, and Hanzo Team (opened in the same
-// organization for a team, offered as "Create a team" for a personal one); and
-// All organizations for a SuperAdmin, which opens the chooser (Gate.tsx).
-//
-// Its words go through `t`; names, plans, addresses and keys are drawn as they
-// are, a key isolated left to right so its `+` and `,` keep their places in a
-// right-to-left menu, which opens toward the content from the rail's side.
-//
-// IAM is the source of every fact here: names and roles from the token's `orgs`
-// claim, display names and which org is personal from `GET /v1/iam/organizations`,
-// the plan from billing and the limits. An organization is created by the same
-// `POST /v1/account/orgs` the no-organization gate uses (Gate.tsx); the next load
-// mints a token that carries it.
+// Unified profile trigger & HoverCard for the signed-in shell:
+// - Hovering shows membership tier, live usage/credit stats, Developer mode toggle,
+//   workspace switcher, Upgrade CTA, and quick actions.
+// - Clicking the profile button itself remembers the current route and opens
+//   `/settings/account` in 1 click.
+// - A subtle `⋯` menu inside the hover card exposes multi-account switching,
+//   language selection, keyboard shortcuts, and organization creation.
 
 import { phrase, locales } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
@@ -43,7 +18,8 @@ import {
   BookOpen,
   Building2,
   Check,
-  ChevronsUpDown,
+  ChevronDown,
+  ChevronRight,
   CircleHelp,
   CircleUserRound,
   Download,
@@ -55,6 +31,7 @@ import {
   LifeBuoy,
   LogOut,
   MessagesSquare,
+  MoreHorizontal,
   Palette,
   Plus,
   ScrollText,
@@ -82,8 +59,13 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
   Input,
   Kbd,
+  Switch,
+  Text,
 } from '@hanzo/ui'
 import { label as accountLabel, useAccounts } from './lib/accounts'
 import { api } from './lib/api'
@@ -94,9 +76,10 @@ import { onServed } from './lib/served'
 import { subscribeTokens, totalRecordedTokens } from './lib/tokens'
 import { choose, org as current, orgs, renew, reopen, scope, superAdmin } from './lib/session'
 import { ENTRY, settings } from './lib/host'
+import { rememberSettingsReturn, useDevMode } from './lib/dev-mode'
+import { InfoHint } from './lib/info-hint'
 import { leave } from './dev'
-import { payUrl } from './lib/pay'
-import { asked, KEYS, legal, out, pages } from './help'
+import { KEYS, legal, out, pages, type Key, type KeyGroup } from './help'
 import { showSettings } from './open'
 import { MARK } from './ground'
 import { site, where } from './where'
@@ -104,6 +87,10 @@ import { BAD } from './lib/mix'
 
 /** An organization this tab created, until the token carries it. */
 const MADE = 'hanzo:org:made'
+const INK = 'var(--foreground)'
+const SOFT = 'var(--text-secondary, var(--muted-foreground))'
+const STRONG = 'var(--border-strong)' as const
+const FOCUS_RING = { outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' } as const
 
 /** What the menu reads of its host: who is signed in, in which organization, and how they leave. */
 export type Who = Pick<Host, 'api' | 'token' | 'org' | 'person' | 'signOut'>
@@ -131,11 +118,11 @@ export interface Org {
 /** IAM's roles as a person reads them, through `t`. */
 const ROLES: Record<string, string> = { owner: phrase('Owner'), admin: phrase('Admin'), member: phrase('Member') }
 
-/** A role as a person reads it: `owner` → Owner; one IAM names that these do not, capitalised as it comes. */
+/** A role as a person reads it: `owner` -> Owner; one IAM names that these do not, capitalised as it comes. */
 const said = (role: string, t: (source: string) => string): string =>
   ROLES[role] ? t(ROLES[role]) : role ? role.charAt(0).toUpperCase() + role.slice(1) : ''
 
-/** The first letters of a name, at most two: Antje Worring → AW. */
+/** The first letters of a name, at most two: Antje Worring -> AW. */
 export const initials = (name: string): string =>
   name
     .split(/[\s@._-]+/)
@@ -151,7 +138,7 @@ export const planOf = (tier: Tier | null): string => (tier ? spoken(label(tier.p
  * The token's organizations with IAM's rows beside them: display name, and which
  * one is the person's own. The personal organization leads, then the token's order.
  */
-function useOrgs(current: string | null): Org[] {
+function useOrgs(currentOrg: string | null): Org[] {
   const { roles } = useOrganizations()
   const names = orgs()
   const [rows, setRows] = useState<{ name?: string; displayName?: string; isPersonal?: boolean }[]>([])
@@ -166,7 +153,7 @@ function useOrgs(current: string | null): Org[] {
       })
       .catch(() => {})
     return () => stop.abort()
-  }, [key, current])
+  }, [key, currentOrg])
   const drawn = names.map((name) => {
     const row = rows.find((r) => r?.name === name)
     return { name, display: row?.displayName || name, personal: Boolean(row?.isPersonal), role: roles?.[name] ?? '' }
@@ -174,20 +161,20 @@ function useOrgs(current: string | null): Org[] {
   return [...drawn.filter((o) => o.personal), ...drawn.filter((o) => !o.personal)]
 }
 
-/** The plan of an organization other than the current one: billing, asked in its name. */
-function usePlan(org: string | null, enabled: boolean): string {
+/** The plan of an organization: billing, asked in its name. */
+function usePlan(orgName: string | null, enabled: boolean): string {
   const [plan, setPlan] = useState('')
   useEffect(() => {
-    if (!enabled || !org) return
+    if (!enabled || !orgName) return
     const stop = new AbortController()
-    fetch(`${api()}/v1/billing/tier`, { headers: { ...scope(), 'X-Org-Id': org }, signal: stop.signal })
+    fetch(`${api()}/v1/billing/tier`, { headers: { ...scope(), 'X-Org-Id': orgName }, signal: stop.signal })
       .then((r) => (r.ok ? r.json() : null))
       .then((t: Tier | null) => {
         if (!stop.signal.aborted) setPlan(planOf(t))
       })
       .catch(() => {})
     return () => stop.abort()
-  }, [org, enabled])
+  }, [orgName, enabled])
   return plan
 }
 
@@ -210,12 +197,12 @@ export function Face({ host, size = 28 }: { host: Who; size?: number }) {
       overflow="hidden"
       shrink={0}
       borderWidth={1}
-      borderColor="$borderColor"
+      borderColor={STRONG}
     >
       {cleanSrc && !failed ? (
         <img src={cleanSrc} alt="" width={size} height={size} onError={() => setFailed(true)} />
       ) : (
-        <SizableText fontSize={Math.max(10, Math.round(size * 0.39))} lineHeight={size} fontWeight="600" color="$ink">
+        <SizableText size={size >= 30 ? '$2' : '$1'} fontWeight="600" color="$ink">
           {initials(p?.name || p?.email || '')}
         </SizableText>
       )}
@@ -249,13 +236,23 @@ function Line({ icon, children, sub, trail }: { icon?: ReactNode; children: stri
 
 /** An organization's mark in the list: its initials on a rounded square. */
 const Mark = ({ org }: { org: Org }) => (
-  <XStack width={18} height={18} rounded="$2" items="center" justify="center" bg="$raised" shrink={0}>
+  <XStack
+    width={18}
+    height={18}
+    rounded="$2"
+    items="center"
+    justify="center"
+    bg="$raised"
+    borderWidth={1}
+    borderColor="$edge"
+    shrink={0}
+  >
     {org.personal ? (
       <SizableText size="$1" fontWeight="600" color="$ink">
         {initials(org.display).charAt(0)}
       </SizableText>
     ) : (
-      <Building2 size={12} aria-hidden />
+      <Building2 size={12} color={INK} aria-hidden />
     )}
   </XStack>
 )
@@ -279,10 +276,10 @@ export function Account({
   defaultAccountOpen = false,
 }: {
   host: Who
-  /** The rail's: the face alone, the menu opening beside it. */
+  /** The rail's folded mode: the face alone, the hover card opening beside it. */
   narrow?: boolean
   /**
-   * The menu opens above the face, not beside it: the foot of a phone's menu
+   * The card opens above the face, not beside it: the foot of a phone's menu
    * (Drawer.tsx). That copy leaves ⌘/ to the rail's own, so one press opens one dialog.
    */
   above?: boolean
@@ -292,46 +289,49 @@ export function Account({
 }) {
   const { t, dir, locale, setLocale } = useI18n()
   const rtl = dir === 'rtl'
-  const [open, setOpen] = useState(false)
+  const [devMode, setDevMode] = useDevMode()
+  const [hoverOpen, setHoverOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [workspacesOpen, setWorkspacesOpen] = useState(false)
   const [account, setAccount] = useState(defaultAccountOpen ?? false)
-  const [orgs, setOrgs] = useState(false)
+  const [orgsOpen, setOrgsOpen] = useState(false)
   const [lang, setLang] = useState(false)
   const [langQuery, setLangQuery] = useState('')
   const [help, setHelp] = useState(false)
   const [creating, setCreating] = useState(false)
   const [keys, setKeys] = useState(false)
   const row = useRef<HTMLElement | null>(null)
-  const current = host.org
-  // Every other account signed in on this browser, one press away, a new one
-  // (lib/accounts: the sign-in with login_hint, and with prompt=login) and a way
-  // out of this one alone.
+  const currentOrg = host.org
   const signedIn = useAccounts()
   const others = signedIn.accounts.filter((a) => a.sub !== signedIn.current?.sub)
   const several = signedIn.accounts.length > 1
-  const all = useOrgs(current)
-  const here = all.find((o) => o.name === current) ?? null
+  const all = useOrgs(currentOrg)
+  const here = all.find((o) => o.name === currentOrg) ?? null
   const personal = all.find((o) => o.personal) ?? null
   const target = useMemo(() => ({ api: host.api, token: host.token, org: host.org }), [host.api, host.token, host.org])
-  const read = useStanding(target, open)
-  const currentTierPlan = usePlan(current, Boolean(host.person))
+  const read = useStanding(target, Boolean(host.person))
+  const currentTierPlan = usePlan(currentOrg, Boolean(host.person))
   const [tokenTick, setTokenTick] = useState(0)
+
   useEffect(() => {
     const offServed = onServed(() => {
       setTokenTick((n) => n + 1)
-      if (open) read.reload()
+      if (hoverOpen || menuOpen) read.reload()
     })
     const offTokens = subscribeTokens(() => {
       setTokenTick((n) => n + 1)
-      if (open) read.reload()
+      if (hoverOpen || menuOpen) read.reload()
     })
     return () => {
       offServed()
       offTokens()
     }
-  }, [open, read])
+  }, [hoverOpen, menuOpen, read])
+
   useEffect(() => {
-    if (account && open) read.reload()
-  }, [account, open, read])
+    if (hoverOpen || (account && menuOpen)) read.reload()
+  }, [hoverOpen, account, menuOpen, read])
+
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
@@ -339,6 +339,7 @@ export function Account({
       read.reload()
     }
   }, [read])
+
   const liveRead = useMemo(() => {
     void tokenTick
     if (!read.value || !read.value.limits) return read
@@ -368,40 +369,35 @@ export function Account({
       },
     }
   }, [read, tokenTick])
-  const other = usePlan(personal && personal.name !== current ? personal.name : null, open)
-  // THE TWO ACCOUNTS, apart: the organization's plan (hanzo · Enterprise) and the
-  // person's own (Personal · Pro, or none and the way to one). A business plan is
-  // the organization's; a personal plan is held beside it, never instead of it.
-  const team = here && !here.personal ? here : (all.find((o) => !o.personal) ?? null)
-  const teamOther = usePlan(team && team.name !== current ? team.name : null, open)
+
+  const other = usePlan(personal && personal.name !== currentOrg ? personal.name : null, hoverOpen || menuOpen)
   const plan = spoken(read.value?.label ?? null) || currentTierPlan
-  const planFor = (o: Org) => (o.name === current ? plan : o.personal ? other : '')
+  const planFor = (o: Org) => (o.name === currentOrg ? plan : o.personal ? other : '')
   const who = host.person?.name || host.person?.email || ''
-  const teamPlan = team ? (team.name === current ? plan : teamOther) : ''
-  const ownPlan = personal ? (personal.name === current ? plan : other) : ''
   const isFree = !plan || plan.toLowerCase() === 'free'
-  const planName = plan || (isFree ? t('Free') : '')
-  // Where the reader works, and on what: "hanzo - Enterprise", "Personal - Pro", "Personal - Free".
-  const working = [here ? (here.personal ? t('Personal') : here.display) : current, planName].filter(Boolean).join(' - ')
-  // A personal plan is bought for the personal organization, beside any business one.
-  // The plans row's name (a phrase of `upgrade`'s).
+  const planName = plan || t('Free')
+  const working = [here ? (here.personal ? t('Personal') : here.display) : currentOrg, planName].filter(Boolean).join(' - ')
   const plans = upgrade(read.value?.label?.name)
-  const getPro = () => (personal ? window.location.assign(payUrl('/cart', { org: personal.name, returnUrl: window.location.href })) : window.location.assign(payUrl('/cart', { returnUrl: window.location.href })))
   const apple = mac()
 
-  useEffect(() => {
-    if (above) return
-    const press = (e: KeyboardEvent) => {
-      if (!asked(e)) return
-      e.preventDefault()
-      setOpen(false)
-      setKeys(true)
-    }
-    window.addEventListener('keydown', press)
-    return () => window.removeEventListener('keydown', press)
-  }, [above])
+  const goSettings = (section: string) => {
+    setHoverOpen(false)
+    setMenuOpen(false)
+    rememberSettingsReturn()
+    showSettings(section)
+  }
 
-  // Focus goes back to the row only when nothing the menu opened (a dialog) took it.
+  const triggerUpgrade = () => {
+    setHoverOpen(false)
+    setMenuOpen(false)
+    if (read.value?.label?.name === 'Enterprise' || read.value?.label?.name === 'Agency') {
+      rememberSettingsReturn()
+      showSettings('billing')
+      return
+    }
+    leave('here')
+  }
+
   const back = (e: Event) => {
     e.preventDefault()
     requestAnimationFrame(() => {
@@ -411,322 +407,702 @@ export function Account({
   }
 
   if (!host.person) return null
+
+  const tierPill = (
+    <XStack
+      data-slot="me-tier-pill"
+      px="$2"
+      py={2}
+      rounded="$10"
+      items="center"
+      justify="center"
+      shrink={0}
+      borderWidth={1}
+      bg={isFree ? '$panel' : '$raised'}
+      borderColor={isFree ? '$edge' : STRONG}
+    >
+      <Text
+        fontFamily="$body"
+        fontSize="$1"
+        fontWeight="600"
+        color={isFree ? '$aside' : '$ink'}
+        numberOfLines={1}
+      >
+        {planName}
+      </Text>
+    </XStack>
+  )
+
   return (
     <>
-      <DropdownMenu
-        open={open}
+      <HoverCard
+        open={hoverOpen}
         onOpenChange={(next) => {
-          setOpen(next)
-          if (next) return
-          setAccount(false)
-          setOrgs(false)
-          setLang(false)
-          setHelp(false)
+          if (!next && menuOpen) return
+          setHoverOpen(next)
+          if (!next) setWorkspacesOpen(false)
         }}
-        // Toward the content from the rail, and aligned as the row's own edge is: mirrored right to left.
-        placement={narrow && !above ? (rtl ? 'left-end' : 'right-end') : above !== rtl ? 'top-end' : 'top-start'}
-        // Clear of the rail's mark (or the row) it opens from, and flush with its foot.
-        offset={8}
+        openDelay={120}
+        closeDelay={180}
       >
-        <DropdownMenuTrigger asChild>
+        <HoverCardTrigger asChild>
           <XStack
             ref={(el: unknown) => {
               row.current = el instanceof HTMLElement ? el : null
             }}
-            render="button"
+            render={<button type="button" />}
             data-slot="me"
-            // The name the gates and a screen reader know it by: who, and in which organization. No native
-            // tooltip: the face already says who, and the browser's box beside the rail is noise.
-            aria-label={t('Account: {name}', { name: [who, current].filter(Boolean).join(' · ') })}
+            aria-label={t('Account: {name}', { name: [who, currentOrg].filter(Boolean).join(' · ') })}
             width={narrow ? (above ? 44 : MARK) : '100%'}
             height={narrow ? (above ? 44 : MARK) : undefined}
-            minH={narrow ? (above ? 44 : MARK) : 48}
-            // A thumb's 44 on a touch screen.
-            $touchable={narrow ? { width: 44, height: 44, minH: 44 } : undefined}
+            minH={narrow ? (above ? 44 : MARK) : 42}
+            $touchable={narrow ? { width: 44, height: 44, minH: 44 } : { minH: 44 }}
             px={narrow ? 0 : '$2'}
-            gap="$2.5"
-            rounded={narrow ? 12 : '$5'}
+            py={narrow ? 0 : '$1'}
+            gap="$2"
+            rounded={narrow ? 12 : '$3'}
             borderWidth={narrow && above ? 1 : 0}
-            borderColor={narrow && above ? 'var(--border-strong)' : undefined}
-            bg={narrow && above ? 'var(--pane-fill)' : narrow && open ? '$edge' : 'transparent'}
+            borderColor={narrow && above ? STRONG : undefined}
+            bg={narrow && above ? '$panel' : narrow && hoverOpen ? '$hover' : 'transparent'}
             items="center"
             justify={narrow ? 'center' : 'flex-start'}
-            hoverStyle={{ bg: narrow && open ? '$edge' : '$hover' }}
+            hoverStyle={{ bg: '$hover' }}
             pressStyle={{ bg: '$raised' }}
-            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+            focusVisibleStyle={FOCUS_RING}
             cursor="pointer"
+            onClick={() => goSettings('account')}
           >
-            <Face host={host} size={narrow ? (above ? 32 : 26) : 32} />
+            <Face host={host} size={narrow ? (above ? 32 : 26) : 28} />
             {narrow ? null : (
               <>
                 <YStack flex={1} minW={0}>
-                  <SizableText size="$3" fontWeight="600" color="$ink" numberOfLines={1} text="start">
+                  <Text fontFamily="$body" fontSize="$2" fontWeight="500" color="$ink" numberOfLines={1} text="start">
                     {who}
-                  </SizableText>
-                  {working ? (
-                    <SizableText size="$1" color="$soft" numberOfLines={1} text="start">
-                      {working}
-                    </SizableText>
-                  ) : null}
+                  </Text>
                 </YStack>
-                {isFree ? (
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    data-slot="me-upgrade"
-                    px="$2"
-                    py="$0.5"
-                    rounded="$3"
-                    onPress={(e) => {
-                      e?.stopPropagation?.()
-                      getPro()
-                    }}
-                    cursor="pointer"
-                  >
-                    {t('Upgrade plan')}
-                  </Button>
-                ) : null}
-                <ChevronsUpDown size={14} aria-hidden opacity={0.6} />
+                {tierPill}
               </>
             )}
           </XStack>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent minW={260} maxW="calc(100vw - 16px)" aria-labelledby={undefined} aria-label={t('Account')} onCloseAutoFocus={back}>
-          {/* 1. Account Options collapsed into the account icon */}
-          <DropdownMenuSub open={account} onOpenChange={setAccount}>
-            <DropdownMenuSubTrigger minH={48} gap="$2.5" data-slot="me-account">
-              <Face host={host} size={28} />
-              <YStack flex={1} minW={0}>
-                <SizableText size="$2" fontWeight="600" color="$ink" numberOfLines={1}>
-                  {who}
-                </SizableText>
-                <SizableText size="$1" color="$soft" numberOfLines={1}>
-                  {host.person.email || working}
-                </SizableText>
-              </YStack>
-            </DropdownMenuSubTrigger>
-            {account ? (
-              <DropdownMenuSubContent minW={240} maxW="calc(100vw - 16px)" pointerEvents="auto">
-                <YStack
-                  cursor="pointer"
-                  rounded="$3"
-                  hoverStyle={{ bg: '$hover' }}
-                  onPress={() => {
-                    setOpen(false)
-                    showSettings('usage')
-                  }}
-                >
-                  <Meter read={liveRead} onPlans={() => leave('here')} onBilling={() => (setOpen(false), showSettings('billing'))} />
+        </HoverCardTrigger>
+
+        <HoverCardContent
+          data-slot="me-hover-card"
+          side={narrow && !above ? (rtl ? 'left' : 'right') : 'top'}
+          align={narrow && !above ? 'end' : 'start'}
+          sideOffset={8}
+          bg="var(--popover)"
+          borderWidth={1}
+          borderColor={STRONG}
+          rounded="$5"
+          p="$4"
+          width={284}
+          maxW="calc(100vw - 24px)"
+          z="var(--z-popover)"
+          boxShadow="var(--shadow-floating)"
+        >
+          <YStack gap="$3" width="100%">
+            {/* 1. Identity + Membership Tier Pill + Full Menu overflow */}
+            <XStack items="flex-start" justify="space-between" gap="$2">
+              <XStack items="center" gap="$2.5" flex={1} minW={0}>
+                <Face host={host} size={34} />
+                <YStack flex={1} minW={0} gap={2}>
+                  <XStack items="center" gap="$1.5" minW={0}>
+                    <Text fontFamily="$body" fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>
+                      {who}
+                    </Text>
+                    {tierPill}
+                  </XStack>
+                  {host.person.email ? (
+                    <Text fontFamily="$body" fontSize="$1" color="$aside" numberOfLines={1}>
+                      {host.person.email}
+                    </Text>
+                  ) : null}
                 </YStack>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => showSettings('account')}>
-                  <Line icon={<CircleUserRound size={16} aria-hidden />}>{t('Profile')}</Line>
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => showSettings('general')}>
-                  <Line icon={<Palette size={16} aria-hidden />}>{t('Personalization')}</Line>
-                </DropdownMenuItem>
-                <DropdownMenuItem aria-keyshortcuts="Control+, Meta+," onSelect={() => showSettings('general')}>
-                  <Line icon={<Settings size={16} aria-hidden />} trail={<DropdownMenuShortcut aria-hidden><bdi dir="ltr">{apple ? '⌘,' : 'Ctrl+,'}</bdi></DropdownMenuShortcut>}>{t('Settings')}</Line>
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => window.location.assign(site('/beta'))}>
-                  <Line icon={<FlaskConical size={16} aria-hidden />}>{t('Beta')}</Line>
-                </DropdownMenuItem>
-              </DropdownMenuSubContent>
-            ) : null}
-          </DropdownMenuSub>
+              </XStack>
 
-          {/* Every other account signed in here, and Add account. */}
-          {others.map((a) => {
-            const { title, line } = accountLabel(a)
-            return (
-              <DropdownMenuItem key={a.sub} data-slot="me-switch" onSelect={() => void signedIn.switchTo(a)}>
-                <Line icon={<CircleUserRound size={16} aria-hidden />} sub={line || undefined}>
-                  {title}
-                </Line>
-              </DropdownMenuItem>
-            )
-          })}
-          <DropdownMenuItem data-slot="me-add" onSelect={() => void signedIn.add()}>
-            <Line icon={<UserPlus size={16} aria-hidden />}>{t('Add account')}</Line>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-
-          {/* 2. Organization Switcher */}
-          <DropdownMenuSub open={orgs} onOpenChange={setOrgs}>
-            <DropdownMenuSubTrigger data-slot="me-orgs">
-              <Line icon={<Mark org={here ?? all[0]} />} trail={<Check size={16} aria-label={t('Current')} />}>
-                {t('{org} · {plan}', { org: (here ? (here.personal ? t('Personal') : here.display) : current), plan: planName || t('No plan') })}
-              </Line>
-            </DropdownMenuSubTrigger>
-            {orgs ? (
-              <DropdownMenuSubContent minW={260} maxW="calc(100vw - 16px)" pointerEvents="auto">
-                <DropdownMenuLabel>{t('Organizations')}</DropdownMenuLabel>
-                {all.map((o) => (
-                  <DropdownMenuItem key={o.name} onSelect={() => o.name !== current && onOrg(o.name)}>
-                    <Line
-                      icon={<Mark org={o} />}
-                      sub={[o.personal ? t('Personal') : said(o.role, t), planFor(o) || (isFree && o.personal ? t('Free') : '')].filter(Boolean).join(' - ')}
-                      trail={o.name === current ? <Check size={16} aria-label={t('Current')} /> : null}
-                    >
-                      {o.display}
-                    </Line>
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuItem onSelect={() => setCreating(true)}>
-                  <Line icon={<Plus size={16} aria-hidden />}>{t('Create organization')}</Line>
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => out(site(settings('organization')))}>
-                  <Line icon={<Settings size={16} aria-hidden />}>{t('Organization settings')}</Line>
-                </DropdownMenuItem>
-                {where().team ? null : here && !here.personal ? (
-                  <DropdownMenuItem onSelect={() => out(`${ENTRY}&org=${encodeURIComponent(here.name)}`)}>
-                    <Line icon={<Users size={16} aria-hidden />} trail={<ArrowUpRight size={14} aria-hidden opacity={0.6} />}>{t('Open in Hanzo Team')}</Line>
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem onSelect={() => setCreating(true)}>
-                    <Line icon={<Users size={16} aria-hidden />}>{t('Create a team')}</Line>
-                  </DropdownMenuItem>
-                )}
-                {superAdmin() ? (
-                  <DropdownMenuItem onSelect={choose}>
-                    <Line icon={<Building2 size={16} aria-hidden />}>{t('All organizations')}</Line>
-                  </DropdownMenuItem>
-                ) : null}
-              </DropdownMenuSubContent>
-            ) : null}
-          </DropdownMenuSub>
-
-          <DropdownMenuItem onSelect={() => showSettings('usage')}>
-            <Line icon={<Activity size={16} aria-hidden />}>{t('Usage')}</Line>
-          </DropdownMenuItem>
-          <DropdownMenuItem aria-keyshortcuts="Control+, Meta+," onSelect={() => showSettings('account')}>
-            <Line icon={<Settings size={16} aria-hidden />} trail={<DropdownMenuShortcut aria-hidden><bdi dir="ltr">{apple ? '⌘,' : 'Ctrl+,'}</bdi></DropdownMenuShortcut>}>{t('Settings')}</Line>
-          </DropdownMenuItem>
-
-          {/* 3. Upgrade / Plan */}
-          <DropdownMenuItem onSelect={() => leave('here')}>
-            <Line icon={<Sparkles size={16} aria-hidden />}>{t(plans)}</Line>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuSub
-            open={lang}
-            onOpenChange={(next) => {
-              setLang(next)
-              if (!next) setLangQuery('')
-            }}
-          >
-            <DropdownMenuSubTrigger>
-              <Line icon={<Languages size={16} aria-hidden />}>{t('Language')}</Line>
-            </DropdownMenuSubTrigger>
-            {lang ? (
-              <DropdownMenuSubContent minW={220} maxW={260} pointerEvents="auto">
-                <XStack px="$2" pt="$1.5" pb="$1">
-                  <SizableText
-                    render={
-                      <input
-                        type="search"
-                        value={langQuery}
-                        onChange={(e) => setLangQuery(e.target.value)}
-                        onKeyDown={(e) => e.stopPropagation()}
-                        placeholder={t('Search language...')}
-                        aria-label={t('Search language')}
-                      />
-                    }
-                    width="100%"
-                    height={30}
-                    px="$2.5"
+              <DropdownMenu
+                open={menuOpen}
+                onOpenChange={(next) => {
+                  setMenuOpen(next)
+                  if (next) return
+                  setAccount(false)
+                  setOrgsOpen(false)
+                  setLang(false)
+                  setHelp(false)
+                }}
+                placement={rtl ? 'bottom-start' : 'bottom-end'}
+                offset={6}
+              >
+                <DropdownMenuTrigger asChild>
+                  <XStack
+                    render={<button type="button" />}
+                    data-slot="me-more"
+                    aria-label={t('More account options')}
+                    width={28}
+                    height={28}
+                    $max-sm={{ width: 44, height: 44 }}
                     rounded="$2"
+                    items="center"
+                    justify="center"
+                    cursor="pointer"
                     borderWidth={1}
-                    borderColor="$borderColor"
-                    bg="$background"
-                    color="$ink"
-                    size="$2"
-                  />
-                </XStack>
-                <YStack maxH={260} overflowY="auto">
-                  {locales
-                    .filter((l) => !l.review || l.code === locale)
-                    .filter((l) => {
-                      const q = langQuery.trim().toLowerCase()
-                      if (!q) return true
-                      return (
-                        l.name.toLowerCase().includes(q) ||
-                        l.englishName.toLowerCase().includes(q) ||
-                        l.code.toLowerCase().includes(q)
-                      )
-                    })
-                    .map((l) => (
-                      <DropdownMenuItem key={l.code} onSelect={() => void setLocale(l.code)}>
-                        <Line trail={l.code === locale ? <Check size={16} aria-label={t('Current')} /> : null}>
-                          {l.englishName !== l.name ? `${l.name} (${l.englishName})` : l.name}
+                    borderColor={menuOpen ? STRONG : 'transparent'}
+                    bg={menuOpen ? '$hover' : 'transparent'}
+                    hoverStyle={{ bg: '$hover', borderColor: STRONG }}
+                    focusVisibleStyle={FOCUS_RING}
+                  >
+                    <MoreHorizontal size={15} color={SOFT} aria-hidden />
+                  </XStack>
+                </DropdownMenuTrigger>
+
+                <DropdownMenuContent
+                  minW={250}
+                  maxW="calc(100vw - 24px)"
+                  bg="var(--popover)"
+                  borderWidth={1}
+                  borderColor={STRONG}
+                  aria-labelledby={undefined}
+                  aria-label={t('Account')}
+                  onCloseAutoFocus={back}
+                >
+                  <DropdownMenuSub open={account} onOpenChange={setAccount}>
+                    <DropdownMenuSubTrigger minH={44} gap="$2.5" data-slot="me-account">
+                      <Face host={host} size={26} />
+                      <YStack flex={1} minW={0}>
+                        <SizableText size="$2" fontWeight="600" color="$ink" numberOfLines={1}>
+                          {who}
+                        </SizableText>
+                        <SizableText size="$1" color="$soft" numberOfLines={1}>
+                          {host.person.email || working}
+                        </SizableText>
+                      </YStack>
+                    </DropdownMenuSubTrigger>
+                    {account ? (
+                      <DropdownMenuSubContent
+                        minW={230}
+                        maxW="calc(100vw - 24px)"
+                        bg="var(--popover)"
+                        borderWidth={1}
+                        borderColor={STRONG}
+                        pointerEvents="auto"
+                      >
+                        <DropdownMenuItem onSelect={() => goSettings('account')}>
+                          <Line icon={<CircleUserRound size={16} aria-hidden />}>{t('Profile')}</Line>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => goSettings('personalization')}>
+                          <Line icon={<Palette size={16} aria-hidden />}>{t('Personalization')}</Line>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => goSettings('account')}>
+                          <Line icon={<Settings size={16} aria-hidden />}>{t('Settings')}</Line>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => window.location.assign(site('/beta'))}>
+                          <Line icon={<FlaskConical size={16} aria-hidden />}>{t('Beta')}</Line>
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    ) : null}
+                  </DropdownMenuSub>
+
+                  {others.map((a) => {
+                    const { title, line } = accountLabel(a)
+                    return (
+                      <DropdownMenuItem key={a.sub} data-slot="me-switch" onSelect={() => void signedIn.switchTo(a)}>
+                        <Line icon={<CircleUserRound size={16} aria-hidden />} sub={line || undefined}>
+                          {title}
                         </Line>
                       </DropdownMenuItem>
-                    ))}
+                    )
+                  })}
+                  <DropdownMenuItem data-slot="me-add" onSelect={() => void signedIn.add()}>
+                    <Line icon={<UserPlus size={16} aria-hidden />}>{t('Add account')}</Line>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+
+                  <DropdownMenuSub open={orgsOpen} onOpenChange={setOrgsOpen}>
+                    <DropdownMenuSubTrigger data-slot="me-orgs">
+                      <Line icon={<Mark org={here ?? all[0]} />} trail={<Check size={16} aria-label={t('Current')} />}>
+                        {t('{org} · {plan}', { org: (here ? (here.personal ? t('Personal') : here.display) : currentOrg), plan: planName || t('No plan') })}
+                      </Line>
+                    </DropdownMenuSubTrigger>
+                    {orgsOpen ? (
+                      <DropdownMenuSubContent
+                        minW={250}
+                        maxW="calc(100vw - 24px)"
+                        bg="var(--popover)"
+                        borderWidth={1}
+                        borderColor={STRONG}
+                        pointerEvents="auto"
+                      >
+                        <DropdownMenuLabel>{t('Organizations')}</DropdownMenuLabel>
+                        {all.map((o) => (
+                          <DropdownMenuItem key={o.name} onSelect={() => o.name !== currentOrg && onOrg(o.name)}>
+                            <Line
+                              icon={<Mark org={o} />}
+                              sub={[o.personal ? t('Personal') : said(o.role, t), planFor(o) || (isFree && o.personal ? t('Free') : '')].filter(Boolean).join(' - ')}
+                              trail={o.name === currentOrg ? <Check size={16} aria-label={t('Current')} /> : null}
+                            >
+                              {o.display}
+                            </Line>
+                          </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuItem onSelect={() => setCreating(true)}>
+                          <Line icon={<Plus size={16} aria-hidden />}>{t('Create organization')}</Line>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => out(site(settings('organization')))}>
+                          <Line icon={<Settings size={16} aria-hidden />}>{t('Organization settings')}</Line>
+                        </DropdownMenuItem>
+                        {where().team ? null : here && !here.personal ? (
+                          <DropdownMenuItem onSelect={() => out(`${ENTRY}&org=${encodeURIComponent(here.name)}`)}>
+                            <Line icon={<Users size={16} aria-hidden />} trail={<ArrowUpRight size={14} color="var(--text-tertiary)" aria-hidden />}>{t('Open in Hanzo Team')}</Line>
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem onSelect={() => setCreating(true)}>
+                            <Line icon={<Users size={16} aria-hidden />}>{t('Create a team')}</Line>
+                          </DropdownMenuItem>
+                        )}
+                        {superAdmin() ? (
+                          <DropdownMenuItem onSelect={choose}>
+                            <Line icon={<Building2 size={16} aria-hidden />}>{t('All organizations')}</Line>
+                          </DropdownMenuItem>
+                        ) : null}
+                      </DropdownMenuSubContent>
+                    ) : null}
+                  </DropdownMenuSub>
+
+                  <DropdownMenuItem onSelect={() => goSettings('usage')}>
+                    <Line icon={<Activity size={16} aria-hidden />}>{t('Usage')}</Line>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem aria-keyshortcuts="Control+, Meta+," onSelect={() => goSettings('account')}>
+                    <Line icon={<Settings size={16} aria-hidden />} trail={<DropdownMenuShortcut aria-hidden><bdi dir="ltr">{apple ? '⌘,' : 'Ctrl+,'}</bdi></DropdownMenuShortcut>}>{t('Settings')}</Line>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={triggerUpgrade}>
+                    <Line icon={<Sparkles size={16} aria-hidden />}>{t(plans)}</Line>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+
+                  <DropdownMenuSub
+                    open={lang}
+                    onOpenChange={(next) => {
+                      setLang(next)
+                      if (!next) setLangQuery('')
+                    }}
+                  >
+                    <DropdownMenuSubTrigger>
+                      <Line icon={<Languages size={16} aria-hidden />}>{t('Language')}</Line>
+                    </DropdownMenuSubTrigger>
+                    {lang ? (
+                      <DropdownMenuSubContent
+                        minW={220}
+                        maxW="calc(100vw - 24px)"
+                        bg="var(--popover)"
+                        borderWidth={1}
+                        borderColor={STRONG}
+                        pointerEvents="auto"
+                      >
+                        <XStack px="$2" pt="$1.5" pb="$1">
+                          <SizableText
+                            render={
+                              <input
+                                type="search"
+                                value={langQuery}
+                                onChange={(e) => setLangQuery(e.target.value)}
+                                onKeyDown={(e) => e.stopPropagation()}
+                                placeholder={t('Search language...')}
+                                aria-label={t('Search language')}
+                              />
+                            }
+                            width="100%"
+                            height={32}
+                            px="$2.5"
+                            rounded="$2"
+                            borderWidth={1}
+                            borderColor={STRONG}
+                            bg="$panel"
+                            color="$ink"
+                            focusVisibleStyle={FOCUS_RING}
+                            size="$2"
+                          />
+                        </XStack>
+                        <YStack maxH={260} overflowY="auto">
+                          {locales
+                            .filter((l) => !l.review || l.code === locale)
+                            .filter((l) => {
+                              const q = langQuery.trim().toLowerCase()
+                              if (!q) return true
+                              return (
+                                l.name.toLowerCase().includes(q) ||
+                                l.englishName.toLowerCase().includes(q) ||
+                                l.code.toLowerCase().includes(q)
+                              )
+                            })
+                            .map((l) => (
+                              <DropdownMenuItem key={l.code} onSelect={() => void setLocale(l.code)}>
+                                <Line trail={l.code === locale ? <Check size={16} aria-label={t('Current')} /> : null}>
+                                  {l.englishName !== l.name ? `${l.name} (${l.englishName})` : l.name}
+                                </Line>
+                              </DropdownMenuItem>
+                            ))}
+                        </YStack>
+                      </DropdownMenuSubContent>
+                    ) : null}
+                  </DropdownMenuSub>
+
+                  <DropdownMenuSub open={help} onOpenChange={setHelp}>
+                    <DropdownMenuSubTrigger>
+                      <Line icon={<LifeBuoy size={16} aria-hidden />}>{t('Help')}</Line>
+                    </DropdownMenuSubTrigger>
+                    {help ? (
+                      <DropdownMenuSubContent
+                        minW={240}
+                        maxW="calc(100vw - 24px)"
+                        bg="var(--popover)"
+                        borderWidth={1}
+                        borderColor={STRONG}
+                        pointerEvents="auto"
+                      >
+                        {pages().map((p) => (
+                          <DropdownMenuItem key={p.key} onSelect={() => out(p.href)}>
+                            <Line icon={ICONS[p.key]} trail={p.key === 'help' ? <ArrowUpRight size={14} color="var(--text-tertiary)" aria-hidden /> : null}>
+                              {t(p.label)}
+                            </Line>
+                          </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuItem aria-keyshortcuts="Control+/ Meta+/" onSelect={() => setKeys(true)}>
+                          <Line icon={<Keyboard size={16} aria-hidden />} trail={<DropdownMenuShortcut aria-hidden><bdi dir="ltr">{apple ? '⌘/' : 'Ctrl+/'}</bdi></DropdownMenuShortcut>}>{t('Keyboard shortcuts')}</Line>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {legal().map((p) => (
+                          <DropdownMenuItem key={p.key} onSelect={() => out(p.href)}>
+                            <Line icon={ICONS[p.key]}>{t(p.label)}</Line>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    ) : null}
+                  </DropdownMenuSub>
+
+                  {several && signedIn.current ? (
+                    <DropdownMenuItem data-slot="me-leave" onSelect={() => void signedIn.leave(signedIn.current!)}>
+                      <Line icon={<LogOut size={16} aria-hidden data-i18n-mirror />}>{t('Sign out {name}', { name: accountLabel(signedIn.current).title })}</Line>
+                    </DropdownMenuItem>
+                  ) : null}
+                  {host.signOut ? (
+                    <DropdownMenuItem onSelect={() => host.signOut?.()}>
+                      <Line icon={<LogOut size={16} aria-hidden data-i18n-mirror />}>{several ? t('Sign out of all accounts') : t('Log out')}</Line>
+                    </DropdownMenuItem>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </XStack>
+
+            {/* 2. Key Stats: live session/weekly usage & credit balance */}
+            <YStack
+              data-slot="me-stats"
+              role="button"
+              tabIndex={0}
+              aria-label={t('Usage')}
+              rounded="$3"
+              bg="$panel"
+              borderWidth={1}
+              borderColor={STRONG}
+              cursor="pointer"
+              hoverStyle={{ bg: '$hover' }}
+              focusVisibleStyle={FOCUS_RING}
+              onPress={() => goSettings('usage')}
+              onKeyDown={(e: { key?: string; preventDefault?: () => void }) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault?.()
+                  goSettings('usage')
+                }
+              }}
+            >
+              <Meter
+                read={liveRead}
+                onPlans={triggerUpgrade}
+                onBilling={() => goSettings('billing')}
+              />
+            </YStack>
+
+            {/* 3. Developer mode inline toggle */}
+            <XStack
+              data-slot="me-dev-row"
+              items="center"
+              justify="space-between"
+              gap="$2"
+              minH={40}
+              $max-sm={{ minH: 44 }}
+              px="$2.5"
+              py="$2"
+              rounded="$3"
+              bg="$panel"
+              borderWidth={1}
+              borderColor="$edge"
+            >
+              <XStack items="center" gap="$1.5" minW={0} flex={1}>
+                <Text fontFamily="$body" fontSize="$2" fontWeight="500" color="$ink" numberOfLines={1}>
+                  {t('Developer mode')}
+                </Text>
+                <InfoHint text={t('Show GitHub repositories, branches, terminals, and technical settings.')} />
+              </XStack>
+              <Switch
+                size="sm"
+                checked={devMode}
+                onCheckedChange={setDevMode}
+                aria-label={t('Developer mode')}
+                data-slot="me-dev-mode"
+              />
+            </XStack>
+
+            <XStack height={1} bg="$edge" width="100%" />
+
+            {/* 4. Subtle footer actions */}
+            <YStack gap="$0.5">
+              {isFree ? (
+                <XStack
+                  render={<button type="button" />}
+                  data-slot="me-hover-upgrade"
+                  onClick={triggerUpgrade}
+                  items="center"
+                  gap="$2"
+                  minH={36}
+                  $max-sm={{ minH: 44 }}
+                  px="$2.5"
+                  py="$1.5"
+                  rounded="$3"
+                  cursor="pointer"
+                  bg="$raised"
+                  borderWidth={1}
+                  borderColor={STRONG}
+                  hoverStyle={{ bg: '$hover' }}
+                  focusVisibleStyle={FOCUS_RING}
+                >
+                  <Sparkles size={14} color={INK} aria-hidden />
+                  <Text
+                    fontFamily="$body"
+                    fontSize="$2"
+                    fontWeight="600"
+                    color="$ink"
+                    flex={1}
+                    text="start"
+                  >
+                    {t('Upgrade plan')}
+                  </Text>
+                </XStack>
+              ) : null}
+
+              <XStack
+                render={<button type="button" />}
+                data-slot="me-hover-settings"
+                onClick={() => goSettings('account')}
+                items="center"
+                gap="$2"
+                minH={34}
+                $max-sm={{ minH: 44 }}
+                px="$2"
+                py="$1.5"
+                rounded="$3"
+                cursor="pointer"
+                bg="transparent"
+                hoverStyle={{ bg: '$hover' }}
+                focusVisibleStyle={FOCUS_RING}
+              >
+                <Settings size={14} color={INK} aria-hidden />
+                <Text fontFamily="$body" fontSize="$2" color="$ink" flex={1} text="start">
+                  {t('Open settings')}
+                </Text>
+                <Text fontFamily="$mono" fontSize="$1" color="$aside">
+                  <bdi dir="ltr">{apple ? '⌘,' : 'Ctrl+,'}</bdi>
+                </Text>
+              </XStack>
+
+              {all.length > 1 ? (
+                <YStack gap="$0.5">
+                  <XStack
+                    render={<button type="button" />}
+                    data-slot="me-hover-workspaces"
+                    aria-expanded={workspacesOpen}
+                    onClick={() => setWorkspacesOpen((v) => !v)}
+                    items="center"
+                    gap="$2"
+                    minH={34}
+                    $max-sm={{ minH: 44 }}
+                    px="$2"
+                    py="$1.5"
+                    rounded="$3"
+                    cursor="pointer"
+                    bg="transparent"
+                    hoverStyle={{ bg: '$hover' }}
+                    focusVisibleStyle={FOCUS_RING}
+                  >
+                    <Building2 size={14} color={INK} aria-hidden />
+                    <Text fontFamily="$body" fontSize="$2" color="$ink" flex={1} text="start" numberOfLines={1}>
+                      {t('Switch workspace')}
+                    </Text>
+                    {workspacesOpen ? (
+                      <ChevronDown size={13} color={SOFT} aria-hidden />
+                    ) : (
+                      <ChevronRight size={13} color={SOFT} aria-hidden />
+                    )}
+                  </XStack>
+                  {workspacesOpen ? (
+                    <YStack pl="$4" gap="$0.5">
+                      {all.map((o) => (
+                        <XStack
+                          key={o.name}
+                          render={<button type="button" />}
+                          onClick={() => {
+                            if (o.name !== currentOrg) {
+                              setHoverOpen(false)
+                              onOrg(o.name)
+                            }
+                          }}
+                          items="center"
+                          gap="$2"
+                          minH={32}
+                          $max-sm={{ minH: 44 }}
+                          px="$2"
+                          py="$1"
+                          rounded="$2"
+                          cursor="pointer"
+                          bg={o.name === currentOrg ? '$hover' : 'transparent'}
+                          hoverStyle={{ bg: '$hover' }}
+                          focusVisibleStyle={FOCUS_RING}
+                        >
+                          <Mark org={o} />
+                          <Text fontFamily="$body" fontSize="$1" color="$ink" flex={1} text="start" numberOfLines={1}>
+                            {o.personal ? t('Personal') : o.display}
+                          </Text>
+                          {o.name === currentOrg ? <Check size={12} color={INK} aria-hidden /> : null}
+                        </XStack>
+                      ))}
+                    </YStack>
+                  ) : null}
                 </YStack>
-              </DropdownMenuSubContent>
-            ) : null}
-          </DropdownMenuSub>
-          <DropdownMenuSub open={help} onOpenChange={setHelp}>
-            <DropdownMenuSubTrigger>
-              <Line icon={<LifeBuoy size={16} aria-hidden />}>{t('Help')}</Line>
-            </DropdownMenuSubTrigger>
-            {help ? (
-              <DropdownMenuSubContent minW={240} maxW="calc(100vw - 16px)" pointerEvents="auto">
-                {pages().map((p) => (
-                  <DropdownMenuItem key={p.key} onSelect={() => out(p.href)}>
-                    <Line icon={ICONS[p.key]} trail={p.key === 'help' ? <ArrowUpRight size={14} aria-hidden opacity={0.6} /> : null}>
-                      {t(p.label)}
-                    </Line>
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuItem aria-keyshortcuts="Control+/ Meta+/" onSelect={() => setKeys(true)}>
-                  <Line icon={<Keyboard size={16} aria-hidden />} trail={<DropdownMenuShortcut aria-hidden><bdi dir="ltr">{apple ? '⌘/' : 'Ctrl+/'}</bdi></DropdownMenuShortcut>}>{t('Keyboard shortcuts')}</Line>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {legal().map((p) => (
-                  <DropdownMenuItem key={p.key} onSelect={() => out(p.href)}>
-                    <Line icon={ICONS[p.key]}>{t(p.label)}</Line>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuSubContent>
-            ) : null}
-          </DropdownMenuSub>
-          {/* Several signed in: this one alone, or all of them. One: Log out. */}
-          {several && signedIn.current ? (
-            <DropdownMenuItem data-slot="me-leave" onSelect={() => void signedIn.leave(signedIn.current!)}>
-              <Line icon={<LogOut size={16} aria-hidden data-i18n-mirror />}>{t('Sign out {name}', { name: accountLabel(signedIn.current).title })}</Line>
-            </DropdownMenuItem>
-          ) : null}
-          {host.signOut ? (
-            <DropdownMenuItem onSelect={() => host.signOut?.()}>
-              <Line icon={<LogOut size={16} aria-hidden data-i18n-mirror />}>{several ? t('Sign out of all accounts') : t('Log out')}</Line>
-            </DropdownMenuItem>
-          ) : null}
-        </DropdownMenuContent>
-      </DropdownMenu>
+              ) : null}
+
+              {host.signOut ? (
+                <XStack
+                  render={<button type="button" />}
+                  data-slot="me-hover-logout"
+                  onClick={() => {
+                    setHoverOpen(false)
+                    host.signOut?.()
+                  }}
+                  items="center"
+                  gap="$2"
+                  minH={34}
+                  $max-sm={{ minH: 44 }}
+                  px="$2"
+                  py="$1.5"
+                  rounded="$3"
+                  cursor="pointer"
+                  bg="transparent"
+                  hoverStyle={{ bg: '$hover' }}
+                  focusVisibleStyle={FOCUS_RING}
+                >
+                  <LogOut size={14} color={SOFT} aria-hidden data-i18n-mirror />
+                  <Text fontFamily="$body" fontSize="$2" color="$aside" flex={1} text="start">
+                    {t('Log out')}
+                  </Text>
+                </XStack>
+              ) : null}
+            </YStack>
+          </YStack>
+        </HoverCardContent>
+      </HoverCard>
       <Create open={creating} onOpenChange={setCreating} />
       <Shortcuts open={keys} onOpenChange={setKeys} apple={apple} />
     </>
   )
 }
 
-/** The app's keys (help.ts `KEYS`), one row each, spelled for this platform. */
-function Shortcuts({ open, onOpenChange, apple }: { open: boolean; onOpenChange: (open: boolean) => void; apple: boolean }) {
+/** Split a printed shortcut into discrete keycap tokens: `⌘⇧O` → `['⌘','⇧','O']`, `Ctrl+Shift+O` → `['Ctrl','Shift','O']`. */
+function splitShortcut(combo: string): string[] {
+  if (combo.includes('+')) return combo.split('+').filter(Boolean)
+  const mods: string[] = []
+  let rest = combo
+  while (rest.length > 1 && /^[⌘⌃⌥⇧]/.test(rest)) {
+    mods.push(rest[0])
+    rest = rest.slice(1)
+  }
+  return rest ? [...mods, rest] : mods
+}
+
+const SHORTCUT_GROUPS: readonly KeyGroup[] = ['Navigation', 'Workspace', 'Chat', 'Window']
+
+/** The app's keys (help.ts `KEYS`), categorized with crisp `--border-strong` keycaps for this platform. */
+export function Shortcuts({ open, onOpenChange, apple }: { open: boolean; onOpenChange: (open: boolean) => void; apple: boolean }) {
   const { t } = useI18n()
+  const sections = useMemo(() => {
+    const byGroup = new Map<string, Key[]>()
+    for (const k of KEYS) {
+      const g = k.group ?? 'Navigation'
+      const list = byGroup.get(g)
+      if (list) list.push(k)
+      else byGroup.set(g, [k])
+    }
+    return SHORTCUT_GROUPS.map((g) => ({ group: g, items: byGroup.get(g) ?? [] })).filter((s) => s.items.length > 0)
+  }, [])
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent maxW={440} rounded="$6" gap="$3">
-        <DialogTitle>{t('Keyboard shortcuts')}</DialogTitle>
-        <YStack gap="$1">
-          {KEYS.map((k) => (
-            <XStack key={k.does} items="center" justify="space-between" gap="$3" minH={32}>
-              <SizableText size="$2" color="$ink">
-                {t(k.does)}
+      <DialogContent
+        data-slot="shortcuts-dialog"
+        width={480}
+        maxW="calc(100vw - 24px)"
+        maxH="82dvh"
+        bg="var(--popover)"
+        borderWidth={1}
+        borderColor={STRONG}
+        rounded="$6"
+        gap="$3"
+        overflow="hidden"
+      >
+        <YStack gap="$1" shrink={0}>
+          <DialogTitle>{t('Keyboard shortcuts')}</DialogTitle>
+          <SizableText size="$2" color="$quiet">
+            {t('Global commands and conversation controls.')}
+          </SizableText>
+        </YStack>
+        <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden" gap="$4" pr="$1">
+          {sections.map((section) => (
+            <YStack key={section.group} gap="$1">
+              <SizableText size="$1" fontWeight="600" color="$quiet" pb="$1">
+                {t(section.group)}
               </SizableText>
-              <Kbd>
-                <bdi dir="ltr">{apple ? k.mac : k.pc}</bdi>
-              </Kbd>
-            </XStack>
+              <YStack rounded="$4" borderWidth={1} borderColor="$edge" bg="$panel" overflow="hidden">
+                {section.items.map((k, idx) => {
+                  const caps = splitShortcut(apple ? k.mac : k.pc)
+                  return (
+                    <XStack
+                      key={k.does}
+                      items="center"
+                      justify="space-between"
+                      gap="$3"
+                      px="$3"
+                      minH={38}
+                      $max-sm={{ minH: 44 }}
+                      borderTopWidth={idx === 0 ? 0 : 1}
+                      borderColor="$edge"
+                    >
+                      <SizableText size="$2" color="$ink" flex={1} minW={0} numberOfLines={1}>
+                        {t(k.does)}
+                      </SizableText>
+                      <XStack items="center" gap="$1" shrink={0} data-i18n-ltr="">
+                        <bdi dir="ltr">
+                          <XStack items="center" gap="$1">
+                            {caps.map((cap, ci) => (
+                              <Kbd key={`${k.does}-${ci}`} variant="cap">
+                                {cap}
+                              </Kbd>
+                            ))}
+                          </XStack>
+                        </bdi>
+                      </XStack>
+                    </XStack>
+                  )
+                })}
+              </YStack>
+            </YStack>
           ))}
         </YStack>
       </DialogContent>
@@ -736,9 +1112,7 @@ function Shortcuts({ open, onOpenChange, apple }: { open: boolean; onOpenChange:
 
 /**
  * The sheet that creates an organization: a name, then `POST /v1/account/orgs`,
- * the creator's own. The token in hand predates it, so it is renewed and the app
- * reloads in the new organization; `Made` says so if the new token does not carry
- * it yet.
+ * the creator's own.
  */
 function Create({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const { t } = useI18n()
@@ -765,9 +1139,6 @@ function Create({ open, onOpenChange }: { open: boolean; onOpenChange: (open: bo
         /* the next load simply says nothing */
       }
       renew()
-      // The app again, where the person is, in the new organization. Not `/`: on
-      // hanzo.ai that is the landing for everyone (owner, 2026-10-29), so a
-      // person who made an organization from /chat was left on the marketing page.
       reopen(org)
     } catch (e) {
       setRefused(say(e, t))
@@ -776,7 +1147,15 @@ function Create({ open, onOpenChange }: { open: boolean; onOpenChange: (open: bo
   }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent maxW={440} rounded="$6" gap="$3">
+      <DialogContent
+        width={440}
+        maxW="calc(100vw - 24px)"
+        bg="var(--popover)"
+        borderWidth={1}
+        borderColor={STRONG}
+        rounded="$6"
+        gap="$3"
+      >
         <DialogTitle>{t('Create organization')}</DialogTitle>
         <SizableText size="$2" color="$soft">{t('You own it. Agents, credits and members belong to it, and you switch to it from this menu.')}</SizableText>
         <Input
@@ -796,8 +1175,8 @@ function Create({ open, onOpenChange }: { open: boolean; onOpenChange: (open: bo
           </SizableText>
         ) : null}
         <XStack gap="$2" justify="flex-end">
-          <Button size="sm" variant="outline" rounded={999} onPress={() => onOpenChange(false)}>{t('Cancel')}</Button>
-          <Button size="sm" rounded={999} disabled={busy || !name.trim()} onPress={() => void submit()}>
+          <Button size="sm" variant="outline" borderColor={STRONG} rounded={999} onPress={() => onOpenChange(false)}>{t('Cancel')}</Button>
+          <Button size="sm" variant="primary" tone="accent" rounded={999} disabled={busy || !name.trim()} onPress={() => void submit()}>
             {t(busy ? 'Creating…' : 'Create')}
           </Button>
         </XStack>
@@ -818,7 +1197,6 @@ export function Made() {
       const kept = JSON.parse(sessionStorage.getItem(MADE) || 'null') as { org?: string; name?: string; from?: string | null } | null
       if (!kept?.org) return
       if (orgs().includes(kept.org)) return sessionStorage.removeItem(MADE)
-      // Still out of the token: go on working where the person was.
       if (kept.from && current() !== kept.from && orgs().includes(kept.from)) {
         return reopen(kept.from)
       }
@@ -837,12 +1215,21 @@ export function Made() {
     setMade(null)
   }
   return (
-    <XStack data-slot="made" role="status" items="flex-start" gap="$2" px="$3" py="$2.5" rounded="$5" borderWidth={1} borderColor="$borderColor" bg="$edge">
+    <XStack data-slot="made" role="status" items="flex-start" gap="$2" px="$3" py="$2.5" rounded="$5" borderWidth={1} borderColor={STRONG} bg="$panel">
       <SizableText flex={1} minW={0} size="$1" color="$ink">
         {t('{name} was created, and your sign-in does not include it yet, so you are still in this organization. It appears here once IAM adds you to it.', { name: made.name })}
       </SizableText>
-      <XStack render="button" aria-label={t('Dismiss')} onPress={dismiss} p="$1" rounded={999} hoverStyle={{ bg: '$hover' }}>
-        <X size={13} aria-hidden />
+      <XStack
+        render={<button type="button" />}
+        aria-label={t('Dismiss')}
+        onClick={dismiss}
+        p="$1"
+        rounded={999}
+        cursor="pointer"
+        hoverStyle={{ bg: '$hover' }}
+        focusVisibleStyle={FOCUS_RING}
+      >
+        <X size={13} color={SOFT} aria-hidden />
       </XStack>
     </XStack>
   )

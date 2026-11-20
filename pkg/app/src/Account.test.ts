@@ -1,15 +1,13 @@
-import { createElement, isValidElement, type ReactNode } from 'react'
+import { createElement, Fragment, isValidElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-// The drawing libraries are not under test and do not load outside a bundler.
-// Each primitive draws its children, and a menu row records its words and its
-// press, so the open menu can be read in order and pressed.
-const { rows, settings, left, Draw, Row } = vi.hoisted(() => {
+const { rows, clicks, settings, left, remembered, Draw, Row, through } = vi.hoisted(() => {
   const rows: { label: string; press: () => void }[] = []
-  /** The words under a node, in order. */
+  const clicks = new Map<string, () => void>()
   const words = (node: ReactNode): string[] =>
     typeof node === 'string' ? [node] : Array.isArray(node) ? node.flatMap(words) : isValidElement<{ children?: ReactNode }>(node) ? words(node.props.children) : []
+  const through = ({ children }: { children?: ReactNode }) => createElement(Fragment, null, children)
   const Draw = ({
     children,
     'data-slot': slot,
@@ -17,6 +15,8 @@ const { rows, settings, left, Draw, Row } = vi.hoisted(() => {
     height,
     rounded,
     hoverStyle,
+    onPress,
+    onClick,
   }: {
     children?: ReactNode
     'data-slot'?: string
@@ -24,8 +24,12 @@ const { rows, settings, left, Draw, Row } = vi.hoisted(() => {
     height?: number | string
     rounded?: number | string
     hoverStyle?: { bg?: string }
-  }) =>
-    createElement(
+    onPress?: () => void
+    onClick?: () => void
+  }) => {
+    const handler = onClick ?? onPress
+    if (slot && handler) clicks.set(slot, handler)
+    return createElement(
       'div',
       {
         'data-slot': slot,
@@ -36,11 +40,12 @@ const { rows, settings, left, Draw, Row } = vi.hoisted(() => {
       },
       children,
     )
+  }
   const Row = (props: { children?: ReactNode; onSelect?: () => void }) => {
     rows.push({ label: words(props.children)[0] ?? '', press: props.onSelect ?? (() => {}) })
     return Draw(props)
   }
-  return { rows, settings: vi.fn(), left: vi.fn(), Draw, Row }
+  return { rows, clicks, settings: vi.fn(), left: vi.fn(), remembered: vi.fn(), Draw, Row, through }
 })
 
 vi.mock('@hanzo/gui', () => ({ SizableText: Draw, XStack: Draw, YStack: Draw }))
@@ -59,19 +64,31 @@ vi.mock('@hanzo/ui', () => ({
   DropdownMenuSubContent: Draw,
   DropdownMenuSubTrigger: Row,
   DropdownMenuTrigger: Draw,
+  Box: Draw,
+  HoverCard: Draw,
+  HoverCardContent: Draw,
+  HoverCardTrigger: Draw,
   Input: () => null,
   Kbd: Draw,
+  Switch: Draw,
+  Text: Draw,
+  Tooltip: through,
+  TooltipContent: Draw,
+  TooltipProvider: through,
+  TooltipTrigger: through,
+  View: Draw,
 }))
 vi.mock('@hanzo/iam/react', () => ({ useOrganizations: () => ({ roles: { acme: 'owner' } }) }))
 vi.mock('@hanzo/build', async () => {
   const { label, said } = await import('@hanzo/build/plan')
-  return { label, Meter: () => null, said, useStanding: () => ({ value: null, error: null, loading: false }) }
+  return { label, Meter: () => createElement('div', { 'data-slot': 'meter' }), said, useStanding: () => ({ value: null, error: null, loading: false, reload: () => {} }) }
 })
-vi.mock('./lib/session', () => ({ choose: () => {}, org: () => 'acme', orgs: () => ['acme'], pick: () => {}, renew: () => {}, scope: () => ({}), superAdmin: () => false }))
+vi.mock('./lib/session', () => ({ choose: () => {}, org: () => 'acme', orgs: () => ['acme'], pick: () => {}, renew: () => {}, reopen: () => {}, scope: () => ({}), superAdmin: () => false }))
 vi.mock('./lib/org', () => ({ createOrg: async () => '', say: String }))
 vi.mock('./dev', () => ({ leave: left }))
+vi.mock('./lib/dev-mode', () => ({ rememberSettingsReturn: remembered, useDevMode: () => [false, () => {}] }))
 vi.mock('./open', () => ({ showSettings: settings }))
-// The accounts signed in on this browser: Ada (current) and whoever a test adds.
+
 const signed = vi.hoisted(() => ({
   accounts: [] as { sub: string; owner: string; name: string; displayName: string; email: string; avatar: string }[],
   switchTo: vi.fn(async () => {}),
@@ -93,22 +110,56 @@ vi.mock('./lib/accounts', () => ({
 import { Account, planOf, upgrade } from './Account'
 import type { Tier } from './lib/tier'
 
-/** The account menu, open, as its rows. */
-function menu(accountOpen = false) {
+function renderAccount(accountOpen = false, narrow = false) {
   rows.length = 0
+  clicks.clear()
   const host = { api: '', token: () => null, org: 'acme', person: { name: 'Ada', email: 'ada@acme.dev', avatar: '' }, signOut: signed.signOut }
-  renderToStaticMarkup(createElement(Account, { host, onOrg: () => {}, defaultAccountOpen: accountOpen }))
-  return [...rows]
+  const html = renderToStaticMarkup(createElement(Account, { host, narrow, onOrg: () => {}, defaultAccountOpen: accountOpen }))
+  return { html, rows: [...rows] }
 }
 
+const menu = (accountOpen = false) => renderAccount(accountOpen).rows
 const press = (label: string, accountOpen = true) => menu(accountOpen).find((r) => r.label === label)?.press()
 
 afterEach(() => {
   settings.mockClear()
   left.mockClear()
+  remembered.mockClear()
 })
 
-describe('the account menu', () => {
+describe('profile trigger and HoverCard', () => {
+  test('clicking the profile button remembers the return route and opens /settings/account in 1 click', () => {
+    renderAccount(false, false)
+    clicks.get('me')?.()
+    expect(remembered).toHaveBeenCalledTimes(1)
+    expect(settings).toHaveBeenCalledWith('account')
+  })
+
+  test('HoverCard shows user identity, membership tier pill, live Meter stats, Developer mode toggle, Upgrade plan, Open settings, and Log out', () => {
+    const { html } = renderAccount(false, false)
+    expect(html).toContain('data-slot="me-hover-card"')
+    expect(html).toContain('data-slot="me-tier-pill"')
+    expect(html).toContain('data-slot="meter"')
+    expect(html).toContain('data-slot="me-dev-mode"')
+    expect(html).toContain('data-slot="me-hover-upgrade"')
+    expect(html).toContain('data-slot="me-hover-settings"')
+    expect(html).toContain('data-slot="me-hover-logout"')
+
+    clicks.get('me-hover-upgrade')?.()
+    expect(left).toHaveBeenCalledWith('here')
+  })
+
+  test('the rail trigger uses a 40x40 rounded-12 square matching the rail marks and inner pane corner', () => {
+    const { html } = renderAccount(false, true)
+    const me = html.match(/<div data-slot="me"[^>]*>/)?.[0] ?? ''
+    expect(me).toContain('data-w="40"')
+    expect(me).toContain('data-h="40"')
+    expect(me).toContain('data-r="12"')
+    expect(me).toContain('data-hover="$hover"')
+  })
+})
+
+describe('the full account overflow menu (`⋯` inside HoverCard)', () => {
   test('reads top to bottom: the account icon, Add account, the organization switcher, Usage, Settings, Upgrade plan, Language, Help and Log out', () => {
     expect(menu(false).map((r) => r.label)).toEqual(['Ada', 'Add account', 'acme · Free', 'Usage', 'Settings', 'Upgrade plan', 'Language', 'Help', 'Log out'])
   })
@@ -161,13 +212,14 @@ describe('the account menu', () => {
     expect(assign).toHaveBeenCalledWith(expect.stringMatching(/\/beta$/))
   })
 
-  test("each Settings row opens its section of Settings, the one door the app and the shell both answer", () => {
+  test('each Settings row opens its canonical section of Settings and remembers the return route', () => {
     press('Usage')
     expect(settings).toHaveBeenCalledWith('usage')
     press('Personalization')
     press('Profile')
     press('Settings')
-    expect(settings.mock.calls).toEqual([['usage'], ['general'], ['account'], ['general']])
+    expect(settings.mock.calls).toEqual([['usage'], ['personalization'], ['account'], ['account']])
+    expect(remembered).toHaveBeenCalledTimes(4)
   })
 
   test('Upgrade plan leaves for the plans on the pay site', () => {
@@ -188,15 +240,5 @@ describe('the account menu', () => {
     expect(planOf(tier({ plan: 'max-20x' }))).toBe('Max 20x')
     expect(planOf(tier({ plan: '' }))).toBe('Pro')
     expect(planOf(null)).toBe('')
-  })
-
-  test('the rail trigger uses a 40x40 rounded-12 square matching the rail marks and inner pane corner', () => {
-    const host = { api: '', token: () => null, org: 'acme', person: { name: 'Ada', email: 'ada@acme.dev', avatar: '' }, signOut: signed.signOut }
-    const html = renderToStaticMarkup(createElement(Account, { host, narrow: true, onOrg: () => {} }))
-    const me = html.match(/<div data-slot="me"[^>]*>/)?.[0] ?? ''
-    expect(me).toContain('data-w="40"')
-    expect(me).toContain('data-h="40"')
-    expect(me).toContain('data-r="12"')
-    expect(me).toContain('data-hover="$hover"')
   })
 })

@@ -13,19 +13,17 @@
 // THERE and the package needs no change to carry them. The four options above
 // it are this surface's, for the same reason: a home decides what it starts.
 
-import { dev } from './lib/host'
+import { dev, go, talk } from './lib/host'
 import { phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { AtSign, Blocks, Bot, FolderGit2, Hash, Plus, UserPlus } from 'lucide-react'
 import { useAgents, usePeople, useSessions, useThreads } from '@hanzo/ai/react'
 import type { AiClient } from '@hanzo/ai'
 import { Composer } from '@hanzo/ui/chat'
 import { MARKS } from '@hanzo/build'
-import { Crew } from './crew'
-import { Box, Text, XStack, YStack } from '@hanzo/ui'
+import { Box, Text, View, XStack, YStack } from '@hanzo/ui'
 import { tap } from './lib/tap'
-import { Grid } from '@hanzo/ui/grid'
 import { useIam, useOrganizations } from '@hanzo/iam/react'
 import { hasSession } from './lib/session'
 import { useAi } from './lib/ai'
@@ -36,12 +34,64 @@ import { failed } from './failed'
 import { watch } from './watch'
 import { Directory } from './Directory'
 import { Bar } from './progress'
-import { Card, Go, INK, Quiet, Row, SOFT, CHOSEN } from './card'
+import { Go, INK, Quiet, Row, SOFT, CHOSEN } from './card'
 import { Talk } from './Talk'
 import { useMe } from './roster'
 import { fromKey, teamKey, useChannels } from './channels'
 import { invite, apps, projects } from './lib/home'
 import { BAD } from './lib/mix'
+import { useDevMode } from './lib/dev-mode'
+
+function HomeCard({
+  kind,
+  icon,
+  title,
+  action,
+  children,
+}: {
+  kind: string
+  icon: ReactNode
+  title: string
+  action?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <YStack
+      data-card={kind}
+      gap="$3"
+      p="$4"
+      borderWidth={1}
+      borderColor="$edge"
+      rounded="$5"
+      bg="var(--surface-card)"
+      minW={0}
+      transition="quickest"
+      hoverStyle={{ bg: 'var(--surface-card-emphasis)', borderColor: 'var(--border-strong)' }}
+    >
+      <XStack items="center" gap="$2.5">
+        <View
+          width={28}
+          height={28}
+          rounded="$3"
+          bg="$raised"
+          display="flex"
+          items="center"
+          justify="center"
+          shrink={0}
+        >
+          <Text display="flex" items="center" justify="center" color="var(--foreground)">
+            {icon}
+          </Text>
+        </View>
+        <Text fontSize="$4" fontWeight="600" color={INK} flex={1} minW={0} numberOfLines={1}>
+          {title}
+        </Text>
+        {action}
+      </XStack>
+      {children}
+    </YStack>
+  )
+}
 
 /** What a question can start here. Four, in the order they escalate. */
 const MODES = [
@@ -85,13 +135,10 @@ export interface HomeProps {
  */
 export function Home({ ask }: HomeProps) {
   const { t } = useI18n()
+  const [devMode] = useDevMode()
   const [mode, setMode] = useState<Mode>('chat')
   const [draft, setDraft] = useState('')
   const [picked, setPicked] = useState<string[]>([])
-  // Connecting an app happens in the Directory, so the home mounts the
-  // Directory rather than linking somewhere that is not it. It is a Dialog —
-  // closed, it draws nothing — so a second instance beside the shell's costs a
-  // component and no pixels, and there is still ONE directory in the codebase.
   const [directory, setDirectory] = useState(false)
   const { channel, openChannel } = useOpen()
   const held = useChannels()
@@ -111,9 +158,12 @@ export function Home({ ask }: HomeProps) {
       ask(question, mode, hints)
       return
     }
-    // The hints ride IN the question, which is what they are: the engine reads
-    // `@news` in the query. Appending them to a chat turn would be noise, so
-    // only a grounded mode carries them.
+    if (mode === 'dev') {
+      const target = dev()
+      const sep = target.includes('?') ? '&' : '?'
+      window.location.href = `${target}${sep}q=${encodeURIComponent(question)}`
+      return
+    }
     const q = hints.length ? `${question} ${hints.map((s) => `@${s}`).join(' ')}` : question
     window.location.href = `/chat?q=${encodeURIComponent(q)}`
   }
@@ -122,108 +172,156 @@ export function Home({ ask }: HomeProps) {
     <YStack data-home flex={1} minH={0} width="100%" overflowY="auto" overflowX="hidden">
       <YStack
         width="100%"
-        maxW={720}
+        maxW={680}
         mx="auto"
         px="$4"
         pt="$8"
         gap="$4"
-        $sm={{ pt: '$10' }}
+        $sm={{ pt: '$9' }}
+        $max-sm={{ px: '$3', pt: '$6', gap: '$4' }}
       >
         <Text
           render="h1"
+          m={0}
           fontSize="$8"
-          fontWeight="500"
+          lineHeight="$8"
+          fontWeight="600"
+          letterSpacing={-0.5}
           color={INK}
           text="center"
-          $sm={{ fontSize: '$9' }}
         >
           {t('What are we building?')}
         </Text>
 
-        <XStack justify="center" gap="$1" flexWrap="wrap">
-          {MODES.map((one) => (
-            <Box
-              key={one.id}
-              data-tab={one.id}
-              render="button"
-              onClick={() => setMode(one.id)}
-              aria-current={mode === one.id}
-              px="$3"
-              py="$2"
+        <YStack width="100%" gap="$2.5">
+          <XStack justify="center">
+            <XStack
+              items="center"
+              gap="$1"
+              p={4}
               rounded="$10"
-              bg={mode === one.id ? CHOSEN : 'transparent'}
-              hoverStyle={{ bg: '$hover' }}
+              bg="var(--surface-card)"
+              borderWidth={1}
+              borderColor="var(--border-strong)"
+              flexWrap="wrap"
             >
-              <Text
-                fontSize="$3"
-                fontWeight="500"
-                color={mode === one.id ? INK : SOFT}
-              >
-                {t(one.label)}
-              </Text>
-            </Box>
-          ))}
-        </XStack>
-
-        <Composer
-          value={draft}
-          onChange={setDraft}
-          onSend={send}
-          placeholder={t(here.asks)}
-          label={t(here.asks)}
-          rows={2}
-          maxHeight={240}
-        >
-          {grounded ? (
-            <XStack gap="$1" flexWrap="wrap" shrink={1} minW={0}>
-              {SOURCES.map((s) => {
-                const on = picked.includes(s)
-                return (
-                  <Box
-                    key={s}
-                    data-chip={s}
-                    render="button"
-                    aria-pressed={on}
-                    onClick={() =>
-                      setPicked((held) => (on ? held.filter((h) => h !== s) : [...held, s]))
-                    }
-                    px="$2"
-                    py="$1"
-                    rounded="$10"
-                    bg={on ? CHOSEN : 'transparent'}
-                    hoverStyle={{ bg: '$hover' }}
+              {MODES.map((one) => (
+                <Box
+                  key={one.id}
+                  data-tab={one.id}
+                  render={<button type="button" />}
+                  onClick={() => setMode(one.id)}
+                  aria-current={mode === one.id}
+                  display="inline-flex"
+                  items="center"
+                  justify="center"
+                  minH={32}
+                  $max-sm={{ minH: 40 }}
+                  px="$3.5"
+                  py="$1.5"
+                  rounded="$10"
+                  borderWidth={0}
+                  bg={mode === one.id ? CHOSEN : 'transparent'}
+                  hoverStyle={{ bg: mode === one.id ? CHOSEN : '$hover' }}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  cursor="pointer"
+                  transition="quickest"
+                >
+                  <Text
+                    fontSize="$2"
+                    fontWeight={mode === one.id ? '600' : '500'}
+                    color={mode === one.id ? INK : SOFT}
                   >
-                    <Text data-i18n-ltr fontSize="$2" color={on ? INK : SOFT}>
-                      @{s}
-                    </Text>
-                  </Box>
-                )
-              })}
+                    {t(one.label)}
+                  </Text>
+                </Box>
+              ))}
             </XStack>
-          ) : null}
-        </Composer>
-        <Crew to="/chat" />
+          </XStack>
+
+          <YStack
+            data-slot="home-composer"
+            width="100%"
+            rounded={17}
+            borderWidth={1}
+            borderColor="var(--border-strong)"
+            bg="var(--surface-card)"
+            hoverStyle={{ borderColor: 'var(--border-focus)' }}
+          >
+            <Composer
+              value={draft}
+              onChange={setDraft}
+              onSend={send}
+              placeholder={t(here.asks)}
+              label={t(here.asks)}
+              rows={2}
+              maxHeight={240}
+            >
+              {grounded && devMode ? (
+                <XStack gap="$1" flexWrap="wrap" shrink={1} minW={0}>
+                  {SOURCES.map((s) => {
+                    const on = picked.includes(s)
+                    return (
+                      <Box
+                        key={s}
+                        data-chip={s}
+                        render={<button type="button" />}
+                        aria-pressed={on}
+                        onClick={() =>
+                          setPicked((held) => (on ? held.filter((h) => h !== s) : [...held, s]))
+                        }
+                        display="inline-flex"
+                        items="center"
+                        justify="center"
+                        px="$2"
+                        py="$1"
+                        $max-sm={{ minH: 36, px: '$2.5' }}
+                        rounded="$10"
+                        borderWidth={0}
+                        cursor="pointer"
+                        bg={on ? CHOSEN : 'transparent'}
+                        hoverStyle={{ bg: '$hover' }}
+                        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                      >
+                        <Text data-i18n-ltr fontSize="$2" color={on ? INK : SOFT}>
+                          @{s}
+                        </Text>
+                      </Box>
+                    )
+                  })}
+                </XStack>
+              ) : null}
+            </Composer>
+          </YStack>
+        </YStack>
       </YStack>
 
-      {/* The grid is wider than the field, because a field has a reading measure
-          and a grid has columns. 880 is three 275px cards; it collapses to two
-          and then to one on its own, which is what `Fit` is for. */}
       <YStack
         width="100%"
-        maxW={880}
+        maxW={960}
         mx="auto"
         px="$4"
-        py="$8"
+        pt="$7"
+        pb="$8"
+        gap="$5"
+        $max-sm={{ px: '$3', pt: '$5', pb: '$6' }}
       >
-        <Grid columns={{ min: 260, max: 3 }} gap={12}>
+        <View
+          data-slot="home-cards"
+          display="grid"
+          gridTemplateColumns="repeat(3, minmax(0, 1fr))"
+          gap={16}
+          $max-lg={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}
+          $max-md={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}
+          $max-sm={{ gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}
+        >
           <Channels {...held} />
           <Projects />
           <Chats />
           <Next onConnect={() => setDirectory(true)} />
           <Apps onConnect={() => setDirectory(true)} />
           <Team />
-          <Build />
-        </Grid>
+        </View>
       </YStack>
 
       <Directory open={directory} onClose={() => setDirectory(false)} />
@@ -261,12 +359,30 @@ function Open({
         ? say(channels.wrong, t('this channel'), 'read', t)
         : t('That channel is not here.')
   return (
-    <YStack flex={1} items="center" justify="center" p="$6" gap="$3">
-      <Text fontSize="$3" color={SOFT}>
+    <YStack flex={1} items="center" justify="center" px="$6" pt="$6" pb="$12" $max-sm={{ px: '$4', pb: '$8' }} gap="$4">
+      <Text fontSize="$3" color={SOFT} text="center" maxW={460} lineHeight="$4">
         {line}
       </Text>
       {reading ? null : (
-        <Box render="button" onClick={back} {...tap}>
+        <Box
+          render={<button type="button" />}
+          onClick={back}
+          {...tap}
+          display="inline-flex"
+          items="center"
+          justify="center"
+          minH={36}
+          $max-sm={{ minH: 44 }}
+          px="$3.5"
+          rounded="$3"
+          bg="transparent"
+          borderWidth={1}
+          borderColor="var(--border-strong)"
+          cursor="pointer"
+          transition="quickest"
+          hoverStyle={{ bg: '$hover' }}
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+        >
           <Text fontSize="$2" fontWeight="500" color={INK}>
             {t('Back to home')}
           </Text>
@@ -317,13 +433,13 @@ function Channels({ channels, wrong, open }: ReturnType<typeof useChannels>) {
   }
 
   return (
-    <Card kind="channels" icon={<Hash size={14} aria-hidden />} title={t('Channels')}>
+    <HomeCard kind="channels" icon={<Hash size={14} aria-hidden />} title={t('Channels')}>
       {channels === null ? (
         <Waiting wrong={wrong} subject={t('your channels')} />
       ) : channels.length === 0 ? (
         <Quiet>{t('No channels yet.')}</Quiet>
       ) : (
-        <YStack gap="$1">
+        <YStack gap="$1.5">
           {channels.slice(0, 6).map((one) => (
             <Row
               key={teamKey(one)}
@@ -336,8 +452,8 @@ function Channels({ channels, wrong, open }: ReturnType<typeof useChannels>) {
         </YStack>
       )}
       {!me ? null : naming ? (
-        <YStack gap="$1">
-          <XStack gap="$1" items="center">
+        <YStack gap="$1.5">
+          <XStack gap="$1.5" items="center">
             <Text
               render={
                 <input
@@ -354,26 +470,38 @@ function Channels({ channels, wrong, open }: ReturnType<typeof useChannels>) {
               }
               flex={1}
               minW={0}
+              minH={34}
+              $max-sm={{ minH: 44 }}
               bg="transparent"
               borderWidth={1}
-              borderColor="var(--border)"
-              rounded={6}
+              borderColor="var(--border-strong)"
+              outlineStyle="none"
+              focusStyle={{ borderColor: 'var(--ring)' }}
+              rounded="$2"
               px={8}
               py={6}
               color="inherit"
               fontSize="$2"
             />
             <Box
-              render="button"
+              render={<button type="button" disabled={opening || !name.trim()} />}
               onClick={() => void make()}
-              aria-disabled={opening}
-              opacity={opening ? 0.5 : 1}
-              px="$2"
-              py="$1.5"
+              aria-disabled={opening || !name.trim()}
+              opacity={opening || !name.trim() ? 0.5 : 1}
+              display="inline-flex"
+              items="center"
+              justify="center"
+              minH={34}
+              $max-sm={{ minH: 44 }}
+              px="$2.5"
               rounded="$2"
+              bg="transparent"
               borderWidth={1}
-              borderColor="$borderColor"
-              hoverStyle={{ bg: '$hover' }}
+              borderColor="var(--border-strong)"
+              cursor={opening || !name.trim() ? 'default' : 'pointer'}
+              transition="quickest"
+              hoverStyle={opening || !name.trim() ? undefined : { bg: '$hover' }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
             >
               <Text fontSize="$2" fontWeight="500" color={INK}>
                 {t('Open it')}
@@ -391,7 +519,7 @@ function Channels({ channels, wrong, open }: ReturnType<typeof useChannels>) {
           {t('New channel')}
         </Row>
       )}
-    </Card>
+    </HomeCard>
   )
 }
 
@@ -457,15 +585,13 @@ function Projects() {
   const { t } = useI18n()
   const { held, wrong } = useProjects()
   return (
-    <Card kind="projects" icon={<FolderGit2 size={14} aria-hidden />} title={t('Projects')}>
+    <HomeCard kind="projects" icon={<FolderGit2 size={14} aria-hidden />} title={t('Projects')}>
       {held === null ? (
         <Waiting wrong={wrong} subject={t('your projects')} />
       ) : held.length === 0 ? (
         <Quiet>{t('Nothing deployed yet.')}</Quiet>
       ) : (
-        <YStack gap="$1">
-          {/* Linked only where it is SERVING. This site publishes no
-              `/projects/<slug>` page, so a name with nowhere to go is a name. */}
+        <YStack gap="$1.5">
           {held.slice(0, 3).map((p) => (
             <Row key={p.slug} href={p.liveUrl}>
               {p.name || p.slug}
@@ -474,22 +600,22 @@ function Projects() {
         </YStack>
       )}
       <Go href={dev()}>{t('Ship one')}</Go>
-    </Card>
+    </HomeCard>
   )
 }
 
 function Chats() {
   const { t } = useI18n()
   const { threads, loading } = useThreads()
-  const { open } = useOpen()
+  const { open, empty } = useOpen()
   return (
-    <Card kind="chats" icon={<MARKS.chat.icon size={14} aria-hidden />} title={t('Chats')}>
+    <HomeCard kind="chats" icon={<MARKS.chat.icon size={14} aria-hidden />} title={t('Chats')}>
       {loading && threads.length === 0 ? (
         <Waiting subject={t('your chats')} />
       ) : threads.length === 0 ? (
         <Quiet>{t('No chats yet.')}</Quiet>
       ) : (
-        <YStack gap="$1">
+        <YStack gap="$1.5">
           {threads.slice(0, 3).map((one) => (
             <Row key={one.id} onPress={() => open(one.id)}>
               {one.title || t('Untitled')}
@@ -497,7 +623,15 @@ function Chats() {
           ))}
         </YStack>
       )}
-    </Card>
+      <Go
+        onPress={() => {
+          empty()
+          go(talk())
+        }}
+      >
+        {t('New chat')}
+      </Go>
+    </HomeCard>
   )
 }
 
@@ -540,7 +674,7 @@ function Next({ onConnect }: { onConnect: () => void }) {
   }, [safeSessions, unread, reload, safeAgents, held, connected, onConnect, t])
 
   return (
-    <Card kind="next" icon={<Bot size={14} aria-hidden />} title={t('Next')}>
+    <HomeCard kind="next" icon={<Bot size={14} aria-hidden />} title={t('Next')}>
       {running.length ? (
         <YStack gap="$2">
           {running.slice(0, 2).map((s) => (
@@ -555,7 +689,7 @@ function Next({ onConnect }: { onConnect: () => void }) {
       {rows.length === 0 && running.length === 0 ? (
         <Quiet>{t('Nothing needs you.')}</Quiet>
       ) : (
-        <YStack gap="$1">
+        <YStack gap="$1.5">
           {rows.slice(0, 3).map((r) => (
             <Row key={r.key} href={r.href} onPress={r.press}>
               {r.say}
@@ -563,77 +697,52 @@ function Next({ onConnect }: { onConnect: () => void }) {
           ))}
         </YStack>
       )}
-    </Card>
+    </HomeCard>
   )
 }
 
-/**
- * The apps the org has connected.
- *
- * A connected provider has no page on this site — `/integrations/<slug>` is the
- * SDK guide catalogue (openai-sdk, langchain, cursor …) and shares no ids with
- * the cloud's connectors — so a name here is a name, and the ACTION opens the
- * Directory, which is where connecting actually happens.
- */
 function Apps({ onConnect }: { onConnect: () => void }) {
   const { t } = useI18n()
   const { held, wrong } = useApps()
   const on = held?.filter((a) => a.connected) ?? []
   return (
-    <Card kind="apps" icon={<Blocks size={14} aria-hidden />} title={t('Apps')}>
+    <HomeCard kind="apps" icon={<Blocks size={14} aria-hidden />} title={t('Apps')}>
       {held === null ? (
         <Waiting wrong={wrong} subject={t('connected apps')} />
       ) : on.length === 0 ? (
         <Quiet>{t('Nothing connected.')}</Quiet>
       ) : (
-        <YStack gap="$1">
+        <YStack gap="$1.5">
           {on.slice(0, 3).map((a) => (
             <Row key={a.id}>{a.name}</Row>
           ))}
         </YStack>
       )}
       <Go onPress={onConnect}>{t('Connect')}</Go>
-    </Card>
+    </HomeCard>
   )
 }
 
-/**
- * THE ONE CARD A PRERENDER CANNOT DRAW.
- *
- * Every other read here starts empty on the server AND on the first client
- * render, so the two agree and hydration is quiet. `useOrganizations` does not:
- * it resolves the org from the SDK synchronously, so the client's first render
- * already knows the reader and the server's never did — a TEXT mismatch, which
- * React answers by throwing the whole tree away and re-rendering it.
- *
- * `useHydrated` is false on the server and false on that first client render,
- * so both draw the same line and the real answer arrives on the render
- * hydration was going to perform anyway.
- */
 function Team() {
   const { t } = useI18n()
   const hydrated = useHydrated()
   const { currentOrgId } = useOrganizations()
   if (!hydrated || !currentOrgId) {
     return (
-      <Card kind="team" icon={<UserPlus size={14} aria-hidden />} title={t('Team')}>
-        {/* No org is not a read in flight. Hydration settles in a frame; a
-            visitor without one is in this branch for as long as they stay. */}
+      <HomeCard kind="team" icon={<UserPlus size={14} aria-hidden />} title={t('Team')}>
         <Waiting subject={t('your team')} />
         <Go href={invite()}>{t('Invite')}</Go>
-      </Card>
+      </HomeCard>
     )
   }
   return <Mates owner={currentOrgId} />
 }
 
-/** The org's people. Split out because `usePeople` needs an owner and a hook
- *  cannot be called conditionally. */
 function Mates({ owner }: { owner: string }) {
   const { t } = useI18n()
   const { people, loading } = usePeople({ owner, service: false })
   return (
-    <Card kind="team" icon={<UserPlus size={14} aria-hidden />} title={t('Team')}>
+    <HomeCard kind="team" icon={<UserPlus size={14} aria-hidden />} title={t('Team')}>
       {loading && people.length === 0 ? (
         <Waiting subject={t('your team')} />
       ) : people.length < 2 ? (
@@ -642,16 +751,6 @@ function Mates({ owner }: { owner: string }) {
         <Quiet>{t('{n} people', { n: people.length })}</Quiet>
       )}
       <Go href={invite()}>{t('Invite')}</Go>
-    </Card>
-  )
-}
-
-function Build() {
-  const { t } = useI18n()
-  return (
-    <Card kind="build" icon={<MARKS.dev.icon size={14} aria-hidden />} title={t('Build')}>
-      <Quiet>{t('Hanzo Dev writes it, runs it, ships it.')}</Quiet>
-      <Go href={dev()}>{t('Open Dev')}</Go>
-    </Card>
+    </HomeCard>
   )
 }

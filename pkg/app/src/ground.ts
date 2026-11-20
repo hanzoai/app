@@ -56,7 +56,7 @@ export const RAIL = 2 * INSET
 export const BAR = 38
 
 /** The sidebar's width before the reader pulls its edge, px. */
-export const SIDE = 248
+export const SIDE = 256
 
 /**
  * A row INSIDE a pane shares the height of the row it lines up with.

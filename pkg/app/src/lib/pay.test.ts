@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { money, topUpUrl } from './pay'
+import { money, topUpAmountUrl, topUpUrl } from './pay'
 
 describe('money', () => {
   test('English stays $20, and another locale writes its own', () => {
@@ -26,5 +26,17 @@ describe('the top-up', () => {
   test('returns to the page as it is when no model was chosen', () => {
     vi.stubGlobal('window', { location: { href: 'https://hanzo.ai/dev', hostname: 'hanzo.ai', assign: () => {} }, localStorage: { getItem: () => null } })
     expect(new URL(new URL(topUpUrl()).searchParams.get('returnUrl')!).search).toBe('')
+  })
+})
+
+describe('a fixed top-up', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  test('opens pay’s confirm page for the card with the amount, as Billing does', () => {
+    vi.stubGlobal('window', { location: { href: 'https://hanzo.app/', hostname: 'hanzo.app', assign: () => {} }, localStorage: { getItem: () => null } })
+    const to = new URL(topUpAmountUrl(25, 'https://hanzo.app/chat'))
+    expect(to.origin + to.pathname).toBe('https://hanzo.ai/pay/confirm/card')
+    expect(to.searchParams.get('amount')).toBe('25.00')
+    expect(to.searchParams.get('returnUrl')).toBe('https://hanzo.app/chat')
   })
 })

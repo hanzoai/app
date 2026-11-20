@@ -57,10 +57,10 @@ export function ToBottom({ within }: { within: HTMLElement | null }) {
   if (lift === null) return null
   return (
     <XStack
-      render="button"
+      render={<button type="button" />}
       aria-label={t('Scroll to bottom')}
       data-slot="to-bottom"
-      onPress={() => {
+      onClick={() => {
         const thread = within?.querySelector<HTMLElement>('[data-slot="thread"]')
         thread?.scrollTo({ top: thread.scrollHeight, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
       }}
