@@ -102,7 +102,9 @@ import { TABS, WORKSPACE, type Place } from './lib/host'
 const hostAt = (path = '') => ({ go: () => {}, path }) as unknown as Parameters<typeof Sidebar>[0]['host']
 const host = hostAt()
 const noop = () => {}
-const pins: Pins = [['chat', 'dev', 'design', 'library', 'tabs'], noop, noop, noop]
+/** Nothing pinned: the menu as it stands for someone who never pinned. */
+const pins: Pins = [[], noop, noop, noop]
+const FIVE = ['chat', 'dev', 'design', 'library', 'tabs']
 
 const column = (mode: Place['mode'], path = '', held: Pins = pins) => renderToStaticMarkup(createElement(Sidebar, { pins: held, host: hostAt(path), mode, thread: null, go: noop, onShut: noop, onBack: noop }))
 const rail = (mode: Place['mode'], onOpen?: () => void, where: string | null = null) =>
@@ -260,19 +262,22 @@ describe('the unified desktop sidebar', () => {
     expect(at(html, 'Templates')).toBeLessThan(at(html, 'data-slot="recents"'))
     expect(html).not.toContain('data-slot="app-places"')
     expect(html).toContain('data-slot="nav-item-options"')
-    // The top 5 are locked: they carry no Pin item; only apps in More do.
-    expect(html).not.toContain('data-item="pin"')
+    // Each of the five can be pinned to the top (hanzo-inc/app issue 316); none is pinned yet, so none moves and none is under Pinned.
+    expect(html).toContain('data-item="pin"')
+    expect(html).toContain('aria-label="Pin Dev to top"')
+    expect(html).not.toContain('data-item="move-up"')
+    expect(html).not.toContain('data-slot="nav-pins"')
     expect(html).not.toContain(TABS)
   })
 
   test('More shrinks as places are pinned and goes away when none is left in it', () => {
     const inMore = [...column('chat').matchAll(/data-item="pin-([^"]+)"/g)].map((m) => m[1])
     expect(inMore).toContain('scheduled')
-    const pinnedOne = column('chat', '', [[...pins[0], 'scheduled'], noop, noop, noop])
+    const pinnedOne = column('chat', '', [['scheduled'], noop, noop, noop])
     expect(pinnedOne).not.toContain('data-item="pin-scheduled"')
     expect(pinnedOne).toContain('data-item="pin-customize"')
     expect(pinnedOne).toContain('data-slot="place-more"')
-    const all = column('chat', '', [[...pins[0], ...inMore], noop, noop, noop])
+    const all = column('chat', '', [[...inMore], noop, noop, noop])
     expect(all).not.toContain('data-slot="place-more"')
   })
 
@@ -282,9 +287,25 @@ describe('the unified desktop sidebar', () => {
       return [...html.matchAll(/data-item="move-(up|down)"/g)].map((m) => m[1])
     }
     const two: Pins = [['chat', 'dev'], noop, noop, noop]
-    // Five locked apps are all pinned: four can go up, four can go down, one of each end is missing.
-    expect(moves(pins)).toEqual(['down', 'up', 'down', 'up', 'down', 'up', 'down', 'up'])
-    expect(moves(two).length).toBeGreaterThan(0)
+    // Five pinned apps: four can go up, four can go down, one of each end is missing.
+    expect(moves([FIVE, noop, noop, noop])).toEqual(['down', 'up', 'down', 'up', 'down', 'up', 'down', 'up'])
+    expect(moves(two)).toEqual(['down', 'up'])
+    // An app that is not pinned keeps its default place, so it has no moves.
+    expect(moves(pins)).toEqual([])
+  })
+
+  test('pinned apps stand first, under Pinned, and an unpinned one is back in its default place (hanzo-inc/app issue 316)', () => {
+    const order = (html: string) => [...html.matchAll(/data-slot="rail-([a-z-]+)"[^>]*aria-label=/g)].map((m) => m[1])
+    expect(order(column('chat'))).toEqual(FIVE)
+    const pinned = column('chat', '', [['scheduled', 'design'], noop, noop, noop])
+    expect(order(pinned)).toEqual(['scheduled', 'design', 'chat', 'dev', 'library', 'tabs'])
+    expect(at(pinned, 'data-slot="nav-pins-head"')).toBeLessThan(at(pinned, 'data-slot="rail-scheduled"'))
+    expect(at(pinned, 'data-slot="rail-design"')).toBeLessThan(at(pinned, 'data-slot="rail-chat"'))
+    expect(pinned).toContain('aria-label="Unpin Design"')
+    expect(pinned).toContain('aria-label="Pin Chat to top"')
+    // Scheduled tasks pinned is out of More; unpinned it is back in it.
+    expect(pinned).not.toContain('data-item="pin-scheduled"')
+    expect(column('chat')).toContain('data-item="pin-scheduled"')
   })
 
   test('every list item sits in a list, in each sidebar a person can be in', () => {
