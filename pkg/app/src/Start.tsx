@@ -30,6 +30,7 @@ import {
   runLocalDev,
   type LocalWorkspace,
 } from './lib/local-fs'
+import { deviceKey, useDeviceNames } from '@hanzo/build/names'
 import { formatDeviceLabel, useDevMode } from './lib/dev-mode'
 import { InfoHint } from './lib/info-hint'
 
@@ -63,6 +64,7 @@ const STARTER_PROMPTS: readonly { id: string; title: string; summary: string; pr
 export function Start() {
   const { t } = useI18n()
   const [devMode] = useDevMode()
+  const names = useDeviceNames()
   const { openSession } = useOpen()
   const [prompt, setPrompt] = useState('')
   const [repo, setRepo] = useState('')
@@ -195,7 +197,7 @@ export function Start() {
                     </Text>
                   </SelectItem>
                   {targets.map((tg) => {
-                    const formatted = formatDeviceLabel(tg.label || tg.host || tg.id, { devMode })
+                    const formatted = formatDeviceLabel(tg.label || tg.host || tg.id, { devMode, name: names[deviceKey(tg.host, tg.label, tg.id)] })
                     return (
                       <SelectItem key={tg.id} value={tg.id}>
                         <XStack items="center" gap="$2">
