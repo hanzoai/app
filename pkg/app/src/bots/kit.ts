@@ -3,12 +3,13 @@
 
 import { DIM, INK, LINE, PICKED, RAISED } from './ink'
 
-/** A round icon control, 34px: the roster's search and new, Share, Preferences, Close. */
+/** A round icon control, 34px on desktop and 44px under touch pointers: the roster's search and new, Share, Preferences, Close. */
 export const ROUND = {
   render: 'button',
   type: 'button',
   width: 34,
   height: 34,
+  $touchable: { minW: 44, minH: 44 },
   shrink: 0,
   rounded: 999,
   bg: RAISED,

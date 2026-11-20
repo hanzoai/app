@@ -1,7 +1,26 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Agent, AgentRun } from '@hanzo/ai'
 import { lines, partsOf } from './said'
-import { GRID, isStarredBot, lastWord, policyBadge, sortGroupsByLayer, split } from './grid'
+import {
+  avatarSizePx,
+  BOT_AVATAR_PX,
+  BOT_ICON_SIZES,
+  columnsForWidth,
+  defaultPinnedNames,
+  GRID,
+  isBotIconSize,
+  isStarredBot,
+  lastWord,
+  partitionPinned,
+  policyBadge,
+  resolveColumns,
+  ROSTER_COL_2_MIN,
+  ROSTER_COL_3_MIN,
+  ROSTER_WIDTH_DEFAULT,
+  sortGroupsByLayer,
+  split,
+  togglePinnedBot,
+} from './grid'
 import {
   findBotComputer,
   groupNameOf,
@@ -385,5 +404,87 @@ describe('opened', () => {
     const primary: BotAgent = { ...bot('hanzo', '2026-10-15T09:00:00'), isPrimary: true, computeRef: 'm_old' }
     const picked = await findBotComputer(fakeClient, primary)
     expect(picked?.id).toBe('m_live')
+  })
+})
+
+describe('pinned bots sidebar layout (1→3 columns, 4 icon sizes, pin/unpin partitioning)', () => {
+  it('maps sidebar widths smoothly across 1 → 2 → 3 column breakpoints and supports explicit overrides', () => {
+    expect(ROSTER_WIDTH_DEFAULT).toBe(256)
+    expect(ROSTER_COL_2_MIN).toBe(221)
+    expect(ROSTER_COL_3_MIN).toBe(296)
+
+    // <= 220px => 1 col
+    expect(columnsForWidth(180)).toBe(1)
+    expect(columnsForWidth(220)).toBe(1)
+
+    // 221–295px => 2 cols
+    expect(columnsForWidth(221)).toBe(2)
+    expect(columnsForWidth(256)).toBe(2)
+    expect(columnsForWidth(295)).toBe(2)
+
+    // >= 296px => 3 cols
+    expect(columnsForWidth(296)).toBe(3)
+    expect(columnsForWidth(400)).toBe(3)
+
+    // resolveColumns honors explicit overrides and falls back to width on 'auto'
+    expect(resolveColumns(200, 'auto')).toBe(1)
+    expect(resolveColumns(256, 'auto')).toBe(2)
+    expect(resolveColumns(320, 'auto')).toBe(3)
+    expect(resolveColumns(200, 3)).toBe(3)
+    expect(resolveColumns(350, 1)).toBe(1)
+    expect(resolveColumns(350, 2)).toBe(2)
+  })
+
+  it('supports all 4 avatar density sizes: xs (24px), sm (32px), md (44px), lg (56px)', () => {
+    expect(BOT_ICON_SIZES).toEqual(['xs', 'sm', 'md', 'lg'])
+    expect(BOT_AVATAR_PX).toEqual({ xs: 24, sm: 32, md: 44, lg: 56 })
+    expect(avatarSizePx('xs')).toBe(24)
+    expect(avatarSizePx('sm')).toBe(32)
+    expect(avatarSizePx('md')).toBe(44)
+    expect(avatarSizePx('lg')).toBe(56)
+
+    expect(isBotIconSize('xs')).toBe(true)
+    expect(isBotIconSize('sm')).toBe(true)
+    expect(isBotIconSize('md')).toBe(true)
+    expect(isBotIconSize('lg')).toBe(true)
+    expect(isBotIconSize('xl')).toBe(false)
+    expect(isBotIconSize(null)).toBe(false)
+  })
+
+  it('partitions real bots into pinned above and unpinned normal rows below, preserving pin order and latest activity', () => {
+    const all = [
+      bot('hanzo', '2026-10-01T09:00:00'),
+      bot('vi', '2026-10-02T09:00:00'),
+      bot('dev', '2026-10-03T09:00:00'),
+      bot('custom-a', '2026-10-04T09:00:00'),
+      bot('custom-b', '2026-10-05T09:00:00'),
+    ]
+    const last = new Map<string, AgentRun>([
+      ['custom-a', { id: 'r1', status: 'ok', output: 'older', createdAt: at('2026-11-01T09:00:00') }],
+      ['custom-b', { id: 'r2', status: 'ok', output: 'newer', createdAt: at('2026-11-02T09:00:00') }],
+    ])
+
+    // Explicit pin list puts pinned bots above in pin order and remaining bots below by latest activity.
+    const part = partitionPinned(all, last, ['hanzo', 'custom-a'])
+    expect(part.pinned.map((b) => b.name)).toEqual(['hanzo', 'custom-a'])
+    expect(part.unpinned.map((b) => b.name)).toEqual(['custom-b', 'vi', 'dev'])
+
+    // Pinning and unpinning moves real bots cleanly across the boundary without creating fakes.
+    const afterPin = togglePinnedBot(['hanzo', 'custom-a'], 'DEV')
+    expect(afterPin).toEqual(['hanzo', 'custom-a', 'dev'])
+    const afterUnpin = togglePinnedBot(afterPin, 'custom-a')
+    expect(afterUnpin).toEqual(['hanzo', 'dev'])
+    expect(partitionPinned(all, last, afterUnpin).pinned.map((b) => b.name)).toEqual(['hanzo', 'dev'])
+    expect(partitionPinned(all, last, afterUnpin).unpinned.map((b) => b.name)).toEqual(['custom-b', 'custom-a', 'vi'])
+
+    // Unpinning everything moves all bots below cleanly.
+    const emptyPinned = partitionPinned(all, last, [])
+    expect(emptyPinned.pinned).toEqual([])
+    expect(emptyPinned.unpinned).toHaveLength(all.length)
+
+    // Null preference uses default split order; defaultPinnedNames extracts lowercase names.
+    const fallback = partitionPinned(all, last, null)
+    expect(fallback.pinned.map((b) => b.name)).toEqual(['hanzo', 'vi', 'dev', 'custom-a', 'custom-b'])
+    expect(defaultPinnedNames(all)).toEqual(['hanzo', 'vi', 'dev', 'custom-a', 'custom-b'])
   })
 })

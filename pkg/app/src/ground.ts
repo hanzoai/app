@@ -12,13 +12,13 @@
  * `!important`: a Dev run's pane steps aside for the two panes inside it by
  * slot (@hanzo/build's `run-split`), and an important shadow would stay behind.
  */
-export const pane = (fill = 'var(--pane-fill)') =>
+export const pane = (fill = 'var(--pane-fill, var(--card))') =>
   ({
     backgroundColor: fill,
     borderRadius: 'var(--pane-round)',
     borderWidth: 1,
     borderStyle: 'solid',
-    borderColor: 'var(--pane-edge, var(--border))',
+    borderColor: 'var(--pane-edge, var(--white-08))',
     backdropFilter: 'var(--pane-blur)',
   }) as const
 

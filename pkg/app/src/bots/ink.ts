@@ -16,6 +16,6 @@ export const MINE = 'color-mix(in oklab, var(--foreground) 17%, var(--pane-fill,
 export const INK = 'var(--foreground)'
 export const DIM = 'var(--text-secondary, var(--muted-foreground))'
 export const FAINT = '$faint'
-export const LINE = 'var(--pane-edge, var(--border))'
+export const LINE = 'var(--pane-edge, var(--white-08))'
 /** The composer's edge, the one control drawn a step louder. */
 export const EDGE = 'var(--border-strong)'

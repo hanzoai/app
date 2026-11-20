@@ -14,9 +14,13 @@ import type { Agent, AgentRun } from '@hanzo/ai'
 import { useIam } from '@hanzo/iam/react'
 import { useI18n } from '@hanzo/i18n/react'
 import { XStack, YStack } from '@hanzo/gui'
+import { Gutter } from '@hanzo/build'
 import { ENSO, useAi } from '../lib/ai'
+import { SIDE } from '../ground'
 import { useKept } from '../kept'
+import { useSpan } from '../span'
 import { say } from '../failure'
+import { ROSTER_WIDTH_MAX, ROSTER_WIDTH_MIN } from './grid'
 import { Roster } from './Roster'
 import { Thread } from './Thread'
 import { GroupPanel, GroupThread, MakeGroupDialog } from './Groups'
@@ -105,6 +109,11 @@ export function Bots({
   const [over, setOver] = useState(false)
   const wide = useWide('(min-width: 768px)')
   const laptop = useWide('(min-width: 1280px)')
+  const rosterSpan = useSpan('hanzo.bots.roster.width', SIDE, ROSTER_WIDTH_MIN, ROSTER_WIDTH_MAX)
+  const [rosterWidth, setRosterWidth] = useState(SIDE)
+  useEffect(() => {
+    setRosterWidth(rosterSpan.span)
+  }, [rosterSpan.span])
 
   useEffect(() => {
     if (hosted) return
@@ -388,8 +397,10 @@ export function Bots({
   return (
     <XStack data-parity-key="bots.window" width="100%" height="100%" overflow="hidden" bg={FLOOR} position="relative">
       <YStack
+        ref={rosterSpan.ref}
         data-parity-key="bots.roster"
-        width={260}
+        position="relative"
+        width={rosterWidth}
         shrink={0}
         height="100%"
         bg={FLOOR}
@@ -404,11 +415,30 @@ export function Bots({
           open={openRef}
           unread={unread}
           me={foot ? user : null}
+          width={rosterWidth}
           onPick={pick}
           onMake={() => setMaking(true)}
           onMakeGroup={() => setMakingGroup(true)}
           disabled={!live}
         />
+        {wide ? (
+          <Gutter
+            side="left"
+            span={rosterWidth}
+            floor={ROSTER_WIDTH_MIN}
+            ceil={ROSTER_WIDTH_MAX}
+            reset={SIDE}
+            onSpan={(n) => {
+              rosterSpan.move(n)
+              setRosterWidth(n)
+            }}
+            onKeep={(n) => {
+              rosterSpan.keep(n)
+              setRosterWidth(n)
+            }}
+            label={t('Resize bots sidebar')}
+          />
+        ) : null}
       </YStack>
 
       <YStack

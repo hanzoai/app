@@ -145,7 +145,7 @@ import { parseModels } from "@hanzo/ui/models/catalog";
 import { mark } from "./lib/mark";
 import { useOpen } from "./open";
 import { useSpan } from "./span";
-import { pane, RAIL } from "./ground";
+import { pane, RAIL, SIDE } from "./ground";
 import { useFree } from "./Upgrade";
 import { payUrl } from "./lib/pay";
 import { rememberSettingsReturn, useDevMode } from "./lib/dev-mode";
@@ -175,7 +175,7 @@ import { Face } from "./cast";
 import { useStarred, titleOf } from "./stars";
 import { channelName } from "./network";
 import { useChannels, teamKey, channelHref, type Channel } from "./channels";
-import { apex, app, away, chat, CHAT as TALK, dev, ENTRY, leaves, WORKSPACE } from "./lib/host";
+import { apex, app, away, chat, CHAT as TALK, dev, ENTRY, FLOW, leaves, WORKSPACE } from "./lib/host";
 import { netKey } from "./conversations";
 import {
   FIRST,
@@ -185,7 +185,6 @@ import {
 import type { Who } from "./Account";
 import { Search, type Action } from "./Search";
 import { tidy } from "./lib/title";
-import { summons } from "./seek";
 import { MAIN, SkipLink } from "./SkipLink";
 import { useSidebar } from "./rail-open";
 import { useGlobalKeys } from "./keys";
@@ -1699,8 +1698,8 @@ const FLOOR = 200
 const CEIL = 420
 /** Per-reader, per-browser. A width that resets is a width you set every load. */
 const SPAN = "hanzo.app.column"
-/** The shell's sidebar: its default width, px. */
-const SIDEBAR_WIDTH = 280
+/** The shell's sidebar: its default width, px (unified with ground.ts SIDE). */
+export const SIDEBAR_WIDTH = SIDE
 
 /**
  * Where an app's own column goes, when it has one.
@@ -1785,10 +1784,11 @@ export function Split({
             : { ...pane(), overflow: "hidden" as const }
           : {
               ...sheet(0),
+              backgroundColor: "var(--pane-fill, var(--card))",
               // The edge the pane shares with the column before it: the left, or the right in a right-to-left language.
               borderInlineStartWidth: 1,
               borderInlineStartStyle: "solid" as const,
-              borderColor: "var(--edge, var(--border))",
+              borderColor: "var(--pane-edge, var(--edge, var(--border)))",
             })}
         ref={split.main}
         width="100%"
@@ -2146,18 +2146,19 @@ function Rail({
       render="nav"
       aria-label={t("Places")}
       {...sheet(0)}
+      bg="var(--side-fill, var(--background))"
       gridArea="rail"
       minH={0}
       borderInlineEndWidth={1}
       borderInlineEndStyle="solid"
-      borderColor="var(--edge, var(--white-06))"
+      borderColor="var(--pane-edge, var(--edge, var(--white-08)))"
       $md={hiddenOnDesktop ? { display: "none" } : undefined}
       $max-md={{
         flexDirection: "row",
         items: "center",
         borderInlineEndWidth: 0,
         borderTopWidth: 1,
-        borderTopColor: "var(--border)",
+        borderTopColor: "var(--pane-edge, var(--white-08))",
       }}
       // Clear of the home indicator on a phone; zero on a flat screen.
       pb={HOME_INDICATOR}
@@ -2165,7 +2166,7 @@ function Rail({
 
         {/* The organizations, far left as a team chat draws them, and there with
             the sidebar open too; a phone keeps its tab bar of places. */}
-        <YStack $max-md={{ display: "none" }} borderBottomWidth={1} borderColor="var(--edge, var(--white-06))" mx="$2">
+        <YStack $max-md={{ display: "none" }} borderBottomWidth={1} borderColor="var(--pane-edge, var(--white-08))" mx="$2">
           <Tiles />
         </YStack>
         {/* A phone lays the places out as equal tabs, four and More; the rest
@@ -2329,8 +2330,98 @@ function App({
   );
 }
 
+/**
+ * Dev's column: start a thread, projects first, then threads. Keeps Dev
+ * composable on the canonical shell without falling through to generic Chats.
+ */
+function DevIndex({
+  filter,
+  onPick,
+  navigate,
+}: {
+  filter: string;
+  onPick?: () => void;
+  navigate?: (route: string) => void;
+}) {
+  const { t } = useI18n();
+  const { empty } = useOpen();
+  const openProject = (slug: string) => {
+    navigate?.(dev(slug));
+    onPick?.();
+  };
+  return (
+    <YStack data-slot="dev-index">
+      <SidebarNewChat
+        label={t("New thread")}
+        onPress={() => {
+          empty();
+          navigate?.(dev(""));
+          onPick?.();
+        }}
+      />
+      <YStack data-slot="dev-projects">
+        <SidebarFolder name={t("Projects")} defaultOpen open={filter ? true : undefined}>
+          <Projects filter={filter} onPick={openProject} />
+        </SidebarFolder>
+      </YStack>
+      <YStack data-slot="dev-threads">
+        <SidebarFolder name={t("Threads")} defaultOpen open={filter ? true : undefined}>
+          <Chats filter={filter} onPick={onPick} />
+        </SidebarFolder>
+      </YStack>
+    </YStack>
+  );
+}
+
+/**
+ * Bots' column: the agents roster with a subtle `/flow` Workflows entry below
+ * a monochrome hairline divider.
+ */
+function BotsIndex({
+  owner,
+  filter,
+  onPick,
+  navigate,
+}: {
+  owner: string;
+  filter: string;
+  onPick?: () => void;
+  navigate?: (route: string) => void;
+}) {
+  const { t } = useI18n();
+  const showWorkflows = matches(t("Workflows"), filter) || matches("flow", filter);
+  return (
+    <YStack data-slot="bots-index">
+      <Bots show="agents" owner={owner} filter={filter} onPick={onPick} navigate={navigate} />
+      {showWorkflows ? (
+        <YStack
+          data-slot="bots-workflows"
+          pt="$2"
+          mt="$2"
+          borderTopWidth={1}
+          borderColor="var(--pane-edge, var(--white-08))"
+        >
+          <SidebarSection label={t("Automation")}>
+            <SidebarItem
+              data-slot="bots-workflows-link"
+              icon={<Workflow size={15} aria-hidden />}
+              onPress={() => {
+                if (navigate) navigate(FLOW);
+                else if (typeof window !== "undefined") window.location.assign(FLOW);
+                onPick?.();
+              }}
+            >
+              {t("Workflows")}
+            </SidebarItem>
+          </SidebarSection>
+        </YStack>
+      ) : null}
+    </YStack>
+  );
+}
+
 /** What a place holds, for the list column. */
-function Index({
+export function ShellIndex({
   mode,
   owner,
   filter,
@@ -2351,6 +2442,7 @@ function Index({
     </>
   );
   if (mode === "chat") return <App filter={filter} onPick={onPick} navigate={navigate} />;
+  if (mode === "dev") return <DevIndex filter={filter} onPick={onPick} navigate={navigate} />;
   if (mode === "home")
     return (
       <>
@@ -2360,21 +2452,12 @@ function Index({
         <Bots show="agents" owner={owner} filter={filter} onPick={onPick} navigate={navigate} />
       </>
     );
-  if (mode === "bots" || mode === "agents")
+  if (mode === "bots") return <BotsIndex owner={owner} filter={filter} onPick={onPick} navigate={navigate} />;
+  if (mode === "agents")
     return <Bots show="agents" owner={owner} filter={filter} onPick={onPick} navigate={navigate} />;
   if (mode === "contacts") return <Bots show="people" owner={owner} filter={filter} onPick={onPick} navigate={navigate} />;
   if (mode === "inbox") return channels;
   if (mode === "tasks") return <Projects filter={filter} onPick={onPick} />;
-  if (mode === "dev")
-    return (
-      <Projects
-        filter={filter}
-        onPick={(slug) => {
-          navigate?.(dev(slug));
-          onPick?.();
-        }}
-      />
-    );
   if (mode === "drive")
     return (
       <SidebarSection label={t("Storage")}>
@@ -2480,10 +2563,18 @@ function Frame({
   const [hidden] = useHidden();
 
   const shown = asked || peeking;
-  const toggle = () => {
+  const toggle = useCallback(() => {
     setPeeking(false);
-    setAsked((open) => !open);
-  };
+    setAsked((open) => {
+      const next = !open;
+      try {
+        localStorage.setItem("hanzo:sidebar:open", String(next));
+      } catch {
+        // No storage still toggles the sidebar in memory.
+      }
+      return next;
+    });
+  }, []);
   const dismiss = () => {
     setPeeking(false);
     if (typeof window !== "undefined" && window.innerWidth < 1024) setAway();
@@ -2673,10 +2764,10 @@ function Frame({
       {...sheet(0)}
       // The kit draws the sidebar's edge on its right, a physical side, so the edge is
       // traded here: the left in a right-to-left language, where the sidebar stands at the right.
-      bg="var(--side-fill, var(--sheet-2))"
+      bg="var(--side-fill, var(--background))"
       rounded="var(--pane-round)"
       borderWidth={1}
-      borderColor="var(--pane-edge, var(--edge, var(--white-06)))"
+      borderColor="var(--pane-edge, var(--edge, var(--white-08)))"
       overflowX="hidden"
       position="relative"
     >
@@ -2792,7 +2883,9 @@ function Frame({
           borderWidth={1}
           borderColor="var(--border-strong)"
         >
-          <SearchIcon size={13} aria-hidden />
+          <XStack shrink={0} items="center" justify="center" pointerEvents="none" aria-hidden>
+            <SearchIcon size={13} aria-hidden />
+          </XStack>
           <Text
             render={
               <input
@@ -2844,7 +2937,7 @@ function Frame({
                 an agent is one press away; every other place lists its own
                 things: runs, projects, channels. */}
             {settled ? (
-              <Index mode={mode} owner={owner} filter={filter} onPick={onPick} navigate={navigate} />
+              <ShellIndex mode={mode} owner={owner} filter={filter} onPick={onPick} navigate={navigate} />
             ) : null}
 
               {/* A folder narrows with the column: while filtering it opens on its
@@ -3059,7 +3152,7 @@ function Frame({
       flex={1}
       minH={0}
       overflow="hidden"
-      bg="$background"
+      bg="var(--pane-floor, var(--background))"
       backgroundImage="var(--pane-ground)"
     >
       <Rail

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { CAP, find, fit, rank, RECENT, summons, type Hit } from './seek'
+import { CAP, find, fit, rank, RECENT, summons, togglesSidebar, type Hit } from './seek'
 import type { Press } from './chord'
 
 const hit = (label: string, extra: Partial<Hit> = {}): Hit => ({ id: label, label, ...extra })
@@ -109,5 +109,52 @@ describe('the key that opens it', () => {
 
   test('not a press something on the page already answered: Dev’s composer opens its own commands', () => {
     expect(summons(press('k', { ctrlKey: true, defaultPrevented: true }))).toBe(false)
+  })
+})
+
+describe('the key that toggles the sidebar', () => {
+  const press = (key: string, extra: Partial<Press> = {}): Press => ({
+    key,
+    ctrlKey: false,
+    altKey: false,
+    metaKey: false,
+    shiftKey: false,
+    target: null,
+    ...extra,
+  })
+
+  test('⌘B and Ctrl+B, whichever case the key reads', () => {
+    expect(togglesSidebar(press('b', { metaKey: true }))).toBe(true)
+    expect(togglesSidebar(press('b', { ctrlKey: true }))).toBe(true)
+    expect(togglesSidebar(press('B', { metaKey: true }))).toBe(true)
+    expect(togglesSidebar(press('B', { ctrlKey: true }))).toBe(true)
+  })
+
+  test('ignored inside inputs, textareas, selects, and contenteditable targets', () => {
+    expect(togglesSidebar(press('b', { metaKey: true, target: { tagName: 'INPUT' } as unknown as EventTarget }))).toBe(false)
+    expect(togglesSidebar(press('b', { ctrlKey: true, target: { tagName: 'TEXTAREA' } as unknown as EventTarget }))).toBe(false)
+    expect(togglesSidebar(press('b', { metaKey: true, target: { tagName: 'SELECT' } as unknown as EventTarget }))).toBe(false)
+    expect(togglesSidebar(press('b', { metaKey: true, target: { tagName: 'DIV', isContentEditable: true } as unknown as EventTarget }))).toBe(false)
+    expect(
+      togglesSidebar(
+        press('b', {
+          ctrlKey: true,
+          target: {
+            tagName: 'SPAN',
+            closest: (sel: string) => (sel.includes('contenteditable') ? ({} as Element) : null),
+          } as unknown as EventTarget,
+        }),
+      ),
+    ).toBe(false)
+  })
+
+  test('works on non-editable elements and ignores bare B, extra modifiers, repeat, composition, or handled presses', () => {
+    expect(togglesSidebar(press('b', { metaKey: true, target: { tagName: 'DIV', closest: () => null } as unknown as EventTarget }))).toBe(true)
+    expect(togglesSidebar(press('b'))).toBe(false)
+    expect(togglesSidebar(press('b', { metaKey: true, shiftKey: true }))).toBe(false)
+    expect(togglesSidebar(press('b', { ctrlKey: true, altKey: true }))).toBe(false)
+    expect(togglesSidebar(press('b', { metaKey: true, repeat: true }))).toBe(false)
+    expect(togglesSidebar(press('b', { metaKey: true, isComposing: true }))).toBe(false)
+    expect(togglesSidebar(press('b', { metaKey: true, defaultPrevented: true }))).toBe(false)
   })
 })

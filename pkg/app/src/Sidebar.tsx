@@ -1112,10 +1112,10 @@ export function Sidebar({
         height="100%"
         width={drawer ? undefined : `var(--span, ${WIDTH}px)`}
         maxW={drawer ? undefined : `var(--span, ${WIDTH}px)`}
-        bg={drawer ? undefined : 'var(--side-fill, var(--sheet-2))'}
+        bg={drawer ? undefined : 'var(--side-fill, var(--background))'}
         rounded={drawer ? undefined : 'var(--pane-round)'}
         borderWidth={drawer ? 0 : 1}
-        borderColor="var(--pane-edge, var(--edge, var(--white-06)))"
+        borderColor="var(--pane-edge, var(--edge, var(--white-08)))"
       >
         <Base
           data-slot="app-rail"

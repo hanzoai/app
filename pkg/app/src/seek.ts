@@ -3,7 +3,7 @@
 // so a spec reads them as they are.
 
 import { phrase } from '@hanzo/i18n'
-import type { Press } from './chord'
+import { typing, type Press } from './chord'
 
 /** A row the palette can list. */
 export interface Hit {
@@ -102,3 +102,17 @@ export function find<T extends Hit>(query: string, recent: T[], idle: Group<T>[]
  */
 export const summons = (e: Press): boolean =>
   !e.defaultPrevented && (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && !e.repeat && !e.isComposing && (e.key ?? '').toLowerCase() === 'k'
+
+/**
+ * Whether a key press toggles the sidebar: ⌘B or Ctrl+B, once a press,
+ * ignored while typing in an input, textarea, select, or contenteditable target.
+ */
+export const togglesSidebar = (e: Press): boolean =>
+  !e.defaultPrevented &&
+  (e.metaKey || e.ctrlKey) &&
+  !e.altKey &&
+  !e.shiftKey &&
+  !e.repeat &&
+  !e.isComposing &&
+  (e.key ?? '').toLowerCase() === 'b' &&
+  !typing(e.target)

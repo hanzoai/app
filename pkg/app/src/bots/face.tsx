@@ -79,6 +79,9 @@ export function Face({
 
   if (!starred) return disc
 
+  const badge = Math.max(12, Math.min(20, Math.round(size * 0.36)))
+  const star = Math.max(7, Math.round(badge * 0.52))
+
   return (
     <YStack position="relative" width={size} height={size} shrink={0}>
       {disc}
@@ -87,16 +90,16 @@ export function Face({
         position="absolute"
         r={-1}
         b={-1}
-        width={20}
-        height={20}
+        width={badge}
+        height={badge}
         rounded={9999}
         items="center"
         justify="center"
         bg="var(--warning, var(--chrome-dot-yellow))"
-        borderWidth={2}
+        borderWidth={size <= 28 ? 1.5 : 2}
         borderColor={FLOOR}
       >
-        <Star size={10} color="var(--pure-white, var(--foreground))" fill="currentColor" strokeWidth={2} />
+        <Star size={star} color="var(--pure-white, var(--foreground))" fill="currentColor" strokeWidth={2} />
       </YStack>
     </YStack>
   )
