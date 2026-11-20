@@ -46,7 +46,7 @@ const FOCUS_RING = { outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$out
 /** Crisp monochrome bar color; warning/error appear only at >=85% or 100% capped. */
 function barColor(percent: number, capped = false): `var(--${string})` {
   if (capped || percent >= 100) return 'var(--state-error)'
-  if (percent >= 85) return 'var(--state-warning)'
+  if (percent >= 85) return 'var(--chrome-dot-yellow)'
   return 'var(--foreground)'
 }
 
@@ -130,13 +130,13 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
   const toneColor = isCapped
     ? 'var(--state-error)'
     : isNear
-      ? 'var(--state-warning)'
+      ? '$ink'
       : '$aside'
 
   const ringColor = isCapped
     ? 'var(--state-error)'
     : isNear
-      ? 'var(--state-warning)'
+      ? 'var(--chrome-dot-yellow)'
       : showPercent
         ? 'var(--foreground)'
         : 'var(--text-secondary)'
@@ -372,7 +372,7 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
                   <Text
                     fontFamily="$body"
                     fontSize="$1"
-                    color={capped ? 'var(--state-error)' : pct >= 85 ? 'var(--state-warning)' : '$ink'}
+                    color={capped ? 'var(--state-error)' : '$ink'}
                     fontVariant={['tabular-nums']}
                   >
                     {pct}%{resetLine ? ` · ${resetLine.replace(/^Resets in\s+/i, '')}` : ''}

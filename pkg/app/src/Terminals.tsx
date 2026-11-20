@@ -111,10 +111,11 @@ export default function Terminals() {
   const hosts = useMemo(
     () =>
       fleet.hosts.map((h) => {
+        const rawLabel = h.label || h.machine
         const looksLikeMacHost =
           /[a-z0-9]*mac\.(local|lan|home)\b/i.test(h.machine) ||
-          /macbook|imac|mac-mini|mac-studio/i.test(h.title || h.machine)
-        const formatted = formatDeviceLabel(h.sandbox ? 'Cloud' : (h.title || h.machine), {
+          /macbook|imac|mac-mini|mac-studio/i.test(rawLabel)
+        const formatted = formatDeviceLabel(h.sandbox ? 'Cloud' : rawLabel, {
           firstName,
           os: looksLikeMacHost ? 'darwin' : undefined,
           kind: looksLikeMacHost ? 'laptop' : undefined,
@@ -125,6 +126,7 @@ export default function Terminals() {
           : formatted.detail
         return {
           ...h,
+          label: formatted.title,
           title: formatted.title,
           detail: detail || undefined,
         }
@@ -530,8 +532,6 @@ export default function Terminals() {
           mint={fleet.mint}
           onLaunch={fleet.launch}
           agent={fleet.agent}
-          devMode={devMode}
-          firstName={firstName}
         />
       ) : (
         <TerminalsSkeleton label={devMode ? t('Reading your machines…') : t('Loading your workspaces…')} />
