@@ -406,10 +406,10 @@ export function Layer({ drawer, top = 0, children }: { drawer: Drawer; top?: num
       </YStack>
       {drawer.state === 'open' ? (
         <YStack
-          render="button"
+          render={<button type="button" />}
           data-slot="drawer-close"
           aria-label={t('Close sidebar')}
-          onPress={drawer.close}
+          onClick={drawer.close}
           position="absolute"
           t={0}
           b={0}

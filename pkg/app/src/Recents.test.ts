@@ -2,19 +2,19 @@ import { createElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-// The drawing libraries are not under test and do not load outside a bundler. A
-// part draws its children as a div carrying its slot, label and lit state; a row
-// keeps its press, so a test can press it after the markup is drawn; a menu draws
-// its items' keys.
-const { part, row, presses } = vi.hoisted(() => {
-  type Part = { children?: ReactNode; 'data-slot'?: string; 'aria-label'?: string; active?: boolean }
+const { part, row, convMenu, presses, state } = vi.hoisted(() => {
+  type Part = { children?: ReactNode; 'data-slot'?: string; 'aria-label'?: string; 'aria-expanded'?: boolean; active?: boolean }
   const presses: (() => void)[] = []
-  const part = ({ children, 'data-slot': slot, 'aria-label': label }: Part) => createElement('div', { 'data-slot': slot, 'aria-label': label }, children)
+  const state = { threads: [] as { id: string; title: string; updatedAt: string; pinned?: boolean }[] }
+  const part = ({ children, 'data-slot': slot, 'aria-label': label, 'aria-expanded': expanded }: Part) =>
+    createElement('div', { 'data-slot': slot, 'aria-label': label, 'aria-expanded': expanded }, children)
+  const convMenu = ({ children, canShare }: { children?: ReactNode; canShare?: boolean }) =>
+    createElement('div', { 'data-slot': 'conv-menu', 'data-share': String(Boolean(canShare)) }, children)
   const row = ({ children, active, onPress }: Part & { onPress?: () => void }) => {
     if (onPress) presses.push(onPress)
     return createElement('div', { 'data-slot': 'row', 'aria-current': active ? 'page' : undefined }, children)
   }
-  return { part, row, presses }
+  return { part, row, convMenu, presses, state }
 })
 
 vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s, dir: 'ltr' }) }))
@@ -29,20 +29,17 @@ vi.mock('@hanzo/ui', () => ({
   DropdownMenu: ({ items }: { items: { key: string }[] }) => createElement('div', { 'data-slot': 'menu' }, items.map((i) => createElement('span', { key: i.key, 'data-item': i.key }))),
 }))
 vi.mock('@hanzo/ui/chat', () => ({ SidebarItem: row, StatusDot: ({ status }: { status: string }) => createElement('span', { 'data-dot': status }) }))
-vi.mock('./thread', () => ({ ConversationMenu: part, ThreadRow: part, useThreadList: () => ({ threads: [], loading: false, error: null }) }))
+vi.mock('./thread', () => ({ ConversationMenu: convMenu, ThreadRow: ({ children, aside }: { children?: ReactNode; aside?: ReactNode }) => createElement('div', null, children, aside), useThreadList: () => ({ threads: state.threads, loading: false, error: null }) }))
 
-/** Studio as the app finds it: with `useRecent` (0.1.11 on) answering `read`, or without it (0.1.8). */
 function studio(read?: () => { rows: unknown[]; error: string }) {
   vi.resetModules()
   vi.doMock('@hanzo/studio', () => ({
     path: (r: { kind: string; id?: string }) => (r.kind === 'chat' ? `c/${r.id}` : ''),
     route: (at: string) => (at.startsWith('c/') ? { kind: 'chat', id: at.slice(2) } : { kind: 'new' }),
-    // A real module namespace answers undefined for an export it lacks; a vitest mock throws, so it is said outright.
     useRecent: read,
   }))
 }
 
-/** Design's Recents, drawn with Studio at `at`, and where a pressed row went. */
 async function design(at = '') {
   const went: string[] = []
   const { Recents } = await import('./Recents')
@@ -55,11 +52,12 @@ const now = Date.now()
 
 afterEach(() => {
   presses.length = 0
+  state.threads = []
   vi.doUnmock('@hanzo/studio')
 })
 
-describe('Design’s Recents', () => {
-  test('lists Studio’s conversations, the one Studio holds lit, and opens a row at its address in Design', async () => {
+describe('Design’s Recents & collapsible Pinned section', () => {
+  test('lists Studio’s conversations with ConversationMenu (canShare=false), the one Studio holds lit, and opens a row at its address in Design', async () => {
     studio(() => ({
       rows: [
         { id: 'd1', title: 'Spring poster', updated: now - 60_000, state: 'making', count: 1 },
@@ -71,15 +69,28 @@ describe('Design’s Recents', () => {
     const { html, went } = await design('c/d2')
     expect(html.indexOf('Spring poster')).toBeLessThan(html.indexOf('Logo'))
     expect(html.indexOf('Logo')).toBeLessThan(html.indexOf('Deck'))
-    expect(html).toMatch(/aria-current="page"><div>Logo</)
-    // A dot while it works or when it failed; at rest, none.
+    expect(html).toMatch(/aria-current="page">Logo</)
+    // First Build: a row wears its age, and a dot only while it works or when it failed; the settled Logo has none.
     expect(html.match(/data-dot="[a-z]+"/g)).toEqual(['data-dot="running"', 'data-dot="error"'])
-    // No Chat menu on its rows: no Select multiple, and no Status to narrow by.
-    expect(html).not.toContain('select-multiple')
+    // Design conversations now have full ConversationMenu + Select multiple, with Chat-only Share disabled.
+    expect(html).toContain('data-slot="conv-menu" data-share="false"')
+    expect(html).toContain('select-multiple')
     expect(html).not.toContain('data-item="status-')
     expect(html).not.toContain('No chats yet.')
     presses.at(-1)!()
     expect(went).toEqual(['c/d3'])
+  })
+
+  test('renders a collapsible Pinned section above Recents when pinned threads exist', async () => {
+    state.threads = [
+      { id: 'c1', title: 'Pinned strategy', updatedAt: new Date(now - 60_000).toISOString(), pinned: true },
+      { id: 'c2', title: 'Daily notes', updatedAt: new Date(now - 120_000).toISOString(), pinned: false },
+    ]
+    const { Recents } = await import('./Recents')
+    const html = renderToStaticMarkup(createElement(Recents, { host: {} as never, mode: 'chat', thread: null, onOpen: () => {}, onNew: () => {} }))
+    expect(html).toContain('data-slot="pinned-group-toggle"')
+    expect(html).toContain('data-slot="conv-menu" data-share="true"')
+    expect(html.indexOf('Pinned strategy')).toBeLessThan(html.indexOf('Daily notes'))
   })
 
   test('says so when Studio has made nothing yet, and shows Studio’s own refusal', async () => {

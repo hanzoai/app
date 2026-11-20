@@ -59,9 +59,9 @@ function Round({
 }) {
   return (
     <XStack
-      render="button"
+      render={<button type="button" />}
       aria-label={label}
-      onPress={onPress}
+      onClick={onPress}
       {...GLASS}
       width={ROUND}
       height={ROUND}

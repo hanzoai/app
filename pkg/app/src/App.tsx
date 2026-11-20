@@ -72,22 +72,25 @@ import { nav as places } from '@hanzo/studio'
 import { useAi } from './lib/ai'
 import { Chat } from './Chat'
 import { UsageProvider } from './Usage'
-import { AnonSettingsPane, Sidebar } from './Sidebar'
+import { AnonSettingsPane, dispatchTabsAction, Sidebar } from './Sidebar'
 import { Learning } from './Learning'
 import { isPlans, leave, useDevHost } from './dev'
 import { Gate } from './Gate'
 import { useHost } from './host'
 import { useKept } from './kept'
-import { Mark, raised, Rail, Toggle } from './Rail'
+import { Mark, raised, Rail, RAIL_FOLDED, Toggle, usePinnedNav } from './Rail'
 import { Layer, Lift, useDrawer } from './Drawer'
 import { empty, openThread, showSettings, useOpen } from './open'
+import { SkipLink } from './SkipLink'
 import { Split } from './Shell'
 import { Search } from './Search'
-import { summons } from './seek'
-import { BAR, floor, pane, RAIL, SIDE } from './ground'
+import { inDialog, typing as isTyping } from './chord'
+import { useGlobalKeys } from './keys'
+import { BAR, floor, pane } from './ground'
 import { org as currentOrg, pick } from './lib/session'
-import { payUrl } from './lib/pay'
+import { rememberSettingsReturn } from './lib/dev-mode'
 import { useFree } from './Upgrade'
+import { payUrl } from './lib/pay'
 import { Ask, useBetas } from './Betas'
 import { BETAS } from './lib/betas'
 import { app, design, flow, go, hosted, place, settings, studio, talk, TERMINALS, visit, type Place } from './lib/host'
@@ -117,7 +120,6 @@ const Terminals = lazy(() => import('./Terminals'))
 const Hosted = lazy(() => import('./Hosted').then((m) => ({ default: m.HostedPane })))
 /** Betas, fetched when opening /beta in the app. */
 const Betas = lazy(() => import('./Betas').then((m) => ({ default: m.BetasPane })))
-
 /** `/` is Chat on a new conversation. */
 const HOME: Place = { mode: 'chat', thread: null }
 
@@ -147,12 +149,6 @@ export interface Hosted {
 
 /** Where each mode was last, so the rail goes back to it. */
 const last = { chat: '', dev: '', studio: '', design: '', flow: '', tabs: '' }
-
-/** Whether a key press is the reader typing, where the app's keys are the field's. */
-const typing = (e: KeyboardEvent): boolean => {
-  const el = e.target as HTMLElement | null
-  return !!el && (el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')
-}
 
 export function App({ bar, betas }: Hosted = {}) {
   return (
@@ -184,6 +180,10 @@ function Window({ bar, betas }: Hosted) {
   const [learning, setLearning] = useState(false)
   const [anonSettings, setAnonSettings] = useState(false)
   const found = useCallback(() => setFinding(false), [])
+  const closedRef = useRef(closed)
+  closedRef.current = closed
+  const flip = useCallback(() => setClosed(!closedRef.current), [setClosed])
+  const pins = usePinnedNav()
   const dev = useDevHost()
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -317,29 +317,33 @@ function Window({ bar, betas }: Hosted) {
       window.dispatchEvent(new CustomEvent('hanzo:anon-settings'))
       return
     }
+    rememberSettingsReturn()
     move(settings(wanted))
   }, [wanted, move, host])
 
-  // The app's keys.
+  // The app's keys: the global ones once (keys.ts), and Back and Forward in a window.
+  useGlobalKeys({
+    find: () => setFinding((open) => !open),
+    newChat: () => {
+      empty()
+      move(talk())
+    },
+    sidebar: flip,
+    settings: () => {
+      if (!host.token?.()) {
+        window.dispatchEvent(new CustomEvent('hanzo:anon-settings'))
+        return
+      }
+      rememberSettingsReturn()
+      move(settings('account'))
+    },
+    chooseTheme: host.chooseTheme,
+    say: (message) => void import('@hanzo/ui').then((m) => m.toast?.success(message)),
+  })
   useEffect(() => {
+    if (!bar) return
     const key = (e: KeyboardEvent) => {
-      if (summons(e)) {
-        e.preventDefault()
-        setFinding((open) => !open)
-        return
-      }
-      if (typing(e)) return
-      const mod = e.metaKey || e.ctrlKey
-      if (mod && !e.shiftKey && !e.altKey && e.key === ',') {
-        e.preventDefault()
-        if (!host.token?.() && typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('hanzo:anon-settings'))
-          return
-        }
-        move(settings())
-        return
-      }
-      if (!bar) return
+      if (isTyping(e.target) || inDialog(e.target)) return
       const back = (e.metaKey && e.key === '[') || (e.altKey && e.key === 'ArrowLeft')
       const forth = (e.metaKey && e.key === ']') || (e.altKey && e.key === 'ArrowRight')
       if ((!back && !forth) || e.ctrlKey || e.shiftKey) return
@@ -349,7 +353,7 @@ function Window({ bar, betas }: Hosted) {
     }
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
-  }, [bar, router, move])
+  }, [bar, router])
 
   const back = () => move(away.current || app(''))
   const toChat = () => move(last.chat || talk())
@@ -367,7 +371,6 @@ function Window({ bar, betas }: Hosted) {
       id: 'learning', label: t('Learning'), active: learning, icon: <RefreshCw size={16} aria-hidden />,
       onPress: () => { shut(); setLearning(true) },
     }] })) : undefined
-  const flip = () => setClosed(!closed)
   const seek = () => {
     shut()
     setFinding(true)
@@ -393,11 +396,13 @@ function Window({ bar, betas }: Hosted) {
           // hidden overflow is still a scroller that a `scrollIntoView` inside the pane would move.
           $max-md={{ position: 'fixed', t: TOP, l: 0, r: 0, height: HEIGHT, ...({ overflow: 'clip' } as object) }}
         >
+          <SkipLink />
           <XStack
             data-slot="title-bar"
             height={BAR}
             shrink={0}
             items="center"
+            display={!bar && mode !== 'chat' && mode !== 'dev' ? 'none' : 'flex'}
             $max-md={bar ? undefined : { display: 'none' }}
             onMouseDown={bar ? dragWindow : undefined}
             onDoubleClick={bar ? toggleWindowMaximize : undefined}
@@ -411,17 +416,17 @@ function Window({ bar, betas }: Hosted) {
               pl={(bar?.inset ?? 0) + 4}
               pr={6}
               shrink={0}
-              width={closed ? RAIL : (`calc(${RAIL}px + var(--app-sidebar-span, ${SIDE}px))` as never)}
+              width={closed ? RAIL_FOLDED : ('calc(var(--pane-gap) + var(--app-sidebar-span, 256px))' as never)}
               {...(bar?.drag ?? null)}
             >
               <XStack $md={{ display: 'none' }}>
                 <Toggle open={drawer.state === 'open'} onPress={drawer.open} label={t('Open sidebar')} />
               </XStack>
-              <XStack $max-md={{ display: 'none' }}>
-                <Toggle open={!closed} onPress={flip} />
-              </XStack>
               {bar ? (
                 <>
+                  <XStack $max-md={{ display: 'none' }}>
+                    <Toggle open={!closed} onPress={flip} />
+                  </XStack>
                   <Mark label={t('Back')} data-slot="back" onPress={() => router.back()}>
                     <ArrowLeft size={15} aria-hidden data-i18n-mirror />
                   </Mark>
@@ -445,8 +450,22 @@ function Window({ bar, betas }: Hosted) {
               {...(bar?.drag ?? null)}
             >
               <XStack data-slot="titlebar-fallback" flex={1} minW={0} items="center" justify="space-between" gap={8}>
-                <Text fontSize={13} lineHeight={18} fontWeight="500" color="$ink" numberOfLines={1}>
-                  {mode === 'chat' ? '' : mode === 'dev' ? 'Dev' : mode === 'studio' ? 'Studio' : mode === 'design' ? 'Design' : mode === 'flow' ? 'Flow' : mode === 'tabs' ? 'Tabs' : ''}
+                <Text fontSize="$2" fontWeight="500" color="$ink" numberOfLines={1}>
+                  {bar
+                    ? mode === 'chat'
+                      ? ''
+                      : mode === 'dev'
+                        ? 'Dev'
+                        : mode === 'studio'
+                          ? 'Studio'
+                          : mode === 'design'
+                            ? 'Design'
+                            : mode === 'flow'
+                              ? 'Flow'
+                              : mode === 'tabs'
+                                ? 'Tabs'
+                                : ''
+                    : ''}
                 </Text>
               </XStack>
               {bar ? (
@@ -470,15 +489,41 @@ function Window({ bar, betas }: Hosted) {
             minH={0}
             paddingInlineEnd="var(--pane-gap)"
             pb="var(--pane-gap)"
-            // The gap above the pane is the gap at its end and foot; a window's own bar above it is that gap.
-            pt={bar ? 0 : 'var(--pane-gap)'}
+            // The gap above the pane is only needed when the top title-bar row is hidden.
+            pt={bar || mode === 'chat' || mode === 'dev' ? 0 : 'var(--pane-gap)'}
             // A phone's frame is full-bleed on the floor, which follows the theme,
             // so the top of the page the browser's bar tints from does too.
             $max-md={{ p: 0 }}
           >
             {drawer.slide ? <Lift /> : null}
-            <YStack height="100%" position="relative" $max-md={{ display: 'none' }}>
-              <Rail host={host} mode={mode} at={where} inside={inside} open={!closed} onChat={toChat} onDev={toDev} onDesign={toDesign} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />
+            <YStack height="100%" position="relative" display={closed ? 'flex' : 'none'} $max-md={{ display: 'none' }}>
+              <Rail
+                pins={pins}
+                host={host}
+                mode={mode}
+                at={where}
+                inside={inside}
+                open={!closed}
+                onOpen={bar ? undefined : () => setClosed(false)}
+                onNew={() => {
+                  if (mode === 'dev') move(app(''))
+                  else if (mode === 'design') move(design(''))
+                  else if (mode === 'studio') move(studio(''))
+                  else if (mode === 'flow') move(flow(''))
+                  else if (mode === 'tabs') dispatchTabsAction({ kind: 'shell' })
+                  else {
+                    empty()
+                    move(talk())
+                  }
+                }}
+                onChat={toChat}
+                onDev={toDev}
+                onDesign={toDesign}
+                onStudio={toStudio}
+                onTabs={toTabs}
+                go={move}
+                onOrg={org}
+              />
               {closed ? (
                 <YStack
                   data-slot="sidebar-reopen-edge"
@@ -487,7 +532,7 @@ function Window({ bar, betas }: Hosted) {
                   b={0}
                   r={-4}
                   width={8}
-                  z={20}
+                  z="var(--z-raised)"
                   cursor="ew-resize"
                   onDoubleClick={() => setClosed(false)}
                   onMouseDown={(down: unknown) => {
@@ -510,10 +555,28 @@ function Window({ bar, betas }: Hosted) {
                 />
               ) : null}
             </YStack>
-            {/* Tabs and Betas stand alone: no sidebar beside them. */}
+            {/* Unified desktop sidebar (hidden when folded to the 52px icon rail). */}
             {closed || alone ? null : (
-              <YStack $max-md={{ display: 'none' }}>
-                <Sidebar host={host} mode={mode} thread={thread} go={move} onShut={() => setClosed(true)} onSeek={seek} onBack={back} places={sidebar} made={maker} />
+              <YStack marginInlineStart="var(--pane-gap)" $max-md={{ display: 'none' }}>
+                <Sidebar
+                  pins={pins}
+                  host={host}
+                  mode={mode}
+                  thread={thread}
+                  inside={inside}
+                  go={move}
+                  onShut={bar ? undefined : () => setClosed(true)}
+                  onSeek={seek}
+                  onBack={back}
+                  onChat={toChat}
+                  onDev={toDev}
+                  onDesign={toDesign}
+                  onStudio={toStudio}
+                  onTabs={toTabs}
+                  onOrg={org}
+                  places={sidebar}
+                  made={maker}
+                />
               </YStack>
             )}
             <YStack
@@ -548,7 +611,7 @@ function Window({ bar, betas }: Hosted) {
                 minH={0}
               >
                 {anonSettings && host.person === null ? (
-                  <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                  <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
                     <AnonSettingsPane
                       host={host}
                       onClose={() => {
@@ -564,13 +627,13 @@ function Window({ bar, betas }: Hosted) {
                     <Chat />
                   </Split>
                 ) : mode === 'tabs' ? (
-                  <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                  <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
                     <Suspense fallback={null}>
                       <Terminals />
                     </Suspense>
                   </YStack>
                 ) : mode === 'design' ? (
-                  <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                  <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
                     <YStack flex={1} minH={0} height="100%">
                       <Suspense fallback={null}>
                         <Studio host={maker} rail={false} />
@@ -578,7 +641,7 @@ function Window({ bar, betas }: Hosted) {
                     </YStack>
                   </YStack>
                 ) : mode === 'flow' ? (
-                  <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                  <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
                     {blockedBeta ? (
                       <YStack data-slot="hosted-request" flex={1} minH={0} items="center" justify="center" p="$6">
                         <YStack width="100%" maxW={440} gap="$4">
@@ -609,7 +672,7 @@ function Window({ bar, betas }: Hosted) {
                     )}
                   </YStack>
                 ) : mode === 'studio' ? (
-                  <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                  <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
                     {blockedBeta ? (
                       <YStack data-slot="hosted-request" flex={1} minH={0} items="center" justify="center" p="$6">
                         <YStack width="100%" maxW={440} gap="$4">
@@ -640,13 +703,13 @@ function Window({ bar, betas }: Hosted) {
                     )}
                   </YStack>
                 ) : at.mode === 'hosted' ? (
-                  <YStack render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                  <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
                     <Suspense fallback={null}>
                       <Hosted id={at.id} go={move} />
                     </Suspense>
                   </YStack>
                 ) : mode === 'beta' ? (
-                  <YStack render="main" data-slot="pane" {...pane()} overflowY="auto" overflowX="hidden" flex={1} minW={0} minH={0} p="$4" $md={{ p: '$6' }}>
+                  <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflowY="auto" overflowX="hidden" flex={1} minW={0} minH={0} p="$4" $md={{ p: '$6' }}>
                     {betas ?? (
                       <Suspense fallback={null}>
                         <Betas go={move} />
@@ -654,9 +717,9 @@ function Window({ bar, betas }: Hosted) {
                     )}
                   </YStack>
                 ) : (
-                  <YStack render="main" data-slot="pane" {...(run ? null : { ...pane(), overflow: 'hidden' })} position="relative" flex={1} minW={0} minH={0}>
+                  <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...(run ? null : { ...pane(), overflow: 'hidden' })} position="relative" flex={1} minW={0} minH={0}>
                     {!plans && !run && !inPlace && closed && free && host.person !== null ? (
-                      <XStack position="absolute" t={8} r={12} z={5} items="center" $max-md={{ display: 'none' }}>
+                      <XStack position="absolute" t={8} r={12} z="var(--z-raised)" items="center" $max-md={{ display: 'none' }}>
                         <XStack
                           render="button"
                           data-slot="header-upgrade"
@@ -669,10 +732,10 @@ function Window({ bar, betas }: Hosted) {
                           bg="transparent"
                           cursor="pointer"
                           hoverStyle={{ bg: '$hover' }}
-                          onPress={() => window.location.assign(payUrl('/cart', { org: currentOrg(), returnUrl: window.location.href }))}
+                          onClick={() => window.location.assign(payUrl('/cart', { org: currentOrg(), returnUrl: window.location.href }))}
                         >
                           <Sparkles size={14} color="var(--muted-foreground)" aria-hidden />
-                          <Text fontSize={15} lineHeight={20} fontWeight="500" color="$soft" numberOfLines={1}>
+                          <Text fontSize="$3" fontWeight="500" color="$soft" numberOfLines={1}>
                             {t('Upgrade plan')}
                           </Text>
                         </XStack>
@@ -685,23 +748,26 @@ function Window({ bar, betas }: Hosted) {
             </YStack>
           </XStack>
           {drawer.state === 'shut' ? null : (
-            // A phone's sidebar is the menu behind the pane: the rail down its start edge, every
-            // product a mark and the account at its foot as on a laptop, then the same column on
-            // the floor. New chat is the bar's, so the foot carries nothing of its own.
+            // Single unified mobile drawer sidebar — zero side-by-side double rail.
             <Layer drawer={drawer} top={bar ? BAR : 0}>
               <XStack flex={1} minH={0}>
-                <YStack data-slot="drawer-rail" shrink={0} pt="calc(var(--pane-gap) + 8px)" $touchable={{ pt: 'calc(var(--pane-gap) + 4px)' }}>
-                  <Rail host={host} mode={mode} at={where} inside={inside} open onChat={toChat} onDev={toDev} onDesign={toDesign} onStudio={toStudio} onTabs={toTabs} go={move} onOrg={org} />
-                </YStack>
                 <YStack flex={1} minW={0}>
                   <Sidebar
+                    pins={pins}
                     host={host}
                     mode={mode}
                     thread={thread}
+                    inside={inside}
                     go={move}
                     onShut={shut}
                     onSeek={seek}
                     onBack={back}
+                    onChat={toChat}
+                    onDev={toDev}
+                    onDesign={toDesign}
+                    onStudio={toStudio}
+                    onTabs={toTabs}
+                    onOrg={org}
                     drawer
                     places={sidebar}
                     made={maker}

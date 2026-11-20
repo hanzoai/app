@@ -1,71 +1,85 @@
 'use client'
 
-// The app's sidebar, beside the rail on the window's floor (App.tsx): the
-// mode's name with the bell and the search at its end, New, Dev's places in
-// Dev, the reader's Recents (Pinned first) for Chat, Dev and Design (Design's
-// own, through the host Studio is mounted with; Studio and Flow keep none to
-// list), and the first-run cards. Which
-// product it lists is the rail's to say; the account is at the rail's foot, or
-// on a phone at the foot of its menu (Drawer.tsx), where this column is the menu.
-//
-// It is the window, not a panel: no fill, no edge, the floor's own ground. The
-// content beside it is the panel, inset by the gutter.
-//
-// The bell is the org's run activity (@hanzo/build `useSessions`): the runs
-// that moved last, each one press from its page.
-// The search opens the palette (Search.tsx; ⌘K / Ctrl+K from anywhere).
-//
-// Dev's places are @hanzo/build's `own`: New run, Projects, Issues, Templates.
-// A place the rail holds (Library, Scheduled tasks, Customize) takes the sidebar
-// instead (Rail.tsx `raised`): Back, the place's name, and its own rows
-// (Customize's tabs, the Library's kinds), never Dev's beside them. Settings is
-// the site's pages at /settings, with a column of their own.
-//
-// Its width is the edge's in the gutter at its end: dragged, keyed or
-// double-clicked back (@hanzo/build's `Grip`), kept per browser. Pulled in past
-// its floor it shuts (`onShut`), as the sidebar's toggle shuts it. Right to left
-// the column stands at the window's right, so the grip is on its left edge.
-//
-// Its words go through `t`; Dev's places and the places' rows are
-// @hanzo/build's own labels, drawn as the package names them.
+// The single unified desktop sidebar (and mobile drawer column):
+// 1. Single Top Header Row (`data-slot="app-head"`): `Hanzo` wordmark (or `← Back` + section
+//    title in a sub-page like Library / Scheduled tasks / Customize), Activity bell,
+//    Search (⌘K) button, and ONE fold button (`PanelLeftClose`, `Fold sidebar to icons`).
+// 2. Primary New Action (`+ New chat` / `+ New run` / `+ New design`).
+// 3. Unified Product Menu (5 core items `Chat`, `Dev`, `Design`, `Library`, `Tabs` + user-pinned
+//    items with drag-to-reorder), monochrome active state (`bg="$raised"`),
+//    hover `⋯` (`Pin/Unpin`, `Open in new tab`, `Copy link`), and active item's sub-links
+//    indented cleanly underneath with a quiet vertical guide hairline.
+// 4. Conversations / Runs (`<Recents>`) below a subtle `$edge` hairline; the part that scrolls.
+//    `More` is ONE row under it (`place-more`) that pops a menu (never an inline list, so the
+//    sidebar never changes height): every other place, each pinnable to the top from the menu.
+// 5. Single Bottom-Left Profile Row (`<Account host={host} onOrg={handleOrg} />`), zero duplicate
+//    Settings button next to Profile.
 
 import { locales, phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { Text, XStack, YStack } from '@hanzo/gui'
-import { ArrowLeft, ArrowRight, Bell, ChevronDown, ChevronUp, CircleHelp, Cloud, Globe, Image as ImageMark, Monitor, Puzzle, Search, Settings, Sparkles } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Bell,
+  ChevronDown,
+  ChevronUp,
+  CircleHelp,
+  Cloud,
+  ExternalLink,
+  Globe,
+  GripVertical,
+  Image as ImageMark,
+  Info,
+  Link2,
+  Monitor,
+  MoreHorizontal,
+  PanelLeftClose,
+  Pin,
+  PinOff,
+  Plus,
+  Puzzle,
+  Search,
+  Settings,
+  Sparkles,
+} from 'lucide-react'
 import { DOTS, Gutter, library, MARKS, NEW, own, tabs, useLanguage, useScheduled, useSessions, type Host } from '@hanzo/build'
 
 type Theme = NonNullable<Host['theme']>
 import { tidy } from './lib/title'
-import { Button, DropdownMenu, Switch, type DropdownMenuProps } from '@hanzo/ui'
+import { Button, DropdownMenu, Switch, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, toast, type DropdownMenuProps } from '@hanzo/ui'
 import { Sidebar as Base, SidebarIconButton, SidebarItem, StatusDot, type RailLink } from '@hanzo/ui/chat'
-import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
-import { Made } from './Account'
+import { useEffect, useId, useMemo, useState, type DragEvent, type ReactNode } from 'react'
+import { Account, Made } from './Account'
 import { useBetas } from './Betas'
 import { Recents } from './Recents'
-import { MARK, raised, type Raised } from './Rail'
+import { fullNavUrl, raised, useNavEntries, type NavEntry, type Pins, type Raised } from './Rail'
+import { MoreMenu } from './MoreMenu'
 import { Setup } from './Setup'
 import { ago, UNTITLED_RUN, type Recent } from './recent'
-import { empty, showSettings } from './open'
+import { empty } from './open'
 import { useSpan } from './span'
-import { useFree } from './Upgrade'
-import { hosted, talk, type Place } from './lib/host'
+import { useDevMode } from './lib/dev-mode'
+import { app, design, flow, hosted, studio, talk, TERMINALS, type Place } from './lib/host'
 import { HOSTED_APPS } from './lib/hosted'
-import { payUrl } from './lib/pay'
-import { brand, wordmark } from './where'
+import { pick } from './lib/session'
+import { brand, site } from './where'
 import { dragWindow, toggleWindowMaximize } from './WindowControls'
-import { BAND, HEAD as LINE, RAIL, SIDE, TOUCH_HEAD } from './ground'
+import { BAND, HEAD as LINE, SIDE, TOUCH_HEAD } from './ground'
 
 /** The sidebar fills the column. Its `width` is typed in px alone, though its frame takes any gui size — the type is
  *  @hanzo/ui's to widen. */
 const FILL = { width: '100%' } as object
 
-/** The sidebar's width, px: its default, and the two a drag holds it between. */
+/** The sidebar's width, px: its default (256px), and the two a drag holds it between. */
 const WIDTH = SIDE
 const FLOOR = 200
 const CEIL = 420
 /** Per reader, per browser. */
 const SPAN = 'hanzo.app.column'
+
+/** A row on a touch screen, px: a thumb's 44. */
+const TOUCH = 44
 
 /** Enter and Space press a row the way a click does. */
 const keys = (press: () => void) => ({
@@ -76,11 +90,22 @@ const keys = (press: () => void) => ({
   },
 })
 
-/** A row of the sidebar: a full-width 40px pill, 44px on a touch screen, lit where the reader is. */
-const ROW = { rounded: 12, minH: 40, py: 0, px: '$3', width: '100%' as never, $touchable: { minH: 44 } } as const
+/** A row of the sidebar: a full-width pill, 44px on a touch screen, lit where the reader is. */
+const ROW = {
+  rounded: '$3',
+  minH: 34,
+  py: 0,
+  px: '$2.5',
+  gap: '$2.5',
+  width: '100%' as never,
+  $touchable: { minH: TOUCH },
+  '$max-sm': { minH: TOUCH },
+} as const
 
 /** A sidebar link row spans the column width so hover and active pills align with Recents. */
 const COMPACT_ROW = ROW
+
+type SidebarPlaceLink = RailLink & { hint?: string }
 
 /** The run activity behind the bell: the runs that moved last, newest first. */
 const RECENT = 6
@@ -88,8 +113,441 @@ const RECENT = 6
 /** What a place that takes the sidebar is called at its head. */
 const TITLE: Record<Raised, string> = { library: phrase('Library'), scheduled: phrase('Scheduled tasks'), customize: phrase('Customize') }
 
-/** A header mark: a 15px glyph in a 28px target, a thumb's 44 on a touch screen. */
-const HEAD = { width: 32, height: 32, rounded: '$3', $touchable: { width: 44, height: 44 } } as const
+/** A header mark: a 15px glyph in a 32px target, a thumb's 44 on a touch screen. */
+const HEAD = { width: 32, height: 32, rounded: '$3', $touchable: { width: TOUCH, height: TOUCH } } as const
+/** Compact sub-page header mark so longer titles like "Scheduled tasks" never clip at 256px. */
+const SUB_HEAD = { width: 28, height: 28, rounded: '$3', $touchable: { width: TOUCH, height: TOUCH } } as const
+
+function resolvePlaceHref(id: string, mode: Place['mode']): string | null {
+  if (mode === 'flow') {
+    return id === 'canvas' ? flow('') : flow(id)
+  }
+  switch (id) {
+    case NEW:
+      return mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'studio' ? studio('') : mode === 'tabs' ? TERMINALS : talk()
+    case 'projects':
+      return app('-/projects')
+    case 'issues':
+      return app('-/issues')
+    case 'templates':
+      return app('-/templates')
+    case 'agents':
+      return app('-/customize/agents')
+    case 'bots':
+      return app('-/customize/bots')
+    case 'skills':
+      return app('-/customize/skills')
+    case 'connectors':
+      return app('-/customize/connectors')
+    case 'plugins':
+      return app('-/customize/plugins')
+    case 'upload':
+    case 'all':
+    case 'images':
+    case 'documents':
+      return app('-/artifacts')
+    default:
+      if (id.startsWith('app-')) return hosted(id.slice('app-'.length))
+      return null
+  }
+}
+
+function fullPlaceUrl(path: string): string {
+  if (/^https?:\/\//.test(path)) return path
+  if (typeof window === 'undefined') return path
+  return new URL(site(path), window.location.href).href
+}
+
+function NavMenuRow({
+  item,
+  pinned,
+  onTogglePin,
+  onMove,
+  draggable = false,
+  dragging = false,
+  dropTarget = false,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
+  t,
+}: {
+  item: NavEntry
+  pinned: boolean
+  onTogglePin: (id: string) => void
+  /** Where a drag cannot go: a pinned row's way up or down the order by keyboard. Absent for the end it is already at. */
+  onMove?: { up?: () => void; down?: () => void }
+  draggable?: boolean
+  dragging?: boolean
+  dropTarget?: boolean
+  onDragStart?: (e: DragEvent) => void
+  onDragOver?: (e: DragEvent) => void
+  onDragLeave?: () => void
+  onDrop?: (e: DragEvent) => void
+  onDragEnd?: () => void
+  t: (key: string, params?: Record<string, string | number>) => string
+}) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const canPin = item.pinnable !== false
+  const handleTogglePin = () => {
+    onTogglePin(item.id)
+    toast.success(
+      pinned
+        ? t('Moved {name} back to More', { name: item.label })
+        : t('Pinned {name} to top', { name: item.label }),
+    )
+  }
+
+  const menuItems: NonNullable<DropdownMenuProps['items']> = [
+    ...(canPin
+      ? [
+          {
+            key: 'pin',
+            label: pinned ? t('Unpin from top') : t('Pin to top'),
+            icon: pinned ? <PinOff size={15} aria-hidden /> : <Pin size={15} aria-hidden />,
+            onSelect: handleTogglePin,
+          },
+        ]
+      : []),
+    ...(onMove?.up ? [{ key: 'move-up', label: t('Move up'), icon: <ChevronUp size={15} aria-hidden />, onSelect: onMove.up }] : []),
+    ...(onMove?.down ? [{ key: 'move-down', label: t('Move down'), icon: <ChevronDown size={15} aria-hidden />, onSelect: onMove.down }] : []),
+    {
+      key: 'new-tab',
+      label: t('Open in new tab'),
+      icon: <ExternalLink size={15} aria-hidden />,
+      onSelect: () => {
+        if (typeof window !== 'undefined') {
+          window.open(fullNavUrl(item.href), '_blank', 'noopener,noreferrer')
+        }
+      },
+    },
+    {
+      key: 'copy-link',
+      label: t('Copy link'),
+      icon: <Link2 size={15} aria-hidden />,
+      onSelect: async () => {
+        try {
+          await navigator.clipboard.writeText(fullNavUrl(item.href))
+          toast.success(t('Link copied'))
+        } catch {
+          toast.error(t('The browser would not copy the link.'))
+        }
+      },
+    },
+  ]
+
+  return (
+    <XStack
+      group
+      position="relative"
+      width="100%"
+      items="center"
+      minW={0}
+      borderTopWidth={dropTarget ? 2 : 0}
+      borderTopColor={dropTarget ? 'var(--foreground)' : 'transparent'}
+      opacity={dragging ? 0.45 : 1}
+      {...(draggable
+        ? ({
+            draggable: true,
+            onDragStart,
+            onDragOver,
+            onDragLeave,
+            onDrop,
+            onDragEnd,
+          } as object)
+        : null)}
+    >
+      {draggable ? (
+        <XStack
+          position="absolute"
+          insetInlineStart={1}
+          t={0}
+          b={0}
+          width={10}
+          items="center"
+          justify="center"
+          pointerEvents="none"
+          opacity={dragging ? 0.9 : 0}
+          $group-hover={{ opacity: 0.55 }}
+          $touchable={{ display: 'none' }}
+          $platform-web={{ color: 'var(--muted-foreground)' }}
+          aria-hidden
+        >
+          <GripVertical size={12} aria-hidden />
+        </XStack>
+      ) : null}
+      <XStack
+        render={<button type="button" />}
+        data-slot={item.slot}
+        data-nav-id={item.id}
+        aria-label={item.label}
+        aria-current={item.on ? 'page' : undefined}
+        onClick={item.onPress}
+        flex={1}
+        minW={0}
+        minH={34}
+        px="$2.5"
+        py="$1"
+        paddingInlineEnd={canPin ? 54 : 30}
+        rounded="$3"
+        borderWidth={0}
+        items="center"
+        gap="$2.5"
+        cursor="pointer"
+        $platform-web={draggable ? { cursor: dragging ? 'grabbing' : 'grab' } : undefined}
+        bg={item.on ? '$raised' : 'transparent'}
+        hoverStyle={{ bg: item.on ? '$raised' : '$hover' }}
+        pressStyle={{ bg: '$raised' }}
+        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+        $touchable={{ minH: TOUCH }}
+        $max-sm={{ minH: TOUCH }}
+      >
+        <XStack width={18} height={18} items="center" justify="center" shrink={0} opacity={item.on ? 1 : 0.78}>
+          {item.icon}
+        </XStack>
+        <Text
+          flex={1}
+          minW={0}
+          fontSize="$2"
+          fontWeight={item.on ? '500' : '400'}
+          color={item.on ? '$ink' : '$aside'}
+          numberOfLines={1}
+          text="start"
+        >
+          {item.label}
+        </Text>
+        {item.external ? <ExternalLink size={12} opacity={0.45} aria-hidden /> : null}
+      </XStack>
+
+      <XStack position="absolute" insetInlineEnd={4} t={0} b={0} items="center" gap={2}>
+        {canPin ? (
+          <XStack
+            render={<button type="button" />}
+            data-slot="nav-item-pin"
+            aria-label={pinned ? t('Unpin {name}', { name: item.label }) : t('Pin {name} to top', { name: item.label })}
+            {...({ title: pinned ? t('Unpin from top') : t('Pin to top') } as object)}
+            width={24}
+            height={24}
+            rounded="$2"
+            borderWidth={0}
+            items="center"
+            justify="center"
+            cursor="pointer"
+            bg="transparent"
+            $platform-web={{ color: 'var(--muted-foreground)' }}
+            opacity={menuOpen ? 1 : 0}
+            $group-hover={{ opacity: 1 }}
+            focusVisibleStyle={{ opacity: 1, outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+            $touchable={{ opacity: 0.7, minW: TOUCH, minH: TOUCH }}
+            $max-sm={{ minW: TOUCH, minH: TOUCH }}
+            hoverStyle={{ bg: '$hover' }}
+            onClick={(e: { stopPropagation?: () => void }) => {
+              e.stopPropagation?.()
+              handleTogglePin()
+            }}
+          >
+            {pinned ? <PinOff size={13} aria-hidden /> : <Pin size={13} aria-hidden />}
+          </XStack>
+        ) : null}
+        <DropdownMenu
+          open={menuOpen}
+          onOpenChange={setMenuOpen}
+          placement="bottom-end"
+          minWidth={180}
+          items={menuItems}
+          trigger={
+            <XStack
+              render={<button type="button" />}
+              data-slot="nav-item-options"
+              aria-label={t('{name} options', { name: item.label })}
+              width={24}
+              height={24}
+              rounded="$2"
+              borderWidth={0}
+              items="center"
+              justify="center"
+              cursor="pointer"
+              bg={menuOpen ? '$hover' : 'transparent'}
+              opacity={menuOpen ? 1 : 0}
+              $group-hover={{ opacity: 1 }}
+              focusStyle={{ opacity: 1 }}
+              focusVisibleStyle={{ opacity: 1, outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              $touchable={{ opacity: 1, minW: TOUCH, minH: TOUCH }}
+              $max-sm={{ minW: TOUCH, minH: TOUCH }}
+              hoverStyle={{ bg: '$hover' }}
+              onClick={(e: { stopPropagation?: () => void }) => e.stopPropagation?.()}
+            >
+              <MoreHorizontal size={14} aria-hidden />
+            </XStack>
+          }
+        />
+      </XStack>
+    </XStack>
+  )
+}
+
+function PlaceRow({
+  link,
+  mode,
+  makeIcon,
+  compact = false,
+  t,
+}: {
+  link: SidebarPlaceLink
+  mode: Place['mode']
+  makeIcon: React.ComponentType<{ size?: number; 'aria-hidden'?: boolean }>
+  compact?: boolean
+  t: (key: string, params?: Record<string, string | number>) => string
+}) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const routePath = resolvePlaceHref(link.id, mode)
+  const MakeIcon = makeIcon
+
+  const menuItems: NonNullable<DropdownMenuProps['items']> = [
+    ...(routePath
+      ? [
+          {
+            key: 'new-tab',
+            label: t('Open in new tab'),
+            icon: <ExternalLink size={15} aria-hidden />,
+            onSelect: () => {
+              if (typeof window !== 'undefined') {
+                window.open(fullPlaceUrl(routePath), '_blank', 'noopener,noreferrer')
+              }
+            },
+          },
+          {
+            key: 'copy-link',
+            label: t('Copy link'),
+            icon: <Link2 size={15} aria-hidden />,
+            onSelect: async () => {
+              try {
+                await navigator.clipboard.writeText(fullPlaceUrl(routePath))
+                toast.success(t('Link copied'))
+              } catch {
+                toast.error(t('The browser would not copy the link.'))
+              }
+            },
+          },
+        ]
+      : []),
+  ]
+
+  const hasInfo = Boolean(link.hint)
+  const hasMenu = menuItems.length > 0
+  const trailSpace = hasInfo && hasMenu ? 54 : hasInfo || hasMenu ? 30 : '$2.5'
+
+  return (
+    <XStack group role="listitem" position="relative" width="100%" minW={0} items="center">
+      <SidebarItem
+        {...COMPACT_ROW}
+        minH={compact ? 30 : 34}
+        px={compact ? '$2' : '$2.5'}
+        gap="$2.5"
+        paddingInlineEnd={trailSpace}
+        data-place-id={link.id}
+        {...(link.id === NEW ? { 'data-slot': 'app-new' } : {})}
+        active={link.active}
+        bg={link.active ? '$raised' : 'transparent'}
+        hoverStyle={{ bg: link.active ? '$raised' : '$hover' }}
+        icon={
+          link.icon || link.id === NEW ? (
+            <XStack width={compact ? 16 : 18} height={compact ? 16 : 18} items="center" justify="center" shrink={0} opacity={link.active ? 1 : 0.72}>
+              {link.icon ?? <MakeIcon size={15} aria-hidden />}
+            </XStack>
+          ) : null
+        }
+        onPress={link.onPress}
+        {...keys(() => link.onPress?.())}
+      >
+        <Text fontSize="$2" fontWeight={link.active ? '500' : '400'} color={link.active ? '$ink' : compact ? '$soft' : '$aside'} numberOfLines={1}>
+          {link.label}
+        </Text>
+      </SidebarItem>
+      {hasInfo || hasMenu ? (
+        <XStack position="absolute" insetInlineEnd={4} t={0} b={0} items="center" gap={2}>
+          {link.hint ? (
+            <Tooltip placement="right" offset={8}>
+              <TooltipTrigger asChild>
+                <XStack
+                  render={<button type="button" />}
+                  data-slot="place-info"
+                  aria-label={t('About {name}', { name: link.label })}
+                  width={22}
+                  height={22}
+                  rounded="$2"
+                  borderWidth={0}
+                  bg="transparent"
+                  items="center"
+                  justify="center"
+                  cursor="pointer"
+                  $platform-web={{ color: 'var(--muted-foreground)' }}
+                  opacity={0.55}
+                  hoverStyle={{ opacity: 1, bg: '$hover' }}
+                  focusVisibleStyle={{ opacity: 1, outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  $touchable={{ opacity: 0.85, minW: TOUCH, minH: TOUCH }}
+                  $max-sm={{ minW: TOUCH, minH: TOUCH }}
+                  onClick={(e: { stopPropagation?: () => void }) => e.stopPropagation?.()}
+                >
+                  <Info size={13} aria-hidden />
+                </XStack>
+              </TooltipTrigger>
+              <TooltipContent
+                maxW={230}
+                px="$2.5"
+                py="$1.5"
+                rounded="$3"
+                bg="var(--popover)"
+                borderWidth={1}
+                borderColor="var(--border-strong)"
+                z="var(--z-tooltip)"
+              >
+                <Text fontFamily="$body" fontSize="$1" color="$ink">
+                  {link.hint}
+                </Text>
+              </TooltipContent>
+            </Tooltip>
+          ) : null}
+          {hasMenu ? (
+            <DropdownMenu
+              open={menuOpen}
+              onOpenChange={setMenuOpen}
+              placement="bottom-end"
+              minWidth={180}
+              items={menuItems}
+              trigger={
+                <XStack
+                  render={<button type="button" />}
+                  data-slot="place-options"
+                  aria-label={t('{name} options', { name: link.label })}
+                  width={24}
+                  height={24}
+                  rounded="$2"
+                  borderWidth={0}
+                  items="center"
+                  justify="center"
+                  cursor="pointer"
+                  bg={menuOpen ? '$hover' : 'transparent'}
+                  opacity={menuOpen ? 1 : 0}
+                  $group-hover={{ opacity: 1 }}
+                  focusStyle={{ opacity: 1 }}
+                  focusVisibleStyle={{ opacity: 1, outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  $touchable={{ opacity: 1, minW: TOUCH, minH: TOUCH }}
+                  $max-sm={{ minW: TOUCH, minH: TOUCH }}
+                  hoverStyle={{ bg: '$hover' }}
+                  onClick={(e: { stopPropagation?: () => void }) => e.stopPropagation?.()}
+                >
+                  <MoreHorizontal size={14} aria-hidden />
+                </XStack>
+              }
+            />
+          ) : null}
+        </XStack>
+      ) : null}
+    </XStack>
+  )
+}
 
 interface TabsFleetHost {
   machine: string
@@ -111,7 +569,11 @@ export function dispatchTabsAction(detail: { kind: string; id?: string; machine?
   window.dispatchEvent(new CustomEvent('hanzo:tabs-action', { detail }))
 }
 
-function useTabsGroups(t: (key: string, params?: Record<string, string | number>) => string, active: boolean): { id: string; label: string; links: RailLink[] }[] {
+function useTabsGroups(
+  t: (key: string, params?: Record<string, string | number>) => string,
+  active: boolean,
+  devMode: boolean,
+): { id: string; label: string; links: SidebarPlaceLink[] }[] {
   const [fleet, setFleet] = useState<TabsFleetHost[]>([])
   const [bind, setBind] = useState<Record<string, TabsSavedBind>>({})
 
@@ -160,53 +622,54 @@ function useTabsGroups(t: (key: string, params?: Record<string, string | number>
 
   return useMemo(() => {
     if (!active) return []
-    const quickLinks: RailLink[] = [
+    const quickLinks: SidebarPlaceLink[] = [
       {
         id: 'new-terminal',
-        label: t('New terminal'),
-        icon: <MARKS.tabs.make size={16} aria-hidden />,
+        label: t('Terminal'),
+        hint: t('Cloud command-line shell with saved files.'),
+        icon: <MARKS.tabs.make size={15} aria-hidden />,
         onPress: () => dispatchTabsAction({ kind: 'shell' }),
       },
       {
         id: 'new-desktop',
-        label: t('New desktop'),
-        icon: <Monitor size={16} aria-hidden />,
+        label: t('Desktop'),
+        hint: t('Full visual cloud desktop in your browser.'),
+        icon: <Monitor size={15} aria-hidden />,
         onPress: () => dispatchTabsAction({ kind: 'desktop' }),
       },
       {
         id: 'new-browser',
-        label: t('New browser'),
-        icon: <Globe size={16} aria-hidden />,
+        label: t('Browser'),
+        hint: t('Isolated workspace browser for live previews.'),
+        icon: <Globe size={15} aria-hidden />,
         onPress: () => dispatchTabsAction({ kind: 'page' }),
       },
-      {
-        id: 'new-cloud',
-        label: t('New sandbox'),
-        icon: <Cloud size={16} aria-hidden />,
-        onPress: () => dispatchTabsAction({ kind: 'cloud' }),
-      },
-    ]
-
-    const liveFleet = fleet.filter((h) => h.status !== 'offline')
-    const sandboxLinks: RailLink[] =
-      liveFleet.length > 0
-        ? liveFleet.map((h) => ({
-            id: `sandbox-${h.machine}`,
-            label: h.label ? `${h.machine} · ${h.label}` : h.machine,
-            icon: h.desktop ? <Monitor size={16} aria-hidden /> : <Cloud size={16} aria-hidden />,
-            onPress: () => dispatchTabsAction({ kind: h.desktop ? 'desktop' : 'shell', machine: h.machine }),
-          }))
-        : [
+      ...(devMode
+        ? [
             {
-              id: 'sandbox-launch',
-              label: t('Launch cloud sandbox'),
-              icon: <Cloud size={16} aria-hidden />,
+              id: 'new-cloud',
+              label: t('Cloud sandbox'),
+              hint: t('Spin up a fresh isolated cloud environment.'),
+              icon: <Cloud size={15} aria-hidden />,
               onPress: () => dispatchTabsAction({ kind: 'cloud' }),
             },
           ]
+        : []),
+    ]
+
+    const liveFleet = fleet.filter((h) => h.status !== 'offline')
+    const deviceLinks: SidebarPlaceLink[] = liveFleet.map((h) => ({
+      id: `sandbox-${h.machine}`,
+      label: h.label ? `${h.machine} · ${h.label}` : h.machine,
+      hint: h.desktop
+        ? t('Connect to this device’s live desktop session.')
+        : t('Open a terminal shell on this connected device.'),
+      icon: h.desktop ? <Monitor size={15} aria-hidden /> : <Cloud size={15} aria-hidden />,
+      onPress: () => dispatchTabsAction({ kind: h.desktop ? 'desktop' : 'shell', machine: h.machine }),
+    }))
 
     const knownMachines = fleet.length > 0 ? new Set(liveFleet.map((h) => h.machine)) : null
-    const recentLinks: RailLink[] = Object.entries(bind)
+    const recentLinks: SidebarPlaceLink[] = Object.entries(bind)
       .filter(([, b]) => {
         if (b.kind === 'page') return Boolean(b.url)
         if (b.kind === 'screen') return Boolean(b.machine) && (!knownMachines || knownMachines.has(b.machine!))
@@ -217,52 +680,53 @@ function useTabsGroups(t: (key: string, params?: Record<string, string | number>
         return false
       })
       .map(([id, b]) => {
-      if (b.kind === 'screen') {
-        return {
-          id: `tab-${id}`,
-          label: b.machine ? `${t('Desktop')} · ${b.machine}` : t('Desktop'),
-          icon: <Monitor size={16} aria-hidden />,
-          onPress: () => dispatchTabsAction({ kind: 'focus', id }),
-        }
-      }
-      if (b.kind === 'page') {
-        let hostLabel = t('Browser')
-        if (b.url) {
-          try {
-            hostLabel = new URL(b.url).hostname || b.url
-          } catch {
-            hostLabel = b.url
+        if (b.kind === 'screen') {
+          return {
+            id: `tab-${id}`,
+            label: b.machine ? `${t('Desktop')} · ${b.machine}` : t('Desktop'),
+            icon: <Monitor size={15} aria-hidden />,
+            onPress: () => dispatchTabsAction({ kind: 'focus', id }),
           }
         }
+        if (b.kind === 'page') {
+          let hostLabel = t('Browser')
+          if (b.url) {
+            try {
+              hostLabel = new URL(b.url).hostname || b.url
+            } catch {
+              hostLabel = b.url
+            }
+          }
+          return {
+            id: `tab-${id}`,
+            label: hostLabel,
+            icon: <Globe size={15} aria-hidden />,
+            onPress: () => dispatchTabsAction({ kind: 'focus', id }),
+          }
+        }
+        const machine = b.shell?.machine ?? b.machine
+        const name = b.shell?.name
         return {
           id: `tab-${id}`,
-          label: hostLabel,
-          icon: <Globe size={16} aria-hidden />,
+          label: machine ? `${machine}${name ? ` (${name})` : ''}` : t('Terminal'),
+          icon: <MARKS.tabs.icon size={15} aria-hidden />,
           onPress: () => dispatchTabsAction({ kind: 'focus', id }),
         }
-      }
-      const machine = b.shell?.machine ?? b.machine
-      const name = b.shell?.name
-      return {
-        id: `tab-${id}`,
-        label: machine ? `${machine}${name ? ` (${name})` : ''}` : t('Terminal'),
-        icon: <MARKS.tabs.icon size={16} aria-hidden />,
-        onPress: () => dispatchTabsAction({ kind: 'focus', id }),
-      }
-    })
+      })
 
     return [
       { id: 'tabs-actions', label: '', links: quickLinks },
-      { id: 'sandboxes', label: t('Sandboxes'), links: sandboxLinks },
+      ...(deviceLinks.length > 0 ? [{ id: 'devices', label: t('Devices'), links: deviceLinks }] : []),
       ...(recentLinks.length > 0 ? [{ id: 'recent-tabs', label: t('Open tabs'), links: recentLinks }] : []),
     ]
-  }, [active, bind, fleet, t])
+  }, [active, bind, devMode, fleet, t])
 }
 
 function Activity({ host }: { host: Host }) {
   const { t } = useI18n()
   const store = useSessions(host)
   const latest = [...store.value].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)).slice(0, RECENT)
+  const hasLive = latest.some((s) => s.status === 'running' || s.status === 'pending' || s.status === 'starting')
   const items: NonNullable<DropdownMenuProps['items']> = [
     { type: 'label', key: 'head', label: t('Activity') },
     ...(latest.length
@@ -281,18 +745,34 @@ function Activity({ host }: { host: Host }) {
       minWidth={280}
       trigger={
         <XStack
-          render="button"
+          render={<button type="button" />}
+          data-slot="activity-bell"
           aria-label={t('Activity')}
           {...({ title: t('Activity') } as object)}
           {...HEAD}
+          position="relative"
+          borderWidth={0}
+          bg="transparent"
           items="center"
           justify="center"
           cursor="pointer"
           opacity={0.7}
           hoverStyle={{ bg: '$hover', opacity: 1 }}
-          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
         >
           <Bell size={15} aria-hidden />
+          {hasLive ? (
+            <YStack
+              position="absolute"
+              t={5}
+              r={5}
+              width={6}
+              height={6}
+              rounded={999}
+              bg="var(--state-online)"
+              aria-hidden
+            />
+          ) : null}
         </XStack>
       }
       items={items}
@@ -301,6 +781,7 @@ function Activity({ host }: { host: Host }) {
 }
 
 export function Sidebar({
+  pins,
   host,
   mode,
   thread,
@@ -308,24 +789,41 @@ export function Sidebar({
   onShut,
   onSeek,
   onBack,
+  onChat,
+  onDev,
+  onDesign,
+  onStudio,
+  onTabs,
+  onOrg,
+  inside = null,
   drawer = false,
   rail,
   foot,
   places,
   made,
 }: {
+  /** The pinned apps, held once by the surface so the Rail beside this agrees. */
+  pins: Pins
   host: Host
   mode: Place['mode']
   /** The Chat conversation the pane holds, or null. */
   thread: string | null
   /** Moves the app to an address of this page. */
   go: (address: string) => void
-  /** Shut the sidebar: its edge pulled in past the floor. */
-  onShut: () => void
+  /** Fold the sidebar down to the 52px icon rail (omitted when desktop window bar owns the toggle). */
+  onShut?: () => void
   /** Opens the palette. */
   onSeek?: () => void
   /** Leaves a place that took the sidebar, for where the reader was before it. */
   onBack: () => void
+  /** Navigation handlers for the unified product menu. */
+  onChat?: () => void
+  onDev?: () => void
+  onDesign?: () => void
+  onStudio?: () => void
+  onTabs?: () => void
+  onOrg?: (org: string) => void
+  inside?: string | null
   /** Drawn in the phone's drawer (Drawer.tsx): on the floor behind the pane, no edge, no handle. */
   drawer?: boolean
   /** What stands under the mode's own rows: the drawer's places, the rail's as rows. */
@@ -338,8 +836,12 @@ export function Sidebar({
   made?: Host
 }) {
   const { t, dir } = useI18n()
+  const [devMode, setDevMode] = useDevMode()
+  const [pinnedIds, togglePin, reorderPin, movePin] = pins
+  const pinnedSet = useMemo(() => new Set(pinnedIds), [pinnedIds])
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [dropId, setDropId] = useState<string | null>(null)
   const anon = host.person === null
-  const free = useFree(Boolean(host.token?.())) || anon
   const [anonSettingsOpen, setAnonSettingsOpen] = useState(false)
   const [tailoredOpen, setTailoredOpen] = useState(true)
   const [anonThreadTitle, setAnonThreadTitle] = useState('')
@@ -366,17 +868,16 @@ export function Sidebar({
       window.removeEventListener('hanzo:anon-thread', onAnonThread)
     }
   }, [anon])
-  // The desktop sidebar and a phone's drawer can both be in the page: each names its own group labels.
+
   const uid = useId()
   const span = useSpan(SPAN, WIDTH, FLOOR, CEIL)
 
   const dev = (p: string) => host.go(p)
   const at = mode === 'dev' ? raised(host.path) : null
-  // A New row that brings no icon of its own wears its mode's `make` mark.
   const Make = mode === 'chat' || mode === 'dev' || mode === 'tabs' || mode === 'studio' ? MARKS[mode].make : MARKS.chat.make
-  // Each place the rail holds lists its own rows: Library its kinds and Upload, Scheduled tasks its tasks and New task.
+
   const scheduled = useScheduled(host, dev, at === 'scheduled')
-  const tabsGroups = useTabsGroups(t, mode === 'tabs')
+  const tabsGroups = useTabsGroups(t, mode === 'tabs', devMode)
   const { open: betaOpen } = useBetas()
   const hostedGroups = useMemo(() => {
     if (mode !== 'hosted') return []
@@ -394,6 +895,7 @@ export function Sidebar({
     })
     return links.length > 0 ? [{ id: 'hosted-apps', label: '', links }] : []
   }, [mode, betaOpen, host.path, go])
+
   const groups =
     places && places.length > 0
       ? places
@@ -409,6 +911,7 @@ export function Sidebar({
                 : at === 'scheduled'
                   ? scheduled
                   : own(host, dev, t))
+
   const open = (row: Recent) => (row.kind === 'chat' ? go(talk(row.id)) : dev(row.id))
   const setAnonSettings = (next: boolean) => {
     setAnonSettingsOpen(next)
@@ -416,7 +919,7 @@ export function Sidebar({
       window.dispatchEvent(new CustomEvent('hanzo:anon-settings', { detail: { open: next } }))
     }
   }
-  // Chat's New; Dev's is the first of its places.
+
   const create = () => {
     if (anon) {
       setAnonSettings(false)
@@ -431,382 +934,779 @@ export function Sidebar({
     go(talk())
   }
 
-  return (
-    <YStack
-      data-slot="app-column"
-      ref={drawer ? undefined : span.ref}
-      {...(drawer ? null : ({ '$platform-web': { '--span': `${span.span}px`, ...(anon ? { overflow: 'visible' } : null) } } as object))}
-      position="relative"
-      flex={drawer ? 1 : undefined}
-      shrink={drawer ? 1 : 0}
-      minW={0}
-      height="100%"
-      width={drawer ? undefined : `var(--span, ${WIDTH}px)`}
-      maxW={drawer ? undefined : `var(--span, ${WIDTH}px)`}
-      bg={drawer ? undefined : "var(--side-fill, var(--sheet-2))"}
-      rounded={drawer ? undefined : "var(--pane-round)"}
-      borderWidth={drawer ? 0 : 1}
-      borderColor="var(--pane-edge, var(--edge, var(--white-06)))"
-    >
-      <Base
-        data-slot="app-rail"
-        role="navigation"
-        aria-label={brand()}
-        bg="transparent"
-        borderWidth={0}
-        {...FILL}
-        px={8}
-        pt={drawer ? 'var(--pane-gap)' : 4}
-        // In the drawer the menu's own foot padding is the gap; its foot row stands on it.
-        pb={drawer ? 0 : '$2'}
-        gap="$0"
-        $platform-web={anon && !drawer ? { overflow: 'visible' } : undefined}
-      >
-        {at ? (
-          <XStack
-            data-slot="app-head"
-            items="center"
-            gap="$1"
-            paddingInlineStart={2}
-            paddingInlineEnd={2}
-            // The phone's drawer lines up with its bar (BAND); beside the rail, with the rail's first mark (ground.ts HEAD).
-            height={drawer ? BAND : LINE}
-            $touchable={drawer ? undefined : { height: TOUCH_HEAD }}
-            shrink={0}
-            minW={0}
-            data-tauri-drag-region="deep"
-            onMouseDown={dragWindow}
-            onDoubleClick={toggleWindowMaximize}
-          >
-            <SidebarIconButton label={t('Back')} data-slot="place-back" data-tauri-drag-region="false" onPress={onBack} {...HEAD}>
-              <ArrowLeft size={16} aria-hidden data-i18n-mirror />
-            </SidebarIconButton>
-            <Text flex={1} minW={0} fontSize={15} lineHeight={20} fontWeight="600" color="$ink" numberOfLines={1} data-slot="place-name">
-              {t(TITLE[at])}
-            </Text>
-          </XStack>
-        ) : (
-          <XStack
-            data-slot="app-head"
-            items="center"
-            gap={2}
-            paddingInlineStart={8}
-            paddingInlineEnd={2}
-            // The phone's drawer lines up with its bar (BAND); beside the rail, with the rail's first mark (ground.ts HEAD).
-            height={drawer ? BAND : LINE}
-            $touchable={drawer ? undefined : { height: TOUCH_HEAD }}
-            shrink={0}
-            minW={0}
-            data-tauri-drag-region="deep"
-            onMouseDown={dragWindow}
-            onDoubleClick={toggleWindowMaximize}
-          >
-            <XStack flex={1} minW={0} items="center" gap={4}>
-              <Text fontSize={17} lineHeight={24} fontWeight="600" color="$ink" numberOfLines={1}>
-                {wordmark(mode)}
-              </Text>
-            </XStack>
-            {drawer || anon ? null : <Activity host={host} />}
-            {anon ? null : (
-              <SidebarIconButton
-                label={t('Search')}
-                data-tauri-drag-region="false"
-                onPress={onSeek}
-                aria-haspopup="dialog"
-                {...(drawer
-                  ? {
-                      width: 40,
-                      height: 40,
-                      rounded: 9999,
-                      borderWidth: 1,
-                      borderColor: 'var(--border-strong)',
-                      bg: 'var(--pane-fill)',
-                    }
-                  : HEAD)}
-              >
-                <Search size={drawer ? 18 : 15} aria-hidden />
-              </SidebarIconButton>
-            )}
-          </XStack>
-        )}
-        {mode === 'chat' ? (
-          <YStack role="list" gap={2} shrink={0} pt={drawer ? 0 : 2}>
-            <YStack role="listitem" width="100%">
-              {/* Current while the pane holds a new conversation, and never lit: the reference lights the conversation open, not New. */}
-              <SidebarItem
-                data-slot="app-new"
-                {...COMPACT_ROW}
-                active={!thread && !anonSettingsOpen && !anonThreadTitle}
-                bg="transparent"
-                hoverStyle={{ bg: '$hover' }}
-                icon={
-                  <XStack width={18} height={18} items="center" justify="center" shrink={0}>
-                    <MARKS.chat.make size={15} aria-hidden />
-                  </XStack>
+  const createPrimary = () => {
+    if (mode === 'dev') dev('')
+    else if (mode === 'design') made ? made.go('') : go(design(''))
+    else if (mode === 'studio') made ? made.go('') : go(studio(''))
+    else if (mode === 'flow') made ? made.go('') : go(flow(''))
+    else create()
+  }
+
+  const nav = useNavEntries({
+    host,
+    mode,
+    at: host.path ?? null,
+    inside,
+    onChat: onChat ?? (() => go(talk())),
+    onDev: onDev ?? (() => go(app(''))),
+    onDesign: onDesign ?? (() => go(design(''))),
+    onStudio: onStudio ?? (() => go(studio(''))),
+    onTabs: onTabs ?? (() => go(TERMINALS)),
+    go,
+    pins,
+  })
+
+  // An app that lives in More draws its own row (and sub-links) after the pinned ones while the reader is in it.
+  const shown = [...nav.pinnedEntries, ...nav.moreEntries.filter((item) => item.on)]
+  const showMore = !at && !anon && nav.moreEntries.length > 0
+
+  const subGroupsFor = (entryId: string): { id: string; label: string; links: SidebarPlaceLink[] }[] => {
+    if (at) return []
+    if (entryId === 'dev' && mode === 'dev') {
+      const links = own(host, dev, t).flatMap((g) => g.links).filter((l) => l.id !== NEW)
+      return links.length ? [{ id: 'dev-sub', label: '', links }] : []
+    }
+    if (entryId === 'design' && mode === 'design' && places) {
+      const links = places
+        .flatMap((g) => g.links)
+        .filter((l) => l.id !== NEW && !(l.id === 'library' && nav.shownInPrimary.has('library')))
+      return links.length ? [{ id: 'design-sub', label: '', links }] : []
+    }
+    if (entryId === 'studio' && mode === 'studio' && places) {
+      const links = places.flatMap((g) => g.links).filter((l) => l.id !== NEW)
+      return links.length ? [{ id: 'studio-sub', label: '', links }] : []
+    }
+    if (entryId === 'flow' && mode === 'flow' && places) {
+      const links = places.flatMap((g) => g.links).filter((l) => l.id !== NEW)
+      return links.length ? [{ id: 'flow-sub', label: '', links }] : []
+    }
+    if (entryId === 'tabs' && mode === 'tabs') {
+      return tabsGroups.filter((g) => g.links.length > 0)
+    }
+    return []
+  }
+
+  // The pinned apps as the reader sees them: one that is not offered here is not a place to move to.
+  const seen = nav.pinnedEntries.map((e) => e.id)
+  const renderNavEntryWithSublinks = (item: NavEntry, allowDrop: boolean) => {
+    const subGroups = item.on ? subGroupsFor(item.id) : []
+    const canDrag = !anon
+    return (
+      <YStack key={item.id} gap={1} width="100%">
+        <NavMenuRow
+          item={item}
+          pinned={pinnedSet.has(item.id)}
+          onTogglePin={togglePin}
+          onMove={
+            canDrag && allowDrop && pinnedSet.has(item.id)
+              ? {
+                  up: seen.indexOf(item.id) > 0 ? () => movePin(item.id, -1, seen) : undefined,
+                  down: seen.indexOf(item.id) < seen.length - 1 ? () => movePin(item.id, 1, seen) : undefined,
                 }
-                onPress={create}
-                {...keys(create)}
-              >
-                <Text fontSize={14} lineHeight={20} color="$ink">{t('New chat')}</Text>
-              </SidebarItem>
-            </YStack>
-            {anon ? (
-              <>
-                <YStack role="listitem" self="flex-start">
-                  <SidebarItem
-                    data-slot="app-images"
-                    {...COMPACT_ROW}
-                    bg="transparent"
-                    hoverStyle={{ bg: '$hover' }}
-                    icon={
-                      <XStack width={20} height={20} items="center" justify="center" shrink={0}>
-                        <ImageMark size={16} aria-hidden />
-                      </XStack>
-                    }
-                    onPress={() => {
-                      create()
-                      if (typeof window !== 'undefined') {
-                        window.dispatchEvent(new CustomEvent('hanzo:anon-prompt', { detail: { text: t('Create an image of ') } }))
-                      }
-                    }}
-                    {...keys(() => {
-                      create()
-                      if (typeof window !== 'undefined') {
-                        window.dispatchEvent(new CustomEvent('hanzo:anon-prompt', { detail: { text: t('Create an image of ') } }))
-                      }
-                    })}
-                  >
-                    <Text fontSize="$3" color="$ink">{t('Images')}</Text>
-                  </SidebarItem>
-                </YStack>
-                <YStack role="listitem" self="flex-start">
-                  <SidebarItem
-                    data-slot="app-plugins"
-                    {...COMPACT_ROW}
-                    bg="transparent"
-                    hoverStyle={{ bg: '$hover' }}
-                    icon={
-                      <XStack width={20} height={20} items="center" justify="center" shrink={0}>
-                        <Puzzle size={16} aria-hidden />
-                      </XStack>
-                    }
-                    onPress={() => {
-                      setAnonSettings(false)
-                      if (typeof window !== 'undefined') {
-                        window.dispatchEvent(new CustomEvent('hanzo:anon-plugins'))
-                      }
-                    }}
-                    {...keys(() => {
-                      setAnonSettings(false)
-                      if (typeof window !== 'undefined') {
-                        window.dispatchEvent(new CustomEvent('hanzo:anon-plugins'))
-                      }
-                    })}
-                  >
-                    <Text fontSize="$3" color="$ink">{t('Plugins')}</Text>
-                  </SidebarItem>
-                </YStack>
-              </>
-            ) : null}
-          </YStack>
-        ) : mode === 'beta' && !drawer ? null : (
-          <YStack data-slot="app-places" shrink={0} pt={drawer ? 0 : 4}>
-            {groups.map((g, i) => (
-              <YStack key={g.id} pt={i ? '$2' : 0}>
-                {/* The same quiet label Recents wears, so the sidebar reads as one list of headed parts. */}
-                {i && g.label ? (
-                  <Text id={`${uid}-${g.id}`} paddingInlineStart="$2" pb={2} fontSize="$3" color="$soft">
-                    {g.label}
+              : undefined
+          }
+          draggable={canDrag}
+          dragging={dragId === item.id}
+          dropTarget={allowDrop && dropId === item.id && dragId !== item.id}
+          onDragStart={(e) => {
+            setDragId(item.id)
+            e.dataTransfer?.setData('text/plain', item.id)
+            if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
+          }}
+          onDragOver={
+            allowDrop
+              ? (e) => {
+                  const src = dragId || e.dataTransfer?.getData('text/plain')
+                  if (!src || src === item.id) return
+                  e.preventDefault()
+                  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+                  if (dropId !== item.id) setDropId(item.id)
+                }
+              : undefined
+          }
+          onDragLeave={
+            allowDrop
+              ? () => {
+                  if (dropId === item.id) setDropId(null)
+                }
+              : undefined
+          }
+          onDrop={
+            allowDrop
+              ? (e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  const src = dragId || e.dataTransfer?.getData('text/plain')
+                  if (src && src !== item.id) reorderPin(src, item.id)
+                  setDragId(null)
+                  setDropId(null)
+                }
+              : undefined
+          }
+          onDragEnd={() => {
+            setDragId(null)
+            setDropId(null)
+          }}
+          t={t}
+        />
+        {subGroups.length > 0 ? (
+          <YStack
+            data-slot="nav-sublinks"
+            marginInlineStart="$4"
+            paddingInlineStart="$2.5"
+            borderInlineStartWidth={1}
+            borderColor="$edge"
+            gap="$1.5"
+            py="$1"
+          >
+            {subGroups.map((group, gi) => (
+              <YStack key={group.id} gap={1} pt={gi > 0 && group.label ? '$1' : 0}>
+                {group.label ? (
+                  <Text px="$2" pb={2} fontSize="$1" fontWeight="500" color="$hint" numberOfLines={1}>
+                    {group.label}
                   </Text>
                 ) : null}
-                <YStack role="list" aria-labelledby={i && g.label ? `${uid}-${g.id}` : undefined} aria-label={i && g.label ? undefined : g.label || (at ? t(TITLE[at]) : g.id)} gap={1}>
-                  {g.links.map((link) => (
-                    <YStack key={link.id} role="listitem" width="100%" minW={0}>
-                      <SidebarItem
-                        {...COMPACT_ROW}
-                        data-place-id={link.id}
-                        {...(link.id === NEW ? { 'data-slot': 'app-new' } : {})}
-                        active={link.active}
-                        icon={
-                          link.icon || link.id === NEW ? (
-                            <XStack width={18} height={18} items="center" justify="center" shrink={0}>
-                              {link.icon ?? <Make size={15} aria-hidden />}
-                            </XStack>
-                          ) : null
-                        }
-                        onPress={link.onPress}
-                        {...keys(() => link.onPress?.())}
-                      >
-                        <Text fontSize={14} lineHeight={20} color={link.active ? '$ink' : '$quiet'} numberOfLines={1}>
-                          {link.label}
-                        </Text>
-                      </SidebarItem>
-                    </YStack>
+                <YStack role="list" aria-label={group.label || undefined} gap={1}>
+                  {group.links.map((link) => (
+                    <PlaceRow
+                      key={link.id}
+                      link={link}
+                      mode={mode}
+                      makeIcon={Make}
+                      compact
+                      t={t}
+                    />
                   ))}
                 </YStack>
               </YStack>
             ))}
           </YStack>
-        )}
-        {rail}
-        {/* Recents fills the column; where there are none the foot is still pushed to the column's foot, on the rail's line. */}
-        {mode === 'beta' && !drawer ? (
-          <YStack data-slot="beta-sidebar-slot" flex={1} minH={0} pt={4} />
-        ) : anon && mode === 'chat' && anonThreadTitle ? (
-          <YStack data-slot="recents" flex={1} minH={0} pt="$3">
-            <Text paddingInlineStart="$2" pb="$1" fontSize="$3" color="$soft">
-              {t('Recents')}
-            </Text>
-            <YStack role="list" gap={1}>
-              <YStack role="listitem">
-                <SidebarItem
-                  {...ROW}
-                  active={!anonSettingsOpen}
-                  onPress={() => setAnonSettings(false)}
+        ) : null}
+      </YStack>
+    )
+  }
+
+  const handleOrg =
+    onOrg ??
+    ((nextOrg: string) => {
+      pick(nextOrg)
+      if (typeof window !== 'undefined') window.location.reload()
+    })
+
+  const primaryNewLabel =
+    mode === 'dev' ? t('New run') : mode === 'design' ? t('New design') : mode === 'studio' ? t('New creation') : mode === 'flow' ? t('New flow') : t('New chat')
+
+  const showPrimaryNew = !at && (mode === 'chat' || (!anon && (mode === 'dev' || mode === 'design' || mode === 'studio' || mode === 'flow')))
+  const showRecents = !(mode === 'hosted' || mode === 'beta' || mode === 'tabs' || mode === 'studio' || mode === 'flow' || anon || at)
+
+  return (
+    <TooltipProvider delay={120}>
+      <YStack
+        data-slot="app-column"
+        ref={drawer ? undefined : span.ref}
+        {...(drawer ? null : ({ '$platform-web': { '--span': `${span.span}px`, ...(anon ? { overflow: 'visible' } : null) } } as object))}
+        position="relative"
+        flex={drawer ? 1 : undefined}
+        shrink={drawer ? 1 : 0}
+        minW={0}
+        height="100%"
+        width={drawer ? undefined : `var(--span, ${WIDTH}px)`}
+        maxW={drawer ? undefined : `var(--span, ${WIDTH}px)`}
+        bg={drawer ? undefined : 'var(--side-fill, var(--sheet-2))'}
+        rounded={drawer ? undefined : 'var(--pane-round)'}
+        borderWidth={drawer ? 0 : 1}
+        borderColor="var(--pane-edge, var(--edge, var(--white-06)))"
+      >
+        <Base
+          data-slot="app-rail"
+          role="navigation"
+          aria-label={brand()}
+          bg="transparent"
+          borderWidth={0}
+          {...FILL}
+          px={8}
+          pt={drawer ? 'var(--pane-gap)' : 4}
+          pb={drawer ? 0 : '$2'}
+          gap="$0"
+          $platform-web={anon && !drawer ? { overflow: 'visible' } : undefined}
+        >
+          {/* 1. Single Top Header Row */}
+          {at ? (
+            <XStack
+              data-slot="app-head"
+              items="center"
+              gap={2}
+              paddingInlineStart={0}
+              paddingInlineEnd={0}
+              height={drawer ? BAND : LINE}
+              $touchable={drawer ? undefined : { height: TOUCH_HEAD }}
+              shrink={0}
+              minW={0}
+              data-tauri-drag-region="deep"
+              onMouseDown={dragWindow}
+              onDoubleClick={toggleWindowMaximize}
+            >
+              <SidebarIconButton label={t('Back')} data-slot="place-back" data-tauri-drag-region="false" onPress={onBack} {...SUB_HEAD}>
+                <ArrowLeft size={16} aria-hidden data-i18n-mirror />
+              </SidebarIconButton>
+              <Text flex={1} minW={0} fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1} data-slot="place-name">
+                {t(TITLE[at])}
+              </Text>
+              {anon ? null : (
+                <SidebarIconButton
+                  label={t('Search')}
+                  data-tauri-drag-region="false"
+                  onPress={onSeek}
+                  aria-haspopup="dialog"
+                  {...SUB_HEAD}
                 >
-                  <Text fontSize="$3" color="$ink" numberOfLines={1}>
-                    {anonThreadTitle}
+                  <Search size={15} aria-hidden />
+                </SidebarIconButton>
+              )}
+              {drawer || !onShut ? null : (
+                <SidebarIconButton
+                  label={t('Fold sidebar to icons')}
+                  data-slot="sidebar-fold"
+                  data-tauri-drag-region="false"
+                  onPress={onShut}
+                  {...SUB_HEAD}
+                >
+                  <PanelLeftClose size={15} aria-hidden data-i18n-mirror />
+                </SidebarIconButton>
+              )}
+            </XStack>
+          ) : (
+            <XStack
+              data-slot="app-head"
+              items="center"
+              gap={2}
+              paddingInlineStart={8}
+              paddingInlineEnd={2}
+              height={drawer ? BAND : LINE}
+              $touchable={drawer ? undefined : { height: TOUCH_HEAD }}
+              shrink={0}
+              minW={0}
+              data-tauri-drag-region="deep"
+              onMouseDown={dragWindow}
+              onDoubleClick={toggleWindowMaximize}
+            >
+              <XStack flex={1} minW={0} items="center" gap={4}>
+                <Text fontSize="$4" fontWeight="600" color="$ink" numberOfLines={1}>
+                  {brand()}
+                </Text>
+              </XStack>
+              {drawer || anon ? null : <Activity host={host} />}
+              {anon ? null : (
+                <SidebarIconButton
+                  label={t('Search')}
+                  data-tauri-drag-region="false"
+                  onPress={onSeek}
+                  aria-haspopup="dialog"
+                  {...(drawer
+                    ? {
+                        width: 40,
+                        height: 40,
+                        rounded: 9999,
+                        borderWidth: 1,
+                        borderColor: 'var(--border-strong)',
+                        bg: 'var(--pane-fill)',
+                      }
+                    : HEAD)}
+                >
+                  <Search size={drawer ? 18 : 15} aria-hidden />
+                </SidebarIconButton>
+              )}
+              {drawer || !onShut ? null : (
+                <Tooltip placement="bottom" offset={6}>
+                  <TooltipTrigger asChild>
+                    <XStack
+                      render={<button type="button" />}
+                      aria-label={t('Fold sidebar to icons')}
+                      data-slot="sidebar-fold"
+                      data-tauri-drag-region="false"
+                      onClick={onShut}
+                      {...HEAD}
+                      borderWidth={0}
+                      bg="transparent"
+                      items="center"
+                      justify="center"
+                      cursor="pointer"
+                      opacity={0.7}
+                      hoverStyle={{ bg: '$hover', opacity: 1 }}
+                      pressStyle={{ bg: '$raised' }}
+                      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                    >
+                      <PanelLeftClose size={15} aria-hidden data-i18n-mirror />
+                    </XStack>
+                  </TooltipTrigger>
+                  <TooltipContent px="$2.5" py="$1.5" rounded="$3" bg="var(--popover)" borderWidth={1} borderColor="$edge" z="var(--z-tooltip)">
+                    <Text fontFamily="$body" fontSize="$1" color="$ink">
+                      {t('Fold sidebar to icons')}
+                    </Text>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </XStack>
+          )}
+
+          {/* 2. Primary New Action */}
+          {showPrimaryNew ? (
+            <YStack role="list" gap={2} shrink={0} pt={drawer ? 0 : 2}>
+              <YStack role="listitem" width="100%">
+                <SidebarItem
+                  data-slot="app-new"
+                  {...COMPACT_ROW}
+                  bg="transparent"
+                  hoverStyle={{ bg: '$hover' }}
+                  icon={
+                    <XStack width={18} height={18} items="center" justify="center" shrink={0}>
+                      <Plus size={15} aria-hidden />
+                    </XStack>
+                  }
+                  onPress={createPrimary}
+                  {...keys(createPrimary)}
+                >
+                  <Text fontSize="$2" fontWeight="500" color="$ink">
+                    {primaryNewLabel}
                   </Text>
                 </SidebarItem>
               </YStack>
-            </YStack>
-          </YStack>
-        ) : mode === 'hosted' || mode === 'beta' || mode === 'tabs' || mode === 'studio' || mode === 'flow' || anon || at ? (
-          // Studio (the Director) and Flow keep no conversations to list: their places stand alone, never above Chat's.
-          <YStack flex={1} minH={0} />
-        ) : mode === 'design' ? (
-          // Design's own conversations, read and opened through the host Studio is mounted with.
-          made ? <Recents host={made} mode="design" thread={null} onOpen={open} onNew={create} /> : <YStack flex={1} minH={0} />
-        ) : (
-          <Recents host={host} mode={mode === 'dev' ? 'dev' : 'chat'} thread={thread} onOpen={open} onNew={create} />
-        )}
-        {anon ? (
-          <YStack
-            data-slot="anon-foot"
-            gap="$2"
-            pt="$2"
-            shrink={0}
-            z={10}
-          >
-            <YStack data-slot="anon-tailored" gap="$2" pt="$1" pb="$1" px="$2">
-              <XStack
-                render="button"
-                aria-expanded={tailoredOpen}
-                aria-label={t('Get responses tailored to you')}
-                items="center"
-                justify="space-between"
-                gap="$1.5"
-                cursor="pointer"
-                onPress={() => setTailoredOpen((v) => !v)}
-                hoverStyle={{ opacity: 0.85 }}
-              >
-                <Text fontSize={13} lineHeight={18} fontWeight="700" color="$ink" numberOfLines={1} flex={1}>
-                  {t('Get responses tailored to you')}
-                </Text>
-                {tailoredOpen ? (
-                  <ChevronDown size={14} aria-hidden color="var(--soft, var(--muted-foreground))" />
-                ) : (
-                  <ChevronUp size={14} aria-hidden color="var(--soft, var(--muted-foreground))" />
-                )}
-              </XStack>
-              {tailoredOpen ? (
-                <Text fontSize={12} lineHeight={17} color="$soft">
-                  {t('Log in to get answers based on saved chats, plus create images and upload files.')}
-                </Text>
+              {anon && mode === 'chat' ? (
+                <>
+                  <YStack role="listitem" self="flex-start" width="100%">
+                    <SidebarItem
+                      data-slot="app-images"
+                      {...COMPACT_ROW}
+                      bg="transparent"
+                      hoverStyle={{ bg: '$hover' }}
+                      icon={
+                        <XStack width={18} height={18} items="center" justify="center" shrink={0}>
+                          <ImageMark size={15} aria-hidden />
+                        </XStack>
+                      }
+                      onPress={() => {
+                        create()
+                        if (typeof window !== 'undefined') {
+                          window.dispatchEvent(new CustomEvent('hanzo:anon-prompt', { detail: { text: t('Create an image of ') } }))
+                        }
+                      }}
+                      {...keys(() => {
+                        create()
+                        if (typeof window !== 'undefined') {
+                          window.dispatchEvent(new CustomEvent('hanzo:anon-prompt', { detail: { text: t('Create an image of ') } }))
+                        }
+                      })}
+                    >
+                      <Text fontSize="$2" color="$ink">{t('Images')}</Text>
+                    </SidebarItem>
+                  </YStack>
+                  <YStack role="listitem" self="flex-start" width="100%">
+                    <SidebarItem
+                      data-slot="app-plugins"
+                      {...COMPACT_ROW}
+                      bg="transparent"
+                      hoverStyle={{ bg: '$hover' }}
+                      icon={
+                        <XStack width={18} height={18} items="center" justify="center" shrink={0}>
+                          <Puzzle size={15} aria-hidden />
+                        </XStack>
+                      }
+                      onPress={() => {
+                        setAnonSettings(false)
+                        if (typeof window !== 'undefined') {
+                          window.dispatchEvent(new CustomEvent('hanzo:anon-plugins'))
+                        }
+                      }}
+                      {...keys(() => {
+                        setAnonSettings(false)
+                        if (typeof window !== 'undefined') {
+                          window.dispatchEvent(new CustomEvent('hanzo:anon-plugins'))
+                        }
+                      })}
+                    >
+                      <Text fontSize="$2" color="$ink">{t('Plugins')}</Text>
+                    </SidebarItem>
+                  </YStack>
+                </>
               ) : null}
-              <XStack gap="$2" pt="$0.5">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  flex={1}
-                  rounded={9999}
-                  data-slot="column-login"
-                  onPress={() => {
-                    if (typeof window !== 'undefined') window.location.assign('/login?next=%2Fchat')
-                  }}
-                >
-                  {t('Log in')}
-                </Button>
-                <Button
-                  size="sm"
-                  flex={1}
-                  rounded={9999}
-                  data-slot="column-signup"
-                  onPress={() => {
-                    if (typeof window !== 'undefined') window.location.assign('/signup?next=%2Fchat')
-                  }}
-                >
-                  {t('Sign up')}
-                </Button>
-              </XStack>
             </YStack>
-          </YStack>
-        ) : at || mode === 'beta' || mode === 'hosted' ? null : (
-          <YStack gap="$2" pt="$2" shrink={0} minW={0} maxW="100%">
+          ) : null}
+
+          {/* 3. Unified Product Menu (desktop open sidebar) OR sub-page places (at) / drawer places */}
+          {at || (drawer && Boolean(rail) && mode !== 'chat' && mode !== 'beta') ? (
+            <YStack data-slot="app-places" shrink={0} pt={drawer ? 0 : 4}>
+              {groups.map((g, i) => {
+                const orderedLinks = [
+                  ...g.links.filter((l) => l.id === NEW),
+                  ...g.links.filter((l) => l.id !== NEW),
+                ]
+                return (
+                  <YStack key={g.id} pt={i ? '$2' : 0}>
+                    {i && g.label ? (
+                      <Text id={`${uid}-${g.id}`} paddingInlineStart="$2" pb={2} fontSize="$2" color="$soft">
+                        {g.label}
+                      </Text>
+                    ) : null}
+                    <YStack
+                      role="list"
+                      aria-labelledby={i && g.label ? `${uid}-${g.id}` : undefined}
+                      aria-label={i && g.label ? undefined : g.label || (at ? t(TITLE[at]) : g.id)}
+                      gap={1}
+                    >
+                      {orderedLinks.map((link) => (
+                        <PlaceRow
+                          key={link.id}
+                          link={link}
+                          mode={mode}
+                          makeIcon={Make}
+                          t={t}
+                        />
+                      ))}
+                    </YStack>
+                  </YStack>
+                )
+              })}
+            </YStack>
+          ) : null}
+
+          {!at ? (
+            <YStack
+              data-slot="sidebar-nav"
+              render="nav"
+              aria-label={t('Products')}
+              // The nav takes what it needs; Recents below scrolls in what is left, and More stays under it.
+              shrink={1}
+              minH={0}
+              overflowY="auto"
+              overflowX="hidden"
+              pt="$1.5"
+              gap="$1"
+              $platform-web={{ scrollbarWidth: 'none' }}
+            >
+              {/* Core apps (Chat, Dev, Design, Library, Tabs) + any user-pinned More items */}
+              <YStack
+                data-slot="rail-pinned"
+                gap={1}
+                width="100%"
+                borderBottomWidth={dropId === '__pinned_end__' ? 2 : 0}
+                borderBottomColor={dropId === '__pinned_end__' ? 'var(--foreground)' : 'transparent'}
+                {...(!anon
+                  ? ({
+                      onDragOver: (e: DragEvent) => {
+                        if (!dragId) return
+                        e.preventDefault()
+                        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+                      },
+                      onDrop: (e: DragEvent) => {
+                        e.preventDefault()
+                        const src = dragId || e.dataTransfer?.getData('text/plain')
+                        if (src && !pinnedSet.has(src)) {
+                          togglePin(src)
+                        }
+                        setDragId(null)
+                        setDropId(null)
+                      },
+                    } as object)
+                  : null)}
+              >
+                {shown.map((item) => renderNavEntryWithSublinks(item, pinnedSet.has(item.id)))}
+              </YStack>
+
+            </YStack>
+          ) : null}
+
+          {rail}
+
+          {/* Subtle hairline between product menu and Recents */}
+          {showRecents ? <XStack height={1} bg="$edge" mx="$1.5" my="$2" shrink={0} /> : null}
+
+          {/* 4. Conversations / Runs (Pinned + Recents) */}
+          {mode === 'beta' && !drawer ? (
+            <YStack data-slot="beta-sidebar-slot" flex={1} minH={0} pt="$2" mt="$1.5" borderTopWidth={1} borderColor="$edge" />
+          ) : anon && mode === 'chat' && anonThreadTitle ? (
+            <YStack data-slot="recents" flex={1} minH={0} pt="$3">
+              <Text paddingInlineStart="$2" pb="$1" fontSize="$2" color="$soft">
+                {t('Recents')}
+              </Text>
+              <YStack role="list" gap={1}>
+                <YStack role="listitem">
+                  <SidebarItem
+                    {...ROW}
+                    active={!anonSettingsOpen}
+                    onPress={() => setAnonSettings(false)}
+                  >
+                    <Text fontSize="$2" color="$ink" numberOfLines={1}>
+                      {anonThreadTitle}
+                    </Text>
+                  </SidebarItem>
+                </YStack>
+              </YStack>
+            </YStack>
+          ) : !showRecents ? (
+            <YStack flex={1} minH={0} />
+          ) : mode === 'design' ? (
+            made ? <Recents host={made} mode="design" thread={null} onOpen={open} onNew={create} /> : <YStack flex={1} minH={0} />
+          ) : (
+            <Recents host={host} mode={mode === 'dev' ? 'dev' : 'chat'} thread={thread} onOpen={open} onNew={create} />
+          )}
+
+          {/* More: one small row under Recents that pops a menu, so the sidebar never changes height. */}
+          {showMore ? (
+            <YStack data-slot="rail-unpinned" shrink={0} pt="$1" width="100%">
+              <MoreMenu
+                placement="top-start"
+                minWidth={220}
+                maxHeight={420}
+                entries={nav.moreEntries}
+                onPin={togglePin}
+                t={t}
+                trigger={
+                  <XStack
+                    render={<button type="button" />}
+                    data-slot="place-more"
+                    aria-label={t('More')}
+                    aria-haspopup="menu"
+                    width="100%"
+                    minW={0}
+                    minH={34}
+                    px="$2.5"
+                    py={0}
+                    gap="$2.5"
+                    $touchable={{ minH: TOUCH }}
+                    $max-sm={{ minH: TOUCH }}
+                    rounded="$3"
+                    borderWidth={0}
+                    items="center"
+                    cursor="pointer"
+                    bg="transparent"
+                    hoverStyle={{ bg: '$hover' }}
+                    pressStyle={{ bg: '$raised' }}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  >
+                    <XStack width={18} height={18} items="center" justify="center" shrink={0} opacity={0.78}>
+                      <MoreHorizontal size={15} aria-hidden />
+                    </XStack>
+                    <Text flex={1} minW={0} fontSize="$2" fontWeight="400" color="$aside" numberOfLines={1} text="start">
+                      {t('More')}
+                    </Text>
+                  </XStack>
+                }
+              />
+            </YStack>
+          ) : null}
+
+          {/* 5. Footer: Anonymous CTA OR Signed-in Account Profile Row */}
+          {anon ? (
+            <YStack
+              data-slot="anon-foot"
+              gap="$2"
+              pt="$2"
+              shrink={0}
+              z="var(--z-raised)"
+            >
+              <YStack data-slot="anon-tailored" gap="$2" pt="$1" pb="$1" px="$2">
+                <XStack
+                  render={<button type="button" />}
+                  aria-expanded={tailoredOpen}
+                  aria-label={t('Get responses tailored to you')}
+                  items="center"
+                  justify="space-between"
+                  gap="$1.5"
+                  minH={32}
+                  $touchable={{ minH: TOUCH }}
+                  $max-sm={{ minH: TOUCH }}
+                  borderWidth={0}
+                  bg="transparent"
+                  cursor="pointer"
+                  onClick={() => setTailoredOpen((v) => !v)}
+                  hoverStyle={{ opacity: 0.85 }}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                >
+                  <Text fontSize="$2" fontWeight="700" color="$ink" numberOfLines={1} flex={1} text="start">
+                    {t('Get responses tailored to you')}
+                  </Text>
+                  {tailoredOpen ? (
+                    <ChevronDown size={14} aria-hidden color="var(--soft, var(--muted-foreground))" />
+                  ) : (
+                    <ChevronUp size={14} aria-hidden color="var(--soft, var(--muted-foreground))" />
+                  )}
+                </XStack>
+                {tailoredOpen ? (
+                  <Text fontSize="$1" color="$soft">
+                    {t('Log in to get answers based on saved chats, plus create images and upload files.')}
+                  </Text>
+                ) : null}
+                <XStack gap="$2" pt="$0.5">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    flex={1}
+                    rounded={9999}
+                    data-slot="column-login"
+                    onPress={() => {
+                      if (typeof window !== 'undefined') window.location.assign('/login?next=%2Fchat')
+                    }}
+                  >
+                    {t('Log in')}
+                  </Button>
+                  <Button
+                    size="sm"
+                    flex={1}
+                    rounded={9999}
+                    data-slot="column-signup"
+                    onPress={() => {
+                      if (typeof window !== 'undefined') window.location.assign('/signup?next=%2Fchat')
+                    }}
+                  >
+                    {t('Sign up')}
+                  </Button>
+                </XStack>
+              </YStack>
+              {!drawer ? (
+                <XStack items="center" justify="space-between" px="$2" pt="$1" borderTopWidth={1} borderColor="$edge">
+                  <XStack
+                    render={<button type="button" />}
+                    data-slot="anon-pricing"
+                    onClick={() => {
+                      if (typeof window !== 'undefined') window.location.assign('/pricing')
+                    }}
+                    items="center"
+                    gap="$1"
+                    px="$1.5"
+                    py="$1"
+                    minH={28}
+                    $touchable={{ minH: TOUCH }}
+                    $max-sm={{ minH: TOUCH }}
+                    rounded="$2"
+                    borderWidth={0}
+                    bg="transparent"
+                    cursor="pointer"
+                    hoverStyle={{ bg: '$hover' }}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  >
+                    <Sparkles size={13} aria-hidden />
+                    <Text fontSize="$1" color="$aside">{t('Pricing')}</Text>
+                  </XStack>
+                  <XStack
+                    render={<button type="button" />}
+                    data-slot="anon-help"
+                    onClick={() => {
+                      if (typeof window !== 'undefined') window.open('https://docs.hanzo.ai', '_blank', 'noopener,noreferrer')
+                    }}
+                    items="center"
+                    gap="$1"
+                    px="$1.5"
+                    py="$1"
+                    minH={28}
+                    $touchable={{ minH: TOUCH }}
+                    $max-sm={{ minH: TOUCH }}
+                    rounded="$2"
+                    borderWidth={0}
+                    bg="transparent"
+                    cursor="pointer"
+                    hoverStyle={{ bg: '$hover' }}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  >
+                    <CircleHelp size={13} aria-hidden />
+                    <Text fontSize="$1" color="$aside">{t('Help')}</Text>
+                  </XStack>
+                  <XStack
+                    render={<button type="button" />}
+                    data-slot="anon-settings"
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('hanzo:anon-settings', { detail: { open: true } }))
+                      }
+                    }}
+                    items="center"
+                    gap="$1"
+                    px="$1.5"
+                    py="$1"
+                    minH={28}
+                    $touchable={{ minH: TOUCH }}
+                    $max-sm={{ minH: TOUCH }}
+                    rounded="$2"
+                    borderWidth={0}
+                    bg="transparent"
+                    cursor="pointer"
+                    hoverStyle={{ bg: '$hover' }}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  >
+                    <Settings size={13} aria-hidden />
+                    <Text fontSize="$1" color="$aside">{t('Settings')}</Text>
+                  </XStack>
+                </XStack>
+              ) : null}
+            </YStack>
+          ) : at || mode === 'beta' || mode === 'hosted' ? null : devMode ? (
+            <YStack gap="$2" pt="$2" shrink={0} minW={0} maxW="100%">
+              <Made />
+              <Setup go={go} />
+            </YStack>
+          ) : (
             <Made />
-            <Setup go={go} />
-          </YStack>
+          )}
+
+          <UpdatePill />
+          {!anon && devMode ? (
+            <XStack
+              render={<button type="button" />}
+              data-slot="dev-mode-indicator"
+              aria-label={t('Turn off developer mode')}
+              {...({ title: t('Click to turn off developer mode') } as object)}
+              onClick={() => setDevMode(false)}
+              items="center"
+              justify="space-between"
+              gap="$2"
+              px="$2.5"
+              py="$1"
+              mx="$0.5"
+              mt="$1"
+              minH={28}
+              $touchable={{ minH: TOUCH }}
+              $max-sm={{ minH: TOUCH }}
+              rounded="$3"
+              bg="$panel"
+              borderWidth={1}
+              borderColor="var(--border-strong)"
+              cursor="pointer"
+              hoverStyle={{ bg: '$hover' }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              shrink={0}
+            >
+              <XStack items="center" gap="$1.5" minW={0} flex={1}>
+                <XStack width={6} height={6} rounded={999} bg="var(--state-online)" shrink={0} aria-hidden />
+                <Text fontSize="$1" fontWeight="500" color="$ink" numberOfLines={1}>
+                  {t('Developer mode · On')}
+                </Text>
+              </XStack>
+              <Text fontSize="$1" color="$soft" shrink={0}>
+                {t('Off')}
+              </Text>
+            </XStack>
+          ) : null}
+          {!anon && !drawer ? (
+            <YStack data-slot="sidebar-account" pt="$2" mt="$1.5" borderTopWidth={1} borderColor="$edge" shrink={0}>
+              <Account host={host} onOrg={handleOrg} />
+            </YStack>
+          ) : null}
+          {foot}
+        </Base>
+        {drawer ? null : (
+          <Gutter
+            side={dir === 'rtl' ? 'right' : 'left'}
+            span={span.span}
+            floor={FLOOR}
+            ceil={CEIL}
+            reset={WIDTH}
+            onSpan={span.move}
+            onKeep={span.keep}
+            onShut={onShut}
+            label={t('Resize sidebar')}
+          />
         )}
-        {!anon && free && (drawer || (mode !== 'beta' && mode !== 'hosted')) ? (
-          <YStack role="list" gap={2} shrink={0} pt="$2">
-            {/* A mark's height, centred: the rail's account beside it stands on the same line. */}
-            <YStack role="listitem" minH={MARK} justify="center">
-              <SidebarItem
-                {...ROW}
-                data-slot="column-upgrade"
-                icon={
-                  <XStack width={20} height={20} items="center" justify="center" shrink={0}>
-                    <Sparkles size={16} aria-hidden color="var(--primary)" />
-                  </XStack>
-                }
-                onPress={() => window.location.assign(payUrl('/cart', { returnUrl: window.location.href }))}
-                {...keys(() => window.location.assign(payUrl('/cart', { returnUrl: window.location.href })))}
-              >
-                <Text fontSize="$3" color="$ink">{t('Upgrade plan')}</Text>
-              </SidebarItem>
-            </YStack>
-          </YStack>
-        ) : null}
-        {!anon && !drawer && !at && mode !== 'beta' && mode !== 'hosted' ? (
-          <YStack role="list" gap={2} shrink={0} pt="$1">
-            <YStack role="listitem">
-              <SidebarItem
-                {...ROW}
-                data-slot="column-settings"
-                bg="transparent"
-                hoverStyle={{ bg: '$hover' }}
-                icon={
-                  <XStack width={18} height={18} items="center" justify="center" shrink={0}>
-                    <Settings size={15} aria-hidden />
-                  </XStack>
-                }
-                onPress={() => showSettings('general')}
-                {...keys(() => showSettings('general'))}
-              >
-                <Text fontSize={14} lineHeight={20} color="$ink">{t('Settings')}</Text>
-              </SidebarItem>
-            </YStack>
-          </YStack>
-        ) : null}
-        <UpdatePill />
-        {foot}
-      </Base>
-      {drawer ? null : (
-        // In the gutter between the sidebar and the pane, the side panel's handle on this edge:
-        // the column is pinned to the start, the window's left, or its right read right to left.
-        <Gutter
-          side={dir === 'rtl' ? 'right' : 'left'}
-          span={span.span}
-          floor={FLOOR}
-          ceil={CEIL}
-          reset={WIDTH}
-          onSpan={span.move}
-          onKeep={span.keep}
-          onShut={onShut}
-          label={t('Resize sidebar')}
-        />
-      )}
-    </YStack>
+      </YStack>
+    </TooltipProvider>
   )
 }
 
@@ -824,21 +1724,25 @@ function UpdatePill() {
   if (!available) return null
   return (
     <XStack
-      render="button"
+      render={<button type="button" />}
       data-slot="update-available"
-      onPress={() => window.location.reload()}
+      onClick={() => window.location.reload()}
       items="center"
       justify="space-between"
       px="$3"
       py="$1.5"
       mx="$1"
       mt="$1.5"
+      minH={32}
+      $touchable={{ minH: TOUCH }}
+      $max-sm={{ minH: TOUCH }}
       rounded="$3"
       bg="$hover"
       borderWidth={1}
       borderColor="$borderColor"
       cursor="pointer"
       hoverStyle={{ opacity: 0.9 }}
+      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
     >
       <Text fontSize="$2" fontWeight="500" color="$ink">
         {t('Update available')}
@@ -880,7 +1784,6 @@ function AnonSwitch({
   label: string
   slot: string
 }) {
-  // The kit's switch: its track, thumb and focus ring are the system's, in both themes.
   return <Switch checked={checked} onCheckedChange={onChange} aria-label={label} data-slot={slot} />
 }
 
@@ -919,6 +1822,7 @@ export function AnonSettingsPane({
       label: t('Auto-detect'),
       onSelect: () => {
         setAutoLang(true)
+        speakIn(null)
       },
     },
     ...locales.map((loc) => ({
@@ -937,23 +1841,26 @@ export function AnonSettingsPane({
     <YStack data-slot="anon-settings-pane" flex={1} minW={0} minH={0} overflowY="auto" overflowX="hidden">
       <XStack height={56} px="$4" items="center" justify="space-between" shrink={0}>
         <XStack
-          render="button"
+          render={<button type="button" />}
           aria-label={t('Back')}
           data-slot="anon-settings-back"
           width={36}
           height={36}
+          $touchable={{ minW: TOUCH, minH: TOUCH }}
+          $max-sm={{ minW: TOUCH, minH: TOUCH }}
           rounded={9999}
           borderWidth={0}
+          bg="transparent"
           items="center"
           justify="center"
           cursor="pointer"
           hoverStyle={{ bg: '$hover' }}
-          onPress={onClose}
-          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+          onClick={onClose}
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
         >
           <ArrowLeft size={16} aria-hidden data-i18n-mirror />
         </XStack>
-        <Text fontSize={16} fontWeight="600" color="$ink">
+        <Text fontSize="$4" fontWeight="600" color="$ink">
           {t('Settings')}
         </Text>
         <XStack width={36} height={36} />
@@ -961,12 +1868,12 @@ export function AnonSettingsPane({
 
       <YStack width="100%" maxW={600} mx="auto" px="$4" py="$5" gap="$6">
         <YStack gap="$2.5">
-          <Text fontSize={14} fontWeight="600" color="$ink">
+          <Text fontSize="$3" fontWeight="600" color="$ink">
             {t('General')}
           </Text>
-          <YStack rounded="$5" borderWidth={1} borderColor="$borderColor" bg="var(--white-03, $panel)" px="$4">
+          <YStack rounded="$5" borderWidth={1} borderColor="$borderColor" bg="var(--surface-card)" px="$4">
             <XStack py="$3.5" items="center" justify="space-between" gap="$3">
-              <Text fontSize={14} color="$ink">
+              <Text fontSize="$3" color="$ink">
                 {t('Appearance')}
               </Text>
               <DropdownMenu
@@ -974,17 +1881,23 @@ export function AnonSettingsPane({
                 items={themeItems}
                 trigger={
                   <XStack
-                    render="button"
+                    render={<button type="button" />}
                     data-slot="anon-settings-appearance"
                     items="center"
                     gap="$1.5"
                     px="$2.5"
                     py="$1.5"
+                    minH={32}
+                    $touchable={{ minH: TOUCH }}
+                    $max-sm={{ minH: TOUCH }}
                     rounded="$3"
+                    borderWidth={0}
+                    bg="transparent"
                     cursor="pointer"
                     hoverStyle={{ bg: '$hover' }}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                   >
-                    <Text fontSize={14} color="$ink">
+                    <Text fontSize="$3" color="$ink">
                       {themeLabel}
                     </Text>
                     <ChevronDown size={14} aria-hidden color="var(--soft, var(--muted-foreground))" />
@@ -994,7 +1907,7 @@ export function AnonSettingsPane({
             </XStack>
 
             <XStack py="$3.5" items="center" justify="space-between" gap="$3">
-              <Text fontSize={14} color="$ink">
+              <Text fontSize="$3" color="$ink">
                 {t('Language')}
               </Text>
               <DropdownMenu
@@ -1002,17 +1915,23 @@ export function AnonSettingsPane({
                 items={langItems}
                 trigger={
                   <XStack
-                    render="button"
+                    render={<button type="button" />}
                     data-slot="anon-settings-language"
                     items="center"
                     gap="$1.5"
                     px="$2.5"
                     py="$1.5"
+                    minH={32}
+                    $touchable={{ minH: TOUCH }}
+                    $max-sm={{ minH: TOUCH }}
                     rounded="$3"
+                    borderWidth={0}
+                    bg="transparent"
                     cursor="pointer"
                     hoverStyle={{ bg: '$hover' }}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                   >
-                    <Text fontSize={14} color="$ink">
+                    <Text fontSize="$3" color="$ink">
                       {langLabel}
                     </Text>
                     <ChevronDown size={14} aria-hidden color="var(--soft, var(--muted-foreground))" />
@@ -1024,22 +1943,21 @@ export function AnonSettingsPane({
         </YStack>
 
         <YStack gap="$2.5">
-          <Text fontSize={14} fontWeight="600" color="$ink">
+          <Text fontSize="$3" fontWeight="600" color="$ink">
             {t('Data controls')}
           </Text>
-          <YStack rounded="$5" borderWidth={1} borderColor="$borderColor" bg="var(--white-03, $panel)" px="$4">
+          <YStack rounded="$5" borderWidth={1} borderColor="$borderColor" bg="var(--surface-card)" px="$4">
             <XStack py="$3.5" items="center" justify="space-between" gap="$4">
               <YStack flex={1} minW={0} gap="$1">
-                <Text fontSize={14} fontWeight="500" color="$ink">
+                <Text fontSize="$3" fontWeight="500" color="$ink">
                   {t('Improve the model for everyone')}
                 </Text>
-                <Text fontSize={12} lineHeight={18} color="$soft">
+                <Text fontSize="$1" color="$soft">
                   {t('Allow your content to be used to train our models, which makes Hanzo better for you and everyone who uses it. We take steps to protect your privacy.')}{' '}
                   <Text
                     render="a"
                     {...({ href: '/privacy', target: '_blank', rel: 'noopener noreferrer' } as object)}
-                    fontSize={12}
-                    lineHeight={18}
+                    fontSize="$1"
                     color="$ink"
                     textDecorationLine="none"
                   >
@@ -1060,10 +1978,10 @@ export function AnonSettingsPane({
 
             <XStack py="$3.5" items="center" justify="space-between" gap="$4">
               <YStack flex={1} minW={0} gap="$1">
-                <Text fontSize={14} fontWeight="500" color="$ink">
+                <Text fontSize="$3" fontWeight="500" color="$ink">
                   {t('Personalize ads')}
                 </Text>
-                <Text fontSize={12} lineHeight={18} color="$soft">
+                <Text fontSize="$1" color="$soft">
                   {t('Allow Hanzo to use your past chats, activity, and preferences to select ads. Ads may still be based on your current chat.')}
                 </Text>
               </YStack>
@@ -1080,10 +1998,10 @@ export function AnonSettingsPane({
 
             <XStack py="$3.5" items="center" justify="space-between" gap="$4">
               <YStack flex={1} minW={0} gap="$1">
-                <Text fontSize={14} fontWeight="500" color="$ink">
+                <Text fontSize="$3" fontWeight="500" color="$ink">
                   {t('Marketing measurement')}
                 </Text>
-                <Text fontSize={12} lineHeight={18} color="$soft">
+                <Text fontSize="$1" color="$soft">
                   {t('These cookies help us measure the effectiveness of our marketing campaigns.')}
                 </Text>
               </YStack>
@@ -1100,10 +2018,10 @@ export function AnonSettingsPane({
 
             <XStack py="$3.5" items="center" justify="space-between" gap="$4">
               <YStack flex={1} minW={0} gap="$1">
-                <Text fontSize={14} fontWeight="500" color="$ink">
+                <Text fontSize="$3" fontWeight="500" color="$ink">
                   {t('Personalized marketing')}
                 </Text>
-                <Text fontSize={12} lineHeight={18} color="$soft">
+                <Text fontSize="$1" color="$soft">
                   {t("This helps us personalize and measure Hanzo's own marketing on third-party platforms.")}
                 </Text>
               </YStack>

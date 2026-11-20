@@ -28,6 +28,17 @@ export const GROUPS = ['Business', 'Data', 'Agents', 'Build & run', 'Security', 
 
 export type Group = (typeof GROUPS)[number]
 
+/** A group's heading as the list draws it: authored English, drawn through `t`. */
+export const HEADING: Record<Group, string> = {
+  Business: phrase('Business'),
+  Data: phrase('Data'),
+  Agents: phrase('Agents'),
+  'Build & run': phrase('Build & run'),
+  Security: phrase('Security'),
+  Creative: phrase('Creative'),
+  Models: phrase('Models'),
+}
+
 /**
  * How an app draws inside the Hanzo app, at /apps/<id>: its own live host in a
  * frame (`href`, with `?embed=1`), so a deploy of the standalone app reaches

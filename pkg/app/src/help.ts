@@ -36,31 +36,40 @@ export const legal = (): Page[] => [
   { key: 'privacy', label: phrase('Privacy Policy'), href: site('/legal/privacy') },
 ]
 
+/** Logical grouping for the keyboard shortcuts sheet. */
+export type KeyGroup = 'Navigation' | 'Workspace' | 'Chat' | 'Window'
+
 /** One of the app's keys: what it does (authored English, drawn through `t`), and how a Mac and every other platform spell it. */
 export interface Key {
   does: string
   mac: string
   pc: string
+  group?: KeyGroup
 }
 
 /**
  * Every key the app answers, in the order a reader looks for them. Each is
- * handled where it acts: App.tsx (⌘K, ⌘, and, in a window, Back and Forward),
- * Account.tsx (⌘/), @hanzo/build's panel (⌘.), the composer (Enter, ⌘U), chord.ts
- * (the conversation's chords, spelled by `said` so the two cannot drift).
+ * handled where it acts: keys.ts, mounted by App.tsx and Shell.tsx (⌘K, ⌘⇧O, ⌘B, ⌘⇧L, ⌘⇧D, ⌘,), App.tsx (
+ * in a window, Back and Forward), Account.tsx (⌘/), @hanzo/build's panel (⌘.),
+ * the composer (Enter, ⌘U), chord.ts (the conversation's chords, spelled by
+ * `said` so the two cannot drift).
  */
 export const KEYS: Key[] = [
-  { does: phrase('Search chats'), mac: '⌘K', pc: 'Ctrl+K' },
-  { does: phrase('Settings'), mac: '⌘,', pc: 'Ctrl+,' },
-  { does: phrase('Keyboard shortcuts'), mac: '⌘/', pc: 'Ctrl+/' },
-  { does: phrase('Side panel'), mac: '⌘.', pc: 'Ctrl+.' },
-  { does: phrase('Attach files'), mac: '⌘U', pc: 'Ctrl+U' },
-  { does: phrase('Send'), mac: 'Enter', pc: 'Enter' },
-  { does: phrase('New line'), mac: '⇧Enter', pc: 'Shift+Enter' },
-  { does: phrase('Rename chat'), mac: said('rename', true), pc: said('rename', false) },
-  { does: phrase('Pin or unpin chat'), mac: said('pin', true), pc: said('pin', false) },
-  { does: phrase('Back'), mac: '⌘[', pc: 'Alt+←' },
-  { does: phrase('Forward'), mac: '⌘]', pc: 'Alt+→' },
+  { does: phrase('Search chats'), mac: '⌘K', pc: 'Ctrl+K', group: 'Navigation' },
+  { does: phrase('New chat'), mac: '⌘⇧O', pc: 'Ctrl+Shift+O', group: 'Navigation' },
+  { does: phrase('Settings'), mac: '⌘,', pc: 'Ctrl+,', group: 'Navigation' },
+  { does: phrase('Keyboard shortcuts'), mac: '⌘/', pc: 'Ctrl+/', group: 'Navigation' },
+  { does: phrase('Toggle sidebar'), mac: '⌘B', pc: 'Ctrl+B', group: 'Workspace' },
+  { does: phrase('Side panel'), mac: '⌘.', pc: 'Ctrl+.', group: 'Workspace' },
+  { does: phrase('Toggle theme'), mac: '⌘⇧L', pc: 'Ctrl+Shift+L', group: 'Workspace' },
+  { does: phrase('Toggle Developer mode'), mac: '⌘⇧D', pc: 'Ctrl+Shift+D', group: 'Workspace' },
+  { does: phrase('Attach files'), mac: '⌘U', pc: 'Ctrl+U', group: 'Chat' },
+  { does: phrase('Send'), mac: 'Enter', pc: 'Enter', group: 'Chat' },
+  { does: phrase('New line'), mac: '⇧Enter', pc: 'Shift+Enter', group: 'Chat' },
+  { does: phrase('Rename chat'), mac: said('rename', true), pc: said('rename', false), group: 'Chat' },
+  { does: phrase('Pin or unpin chat'), mac: said('pin', true), pc: said('pin', false), group: 'Chat' },
+  { does: phrase('Back'), mac: '⌘[', pc: 'Alt+←', group: 'Window' },
+  { does: phrase('Forward'), mac: '⌘]', pc: 'Alt+→', group: 'Window' },
 ]
 
 /** The part of a keydown `asked` reads. */

@@ -6,10 +6,11 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 // A part draws its children as a div carrying its slot and name; a press is kept
 // by slot, so a test can press a button.
 const { part, pressed, mark } = vi.hoisted(() => {
-  type Part = { children?: ReactNode; 'aria-label'?: string; 'data-slot'?: string; onPress?: () => void }
+  type Part = { children?: ReactNode; 'aria-label'?: string; 'data-slot'?: string; onPress?: () => void; onClick?: () => void }
   const pressed = new Map<string, (() => void) | undefined>()
-  const part = ({ children, 'aria-label': label, 'data-slot': slot, onPress }: Part) => {
-    if (slot) pressed.set(slot, onPress)
+  const part = ({ children, 'aria-label': label, 'data-slot': slot, onPress, onClick }: Part) => {
+    // The buttons are a native button with onClick (First Build); a press is either.
+    if (slot) pressed.set(slot, onClick ?? onPress)
     return createElement('div', { 'data-slot': slot, 'aria-label': label }, children)
   }
   const mark = (name: string) => () => createElement('svg', { 'data-mark': name })

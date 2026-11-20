@@ -8,9 +8,9 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 const { part } = vi.hoisted(() => {
-  type Part = { children?: ReactNode; render?: string; ref?: Ref<HTMLElement>; onPress?: () => void; role?: string; tabIndex?: number; [k: string]: unknown }
-  const part = ({ children, render, ref, onPress, role, tabIndex, ...rest }: Part) => {
-    const attrs: Record<string, unknown> = { ref, role, tabIndex, onClick: onPress }
+  type Part = { children?: ReactNode; render?: string; ref?: Ref<HTMLElement>; onPress?: () => void; onClick?: () => void; role?: string; tabIndex?: number; [k: string]: unknown }
+  const part = ({ children, render, ref, onPress, onClick, role, tabIndex, ...rest }: Part) => {
+    const attrs: Record<string, unknown> = { ref, role, tabIndex, onClick: onClick ?? onPress }
     for (const [k, v] of Object.entries(rest)) if (k.startsWith('data-') || k.startsWith('aria-')) attrs[k] = v
     return createElement(typeof render === 'string' ? render : 'div', attrs, children as ReactNode)
   }
