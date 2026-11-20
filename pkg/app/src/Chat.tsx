@@ -54,7 +54,7 @@ import { Box, Button, Dialog, DialogContent, DialogTitle, Input, Text, Tooltip, 
 import { useMedia } from "@hanzo/gui";
 import { given, tidy } from "./lib/title";
 import { useIam, useIamToken } from "@hanzo/iam/react";
-import { bearer, hasSession, live as tokenLive, named, org } from "./lib/session";
+import { bearer, greeted, hasSession, named, org } from "./lib/session";
 import { api } from "./lib/api";
 import { app, dev, follow, go, visit } from "./lib/host";
 import { useHost } from "./host";
@@ -1259,7 +1259,7 @@ function Thread({
   // the pane went on greeting them (hanzo-inc/app issue 441). A live token that
   // names the wrong person is not a greeting bug — that is the sign-in/session
   // defect, and no code here can tell whose token it is.
-  const signedAs = anonymous || !tokenLive() ? null : bearer();
+  const signedAs = anonymous ? null : greeted();
   const firstName = useMemo(() => (signedAs ? given(named()?.display ?? "") : ""), [signedAs]);
   // Private / forgetful mode: an ephemeral conversation kept in memory only, never saved to server history.
   const [forgetful, setForgetful] = useState(false);
