@@ -49,6 +49,7 @@ import { cleanForSpeech, speakAgent } from "./speech";
 import { AgentMaker, HOUSE, useAgentShelf, useCrew } from "./crew";
 import { TEAM, called } from "./team";
 import { ABOUT, about } from "./about";
+import { buildNote } from "./demo";
 import { written as lastPage } from "./lastpage";
 import { Box, Button, Dialog, DialogContent, DialogTitle, Input, Text, Tooltip, TooltipContent, TooltipTrigger, View, VisuallyHidden, XStack, YStack, toast } from "@hanzo/ui";
 import { useMedia } from "@hanzo/gui";
@@ -2479,10 +2480,10 @@ function Thread({
     setWalletRecovery(null);
     if (text) lastSubmittedPromptRef.current = text;
     const isPrOrReview = /\b(pull request|pr\s*#?\d+|github\.com\/[^\s]+\/pull\/\d+|\/pull\/\d+|code[\s-]?review|ponytail|pony|review\s+(this\s+)?(pr|diff|patch|changes|commit))\b/i.test(text);
-    const isInteractiveDemo = /\b(make|build|create|design|generate|show)\b[\s\S]*\b(demo|website|web\s*app|landing\s*page|dashboard|interactive|prototype|ui|preview)\b/i.test(text);
-    const demoNote = isInteractiveDemo
-      ? "Build a complete, self-contained, interactive single-file HTML application inside a ```html demo.html code fence (with embedded modern dark-mode CSS and interactive JavaScript controls) so it renders live in the side-by-side Outputs preview panel. If the request is for a Hanzo demo, build an interactive Hanzo AI platform showcase featuring Enso & Zen frontier models, Hanzo Dev autonomous coding agents, Hanzo Bot, Hanzo Cloud, and Model Context Protocol (MCP) tools with working interactive tabs and live simulations rather than a plain text or Python snippet."
-      : "";
+    // A build nobody described gets an ask-first note, not the build note:
+    // the build note would tell the model to build a Hanzo showcase at once
+    // (issue 442). `buildNote` keeps the old note for a described build.
+    const demoNote = buildNote(text);
     const ponyNote = [
       isPrOrReview
         ? 'Use the skill "code-review" (Ponytail Thermo-Nuclear Code Review + Code Judo): perform a rigorous multi-pass PR/diff review checking correctness, edge cases, race conditions, security, and maintainability.'
