@@ -2262,8 +2262,14 @@ function Thread({
     [chat.messages],
   );
   // THE PAGE THE CONVERSATION LAST WROTE, for the Preview above the message box
-  // on a phone (`PreviewButton`). Read once the answer has ended, not per token.
-  const page = useMemo(() => (chat.streaming ? null : lastPage(said)), [said, chat.streaming]);
+  // on a phone (`PreviewButton`). Read on every turn, streaming included: the
+  // Preview is the one place a phone can reach a page, and hiding it while an
+  // answer streams is exactly when the person looks for it — after a build,
+  // asking "what did you build?" (hanzo-inc/app issue 443). This is safe
+  // because `written` only returns a fenced block that is closed, so a
+  // half-written fence is not a page, and it reaches back past answers that
+  // wrote none to the last page that is finished.
+  const page = useMemo(() => lastPage(said), [said]);
 
   const currentThread = useMemo<Thread>(() => {
     const firstText = said[0]?.content;
@@ -2484,7 +2490,7 @@ function Thread({
     const isPrOrReview = /\b(pull request|pr\s*#?\d+|github\.com\/[^\s]+\/pull\/\d+|\/pull\/\d+|code[\s-]?review|ponytail|pony|review\s+(this\s+)?(pr|diff|patch|changes|commit))\b/i.test(text);
     const isInteractiveDemo = /\b(make|build|create|design|generate|show)\b[\s\S]*\b(demo|website|web\s*app|landing\s*page|dashboard|interactive|prototype|ui|preview)\b/i.test(text);
     const demoNote = isInteractiveDemo
-      ? "Build a complete, self-contained, interactive single-file HTML application inside a ```html demo.html code fence (with embedded modern dark-mode CSS and interactive JavaScript controls) so it renders live in the side-by-side Outputs preview panel. If the request is for a Hanzo demo, build an interactive Hanzo AI platform showcase featuring Enso & Zen frontier models, Hanzo Dev autonomous coding agents, Hanzo Bot, Hanzo Cloud, and Model Context Protocol (MCP) tools with working interactive tabs and live simulations rather than a plain text or Python snippet."
+      ? "Build a complete, self-contained, interactive single-file HTML application inside a ```html demo.html code fence (with embedded modern dark-mode CSS and interactive JavaScript controls) so it opens as the Preview beside the conversation. If the request is for a Hanzo demo, build an interactive Hanzo AI platform showcase featuring Enso & Zen frontier models, Hanzo Dev autonomous coding agents, Hanzo Bot, Hanzo Cloud, and Model Context Protocol (MCP) tools with working interactive tabs and live simulations rather than a plain text or Python snippet."
       : "";
     const ponyNote = [
       isPrOrReview
@@ -3580,10 +3586,10 @@ function Thread({
           On a phone the panel is a sheet over the pane instead. */}
       {wide && aside !== null ? (
         <Side>
-          <Panel side={deck} kinds={NONE} onHide={() => setPanel(false)} label={t("Tabs")} {...browsing} />
+          <Panel side={deck} kinds={NONE} onHide={() => setPanel(false)} label={t("Preview")} {...browsing} />
         </Side>
       ) : null}
-      {!wide && panel ? <Panel side={deck} kinds={NONE} sheet onHide={() => setPanel(false)} label={t("Tabs")} {...browsing} /> : null}
+      {!wide && panel ? <Panel side={deck} kinds={NONE} sheet onHide={() => setPanel(false)} label={t("Preview")} {...browsing} /> : null}
 
       <XStack flex={1} minH={0} minW={0}>
         <YStack ref={talkRef} data-slot="talk" flex={1} minH={0} minW={0} position="relative">
