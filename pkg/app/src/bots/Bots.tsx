@@ -451,6 +451,7 @@ export function Bots({
       >
         {activeGroup ? (
           <GroupThread
+            key={activeGroup.name}
             group={activeGroup}
             bots={bots ?? []}
             side={shown}
@@ -482,7 +483,8 @@ export function Bots({
       {laptop && side && panel ? (
         <YStack
           data-parity-key="bots.panel"
-          width={300}
+          width={312}
+          minW={300}
           shrink={0}
           height="100%"
           bg={GROUND}
@@ -504,7 +506,9 @@ export function Bots({
           t={0}
           r={0}
           b={0}
-          width={300}
+          width={312}
+          minW={300}
+          $max-sm={{ minW: 0 }}
           maxW="100%"
           z={10}
           bg={GROUND}

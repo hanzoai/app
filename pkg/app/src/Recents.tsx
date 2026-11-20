@@ -19,7 +19,7 @@ import * as studio from '@hanzo/studio'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { SidebarItem, StatusDot } from '@hanzo/ui/chat'
 import { useKept } from './kept'
-import { app } from './lib/host'
+import { app, design } from './lib/host'
 import { site } from './where'
 import { ago, arrange, chats, designs, hasUnreadUpdate, MENUS, PINNED, PLAIN, runs, SINCE, UNFILED, UNTITLED, UNTITLED_RUN, viewOf, type Mode, type Option, type Recent, type View } from './recent'
 import type { Say } from '@hanzo/i18n'
@@ -98,10 +98,79 @@ export function Recents({
   return <Runs host={host} view={view} keep={keep} onOpen={onOpen} />
 }
 
+type DesignMeta = { title?: string; pinned?: boolean; archived?: boolean; deleted?: boolean }
+
 /** Design's Recents: Studio's conversations, each opened in Design at its own address (@hanzo/studio `path`). */
 function Designs({ host, view, keep }: { host: Host; view: View; keep: (v: View) => void }) {
   const { rows: made, error } = useMade!(host)
-  const rows = useMemo(() => designs(made), [made])
+  const [meta, setMeta] = useKept<Record<string, DesignMeta>>('hanzo.design.meta', {})
+  const metaRef = useRef(meta)
+  metaRef.current = meta
+  const patchMeta = (id: string, patch: Partial<DesignMeta>) => {
+    const next = {
+      ...(metaRef.current ?? {}),
+      [id]: { ...(metaRef.current?.[id] ?? {}), ...patch },
+    }
+    metaRef.current = next
+    setMeta(next)
+  }
+  const visibleMade = useMemo(
+    () =>
+      made
+        .filter((m) => !meta?.[m.id]?.deleted)
+        .filter((m) => (view.status === 'archived' ? Boolean(meta?.[m.id]?.archived) : !meta?.[m.id]?.archived)),
+    [made, meta, view.status],
+  )
+  const rows = useMemo(
+    () =>
+      designs(visibleMade).map((r) => ({
+        ...r,
+        title: meta?.[r.id]?.title || r.title,
+        status: view.status === 'archived' ? 'archived' : r.status,
+        ...(meta?.[r.id]?.pinned ? { pinned: true } : {}),
+      })),
+    [visibleMade, meta, view.status],
+  )
+  const byId = useMemo(
+    () =>
+      new Map<string, Thread>(
+        rows.map((r) => [
+          r.id,
+          {
+            id: r.id,
+            title: r.title || UNTITLED,
+            updatedAt: r.at,
+            pinned: Boolean(meta?.[r.id]?.pinned),
+            archived: Boolean(meta?.[r.id]?.archived),
+          },
+        ]),
+      ),
+    [rows, meta],
+  )
+  const designActions = useMemo<ThreadActions>(
+    () => ({
+      pin: async (t: Thread) => {
+        patchMeta(t.id, { pinned: !t.pinned })
+        return true
+      },
+      archive: async (t: Thread) => {
+        patchMeta(t.id, { archived: !t.archived })
+        return true
+      },
+      rename: async (t: Thread, next: string) => {
+        const title = next.trim()
+        if (!title || title === (t.title ?? '')) return true
+        patchMeta(t.id, { title })
+        return true
+      },
+      remove: async (t: Thread) => {
+        patchMeta(t.id, { deleted: true })
+        return true
+      },
+    }),
+    [],
+  )
+  const designHref = (id: string) => new URL(site(design(studio.path({ kind: 'chat', id }))), window.location.href).href
   const failed = useMemo(() => (error ? new Error(error) : null), [error])
   const at = studio.route(host.path)
   const held = at.kind === 'chat' ? at.id : null
@@ -115,9 +184,16 @@ function Designs({ host, view, keep }: { host: Host; view: View; keep: (v: View)
       reading={false}
       error={failed}
       onOpen={(r) => host.go(studio.path({ kind: 'chat', id: r.id }))}
+      threads={byId}
+      held={held}
+      onNew={() => host.go('')}
+      customActions={designActions}
+      hrefOf={designHref}
     />
   )
 }
+
+const EMPTY_SEEN: Record<string, number> = {}
 
 /** Chat's Recents: the conversation store alone, the archived ones when the view asks for them. */
 function Chats({
@@ -136,27 +212,25 @@ function Chats({
   const store = useThreadList(view.status === 'archived', thread)
   const rows = useMemo(() => chats(store.threads), [store.threads])
   const byId = useMemo(() => new Map(store.threads.map((t) => [t.id, t])), [store.threads])
-  const [seenAt, setSeenAt] = useKept<Record<string, number>>('hanzo.chat.seen.v1', {})
+  const [seenAt, setSeenAt] = useKept<Record<string, number>>('hanzo.chat.seen.v1', EMPTY_SEEN)
   const seenRef = useRef(seenAt)
   seenRef.current = seenAt
 
   useEffect(() => {
     if (!store.threads.length) return
-    const now = Date.now()
-    const current = seenRef.current ?? {}
+    const current = seenRef.current ?? EMPTY_SEEN
     let changed = false
     const next = { ...current }
     for (const item of store.threads) {
+      const parsedTs = item.updatedAt ? Date.parse(item.updatedAt) : Number.NaN
+      const itemTs = Number.isFinite(parsedTs) && parsedTs > 0 ? parsedTs : 1
       if (item.id === thread) {
-        const ts = item.updatedAt ? Date.parse(item.updatedAt) : now
-        const target = Number.isFinite(ts) ? Math.max(now, ts) : now
-        if ((next[item.id] ?? 0) < target) {
-          next[item.id] = target
+        if ((next[item.id] ?? 0) < itemTs) {
+          next[item.id] = itemTs
           changed = true
         }
       } else if (next[item.id] === undefined) {
-        const ts = item.updatedAt ? Date.parse(item.updatedAt) : now
-        next[item.id] = Number.isFinite(ts) ? ts : now
+        next[item.id] = itemTs
         changed = true
       }
     }
@@ -287,6 +361,7 @@ function Runs({ host, view, keep, onOpen }: { host: Host; view: View; keep: (v: 
     }),
     [host],
   )
+  const runHref = (id: string) => new URL(site(app(id)), window.location.href).href
   return (
     <List
       mode="dev"
@@ -301,7 +376,7 @@ function Runs({ host, view, keep, onOpen }: { host: Host; view: View; keep: (v: 
       held={run}
       onNew={() => host.go('')}
       customActions={devActions}
-      hrefOf={(id) => new URL(site(app(id)), window.location.href).href}
+      hrefOf={runHref}
     />
   )
 }
@@ -338,6 +413,7 @@ function List({
   onNew?: () => void
   /** Custom actions for non-Chat threads (e.g. Dev runs). */
   customActions?: ThreadActions
+  /** Custom Markdown export for non-Chat threads (e.g. Dev runs, Design). */
   /** Address builder for Copy link / Open in new tab. */
   hrefOf?: (id: string) => string
   /** Background-updated conversation IDs showing a blue unread dot. */
@@ -360,7 +436,7 @@ function List({
     const isUnread = Boolean(r.kind === 'chat' && !open(r) && unreadIds?.has(r.id))
     const age = ago(r.at, new Date(), t)
     const when = age ? (
-      <SizableText data-slot="row-age" fontSize={12} lineHeight={16} color="var(--muted-foreground)">
+      <SizableText data-slot="row-age" size="$1" color="var(--muted-foreground)">
         {age}
       </SizableText>
     ) : null
@@ -392,10 +468,15 @@ function List({
         active={open(r)}
         rounded={8}
         minH={29}
-        paddingInlineStart="$2"
-        paddingInlineEnd={one || rowAside ? 52 : '$2'}
+        minW={0}
+        width="100%"
+        overflow="hidden"
+        pl="$2"
+        pr={one || rowAside ? 68 : '$2'}
+        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)', outlineOffset: -2 }}
         // A thumb's 44 on a touch screen; a conversation's ⋯ is a thumb wide there and always there: the title stops short of it.
-        $touchable={one ? { minH: 44, paddingInlineEnd: 52 } : { minH: 44 }}
+        $touchable={one ? { minH: 44, pr: 68 } : { minH: 44 }}
+        $max-sm={one ? { minH: 44, pr: 68 } : { minH: 44 }}
         onKeyDown={(e: { key?: string; preventDefault?: () => void }) => {
           if (e.key !== 'Enter' && e.key !== ' ') return
           e.preventDefault?.()
@@ -403,15 +484,7 @@ function List({
         }}
         onPress={() => onOpen(r)}
       >
-        <SizableText
-          fontSize={13}
-          lineHeight={18}
-          color={open(r) ? 'var(--text-primary)' : 'var(--foreground)'}
-          numberOfLines={1}
-          display="block"
-        >
-          {named(r.title)}
-        </SizableText>
+        {named(r.title)}
       </SidebarItem>
     )
     if (one)
@@ -454,21 +527,26 @@ function List({
           opacity={narrowed ? 1 : 0}
           $group-hover={{ opacity: 1 }}
           focusStyle={{ opacity: 1 }}
-          $touchable={{ opacity: 1 }}
-          hoverStyle={{ bg: '$hover' }}
-          bg={narrowed ? '$hover' : 'transparent'}
+          focusVisibleStyle={{ opacity: 1, outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+          $touchable={{ opacity: 1, minW: 44, minH: 44 }}
+          $max-sm={{ opacity: 1, minW: 44, minH: 44 }}
+          borderWidth={1}
+          borderColor={narrowed ? 'var(--border-strong)' : 'transparent'}
+          transition="quickest"
+          hoverStyle={{ bg: '$hover', borderColor: 'var(--border-strong)' }}
+          bg={narrowed ? '$raised' : 'transparent'}
         >
-          <ListFilter size={14} aria-hidden />
+          <ListFilter size={14} color={narrowed ? 'var(--foreground)' : 'var(--muted-foreground)'} aria-hidden />
         </XStack>
       }
       items={items(mode, view, keep, t, Boolean(threads))}
     />
   )
-  /** A section's heading: quiet 11.5px label, the Recents one carrying the count and the menu. */
+  /** A section's heading: quiet label, the Recents one carrying the count and the menu. */
   const heading = (title: string, id?: string, lead = false) => (
-    <XStack group items="center" justify="space-between" height={26} paddingInlineStart="$2" paddingInlineEnd="$1" mt="$2.5" shrink={0}>
+    <XStack group items="center" justify="space-between" minH={26} paddingInlineStart="$2" paddingInlineEnd="$1" mt="$2.5" shrink={0}>
       <XStack items="center" gap="$2">
-        <SizableText id={id} fontSize={11.5} lineHeight={16} fontWeight="500" color="var(--muted-foreground)">
+        <SizableText id={id} size="$1" fontWeight="500" color="var(--muted-foreground)">
           {title}
         </SizableText>
         {lead && running ? (
@@ -495,13 +573,18 @@ function List({
             opacity={0}
             $group-hover={{ opacity: 1 }}
             focusStyle={{ opacity: 1 }}
-            $touchable={{ opacity: 1 }}
-            hoverStyle={{ bg: '$hover' }}
-            onPress={() => {
+            focusVisibleStyle={{ opacity: 1, outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+            $touchable={{ opacity: 1, minW: 44, minH: 44 }}
+            $max-sm={{ opacity: 1, minW: 44, minH: 44 }}
+            borderWidth={1}
+            borderColor="transparent"
+            transition="quickest"
+            hoverStyle={{ bg: '$hover', borderColor: 'var(--border-strong)' }}
+            onClick={() => {
               if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('hanzo:recents-select'))
             }}
           >
-            <CheckSquare size={13} aria-hidden />
+            <CheckSquare size={13} color="var(--muted-foreground)" aria-hidden />
           </XStack>
         ) : null}
         {lead ? menu : null}
@@ -525,7 +608,15 @@ function List({
   const menus = (rows: ReactNode, primary = true) =>
     threads ? (
       // Held while the list empties, so a dialog its last row opened closes in place.
-      <ConversationMenu threads={threads} active={held} onGone={onNew} customActions={customActions} hrefOf={hrefOf} primary={primary}>
+      <ConversationMenu
+        threads={threads}
+        active={held}
+        onGone={onNew}
+        customActions={customActions}
+        canShare={mode === 'chat'}
+        hrefOf={hrefOf}
+        primary={primary}
+      >
         <YStack>{rows}</YStack>
       </ConversationMenu>
     ) : (
@@ -546,20 +637,23 @@ function List({
             <XStack
               render="button"
               aria-expanded={!isShut}
-              onPress={() => setCollapsedGroups((prev) => ({ ...prev, [g.title]: !prev[g.title] }))}
+              onClick={() => setCollapsedGroups((prev) => ({ ...prev, [g.title]: !prev[g.title] }))}
               items="center"
               gap="$1"
               px="$2"
               py="$0.5"
               rounded="$2"
               cursor="pointer"
+              transition="quickest"
               hoverStyle={{ bg: '$hover' }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              $max-sm={{ minH: 44 }}
               self="flex-start"
             >
               <SizableText size="$1" color="$soft">
                 {head(g.title)}
               </SizableText>
-              {isShut ? <ChevronRight size={11} opacity={0.6} aria-hidden /> : <ChevronDown size={11} opacity={0.6} aria-hidden />}
+              {isShut ? <ChevronRight size={11} color="var(--muted-foreground)" aria-hidden /> : <ChevronDown size={11} color="var(--muted-foreground)" aria-hidden />}
             </XStack>
             {isShut ? null : (
               <YStack role="list" aria-label={head(g.title)} gap={1}>
@@ -575,24 +669,61 @@ function List({
 
   return (
     <YStack data-slot="recents" flex={1} minH={0}>
+
       {/* Its end is its own: a scroll that reaches it does not move the page behind (a phone's menu). */}
       <ScrollView flex={1} showsVerticalScrollIndicator={false} {...({ overscrollBehavior: 'contain' } as object)}>
         {error ? <Note>{error.message}</Note> : null}
         <YStack role="list" aria-labelledby={label} gap={1}>
           {pinned ? (
             <YStack role="listitem" gap={1}>
-              {heading(t(PINNED))}
-              {menus(
-                <YStack role="list" aria-label={t(PINNED)} gap={1}>
-                  {pinned.rows.map(row)}
-                </YStack>,
-                !loose.length,
-              )}
+              <XStack
+                render="button"
+                data-slot="pinned-group-toggle"
+                aria-expanded={!collapsedGroups[PINNED]}
+                onClick={() => setCollapsedGroups((prev) => ({ ...prev, [PINNED]: !prev[PINNED] }))}
+                items="center"
+                justify="space-between"
+                minH={26}
+                px="$2"
+                mt="$2.5"
+                rounded="$2"
+                cursor="pointer"
+                transition="quickest"
+                hoverStyle={{ bg: '$hover' }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                $max-sm={{ minH: 44 }}
+              >
+                <XStack items="center" gap="$1.5">
+                  <SizableText size="$1" fontWeight="500" color="var(--muted-foreground)">
+                    {t(PINNED)}
+                  </SizableText>
+                  <SizableText size="$1" color="$hint" aria-hidden data-i18n-ltr>
+                    {String(pinned.rows.length)}
+                  </SizableText>
+                </XStack>
+                {collapsedGroups[PINNED] ? (
+                  <ChevronRight size={12} color="var(--muted-foreground)" aria-hidden />
+                ) : (
+                  <ChevronDown size={12} color="var(--muted-foreground)" aria-hidden />
+                )}
+              </XStack>
+              {collapsedGroups[PINNED]
+                ? null
+                : menus(
+                    <YStack role="list" aria-label={t(PINNED)} gap={1}>
+                      {pinned.rows.map(row)}
+                    </YStack>,
+                    !loose.length,
+                  )}
             </YStack>
           ) : null}
           <YStack role="listitem" gap={1}>
+            {/* The heading stays: it holds the view menu (Archived, grouping) and Select multiple. */}
             {heading(t('Recents'), label, true)}
-            {menus(rest, true)}
+            {menus(
+              rest,
+              true,
+            )}
           </YStack>
         </YStack>
       </ScrollView>

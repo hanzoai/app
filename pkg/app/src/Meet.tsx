@@ -23,7 +23,7 @@ import {
   Captions,
 } from 'lucide-react'
 import { Text, View, XStack, YStack } from '@hanzo/gui'
-import { Button } from '@hanzo/ui'
+import { Button, toast } from '@hanzo/ui'
 import { useIamToken } from '@hanzo/iam/react'
 import { phrase, type Say } from '@hanzo/i18n'
 import { refused, speech, useTranscript, useVoice } from '@hanzo/voice'
@@ -147,8 +147,14 @@ async function generateAgentMeetingResponse(prompt: string, agentName: string, t
   return text
 }
 
-/** design's smallest rung (`--text-floor`, 10px), below gui's `$1`; gui's font size takes a rung or a number. */
-const FLOOR = 10
+/** The invited agents and the co-pilot after `name` is asked or sent away: the co-pilot is the first one asked, and when it leaves the next in line takes over. */
+export function invited(agents: string[], copilot: string | null, name: string): { invited: string[]; copilot: string | null } {
+  if (agents.includes(name)) {
+    const rest = agents.filter((a) => a !== name)
+    return { invited: rest, copilot: copilot === name ? (rest[0] ?? null) : copilot }
+  }
+  return { invited: [...agents, name], copilot: copilot ?? name }
+}
 
 export function Meet() {
   const { t, locale } = useI18n()
@@ -164,14 +170,15 @@ export function Meet() {
 
   // Agent Invitation and Active Call Participation
   const [invitedAgents, setInvitedAgents] = useState<string[]>(['Hanzo Coder', 'Hanzo Researcher'])
-  const [activeCoPilotAgent, setActiveCoPilotAgent] = useState<string>('Hanzo Coder')
+  const [activeCoPilotAgent, setActiveCoPilotAgent] = useState<string | null>('Hanzo Coder')
+  const coPilotName = activeCoPilotAgent ?? 'Hanzo Coder'
   const [showAgentPicker, setShowAgentPicker] = useState(false)
   const [meetingView, setMeetingView] = useState<'iframe' | 'grid'>('iframe')
   const [agentQuestion, setAgentQuestion] = useState('')
 
   // Agent Speech in Call
   const { token } = useIamToken()
-  const { speaking, speak, toggle } = useAgentSpeech(activeCoPilotAgent)
+  const { speaking, speak, toggle } = useAgentSpeech(coPilotName)
   const [audioTesting, setAudioTesting] = useState(false)
 
   // The call's notes: what was said and answered here, and nothing before it.
@@ -239,19 +246,26 @@ export function Meet() {
 
   const handleCopyLink = (call: string) => {
     const link = `https://meet.hanzo.ai/${call}`
-    navigator.clipboard.writeText(link)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    if (typeof navigator === 'undefined' || !navigator.clipboard) {
+      toast.error(t('Could not copy'))
+      return
+    }
+    void navigator.clipboard
+      .writeText(link)
+      .then(() => {
+        setCopied(true)
+        toast.success(t('Copied'))
+        setTimeout(() => setCopied(false), 2000)
+      })
+      .catch(() => {
+        toast.error(t('Could not copy'))
+      })
   }
 
   const toggleAgentInvite = (agentName: string) => {
-    setInvitedAgents((prev) => {
-      if (prev.includes(agentName)) {
-        const next = prev.filter((a) => a !== agentName)
-        return next.length > 0 ? next : [agentName]
-      }
-      return [...prev, agentName]
-    })
+    const next = invited(invitedAgents, activeCoPilotAgent, agentName)
+    setInvitedAgents(next.invited)
+    setActiveCoPilotAgent(next.copilot)
   }
 
   const testAudioSpeaker = () => {
@@ -263,10 +277,10 @@ export function Meet() {
     setAudioTesting(true)
     speakAgent(
       t("Welcome to Hanzo Meet. This is {agent}'s voice. If you can hear this, your speakers are working.", {
-        agent: activeCoPilotAgent,
+        agent: coPilotName,
       }),
       {
-        agent: activeCoPilotAgent,
+        agent: coPilotName,
         token,
         onEnd: () => setAudioTesting(false),
         onError: () => setAudioTesting(false),
@@ -305,17 +319,17 @@ export function Meet() {
       const time = clock(locale)
       setLiveNotes((prev) => [...prev, t('{time}: You (voice): {text}', { time, text: transcript })])
       try {
-        const reply = await generateAgentMeetingResponse(transcript, activeCoPilotAgent, token, t)
-        setLiveNotes((prev) => [...prev, t('{time}: {agent} (AI): {reply}', { time, agent: activeCoPilotAgent, reply })])
-        void handsFreeSay(cleanForSpeech(reply), voiceOf(activeCoPilotAgent))
+        const reply = await generateAgentMeetingResponse(transcript, coPilotName, token, t)
+        setLiveNotes((prev) => [...prev, t('{time}: {agent} (AI): {reply}', { time, agent: coPilotName, reply })])
+        void handsFreeSay(cleanForSpeech(reply), voiceOf(coPilotName))
       } catch (err) {
         setLiveNotes((prev) => [
           ...prev,
-          t('{time}: {agent} did not answer: {reason}', { time, agent: activeCoPilotAgent, reason: (err as Error).message }),
+          t('{time}: {agent} did not answer: {reason}', { time, agent: coPilotName, reason: (err as Error).message }),
         ])
       }
     },
-    [activeCoPilotAgent, token, handsFreeSay, t, locale],
+    [coPilotName, token, handsFreeSay, t, locale],
   )
 
   const handleAskAgent = async (e: React.FormEvent) => {
@@ -326,13 +340,13 @@ export function Meet() {
     const time = clock(locale)
     setLiveNotes((prev) => [...prev, t('{time}: You: {text}', { time, text: q })])
     try {
-      const reply = await generateAgentMeetingResponse(q, activeCoPilotAgent, token, t)
-      setLiveNotes((prev) => [...prev, t('{time}: {agent} (AI): {reply}', { time, agent: activeCoPilotAgent, reply })])
-      speak(reply, activeCoPilotAgent)
+      const reply = await generateAgentMeetingResponse(q, coPilotName, token, t)
+      setLiveNotes((prev) => [...prev, t('{time}: {agent} (AI): {reply}', { time, agent: coPilotName, reply })])
+      speak(reply, coPilotName)
     } catch (err) {
       setLiveNotes((prev) => [
         ...prev,
-        t('{time}: {agent} did not answer: {reason}', { time, agent: activeCoPilotAgent, reason: (err as Error).message }),
+        t('{time}: {agent} did not answer: {reason}', { time, agent: coPilotName, reason: (err as Error).message }),
       ])
     }
   }
@@ -341,7 +355,7 @@ export function Meet() {
   const handleReadBriefing = () => {
     if (!liveNotes.length) return
     const call = activeCall || t('this call')
-    toggle(t('Briefing for {call}. {notes}', { call, notes: liveNotes.join('. ') }), activeCoPilotAgent)
+    toggle(t('Briefing for {call}. {notes}', { call, notes: liveNotes.join('. ') }), coPilotName)
   }
 
   // What the hands-free control says: why it cannot run, or that Hanzo's speech
@@ -349,13 +363,14 @@ export function Meet() {
   const handsFreeNote = handsFree.reason ?? (handsFree.refusal ? refused(handsFree.refusal) : null)
 
   return (
-    <YStack width="100%" height="100%" bg="$background" overflowX="auto" overflowY="auto">
+    <YStack width="100%" height="100%" bg="$background" overflowX="hidden" overflowY="auto">
       {/* Top Header: one row from a laptop; on a phone the controls wrap under the title rather than clip it. */}
       <XStack
         minH={56}
-        px={20}
-        py={8}
-        gap={10}
+        px="$5"
+        py="$2"
+        $max-sm={{ px: '$4' }}
+        gap="$3"
         flexWrap="wrap"
         bg="$panel"
         borderBottomWidth={1}
@@ -364,44 +379,48 @@ export function Meet() {
         justify="space-between"
       >
         {/* Every part of this bar gives way on a phone, as a block box would: shrinking, never below its content. */}
-        <XStack items="center" gap={12} shrink={1} minW="auto">
-          <XStack width={32} height={32} rounded={8} bg="$raised" items="center" justify="center" shrink={1} minW="auto">
-            <Video size={18} color="var(--foreground)" />
+        <XStack items="center" gap="$3" shrink={1} minW={0}>
+          <XStack width={32} height={32} rounded="$3" bg="$raised" items="center" justify="center" shrink={0}>
+            <Video size={17} color="var(--foreground)" aria-hidden />
           </XStack>
-          <YStack shrink={1} minW="auto">
-            <XStack items="center" gap={8}>
-              <Text fontSize="$4" fontWeight="700" color="$ink">Hanzo Meet</Text>
-              <Text
-                fontSize={FLOOR}
-                fontWeight="700"
-                bg="$hover"
-                color="$soft"
-                borderWidth={1}
-                borderColor="$borderColor"
-                px={6}
-                py={1}
-                rounded={4}
-              >
-                {t('LIVE · {site}', { site: 'meet.hanzo.ai' })}
+          <YStack shrink={1} minW={0} gap="$0.5">
+            <XStack items="center" gap="$2" flexWrap="wrap">
+              <Text fontSize="$3" fontWeight="600" color="$ink">
+                Hanzo Meet
               </Text>
+              {activeCall ? (
+                <Text
+                  fontSize="$1"
+                  fontWeight="500"
+                  bg="$hover"
+                  color="$soft"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  px="$1.5"
+                  py="$0.5"
+                  rounded="$xs"
+                >
+                  {t('Live · {site}', { site: 'meet.hanzo.ai' })}
+                </Text>
+              ) : null}
             </XStack>
-            <Text fontSize="$1" color="$soft">
-              {t('Native WebRTC video conferencing with AI meeting bot transcription & voice')}
+            <Text fontSize="$1" color="$soft" numberOfLines={1}>
+              {t('WebRTC video calls with AI meeting transcription and voice')}
             </Text>
           </YStack>
         </XStack>
 
         {activeCall ? (
-          <XStack items="center" gap={8} shrink={1} minW="auto" flexWrap="wrap">
-            <XStack bg="$hover" rounded={8} p={2} gap={2} borderWidth={1} borderColor="$borderColor" shrink={1} minW="auto">
+          <XStack items="center" gap="$2" shrink={1} minW={0} flexWrap="wrap">
+            <XStack bg="$hover" rounded="$3" p={2} gap={2} borderWidth={1} borderColor="var(--border-strong)" shrink={1} minW={0}>
               {([
-                ['iframe', t('SFU Stage'), Tv],
-                ['grid', t('Agent Grid'), LayoutGrid],
+                ['iframe', t('Stage'), Tv],
+                ['grid', t('Agent grid'), LayoutGrid],
               ] as const).map(([view, label, Icon]) => (
                 <Button
                   key={view}
                   size="sm"
-                  variant={meetingView === view ? 'primary' : 'ghost'}
+                  variant={meetingView === view ? 'secondary' : 'ghost'}
                   {...(meetingView === view ? null : { color: '$soft' })}
                   aria-pressed={meetingView === view}
                   onClick={() => setMeetingView(view)}
@@ -417,7 +436,8 @@ export function Meet() {
               <View display="none" $max-md={{ display: 'flex' }}>
                 <Button
                   size="sm"
-                  variant={copilot ? 'secondary' : 'default'}
+                  variant={copilot ? 'secondary' : 'outline'}
+                  borderColor="var(--border-strong)"
                   onClick={() => setCopilot((v) => !v)}
                   aria-label={t('Co-pilot')}
                   aria-expanded={copilot}
@@ -428,10 +448,11 @@ export function Meet() {
                 </Button>
               </View>
             ) : null}
-            <Button size="sm" onClick={() => handleCopyLink(activeCall)}>
+            <Button size="sm" variant="outline" borderColor="var(--border-strong)" onClick={() => handleCopyLink(activeCall)}>
               {copied ? <Check size={13} /> : <Copy size={13} />}
-              {t(copied ? 'Link Copied' : 'Copy meeting link')}
+              {t(copied ? 'Link copied' : 'Copy meeting link')}
             </Button>
+            <View display="none" $sm={{ display: 'flex' }} width={1} height={20} bg="$borderColor" mx="$1" />
             <Button
               size="sm"
               variant="destructive"
@@ -445,11 +466,11 @@ export function Meet() {
               }}
             >
               <PhoneOff size={14} />
-              {t('Leave Call')}
+              {t('Leave call')}
             </Button>
           </XStack>
         ) : (
-          <XStack items="center" gap={8} shrink={1} minW="auto">
+          <XStack items="center" gap="$2" shrink={1} minW="auto">
             <Button asChild variant="linkMuted" size="sm" px={0}>
               <a href="https://meet.hanzo.ai" target="_blank" rel="noopener noreferrer">
                 meet.hanzo.ai
@@ -497,34 +518,35 @@ export function Meet() {
                 {/* User Camera Tile */}
                 <YStack
                   bg="$panel"
-                  rounded={12}
+                  rounded="$5"
                   borderWidth={1}
                   borderColor="$borderColor"
                   position="relative"
                   overflow="hidden"
                   items="center"
                   justify="center"
+                  p="$5"
+                  gap="$2.5"
                   minH={220}
                 >
-                  <YStack items="center">
-                    <YStack
-                      width={72}
-                      height={72}
-                      rounded={9999}
-                      bg="$raised"
-                      items="center"
-                      justify="center"
-                      mb={8}
-                    >
-                      <Text fontSize="$8" fontWeight="700" color="$ink">
-                        {t('You')}
-                      </Text>
-                    </YStack>
-                    <Text fontSize="$2" fontWeight="600" color="$ink">
+                  <YStack
+                    width={72}
+                    height={72}
+                    rounded={9999}
+                    bg="$raised"
+                    items="center"
+                    justify="center"
+                  >
+                    <Text fontSize="$6" fontWeight="600" color="$ink">
+                      {t('You')}
+                    </Text>
+                  </YStack>
+                  <YStack items="center" gap="$1">
+                    <Text fontSize="$3" fontWeight="600" color="$ink">
                       {t('{name} (Host)', { name: 'Alex' })}
                     </Text>
                     <Text fontSize="$1" color={micOn ? GOOD : '$soft'}>
-                      {t(micOn ? 'Mic Active' : 'Muted')}
+                      {t(micOn ? 'Mic active' : 'Muted')}
                     </Text>
                   </YStack>
                 </YStack>
@@ -533,24 +555,25 @@ export function Meet() {
                 {invitedAgents.map((agentName) => {
                   const voice = voiceOf(agentName)
                   const isThisSpeaking =
-                    (speaking || handsFree.state === 'speaking') && activeCoPilotAgent.toLowerCase() === agentName.toLowerCase()
+                    (speaking || handsFree.state === 'speaking') && activeCoPilotAgent?.toLowerCase() === agentName.toLowerCase()
 
                   return (
                     <YStack
                       key={agentName}
                       bg="$panel"
-                      rounded={12}
+                      rounded="$5"
                       borderWidth={isThisSpeaking ? 2 : 1}
                       borderColor={isThisSpeaking ? 'var(--state-success)' : '$borderColor'}
                       position="relative"
                       overflow="hidden"
                       items="center"
                       justify="center"
-                      p={20}
+                      p="$5"
+                      gap="$2.5"
                       minH={220}
                       transition="200ms"
                     >
-                      <View position="relative" mb={10}>
+                      <View position="relative">
                         <Face name={agentName} size={72} />
                         {isThisSpeaking ? (
                           <View
@@ -568,33 +591,35 @@ export function Meet() {
                         ) : null}
                       </View>
 
-                      <Text fontSize="$3" fontWeight="700" color="$ink" mb={2}>
-                        {agentName}
-                      </Text>
-                      <Text fontSize="$1" color="$soft" mb={8}>
-                        {t('Voice: {voice}', { voice })}
-                      </Text>
+                      <YStack items="center" gap="$0.5">
+                        <Text fontSize="$3" fontWeight="600" color="$ink">
+                          {agentName}
+                        </Text>
+                        <Text fontSize="$1" color="$soft">
+                          {t('Voice: {voice}', { voice })}
+                        </Text>
+                      </YStack>
 
                       <XStack
                         items="center"
-                        gap={6}
+                        gap="$1.5"
                         bg="$hover"
-                        px={10}
-                        py={4}
-                        rounded={12}
+                        px="$2.5"
+                        py="$1"
+                        rounded="$5"
                       >
                         {isThisSpeaking ? (
                           <>
                             <AudioWave active={true} color="var(--state-success)" />
-                            <Text fontSize="$1" fontWeight="600" color={GOOD}>
-                              {t('Speaking in Call')}
+                            <Text fontSize="$1" fontWeight="500" color={GOOD}>
+                              {t('Speaking in call')}
                             </Text>
                           </>
                         ) : (
                           <>
-                            <Bot size={11} color="var(--muted-foreground)" />
-                            <Text fontSize="$1" fontWeight="600" color="$quiet">
-                              {t('AI Agent · In Call')}
+                            <Bot size={12} color="var(--muted-foreground)" aria-hidden />
+                            <Text fontSize="$1" fontWeight="500" color="$soft">
+                              {t('AI agent · in call')}
                             </Text>
                           </>
                         )}
@@ -631,26 +656,27 @@ export function Meet() {
               }}
             >
               {/* Co-pilot Header & Agent Picker */}
-              <XStack items="center" justify="space-between">
-                <XStack items="center" gap={8}>
-                  <Face name={activeCoPilotAgent} size={28} />
-                  <YStack>
-                    <Text fontSize="$2" fontWeight="700" color="$ink">
-                      {activeCoPilotAgent}
+              <XStack items="center" justify="space-between" gap="$2">
+                <XStack items="center" gap="$2" minW={0} flex={1}>
+                  <Face name={coPilotName} size={28} />
+                  <YStack minW={0} flex={1} gap="$0.5">
+                    <Text fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1}>
+                      {activeCoPilotAgent ?? t('No co-pilot selected')}
                     </Text>
-                    <Text fontSize={FLOOR} color="$faint">
-                      {t('AI Co-pilot · Voice: {voice}', { voice: voiceOf(activeCoPilotAgent) })}
+                    <Text fontSize="$1" color="$soft" numberOfLines={1}>
+                      {t('AI co-pilot · Voice: {voice}', { voice: voiceOf(coPilotName) })}
                     </Text>
                   </YStack>
                 </XStack>
                 <Text
-                  fontSize={FLOOR}
-                  fontWeight="700"
+                  fontSize="$1"
+                  fontWeight="500"
                   color={GOOD}
                   bg="$hover"
-                  px={6}
-                  py={2}
-                  rounded={4}
+                  px="$2"
+                  py="$0.5"
+                  rounded="$xs"
+                  shrink={0}
                 >
                   {t('Live in call')}
                 </Text>
@@ -684,7 +710,7 @@ export function Meet() {
                   {speaking ? (
                     <>
                       <AudioWave active={true} color="var(--state-success)" />
-                      {t('Stop Briefing')}
+                      {t('Stop briefing')}
                       <Square size={11} fill="currentColor" />
                     </>
                   ) : (
@@ -707,14 +733,14 @@ export function Meet() {
                     handsFreeNote ??
                     t(
                       handsFree.open
-                        ? 'Hands-Free Voice Active (Speaks and interrupts on voice)'
-                        : 'Enable Hands-Free Voice Mode',
+                        ? 'Hands-free voice active (speaks and interrupts on voice)'
+                        : 'Enable hands-free voice mode',
                     )
                   }
                   onClick={handsFree.toggle}
                 >
                   <Mic size={14} color={handsFree.open ? 'var(--state-success)' : 'currentColor'} />
-                  {t(handsFree.open ? 'Hands-Free On' : 'Hands-Free')}
+                  {t(handsFree.open ? 'Hands-free on' : 'Hands-free')}
                 </Button>
 
                 <Button
@@ -751,64 +777,77 @@ export function Meet() {
                 flex={1}
                 overflowY="auto"
                 bg="$background"
-                rounded={8}
+                rounded="$3"
                 borderWidth={1}
                 borderColor="$borderColor"
-                p={12}
-                gap={8}
+                p="$3"
+                gap="$2"
               >
+                {liveNotes.length === 0 && !caption ? (
+                  <Text fontSize="$2" color="$soft" lineHeight="$3">
+                    {t('Notes from this call appear here. Ask {agent} below or turn on Transcribe.', { agent: coPilotName })}
+                  </Text>
+                ) : null}
                 {liveNotes.map((note, i) => (
                   <Text
                     key={i}
-                    fontSize="$1"
-                    color="$quiet"
-                    lineHeight={16.5}
-                    pb={8}
-                    borderBottomWidth={1}
+                    fontSize="$2"
+                    color="$ink"
+                    lineHeight="$3"
+                    pb="$2"
+                    borderBottomWidth={i === liveNotes.length - 1 ? 0 : 1}
                     borderBottomColor="$borderColor"
                   >
                     {note}
                   </Text>
                 ))}
                 {transcriber.open && caption ? (
-                  <Text data-testid="live-caption" fontSize="$1" color="$soft" lineHeight={16.5} aria-live="polite">
+                  <Text data-testid="live-caption" fontSize="$2" color="$soft" lineHeight="$3" aria-live="polite">
                     {caption}
                   </Text>
                 ) : null}
               </YStack>
 
               {/* Ask Agent Question during Call */}
-              <XStack render="form" {...{ onSubmit: handleAskAgent }} gap={6}>
+              <XStack render="form" {...{ onSubmit: handleAskAgent }} gap="$1.5" items="center">
                 <Text
                   render={
                     <input
                       type="text"
                       value={agentQuestion}
                       onChange={(e) => setAgentQuestion(e.target.value)}
-                      placeholder={t('Ask {agent} in meeting...', { agent: activeCoPilotAgent })}
+                      placeholder={t('Ask {agent} in meeting...', { agent: coPilotName })}
                     />
                   }
                   flex={1}
+                  minW={0}
+                  minH={36}
+                  $max-sm={{ minH: 44 }}
                   bg="$background"
                   borderWidth={1}
                   borderColor="var(--border-control)"
-                  rounded={6}
+                  focusStyle={{ borderColor: 'var(--ring)' }}
+                  rounded="$2"
                   px={10}
                   py={8}
                   color="$ink"
-                  fontSize="$1"
+                  fontSize="$2"
                   outlineStyle="none"
                 />
-                <Button type="submit" variant="primary" size="icon-sm" disabled={!agentQuestion.trim()} aria-label={t('Ask')}>
-                  <Send size={12} />
+                <Button type="submit" variant="primary" size="icon-sm" minH={36} minW={36} $max-sm={{ minH: 44, minW: 44 }} disabled={!agentQuestion.trim()} aria-label={t('Ask')}>
+                  <Send size={13} />
                 </Button>
               </XStack>
 
               {/* Quick Actions */}
-              <XStack gap={8}>
+              <XStack gap="$2">
                 <Button
                   size="sm"
+                  variant="outline"
+                  borderColor="var(--border-strong)"
                   flex={1}
+                  minH={36}
+                  $max-sm={{ minH: 44 }}
                   disabled={!agentQuestion.trim()}
                   title={t('Add what is typed above to the notes, without asking the co-pilot')}
                   onClick={() => {
@@ -818,17 +857,28 @@ export function Meet() {
                     setLiveNotes((prev) => [...prev, t('{time}: You (note): {note}', { time: clock(locale), note })])
                   }}
                 >
-                  {t('+ Add Live Note')}
+                  {t('+ Add live note')}
                 </Button>
                 <Button
-                  variant="primary"
+                  variant="outline"
+                  borderColor="var(--border-strong)"
                   size="sm"
+                  minH={36}
+                  $max-sm={{ minH: 44 }}
+                  disabled={!liveNotes.length}
                   onClick={() => {
                     const text = liveNotes.join('\n')
-                    navigator.clipboard.writeText(text)
+                    if (typeof navigator === 'undefined' || !navigator.clipboard) {
+                      toast.error(t('Could not copy'))
+                      return
+                    }
+                    void navigator.clipboard
+                      .writeText(text)
+                      .then(() => toast.success(t('Copied')))
+                      .catch(() => toast.error(t('Could not copy')))
                   }}
                 >
-                  {t('Copy Summary')}
+                  {t('Copy summary')}
                 </Button>
               </XStack>
             </YStack>
@@ -840,6 +890,7 @@ export function Meet() {
            each as tall as what it holds, and the lobby scrolls as one page. */
         <XStack
           flex={1}
+          minH={0}
           overflow="hidden"
           $max-lg={{ flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden' }}
         >
@@ -847,157 +898,184 @@ export function Meet() {
           <YStack
             flex={1}
             minW={0}
-            p={32}
-            gap={24}
+            p="$6"
             overflowY="auto"
-            $max-lg={{ p: 16, flexBasis: 'auto', shrink: 0, overflowY: 'visible', overflowX: 'hidden' }}
+            overflowX="hidden"
+            $max-lg={{ p: '$5', flexBasis: 'auto', grow: 0, shrink: 0, overflowY: 'visible', overflowX: 'hidden' }}
+            $max-sm={{ p: '$4' }}
           >
-            <YStack gap={6}>
-              <Text fontSize="$8" fontWeight="800" color="$ink" letterSpacing={-0.5}>
-                {t('Secure, High-Definition Video Calls')}
-              </Text>
-              <Text fontSize="$3" color="$soft">
-                {t('Powered by native Hanzo Meet ({link}). Connect with team members, clients, and autonomous AI agents.', {
-                  link: (
-                    <Text
-                      render={<a href="https://meet.hanzo.ai" target="_blank" rel="noopener noreferrer" />}
-                      color="$ink"
-                      textDecorationLine="none"
-                    >
-                      meet.hanzo.ai
-                    </Text>
-                  ),
-                })}
-              </Text>
-            </YStack>
-
-            {/* Quick Actions Row */}
-            <XStack gap={12} flexWrap="wrap">
-              <Button variant="primary" size="lg" onClick={startInstantMeeting}>
-                <Plus size={16} />
-                {t('Start Instant Meeting')}
-              </Button>
-
-              <XStack
-                items="center"
-                gap={6}
-                bg="$panel"
-                borderWidth={1}
-                borderColor="var(--border-control)"
-                rounded={8}
-                px={4}
-                height={42}
-              >
+            <YStack width="100%" maxW={640} gap="$6" $max-sm={{ gap: '$5' }}>
+              <YStack gap="$1.5" maxW={560}>
                 <Text
-                  render={
-                    <input
-                      type="text"
-                      value={callInput}
-                      onChange={(e) => setCallInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && joinCustomMeeting()}
-                      placeholder={t('Enter meeting code or link')}
-                      aria-label={t('Meeting code or link')}
-                    />
-                  }
-                  bg="transparent"
-                  borderWidth={0}
-                  outlineStyle="none"
+                  render="h1"
+                  m={0}
+                  fontSize="$8"
+                  lineHeight="$8"
+                  $max-sm={{ fontSize: '$7', lineHeight: '$7' }}
+                  fontWeight="600"
                   color="$ink"
-                  fontSize="$2"
-                  width={220}
-                  px={8}
-                />
-                <Button variant="primary" size="sm" disabled={!callInput.trim()} onClick={joinCustomMeeting}>
-                  {t('Join')}
+                  letterSpacing={-0.5}
+                >
+                  {t('Secure, high-definition video calls')}
+                </Text>
+                <Text fontSize="$3" color="$soft" lineHeight="$4">
+                  {t('Powered by native Hanzo Meet ({link}). Connect with team members, clients, and autonomous AI agents.', {
+                    link: (
+                      <Text
+                        render={<a href="https://meet.hanzo.ai" target="_blank" rel="noopener noreferrer" />}
+                        color="$ink"
+                        textDecorationLine="none"
+                      >
+                        meet.hanzo.ai
+                      </Text>
+                    ),
+                  })}
+                </Text>
+              </YStack>
+
+              {/* Quick Actions Row */}
+              <XStack gap="$3" flexWrap="wrap" items="center" $max-sm={{ gap: '$2' }}>
+                <Button variant="primary" size="lg" minH={42} $max-sm={{ minH: 44, width: '100%' }} onClick={startInstantMeeting}>
+                  <Plus size={16} />
+                  {t('Start instant meeting')}
+                </Button>
+
+                <XStack
+                  items="center"
+                  gap="$1.5"
+                  bg="$panel"
+                  borderWidth={1}
+                  borderColor="var(--border-strong)"
+                  focusWithinStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  rounded="$3"
+                  px="$1"
+                  minH={42}
+                  minW={0}
+                  maxW="100%"
+                  $max-sm={{ width: '100%', minH: 44 }}
+                >
+                  <Text
+                    render={
+                      <input
+                        type="text"
+                        value={callInput}
+                        onChange={(e) => setCallInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && joinCustomMeeting()}
+                        placeholder={t('Enter meeting code or link')}
+                        aria-label={t('Meeting code or link')}
+                      />
+                    }
+                    flex={1}
+                    minW={0}
+                    bg="transparent"
+                    borderWidth={0}
+                    outlineStyle="none"
+                    color="$ink"
+                    fontSize="$2"
+                    width={210}
+                    $max-sm={{ width: 'auto' }}
+                    px={8}
+                  />
+                  <Button variant="secondary" size="sm" minH={34} $max-sm={{ minH: 36 }} disabled={!callInput.trim()} onClick={joinCustomMeeting}>
+                    {t('Join')}
+                  </Button>
+                </XStack>
+
+                <Button
+                  size="lg"
+                  minH={42}
+                  $max-sm={{ minH: 44 }}
+                  variant={showAgentPicker ? 'secondary' : 'outline'}
+                  borderColor="var(--border-strong)"
+                  aria-expanded={showAgentPicker}
+                  onClick={() => setShowAgentPicker(!showAgentPicker)}
+                >
+                  <UserPlus size={14} />
+                  {t('Invite agents ({count})', { count: invitedAgents.length.toLocaleString(locale) })}
                 </Button>
               </XStack>
 
-              <Button
-                size="lg"
-                variant={showAgentPicker ? 'secondary' : 'default'}
-                aria-expanded={showAgentPicker}
-                onClick={() => setShowAgentPicker(!showAgentPicker)}
-              >
-                <UserPlus size={14} />
-                {t('Invite Agents ({count})', { count: invitedAgents.length.toLocaleString(locale) })}
-              </Button>
-            </XStack>
+              {/* Agent Picker Panel */}
+              {showAgentPicker ? (
+                <YStack
+                  bg="$panel"
+                  borderWidth={1}
+                  borderColor="var(--border-strong)"
+                  rounded="$5"
+                  p="$4"
+                  gap="$3"
+                  width="100%"
+                >
+                  <YStack gap="$1">
+                    <Text fontSize="$3" fontWeight="600" color="$ink">
+                      {t('Select AI agents to attend meetings')}
+                    </Text>
+                    <Text fontSize="$2" color="$soft">
+                      {t('Each agent joins the call with voice synthesis and pair programming.')}
+                    </Text>
+                  </YStack>
 
-            {/* Agent Picker Panel */}
-            {showAgentPicker ? (
+                  <View display="grid" gridTemplateColumns="repeat(auto-fill, minmax(min(220px, 100%), 1fr))" gap="$2">
+                    {AVAILABLE_MEETING_AGENTS.map((agent) => {
+                      const isInvited = invitedAgents.includes(agent.name)
+                      return (
+                        <XStack
+                          key={agent.id}
+                          render={<button type="button" />}
+                          aria-pressed={isInvited}
+                          onClick={() => toggleAgentInvite(agent.name)}
+                          items="center"
+                          gap="$2.5"
+                          px="$2.5"
+                          py="$2"
+                          $max-sm={{ minH: 48 }}
+                          rounded="$3"
+                          bg={isInvited ? '$raised' : '$hover'}
+                          borderWidth={1}
+                          borderColor={isInvited ? 'var(--border-selected)' : '$borderColor'}
+                          cursor="pointer"
+                          transition="quickest"
+                          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                        >
+                          <Face name={agent.name} size={32} />
+                          <YStack flex={1} minW={0} items="flex-start" gap="$0.5">
+                            <Text fontSize="$2" fontWeight="600" color="$ink" text="start" numberOfLines={1}>
+                              {agent.name}
+                            </Text>
+                            <Text fontSize="$1" color="$soft" text="start" numberOfLines={1}>
+                              {t('{role} · {voice}', { role: t(agent.role), voice: agent.voice })}
+                            </Text>
+                          </YStack>
+                          <View
+                            width={16}
+                            height={16}
+                            rounded="$xs"
+                            shrink={0}
+                            borderWidth={isInvited ? 0 : 1}
+                            borderColor="var(--border-selected)"
+                            bg={isInvited ? 'var(--foreground)' : 'transparent'}
+                            items="center"
+                            justify="center"
+                          >
+                            {isInvited ? <Check size={11} strokeWidth={3} color="var(--background)" /> : null}
+                          </View>
+                        </XStack>
+                      )
+                    })}
+                  </View>
+                </YStack>
+              ) : null}
+
+              {/* Camera & Hardware Pre-flight Test Box */}
               <YStack
                 bg="$panel"
                 borderWidth={1}
-                borderColor="var(--border-control)"
-                rounded={12}
-                p={16}
-                maxW={560}
+                borderColor="$borderColor"
+                rounded="$5"
+                overflow="hidden"
+                width="100%"
               >
-                <XStack items="center" justify="space-between" mb={12}>
-                  <Text fontSize="$2" fontWeight="700" color="$ink">
-                    {t('Select AI Agents to Attend Meetings')}
-                  </Text>
-                  <Text fontSize="$1" color="$soft">
-                    {t('Each agent joins the call with voice synthesis & pair programming')}
-                  </Text>
-                </XStack>
-
-                <View display="grid" gridTemplateColumns="repeat(auto-fill, minmax(220px, 1fr))" gap={8}>
-                  {AVAILABLE_MEETING_AGENTS.map((agent) => {
-                    const isInvited = invitedAgents.includes(agent.name)
-                    return (
-                      <XStack
-                        key={agent.id}
-                        onClick={() => toggleAgentInvite(agent.name)}
-                        items="center"
-                        gap={10}
-                        px={10}
-                        py={8}
-                        rounded={8}
-                        bg={isInvited ? '$raised' : '$hover'}
-                        borderWidth={1}
-                        borderColor={isInvited ? 'var(--border-selected)' : '$borderColor'}
-                        cursor="pointer"
-                        transition="quickest"
-                      >
-                        <Face name={agent.name} size={32} />
-                        <YStack flex={1} minW={0}>
-                          <Text fontSize="$2" fontWeight="600" color="$ink">
-                            {agent.name}
-                          </Text>
-                          <Text fontSize={10} color="$faint" numberOfLines={1}>
-                            {t('{role} · Voice: {voice}', { role: t(agent.role), voice: agent.voice })}
-                          </Text>
-                        </YStack>
-                        <View
-                          width={16}
-                          height={16}
-                          rounded={4}
-                          borderWidth={isInvited ? 0 : 1}
-                          borderColor="var(--border-selected)"
-                          bg={isInvited ? 'var(--foreground)' : 'transparent'}
-                          items="center"
-                          justify="center"
-                        >
-                          {isInvited ? <Check size={11} strokeWidth={3} color="var(--background)" /> : null}
-                        </View>
-                      </XStack>
-                    )
-                  })}
-                </View>
-              </YStack>
-            ) : null}
-
-            {/* Camera & Hardware Pre-flight Test Box */}
-            <YStack
-              bg="$panel"
-              borderWidth={1}
-              borderColor="$borderColor"
-              rounded={12}
-              overflow="hidden"
-              maxW={560}
-            >
-              <XStack height={280} bg="$sunken" position="relative" items="center" justify="center">
+              <XStack height={280} $max-sm={{ height: 240 }} bg="$sunken" position="relative" items="center" justify="center">
                 {cameraOn ? (
                   <View
                     render={<video ref={videoRef} autoPlay playsInline muted />}
@@ -1018,26 +1096,26 @@ export function Meet() {
                 {/* A Button's label never wraps, so the bar does: on a narrow stage the toggles take a second row. */}
                 <XStack
                   position="absolute"
-                  b={16}
-                  maxW="calc(100% - 24px)"
+                  b={12}
+                  maxW="calc(100% - 16px)"
                   items="center"
                   justify="center"
                   flexWrap="wrap"
-                  gap={8}
+                  gap={6}
                   bg="var(--surface-overlay)"
                   backdropFilter="blur(8px)"
-                  px={12}
+                  px={10}
                   py={6}
-                  rounded={24}
+                  rounded={20}
                   borderWidth={1}
-                  borderColor="$borderColor"
+                  borderColor="var(--border-strong)"
                 >
                   <Button
                     size="icon"
                     rounded={9999}
                     variant={cameraOn ? 'default' : 'destructive'}
-                    aria-label={t(cameraOn ? 'Turn Camera Off' : 'Turn Camera On')}
-                    title={t(cameraOn ? 'Turn Camera Off' : 'Turn Camera On')}
+                    aria-label={t(cameraOn ? 'Turn camera off' : 'Turn camera on')}
+                    title={t(cameraOn ? 'Turn camera off' : 'Turn camera on')}
                     onClick={() => setCameraOn(!cameraOn)}
                   >
                     {cameraOn ? <Video size={16} /> : <VideoOff size={16} />}
@@ -1047,8 +1125,8 @@ export function Meet() {
                     size="icon"
                     rounded={9999}
                     variant={micOn ? 'default' : 'destructive'}
-                    aria-label={t(micOn ? 'Mute Mic' : 'Unmute Mic')}
-                    title={t(micOn ? 'Mute Mic' : 'Unmute Mic')}
+                    aria-label={t(micOn ? 'Mute mic' : 'Unmute mic')}
+                    title={t(micOn ? 'Mute mic' : 'Unmute mic')}
                     onClick={() => setMicOn(!micOn)}
                   >
                     {micOn ? <Mic size={14} strokeWidth={1.75} /> : <MicOff size={14} strokeWidth={1.75} />}
@@ -1059,18 +1137,18 @@ export function Meet() {
                     size="sm"
                     rounded={9999}
                     variant={audioTesting ? 'secondary' : 'default'}
-                    title={t('Test Agent Voice & Audio Output')}
+                    title={t('Test agent voice and audio output')}
                     onClick={testAudioSpeaker}
                   >
                     {audioTesting ? (
                       <>
                         <AudioWave active={true} color="var(--state-success)" />
-                        {t('Testing Audio…')}
+                        {t('Testing audio…')}
                       </>
                     ) : (
                       <>
                         <Volume2 size={12} strokeWidth={1.75} />
-                        {t('Test Audio')}
+                        {t('Test audio')}
                       </>
                     )}
                   </Button>
@@ -1083,23 +1161,24 @@ export function Meet() {
                     onClick={() => setBotAssisting(!botAssisting)}
                   >
                     <Bot size={13} />
-                    {t(botAssisting ? 'AI Bot Co-pilot ON' : 'AI Bot OFF')}
+                    {t(botAssisting ? 'AI co-pilot on' : 'AI co-pilot off')}
                   </Button>
                 </XStack>
               </XStack>
 
-              <XStack p={12} items="center" justify="space-between" bg="$panel">
-                <Text fontSize="$1" color="$soft">
+              <XStack p="$3" gap="$3" flexWrap="wrap" items="center" justify="space-between" bg="$panel">
+                <Text fontSize="$1" color="$soft" flex={1} minW={0}>
                   {t('Readiness: Camera {camera} · Mic {mic} · Audio {audio}', {
-                    camera: t(cameraOn ? 'Active' : 'Muted'),
-                    mic: t(micOn ? 'Active' : 'Muted'),
-                    audio: t(audioTesting ? 'Testing' : 'Ready'),
+                    camera: t(cameraOn ? 'active' : 'muted'),
+                    mic: t(micOn ? 'active' : 'muted'),
+                    audio: t(audioTesting ? 'testing' : 'ready'),
                   })}
                 </Text>
-                <Text fontSize="$1" color="$quiet" fontWeight="600">
-                  {t('HD 1080p Ready')}
+                <Text fontSize="$1" color="$soft" fontWeight="500" shrink={0}>
+                  {t('HD 1080p ready')}
                 </Text>
               </XStack>
+              </YStack>
             </YStack>
           </YStack>
 
@@ -1113,82 +1192,92 @@ export function Meet() {
             bg="$panel"
             borderLeftWidth={1}
             borderLeftColor="$borderColor"
-            p={16}
-            gap={14}
+            p="$5"
+            $max-sm={{ p: '$4' }}
+            gap="$5"
             overflowY="auto"
+            overflowX="hidden"
             $max-lg={{
+              width: '100%',
+              grow: 0,
               shrink: 0,
               flexBasis: 'auto',
               borderLeftWidth: 0,
               borderTopWidth: 1,
               borderTopColor: '$borderColor',
+              overflowY: 'visible',
               overflowX: 'hidden',
             }}
           >
-            <XStack items="center" justify="space-between">
-              <Text fontSize="$3" fontWeight="700" color="$ink">
-                {t('Upcoming Meetings')}
+            <XStack items="center" justify="space-between" gap="$2" flexWrap="wrap">
+              <Text render="h2" m={0} fontSize="$4" fontWeight="600" color="$ink">
+                {t('Upcoming meetings')}
               </Text>
-              <Text fontSize="$1" color="$faint">
-                {t('Synced with /cal')}
+              <Text fontSize="$1" color="$soft">
+                {t('Synced with Calendar')}
               </Text>
             </XStack>
 
-            <YStack gap={10}>
+            <YStack gap="$3">
               {meetings.map((m) => (
                 <YStack
                   key={m.id}
                   bg="$background"
                   borderWidth={1}
                   borderColor="$borderColor"
-                  rounded={8}
-                  p={12}
-                  gap={8}
+                  rounded="$4"
+                  p="$3.5"
+                  gap="$3"
                 >
-                  <XStack items="center" justify="space-between">
-                    <Text
-                      fontSize={FLOOR}
-                      fontWeight="700"
-                      bg="$raised"
-                      color="$ink"
-                      px={6}
-                      py={2}
-                      rounded={4}
-                    >
-                      {t('{date} · {time}', { date: t(m.date), time: m.time })}
+                  <YStack gap="$1.5">
+                    <XStack items="center" justify="space-between" gap="$1.5" flexWrap="wrap">
+                      <Text
+                        fontSize="$1"
+                        fontWeight="500"
+                        bg="$raised"
+                        color="$ink"
+                        px="$1.5"
+                        py="$0.5"
+                        rounded="$xs"
+                      >
+                        {t('{date} · {time}', { date: t(m.date), time: m.time })}
+                      </Text>
+                      {m.botInvited ? (
+                        <XStack items="center" gap="$1">
+                          <Bot size={12} color="var(--muted-foreground)" aria-hidden />
+                          <Text fontSize="$1" color="$soft" fontWeight="500">{t('Agents attending')}</Text>
+                        </XStack>
+                      ) : null}
+                    </XStack>
+
+                    <Text fontSize="$3" fontWeight="600" color="$ink" lineHeight="$3">
+                      {t(m.title)}
                     </Text>
-                    {m.botInvited ? (
-                      <XStack items="center" gap={4}>
-                        <Bot size={12} color="var(--muted-foreground)" />
-                        <Text fontSize={FLOOR} color="$soft" fontWeight="600">{t('Agents Attending')}</Text>
-                      </XStack>
-                    ) : null}
-                  </XStack>
 
-                  <Text fontSize="$2" fontWeight="600" color="$ink" lineHeight={16.9}>
-                    {t(m.title)}
-                  </Text>
+                    {/* Attendees & Agents row */}
+                    <XStack items="center" gap="$1.5" flexWrap="wrap">
+                      <Text fontSize="$1" color="$soft">
+                        {t('Host: {host}', { host: m.hostName ? t(m.host, { name: m.hostName }) : t(m.host) })}
+                      </Text>
+                      {m.agents && m.agents.length > 0 ? (
+                        <XStack display="inline-flex" items="center" gap="$1">
+                          <Text fontSize="$1" color="$soft">·</Text>
+                          <Text fontSize="$1" color="$soft">
+                            {m.agents.join(', ')}
+                          </Text>
+                        </XStack>
+                      ) : null}
+                    </XStack>
+                  </YStack>
 
-                  {/* Attendees & Agents row */}
-                  <XStack items="center" gap={6} flexWrap="wrap">
-                    <Text fontSize="$1" color="$soft">
-                      {t('Host: {host}', { host: m.hostName ? t(m.host, { name: m.hostName }) : t(m.host) })}
-                    </Text>
-                    {m.agents && m.agents.length > 0 ? (
-                      <XStack display="inline-flex" items="center" gap={4}>
-                        <Text fontSize="$1" color="$faint">·</Text>
-                        <Text fontSize="$1" color="$soft">
-                          {m.agents.join(', ')}
-                        </Text>
-                      </XStack>
-                    ) : null}
-                  </XStack>
-
-                  <XStack gap={8} mt={4}>
+                  <XStack gap="$2">
                     <Button
-                      variant="primary"
+                      variant="outline"
+                      borderColor="var(--border-strong)"
                       size="sm"
                       flex={1}
+                      minH={36}
+                      $max-sm={{ minH: 44 }}
                       onClick={() => {
                         if (m.agents) {
                           setInvitedAgents(m.agents)
@@ -1197,16 +1286,21 @@ export function Meet() {
                         setActiveCall(m.call)
                       }}
                     >
-                      <Video size={12} />
-                      {t('Join Call')}
+                      <Video size={13} />
+                      {t('Join call')}
                     </Button>
                     <Button
+                      variant="outline"
+                      borderColor="var(--border-strong)"
                       size="icon-sm"
+                      minH={36}
+                      minW={36}
+                      $max-sm={{ minH: 44, minW: 44 }}
                       aria-label={t('Copy invite link')}
                       title={t('Copy invite link')}
                       onClick={() => handleCopyLink(m.call)}
                     >
-                      <Copy size={12} />
+                      <Copy size={13} />
                     </Button>
                   </XStack>
                 </YStack>
@@ -1216,24 +1310,26 @@ export function Meet() {
             {/* Schedule Meeting Callout linking to /cal */}
             <YStack
               mt="auto"
-              p={12}
+              p="$3.5"
               bg="$background"
-              rounded={8}
+              rounded="$4"
               borderWidth={1}
               borderColor="$borderColor"
-              gap={6}
+              gap="$2"
             >
-              <XStack items="center" gap={8}>
-                <Calendar size={14} color="var(--muted-foreground)" />
-                <Text fontSize="$2" fontWeight="700" color="$ink">{t('Need to book a slot?')}</Text>
-              </XStack>
-              <Text fontSize="$1" color="$soft">
-                {t('Use the Hanzo Calendar Scheduler to coordinate available times across team members and bots.')}
-              </Text>
+              <YStack gap="$1">
+                <XStack items="center" gap="$2">
+                  <Calendar size={14} color="var(--muted-foreground)" aria-hidden />
+                  <Text fontSize="$3" fontWeight="600" color="$ink">{t('Need to book a slot?')}</Text>
+                </XStack>
+                <Text fontSize="$2" color="$soft" lineHeight="$3">
+                  {t('Use Hanzo Calendar to coordinate available times across team members and bots.')}
+                </Text>
+              </YStack>
               <Button asChild variant="link" size="sm" px={0} justify="flex-start">
                 <a href="/cal">
-                  {t('Open Calendar Scheduler')}
-                  <ArrowRight size={11} />
+                  {t('Open calendar scheduler')}
+                  <ArrowRight size={12} />
                 </a>
               </Button>
             </YStack>

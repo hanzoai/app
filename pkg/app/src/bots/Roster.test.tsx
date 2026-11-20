@@ -56,6 +56,7 @@ vi.mock('@hanzo/ui', () => ({
 vi.mock('lucide-react', () => {
   const icon = () => createElement('svg')
   return {
+    ArrowLeft: icon,
     Check: icon,
     Grid2x2Plus: icon,
     Layers: icon,

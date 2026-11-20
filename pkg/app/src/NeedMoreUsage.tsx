@@ -160,9 +160,9 @@ export function NeedMoreUsageBanner({
           {headlinePrefix}
           {" · "}
           <Text
-            render="button"
+            render={<button type="button" />}
             data-kind="usage"
-            onPress={onSeeUsage}
+            onClick={onSeeUsage}
             fontSize={13}
             lineHeight={18}
             fontWeight="400"
@@ -185,17 +185,19 @@ export function NeedMoreUsageBanner({
 
       <XStack items="center" gap="$2" shrink={0}>
         <Box
-          render="button"
+          render={<button type="button" />}
           data-slot="get-more-usage"
           data-kind="topup"
-          onPress={onGetMoreUsage}
+          onClick={onGetMoreUsage}
           px={14}
           py={7}
+          minH={36}
+          $max-sm={{ minH: 44 }}
           rounded={8}
           bg="var(--secondary)"
           hoverStyle={{ bg: "var(--secondary-hover)" }}
           borderWidth={1}
-          borderColor="var(--border)"
+          borderColor="var(--border-strong)"
           cursor="pointer"
           items="center"
           justify="center"
@@ -273,12 +275,13 @@ export function NeedMoreUsageModal({
             {t("Need more usage?")}
           </DialogTitle>
           <Box
-            render="button"
+            render={<button type="button" />}
             aria-label={t("Close")}
             data-slot="need-more-usage-close"
-            onPress={onClose}
-            width={28}
-            height={28}
+            onClick={onClose}
+            width={32}
+            height={32}
+            $max-sm={{ minW: 44, minH: 44 }}
             rounded={8}
             bg="transparent"
             borderWidth={0}
@@ -307,6 +310,7 @@ export function NeedMoreUsageModal({
           <YStack
             flex={1}
             minW={0}
+            $max-sm={{ flexBasis: "auto", grow: 0, width: "100%" }}
             p={18}
             rounded={12}
             bg="var(--card)"
@@ -331,17 +335,19 @@ export function NeedMoreUsageModal({
 
             <YStack gap={8} items="center" width="100%" pt={4}>
               <Box
-                render="button"
+                render={<button type="button" />}
                 data-slot="buy-usage-credits"
-                onPress={() => void handleBuy()}
+                onClick={() => void handleBuy()}
                 width="100%"
                 py={9}
                 px={14}
+                minH={38}
+                $max-sm={{ minH: 44 }}
                 rounded={8}
                 bg="var(--secondary)"
                 hoverStyle={{ bg: "var(--secondary-hover)" }}
                 borderWidth={1}
-                borderColor="var(--border)"
+                borderColor="var(--border-strong)"
                 cursor="pointer"
                 items="center"
                 justify="center"
@@ -361,6 +367,7 @@ export function NeedMoreUsageModal({
           <YStack
             flex={1}
             minW={0}
+            $max-sm={{ flexBasis: "auto", grow: 0, width: "100%" }}
             p={18}
             rounded={12}
             bg="var(--surface-card-emphasis)"
@@ -401,12 +408,14 @@ export function NeedMoreUsageModal({
 
             <YStack gap={8} items="center" width="100%" pt={4} pb={23}>
               <Box
-                render="button"
+                render={<button type="button" />}
                 data-slot="setup-team-plan"
-                onPress={onSetupTeam}
+                onClick={onSetupTeam}
                 width="100%"
                 py={9}
                 px={14}
+                minH={38}
+                $max-sm={{ minH: 44 }}
                 rounded={8}
                 bg="var(--primary)"
                 hoverStyle={{ bg: "var(--primary-hover)" }}

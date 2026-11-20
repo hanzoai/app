@@ -36,9 +36,8 @@ import {
   Bot,
   ListChecks,
   HardDrive,
-  Settings2,
+  Settings,
   UserPlus,
-  PanelLeftClose,
   SearchIcon,
   Hash,
   AtSign,
@@ -55,7 +54,6 @@ import {
   FolderOpen,
   Activity,
   BookOpen,
-  SquareTerminal,
   Share2,
   PanelLeft,
   PanelRight,
@@ -68,6 +66,9 @@ import {
   Calendar,
   LayoutGrid,
   ArrowUpLeft,
+  Building2,
+  ChevronDown,
+  LogOut,
   Sparkles,
 } from "lucide-react";
 import {
@@ -81,7 +82,24 @@ import type { Thread } from "@hanzo/ai";
 import { PINNED } from "./recent";
 import { ConversationMenu, ThreadRow, useThreadList, type ThreadActions } from "./thread";
 import { useKept } from "./kept";
-import { Box, Shortcut, XStack, YStack, Text } from "@hanzo/ui";
+import {
+  Badge,
+  Box,
+  Button,
+  DropdownMenu,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+  Progress,
+  Shortcut,
+  Switch,
+  Text,
+  toast,
+  View,
+  XStack,
+  YStack,
+  type DropdownMenuProps,
+} from "@hanzo/ui";
 // THE PAPER LADDER. `sheet(n)` is a fill AND the light on it, published as a
 // pair by @hanzo/design, so a surface asks for a HEIGHT instead of composing a
 // shadow — which is the only way three panels on one screen end up lit from one
@@ -97,16 +115,16 @@ import {
   SidebarFolder,
 } from "@hanzo/ui/chat";
 import {
-  OrgProjectSwitcher,
   useIam,
   useOrganizations,
 } from "@hanzo/iam/react";
 import { Gutter, SideProvider, useSplit } from "@hanzo/build";
+import { label as planLabel } from "@hanzo/build/plan";
 import { restoreActiveMod } from "@hanzo/mod";
 import {
   HanzoMark,
 } from "@hanzogui/shell";
-import { BUSINESS_APPS, BusinessHeader } from "@hanzo/ui/product";
+import { BUSINESS_APPS, type BusinessAppItem } from "@hanzo/ui/product";
 import { useAccounts } from "./lib/accounts";
 import { useHydrated } from "./lib/hydrated";
 import { useHostname } from "./lib/hostname";
@@ -127,9 +145,13 @@ import { parseModels } from "@hanzo/ui/models/catalog";
 import { mark } from "./lib/mark";
 import { useOpen } from "./open";
 import { useSpan } from "./span";
-import { BAR, pane, RAIL, SIDE } from "./ground";
+import { pane, RAIL, SIDE } from "./ground";
 import { useFree } from "./Upgrade";
 import { payUrl } from "./lib/pay";
+import { rememberSettingsReturn, useDevMode } from "./lib/dev-mode";
+import { useLimits } from "./lib/limits";
+import { cents } from "./lib/org";
+import { useTier } from "./lib/tier";
 
 /** The new-agent row's fields: an outlined box in the shell's own ink. */
 const FIELD = {
@@ -160,16 +182,17 @@ import {
   SettingsList,
   type Row as SettingsRow,
 } from "./Settings";
-import { Account, type Who } from "./Account";
+import type { Who } from "./Account";
 import { Search, type Action } from "./Search";
 import { tidy } from "./lib/title";
-import { summons, togglesSidebar } from "./seek";
+import { MAIN, SkipLink } from "./SkipLink";
+import { useSidebar } from "./rail-open";
+import { useGlobalKeys } from "./keys";
+import { useDevHost } from "./dev";
 import { called } from "./team";
 import { checkoutUrl } from './lib/pay';
 import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowControls';
 
-/** Tabs: the terminals, at their own host. */
-const TABS = "https://tabs.hanzo.ai/app";
 /** Where a plan is chosen. `lib/plans` owns the address; this is the door. */
 const BILLING = checkoutUrl();
 
@@ -205,6 +228,8 @@ const TAP = { minWidth: 44, minHeight: 44 } as const;
  *  element that also carries the border makes the target visible, which is how
  *  the sign-in button came to stand half again as tall as the field beside it. */
 const CONTROL = 28;
+/** The workspace shell's top bar height, px: accommodates 44px touch targets without clipping. */
+const SHELL_BAR = 48;
 
 import {
   getStoredPeople,
@@ -215,8 +240,8 @@ import {
 } from "./contacts-store";
 import { bare } from './lib/bare'
 import { BAD } from './lib/mix'
-import { brand, site, where, wordmark } from './where'
-import { Tiles } from './OrgSwitcher'
+import { brand, site, where } from './where'
+import { Tiles, TopOrgSelector } from './OrgSwitcher'
 
 /** The pane while a settings row is open, loaded when one is: none of it is an app's first screen. */
 const SettingsPane = lazy(() => import('./SettingsPane').then((m) => ({ default: m.SettingsPane })))
@@ -345,7 +370,7 @@ const PLACES: Place[] = [
   {
     id: "contacts",
     route: "/contacts",
-    title: phrase("People & Agents"),
+    title: phrase("People & agents"),
     label: phrase("Contacts"),
     icon: Users,
   },
@@ -634,7 +659,7 @@ function Chats({
 
   const { isAuthenticated, user } = useIam();
   const { user: account } = useAccount();
-  const { accounts: browserAccounts, current: currentBrowserAccount, switchTo: switchToAccount, add: addAccount } = useAccounts();
+  const { current: currentBrowserAccount } = useAccounts();
   const signedIn = isAuthenticated || Boolean(user) || Boolean(account) || hasSession();
   const free = useFree(signedIn);
 
@@ -1035,7 +1060,7 @@ function Team({
   const { channels, wrong } = useChannels();
   const { isAuthenticated, user } = useIam();
   const { user: account } = useAccount();
-  const { accounts: browserAccounts, current: currentBrowserAccount, switchTo: switchToAccount, add: addAccount } = useAccounts();
+  const { current: currentBrowserAccount } = useAccounts();
   const signedIn = isAuthenticated || Boolean(user) || Boolean(account) || hasSession();
   const free = useFree(signedIn);
 
@@ -1081,7 +1106,7 @@ function Team({
       ) : null}
 
       {publicChannels.length > 0 ? (
-        <SidebarFolder name={t("Public Channels")} defaultOpen>
+        <SidebarFolder name={t("Public channels")} defaultOpen>
           {publicChannels.map((one) => (
             <SidebarItem
               key={one.id}
@@ -1100,7 +1125,7 @@ function Team({
       ) : null}
 
       {orgChannels.length > 0 ? (
-        <SidebarFolder name={t("Org Channels")} defaultOpen>
+        <SidebarFolder name={t("Org channels")} defaultOpen>
           {orgChannels.map((one) => (
             <SidebarItem
               key={one.id}
@@ -1119,7 +1144,7 @@ function Team({
       ) : null}
 
       {privateChannels.length > 0 ? (
-        <SidebarFolder name={t("Private Channels")} defaultOpen>
+        <SidebarFolder name={t("Private channels")} defaultOpen>
           {privateChannels.map((one) => (
             <SidebarItem
               key={one.id}
@@ -1351,24 +1376,31 @@ function Bots({
         hoverStyle={{ bg: "$hover" }}
       >
         <Box
-          render="button"
+          render={<button type="button" />}
           onClick={() => navigate?.(show === "agents" ? "/bots" : "/contacts")}
           flex={1}
           minW={0}
+          minH={28}
+          $touchable={{ minH: 44 }}
+          $max-sm={{ minH: 44 }}
+          borderWidth={0}
+          bg="transparent"
+          cursor="pointer"
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
         >
           <XStack items="center" gap="$1.5">
-            <Text fontSize="$2" color="$quiet" numberOfLines={1}>
+            <Text fontSize="$1" fontWeight="500" color="$soft" numberOfLines={1}>
               {t(show === "agents" ? "Agents" : "People")}
             </Text>
             {folk.length + shown.length > 0 ? (
-              <Text fontSize="$1" color="$soft" data-i18n-ltr="">
+              <Text fontSize="$1" color="$hint" fontVariant={["tabular-nums"]} data-i18n-ltr="">
                 {folk.length + shown.length}
               </Text>
             ) : null}
           </XStack>
         </Box>
         <Box
-          render="button"
+          render={<button type="button" />}
           onClick={(e) => {
             e.stopPropagation();
             setSortMode((m) => (m === "alpha" ? "recent" : "alpha"));
@@ -1377,20 +1409,24 @@ function Bots({
           px="$1.5"
           py="$0.5"
           rounded="$1"
+          borderWidth={0}
           bg="$raised"
+          cursor="pointer"
           hoverStyle={{ opacity: 0.8 }}
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
           display="flex"
           items="center"
           justify="center"
-          $touchable={{ minH: 40, minW: 40 }}
+          $touchable={{ minH: 44, minW: 44 }}
+          $max-sm={{ minH: 44, minW: 44 }}
         >
-          <Text fontSize={12} fontWeight="600" color="$soft">
+          <Text fontSize="$1" fontWeight="600" color="$soft">
             {t(sortMode === "alpha" ? "A-Z" : "Recent")}
           </Text>
         </Box>
         {show === "agents" ? (
         <Box
-          render="button"
+          render={<button type="button" />}
           onClick={() => {
             if (busy) return;
             setOpen(true);
@@ -1401,7 +1437,16 @@ function Bots({
           aria-label={t("New agent")}
           p="$1"
           rounded="$2"
+          borderWidth={0}
+          bg="transparent"
+          cursor="pointer"
+          display="flex"
+          items="center"
+          justify="center"
+          $touchable={{ minH: 44, minW: 44 }}
+          $max-sm={{ minH: 44, minW: 44 }}
           hoverStyle={{ bg: "$raised" }}
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
         >
           <Plus size={14} aria-hidden />
         </Box>
@@ -1419,10 +1464,16 @@ function Bots({
             {/* The face is the control that sets it — press the picture to
                 change the picture, which is where a reader looks for it. */}
             <Box
-              render="button"
+              render={<button type="button" />}
               onClick={() => picking.current?.click()}
               aria-label={t("Pick a picture")}
               rounded={9999}
+              borderWidth={0}
+              bg="transparent"
+              cursor="pointer"
+              $touchable={{ minW: 44, minH: 44 }}
+              $max-sm={{ minW: 44, minH: 44 }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
             >
               <Face src={avatar} emoji={emoji} name={name || "?"} size={32} person />
             </Box>
@@ -1481,7 +1532,7 @@ function Bots({
               <ModelPicker models={listed} scope="chat" value={model} onChange={setModel} size="sm" placeholder={t("Choose a model")} name={t("Model")} />
             </YStack>
             <Box
-              render="button"
+              render={<button type="button" />}
               onClick={() => {
                 if (!busy) void add();
               }}
@@ -1489,10 +1540,16 @@ function Bots({
               opacity={busy || !name.trim() ? 0.5 : 1}
               px="$2.5"
               py="$1.5"
+              minH={32}
+              $touchable={{ minH: 44 }}
+              $max-sm={{ minH: 44 }}
               rounded="$2"
               borderWidth={1}
               borderColor="$borderColor"
+              bg="transparent"
+              cursor="pointer"
               hoverStyle={{ bg: "$raised" }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
             >
               <Text fontSize="$1" color="$ink">
                 {t(busy ? "Adding" : "Add")}
@@ -1583,7 +1640,7 @@ function Bots({
                 </SidebarItem>
               </YStack>
               <Box
-                render="button"
+                render={<button type="button" />}
                 onClick={() => {
                   if (busy) return;
                   if (arming === agent.id) void drop(agent.id, called(agent.name));
@@ -1595,9 +1652,15 @@ function Bots({
                     : t("Remove {name}?", { name: called(agent.name) })
                 }
                 p="$1"
+                $touchable={{ minW: 44, minH: 44 }}
+                $max-sm={{ minW: 44, minH: 44 }}
                 rounded="$2"
+                borderWidth={0}
+                bg="transparent"
+                cursor="pointer"
                 opacity={arming === agent.id ? 1 : 0.45}
                 hoverStyle={{ opacity: 1, bg: "$raised" }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
               >
                 {arming === agent.id ? (
                   <Text fontSize="$1" color={BAD}>
@@ -1632,9 +1695,9 @@ const TABS_HEIGHT = "calc(56px + env(safe-area-inset-bottom))"
 
 /** The sidebar's width, px: the floor a drag holds, the ceiling, and the default a double-click returns to. */
 const FLOOR = 200
-const CEIL = 480
+const CEIL = 420
 /** Per-reader, per-browser. A width that resets is a width you set every load. */
-const SPAN = "hanzo.sidebar.span"
+const SPAN = "hanzo.app.column"
 /** The shell's sidebar: its default width, px (unified with ground.ts SIDE). */
 export const SIDEBAR_WIDTH = SIDE
 
@@ -1711,7 +1774,7 @@ export function Split({
   return (
     <>
       <YStack
-        render="main"
+        {...MAIN}
         data-slot="pane"
         gridArea="pane"
         position="relative"
@@ -1725,7 +1788,7 @@ export function Split({
               // The edge the pane shares with the column before it: the left, or the right in a right-to-left language.
               borderInlineStartWidth: 1,
               borderInlineStartStyle: "solid" as const,
-              borderColor: "var(--pane-edge, var(--white-08))",
+              borderColor: "var(--pane-edge, var(--edge, var(--border)))",
             })}
         ref={split.main}
         width="100%"
@@ -1743,7 +1806,7 @@ export function Split({
         {!aside && !swap ? (
           <YStack
             data-slot="side-pull"
-            aria-label={t("Pull to open tabs")}
+            aria-hidden
             {...({ title: t("Drag to open split browser") } as object)}
             position="absolute"
             t={0}
@@ -1872,25 +1935,209 @@ function Leave({ href, children }: { href: string; children: ReactNode }) {
   );
 }
 
+function ShellProfileHover({
+  name,
+  email,
+  avatar,
+  orgId,
+  signedIn,
+  onSettings,
+  onSignOut,
+  children,
+}: {
+  name: string;
+  email?: string;
+  avatar?: string;
+  orgId: string;
+  signedIn: boolean;
+  onSettings: () => void;
+  onSignOut?: () => void;
+  children: ReactNode;
+}) {
+  const { t } = useI18n();
+  const [devMode, setDevMode] = useDevMode();
+  const { limits } = useLimits(signedIn, orgId || null);
+  const { tier } = useTier(signedIn && Boolean(orgId), orgId || null);
+
+  const planInfo = limits?.plan
+    ? planLabel(limits.plan)
+    : tier?.plan
+      ? planLabel(tier.plan)
+      : null;
+  const planName = planInfo
+    ? `${planInfo.name}${planInfo.tag ? ` ${planInfo.tag}` : ""}`
+    : tier?.tier?.displayName || t("Free");
+
+  const classEntries = limits ? Object.values(limits.classes).filter(Boolean) : [];
+  const highestUsage = classEntries.length
+    ? Math.round(
+        Math.max(
+          0,
+          ...classEntries.flatMap((c) => (c ? [c.percent, ...(c.window ? [c.window.percent] : [])] : [])),
+        ),
+      )
+    : null;
+
+  const hasCredits = typeof tier?.balance?.effectiveAvailable === "number";
+  const creditsLabel = hasCredits
+    ? cents(tier!.balance.effectiveAvailable, tier!.balance.currency || "usd")
+    : null;
+
+  return (
+    <HoverCard openDelay={120} closeDelay={150}>
+      <HoverCardTrigger asChild>{children}</HoverCardTrigger>
+      <HoverCardContent
+        side="top"
+        align="start"
+        sideOffset={8}
+        width={264}
+        p="$3.5"
+        rounded="$5"
+        bg="var(--popover)"
+        borderWidth={1}
+        borderColor="var(--border-strong)"
+        z="var(--z-popover)"
+      >
+        <YStack gap="$3" minW={0}>
+          <XStack items="center" gap="$2.5" minW={0}>
+            <Face src={avatar} name={name || "You"} size={32} person />
+            <YStack flex={1} minW={0} gap={1}>
+              <Text fontFamily="$body" fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>
+                {name || t("You")}
+              </Text>
+              {email && email !== name ? (
+                <Text fontFamily="$body" fontSize="$1" color="$hint" numberOfLines={1}>
+                  {email}
+                </Text>
+              ) : null}
+            </YStack>
+            <Badge variant="secondary" size="sm">
+              {planName}
+            </Badge>
+          </XStack>
+
+          <YStack gap="$1.5">
+            <XStack justify="space-between" items="baseline" gap="$2">
+              <Text fontFamily="$body" fontSize="$1" color="$aside">
+                {t("Plan usage")}
+              </Text>
+              <Text fontFamily="$body" fontSize="$1" color="$ink" fontVariant={["tabular-nums"]}>
+                {highestUsage !== null ? `${highestUsage}%` : t("Included")}
+              </Text>
+            </XStack>
+            <Progress
+              value={Math.min(100, highestUsage ?? 0)}
+              height={4}
+              indicatorColor={
+                (highestUsage ?? 0) >= 90
+                  ? "var(--state-error)"
+                  : "var(--state-success)"
+              }
+              aria-label={t("Plan usage")}
+            />
+            {creditsLabel ? (
+              <XStack justify="space-between" items="center" pt="$0.5">
+                <Text fontFamily="$body" fontSize="$1" color="$aside">
+                  {t("Extra credits")}
+                </Text>
+                <Text fontFamily="$body" fontSize="$1" fontWeight="600" color="$ink" fontVariant={["tabular-nums"]}>
+                  {creditsLabel}
+                </Text>
+              </XStack>
+            ) : null}
+          </YStack>
+
+          <View height={1} bg="$edge" />
+
+          <XStack justify="space-between" items="center" gap="$2">
+            <Text fontFamily="$body" fontSize="$2" color="$ink">
+              {t("Developer mode")}
+            </Text>
+            <Switch checked={devMode} onCheckedChange={setDevMode} size="sm" aria-label={t("Developer mode")} />
+          </XStack>
+
+          <XStack gap="$2">
+            <Button
+              type="button"
+              size="xs"
+              variant="outline"
+              borderColor="var(--border-strong)"
+              flex={1}
+              onClick={() => {
+                rememberSettingsReturn();
+                onSettings();
+              }}
+            >
+              <Text fontFamily="$body" fontSize="$1" fontWeight="500" color="$ink">
+                {t("Settings")}
+              </Text>
+            </Button>
+            <Button
+              type="button"
+              size="xs"
+              flex={1}
+              onClick={() => {
+                window.location.assign(payUrl("/cart", { returnUrl: window.location.href }));
+              }}
+            >
+              <Sparkles size={12} aria-hidden />
+              <Text fontFamily="$body" fontSize="$1" fontWeight="600" color="var(--primary-foreground)">
+                {t("Upgrade")}
+              </Text>
+            </Button>
+          </XStack>
+          {onSignOut ? (
+            <XStack
+              render={<button type="button" />}
+              onClick={onSignOut}
+              items="center"
+              gap="$2"
+              px="$2"
+              py="$1.5"
+              minH={32}
+              $touchable={{ minH: 44 }}
+              $max-sm={{ minH: 44 }}
+              rounded="$3"
+              borderWidth={0}
+              cursor="pointer"
+              bg="transparent"
+              hoverStyle={{ bg: "$hover" }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+            >
+              <LogOut size={13} color="var(--state-error)" aria-hidden />
+              <Text fontFamily="$body" fontSize="$1" fontWeight="500" color="var(--state-error)">
+                {t("Sign out")}
+              </Text>
+            </XStack>
+          ) : null}
+        </YStack>
+      </HoverCardContent>
+    </HoverCard>
+  );
+}
+
 function Rail({
   mode,
   places,
   team,
   open,
+  hiddenOnDesktop = false,
   navigate,
-  onSettings,
   onMore,
+  avatarSlot,
 }: {
   mode: Mode;
   places: Place[];
   /** The sidebar is open, and lists the places itself: from a tablet up the rail steps aside. */
   open: boolean;
+  /** Hide the entire rail column on desktop when the sidebar is open and there is only one org. */
+  hiddenOnDesktop?: boolean;
   /** The workspace's address, drawn as one tile after the places where the
    *  apps live on another host. A link, so it opens in this tab. */
   team?: string;
   navigate?: (route: string) => void;
-  onSettings: () => void;
   onMore: () => void;
+  avatarSlot?: ReactNode;
 }) {
   const { t } = useI18n();
   return (
@@ -1904,7 +2151,8 @@ function Rail({
       minH={0}
       borderInlineEndWidth={1}
       borderInlineEndStyle="solid"
-      borderColor="var(--pane-edge, var(--white-08))"
+      borderColor="var(--pane-edge, var(--edge, var(--white-08)))"
+      $md={hiddenOnDesktop ? { display: "none" } : undefined}
       $max-md={{
         flexDirection: "row",
         items: "center",
@@ -1933,6 +2181,7 @@ function Rail({
           minW={0}
           minH={0}
           overflowY="auto"
+          overflowX="hidden"
           pt="$2"
           $md={open ? { display: "none" } : undefined}
           $max-md={{
@@ -1941,6 +2190,8 @@ function Rail({
             gridAutoColumns: "minmax(0, 1fr)",
             justifyItems: "stretch",
             overflow: "hidden",
+            pt: 0,
+            px: "$1",
           }}
         >
           {places.map((place, i) => {
@@ -1948,7 +2199,7 @@ function Rail({
             return (
               <Box
                 key={place.id}
-                render="button"
+                render={<button type="button" />}
                 onClick={() => navigate?.(place.route)}
                 aria-label={t(place.label)}
                 aria-current={here ? "page" : undefined}
@@ -1960,14 +2211,17 @@ function Rail({
                 minH={44}
                 py="$1"
                 rounded="$2"
+                borderWidth={0}
                 items="center"
                 justify="center"
                 gap={2}
-                bg={here ? "$edge" : undefined}
-                hoverStyle={{ bg: here ? "$edge" : "$hover" }}
+                cursor="pointer"
+                bg={here ? "$raised" : "transparent"}
+                hoverStyle={{ bg: here ? "$raised" : "$hover" }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
               >
                 <place.icon size={18} aria-hidden />
-                <Text fontSize={12} lineHeight={14} color={here ? "$ink" : "$quiet"} numberOfLines={1}>
+                <Text fontSize="$1" lineHeight={14} fontWeight={here ? "500" : "400"} color={here ? "$ink" : "$quiet"} numberOfLines={1}>
                   {t(place.label)}
                 </Text>
               </Box>
@@ -1990,7 +2244,7 @@ function Rail({
                 hoverStyle={{ bg: "$hover" }}
               >
                 <LayoutGrid size={18} aria-hidden />
-                <Text fontSize={12} lineHeight={14} color="$quiet" numberOfLines={1}>
+                <Text fontSize="$1" lineHeight={14} color="$quiet" numberOfLines={1}>
                   {t("Workspace")}
                 </Text>
               </Box>
@@ -1999,7 +2253,7 @@ function Rail({
           ) : null}
           <Box
             data-slot="more"
-            render="button"
+            render={<button type="button" />}
             onClick={onMore}
             aria-label={t("More places")}
             title={t("More")}
@@ -2010,42 +2264,27 @@ function Rail({
             minH={44}
             py="$1"
             rounded="$2"
+            borderWidth={0}
+            bg="transparent"
+            cursor="pointer"
             items="center"
             justify="center"
             gap={2}
             hoverStyle={{ bg: "$hover" }}
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
           >
             <SearchIcon size={18} aria-hidden />
-            <Text fontSize={12} lineHeight={14} color="$quiet">
+            <Text fontSize="$1" lineHeight={14} color="$quiet">
               {t("More")}
             </Text>
           </Box>
         </YStack>
 
-      {/* The sidebar lists Settings too, so with it open the rail keeps the organizations alone. */}
-      <YStack items="center" pb="$2" $md={open ? { display: "none" } : undefined}>
-          <Box
-            render="button"
-            onClick={onSettings}
-            aria-label={t("Settings")}
-            title={t("Settings")}
-            display="flex"
-            flexDirection="column"
-            width={RAIL}
-            minH={44}
-            py="$1"
-            rounded="$2"
-            items="center"
-            justify="center"
-            gap={2}
-            hoverStyle={{ bg: "$hover" }}
-          >
-            <Settings2 size={18} aria-hidden />
-            <Text fontSize={12} lineHeight={14} color="$quiet">
-              {t("Settings")}
-            </Text>
-          </Box>
-      </YStack>
+      {avatarSlot ? (
+        <YStack items="center" pb="$2" $max-md={{ display: "none" }} $md={open ? { display: "none" } : undefined}>
+          {avatarSlot}
+        </YStack>
+      ) : null}
     </YStack>
   );
 }
@@ -2074,6 +2313,10 @@ function App({
     <>
       <SidebarNewChat
         label={t("New chat")}
+        gap="$2.5"
+        minH={34}
+        $touchable={{ minH: 44 }}
+        $max-sm={{ minH: 44 }}
         onPress={() => {
           empty();
           onPick?.();
@@ -2191,6 +2434,7 @@ export function ShellIndex({
   onPick?: () => void;
   navigate?: (route: string) => void;
 }) {
+  const { t } = useI18n();
   const channels = (
     <>
       <Channels onPick={onPick} navigate={navigate} />
@@ -2209,9 +2453,32 @@ export function ShellIndex({
       </>
     );
   if (mode === "bots") return <BotsIndex owner={owner} filter={filter} onPick={onPick} navigate={navigate} />;
+  if (mode === "agents")
+    return <Bots show="agents" owner={owner} filter={filter} onPick={onPick} navigate={navigate} />;
   if (mode === "contacts") return <Bots show="people" owner={owner} filter={filter} onPick={onPick} navigate={navigate} />;
   if (mode === "inbox") return channels;
   if (mode === "tasks") return <Projects filter={filter} onPick={onPick} />;
+  if (mode === "drive")
+    return (
+      <SidebarSection label={t("Storage")}>
+        <Note>{t("Browse cloud buckets, project files, and local folders in Drive.")}</Note>
+      </SidebarSection>
+    );
+  if (mode === "cal")
+    return (
+      <SidebarSection label={t("Schedule")}>
+        <Note>{t("Upcoming events and team availability appear in Calendar.")}</Note>
+      </SidebarSection>
+    );
+  if (mode === "meet")
+    return (
+      <>
+        <SidebarSection label={t("Rooms")}>
+          <Note>{t("Start or join an instant video room in Meet.")}</Note>
+        </SidebarSection>
+        <Bots show="people" owner={owner} filter={filter} onPick={onPick} navigate={navigate} />
+      </>
+    );
   return <Chats filter={filter} onPick={onPick} />;
 }
 
@@ -2256,16 +2523,7 @@ function Frame({
    * the server sent "Close sidebar" and the client drew "Open sidebar" — and a
    * regenerated tree came back with the rail at zero width.
    */
-  const [asked, setAsked] = useState(true);
-  useEffect(() => {
-    let kept: string | null = null;
-    try {
-      kept = localStorage.getItem("hanzo:sidebar:open");
-    } catch {
-      // No store is the width of the window, which is a state and not a failure.
-    }
-    setAsked(kept !== null ? kept === "true" : window.innerWidth >= 768);
-  }, []);
+  const [asked, setAsked, setAway] = useSidebar();
   const [peeking, setPeeking] = useState(false);
 
   /**
@@ -2319,26 +2577,25 @@ function Frame({
   }, []);
   const dismiss = () => {
     setPeeking(false);
-    if (typeof window !== "undefined" && window.innerWidth < 1024) {
-      setAsked(false);
-    }
+    if (typeof window !== "undefined" && window.innerWidth < 1024) setAway();
   };
   const onPick = typeof window !== "undefined" && window.innerWidth < 1024 ? dismiss : undefined;
-  useEffect(() => {
-    const shortcut = (event: KeyboardEvent) => {
-      if (summons(event)) {
-        event.preventDefault();
-        setFinding((open) => !open);
-        return;
-      }
-      if (togglesSidebar(event)) {
-        event.preventDefault();
-        toggle();
-      }
-    };
-    window.addEventListener("keydown", shortcut);
-    return () => window.removeEventListener("keydown", shortcut);
-  }, [toggle]);
+  const { empty: emptyChat } = useOpen();
+  const dev = useDevHost();
+  useGlobalKeys({
+    find: () => setFinding((open) => !open),
+    newChat: () => {
+      emptyChat();
+      navigate?.(chat());
+    },
+    sidebar: toggle,
+    settings: () => {
+      rememberSettingsReturn();
+      showSettings(FIRST);
+    },
+    chooseTheme: dev.chooseTheme,
+    say: (message) => toast.success(message),
+  });
 
   /**
    * THE SURFACES THAT ARE NOT APPS, said once.
@@ -2354,6 +2611,8 @@ function Frame({
    * two ways to reach one place, and the two would answer differently the day
    * one of them learned to close the sheet behind it.
    */
+  const [devMode] = useDevMode();
+  const showDesktopRail = !asked;
   const tools = useMemo(
     () => [
       // CUSTOMIZE is the one home of what an agent brings to a run — skills,
@@ -2367,16 +2626,6 @@ function Frame({
           navigate?.(site(app("-/customize")));
           dismiss();
         },
-      },
-      // TERMINALS ARE TABS, and Tabs is its own product at its own host —
-      // hanzo.app's row pointed there too. A new tab for the reason that row
-      // used one: a reader who follows it inside this one loses the project
-      // they were building to reach a shell.
-      {
-        id: "terminals",
-        label: t("Terminals"),
-        icon: SquareTerminal,
-        go: () => window.open(TABS, "_blank", "noopener"),
       },
       {
         id: "usage",
@@ -2396,7 +2645,7 @@ function Frame({
       {
         id: "settings",
         label: t("Settings"),
-        icon: Settings2,
+        icon: Settings,
         go: () => showSettings(FIRST),
       },
     ],
@@ -2480,7 +2729,7 @@ function Frame({
   const settled = hydrated && !isLoading;
 
   const { user: account } = useAccount();
-  const { accounts: browserAccounts, current: currentBrowserAccount, switchTo: switchToAccount, add: addAccount } = useAccounts();
+  const { current: currentBrowserAccount } = useAccounts();
   const signedIn = isAuthenticated || Boolean(user) || Boolean(account) || hasSession();
   const free = useFree(signedIn);
   const logout = useSignOut();
@@ -2518,7 +2767,8 @@ function Frame({
       bg="var(--side-fill, var(--background))"
       rounded="var(--pane-round)"
       borderWidth={1}
-      borderColor="var(--pane-edge, var(--white-08))"
+      borderColor="var(--pane-edge, var(--edge, var(--white-08)))"
+      overflowX="hidden"
       position="relative"
     >
       <Gutter
@@ -2533,16 +2783,8 @@ function Frame({
         onShut={() => setAsked(false)}
         label={t("Resize sidebar")}
       />
-      {/* THE PRODUCT'S NAME LEADS THE SIDEBAR. Chat and Dev are places on the
-          rail and rows below, so the name carries no switch of its own. */}
-      <XStack data-slot="mode-name" items="center" px="$2" pt="$2" minW={0}>
-        <Text fontSize="$4" fontWeight="600" color="$ink" numberOfLines={1}>
-          {wordmark(mode === "dev" ? "dev" : "chat")}
-        </Text>
-      </XStack>
-      <XStack data-slot="workspace-switcher" items="center" gap="$2" px="$2" pt="$1" pb="$1" minW={0}>
-        {/* THE MARK GOES HOME, and only home. A plain link: the session lives
-            in this origin's storage, so the homepage opens signed in. */}
+      {/* Top workspace bar above already renders the mark, app switcher, and org switcher on desktop. */}
+      <XStack data-slot="workspace-switcher" items="center" gap="$2" px="$2" pt="$2" pb="$1" minW={0} display="none" $max-md={{ display: "flex" }}>
         <Text
           render={
             <a
@@ -2556,21 +2798,20 @@ function Frame({
               title={t("Home")}
             />
           }
-          // On the gui element, not the anchor: gui stamps its own `data-slot` over the element it renders into.
           data-slot="home"
           display="flex"
           items="center"
           justify="center"
           width={28}
           height={28}
-          $touchable={{ width: 40, height: 40 }}
+          $touchable={{ width: 44, height: 44, minW: 44, minH: 44 }}
           color="inherit"
         >
           <HanzoMark size={18} />
         </Text>
         {settled && isAuthenticated ? (
           <XStack shrink={1} minW={0}>
-            <OrgProjectSwitcher {...orgState} alwaysShow />
+            <TopOrgSelector />
           </XStack>
         ) : null}
       </XStack>
@@ -2578,11 +2819,21 @@ function Frame({
           sidebar is shut; open, they lead the sidebar the way claude.ai lists
           chats and code. */}
       {/* On a phone the tab bar below already lists the places. */}
-      <YStack data-slot="places-list" px="$2" pb="$2" $max-md={{ display: "none" }}>
+      <YStack data-slot="places-list" px="$2" pt="$2" pb="$2" gap={1} $max-md={{ display: "none" }}>
         {places.filter((place) => matches(t(place.label), filter)).map((place) => (
           <SidebarItem
             key={place.id}
-            icon={<place.icon size={16} aria-hidden />}
+            gap="$2.5"
+            minH={34}
+            $touchable={{ minH: 44 }}
+            $max-sm={{ minH: 44 }}
+            bg={place.id === mode ? "$raised" : "transparent"}
+            hoverStyle={{ bg: place.id === mode ? "$raised" : "$hover" }}
+            icon={
+              <XStack width={18} height={18} items="center" justify="center" shrink={0} opacity={place.id === mode ? 1 : 0.78}>
+                <place.icon size={16} aria-hidden />
+              </XStack>
+            }
             active={place.id === mode}
             onPress={() => {
               navigate?.(place.route);
@@ -2597,9 +2848,21 @@ function Frame({
           list, under every conversation, where a first visit never found it. */}
       {more.length ? (
         <YStack data-slot="setup-list" px="$2" pb="$2">
-          <SidebarSection label={t("Setup")}>
+          <SidebarSection label={t("Setup")} mt="$1">
             {more.map((tool) => (
-              <SidebarItem key={tool.id} icon={<tool.icon size={16} aria-hidden />} onPress={tool.go}>
+              <SidebarItem
+                key={tool.id}
+                gap="$2.5"
+                minH={32}
+                $touchable={{ minH: 44 }}
+                $max-sm={{ minH: 44 }}
+                icon={
+                  <XStack width={18} height={18} items="center" justify="center" shrink={0} opacity={0.78}>
+                    <tool.icon size={15} aria-hidden />
+                  </XStack>
+                }
+                onPress={tool.go}
+              >
                 {tool.label}
               </SidebarItem>
             ))}
@@ -2610,13 +2873,15 @@ function Frame({
       <XStack px="$3" pb="$2">
         <XStack
           flex={1}
+          minW={0}
           height={30}
+          $touchable={{ minH: 44 }}
           items="center"
           gap="$2"
           px="$2"
           rounded="$2"
           borderWidth={1}
-          borderColor="var(--pane-edge, var(--white-08))"
+          borderColor="var(--border-strong)"
         >
           <XStack shrink={0} items="center" justify="center" pointerEvents="none" aria-hidden>
             <SearchIcon size={13} aria-hidden />
@@ -2677,7 +2942,7 @@ function Frame({
 
               {/* A folder narrows with the column: while filtering it opens on its
                   matches, and one with none is not drawn at all. */}
-              {products.length ? (
+              {devMode && products.length ? (
               <SidebarFolder name={t("Cloud & Platform")} open={filter ? true : undefined}>
                 {products.map((prod) => (
                   <SidebarItem
@@ -2708,7 +2973,11 @@ function Frame({
           <>
             {free ? (
               <SidebarItem
-                icon={<Sparkles size={15} aria-hidden color="var(--primary)" />}
+                gap="$2.5"
+                minH={34}
+                $touchable={{ minH: 44 }}
+                $max-sm={{ minH: 44 }}
+                icon={<Sparkles size={15} aria-hidden color="var(--foreground)" />}
                 onPress={() => {
                   window.location.assign(payUrl("/cart", { returnUrl: window.location.href }));
                   dismiss();
@@ -2718,18 +2987,20 @@ function Frame({
               </SidebarItem>
             ) : null}
             <SidebarItem
+              gap="$2.5"
+              minH={34}
+              $touchable={{ minH: 44 }}
+              $max-sm={{ minH: 44 }}
               icon={<UserPlus size={15} aria-hidden />}
               onPress={() => window.open(invite(), "_blank", "noopener")}
             >
-              {t("Invite Teammates")}
+              {t("Invite teammates")}
             </SidebarItem>
-            {/* THE TWO ROWS hanzo.app KEPT AT ITS FOOT, and both already have a
-                home here: sharing is the referral page, and a plan is chosen from
-                the account menu's Upgrade plan. Inviting a teammate and sharing Hanzo are different
-                errands — one adds somebody to your org, the other hands the
-                product to somebody who has none — which is why hanzo.app drew
-                them separately and so does this. */}
             <SidebarItem
+              gap="$2.5"
+              minH={34}
+              $touchable={{ minH: 44 }}
+              $max-sm={{ minH: 44 }}
               icon={<Share2 size={15} aria-hidden />}
               onPress={() => {
                 navigate?.(site("/referral"));
@@ -2738,20 +3009,51 @@ function Frame({
             >
               {t("Share Hanzo")}
             </SidebarItem>
-            {/* User profile moved to the top-right global BusinessHeader account menu;
-                the sidebar foot retains only the collapse toggle. */}
-            <XStack items="center" justify="flex-end" gap="$1" px="$1.5" py="$1" borderTopWidth={1} borderColor="$borderColor">
-              <Box
-                render="button"
-                onClick={toggle}
-                aria-label={t("Collapse sidebar")}
-                p="$2"
-                rounded="$2"
-                hoverStyle={{ bg: "$hover" }}
-                cursor="pointer"
+            <XStack items="center" justify="space-between" gap="$2" px="$2" py="$2" borderTopWidth={1} borderColor="$edge">
+              <ShellProfileHover
+                name={who.person.name || who.person.email || t("You")}
+                email={who.person.email}
+                avatar={who.person.avatar}
+                orgId={owner || scoped() || ""}
+                signedIn={signedIn}
+                onSettings={() => showSettings(FIRST)}
+                onSignOut={() => void logout()}
               >
-                <PanelLeftClose size={16} aria-hidden data-i18n-mirror="" />
-              </Box>
+                <XStack
+                  render={<button type="button" />}
+                  data-slot="shell-profile"
+                  aria-label={t("Account: {name}", { name: who.person.name || who.person.email || t("You") })}
+                  onClick={() => {
+                    rememberSettingsReturn();
+                    showSettings(FIRST);
+                  }}
+                  items="center"
+                  gap="$2.5"
+                  flex={1}
+                  minW={0}
+                  minH={40}
+                  $touchable={{ minH: 44 }}
+                  $max-sm={{ minH: 44 }}
+                  px="$1.5"
+                  py="$1"
+                  rounded="$3"
+                  borderWidth={0}
+                  bg="transparent"
+                  hoverStyle={{ bg: "$hover" }}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+                  cursor="pointer"
+                >
+                  <Face
+                    src={who.person.avatar}
+                    name={who.person.name || who.person.email || "You"}
+                    size={26}
+                    person
+                  />
+                  <Text fontSize="$2" fontWeight="500" color="$ink" numberOfLines={1} flex={1} minW={0} text="start">
+                    {who.person.name || who.person.email || t("You")}
+                  </Text>
+                </XStack>
+              </ShellProfileHover>
             </XStack>
           </>
         ) : null
@@ -2759,29 +3061,96 @@ function Frame({
     </Sidebar>
   );
 
+  const activeAppId = onApex ? (mode === "dev" ? "dev" : "chat") : "team";
+  const activeAppTitle = onApex ? (mode === "dev" ? "Hanzo Dev" : "Hanzo Chat") : "Hanzo Team";
+  const launchBusinessApp = (item: BusinessAppItem) => {
+    if (typeof window === "undefined") return;
+    try {
+      const target = new URL(item.href, window.location.origin);
+      if (target.origin === window.location.origin) {
+        navigate?.(target.pathname + target.search);
+        return;
+      }
+      const activeOrg = currentOrgId || scoped() || "";
+      if (activeOrg) target.searchParams.set("org", activeOrg);
+      const sub =
+        currentBrowserAccount?.sub ||
+        (user as { sub?: string; id?: string } | null)?.sub ||
+        (user as { id?: string } | null)?.id ||
+        "";
+      const isConsoleSibling =
+        target.hostname.startsWith("crm.") ||
+        target.hostname.startsWith("console.") ||
+        target.hostname.startsWith("platform.") ||
+        target.hostname.startsWith("marketing.") ||
+        target.hostname.startsWith("ads.") ||
+        target.hostname.startsWith("social.");
+      if (isConsoleSibling && sub) {
+        const fresh = new URL("/auth/fresh", target.origin);
+        fresh.searchParams.set("next", target.pathname + target.search);
+        fresh.searchParams.set("who", sub);
+        window.location.assign(fresh.toString());
+        return;
+      }
+      window.location.assign(target.toString());
+    } catch {
+      window.location.assign(item.href);
+    }
+  };
+  const appMenuItems: NonNullable<DropdownMenuProps["items"]> = [
+    { type: "label", key: "suite", label: t("Hanzo apps") },
+    ...BUSINESS_APPS.map((item) => ({
+      key: item.id,
+      label: item.label,
+      description: item.description,
+      selected: item.id === activeAppId,
+      onSelect: () => launchBusinessApp(item),
+    })),
+  ];
+  const orgList =
+    orgState.organizations && orgState.organizations.length > 0
+      ? orgState.organizations
+      : [{ name: currentOrgId || scoped() || "hanzo", displayName: workspace }];
+  const orgMenuItems: NonNullable<DropdownMenuProps["items"]> = [
+    { type: "label", key: "orgs", label: t("Switch organization") },
+    ...orgList.map((o) => ({
+      key: o.name,
+      label: o.displayName || o.name,
+      selected: o.name === (currentOrgId || scoped() || "hanzo"),
+      onSelect: () => {
+        if (o.name === (currentOrgId || scoped())) return;
+        choose(o.name);
+        window.location.reload();
+      },
+    })),
+  ];
+
   return (
-    // THE SHELL IS A GRID: the rail down the left, the bar across the top, and
-    // under it the list, the pane and the side, each placed by its area. On a
-    // phone the grid turns — bar, pane, and the rail along the bottom as the tab
-    // bar — and the list is a sheet between them. The rail's column stays from a
-    // tablet up, its organizations at the top as a team chat draws them; an open
-    // sidebar lists the places itself, so then the rail keeps only the orgs.
+    <YStack width="100%" height="100dvh" overflow="hidden" bg="$background" position="relative">
+      <SkipLink />
+    {/* THE SHELL IS A GRID: the rail down the left, the bar across the top, and
+        under it the list, the pane and the side, each placed by its area. On a
+        phone the grid turns — bar, pane, and the rail along the bottom as the tab
+        bar — and the list is a sheet between them. The rail's column stays from a
+        tablet up, its organizations at the top as a team chat draws them; an open
+        sidebar lists the places itself, so then the rail keeps only the orgs. */}
     <YStack
       data-slot="workspace"
       data-hydrated={settled ? "true" : undefined}
       data-sidebar={asked ? "open" : "shut"}
       display="grid"
-      gridTemplateColumns={`${RAIL}px auto minmax(0, 1fr) auto`}
-      gridTemplateRows={`${BAR}px minmax(0, 1fr)`}
+      gridTemplateColumns={showDesktopRail ? `${RAIL}px auto minmax(0, 1fr) auto` : "0px auto minmax(0, 1fr) auto"}
+      gridTemplateRows={`${SHELL_BAR}px minmax(0, 1fr)`}
       gridTemplateAreas={'"bar bar bar bar" "rail list pane side"'}
       $max-md={{
         gridTemplateColumns: "minmax(0, 1fr)",
-        gridTemplateRows: `${BAR}px minmax(0, 1fr) ${TABS_HEIGHT}`,
+        gridTemplateRows: `${SHELL_BAR}px minmax(0, 1fr) ${TABS_HEIGHT}`,
         gridTemplateAreas: '"bar" "pane" "rail"',
       }}
       position="relative"
       width="100%"
-      height="100dvh"
+      flex={1}
+      minH={0}
       overflow="hidden"
       bg="var(--pane-floor, var(--background))"
       backgroundImage="var(--pane-ground)"
@@ -2790,237 +3159,304 @@ function Frame({
         mode={mode}
         places={places}
         open={asked}
+        hiddenOnDesktop={!showDesktopRail}
         team={onApex ? (signedIn ? ENTRY : WORKSPACE) : undefined}
         navigate={navigate}
-        onSettings={() => showSettings(FIRST)}
         onMore={() => setFinding(true)}
+        avatarSlot={
+          settled && signedIn ? (
+            <ShellProfileHover
+              name={who.person.name || who.person.email || t("You")}
+              email={who.person.email}
+              avatar={who.person.avatar}
+              orgId={owner || scoped() || ""}
+              signedIn={signedIn}
+              onSettings={() => {
+                setAsked(true);
+                showSettings(FIRST);
+              }}
+              onSignOut={() => void logout()}
+            >
+              <XStack
+                render={<button type="button" />}
+                data-slot="rail-profile"
+                aria-label={t("Account: {name}", { name: who.person.name || who.person.email || t("You") })}
+                onClick={() => {
+                  rememberSettingsReturn();
+                  setAsked(true);
+                  showSettings(FIRST);
+                }}
+                width={40}
+                height={40}
+                $touchable={{ minW: 44, minH: 44 }}
+                $max-sm={{ minW: 44, minH: 44 }}
+                rounded="$10"
+                borderWidth={0}
+                bg="transparent"
+                items="center"
+                justify="center"
+                hoverStyle={{ bg: "$hover" }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+                cursor="pointer"
+              >
+                <Face
+                  src={who.person.avatar}
+                  name={who.person.name || who.person.email || "You"}
+                  size={28}
+                  person
+                />
+              </XStack>
+            </ShellProfileHover>
+          ) : null
+        }
       />
-        <Box
+        <XStack
+          render="header"
           gridArea="bar"
           data-slot="bar"
+          data-testid="hanzo-business-header"
           data-tauri-drag-region="deep"
           onMouseDown={dragWindow}
           onDoubleClick={toggleWindowMaximize}
+          height={SHELL_BAR}
+          px="$2.5"
+          gap="$2"
+          items="center"
+          justify="space-between"
+          borderBottomWidth={1}
+          borderColor="$borderColor"
+          bg="$background"
           shrink={0}
+          minW={0}
+          overflow="hidden"
         >
-          <BusinessHeader
-            appId={onApex ? (mode === "dev" ? "dev" : "chat") : "team"}
-            appTitle={onApex ? (mode === "dev" ? "Hanzo Dev" : "Hanzo Chat") : "Hanzo Team"}
-            apps={BUSINESS_APPS}
-            brandMark={<HanzoMark size={18} />}
-            onSelectApp={(item) => {
-              if (typeof window === "undefined") return;
-              try {
-                const target = new URL(item.href, window.location.origin);
-                if (target.origin === window.location.origin) {
-                  navigate?.(target.pathname + target.search);
-                  return;
-                }
-                const activeOrg = currentOrgId || scoped() || "";
-                if (activeOrg) target.searchParams.set("org", activeOrg);
-                const sub = currentBrowserAccount?.sub || (user as { sub?: string; id?: string } | null)?.sub || (user as { id?: string } | null)?.id || "";
-                const isConsoleSibling =
-                  target.hostname.startsWith("crm.") ||
-                  target.hostname.startsWith("console.") ||
-                  target.hostname.startsWith("platform.") ||
-                  target.hostname.startsWith("marketing.") ||
-                  target.hostname.startsWith("ads.") ||
-                  target.hostname.startsWith("social.");
-                if (isConsoleSibling && sub) {
-                  const fresh = new URL("/auth/fresh", target.origin);
-                  fresh.searchParams.set("next", target.pathname + target.search);
-                  fresh.searchParams.set("who", sub);
-                  window.location.assign(fresh.toString());
-                  return;
-                }
-                window.location.assign(target.toString());
-              } catch {
-                window.location.assign(item.href);
-              }
-            }}
-            currentOrg={{
-              name: currentOrgId || scoped() || "hanzo",
-              displayName: workspace,
-            }}
-            orgs={(orgState.organizations ?? []).map((o) => ({
-              name: o.name,
-              displayName: o.displayName || o.name,
-            }))}
-            onSelectOrg={(orgName) => {
-              choose(orgName);
-              window.location.reload();
-            }}
-            user={
-              settled && signedIn
-                ? {
-                    sub:
-                      currentBrowserAccount?.sub ||
-                      (user as { sub?: string; id?: string } | null)?.sub ||
-                      (user as { id?: string } | null)?.id ||
-                      who.person.email ||
-                      "me",
-                    name: who.person.name || who.person.email || "You",
-                    email: who.person.email,
-                    avatar: who.person.avatar,
-                  }
-                : null
-            }
-            accounts={browserAccounts.map((a) => ({
-              sub: a.sub,
-              owner: a.owner || "hanzo",
-              name: a.displayName || a.name || a.email,
-              email: a.email,
-              avatar: a.avatar,
-            }))}
-            onSwitchAccount={(acct) => {
-              const found = browserAccounts.find((a) => a.sub === acct.sub);
-              if (found) void switchToAccount(found);
-              else void addAccount();
-            }}
-            onAddAccount={() => void addAccount()}
-            onSettings={() => showSettings(FIRST)}
-            onSignOut={() => void logout()}
-            leftSlot={
-              <XStack items="center" gap="$1" shrink={0}>
-                <SidebarIconButton
-                  {...TAP}
-                  label={t(shown ? "Close sidebar" : "Open sidebar")}
-                  onPress={toggle}
-                  onMouseEnter={() => setPeeking(true)}
-                >
-                  <PanelLeft size={16} aria-hidden data-i18n-mirror="" />
+          {/* Left: sidebar toggle, history, app switcher, organization switcher */}
+          <XStack items="center" gap="$1" minW={0} shrink={1}>
+            <SidebarIconButton
+              {...TAP}
+              label={t(shown ? "Close sidebar" : "Open sidebar")}
+              onPress={toggle}
+              onMouseEnter={() => setPeeking(true)}
+            >
+              <PanelLeft size={16} aria-hidden data-i18n-mirror="" />
+            </SidebarIconButton>
+            {back || forward ? (
+              <XStack display="none" $md={{ display: "flex" }} items="center" gap="$1" shrink={0}>
+                <SidebarIconButton {...TAP} label={t("Back")} onPress={() => back?.()}>
+                  <ArrowLeft size={16} aria-hidden data-i18n-mirror="" />
                 </SidebarIconButton>
-                {back || forward ? (
-                  <XStack display="none" $md={{ display: "flex" }} items="center" gap="$1" shrink={0}>
-                    <SidebarIconButton {...TAP} label={t("Back")} onPress={() => back?.()}>
-                      <ArrowLeft size={16} aria-hidden data-i18n-mirror="" />
-                    </SidebarIconButton>
-                    <SidebarIconButton {...TAP} label={t("Forward")} onPress={() => forward?.()}>
-                      <ArrowRight size={16} aria-hidden data-i18n-mirror="" />
-                    </SidebarIconButton>
-                  </XStack>
-                ) : null}
+                <SidebarIconButton {...TAP} label={t("Forward")} onPress={() => forward?.()}>
+                  <ArrowRight size={16} aria-hidden data-i18n-mirror="" />
+                </SidebarIconButton>
               </XStack>
-            }
-            rightSlot={
-              <XStack shrink={0} minW={0} justify="flex-end" items="center" gap="$2">
-                {settled && !signedIn ? (
-                  <Box
-                    {...TAP}
-                    render="button"
-                    onClick={() => enter(LOGIN)}
-                    display="flex"
-                    items="center"
-                    justify="center"
-                    cursor="pointer"
-                  >
-                    <XStack
-                      items="center"
-                      justify="center"
-                      height={CONTROL}
-                      px="$2.5"
-                      rounded="$2"
-                      borderWidth={1}
-                      borderColor="$borderColor"
-                      hoverStyle={{ bg: "$hover" }}
-                    >
-                      <Text fontSize="$1" fontWeight="600" color="$ink">
-                        {t("Sign in")}
-                      </Text>
-                    </XStack>
-                  </Box>
-                ) : null}
+            ) : null}
 
-                {settled && signedIn && free ? (
-                  <Box
-                    {...TAP}
-                    render="button"
-                    onClick={() => window.location.assign(payUrl("/cart", { returnUrl: window.location.href }))}
-                    display="flex"
-                    items="center"
-                    justify="center"
-                    cursor="pointer"
-                    aria-label={t("Upgrade")}
-                    data-slot="bar-upgrade"
-                  >
-                    <XStack
-                      items="center"
-                      justify="center"
-                      height={CONTROL}
-                      px="$2.5"
-                      rounded="$2"
-                      borderWidth={1}
-                      borderColor="$borderColor"
-                      gap="$1.5"
-                      hoverStyle={{ bg: "$hover" }}
-                    >
-                      <Sparkles size={13} aria-hidden color="var(--primary)" />
-                      <Text fontSize="$1" fontWeight="600" color="$ink">
-                        {t("Upgrade")}
-                      </Text>
-                    </XStack>
-                  </Box>
-                ) : null}
-
-                <XStack display="none" $lg={{ display: "flex" }} items="center" gap="$1">
-                  <SidebarIconButton
-                    {...TAP}
-                    label={t(aside === "roster" ? "Hide directory & roster" : "Show directory & roster")}
-                    onPress={() => showAside(aside === "roster" ? null : "roster")}
-                  >
-                    <Users size={16} aria-hidden />
-                  </SidebarIconButton>
-                  <SidebarIconButton
-                    {...TAP}
-                    label={t(aside === "tasks" ? "Close side panel" : "Open side panel")}
-                    onPress={() => showAside(aside === "tasks" ? null : "tasks")}
-                  >
-                    <PanelRight size={16} aria-hidden data-i18n-mirror="" />
-                  </SidebarIconButton>
+            <DropdownMenu
+              placement="bottom-start"
+              minWidth={280}
+              items={appMenuItems}
+              trigger={
+                <XStack
+                  render={<button type="button" />}
+                  data-testid="business-app-switcher-trigger"
+                  aria-label={t("{app} — switch application", { app: activeAppTitle })}
+                  items="center"
+                  justify="center"
+                  gap="$1"
+                  px="$2"
+                  minH={32}
+                  $touchable={{ minH: 44, minW: 44 }}
+                  $max-sm={{ minH: 44, minW: 44 }}
+                  rounded="$3"
+                  borderWidth={0}
+                  cursor="pointer"
+                  bg="transparent"
+                  hoverStyle={{ bg: "$hover" }}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+                  shrink={0}
+                >
+                  <HanzoMark size={18} />
+                  <ChevronDown size={13} color="var(--muted-foreground)" aria-hidden />
                 </XStack>
+              }
+            />
 
-                <WindowControls />
+            {settled && signedIn ? (
+              <XStack display="none" $sm={{ display: "flex" }} minW={0} shrink={1}>
+                <DropdownMenu
+                  placement="bottom-start"
+                  minWidth={240}
+                  items={orgMenuItems}
+                  trigger={
+                    <XStack
+                      render={<button type="button" />}
+                      data-testid="business-org-subtitle-trigger"
+                      aria-label={t("Organization: {workspace}", { workspace })}
+                      items="center"
+                      gap="$1.5"
+                      px="$2"
+                      minH={32}
+                      $touchable={{ minH: 44 }}
+                      $max-sm={{ minH: 44 }}
+                      maxW={200}
+                      minW={0}
+                      rounded="$3"
+                      borderWidth={0}
+                      cursor="pointer"
+                      bg="transparent"
+                      hoverStyle={{ bg: "$hover" }}
+                      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+                    >
+                      <Building2 size={14} color="var(--muted-foreground)" aria-hidden />
+                      <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1} flex={1} minW={0}>
+                        {workspace}
+                      </Text>
+                      <ChevronDown size={12} color="var(--muted-foreground)" aria-hidden />
+                    </XStack>
+                  }
+                />
               </XStack>
-            }
-          >
-            <YStack width={420} maxW="100%" position="relative">
+            ) : null}
+          </XStack>
+
+          {/* Center: command search */}
+          <YStack flex={1} minW={0} maxW={420} items="center" justify="center" px="$1">
+            <Box
+              render={<button type="button" />}
+              onClick={() => setFinding(true)}
+              display="flex"
+              flexDirection="row"
+              data-slot="find"
+              aria-label={t("Search {workspace}", { workspace })}
+              items="center"
+              gap="$2"
+              width="100%"
+              height={CONTROL}
+              px="$2.5"
+              rounded="$2"
+              borderWidth={1}
+              borderColor="var(--border-strong)"
+              bg="transparent"
+              hoverStyle={{ bg: "$hover" }}
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+              cursor="pointer"
+              $max-md={{
+                width: 44,
+                minW: 44,
+                minH: 44,
+                height: 44,
+                px: 0,
+                justify: "center",
+                borderWidth: 0,
+                rounded: "$3",
+              }}
+            >
+              <SearchIcon size={14} aria-hidden color="var(--soft, var(--muted-foreground))" />
+              <Text fontSize="$1" color="$soft" numberOfLines={1} $max-md={{ display: "none" }}>
+                {t("Search {workspace}", { workspace })}
+              </Text>
+              <Shortcut keys={["Mod", "K"]} marginInlineStart="auto" data-i18n-ltr="" $max-md={{ display: "none" }} />
+            </Box>
+          </YStack>
+
+          {/* Right: sign in / upgrade / side toggles / window controls (profile lives solely in sidebar foot & folded rail) */}
+          <XStack shrink={0} minW={0} justify="flex-end" items="center" gap="$1.5">
+            {settled && !signedIn ? (
               <Box
-                render="button"
-                onClick={() => setFinding(true)}
+                {...TAP}
+                render={<button type="button" />}
+                onClick={() => enter(LOGIN)}
                 display="flex"
-                flexDirection="row"
-                data-slot="find"
                 items="center"
-                $max-md={{ justify: "center" }}
-                gap="$2"
-                width="100%"
-                height={CONTROL}
-                px="$2.5"
-                rounded="$2"
-                borderWidth={1}
-                borderColor="$borderColor"
-                hoverStyle={{ bg: "$hover" }}
+                justify="center"
+                borderWidth={0}
+                bg="transparent"
+                cursor="pointer"
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
               >
-                <SearchIcon size={13} aria-hidden color="var(--soft, var(--muted-foreground))" />
-                <Text fontSize="$1" color="$soft" $max-md={{ display: "none" }}>
-                  {t("Search {workspace}", { workspace })}
-                </Text>
-                <Shortcut keys={["Mod", "K"]} marginInlineStart="auto" data-i18n-ltr="" $max-md={{ display: "none" }} />
+                <XStack
+                  items="center"
+                  justify="center"
+                  height={CONTROL}
+                  px="$2.5"
+                  rounded="$2"
+                  borderWidth={1}
+                  borderColor="var(--border-strong)"
+                  hoverStyle={{ bg: "$hover" }}
+                >
+                  <Text fontSize="$1" fontWeight="600" color="$ink">
+                    {t("Sign in")}
+                  </Text>
+                </XStack>
               </Box>
-            </YStack>
-          </BusinessHeader>
-        </Box>
+            ) : null}
+
+            {settled && signedIn && free ? (
+              <Box
+                {...TAP}
+                render={<button type="button" />}
+                onClick={() => window.location.assign(payUrl("/cart", { returnUrl: window.location.href }))}
+                display="flex"
+                items="center"
+                justify="center"
+                borderWidth={0}
+                bg="transparent"
+                cursor="pointer"
+                aria-label={t("Upgrade")}
+                data-slot="bar-upgrade"
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+              >
+                <XStack
+                  items="center"
+                  justify="center"
+                  height={CONTROL}
+                  px="$2.5"
+                  rounded="$2"
+                  borderWidth={1}
+                  borderColor="var(--border-strong)"
+                  gap="$1.5"
+                  hoverStyle={{ bg: "$hover" }}
+                >
+                  <Sparkles size={13} aria-hidden color="var(--foreground)" />
+                  <Text fontSize="$1" fontWeight="600" color="$ink">
+                    {t("Upgrade")}
+                  </Text>
+                </XStack>
+              </Box>
+            ) : null}
+
+            <XStack display="none" $lg={{ display: "flex" }} items="center" gap="$1">
+              <SidebarIconButton
+                {...TAP}
+                label={t(aside === "roster" ? "Hide directory & roster" : "Show directory & roster")}
+                onPress={() => showAside(aside === "roster" ? null : "roster")}
+              >
+                <Users size={16} aria-hidden />
+              </SidebarIconButton>
+              <SidebarIconButton
+                {...TAP}
+                label={t(aside === "tasks" ? "Close side panel" : "Open side panel")}
+                onPress={() => showAside(aside === "tasks" ? null : "tasks")}
+              >
+                <PanelRight size={16} aria-hidden data-i18n-mirror="" />
+              </SidebarIconButton>
+            </XStack>
+
+            <WindowControls />
+          </XStack>
+        </XStack>
       {/* THE PAGE UNDER A SHEET THAT LIFTED — a phone only; on a laptop the
           list is a column and dims nothing. */}
       {shown ? (
         <Box
-          render="button"
+          render={<button type="button" />}
           aria-label={t("Close sidebar")}
           onClick={dismiss}
           {...scrim}
+          borderWidth={0}
           data-slot="scrim"
           position="absolute"
-          t={BAR}
+          t={SHELL_BAR}
           r={0}
           b={TABS_HEIGHT}
           l={0}
@@ -3036,9 +3472,9 @@ function Frame({
           gridArea="list"
           position={asked ? "relative" : "absolute"}
           // Peeking, it stands past the rail, which is at the start edge.
-          {...(asked ? {} : { top: BAR, bottom: 0, insetInlineStart: RAIL })}
-          // A phone's list is a sheet between the bar and the tab bar.
-          $max-md={{ position: "fixed", t: BAR, r: 0, b: TABS_HEIGHT, l: 0, width: "100%" }}
+          {...(asked ? {} : { top: SHELL_BAR, bottom: 0, insetInlineStart: RAIL })}
+          // A phone's list is a sheet between the bar and the tab bar, keeping the scrim tappable beside it.
+          $max-md={{ position: "fixed", t: SHELL_BAR, b: TABS_HEIGHT, insetInlineStart: 0, width: 280, maxW: "85vw" }}
           z="var(--z-drawer)"
           bg="$background"
           onMouseEnter={() => setPeeking(true)}
@@ -3066,6 +3502,9 @@ function Frame({
             go={(to) => navigate?.(to.startsWith(TALK) ? chat() : site(to))}
           />
         ) : null}
+
+
+    </YStack>
     </YStack>
   );
 }

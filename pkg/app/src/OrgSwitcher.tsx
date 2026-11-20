@@ -100,7 +100,12 @@ export function OrgSwitcherDropdown({
       }
     }
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        onClose()
+        queueMicrotask(() => (triggerRef?.current as HTMLElement | null)?.focus?.())
+      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     document.addEventListener('keydown', handleKeyDown)
@@ -267,6 +272,8 @@ export function TopOrgSelector() {
         paddingInlineStart={6}
         paddingInlineEnd={8}
         aria-label={t('Switch organization')}
+        aria-expanded={open}
+        aria-haspopup="menu"
       >
         {/* The disc behind the mark is neutral. A brand colour here is the ORG's
             to supply — `face` is its own logo when IAM holds one — and a fixed

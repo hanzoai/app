@@ -11,7 +11,9 @@ const { MARKS } = vi.hoisted(() => {
   return { MARKS: { chat: one, dev: one, design: one, studio: one, tabs: one, library: one, scheduled: one, customize: one } }
 })
 vi.mock('@hanzo/ai/react', () => ({ useAi: () => ({}) }))
-vi.mock('@hanzo/ui', () => ({ Dialog: () => null, DialogContent: () => null, DialogTitle: () => null }))
+vi.mock('@hanzo/ui', () => ({ Dialog: () => null, DialogContent: () => null, DialogTitle: () => null,
+  // The palette reads its native parts off the namespace; absent here, it falls back to CommandMenu.
+  XStack: undefined, YStack: undefined, Text: undefined, Input: undefined, ScrollView: undefined, Kbd: undefined, Shortcut: undefined }))
 vi.mock('@hanzo/ui/product/CommandMenu', () => ({ CommandMenu: () => null }))
 vi.mock('@hanzo/build', async () => {
   const { path } = await import('@hanzo/build/route')
@@ -52,7 +54,7 @@ vi.mock('./Betas', () => ({ useBetas: () => ({ open: () => false }) }))
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { path } from '@hanzo/build/route'
-import { actions, Search, places } from './Search'
+import { actions, Search, places, recorded } from './Search'
 import { app, settings, talk } from './lib/host'
 import type { Host } from '@hanzo/build'
 
@@ -148,5 +150,14 @@ describe('The palette', () => {
     expect(() => renderToStaticMarkup(createElement(Search, { onClose: () => {}, go: () => {} }))).not.toThrow()
     expect(asked).toHaveLength(1)
     expect(asked[0]).toMatchObject({ api: '', person: null })
+  })
+})
+
+describe('recent jumps', () => {
+  test('the newest goes first, once, and only the last five are kept', () => {
+    let jumps = recorded([], { id: 'a', label: 'A' }, 1)
+    for (const [i, id] of ['b', 'c', 'd', 'e', 'f'].entries()) jumps = recorded(jumps, { id, label: id.toUpperCase() }, i + 2)
+    expect(jumps.map((j) => j.id)).toEqual(['f', 'e', 'd', 'c', 'b'])
+    expect(recorded(jumps, { id: 'c', label: 'C', where: 'Chat' }, 9).map((j) => j.id)).toEqual(['c', 'f', 'e', 'd', 'b'])
   })
 })

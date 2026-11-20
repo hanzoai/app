@@ -40,6 +40,8 @@ export interface Card {
   dueAt?: number
   createdAt: number
   updatedAt: number
+  /** Kept on this device only: the server did not take it. */
+  local?: boolean
 }
 
 /**
@@ -207,6 +209,46 @@ export async function board(
   }
 }
 
+/** The board a card goes to: its own, else the one on screen ("all" is not a board), else the first the store named. */
+export function targetOf(own: string | undefined, shown: string, keys: string[]): string {
+  return own || (shown && shown !== 'all' ? shown : '') || keys[0] || ''
+}
+
+/** The boards the server names (todo's own, then the forge's projects), added to `map` when one is given; with a fresh map, no stand-ins. */
+async function served(
+  client: AiClient,
+  signal?: AbortSignal,
+  map = new Map<string, { key: string; name?: string }>(),
+): Promise<{ key: string; name?: string }[]> {
+  const [todoPs, devPs] = await Promise.all([
+    client.http
+      .json<{ projects?: unknown[] } | unknown[]>({
+        path: '/v1/todo/projects',
+        signal,
+      })
+      .catch(() => null),
+    client.http
+      .json<{ id: string; name: string }[]>({
+        path: '/v1/project',
+        signal,
+      })
+      .catch(() => null),
+  ])
+  for (const p of rows(todoPs) as { key: string; name?: string }[]) {
+    if (p?.key) map.set(p.key, { key: p.key, name: p.name || p.key })
+  }
+  for (const p of Array.isArray(devPs) ? devPs : []) {
+    const k = (p.name || p.id).toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    if (k && !map.has(k)) map.set(k, { key: k, name: p.name || k })
+  }
+  return Array.from(map.values())
+}
+
+/** The first board the server names, or null when there is none: a card is only filed on a board that exists. */
+export async function home(client: AiClient, signal?: AbortSignal): Promise<string | null> {
+  return (await served(client, signal))[0]?.key ?? null
+}
+
 /** The boards themselves — a project is a repository on the forge. */
 export async function projects(
   client?: AiClient | null,
@@ -220,31 +262,9 @@ export async function projects(
   ]
   if (!client) return fallback
   try {
-    const [todoPs, devPs] = await Promise.all([
-      client.http
-        .json<{ projects?: unknown[] } | unknown[]>({
-          path: '/v1/todo/projects',
-          signal,
-        })
-        .catch(() => null),
-      client.http
-        .json<{ id: string; name: string }[]>({
-          path: '/v1/project',
-          signal,
-        })
-        .catch(() => null),
-    ])
     const map = new Map<string, { key: string; name?: string }>()
     for (const f of fallback) map.set(f.key, f)
-    const todoList = rows(todoPs) as { key: string; name?: string }[]
-    for (const p of todoList ?? []) {
-      if (p?.key) map.set(p.key, { key: p.key, name: p.name || p.key })
-    }
-    for (const p of devPs ?? []) {
-      const k = (p.name || p.id).toLowerCase().replace(/[^a-z0-9]+/g, '-')
-      if (k && !map.has(k)) map.set(k, { key: k, name: p.name || k })
-    }
-    return Array.from(map.values())
+    return await served(client, signal, map)
   } catch {
     return fallback
   }
@@ -273,6 +293,7 @@ export async function open(
     labels: card.labels ?? ['task'],
     createdAt: Date.now(),
     updatedAt: Date.now(),
+    local: true,
   }
 
   if (client) {

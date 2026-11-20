@@ -339,8 +339,8 @@ export function Catalog({ tab }: { tab: Tab }) {
           />
         </XStack>
         <Action
-          render="button"
-          onPress={() => window.open('https://hanzo.market', '_blank', 'noopener,noreferrer')}
+          render={<button type="button" />}
+          onClick={() => window.open('https://hanzo.market', '_blank', 'noopener,noreferrer')}
           $touchable={{ minH: 36 }}
         >
           <XStack items="center" gap="$1.5">
@@ -354,14 +354,14 @@ export function Catalog({ tab }: { tab: Tab }) {
       {tab === 'channels' && !signed ? (
         quiet(
           t('Sign in to see the channels your organization can connect.'),
-          <Action render="button" onPress={() => enter()} $touchable={{ minH: 44, minW: 44 }}>
+          <Action render={<button type="button" />} onClick={() => enter()} $touchable={{ minH: 44, minW: 44 }}>
             {t('Sign in')}
           </Action>,
         )
       ) : wrong ? (
         quiet(
           say(wrong, t('the channels'), 'read', t),
-          <Action render="button" onPress={() => setTurn((n) => n + 1)} $touchable={{ minH: 44, minW: 44 }}>
+          <Action render={<button type="button" />} onClick={() => setTurn((n) => n + 1)} $touchable={{ minH: 44, minW: 44 }}>
             {t('Try again')}
           </Action>,
         )

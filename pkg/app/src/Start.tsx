@@ -1,32 +1,21 @@
 'use client'
 
-// Starting a run from here — the composer /dev's empty state promised and did
-// not have.
-//
-// The pane already said "Describe it. Ship it." over "in your terminal, your
-// editor, or right here", and `right here` was the one of the three with nothing
-// behind it: the idle state drew install cards and no way to send. The comment
-// that stood in for it said "there is no create-a-run route to offer: a run
-// begins on a machine". THAT IS NO LONGER TRUE — `POST /v1/agents/coding` starts
-// one and answers the session to watch it in, which is the row the working view
-// already renders.
-//
-// WHERE IT RUNS IS THE ONE CHOICE, and it is a field rather than a fork:
-//
-//   no target   the cloud's own sandbox — what a browser gets, because a
-//               browser has no machine to offer
-//   a target    a machine this org has claimed, routed by id
-//
-// Nothing here reads the user agent to decide. The web sends no target because
-// it HAS none; a surface running on a claimed machine sends that machine's id.
-// One endpoint, one field, and the answer comes back rather than being assumed —
-// `routed` says whether a machine actually took it, so asking for one and being
-// given a sandbox is reported instead of drawn as success.
-
 import { useCallback, useEffect, useState } from 'react'
+import { phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
-import { Text, XStack, YStack } from '@hanzo/ui'
+import {
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Text,
+  XStack,
+  YStack,
+} from '@hanzo/ui'
 import { Composer } from '@hanzo/ui/chat'
+import { ArrowUpRight, Cloud, FolderOpen, Laptop } from 'lucide-react'
 import { useOpen } from './open'
 import {
   CodingRefusal,
@@ -35,32 +24,45 @@ import {
   startCoding,
   type Target,
 } from './lib/coding'
-import { BAD } from './lib/mix'
 import {
   getLocalWorkspaces,
   pickLocalFolder,
   runLocalDev,
   type LocalWorkspace,
 } from './lib/local-fs'
-
-/** A field of the start row: 32px, outlined, in the row's own ink. */
-const FIELD = {
-  height: 32,
-  rounded: 8,
-  borderWidth: 1,
-  borderColor: 'var(--white-10)',
-  bg: 'transparent',
-  color: 'inherit',
-  fontSize: '$2',
-} as const
+import { formatDeviceLabel, useDevMode } from './lib/dev-mode'
+import { InfoHint } from './lib/info-hint'
 
 const SOFT = '$soft'
 
-/** The sandbox is a destination like any other, and it is the default one. */
+/** Empty target routes to Hanzo's managed cloud workspace. */
 const SANDBOX = ''
+const CLOUD_VALUE = '__cloud__'
+
+const STARTER_PROMPTS: readonly { id: string; title: string; summary: string; prompt: string }[] = [
+  {
+    id: 'bugfix',
+    title: phrase('Fix a bug and add regression tests'),
+    summary: phrase('Trace the failing path, patch the root cause, and verify with focused unit tests.'),
+    prompt: phrase('Find the root cause of the failing test, implement a minimal fix, and add a regression test covering the edge case.'),
+  },
+  {
+    id: 'review',
+    title: phrase('Audit a branch before shipping'),
+    summary: phrase('Inspect recent changes for race conditions, accessibility gaps, and unhandled errors.'),
+    prompt: phrase('Review the latest changes on this branch for correctness, edge cases, error handling, and accessibility issues.'),
+  },
+  {
+    id: 'feature',
+    title: phrase('Build a responsive view from a spec'),
+    summary: phrase('Scaffold the layout, wire state cleanly, and verify mobile and desktop breakpoints.'),
+    prompt: phrase('Implement the requested screen with clean semantic tokens, keyboard focus states, and responsive mobile stacking.'),
+  },
+]
 
 export function Start() {
   const { t } = useI18n()
+  const [devMode] = useDevMode()
   const { openSession } = useOpen()
   const [prompt, setPrompt] = useState('')
   const [repo, setRepo] = useState('')
@@ -75,9 +77,9 @@ export function Start() {
   useEffect(() => {
     let live = true
     listTargets()
-      .then((t) => live && setTargets(t.filter(dispatchable)))
+      .then((list) => live && setTargets(list.filter(dispatchable)))
       .catch(() => {
-        /* Listing is an enhancement here; the sandbox needs nothing from it. */
+        /* Listing is an enhancement here; cloud workspace needs nothing from it. */
       })
     setLocalWorkspaces(getLocalWorkspaces())
     return () => {
@@ -85,24 +87,21 @@ export function Start() {
     }
   }, [])
 
-  const handleWhereChange = useCallback(
-    async (val: string) => {
-      if (val === 'action:pick-local') {
-        try {
-          const ws = await pickLocalFolder()
-          if (ws) {
-            setLocalWorkspaces((prev) => [ws, ...prev.filter((p) => p.path !== ws.path)])
-            setWhere(`local:${ws.path}`)
-          }
-        } catch (e: any) {
-          setErr(e?.message || 'Could not pick folder')
+  const handleWhereChange = useCallback(async (val: string) => {
+    if (val === 'action:pick-local') {
+      try {
+        const ws = await pickLocalFolder()
+        if (ws) {
+          setLocalWorkspaces((prev) => [ws, ...prev.filter((p) => p.path !== ws.path)])
+          setWhere(`local:${ws.path}`)
         }
-        return
+      } catch (e: unknown) {
+        setErr(e instanceof Error ? e.message : 'Could not pick folder')
       }
-      setWhere(val)
-    },
-    []
-  )
+      return
+    }
+    setWhere(val === CLOUD_VALUE ? SANDBOX : val)
+  }, [])
 
   const send = useCallback(async () => {
     const task = prompt.trim()
@@ -114,12 +113,12 @@ export function Start() {
     if (where.startsWith('local:')) {
       const localPath = where.slice(6)
       try {
-        setLocalMsg(t('Running local dev agent in {path}…', { path: localPath }))
+        setLocalMsg(t('Running in {path}…', { path: localPath }))
         const res = await runLocalDev(localPath, task)
         setPrompt('')
-        setLocalMsg(res.output?.slice(0, 300) || res.sessionId || t('Completed successfully.'))
-      } catch (e: any) {
-        setErr(e?.message || t('Local dev execution failed'))
+        setLocalMsg(res.output?.slice(0, 300) || res.sessionId || t('Completed.'))
+      } catch (e: unknown) {
+        setErr(e instanceof Error ? e.message : t('Local run failed'))
       } finally {
         setBusy(false)
       }
@@ -129,110 +128,222 @@ export function Start() {
     try {
       const run = await startCoding({
         prompt: task,
-        repo: repo.trim() || undefined,
-        tool: tool || 'dev',
+        repo: devMode && repo.trim() ? repo.trim() : undefined,
+        tool: devMode && tool ? tool : 'dev',
         targetId: where || undefined,
       })
       setPrompt('')
-      // The run is ACCEPTED, not finished. Opening its session is what puts the
-      // reader where it narrates itself, which is the view this pane replaces.
       openSession(run.sessionId)
     } catch (e) {
       setErr(e instanceof CodingRefusal ? e.message : t('Could not start the run'))
     } finally {
       setBusy(false)
     }
-  }, [prompt, repo, tool, where, busy, openSession, t])
+  }, [prompt, repo, tool, where, devMode, busy, openSession, t])
 
   const isLocal = where.startsWith('local:')
 
   return (
-    <YStack width="100%" gap="$2">
-      <Composer
-        value={prompt}
-        onChange={setPrompt}
-        onSend={() => void send()}
-        busy={busy}
-        placeholder={t('Describe what to build…')}
-        label={t('Describe what to build')}
-      />
+    <YStack width="100%" minW={0} gap="$6">
+      <YStack width="100%" minW={0} gap="$2.5">
+        <Composer
+          value={prompt}
+          onChange={setPrompt}
+          onSend={() => void send()}
+          busy={busy}
+          placeholder={t('Describe what to build…')}
+          label={t('Describe what to build')}
+        />
 
-      <XStack gap="$2" items="center" flexWrap="wrap">
-        <Text
-          render={<select value={tool} onChange={(e) => setTool(e.currentTarget.value)} aria-label={t('Agent Harness')} />}
-          {...FIELD}
-          px={8}
-        >
-          <option value="dev">Dev</option>
-          <option value="claude">Claude</option>
-          <option value="codex">Codex</option>
-          <option value="python">Python</option>
-        </Text>
+        <YStack width="100%" minW={0} gap="$1.5">
+          <XStack gap="$2" items="center" justify="space-between" flexWrap="wrap" minW={0}>
+            <XStack gap="$2" items="center" flexWrap="wrap" minW={0} $max-sm={{ width: '100%' }}>
+              <Select value={where || CLOUD_VALUE} onValueChange={(v) => void handleWhereChange(v)}>
+                <SelectTrigger
+                  size="sm"
+                  width={196}
+                  minH={36}
+                  borderColor="var(--border-strong)"
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  $max-sm={{ flex: 1, width: 'auto', minW: 0, minH: 44 }}
+                  aria-label={t('Where to run')}
+                >
+                  <SelectValue placeholder={t('Cloud workspace')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={CLOUD_VALUE}>
+                    <XStack items="center" gap="$2">
+                      <Cloud size={13} aria-hidden />
+                      <Text fontFamily="$body" fontSize="$2" color="$ink">
+                        {t('Cloud workspace')}
+                      </Text>
+                    </XStack>
+                  </SelectItem>
+                  {localWorkspaces.map((ws) => (
+                    <SelectItem key={ws.path} value={`local:${ws.path}`}>
+                      <XStack items="center" gap="$2">
+                        <FolderOpen size={13} aria-hidden />
+                        <Text fontFamily="$body" fontSize="$2" color="$ink">
+                          {ws.name}
+                        </Text>
+                      </XStack>
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="action:pick-local">
+                    <Text fontFamily="$body" fontSize="$2" color="$aside">
+                      {t('Open local folder…')}
+                    </Text>
+                  </SelectItem>
+                  {targets.map((tg) => {
+                    const formatted = formatDeviceLabel(tg.label || tg.host || tg.id, { devMode })
+                    return (
+                      <SelectItem key={tg.id} value={tg.id}>
+                        <XStack items="center" gap="$2">
+                          <Laptop size={13} aria-hidden />
+                          <Text fontFamily="$body" fontSize="$2" color="$ink">
+                            {devMode && tg.capacity
+                              ? `${formatted.title} · ${tg.capacity}`
+                              : formatted.title}
+                          </Text>
+                        </XStack>
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
 
-        {!isLocal ? (
-          <Text
-            render={<input data-i18n-ltr="" value={repo} onChange={(e) => setRepo(e.currentTarget.value)} placeholder={t('owner/repo (optional)')} aria-label={t('Repository')} />}
-            {...FIELD}
-            flex={1}
-            minW={160}
-            px={10}
-            outlineStyle="none"
-          />
-        ) : (
-          <Text
-            {...FIELD}
-            flex={1}
-            minW={160}
-            px={10}
-            display="flex"
-            items="center"
-            opacity={0.8}
-          >
-            {where.slice(6)}
-          </Text>
-        )}
+              <InfoHint
+                text={t('Choose whether Hanzo builds in a cloud workspace or inside a folder on your computer.')}
+                size={13}
+              />
+            </XStack>
 
-        {/* WHERE selector: always provide option to select sandbox, local workspaces, or remote targets */}
-        <Text
-          render={<select value={where} onChange={(e) => void handleWhereChange(e.currentTarget.value)} aria-label={t('Where to run')} />}
-          {...FIELD}
-          px={8}
-        >
-          <option value={SANDBOX}>{t('Cloud Sandbox')}</option>
-          {localWorkspaces.map((ws) => (
-            <option key={ws.path} value={`local:${ws.path}`}>
-              {t('Local: {name}', { name: ws.name })}
-            </option>
-          ))}
-          <option value="action:pick-local">{t('+ Open local folder…')}</option>
-          {targets.map((tg) => (
-            <option key={tg.id} value={tg.id}>
-              {tg.label || tg.host || tg.id}
-              {tg.capacity ? ` — ${tg.capacity}` : ''}
-            </option>
-          ))}
-        </Text>
-      </XStack>
+            {devMode ? (
+              <XStack
+                gap="$2"
+                items="center"
+                flex={1}
+                minW={0}
+                justify="flex-end"
+                flexWrap="wrap"
+                $max-sm={{ width: '100%', justify: 'flex-start', flexBasis: 'auto', grow: 0 }}
+              >
+                <Select value={tool} onValueChange={setTool}>
+                  <SelectTrigger
+                    size="sm"
+                    width={120}
+                    minH={36}
+                    borderColor="var(--border-strong)"
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                    $max-sm={{ minH: 44 }}
+                    aria-label={t('Runner')}
+                  >
+                    <SelectValue placeholder="Dev" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="dev">Dev</SelectItem>
+                    <SelectItem value="claude">Claude</SelectItem>
+                    <SelectItem value="codex">Codex</SelectItem>
+                    <SelectItem value="python">Python</SelectItem>
+                  </SelectContent>
+                </Select>
 
-      {err ? (
-        <Text role="alert" fontSize="$2" color={BAD}>
-          {err}
-        </Text>
-      ) : localMsg ? (
-        <Text fontSize="$2" color="$color">
-          {localMsg}
-        </Text>
-      ) : (
-        <Text fontSize="$2" color={SOFT}>
-          {t(
-            isLocal
-              ? 'Runs locally on your machine with dev agent.'
-              : targets.length > 0 && where !== SANDBOX
-              ? 'Runs on your linked machine.'
-              : 'Runs in an isolated sandbox with Free AI / Enso.'
+                {!isLocal ? (
+                  <Input
+                    size="sm"
+                    data-i18n-ltr=""
+                    value={repo}
+                    onChangeText={setRepo}
+                    placeholder={t('owner/repo (optional)')}
+                    aria-label={t('Repository')}
+                    borderColor="var(--border-strong)"
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                    flex={1}
+                    minH={36}
+                    minW={140}
+                    maxW={260}
+                    $max-sm={{ maxW: '100%', minH: 44 }}
+                  />
+                ) : (
+                  <Text fontSize="$1" fontFamily="$mono" color={SOFT} numberOfLines={1} flex={1} minW={0}>
+                    {where.slice(6)}
+                  </Text>
+                )}
+              </XStack>
+            ) : null}
+          </XStack>
+
+          {err ? (
+            <Text role="alert" fontSize="$2" color="var(--state-error)">
+              {err}
+            </Text>
+          ) : localMsg ? (
+            <Text fontSize="$2" color="$ink">
+              {localMsg}
+            </Text>
+          ) : (
+            <Text fontSize="$1" color={SOFT}>
+              {t(
+                isLocal
+                  ? 'Runs in the selected folder on your computer.'
+                  : targets.length > 0 && where !== SANDBOX
+                    ? 'Runs on your connected computer.'
+                    : 'Starts immediately in a cloud workspace.',
+              )}
+            </Text>
           )}
-        </Text>
-      )}
+        </YStack>
+      </YStack>
+
+      {!prompt.trim() && !busy ? (
+        <YStack gap="$2.5" role="list" aria-label={t('Starter prompts')} data-slot="start-prompts">
+          <Text fontSize="$2" fontWeight="600" color="$soft" px="$0.5">
+            {t('Starter prompts')}
+          </Text>
+          <YStack gap="$2.5">
+            {STARTER_PROMPTS.map((item) => (
+              <XStack
+                key={item.id}
+                role="listitem"
+                render={<button type="button" />}
+                data-slot="start-prompt-row"
+                onClick={() => {
+                  setPrompt(t(item.prompt))
+                  setErr(null)
+                }}
+                width="100%"
+                minW={0}
+                px="$3.5"
+                py="$3"
+                rounded="$4"
+                bg="$panel"
+                borderWidth={1}
+                borderColor="$edge"
+                items="center"
+                justify="space-between"
+                gap="$3"
+                cursor="pointer"
+                transition="quickest"
+                hoverStyle={{ bg: '$hover', borderColor: 'var(--border-strong)' }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                $max-sm={{ minH: 48, px: '$3', py: '$2.5' }}
+              >
+                <YStack flex={1} minW={0} gap="$1" items="flex-start">
+                  <Text fontSize="$3" fontWeight="500" color="$ink" text="start" numberOfLines={1}>
+                    {t(item.title)}
+                  </Text>
+                  <Text fontSize="$2" color="$soft" text="start" lineHeight="$3" numberOfLines={2}>
+                    {t(item.summary)}
+                  </Text>
+                </YStack>
+                <YStack shrink={0} items="center" justify="center">
+                  <ArrowUpRight size={15} color="var(--muted-foreground)" aria-hidden />
+                </YStack>
+              </XStack>
+            ))}
+          </YStack>
+        </YStack>
+      ) : null}
     </YStack>
   )
 }

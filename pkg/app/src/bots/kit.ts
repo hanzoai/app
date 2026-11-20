@@ -52,4 +52,4 @@ export const LABEL = { render: 'h3', fontSize: 13, lineHeight: 18, fontWeight: '
 export const CARD = { bg: RAISED, borderWidth: 1, borderColor: LINE, rounded: 14 } as const
 
 /** One line, cut with an ellipsis where it runs out of space. */
-export const CLIP = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } as const
+export const CLIP = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxW: '100%' } as const

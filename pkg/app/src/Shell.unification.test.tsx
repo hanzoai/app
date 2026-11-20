@@ -79,8 +79,13 @@ vi.mock('@hanzo/iam/react', () => ({
 vi.mock('@hanzo/build', () => ({
   Gutter: () => null,
   SideProvider: ({ children }: { children?: ReactNode }) => children,
+  path: () => '/plans',
   useSplit: () => ({ main: null, aside: null, side: { hidden: false }, grip: null }),
 }))
+vi.mock('./dev', () => ({ useDevHost: () => ({ go: () => {}, path: '', token: () => '' }) }))
+vi.mock('./keys', () => ({ useGlobalKeys: () => {} }))
+vi.mock('./rail-open', () => ({ useSidebar: () => [true, () => {}, () => {}] as const }))
+vi.mock('./SkipLink', () => ({ MAIN: { id: 'main-content', tabIndex: -1, render: 'main' }, SkipLink: () => null }))
 vi.mock('@hanzo/mod', () => ({ restoreActiveMod: () => {} }))
 vi.mock('@hanzogui/shell', () => ({ HanzoMark: () => null }))
 vi.mock('@hanzo/ui/product', () => ({ BUSINESS_APPS: [], BusinessHeader: () => null }))

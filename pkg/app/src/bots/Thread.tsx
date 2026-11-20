@@ -4,7 +4,7 @@
 // button over the scrolling messages, structured attachment/image cards,
 // timestamps wherever the conversation paused, and the pill composer.
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ComponentProps, type FormEvent } from 'react'
 import type { Agent, AgentRun } from '@hanzo/ai'
 import { navigable } from '@hanzo/ui/product/limits'
 import { useI18n } from '@hanzo/i18n/react'
@@ -13,13 +13,18 @@ import { Text, XStack, YStack } from '@hanzo/gui'
 import { Caret } from '@hanzo/ui/chat'
 import { Composer, Control, Field } from '@hanzo/composer'
 import { speech, useDictation, useVoice, Voice } from '@hanzo/voice'
-import { ArrowLeft, ArrowUp, AudioLines, Check, Gauge, Mic, Plus, Share, X } from 'lucide-react'
+
+/** Strip gui-injected `onPress` before forwarding props to `@hanzo/voice`'s native HTML `<button>`. */
+function VoiceSlot({ onPress: _onPress, ...props }: ComponentProps<typeof Voice> & { onPress?: unknown }) {
+  return <Voice {...props} />
+}
+import { ArrowDown, ArrowLeft, ArrowUp, AudioLines, Check, Copy, Gauge, Mic, Plus, Share, X } from 'lucide-react'
 import { base } from '../lib/ai'
 import { Prose } from '../Prose'
 import { called } from '../team'
 import { Face } from './face'
 import { CLIP, PILL, ROUND, WORD } from './kit'
-import { DIM, EDGE, GROUND, INK, LINE, MINE, RAISED } from './ink'
+import { DIM, EDGE, GROUND, INK, LINE, MINE, PICKED, RAISED } from './ink'
 import { instant } from './time'
 import { lines, partsOf, type Pending } from './said'
 import { compose, fits, MAX, texty, type File } from './carry'
@@ -27,25 +32,19 @@ import { PARAM } from './api'
 import type { Notice } from './refusal'
 
 function DocBadge({ ext }: { ext: string }) {
-  const accent =
-    ext === 'pdf'
-      ? 'var(--destructive)'
-      : ext === 'ppt' || ext === 'pptx'
-        ? 'var(--warning, var(--chrome-dot-yellow))'
-        : 'var(--info, var(--muted-foreground))'
   return (
     <YStack
       aria-hidden
-      width={40}
-      height={44}
+      width={44}
+      height={46}
       shrink={0}
       rounded={9}
       overflow="hidden"
-      bg="var(--secondary)"
+      bg={GROUND}
       borderWidth={1}
-      borderColor={LINE}
+      borderColor="var(--border-strong)"
     >
-      <YStack flex={1} px={7} pt={7} gap={4} justify="center">
+      <YStack flex={1} px={7} pt={6} gap={4} justify="center">
         <XStack gap={3}>
           <YStack width={9} height={9} rounded={2} bg="var(--muted-foreground)" opacity={0.4} />
           <YStack flex={1} gap={3} justify="center">
@@ -55,8 +54,71 @@ function DocBadge({ ext }: { ext: string }) {
         </XStack>
         <YStack height={3} rounded={2} bg="var(--muted-foreground)" opacity={0.34} />
       </YStack>
-      <YStack height={12} bg={accent} />
+      <YStack height={16} bg={PICKED} items="center" justify="center" px={2}>
+        <Text fontFamily="$mono" fontSize={11} lineHeight={13} fontWeight="600" color={INK} numberOfLines={1}>
+          {(ext || 'file').slice(0, 4).toLowerCase()}
+        </Text>
+      </YStack>
     </YStack>
+  )
+}
+
+function CopyMessageButton({ text }: { text: string }) {
+  const { t } = useI18n()
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    if (!copied) return
+    const id = window.setTimeout(() => setCopied(false), 1600)
+    return () => window.clearTimeout(id)
+  }, [copied])
+
+  if (!text.trim()) return null
+
+  return (
+    <XStack
+      opacity={copied ? 1 : 0}
+      $group-hover={{ opacity: 1 }}
+      focusWithinStyle={{ opacity: 1 }}
+      $touchable={{ opacity: 1 }}
+      $max-sm={{ opacity: 1 }}
+      transition="quickest"
+      pt={2}
+    >
+      <XStack
+        render={<button type="button" title={copied ? t('Copied') : t('Copy')} />}
+        aria-label={copied ? t('Copied') : t('Copy message')}
+        onClick={() => {
+          void navigator.clipboard?.writeText(text).then(() => setCopied(true), () => {})
+        }}
+        items="center"
+        justify="center"
+        gap={4}
+        height={26}
+        minW={26}
+        px={6}
+        rounded={6}
+        bg={copied ? RAISED : 'transparent'}
+        borderWidth={1}
+        borderColor={copied ? 'var(--border-strong)' : 'transparent'}
+        cursor="pointer"
+        transition="quickest"
+        hoverStyle={{ bg: RAISED, borderColor: 'var(--border-strong)' }}
+        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+        $max-sm={{ minW: 44, minH: 44 }}
+      >
+        {copied ? (
+          <>
+            <Check size={12} color="var(--state-success)" aria-hidden />
+            <Text fontSize={11} lineHeight={14} color={INK}>
+              {t('Copied')}
+            </Text>
+          </>
+        ) : (
+          <Copy size={12} color={DIM} aria-hidden />
+        )}
+      </XStack>
+    </XStack>
   )
 }
 
@@ -108,6 +170,8 @@ export function Thread({
   const [shared, setShared] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  const [scrolledUp, setScrolledUp] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const foot = useRef<HTMLDivElement>(null)
   const pick = useRef<HTMLInputElement>(null)
 
@@ -190,6 +254,7 @@ export function Thread({
         r={0}
         z={4}
         height={46}
+        $max-md={{ height: 54, px: 10 }}
         px={14}
         items="center"
         gap={8}
@@ -201,6 +266,9 @@ export function Thread({
         <XStack flex={1} minW={0} items="center">
           <XStack
             {...ROUND}
+            borderColor="var(--border-strong)"
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+            $max-sm={{ width: 44, height: 44 }}
             pointerEvents="auto"
             aria-label={t('All bots')}
             onClick={onBack}
@@ -213,12 +281,15 @@ export function Thread({
         {bot ? (
           <XStack
             {...PILL}
+            borderColor="var(--border-strong)"
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
             pointerEvents="auto"
             data-parity-key="bots.pill"
             aria-label={t('{name}’s details', { name: displayName })}
             aria-expanded={side}
             onClick={onSide}
             height={36}
+            $max-sm={{ minH: 44 }}
             pl={6}
             pr={13}
             maxW="60%"
@@ -235,40 +306,73 @@ export function Thread({
           {bot ? (
             <XStack
               {...ROUND}
+              borderColor="var(--border-strong)"
+              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              $max-sm={{ width: 44, height: 44 }}
               pointerEvents="auto"
               data-parity-key="bots.share"
               aria-label={shared ?? t('Share')}
               onClick={share}
               $platform-web={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
             >
-              {shared ? <Check size={15} color={INK} aria-hidden /> : <Share size={15} color={INK} aria-hidden />}
+              {shared ? <Check size={15} color="var(--state-success)" aria-hidden /> : <Share size={15} color={INK} aria-hidden />}
             </XStack>
           ) : null}
         </XStack>
       </XStack>
 
       {!bot ? (
-        <YStack flex={1} items="center" justify="center" gap={16} px={24}>
+        <YStack flex={1} items="center" justify="center" gap={20} px={24} pt={24} pb={64}>
           {live && loaded && bots.length === 0 ? (
             <>
-              <Text render="h1" m={0} fontSize={22} lineHeight={28} fontWeight="500" color={INK}>
-                {t('Make your first bot')}
-              </Text>
-              <XStack {...PILL} onClick={onMake}>
-                <Text {...WORD}>{t('New bot')}</Text>
+              <YStack items="center" gap={6} maxW={380}>
+                <Text render="h1" m={0} fontSize={21} lineHeight={26} fontWeight="600" letterSpacing={-0.42} color={INK} text="center">
+                  {t('Make your first bot')}
+                </Text>
+                <Text fontSize={14} lineHeight={20} color={DIM} text="center">
+                  {t('Give it instructions and tools, then message it right here.')}
+                </Text>
+              </YStack>
+              <XStack
+                {...PILL}
+                bg={INK}
+                borderColor={INK}
+                minH={38}
+                px={18}
+                hoverStyle={{ opacity: 0.9 }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                $max-sm={{ minH: 44 }}
+                onClick={onMake}
+              >
+                <Text {...WORD} fontWeight="600" color="var(--background)">
+                  {t('New bot')}
+                </Text>
               </XStack>
             </>
           ) : null}
         </YStack>
       ) : (
-        <YStack data-parity-key="bots.thread" flex={1} minH={0} overflowY="auto" overflowX="hidden">
-          <YStack width="100%" px={18} pt={52} pb={14} $max-md={{ px: 12 }}>
+        <YStack
+          ref={scrollRef as never}
+          data-parity-key="bots.thread"
+          flex={1}
+          minH={0}
+          overflowY="auto"
+          overflowX="hidden"
+          onScroll={(e: { currentTarget?: HTMLElement }) => {
+            const el = e.currentTarget ?? scrollRef.current
+            if (!el) return
+            const dist = el.scrollHeight - el.clientHeight - el.scrollTop
+            setScrolledUp(dist > 120)
+          }}
+        >
+          <YStack width="100%" maxW={760} mx="auto" px={18} pt={58} pb={18} $max-md={{ px: 12, pt: 64 }}>
             {said.map((line, i) => {
               const prev = said[i - 1]
-              const gap = !prev ? 0 : line.kind === prev.kind && (line.kind === 'mine' || line.kind === 'theirs') ? 6 : 14
+              const gap = !prev ? 0 : line.kind === prev.kind && (line.kind === 'mine' || line.kind === 'theirs') ? 6 : 18
               if (line.kind === 'stamp')
                 return (
-                  <Text key={line.key} self="center" mt={i ? 18 : 4} mb={4} fontSize={12} lineHeight={17} color={DIM}>
+                  <Text key={line.key} self="center" mt={i ? 24 : 4} mb={8} fontSize={12} lineHeight={17} color={DIM}>
                     {line.text}
                   </Text>
                 )
@@ -286,7 +390,7 @@ export function Thread({
                 )
               if (line.kind === 'mine')
                 return (
-                  <YStack key={line.key} self="flex-end" items="flex-end" maxW="76%" mt={gap}>
+                  <YStack key={line.key} group self="flex-end" items="flex-end" maxW="76%" $max-md={{ maxW: '86%' }} mt={gap}>
                     <Text
                       data-parity-key="bots.mine"
                       render="div"
@@ -340,7 +444,7 @@ export function Thread({
                     borderColor={LINE}
                     $max-md={{ maxW: '92%' }}
                   >
-                    <Text fontSize={15} lineHeight={22} color={DIM}>
+                    <Text fontSize={15} lineHeight={22} color="var(--state-error)">
                       {line.text}
                     </Text>
                   </YStack>
@@ -350,10 +454,11 @@ export function Thread({
               return (
                 <YStack
                   key={line.key}
+                  group
                   data-parity-key={line.kind === 'other' ? 'bots.other' : 'bots.theirs'}
                   self="flex-start"
                   items="flex-start"
-                  gap={10}
+                  gap={8}
                   maxW="100%"
                   mt={gap}
                 >
@@ -369,10 +474,11 @@ export function Thread({
                           bg={RAISED}
                           borderWidth={1}
                           borderColor={LINE}
+                          hoverStyle={{ borderColor: 'var(--border-strong)' }}
                           maxW={290}
                         >
                           <DocBadge ext={part.ext} />
-                          <YStack flex={1} minW={0}>
+                          <YStack flex={1} minW={0} gap={2}>
                             <Text {...CLIP} fontSize={14} lineHeight={19} fontWeight="500" color={INK}>
                               {part.name}
                             </Text>
@@ -428,11 +534,12 @@ export function Thread({
                       </YStack>
                     )
                   })}
+                  <CopyMessageButton text={line.text} />
                 </YStack>
               )
             })}
             {wrong ? (
-              <Text render="p" self="center" mt={12} fontSize={13} lineHeight={18} color={DIM}>
+              <Text render="p" role="alert" self="center" mt={12} fontSize={13} lineHeight={18} color="var(--state-error)">
                 {wrong}
               </Text>
             ) : null}
@@ -441,8 +548,43 @@ export function Thread({
         </YStack>
       )}
 
+      {bot && scrolledUp ? (
+        <XStack
+          render={<button type="button" />}
+          aria-label={t('Scroll to bottom')}
+          data-slot="bots-to-bottom"
+          onClick={() => {
+            foot.current?.scrollIntoView({
+              block: 'end',
+              behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+            })
+          }}
+          position="absolute"
+          b={72}
+          l="50%"
+          ml={-18}
+          width={36}
+          height={36}
+          $max-sm={{ width: 44, height: 44, ml: -22 }}
+          rounded={999}
+          items="center"
+          justify="center"
+          cursor="pointer"
+          bg={RAISED}
+          borderWidth={1}
+          borderColor="var(--border-strong)"
+          boxShadow="var(--shadow-lg)"
+          transition="quickest"
+          hoverStyle={{ bg: PICKED }}
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+          z={5}
+        >
+          <ArrowDown size={16} color={INK} aria-hidden />
+        </XStack>
+      ) : null}
+
       {bot ? (
-        <YStack width="100%" px={16} pb={12} gap={8} shrink={0} $max-md={{ px: 8, pb: 8 }}>
+        <YStack width="100%" maxW={760} mx="auto" minW={0} px={16} pb={14} gap={10} shrink={0} $max-md={{ px: 10, pb: 10 }}>
           {notice ? (
             <YStack
               data-parity-key="bots.notice"
@@ -451,21 +593,21 @@ export function Thread({
               borderWidth={1}
               borderColor={LINE}
               rounded={16}
-              pt={12}
-              pb={10}
+              pt={13}
+              pb={12}
               px={14}
-              gap={10}
+              gap={12}
             >
               <XStack items="flex-start" gap={10}>
-                <YStack pt={3}>
+                <YStack pt={2}>
                   <Gauge size={16} color={DIM} aria-hidden />
                 </YStack>
-                <YStack flex={1} minW={0}>
-                  <Text fontSize={15} lineHeight={22} color={INK}>
+                <YStack flex={1} minW={0} gap={4}>
+                  <Text fontSize={14} lineHeight={20} fontWeight="500" color={INK}>
                     {notice.message}
                   </Text>
                   {lifts(notice.resets, now, t) ? (
-                    <Text fontSize={15} lineHeight={22} color={DIM}>
+                    <Text fontSize={13} lineHeight={18} color={DIM}>
                       {lifts(notice.resets, now, t)}
                     </Text>
                   ) : null}
@@ -509,7 +651,7 @@ export function Thread({
           ) : null}
 
           {note ? (
-            <Text role="alert" fontSize={13} lineHeight={18} color={DIM} px={8}>
+            <Text role="alert" fontSize={13} lineHeight={18} color="var(--state-error)" px={8}>
               {note}
             </Text>
           ) : null}
@@ -524,10 +666,12 @@ export function Thread({
             }}
             control={32}
             width="100%"
+            minW={0}
           >
             <XStack
               data-parity-key="bots.composer"
-              height={46}
+              minH={46}
+              $max-sm={{ minH: 48, pl: 6, pr: 6, gap: 4 }}
               pl={7}
               pr={7}
               gap={6}
@@ -555,11 +699,13 @@ export function Thread({
                 disabled={!live}
                 fontSize={15}
                 px={4}
+                flex={1}
+                minW={0}
               />
               <Control asChild>
-                <Voice voice={voice} disabled={!live}>
+                <VoiceSlot voice={voice} disabled={!live}>
                   {(state) => <Mic size={15} fill={state === 'idle' ? 'none' : 'currentColor'} />}
-                </Voice>
+                </VoiceSlot>
               </Control>
               {hasDraft ? (
                 <Control type="submit" aria-label={t('Send')} fill disabled={!live || Boolean(pending)}>
