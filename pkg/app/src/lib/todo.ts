@@ -63,6 +63,80 @@ export const PRIORITIES = ['urgent', 'high', 'medium', 'low', 'none'] as const
 
 const STORAGE_KEY = 'hanzo_board_cards'
 
+/**
+ * What `/v1/task/*` answers when a caller has no forge seat yet in a
+ * platform-made code workspace, or when the org has no forge namespace yet
+ * (cloud apps/task/source.go). Opening `/v1/git/workspace` provisions both
+ * idempotently; an API-key refusal ("a seat in a code workspace is a person's")
+ * does not match and surfaces untouched.
+ */
+const UNSEATED = /no forge identity for this principal yet|no namespace on the forge yet/i
+
+const seatedByClient = new WeakMap<AiClient, Promise<unknown>>()
+
+function isUnseated(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false
+  const e = err as { status?: unknown; message?: unknown; body?: unknown }
+  if (e.status !== 403) return false
+  const detail =
+    typeof e.body === 'object' && e.body !== null && 'detail' in e.body
+      ? String((e.body as { detail?: unknown }).detail ?? '')
+      : typeof e.body === 'string'
+        ? e.body
+        : ''
+  const text = `${typeof e.message === 'string' ? e.message : ''} ${detail}`
+  return UNSEATED.test(text)
+}
+
+function seatWorkspace(client: AiClient): Promise<unknown> {
+  let pending = seatedByClient.get(client)
+  if (!pending) {
+    pending = client.http
+      .json<unknown>({
+        method: 'POST',
+        path: '/v1/git/workspace',
+        body: {},
+      })
+      .catch((e: unknown) => {
+        seatedByClient.delete(client)
+        throw e
+      })
+    seatedByClient.set(client, pending)
+  }
+  return pending
+}
+
+/** Runs a `/v1/task/*` request, seating the caller on the forge once if 403 unseated. */
+async function seated<T>(client: AiClient, run: () => Promise<T>): Promise<T> {
+  try {
+    return await run()
+  } catch (e) {
+    if (!isUnseated(e)) throw e
+    await seatWorkspace(client)
+    return run()
+  }
+}
+
+function normalizeBoardKey(key: string): string {
+  return key.trim().toLowerCase().replace(/_/g, '-')
+}
+
+function projectBoardKey(p: { id?: string; slug?: string; name?: string; repo?: { url?: string } }): string {
+  const repoUrl = p.repo?.url?.trim()
+  if (repoUrl) {
+    try {
+      const parsed = new URL(repoUrl)
+      if (/^git\./i.test(parsed.hostname)) {
+        const segs = parsed.pathname.replace(/\/+$/, '').split('/').filter(Boolean)
+        const last = segs[segs.length - 1]?.replace(/\.git$/i, '')
+        if (last) return last
+      }
+    } catch {}
+  }
+  if (p.slug?.trim()) return p.slug.trim()
+  return (p.name || p.id || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+}
+
 export const DEFAULT_CARDS: Card[] = [
   {
     id: 'hanzo-1',
@@ -186,11 +260,13 @@ export async function board(
     if (params.status) query.status = params.status
     if (params.label) query.label = params.label
     if (params.scheduled !== undefined) query.scheduled = String(params.scheduled)
-    const out = await client.http.json<{ issues?: Card[]; items?: Card[] } | Card[]>({
-      path: '/v1/task/board',
-      query,
-      signal,
-    })
+    const out = await seated(client, () =>
+      client.http.json<{ issues?: Card[]; items?: Card[] } | Card[]>({
+        path: '/v1/task/board',
+        query,
+        signal,
+      }),
+    )
     const fetched = rows(out)
     // A SUCCESSFUL READ IS THE ANSWER, EMPTY OR NOT. An org whose board holds
     // no cards yet is a fact about the org — the empty state a reader is owed
@@ -214,32 +290,42 @@ export function targetOf(own: string | undefined, shown: string, keys: string[])
   return own || (shown && shown !== 'all' ? shown : '') || keys[0] || ''
 }
 
-/** The boards the server names (todo's own, then the forge's projects), added to `map` when one is given; with a fresh map, no stand-ins. */
+/** The boards the server names (task's own, then the org's projects), added to `map` when one is given; with a fresh map, no stand-ins. */
 async function served(
   client: AiClient,
   signal?: AbortSignal,
   map = new Map<string, { key: string; name?: string }>(),
 ): Promise<{ key: string; name?: string }[]> {
   const [todoPs, devPs] = await Promise.all([
-    client.http
-      .json<{ projects?: unknown[] } | unknown[]>({
+    seated(client, () =>
+      client.http.json<{ projects?: unknown[] } | unknown[]>({
         path: '/v1/task/projects',
         signal,
-      })
-      .catch(() => null),
+      }),
+    ).catch(() => null),
     client.http
-      .json<{ id: string; name: string }[]>({
+      .json<{ id: string; slug?: string; name?: string; repo?: { url?: string } }[]>({
         path: '/v1/project',
         signal,
       })
       .catch(() => null),
   ])
+  const seen = new Set<string>(Array.from(map.keys(), normalizeBoardKey))
   for (const p of rows(todoPs) as { key: string; name?: string }[]) {
-    if (p?.key) map.set(p.key, { key: p.key, name: p.name || p.key })
+    if (!p?.key) continue
+    const norm = normalizeBoardKey(p.key)
+    if (!map.has(p.key) && !seen.has(norm)) {
+      map.set(p.key, { key: p.key, name: p.name || p.key })
+      seen.add(norm)
+    }
   }
   for (const p of Array.isArray(devPs) ? devPs : []) {
-    const k = (p.name || p.id).toLowerCase().replace(/[^a-z0-9]+/g, '-')
-    if (k && !map.has(k)) map.set(k, { key: k, name: p.name || k })
+    const k = projectBoardKey(p)
+    const norm = normalizeBoardKey(k)
+    if (k && !map.has(k) && !seen.has(norm)) {
+      map.set(k, { key: k, name: p.name || k })
+      seen.add(norm)
+    }
   }
   return Array.from(map.values())
 }
@@ -262,9 +348,8 @@ export async function projects(
   ]
   if (!client) return fallback
   try {
-    const map = new Map<string, { key: string; name?: string }>()
-    for (const f of fallback) map.set(f.key, f)
-    return await served(client, signal, map)
+    const live = await served(client, signal)
+    return live.length > 0 ? live : fallback
   } catch {
     return fallback
   }
@@ -298,12 +383,14 @@ export async function open(
 
   if (client) {
     try {
-      const created = await client.http.json<Card>({
-        method: 'POST',
-        path: `/v1/task/projects/${encodeURIComponent(key)}/issues`,
-        body: card,
-        signal,
-      })
+      const created = await seated(client, () =>
+        client.http.json<Card>({
+          method: 'POST',
+          path: `/v1/task/projects/${encodeURIComponent(key)}/issues`,
+          body: card,
+          signal,
+        }),
+      )
       if (created?.id) {
         saveLocalCards([created, ...current])
         return created
@@ -357,12 +444,14 @@ export async function edit(
 
   if (client) {
     try {
-      const serverUpdated = await client.http.json<Card>({
-        method: 'PATCH',
-        path: `/v1/task/projects/${encodeURIComponent(key)}/issues/${num}`,
-        body: patch,
-        signal,
-      })
+      const serverUpdated = await seated(client, () =>
+        client.http.json<Card>({
+          method: 'PATCH',
+          path: `/v1/task/projects/${encodeURIComponent(key)}/issues/${num}`,
+          body: patch,
+          signal,
+        }),
+      )
       if (serverUpdated?.id) {
         return serverUpdated
       }
@@ -381,12 +470,14 @@ export async function claim(
 ): Promise<Card> {
   if (client) {
     try {
-      return await client.http.json<Card>({
-        method: 'POST',
-        path: `/v1/task/projects/${encodeURIComponent(key)}/issues/${num}/claim`,
-        body: {},
-        signal,
-      })
+      return await seated(client, () =>
+        client.http.json<Card>({
+          method: 'POST',
+          path: `/v1/task/projects/${encodeURIComponent(key)}/issues/${num}/claim`,
+          body: {},
+          signal,
+        }),
+      )
     } catch {}
   }
   return edit(client, key, num, { assignee: 'me' }, signal)

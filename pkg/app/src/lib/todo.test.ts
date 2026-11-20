@@ -70,12 +70,73 @@ describe('home', () => {
   const asked = (task: unknown, dev: unknown) => ({
     http: { json: async ({ path }: { path: string }) => { if (path === '/v1/task/projects') return task; return dev } },
   }) as never
-  it('is the first board the server names, never a stand-in', async () => {
+  it('prefers real server boards over demo stand-ins and deduplicates mirror keys', async () => {
     expect(await home(asked({ projects: [{ key: 'acme' }] }, []))).toBe('acme')
-    expect((await projects(asked({ projects: [{ key: 'acme' }] }, [])))[0]!.key).toBe('hanzo')
+    expect((await projects(asked({ projects: [{ key: 'acme' }] }, []))).map((p) => p.key)).toEqual(['acme'])
+    expect((await projects(asked({ projects: [] }, [])))[0]!.key).toBe('hanzo')
+    expect(
+      (
+        await projects(
+          asked(
+            { projects: [{ key: 'cssprod_sroute', name: 'cssprod_sroute' }] },
+            [{ id: 'p1', slug: 'cssprod-sroute', name: 'Sroute', repo: { url: 'https://git.hanzo.ai/mvee85560/cssprod_sroute' } }],
+          ),
+        )
+      ).map((p) => p.key),
+    ).toEqual(['cssprod_sroute'])
+    expect(
+      (
+        await projects(
+          asked(
+            { projects: [] },
+            [{ id: 'p1', slug: 'cssprod-sroute', name: 'Sroute', repo: { url: 'https://git.hanzo.ai/mvee85560/cssprod_sroute' } }],
+          ),
+        )
+      ).map((p) => p.key),
+    ).toEqual(['cssprod_sroute'])
   })
   it('is null when the server names none or cannot be asked', async () => {
     expect(await home(asked({ projects: [] }, []))).toBeNull()
     expect(await home({ http: { json: async () => { throw new Error('down') } } } as never)).toBeNull()
+  })
+})
+
+describe('forge workspace seating', () => {
+  afterEach(() => vi.unstubAllGlobals())
+  it('seats the caller via POST /v1/git/workspace once on 403 unseated and retries', async () => {
+    const kept = new Map<string, string>()
+    vi.stubGlobal('window', { localStorage: { getItem: (k: string) => kept.get(k) ?? null, setItem: (k: string, v: string) => void kept.set(k, v) } })
+    let seated = false
+    const seen: string[] = []
+    const client = {
+      http: {
+        json: async ({ method = 'GET', path }: { method?: string; path: string }) => {
+          seen.push(`${method} ${path}`)
+          if (method === 'POST' && path === '/v1/git/workspace') {
+            seated = true
+            return { owner: 'mvee85560', made: true }
+          }
+          if (path.startsWith('/v1/task/') && !seated) {
+            throw Object.assign(new Error('HTTP 403'), {
+              status: 403,
+              body: { detail: 'no forge identity for this principal yet; open Codebase, Projects or Issues in Hanzo Dev to set it up' },
+            })
+          }
+          if (path === '/v1/task/board') return [{ id: '1', identifier: 'CSSPROD_SROUTE#1', projectKey: 'cssprod_sroute', number: 1, kind: 'issue', source: 'git', title: 'Live card', status: 'todo', priority: 'none', labels: [], createdAt: 1, updatedAt: 1 }]
+          if (path === '/v1/task/projects') return [{ key: 'cssprod_sroute', name: 'cssprod_sroute' }]
+          if (method === 'POST' && path === '/v1/task/projects/cssprod_sroute/issues') return { id: '2', identifier: 'CSSPROD_SROUTE#2', projectKey: 'cssprod_sroute', number: 2, kind: 'issue', source: 'git', title: 'Created after seat', status: 'todo', priority: 'none', labels: [], createdAt: 2, updatedAt: 2 }
+          return []
+        },
+      },
+    } as never
+
+    const [cards, ps] = await Promise.all([board(client), projects(client)])
+    expect(cards.map((c) => c.title)).toEqual(['Live card'])
+    expect(ps.map((p) => p.key)).toEqual(['cssprod_sroute'])
+    expect(seen.filter((s) => s === 'POST /v1/git/workspace')).toHaveLength(1)
+
+    const created = await open(client, 'cssprod_sroute', { title: 'Created after seat' })
+    expect(created.local).toBeUndefined()
+    expect(created.id).toBe('2')
   })
 })
