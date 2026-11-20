@@ -2,19 +2,23 @@ import { createElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-const { part, row, convMenu, presses, state } = vi.hoisted(() => {
+const { part, row, convMenu, presses, state, devState, capturedActions } = vi.hoisted(() => {
   type Part = { children?: ReactNode; 'data-slot'?: string; 'aria-label'?: string; 'aria-expanded'?: boolean; active?: boolean }
   const presses: (() => void)[] = []
   const state = { threads: [] as { id: string; title: string; updatedAt: string; pinned?: boolean }[] }
+  const devState = { sessions: [] as { id: string; title: string; status: string; createdAt: string }[] }
+  const capturedActions: { remove?: (t: { id: string; title?: string }) => Promise<boolean>; rename?: (t: { id: string; title?: string }, next: string) => Promise<boolean> }[] = []
   const part = ({ children, 'data-slot': slot, 'aria-label': label, 'aria-expanded': expanded }: Part) =>
     createElement('div', { 'data-slot': slot, 'aria-label': label, 'aria-expanded': expanded }, children)
-  const convMenu = ({ children, canShare }: { children?: ReactNode; canShare?: boolean }) =>
-    createElement('div', { 'data-slot': 'conv-menu', 'data-share': String(Boolean(canShare)) }, children)
+  const convMenu = ({ children, canShare, customActions }: { children?: ReactNode; canShare?: boolean; customActions?: typeof capturedActions[number] }) => {
+    if (customActions) capturedActions.push(customActions)
+    return createElement('div', { 'data-slot': 'conv-menu', 'data-share': String(Boolean(canShare)) }, children)
+  }
   const row = ({ children, active, onPress }: Part & { onPress?: () => void }) => {
     if (onPress) presses.push(onPress)
     return createElement('div', { 'data-slot': 'row', 'aria-current': active ? 'page' : undefined }, children)
   }
-  return { part, row, convMenu, presses, state }
+  return { part, row, convMenu, presses, state, devState, capturedActions }
 })
 
 vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s, dir: 'ltr' }) }))
@@ -23,7 +27,7 @@ vi.mock('lucide-react', () => ({ CheckSquare: () => null, ChevronDown: () => nul
 vi.mock('@hanzo/build', () => ({
   DOTS: { running: 'running', done: 'done', error: 'error' },
   route: () => ({ kind: 'new' }),
-  useSessions: () => ({ value: [], loading: false, error: null, reload: () => {} }),
+  useSessions: () => ({ value: devState.sessions, loading: false, error: null, reload: () => {} }),
 }))
 vi.mock('@hanzo/ui', () => ({
   DropdownMenu: ({ items }: { items: { key: string }[] }) => createElement('div', { 'data-slot': 'menu' }, items.map((i) => createElement('span', { key: i.key, 'data-item': i.key }))),
@@ -53,6 +57,9 @@ const now = Date.now()
 afterEach(() => {
   presses.length = 0
   state.threads = []
+  devState.sessions = []
+  capturedActions.length = 0
+  vi.unstubAllGlobals()
   vi.doUnmock('@hanzo/studio')
 })
 
@@ -106,5 +113,35 @@ describe('Design’s Recents & collapsible Pinned section', () => {
     expect(html).not.toContain('data-slot="recents"')
     expect(html).not.toContain('Nothing made yet.')
     expect(html).not.toContain('No chats yet.')
+  })
+
+  test('deleting or renaming a Dev run sends Authorization and X-Org-Id to /v1/agent/sessions/:id', async () => {
+    const calls: { url: string; method?: string; headers?: Record<string, string> }[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        calls.push({ url, method: init?.method, headers: init?.headers as Record<string, string> })
+        return { ok: true, status: 200 }
+      }),
+    )
+    devState.sessions = [{ id: 'sess_del_1', title: 'Old run', status: 'done', createdAt: new Date(now - 60_000).toISOString() }]
+    const { Recents } = await import('./Recents')
+    const host = { api: 'https://api.hanzo.ai', org: 'mvee85560', token: () => 'tok_123', path: '', go: () => {} } as never
+    renderToStaticMarkup(createElement(Recents, { host, mode: 'dev', thread: null, onOpen: () => {}, onNew: () => {} }))
+    expect(capturedActions.length).toBeGreaterThan(0)
+    await capturedActions[0]!.remove?.({ id: 'sess_del_1', title: 'Old run' })
+    await capturedActions[0]!.rename?.({ id: 'sess_del_1', title: 'Old run' }, 'Renamed run')
+    expect(calls).toEqual([
+      {
+        url: 'https://api.hanzo.ai/v1/agent/sessions/sess_del_1',
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer tok_123', 'X-Org-Id': 'mvee85560' },
+      },
+      {
+        url: 'https://api.hanzo.ai/v1/agent/sessions/sess_del_1',
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer tok_123', 'X-Org-Id': 'mvee85560' },
+      },
+    ])
   })
 })

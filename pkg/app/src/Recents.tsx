@@ -339,12 +339,12 @@ function Runs({ host, view, keep, onOpen }: { host: Host; view: View; keep: (v: 
         if (!title || title === (t.title ?? '')) return true
         patchMeta(t.id, { title })
         const tok = host.token?.()
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (tok) headers.Authorization = `Bearer ${tok}`
+        if (host.org) headers['X-Org-Id'] = host.org
         void fetch(`${host.api}/v1/agent/sessions/${encodeURIComponent(t.id)}`, {
           method: 'PATCH',
-          headers: {
-            ...(tok ? { Authorization: `Bearer ${tok}` } : {}),
-            'Content-Type': 'application/json',
-          },
+          headers,
           body: JSON.stringify({ title }),
         }).catch(() => {})
         return true
@@ -352,9 +352,12 @@ function Runs({ host, view, keep, onOpen }: { host: Host; view: View; keep: (v: 
       remove: async (t: Thread) => {
         patchMeta(t.id, { deleted: true })
         const tok = host.token?.()
+        const headers: Record<string, string> = {}
+        if (tok) headers.Authorization = `Bearer ${tok}`
+        if (host.org) headers['X-Org-Id'] = host.org
         void fetch(`${host.api}/v1/agent/sessions/${encodeURIComponent(t.id)}`, {
           method: 'DELETE',
-          headers: tok ? { Authorization: `Bearer ${tok}` } : {},
+          headers,
         }).catch(() => {})
         return true
       },
