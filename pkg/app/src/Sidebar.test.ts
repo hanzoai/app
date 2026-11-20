@@ -76,6 +76,7 @@ vi.mock('@hanzo/build', () => {
     MARKS,
     DOTS: {},
     Gutter: () => null,
+    Rename: () => null,
     route,
     useSessions: () => ({ value: [], loading: false, error: null, reload: () => {} }),
     useLanguage: () => ['', () => {}] as const,

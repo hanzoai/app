@@ -9,13 +9,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button, Skeleton, Text, View, XStack, YStack } from '@hanzo/ui'
 import { useFleet, Workspace } from '@hanzo/tabs'
 import { useI18n } from '@hanzo/i18n/react'
-import { useIam } from '@hanzo/iam/react'
 import { Cloud, Globe, Laptop, Monitor, SquareTerminal } from 'lucide-react'
 import { api } from './lib/api'
 import { enter, LOGIN } from './lib/destination'
-import { formatDeviceLabel, useDevMode } from './lib/dev-mode'
+import { useDeviceNames } from '@hanzo/build/names'
+import { useDevMode } from './lib/dev-mode'
+import { showDevice } from './lib/devices'
 import { InfoHint } from './lib/info-hint'
-import { bearer, named } from './lib/session'
+import { bearer } from './lib/session'
 
 type LaunchKind = 'dev' | 'desktop' | 'browser'
 
@@ -90,7 +91,6 @@ function TerminalsSkeleton({ label }: { label: string }) {
 
 export default function Terminals() {
   const { t } = useI18n()
-  const { user } = useIam()
   const [devMode] = useDevMode()
   const token = bearer()
   const fleet = useFleet(token, api())
@@ -100,38 +100,24 @@ export default function Terminals() {
   const [pendingAction, setPendingAction] = useState<{ kind: 'shell' | 'page' | 'desktop'; machine: string } | null>(null)
   const launching = launchingKind !== null
 
-  const firstName = useMemo(() => {
-    const u = user as { displayName?: string; name?: string } | null
-    const raw = (u?.displayName || u?.name || named()?.display || named()?.name || '').trim()
-    if (!raw || raw.includes('@')) return null
-    const first = raw.split(/\s+/)[0]?.trim()
-    return first ? first.charAt(0).toUpperCase() + first.slice(1) : null
-  }, [user])
+  // The names a person gave their devices (kept on their account; the sidebar renames them).
+  const names = useDeviceNames()
 
+  // Each machine as a person reads it: "Alex's MacBook Pro", its hardware and hostname beneath (hanzo-inc/app issue 311).
+  // `label` came from the fleet as the hardware; it is the name now, for the workspace's panes.
   const hosts = useMemo(
     () =>
       fleet.hosts.map((h) => {
-        const rawLabel = h.label || h.machine
-        const looksLikeMacHost =
-          /[a-z0-9]*mac\.(local|lan|home)\b/i.test(h.machine) ||
-          /macbook|imac|mac-mini|mac-studio/i.test(rawLabel)
-        const formatted = formatDeviceLabel(h.sandbox ? 'Cloud' : rawLabel, {
-          firstName,
-          os: looksLikeMacHost ? 'darwin' : undefined,
-          kind: looksLikeMacHost ? 'laptop' : undefined,
-          devMode,
-        })
-        const detail = devMode
-          ? [h.label, formatted.detail, h.machine !== formatted.title ? h.machine : ''].filter(Boolean).join(' · ')
-          : formatted.detail
+        const shown = showDevice({ machine: h.machine, hardware: h.label, sandbox: Boolean(h.sandbox) }, names, devMode, t)
         return {
           ...h,
-          label: formatted.title,
-          title: formatted.title,
-          detail: detail || undefined,
+          hardware: h.label,
+          label: shown.title,
+          title: shown.title,
+          detail: shown.detail,
         }
       }),
-    [fleet.hosts, firstName, devMode],
+    [fleet.hosts, names, devMode, t],
   )
 
   const liveHosts = useMemo(
@@ -172,9 +158,12 @@ export default function Terminals() {
   useEffect(() => {
     if (typeof window === 'undefined' || !fleet.read) return
     try {
+      // What the sidebar lists under Tabs: the machine as the fleet names it and its hardware, so the sidebar draws the
+      // same name and a rename shows there at once.
       const lite = liveHosts.map((h) => ({
         machine: h.machine,
-        label: devMode ? h.label || h.machine : (h.title || h.machine),
+        hardware: h.hardware || undefined,
+        sandbox: Boolean(h.sandbox) || undefined,
         status: h.status,
         desktop: Boolean(h.screen),
       }))
@@ -183,7 +172,7 @@ export default function Terminals() {
     } catch {
       // ignore storage errors
     }
-  }, [liveHosts, fleet.read, devMode])
+  }, [liveHosts, fleet.read])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -482,9 +471,7 @@ export default function Terminals() {
                         <Laptop size={15} color="var(--muted-foreground)" aria-hidden />
                         <YStack flex={1} minW={0} items="flex-start" gap="$0.5">
                           <Text fontSize="$2" fontWeight="500" color="$ink" numberOfLines={1} text="start">
-                            {/^local\b/i.test(host.title || host.machine)
-                              ? host.title || host.machine
-                              : t('Local · {name}', { name: host.title || host.machine })}
+                            {host.title || host.machine}
                           </Text>
                           <Text fontSize="$1" color="$soft" numberOfLines={1} text="start">
                             {host.detail || t('Connected local machine')}

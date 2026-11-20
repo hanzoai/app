@@ -35,6 +35,7 @@ import {
   Monitor,
   MoreHorizontal,
   PanelLeftClose,
+  Pencil,
   Pin,
   PinOff,
   Plus,
@@ -43,7 +44,9 @@ import {
   Settings,
   Sparkles,
 } from 'lucide-react'
-import { DOTS, Gutter, library, MARKS, NEW, own, tabs, useLanguage, useScheduled, useSessions, type Host } from '@hanzo/build'
+import { DOTS, Gutter, library, MARKS, NEW, own, Rename, tabs, useLanguage, useScheduled, useSessions, type Host } from '@hanzo/build'
+import { rename, useDeviceNames, type Names } from '@hanzo/build/names'
+import { showDevice, showShell, type Shown } from './lib/devices'
 
 type Theme = NonNullable<Host['theme']>
 import { tidy } from './lib/title'
@@ -105,7 +108,8 @@ const ROW = {
 /** A sidebar link row spans the column width so hover and active pills align with Recents. */
 const COMPACT_ROW = ROW
 
-type SidebarPlaceLink = RailLink & { hint?: string }
+/** A row under a place: `hint` is its info tip; `rename`, a device's or a shell's, opens Rename from its menu. */
+type SidebarPlaceLink = RailLink & { hint?: string; rename?: () => void }
 
 /** The run activity behind the bell: the runs that moved last, newest first. */
 const RECENT = 6
@@ -411,6 +415,9 @@ function PlaceRow({
   const MakeIcon = makeIcon
 
   const menuItems: NonNullable<DropdownMenuProps['items']> = [
+    ...(link.rename
+      ? [{ key: 'rename', label: t('Rename…'), icon: <Pencil size={15} aria-hidden />, onSelect: link.rename }]
+      : []),
     ...(routePath
       ? [
           {
@@ -555,11 +562,20 @@ function PlaceRow({
   )
 }
 
+/** A machine as Terminals lists it for the sidebar (`hanzo.tabs.fleet`): as the fleet names it, with its hardware. */
 interface TabsFleetHost {
   machine: string
-  label?: string
+  hardware?: string
+  sandbox?: boolean
   status?: string
   desktop?: boolean
+}
+
+/** A device or shell being renamed from its row: the key its name is kept under, the name it has, and its own. */
+interface Renaming {
+  key: string
+  name: string
+  fallback: string
 }
 
 interface TabsSavedBind {
@@ -579,6 +595,8 @@ function useTabsGroups(
   t: (key: string, params?: Record<string, string | number>) => string,
   active: boolean,
   devMode: boolean,
+  names: Names,
+  onRename: (what: Renaming) => void,
 ): { id: string; label: string; links: SidebarPlaceLink[] }[] {
   const [fleet, setFleet] = useState<TabsFleetHost[]>([])
   const [bind, setBind] = useState<Record<string, TabsSavedBind>>({})
@@ -663,16 +681,30 @@ function useTabsGroups(
         : []),
     ]
 
+    // Each device and shell by the name a person reads (hanzo-inc/app issue 311): theirs if they gave it one, else
+    // "Alex's MacBook Pro" for Alexs-MacBook-Pro.local; the hostname and hardware stay in the detail.
     const liveFleet = fleet.filter((h) => h.status !== 'offline')
-    const deviceLinks: SidebarPlaceLink[] = liveFleet.map((h) => ({
-      id: `sandbox-${h.machine}`,
-      label: h.label ? `${h.machine} · ${h.label}` : h.machine,
-      hint: h.desktop
-        ? t('Connect to this device’s live desktop session.')
-        : t('Open a terminal shell on this connected device.'),
-      icon: h.desktop ? <Monitor size={15} aria-hidden /> : <Cloud size={15} aria-hidden />,
-      onPress: () => dispatchTabsAction({ kind: h.desktop ? 'desktop' : 'shell', machine: h.machine }),
-    }))
+    const device = (machine: string) => {
+      const h = fleet.find((f) => f.machine === machine)
+      return showDevice({ machine, hardware: h?.hardware, sandbox: h?.sandbox }, names, devMode, t)
+    }
+    const renamer = (shown: Shown, fallback: string) => () => onRename({ key: shown.key, name: shown.title, fallback })
+    const deviceLinks: SidebarPlaceLink[] = liveFleet.map((h) => {
+      const shown = device(h.machine)
+      return {
+        id: `sandbox-${h.machine}`,
+        label: shown.title,
+        hint: [
+          h.desktop ? t('Connect to this device’s live desktop session.') : t('Open a terminal shell on this connected device.'),
+          shown.detail,
+        ]
+          .filter(Boolean)
+          .join(' '),
+        icon: h.desktop ? <Monitor size={15} aria-hidden /> : <Cloud size={15} aria-hidden />,
+        onPress: () => dispatchTabsAction({ kind: h.desktop ? 'desktop' : 'shell', machine: h.machine }),
+        rename: renamer(shown, showDevice({ machine: h.machine, hardware: h.hardware, sandbox: h.sandbox }, {}, devMode, t).title),
+      }
+    })
 
     const knownMachines = fleet.length > 0 ? new Set(liveFleet.map((h) => h.machine)) : null
     const recentLinks: SidebarPlaceLink[] = Object.entries(bind)
@@ -689,7 +721,7 @@ function useTabsGroups(
         if (b.kind === 'screen') {
           return {
             id: `tab-${id}`,
-            label: b.machine ? `${t('Desktop')} · ${b.machine}` : t('Desktop'),
+            label: b.machine ? `${t('Desktop')} · ${device(b.machine).title}` : t('Desktop'),
             icon: <Monitor size={15} aria-hidden />,
             onPress: () => dispatchTabsAction({ kind: 'focus', id }),
           }
@@ -712,11 +744,22 @@ function useTabsGroups(
         }
         const machine = b.shell?.machine ?? b.machine
         const name = b.shell?.name
+        if (!machine) {
+          return {
+            id: `tab-${id}`,
+            label: t('Terminal'),
+            icon: <MARKS.tabs.icon size={15} aria-hidden />,
+            onPress: () => dispatchTabsAction({ kind: 'focus', id }),
+          }
+        }
+        const own = device(machine)
+        const shown = showShell(own, machine, name, names)
         return {
           id: `tab-${id}`,
-          label: machine ? `${machine}${name ? ` (${name})` : ''}` : t('Terminal'),
+          label: shown.title,
           icon: <MARKS.tabs.icon size={15} aria-hidden />,
           onPress: () => dispatchTabsAction({ kind: 'focus', id }),
+          rename: renamer(shown, showShell(own, machine, name, {}).title),
         }
       })
 
@@ -725,7 +768,7 @@ function useTabsGroups(
       ...(deviceLinks.length > 0 ? [{ id: 'devices', label: t('Devices'), links: deviceLinks }] : []),
       ...(recentLinks.length > 0 ? [{ id: 'recent-tabs', label: t('Open tabs'), links: recentLinks }] : []),
     ]
-  }, [active, bind, devMode, fleet, t])
+  }, [active, bind, devMode, fleet, names, onRename, t])
 }
 
 function Activity({ host }: { host: Host }) {
@@ -883,7 +926,12 @@ export function Sidebar({
   const Make = mode === 'chat' || mode === 'dev' || mode === 'tabs' || mode === 'studio' ? MARKS[mode].make : MARKS.chat.make
 
   const scheduled = useScheduled(host, dev, at === 'scheduled')
-  const tabsGroups = useTabsGroups(t, mode === 'tabs', devMode)
+  // The names a person gave their devices and shells, read from their account once per page (hanzo-inc/app issue 311).
+  // A host with no bearer (signed out, or a host that reads none) keeps the names in this browser only.
+  const account = !anon && typeof host.token === 'function' ? host : null
+  const names = useDeviceNames(account)
+  const [renaming, setRenaming] = useState<Renaming | null>(null)
+  const tabsGroups = useTabsGroups(t, mode === 'tabs', devMode, names, setRenaming)
   const { open: betaOpen } = useBetas()
   const hostedGroups = useMemo(() => {
     if (mode !== 'hosted') return []
@@ -1722,6 +1770,18 @@ export function Sidebar({
             label={t('Resize sidebar')}
           />
         )}
+        <Rename
+          open={renaming !== null}
+          onOpenChange={(o) => !o && setRenaming(null)}
+          title={t('Rename')}
+          name={renaming?.name ?? ''}
+          // The name is the person's, kept on their account; typed back to its own name, it keeps none. A save the account
+          // refuses still keeps it in this browser.
+          run={async (next) => {
+            if (!renaming) return
+            await rename(renaming.key, next === renaming.fallback ? '' : next, account).catch(() => {})
+          }}
+        />
       </YStack>
     </TooltipProvider>
   )

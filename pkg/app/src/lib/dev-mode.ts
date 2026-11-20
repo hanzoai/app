@@ -1,3 +1,4 @@
+import { formatDeviceLabel as formatBuilt } from '@hanzo/build/dev-mode'
 import { useCallback, useSyncExternalStore } from 'react'
 
 export const DEV_MODE_KEY = 'hanzo.dev_mode'
@@ -42,59 +43,23 @@ export function useDevMode(): [boolean, (next: boolean) => void] {
 }
 
 export interface DeviceLabelOptions {
+  /** Unused: a device is named from its own hostname now (@hanzo/build `friendly`), not the reader's name. */
   firstName?: string | null
   kind?: string | null
   os?: string | null
   devMode?: boolean
+  /** The hardware it reported, kept for the detail. */
+  hardware?: string | null
+  /** The name the person gave it (@hanzo/build `useDeviceNames`). */
+  name?: string | null
 }
 
-export function formatDeviceLabel(
-  raw: string | null | undefined,
-  opts: DeviceLabelOptions = {},
-): { title: string; detail?: string } {
-  const cleanRaw = (raw ?? '').trim()
-  if (!cleanRaw) return { title: 'Cloud' }
-  if (opts.devMode) return { title: cleanRaw }
-
-  const lower = cleanRaw.toLowerCase()
-
-  if (
-    lower === 'hanzo sandbox' ||
-    lower === 'sandbox' ||
-    lower === 'cloud' ||
-    /^cloud(-\d+)?(\b|\s|·)/.test(lower)
-  ) {
-    return {
-      title: 'Auto (Cloud)',
-      detail: cleanRaw === 'Cloud' ? 'Managed Hanzo cloud workspace' : cleanRaw,
-    }
-  }
-
-  // Strip shell/tmux/hardware suffixes for the human-facing title while keeping full detail for tooltip
-  const basePart = cleanRaw
-    .split(/\s*·\s*/)[0]
-    .replace(/\s*\((?:shell|desk|tmux|tty)[^)]*\)\s*$/i, '')
-    .replace(/\.(local|lan|home|internal)$/i, '')
-    .replace(/-\d+$/, '')
-    .trim()
-
-  if (
-    /macbook|\b(imac|mac-studio|mac-mini|mac|laptop|desktop|workstation|localhost|local)\b/i.test(cleanRaw) ||
-    opts.os === 'darwin' ||
-    opts.kind === 'laptop' ||
-    opts.kind === 'desktop' ||
-    /^tgt_[a-z0-9]+$/i.test(basePart)
-  ) {
-    const title = 'Local - Device'
-    return { title, detail: cleanRaw !== title ? cleanRaw : undefined }
-  }
-
-  const humanized = basePart
-    .replace(/[-_]+/g, ' ')
-    .trim()
-
-  const title = humanized ? `Local - ${humanized}` : 'Local - Device'
-  return { title, detail: cleanRaw !== title ? cleanRaw : undefined }
+/**
+ * A device as a person reads it: @hanzo/build's naming, the one Dev, Settings → Machines and Tabs draw
+ * (`Alexs-MacBook-Pro.local` → "Alex's MacBook Pro", hardware and hostname in the detail; hanzo-inc/app issue 311).
+ */
+export function formatDeviceLabel(raw: string | null | undefined, opts: DeviceLabelOptions = {}): { title: string; detail?: string } {
+  return formatBuilt(raw, { hardware: opts.hardware, name: opts.name, devMode: opts.devMode })
 }
 
 export function rememberSettingsReturn(path?: string): void {
