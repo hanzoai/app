@@ -53,39 +53,54 @@ export const RAIL_FOLDED = 52
 /** A mark on a touch screen, px: a thumb's 44. */
 const TOUCH = 44
 
-/** Where the pinned apps are kept: on the account (`usePref`), under the key this browser has always used, so earlier pins stay. */
+/** Where an earlier version kept the menu (the five apps, then the reader's pins), on the account. Read once, to carry those pins over. */
 export const NAV_PINNED_KEY = 'hanzo.nav.pinned'
-export const DEFAULT_PINNED_NAV: readonly string[] = ['chat', 'dev', 'design', 'library', 'tabs']
+/** Where the reader's pins are kept, on the account (`usePref`), so they follow them to every device: only what they pinned, in their order. */
+export const NAV_PINS_KEY = 'hanzo.nav.pins'
 
-const CORE_NAV_SET = new Set<string>(DEFAULT_PINNED_NAV)
+/** The menu as it stands when nothing is pinned, in its order: each app's default place. */
+export const DEFAULT_NAV: readonly string[] = ['chat', 'dev', 'design', 'library', 'tabs']
+/** The old name of `DEFAULT_NAV`, for importers that still read it. */
+export const DEFAULT_PINNED_NAV = DEFAULT_NAV
 
-/** The reader's own order, with all 5 core apps (Chat, Dev, Design, Library, Tabs) anchored at the top and never dropped into More. */
-export function normalizePinnedNav(list: readonly string[]): string[] {
-  const ordered = [...new Set(list.filter(Boolean))]
-  return [...DEFAULT_PINNED_NAV.filter((id) => !ordered.includes(id)), ...ordered]
+const CORE_NAV_SET = new Set<string>(DEFAULT_NAV)
+
+/** The reader's pins, each once, in their order. */
+export function cleanPinnedNav(list: readonly unknown[]): string[] {
+  return [...new Set(list.filter((id): id is string => typeof id === 'string' && id.length > 0))]
 }
 
-/** `list` with `id` pinned or unpinned; the core apps stay. */
+/**
+ * The pins an earlier version kept (`NAV_PINNED_KEY`: the five apps, then what the reader pinned from More): the ones
+ * pinned from More stay pinned, and the five go back to their default places.
+ */
+export function carriedPinnedNav(list: unknown): string[] {
+  return Array.isArray(list) ? cleanPinnedNav(list).filter((id) => !CORE_NAV_SET.has(id)) : []
+}
+
+/** `list` with `id` pinned (to the end of the pins, so at the top of the menu, under the ones pinned before it) or unpinned (back to its default place). */
 export function toggledPinnedNav(list: readonly string[], id: string): string[] {
-  if (!id || CORE_NAV_SET.has(id)) return normalizePinnedNav(list)
-  return normalizePinnedNav(list.includes(id) ? list.filter((item) => item !== id) : [...list, id])
+  const pins = cleanPinnedNav(list)
+  if (!id) return pins
+  return pins.includes(id) ? pins.filter((item) => item !== id) : [...pins, id]
 }
 
-/** `list` with `sourceId` moved to where `targetId` stands. */
+/** `list` with `sourceId` moved to where `targetId` stands, pinning it on the way when it was not; `targetId` not pinned puts it last. */
 export function reorderedPinnedNav(list: readonly string[], sourceId: string, targetId: string): string[] {
-  if (!sourceId || !targetId || sourceId === targetId) return normalizePinnedNav(list)
-  const without = list.filter((id) => id !== sourceId)
+  const pins = cleanPinnedNav(list)
+  if (!sourceId || sourceId === targetId) return pins
+  const without = pins.filter((id) => id !== sourceId)
   const at = without.indexOf(targetId)
   without.splice(at < 0 ? without.length : at, 0, sourceId)
-  return normalizePinnedNav(without)
+  return without
 }
 
-/** What `usePinnedNav` answers, held once by the surface and handed to the Rail and the Sidebar, so a pin made in one is in the other. */
+/** What `usePinnedNav` answers, held once by the surface and handed to the Rail, the Sidebar and the context menu, so a pin made in one is in the others. */
 export type Pins = ReturnType<typeof usePinnedNav>
 
 /** `list` with `id` swapped with its neighbour one place up (-1) or down (1) among `visible`, the pins the reader sees (one may be hidden): the keyboard's way to the order a drag makes. */
 export function shiftedPinnedNav(list: readonly string[], id: string, delta: -1 | 1, visible: readonly string[] = list): string[] {
-  const next = normalizePinnedNav(list)
+  const next = cleanPinnedNav(list)
   const other = visible[visible.indexOf(id) + delta]
   const from = next.indexOf(id)
   const to = other === undefined ? -1 : next.indexOf(other)
@@ -94,10 +109,15 @@ export function shiftedPinnedNav(list: readonly string[], id: string, delta: -1 
   return next
 }
 
-/** The pinned apps, a toggle for one, a reorder and a move, kept on the account. */
+/**
+ * The reader's pins, a toggle for one, a reorder and a move, kept on the account. Pins stand at the top of the menu in
+ * the reader's order; everything else keeps its default place (`DEFAULT_NAV`, then More). Until the reader pins under
+ * this version, the pins an earlier one kept carry over (`carriedPinnedNav`).
+ */
 export function usePinnedNav(): [string[], (id: string) => void, (sourceId: string, targetId: string) => void, (id: string, delta: -1 | 1, visible?: readonly string[]) => void] {
-  const [kept, keep] = usePref<string[]>(NAV_PINNED_KEY, [...DEFAULT_PINNED_NAV])
-  const pinned = normalizePinnedNav(Array.isArray(kept) ? kept : DEFAULT_PINNED_NAV)
+  const [earlier] = usePref<string[] | null>(NAV_PINNED_KEY, null)
+  const [kept, keep] = usePref<string[] | null>(NAV_PINS_KEY, null)
+  const pinned = Array.isArray(kept) ? cleanPinnedNav(kept) : carriedPinnedNav(earlier)
   return [pinned, (id) => keep(toggledPinnedNav(pinned, id)), (src, target) => keep(reorderedPinnedNav(pinned, src, target)), (id, delta, visible) => keep(shiftedPinnedNav(pinned, id, delta, visible))]
 }
 
@@ -183,7 +203,6 @@ export function useNavEntries({
       slot: 'rail-chat',
       label: t('Chat'),
       href: talk(),
-      pinnable: false,
       on: mode === 'chat',
       icon: <MARKS.chat.icon size={17} aria-hidden />,
       onPress: onChat,
@@ -193,7 +212,6 @@ export function useNavEntries({
       slot: 'rail-dev',
       label: 'Dev',
       href: app(''),
-      pinnable: false,
       on: mode === 'dev' && !here,
       icon: <MARKS.dev.icon size={17} aria-hidden />,
       onPress: onDev,
@@ -206,8 +224,7 @@ export function useNavEntries({
             slot: 'rail-design',
             label: 'Design',
             href: design(''),
-            pinnable: false,
-            on: mode === 'design',
+                  on: mode === 'design',
             icon: <MARKS.design.icon size={17} aria-hidden />,
             onPress: () => onDesign?.(),
           } satisfies NavEntry,
@@ -217,7 +234,6 @@ export function useNavEntries({
       slot: 'rail-library',
       label: t('Library'),
       href: app(RAISED.library),
-      pinnable: false,
       on: here === 'library',
       icon: <MARKS.library.icon size={17} aria-hidden />,
       onPress: to(RAISED.library),
@@ -274,8 +290,7 @@ export function useNavEntries({
             slot: 'rail-tabs',
             label: 'Tabs',
             href: TERMINALS,
-            pinnable: false,
-            on: mode === 'tabs',
+                  on: mode === 'tabs',
             icon: <MARKS.tabs.icon size={17} aria-hidden />,
             onPress: onTabs,
           } satisfies NavEntry,
@@ -352,12 +367,19 @@ export function useNavEntries({
 
   const combinedById = new Map([...allEntries, ...externalEntries].map((item) => [item.id, item]))
 
-  // Anonymous visitors see the public trio (Chat, Dev, Library).
+  // Anonymous visitors see the public trio (Chat, Dev, Library), and pin nothing.
+  // The reader's pins lead, in their order; the default apps follow in theirs; the rest is More.
   const pinnedEntries: NavEntry[] = anon
-    ? allEntries
+    ? []
     : pinnedIds.map((id) => combinedById.get(id)).filter((item): item is NavEntry => Boolean(item))
+  const pinnedShown = new Set(pinnedEntries.map((item) => item.id))
+  const defaultEntries: NavEntry[] = anon
+    ? allEntries
+    : DEFAULT_NAV.filter((id) => !pinnedShown.has(id))
+        .map((id) => combinedById.get(id))
+        .filter((item): item is NavEntry => Boolean(item))
 
-  const shownInPrimary = new Set(pinnedEntries.map((item) => item.id))
+  const shownInPrimary = new Set([...pinnedEntries, ...defaultEntries].map((item) => item.id))
   const moreEntries: NavEntry[] = anon
     ? []
     : [
@@ -378,6 +400,7 @@ export function useNavEntries({
     allEntries,
     externalEntries,
     pinnedEntries,
+    defaultEntries,
     moreEntries,
     shownInPrimary,
     reach,
@@ -436,6 +459,84 @@ export function Mark({
   return (
     <Tooltip placement="right" offset={8}>
       <TooltipTrigger asChild>{button}</TooltipTrigger>
+      <TooltipContent
+        maxW={240}
+        px="$2.5"
+        py="$1.5"
+        rounded="$3"
+        bg="var(--popover)"
+        borderWidth={1}
+        borderColor="$edge"
+        z="var(--z-tooltip)"
+      >
+        <Text fontFamily="$body" fontSize="$1" fontWeight="500" color="$ink">
+          {label}
+        </Text>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+/**
+ * A destination on the folded rail: its mark with its name under it, so the folded rail reads at a glance without a
+ * hover (hanzo-inc/app issue 315). The name is small and one line; a long one ends in an ellipsis, and the tooltip says it whole.
+ */
+export function RailMark({
+  label,
+  on = false,
+  onClick,
+  children,
+  ...rest
+}: {
+  label: string
+  on?: boolean
+  onClick?: () => void
+  children: ReactNode
+  [attribute: `data-${string}` | `aria-${string}`]: unknown
+}) {
+  return (
+    <Tooltip placement="right" offset={8}>
+      <TooltipTrigger asChild>
+        <YStack
+          render="button"
+          aria-label={label}
+          aria-current={on ? 'page' : undefined}
+          onClick={onClick}
+          width={RAIL_FOLDED - 6}
+          minH={MARK + 6}
+          px={2}
+          py={5}
+          gap={3}
+          rounded={12}
+          items="center"
+          justify="center"
+          shrink={0}
+          cursor="pointer"
+          bg={on ? '$raised' : 'transparent'}
+          hoverStyle={{ bg: on ? '$raised' : '$hover' }}
+          pressStyle={{ bg: '$raised' }}
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
+          $touchable={{ minH: TOUCH + 8 }}
+          {...rest}
+        >
+          <XStack width={20} height={20} items="center" justify="center" opacity={on ? 1 : 0.76}>
+            {children}
+          </XStack>
+          <Text
+            data-slot="rail-caption"
+            aria-hidden
+            maxW="100%"
+            fontSize={10}
+            lineHeight={12}
+            fontWeight={on ? '600' : '400'}
+            color={on ? '$ink' : '$aside'}
+            numberOfLines={1}
+            text="center"
+          >
+            {label}
+          </Text>
+        </YStack>
+      </TooltipTrigger>
       <TooltipContent
         maxW={240}
         px="$2.5"
@@ -529,12 +630,14 @@ export function Rail({
     go,
     pins,
   })
-  const { anon, apps, pinnedEntries, allEntries, externalEntries, shownInPrimary, reach } = nav
+  const { anon, pinnedEntries, defaultEntries, allEntries, externalEntries, shownInPrimary, reach } = nav
 
   const betasDialog = <BetasDialog open={betas} onOpenChange={setBetas} go={reach} />
 
   const unpinnedActive = allEntries.filter((item) => !shownInPrimary.has(item.id) && item.on)
-  const visibleMarks = [...pinnedEntries, ...unpinnedActive]
+  // The reader's pins first, then the default apps in their places, then an app from More while the reader is in it.
+  const visibleMarks = [...pinnedEntries, ...defaultEntries, ...unpinnedActive]
+  const pinnedSet = new Set(pinnedEntries.map((item) => item.id))
   const overflowBuiltIn = allEntries.filter((item) => !shownInPrimary.has(item.id) && !item.on)
   const overflowExternal = externalEntries.filter((item) => !shownInPrimary.has(item.id))
 
@@ -603,9 +706,12 @@ export function Rail({
           width="100%"
           $platform-web={{ scrollbarWidth: 'none' }}
         >
-          {visibleMarks.map((item) => {
+          {visibleMarks.map((item, i) => {
             const isDragging = dragId === item.id
-            const isDropTarget = dropId === item.id && dragId !== null && dragId !== item.id
+            // A pin is where a drag lands: dropped on one, the dragged app is pinned there (or moved there among the pins).
+            const droppable = pinnedSet.has(item.id)
+            const isDropTarget = droppable && dropId === item.id && dragId !== null && dragId !== item.id
+            const afterPins = i > 0 && i === pinnedEntries.length
             return (
               <YStack
                 key={item.id}
@@ -624,7 +730,7 @@ export function Rail({
                     if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
                   },
                   onDragOver: (e: DragEvent) => {
-                    if (!dragId || dragId === item.id) return
+                    if (!droppable || !dragId || dragId === item.id) return
                     e.preventDefault()
                     if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
                     if (dropId !== item.id) setDropId(item.id)
@@ -633,6 +739,7 @@ export function Rail({
                     if (dropId === item.id) setDropId(null)
                   },
                   onDrop: (e: DragEvent) => {
+                    if (!droppable) return
                     e.preventDefault()
                     const src = dragId || e.dataTransfer?.getData('text/plain')
                     if (src && src !== item.id) pins[2](src, item.id)
@@ -645,16 +752,17 @@ export function Rail({
                   },
                 } as object)}
               >
-                <Mark
+                {afterPins ? <YStack data-slot="rail-pins-end" width={20} height={1} bg="$edge" mb={4} aria-hidden /> : null}
+                <RailMark
                   label={item.label}
                   on={item.on}
-                  tooltip
                   onClick={item.onPress}
                   data-slot={item.slot}
                   data-nav-id={item.id}
+                  data-pinned={pinnedSet.has(item.id) ? '' : undefined}
                 >
                   {item.icon}
-                </Mark>
+                </RailMark>
               </YStack>
             )
           })}
@@ -667,25 +775,32 @@ export function Rail({
               onPin={nav.togglePin}
               t={t}
               trigger={
-                <XStack
+                <YStack
                   render="button"
                   aria-label={t('More')}
                   {...({ title: t('More') } as object)}
                   data-slot="rail-more"
-                  width={MARK}
-                  height={MARK}
+                  width={RAIL_FOLDED - 6}
+                  minH={MARK + 6}
+                  px={2}
+                  py={5}
+                  gap={3}
                   rounded={12}
                   items="center"
                   justify="center"
                   cursor="pointer"
-                  opacity={0.68}
-                  hoverStyle={{ bg: '$hover', opacity: 1 }}
+                  hoverStyle={{ bg: '$hover' }}
                   pressStyle={{ bg: '$raised' }}
                   focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
-                  $touchable={{ width: TOUCH, height: TOUCH }}
+                  $touchable={{ minH: TOUCH + 8 }}
                 >
-                  <Ellipsis size={18} aria-hidden />
-                </XStack>
+                  <XStack width={20} height={20} items="center" justify="center" opacity={0.68}>
+                    <Ellipsis size={18} aria-hidden />
+                  </XStack>
+                  <Text data-slot="rail-caption" aria-hidden maxW="100%" fontSize={10} lineHeight={12} color="$aside" numberOfLines={1} text="center">
+                    {t('More')}
+                  </Text>
+                </YStack>
               }
             />
           ) : null}

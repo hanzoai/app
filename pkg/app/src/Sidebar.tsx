@@ -53,10 +53,10 @@ import { useEffect, useId, useMemo, useState, type DragEvent, type ReactNode } f
 import { Account, Made } from './Account'
 import { useBetas } from './Betas'
 import { Recents } from './Recents'
-import { fullNavUrl, raised, useNavEntries, type NavEntry, type Pins, type Raised } from './Rail'
+import { DEFAULT_NAV, fullNavUrl, raised, useNavEntries, type NavEntry, type Pins, type Raised } from './Rail'
 import { MoreMenu } from './MoreMenu'
 import { Setup } from './Setup'
-import { ago, UNTITLED_RUN, type Recent } from './recent'
+import { ago, PINNED, UNTITLED_RUN, type Recent } from './recent'
 import { empty } from './open'
 import { useSpan } from './span'
 import { useDevMode } from './lib/dev-mode'
@@ -161,6 +161,7 @@ function fullPlaceUrl(path: string): string {
 function NavMenuRow({
   item,
   pinned,
+  pinnable = true,
   onTogglePin,
   onMove,
   draggable = false,
@@ -175,6 +176,8 @@ function NavMenuRow({
 }: {
   item: NavEntry
   pinned: boolean
+  /** Whether the reader can pin it (a signed-out visitor pins nothing). */
+  pinnable?: boolean
   onTogglePin: (id: string) => void
   /** Where a drag cannot go: a pinned row's way up or down the order by keyboard. Absent for the end it is already at. */
   onMove?: { up?: () => void; down?: () => void }
@@ -189,13 +192,16 @@ function NavMenuRow({
   t: (key: string, params?: Record<string, string | number>) => string
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
-  const canPin = item.pinnable !== false
+  const canPin = pinnable && item.pinnable !== false
   const handleTogglePin = () => {
     onTogglePin(item.id)
+    // Unpinned, an app goes back to its default place: one of the menu's own apps to its row, any other to More.
     toast.success(
-      pinned
-        ? t('Moved {name} back to More', { name: item.label })
-        : t('Pinned {name} to top', { name: item.label }),
+      !pinned
+        ? t('Pinned {name} to top', { name: item.label })
+        : DEFAULT_NAV.includes(item.id)
+          ? t('Unpinned {name}', { name: item.label })
+          : t('Moved {name} back to More', { name: item.label }),
     )
   }
 
@@ -956,8 +962,9 @@ export function Sidebar({
     pins,
   })
 
-  // An app that lives in More draws its own row (and sub-links) after the pinned ones while the reader is in it.
-  const shown = [...nav.pinnedEntries, ...nav.moreEntries.filter((item) => item.on)]
+  // The reader's pins lead (under Pinned), the default apps follow in their places, and an app that lives in More draws
+  // its own row (and sub-links) after them while the reader is in it.
+  const rest = [...nav.defaultEntries, ...nav.moreEntries.filter((item) => item.on)]
   const showMore = !at && !anon && nav.moreEntries.length > 0
 
   const subGroupsFor = (entryId: string): { id: string; label: string; links: SidebarPlaceLink[] }[] => {
@@ -996,6 +1003,7 @@ export function Sidebar({
         <NavMenuRow
           item={item}
           pinned={pinnedSet.has(item.id)}
+          pinnable={!anon}
           onTogglePin={togglePin}
           onMove={
             canDrag && allowDrop && pinnedSet.has(item.id)
@@ -1383,7 +1391,8 @@ export function Sidebar({
               gap="$1"
               $platform-web={{ scrollbarWidth: 'none' }}
             >
-              {/* Core apps (Chat, Dev, Design, Library, Tabs) + any user-pinned More items */}
+              {/* The reader's pins first, under Pinned (as Recents lists its pinned conversations), then the default apps
+                  (Chat, Dev, Design, Library, Tabs) in their places. A drop anywhere here pins what was dragged. */}
               <YStack
                 data-slot="rail-pinned"
                 gap={1}
@@ -1409,7 +1418,15 @@ export function Sidebar({
                     } as object)
                   : null)}
               >
-                {shown.map((item) => renderNavEntryWithSublinks(item, pinnedSet.has(item.id)))}
+                {nav.pinnedEntries.length > 0 ? (
+                  <YStack data-slot="nav-pins" role="group" aria-labelledby={`${uid}-pins`} gap={1} width="100%" pb="$1.5">
+                    <Text id={`${uid}-pins`} data-slot="nav-pins-head" paddingInlineStart="$2.5" pb={2} fontSize="$1" fontWeight="500" color="$hint" numberOfLines={1}>
+                      {t(PINNED)}
+                    </Text>
+                    {nav.pinnedEntries.map((item) => renderNavEntryWithSublinks(item, true))}
+                  </YStack>
+                ) : null}
+                {rest.map((item) => renderNavEntryWithSublinks(item, false))}
               </YStack>
 
             </YStack>

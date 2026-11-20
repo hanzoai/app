@@ -40,7 +40,7 @@ import type { Host } from '@hanzo/build'
 import { app, design, flow, settings, studio, talk, TERMINALS, type Place } from './lib/host'
 import { rememberSettingsReturn } from './lib/dev-mode'
 import { useOpen } from './open'
-import { usePinnedNav } from './Rail'
+import { usePinnedNav, type Pins } from './Rail'
 import { site } from './where'
 
 type MenuEntry =
@@ -143,6 +143,7 @@ export function AppContextMenu({
   onSeek,
   onNewChat,
   go,
+  pins: held,
 }: {
   host: Host
   mode: Place['mode']
@@ -151,6 +152,8 @@ export function AppContextMenu({
   onSeek: () => void
   onNewChat: () => void
   go: (address: string) => void
+  /** The surface's pins (App.tsx), so a pin made here shows in the Sidebar and the Rail at once. */
+  pins?: Pins
 }) {
   const { t } = useI18n()
   const { thread: activeThread } = useOpen()
@@ -161,7 +164,8 @@ export function AppContextMenu({
   const panelRef = useRef<HTMLElement | null>(null)
   const openerRef = useRef<HTMLElement | null>(null)
   const apple = isMac()
-  const [pins, togglePin] = usePinnedNav()
+  const own = usePinnedNav()
+  const [pins, togglePin] = held ?? own
 
   const closeMenu = useCallback((restoreFocus = false) => {
     setState(null)
