@@ -388,9 +388,11 @@ export function Thread({
                     </Text>
                   </XStack>
                 )
+              // `group` makes the row a size container, which has no intrinsic width:
+              // each row states its width, or a bubble collapses to one character a line.
               if (line.kind === 'mine')
                 return (
-                  <YStack key={line.key} group self="flex-end" items="flex-end" maxW="76%" $max-md={{ maxW: '86%' }} mt={gap}>
+                  <YStack key={line.key} group self="flex-end" items="flex-end" width="76%" $max-md={{ width: '86%' }} mt={gap}>
                     <Text
                       data-parity-key="bots.mine"
                       render="div"
@@ -459,7 +461,7 @@ export function Thread({
                   self="flex-start"
                   items="flex-start"
                   gap={8}
-                  maxW="100%"
+                  width="100%"
                   mt={gap}
                 >
                   {parts.map((part, idx) => {
