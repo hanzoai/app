@@ -61,4 +61,21 @@ describe('the Shell’s sidebar', () => {
     act(() => seen[1]((open) => !open))
     expect(seen[0]).toBe(true)
   })
+
+  test('a toggle kept from the first render still flips what is drawn now, so a phone can open it', () => {
+    // The Shell memoises its toggle once, so the setter it holds is the first render's: the server's tree, open.
+    let held: ReturnType<typeof useSidebar>[1] | null = null
+    const Held = () => {
+      seen = useSidebar()
+      held ??= seen[1]
+      return null
+    }
+    Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true })
+    act(() => root.render(createElement(Held)))
+    expect(seen[0]).toBe(false)
+    act(() => held!((open) => !open))
+    expect(seen[0]).toBe(true)
+    act(() => held!((open) => !open))
+    expect(seen[0]).toBe(false)
+  })
 })
