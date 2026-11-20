@@ -55,7 +55,7 @@ import { Box, Button, Dialog, DialogContent, DialogTitle, Input, Text, Tooltip, 
 import { useMedia } from "@hanzo/gui";
 import { given, tidy } from "./lib/title";
 import { useIam, useIamToken } from "@hanzo/iam/react";
-import { bearer, hasSession, named, org } from "./lib/session";
+import { bearer, greeted, hasSession, named, org } from "./lib/session";
 import { api } from "./lib/api";
 import { app, dev, follow, go, visit } from "./lib/host";
 import { useHost } from "./host";
@@ -1255,9 +1255,12 @@ function Thread({
   // The opening greets the person by the first word of their display name, capitalised ("Good to see you, Z. What’s next?").
   // A username is a handle, not a name: without a display name the greeting has none.
   // The name is the stored token's, the one every request carries, and it follows
-  // that token: kept only while `anonymous` held still, it went on greeting
-  // whoever the token named when the pane mounted (hanzo-inc/app issue 441).
-  const signedAs = anonymous ? null : bearer();
+  // that token — but only while the token is live. A stored token past its expiry
+  // is not a person to greet: it names whoever it named when it was minted, and
+  // the pane went on greeting them (hanzo-inc/app issue 441). A live token that
+  // names the wrong person is not a greeting bug — that is the sign-in/session
+  // defect, and no code here can tell whose token it is.
+  const signedAs = anonymous ? null : greeted();
   const firstName = useMemo(() => (signedAs ? given(named()?.display ?? "") : ""), [signedAs]);
   // Private / forgetful mode: an ephemeral conversation kept in memory only, never saved to server history.
   const [forgetful, setForgetful] = useState(false);
@@ -2260,8 +2263,14 @@ function Thread({
     [chat.messages],
   );
   // THE PAGE THE CONVERSATION LAST WROTE, for the Preview above the message box
-  // on a phone (`PreviewButton`). Read once the answer has ended, not per token.
-  const page = useMemo(() => (chat.streaming ? null : lastPage(said)), [said, chat.streaming]);
+  // on a phone (`PreviewButton`). Read on every turn, streaming included: the
+  // Preview is the one place a phone can reach a page, and hiding it while an
+  // answer streams is exactly when the person looks for it — after a build,
+  // asking "what did you build?" (hanzo-inc/app issue 443). This is safe
+  // because `written` only returns a fenced block that is closed, so a
+  // half-written fence is not a page, and it reaches back past answers that
+  // wrote none to the last page that is finished.
+  const page = useMemo(() => lastPage(said), [said]);
 
   const currentThread = useMemo<Thread>(() => {
     const firstText = said[0]?.content;
@@ -3579,10 +3588,10 @@ function Thread({
           On a phone the panel is a sheet over the pane instead. */}
       {wide && aside !== null ? (
         <Side>
-          <Panel side={deck} kinds={NONE} onHide={() => setPanel(false)} label={t("Tabs")} {...browsing} />
+          <Panel side={deck} kinds={NONE} onHide={() => setPanel(false)} label={t("Preview")} {...browsing} />
         </Side>
       ) : null}
-      {!wide && panel ? <Panel side={deck} kinds={NONE} sheet onHide={() => setPanel(false)} label={t("Tabs")} {...browsing} /> : null}
+      {!wide && panel ? <Panel side={deck} kinds={NONE} sheet onHide={() => setPanel(false)} label={t("Preview")} {...browsing} /> : null}
 
       <XStack flex={1} minH={0} minW={0}>
         <YStack ref={talkRef} data-slot="talk" flex={1} minH={0} minW={0} position="relative">

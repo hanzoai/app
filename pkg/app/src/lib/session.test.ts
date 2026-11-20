@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { configure } from '../where'
-import { ORG, bearer, home, live, me, named, org, orgs, renew, reopen, scope, superAdmin, support } from './session'
+import { ORG, bearer, greeted, home, live, me, named, org, orgs, renew, reopen, scope, superAdmin, support } from './session'
 
 /** A Storage held in a map. */
 function memory(seed: Record<string, string> = {}): Storage {
@@ -38,6 +38,24 @@ describe('the session is read where the host keeps it', () => {
     renew()
     expect(keychain.getItem('hanzo_iam_expires_at')).toBe('0')
     expect(live()).toBe(false)
+  })
+})
+
+describe('the opening greets only whoever a live token names (issue 441)', () => {
+  test('a live token is the one to greet', () => {
+    vi.stubGlobal('window', { localStorage: memory({ hanzo_iam_access_token: 'mine', hanzo_iam_expires_at: String(Date.now() + 60_000) }) })
+    expect(greeted()).toBe('mine')
+  })
+
+  test('a token past its expiry greets nobody, though it is still stored', () => {
+    vi.stubGlobal('window', { localStorage: memory({ hanzo_iam_access_token: 'theirs', hanzo_iam_expires_at: String(Date.now() - 1) }) })
+    expect(bearer()).toBe('theirs')
+    expect(greeted()).toBeNull()
+  })
+
+  test('no token greets nobody', () => {
+    vi.stubGlobal('window', { localStorage: memory({}) })
+    expect(greeted()).toBeNull()
   })
 })
 

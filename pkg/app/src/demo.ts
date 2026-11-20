@@ -12,9 +12,9 @@
  * note — including its Hanzo-showcase default — is not sent at all.
  */
 
-/** The demo-build instruction, verbatim as `Chat.tsx` used to send it. */
+/** The demo-build instruction, as `Chat.tsx` used to send it on every demo turn. */
 export const DEMO_NOTE =
-  "Build a complete, self-contained, interactive single-file HTML application inside a ```html demo.html code fence (with embedded modern dark-mode CSS and interactive JavaScript controls) so it renders live in the side-by-side Outputs preview panel. If the request is for a Hanzo demo, build an interactive Hanzo AI platform showcase featuring Enso & Zen frontier models, Hanzo Dev autonomous coding agents, Hanzo Bot, Hanzo Cloud, and Model Context Protocol (MCP) tools with working interactive tabs and live simulations rather than a plain text or Python snippet."
+  "Build a complete, self-contained, interactive single-file HTML application inside a ```html demo.html code fence (with embedded modern dark-mode CSS and interactive JavaScript controls) so it opens as the Preview beside the conversation. If the request is for a Hanzo demo, build an interactive Hanzo AI platform showcase featuring Enso & Zen frontier models, Hanzo Dev autonomous coding agents, Hanzo Bot, Hanzo Cloud, and Model Context Protocol (MCP) tools with working interactive tabs and live simulations rather than a plain text or Python snippet."
 
 /** Sent instead of `DEMO_NOTE` when the build has not been described. */
 export const CLARIFY_NOTE =

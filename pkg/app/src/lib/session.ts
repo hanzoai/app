@@ -69,6 +69,16 @@ export function live(): boolean {
   }
 }
 
+/**
+ * The stored token while it names somebody to greet: the token while it is
+ * live, and nothing once it is past its expiry. An expired token still decodes
+ * to whoever it named when it was minted, so Chat's opening went on greeting
+ * them (hanzo-inc/app issue 441).
+ */
+export function greeted(): string | null {
+  return live() ? bearer() : null
+}
+
 /** The attribute on `<html>` that says `/` is showing the app, not the landing. */
 export const APP = 'data-app'
 
