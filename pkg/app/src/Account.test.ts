@@ -2,6 +2,9 @@ import { createElement, Fragment, isValidElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
+// What the account stands on, as @hanzo/build's read answers it: none unless a test says.
+const standing = vi.hoisted(() => ({ value: null as null | { kind: string; label: { name: string; tag: string } | null; limits: null; allowance: null; balance: null } }))
+
 const { rows, clicks, settings, left, remembered, Draw, Row, through } = vi.hoisted(() => {
   const rows: { label: string; press: () => void }[] = []
   const clicks = new Map<string, () => void>()
@@ -81,7 +84,7 @@ vi.mock('@hanzo/ui', () => ({
 vi.mock('@hanzo/iam/react', () => ({ useOrganizations: () => ({ roles: { acme: 'owner' } }) }))
 vi.mock('@hanzo/build', async () => {
   const { label, said } = await import('@hanzo/build/plan')
-  return { label, Meter: () => createElement('div', { 'data-slot': 'meter' }), said, useStanding: () => ({ value: null, error: null, loading: false, reload: () => {} }) }
+  return { label, Meter: () => createElement('div', { 'data-slot': 'meter' }), said, useStanding: () => ({ value: standing.value, error: null, loading: false, reload: () => {} }) }
 })
 vi.mock('./lib/session', () => ({ choose: () => {}, org: () => 'acme', orgs: () => ['acme'], pick: () => {}, renew: () => {}, reopen: () => {}, scope: () => ({}), superAdmin: () => false }))
 vi.mock('./lib/org', () => ({ createOrg: async () => '', say: String }))
@@ -125,6 +128,7 @@ afterEach(() => {
   settings.mockClear()
   left.mockClear()
   remembered.mockClear()
+  standing.value = null
 })
 
 describe('profile trigger and HoverCard', () => {
@@ -227,9 +231,20 @@ describe('the full account overflow menu (`⋯` inside HoverCard)', () => {
     expect(left).toHaveBeenCalledWith('here')
   })
 
+  // Nothing is sold above Unlimited: its row opened the pay site's Go and Pro
+  // checkout from Dev (hanzo-inc/app issue 303). It names the plan and opens Billing.
+  test('on Unlimited the row is Unlimited plan, and opens Billing rather than the plans', () => {
+    standing.value = { kind: 'plan', label: { name: 'Unlimited', tag: '' }, limits: null, allowance: null, balance: null }
+    expect(menu(true).some((r) => r.label === 'Upgrade plan')).toBe(false)
+    press('Unlimited plan')
+    expect(left).not.toHaveBeenCalled()
+    expect(settings).toHaveBeenCalledWith('billing')
+  })
+
   test('the plans row is named by the plan the organization is on', () => {
     expect(upgrade('Enterprise')).toBe('Enterprise plan')
     expect(upgrade('Agency')).toBe('Agency plan')
+    expect(upgrade('Unlimited')).toBe('Unlimited plan')
     for (const family of ['Free', 'Pro', 'Max', 'Team', 'DNS', 'Embedded Pod', 'Forward Deployed', 'White', null, undefined]) expect(upgrade(family), String(family)).toBe('Upgrade plan')
   })
 

@@ -258,12 +258,29 @@ const Mark = ({ org }: { org: Org }) => (
 )
 
 /**
- * The plans row, named by the plan the organization is on: Enterprise and
- * Agency are plans a person stays on, so the row names theirs; every other
- * plan, Free included, is one to move up from.
+ * The plans a person stays on: nothing is sold above them. Enterprise and Agency
+ * are arranged with the team; Unlimited is assigned at admin.hanzo.ai and is
+ * above every plan the pay site sells, so "Upgrade plan" sent an Unlimited org
+ * from Dev to a checkout of Go and Pro (hanzo-inc/app issue 303).
+ */
+const STAY = new Set(['Enterprise', 'Agency', 'Unlimited'])
+
+/** Whether the organization's plan is one a person stays on (`STAY`): its row opens Billing, not the plans. */
+export const stays = (family: string | null | undefined): boolean => STAY.has(family ?? '')
+
+/**
+ * The plans row, named by the plan the organization is on: a plan a person
+ * stays on (`stays`) names theirs; every other plan, Free included, is one to
+ * move up from.
  */
 export const upgrade = (family: string | null | undefined): string =>
-  family === 'Enterprise' ? phrase('Enterprise plan') : family === 'Agency' ? phrase('Agency plan') : phrase('Upgrade plan')
+  family === 'Enterprise'
+    ? phrase('Enterprise plan')
+    : family === 'Agency'
+      ? phrase('Agency plan')
+      : family === 'Unlimited'
+        ? phrase('Unlimited plan')
+        : phrase('Upgrade plan')
 
 /** The keys a row prints, in this platform's spelling. */
 const mac = (): boolean => typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
@@ -390,7 +407,7 @@ export function Account({
   const triggerUpgrade = () => {
     setHoverOpen(false)
     setMenuOpen(false)
-    if (read.value?.label?.name === 'Enterprise' || read.value?.label?.name === 'Agency') {
+    if (stays(read.value?.label?.name)) {
       rememberSettingsReturn()
       showSettings('billing')
       return
