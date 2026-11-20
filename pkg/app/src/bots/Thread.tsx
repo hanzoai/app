@@ -667,7 +667,7 @@ export function Thread({
           {unsent ? (
             <XStack role="alert" items="center" gap={8} px={8}>
               <Text fontSize={13} lineHeight={18} color="var(--state-error)">
-                {t('Couldn’t send. Nothing has been lost.')}
+                {t('Could not reach this conversation. Nothing has been lost — try again shortly.')}
               </Text>
               <XStack
                 render="button"
