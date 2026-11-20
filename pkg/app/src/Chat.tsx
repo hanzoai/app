@@ -54,7 +54,7 @@ import { Box, Button, Dialog, DialogContent, DialogTitle, Input, Text, Tooltip, 
 import { useMedia } from "@hanzo/gui";
 import { given, tidy } from "./lib/title";
 import { useIam, useIamToken } from "@hanzo/iam/react";
-import { bearer, hasSession, named, org } from "./lib/session";
+import { bearer, greeted, hasSession, named, org } from "./lib/session";
 import { api } from "./lib/api";
 import { app, dev, follow, go, visit } from "./lib/host";
 import { useHost } from "./host";
@@ -1254,9 +1254,12 @@ function Thread({
   // The opening greets the person by the first word of their display name, capitalised ("Good to see you, Z. What’s next?").
   // A username is a handle, not a name: without a display name the greeting has none.
   // The name is the stored token's, the one every request carries, and it follows
-  // that token: kept only while `anonymous` held still, it went on greeting
-  // whoever the token named when the pane mounted (hanzo-inc/app issue 441).
-  const signedAs = anonymous ? null : bearer();
+  // that token — but only while the token is live. A stored token past its expiry
+  // is not a person to greet: it names whoever it named when it was minted, and
+  // the pane went on greeting them (hanzo-inc/app issue 441). A live token that
+  // names the wrong person is not a greeting bug — that is the sign-in/session
+  // defect, and no code here can tell whose token it is.
+  const signedAs = anonymous ? null : greeted();
   const firstName = useMemo(() => (signedAs ? given(named()?.display ?? "") : ""), [signedAs]);
   // Private / forgetful mode: an ephemeral conversation kept in memory only, never saved to server history.
   const [forgetful, setForgetful] = useState(false);
