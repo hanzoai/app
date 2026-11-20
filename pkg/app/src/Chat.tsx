@@ -47,7 +47,9 @@ import { conversation, drop, hold, landed, localOf, spend, take, usePane, useWor
 import { Face, brief as castBrief, join, roleOf, castTurn, roster as rosterLine, rosterOf, speakers, speaksOf, voiceOf } from "./cast";
 import { cleanForSpeech, speakAgent } from "./speech";
 import { AgentMaker, HOUSE, useAgentShelf, useCrew } from "./crew";
-import { called } from "./team";
+import { TEAM, called } from "./team";
+import { ABOUT, about } from "./about";
+import { written as lastPage } from "./lastpage";
 import { Box, Button, Dialog, DialogContent, DialogTitle, Input, Text, Tooltip, TooltipContent, TooltipTrigger, View, VisuallyHidden, XStack, YStack, toast } from "@hanzo/ui";
 import { useMedia } from "@hanzo/gui";
 import { given, tidy } from "./lib/title";
@@ -65,7 +67,7 @@ import { useHydrated } from "./lib/hydrated";
 import { base, served } from "./lib/ai";
 import { onServed, type Served as Heard } from "./lib/served";
 import { refused as worded, speech, useDictation, useTalk, useVoice } from "@hanzo/voice";
-import { CalendarClock, Check, Code2, Copy, Download, FileText, Ghost, GitBranch, Image as ImageMark, KanbanSquare, Library as LibraryMark, PanelRight, Paperclip, Pencil, RefreshCw, ShieldCheck, Sparkles, Upload, X } from "lucide-react";
+import { CalendarClock, Check, Code2, Copy, Download, FileText, Ghost, GitBranch, Globe, Image as ImageMark, KanbanSquare, Library as LibraryMark, PanelRight, Paperclip, Pencil, RefreshCw, ShieldCheck, Sparkles, Upload, X } from "lucide-react";
 import { branched } from "./lib/branch";
 import { openModelPicker } from "./lib/model-picker";
 import { open as openBoardCard, home as boardHome } from "./lib/todo";
@@ -334,10 +336,17 @@ const ROUTERS = new Set(["enso", "enso-auto", "hanzo/enso", "auto"]);
 /** The id of the turn drawn in the thread when a turn is refused. */
 const FAILED = "failed";
 
-/** The turns with the conversation's system turn first, or without one for an empty cast. */
+/**
+ * The turns with the conversation's system turns first: the cast's, when it has
+ * one, then what the app is (about.ts) — its agents, where a page it writes
+ * shows, and to ask before a build nobody described. Neither is ever recorded:
+ * a kept thread holds what was said (@hanzo/ai `useChat` records the question
+ * and its answer), so a conversation reopened is seated afresh.
+ */
 function seated(turns: ChatMessage[], turn: string | null): ChatMessage[] {
-  const rest = turns.filter((one) => one.id !== CAST);
-  return turn ? [{ id: CAST, role: "system", content: turn }, ...rest] : rest;
+  const rest = turns.filter((one) => one.id !== CAST && one.id !== ABOUT);
+  const app: ChatMessage = { id: ABOUT, role: "system", content: about(brand(), TEAM) };
+  return turn ? [{ id: CAST, role: "system", content: turn }, app, ...rest] : [app, ...rest];
 }
 
 /** An answer that came back with nothing in it. */
@@ -532,6 +541,7 @@ function AssistantTurnActions({
   onRegenerate,
   onBranch,
   onOpen,
+  preview = false,
   onOpenInDev,
   onCreateBoardCard,
   onSchedule,
@@ -542,6 +552,8 @@ function AssistantTurnActions({
   onRegenerate?: () => void;
   onBranch?: () => void;
   onOpen?: () => void;
+  /** What `onOpen` opens is a page or a picture the answer wrote: the button says Preview, the name the model is told (about.ts). */
+  preview?: boolean;
   onOpenInDev?: () => void;
   onCreateBoardCard?: () => void;
   onSchedule?: () => void;
@@ -679,19 +691,65 @@ function AssistantTurnActions({
       ) : null}
       {onOpen ? (
         <Box
-          render={<button type="button" title={t("Open in side panel")} />}
+          render={<button type="button" title={preview ? t("Preview") : t("Open in side panel")} />}
           data-slot="assistant-turn-open"
-          aria-label={t("Open in side panel")}
+          data-preview={preview ? "" : undefined}
+          aria-label={preview ? t("Preview") : t("Open in side panel")}
           onClick={onOpen}
           {...actionButton}
         >
           <XStack items="center" gap="$1">
-            <PanelRight size={13} color="var(--muted-foreground)" aria-hidden />
-            <Text fontSize="$1" color="$soft">
-              {t("Open")}
+            {preview ? (
+              <Globe size={13} color="var(--foreground)" aria-hidden />
+            ) : (
+              <PanelRight size={13} color="var(--muted-foreground)" aria-hidden />
+            )}
+            <Text fontSize="$1" color={preview ? "$ink" : "$soft"} fontWeight={preview ? "600" : undefined}>
+              {preview ? t("Preview") : t("Open")}
             </Text>
           </XStack>
         </Box>
+      ) : null}
+    </XStack>
+  );
+}
+
+/**
+ * THE PREVIEW, BY NAME, just above the message box on a phone: one labelled
+ * press to the page the conversation last wrote. A fence's own file name
+ * (`html index.html`) follows the word; a bare language (`html block`) does not.
+ */
+function PreviewButton({ name, onOpen }: { name: string; onOpen: () => void }) {
+  const { t } = useI18n();
+  const file = name.includes(".") ? name : "";
+  return (
+    <XStack
+      render="button"
+      data-slot="composer-preview"
+      aria-label={file ? t("Preview {name}", { name: file }) : t("Preview")}
+      self="flex-start"
+      maxW="100%"
+      items="center"
+      gap="$1.5"
+      px="$3"
+      minH={44}
+      rounded={999}
+      borderWidth={1}
+      borderColor="var(--border-strong)"
+      bg="var(--surface-card)"
+      cursor="pointer"
+      hoverStyle={{ bg: "$hover" }}
+      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+      onClick={onOpen}
+    >
+      <Globe size={14} color="var(--foreground)" aria-hidden />
+      <Text fontSize="$2" fontWeight="600" color="$ink">
+        {t("Preview")}
+      </Text>
+      {file ? (
+        <Text fontSize="$2" color="$soft" numberOfLines={1} shrink={1} minW={0}>
+          {file}
+        </Text>
       ) : null}
     </XStack>
   );
@@ -1195,7 +1253,11 @@ function Thread({
   const agentShelf = useAgentShelf();
   // The opening greets the person by the first word of their display name, capitalised ("Good to see you, Z. What’s next?").
   // A username is a handle, not a name: without a display name the greeting has none.
-  const firstName = useMemo(() => (anonymous ? "" : given(named()?.display ?? "")), [anonymous]);
+  // The name is the stored token's, the one every request carries, and it follows
+  // that token: kept only while `anonymous` held still, it went on greeting
+  // whoever the token named when the pane mounted (hanzo-inc/app issue 441).
+  const signedAs = anonymous ? null : bearer();
+  const firstName = useMemo(() => (signedAs ? given(named()?.display ?? "") : ""), [signedAs]);
   // Private / forgetful mode: an ephemeral conversation kept in memory only, never saved to server history.
   const [forgetful, setForgetful] = useState(false);
   // Up to three things worth doing next, from the person's own activity (@hanzo/build).
@@ -2087,6 +2149,11 @@ function Thread({
     const a = lead(artifacts(text));
     return a ? () => see(a) : undefined;
   };
+  /** Whether what `opener` opens is a page or a picture: its button is the Preview. */
+  const previews = (text: string): boolean => {
+    const a = lead(artifacts(text));
+    return Boolean(a && renders(a));
+  };
   const threadActions = useThreadActions();
   const [customTitle, setCustomTitle] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
@@ -2191,6 +2258,9 @@ function Thread({
     () => chat.messages.filter((m) => m.role !== "system"),
     [chat.messages],
   );
+  // THE PAGE THE CONVERSATION LAST WROTE, for the Preview above the message box
+  // on a phone (`PreviewButton`). Read once the answer has ended, not per token.
+  const page = useMemo(() => (chat.streaming ? null : lastPage(said)), [said, chat.streaming]);
 
   const currentThread = useMemo<Thread>(() => {
     const firstText = said[0]?.content;
@@ -2653,6 +2723,12 @@ function Thread({
   const inTopChrome = Boolean(media.md && titlebarSlot);
   const showAccessMode =
     devMode || carry.on.length > 0 || cast.length > 0 || chatPrefs.approvalMode === "manual";
+  // ON A PHONE THE PREVIEW IS NAMED where the message box is. The panel is a
+  // sheet there, shut until something opens it; the header that holds its
+  // toggle on a laptop is not drawn, and an answer's own Preview scrolls away
+  // with it. So while the sheet is shut, the page the conversation last wrote
+  // stands one labelled press away (hanzo-inc/app issue 443).
+  const previewing = !wide && !panel ? page : null;
   const composer: ComposerProps = {
       value: draft,
       onChange: setDraft,
@@ -2755,8 +2831,9 @@ function Thread({
       // WHAT GOES WITH THE MESSAGE, above the frame and at its width: the
       // pause and its ways past, wallet recovery, one chip a file, and talk mode's words.
       head:
-        files.length || turnedAway || prepWrong || preparing || talk.open || talk.refusal || banner || simulatedResetAt || walletRecovery ? (
+        previewing || files.length || turnedAway || prepWrong || preparing || talk.open || talk.refusal || banner || simulatedResetAt || walletRecovery ? (
           <>
+            {previewing ? <PreviewButton name={previewing.name} onOpen={() => see(previewing)} /> : null}
             {walletRecovery ? (
               <XStack
                 role="alert"
@@ -3700,6 +3777,7 @@ function Thread({
                           onRegenerate={() => redoTurn(turn.id, { mode: "retry" })}
                           onBranch={anonymous || forgetful ? undefined : () => branchTurn(turn.id)}
                           onOpen={opener(part.text)}
+                          preview={previews(part.text)}
                           onOpenInDev={() => openInDev({ prompt: part.text })}
                           onCreateBoardCard={anonymous ? undefined : () => createBoardCardFromTurn(part.text)}
                           onSchedule={anonymous ? undefined : () => setPlan(part.text)}
@@ -3735,6 +3813,7 @@ function Thread({
                     onRegenerate={() => redoTurn(turn.id, { mode: "retry" })}
                     onBranch={anonymous || forgetful ? undefined : () => branchTurn(turn.id)}
                     onOpen={opener(said)}
+                    preview={previews(said)}
                     onOpenInDev={() => openInDev({ prompt: said })}
                     onCreateBoardCard={anonymous ? undefined : () => createBoardCardFromTurn(said)}
                     onSchedule={anonymous ? undefined : () => setPlan(said)}
