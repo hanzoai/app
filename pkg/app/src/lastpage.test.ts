@@ -47,6 +47,26 @@ describe('the page the Preview opens (issue 443)', () => {
     expect(written(turns)?.mime).toBe('image/svg+xml')
   })
 
+  test('is safe on a turn still streaming: an unclosed fence is not a page (issue 443)', () => {
+    // The composer Preview stays up while a follow-up streams, so `written`
+    // must never return a half-written block — only a closed fence counts.
+    const turns = [
+      { role: 'assistant', content: 'Here:\n```html index.html\n<h1>First</h1>\n```' },
+      { role: 'user', content: 'what did you build?' },
+      { role: 'assistant', content: 'A showcase, with tabs:\n```html demo.html\n<h1>Half' },
+    ]
+    expect(written(turns)?.name).toBe('index.html')
+  })
+
+  test('is safe on a turn still streaming: a closed fence in it already counts (issue 443)', () => {
+    const turns = [
+      { role: 'assistant', content: 'Here:\n```html index.html\n<h1>First</h1>\n```' },
+      { role: 'user', content: 'what did you build?' },
+      { role: 'assistant', content: 'A showcase:\n```html demo.html\n<h1>Done</h1>\n```\nand more coming' },
+    ]
+    expect(written(turns)?.name).toBe('demo.html')
+  })
+
   test('is nothing for code that is not a page, for a question, or for a system turn', () => {
     expect(written([{ role: 'assistant', content: '```ts\nconst a = 1\n```' }])).toBeNull()
     expect(written([{ role: 'user', content: `\`\`\`html\n${PAGE}\n\`\`\`` }])).toBeNull()
