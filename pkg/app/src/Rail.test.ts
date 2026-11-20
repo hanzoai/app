@@ -16,14 +16,15 @@ type Part = {
   'aria-label'?: string
   'aria-current'?: string
   'data-item'?: string
+  'data-nav-id'?: string
   bg?: string
   onClick?: () => void
   onPress?: () => void
   label?: string
   active?: boolean
 }
-const draw = ({ children, 'data-slot': slot, 'data-expanded': exp, 'aria-label': named, 'aria-current': current, 'data-item': item, bg }: Part) =>
-  createElement('div', { 'data-slot': slot, 'data-expanded': exp, 'aria-label': named, 'aria-current': current, 'data-item': item, 'data-bg': bg }, children)
+const draw = ({ children, 'data-slot': slot, 'data-expanded': exp, 'aria-label': named, 'aria-current': current, 'data-item': item, 'data-nav-id': nav, bg }: Part) =>
+  createElement('div', { 'data-slot': slot, 'data-expanded': exp, 'aria-label': named, 'aria-current': current, 'data-item': item, 'data-nav-id': nav, 'data-bg': bg }, children)
 const through = ({ children }: { children?: ReactNode }) => createElement(Fragment, null, children)
 const { MARKS } = vi.hoisted(() => {
   const mark = () => () => null
@@ -61,13 +62,13 @@ vi.mock('./help', () => ({ out: (href: string) => state.went.push(href) }))
 vi.mock('./Account', () => ({ Account: () => null }))
 vi.mock('./lib/dev-mode', () => ({ useDevMode: () => [state.devMode, () => {}] }))
 
-const { DEFAULT_PINNED_NAV, normalizePinnedNav, Rail, reorderedPinnedNav, shiftedPinnedNav, toggledPinnedNav } = await import('./Rail')
+const { carriedPinnedNav, DEFAULT_NAV, DEFAULT_PINNED_NAV, Rail, reorderedPinnedNav, shiftedPinnedNav, toggledPinnedNav } = await import('./Rail')
 
 const host = {} as never
-const draw5 = (props: { mode?: 'chat' | 'hosted'; inside?: string | null; compact?: boolean } = {}) =>
+const draw5 = (props: { mode?: 'chat' | 'hosted'; inside?: string | null; compact?: boolean; pinned?: string[] } = {}) =>
   renderToStaticMarkup(
     createElement(Rail, {
-      pins: [[...DEFAULT_PINNED_NAV], state.pin, () => {}, () => {}],
+      pins: [props.pinned ?? [], state.pin, () => {}, () => {}],
       host,
       mode: props.mode ?? 'chat',
       at: null,
@@ -137,23 +138,48 @@ describe('folded 52px icons-only rail with monochrome chrome', () => {
     expect(menuOf()).toBe(offMenu)
   })
 
-  test('pin and reorder helpers keep their contract: the five locked apps lead, pinning adds, locked apps cannot be unpinned', () => {
-    expect(normalizePinnedNav([])).toEqual([...DEFAULT_PINNED_NAV])
-    const withCrm = toggledPinnedNav(DEFAULT_PINNED_NAV, 'app-crm')
-    expect(withCrm).toEqual([...DEFAULT_PINNED_NAV, 'app-crm'])
-    expect(toggledPinnedNav(withCrm, 'chat')).toEqual(withCrm)
-    expect(reorderedPinnedNav(withCrm, 'app-crm', 'dev')).toEqual(['chat', 'app-crm', 'dev', 'design', 'library', 'tabs'])
-    expect(toggledPinnedNav(withCrm, 'app-crm')).toEqual([...DEFAULT_PINNED_NAV])
-    expect(shiftedPinnedNav(withCrm, 'app-crm', -1)).toEqual(['chat', 'dev', 'design', 'library', 'app-crm', 'tabs'])
-    expect(shiftedPinnedNav(withCrm, 'chat', -1)).toEqual(withCrm)
-    expect(shiftedPinnedNav(withCrm, 'app-crm', 1)).toEqual(withCrm)
+  test('pin and reorder helpers keep their contract: pins are only what the reader pinned, any app can be pinned, unpinning returns it to its place', () => {
+    expect(DEFAULT_PINNED_NAV).toBe(DEFAULT_NAV)
+    const withCrm = toggledPinnedNav([], 'app-crm')
+    expect(withCrm).toEqual(['app-crm'])
+    // A default app pins too (hanzo-inc/app issue 316), after the ones pinned before it.
+    const withDesign = toggledPinnedNav(withCrm, 'design')
+    expect(withDesign).toEqual(['app-crm', 'design'])
+    expect(toggledPinnedNav(withDesign, 'app-crm')).toEqual(['design'])
+    expect(toggledPinnedNav(['design'], 'design')).toEqual([])
+    // A drag onto a pin puts the dragged app there, pinning it when it was not.
+    expect(reorderedPinnedNav(withDesign, 'design', 'app-crm')).toEqual(['design', 'app-crm'])
+    expect(reorderedPinnedNav(withDesign, 'chat', 'design')).toEqual(['app-crm', 'chat', 'design'])
+    expect(reorderedPinnedNav(withDesign, 'chat', 'nowhere')).toEqual(['app-crm', 'design', 'chat'])
+    expect(shiftedPinnedNav(withDesign, 'design', -1)).toEqual(['design', 'app-crm'])
+    expect(shiftedPinnedNav(withDesign, 'app-crm', -1)).toEqual(withDesign)
+    expect(shiftedPinnedNav(withDesign, 'design', 1)).toEqual(withDesign)
     // A pinned app the reader is not offered (a beta they have no access to) is stepped over, so a move is always seen.
-    const kept = ['chat', 'dev', 'ghost', 'design', 'library', 'tabs']
+    const kept = ['chat', 'ghost', 'design']
     const seen = kept.filter((id) => id !== 'ghost')
-    expect(shiftedPinnedNav(kept, 'design', -1, seen)).toEqual(['chat', 'design', 'ghost', 'dev', 'library', 'tabs'])
-    expect(shiftedPinnedNav(kept, 'dev', 1, seen)).toEqual(['chat', 'design', 'ghost', 'dev', 'library', 'tabs'])
-    // A pin kept by an earlier version (a bare list under the same key) still reads, locked apps restored.
-    expect(normalizePinnedNav(['app-crm', 'chat'])).toEqual(['dev', 'design', 'library', 'tabs', 'app-crm', 'chat'])
+    expect(shiftedPinnedNav(kept, 'design', -1, seen)).toEqual(['design', 'ghost', 'chat'])
+    // What an earlier version kept (the five apps, then the pins from More) carries over as just the pins from More.
+    expect(carriedPinnedNav(['chat', 'dev', 'design', 'library', 'tabs', 'app-crm', 'scheduled'])).toEqual(['app-crm', 'scheduled'])
+    expect(carriedPinnedNav(['dev', 'chat', 'design', 'library', 'tabs'])).toEqual([])
+    expect(carriedPinnedNav(null)).toEqual([])
+    expect(carriedPinnedNav('chat')).toEqual([])
+  })
+
+  test('the folded rail names every destination under its mark, so it reads without a hover (hanzo-inc/app issue 315)', () => {
+    const html = draw5()
+    const captions = [...html.matchAll(/data-slot="rail-caption"[^>]*>([^<]*)</g)].map((m) => m[1])
+    expect(captions).toEqual(['Chat', 'Dev', 'Design', 'Library', 'Tabs', 'More'])
+  })
+
+  test('pins stand first on the folded rail, a line under them, and the default apps keep their order after (hanzo-inc/app issue 316)', () => {
+    const order = (html: string) => [...html.matchAll(/data-nav-id="([^"]+)"/g)].map((m) => m[1])
+    expect(order(draw5())).toEqual(['chat', 'dev', 'design', 'library', 'tabs'])
+    expect(draw5()).not.toContain('data-slot="rail-pins-end"')
+    const pinned = draw5({ pinned: ['scheduled', 'design'] })
+    expect(order(pinned)).toEqual(['scheduled', 'design', 'chat', 'dev', 'library', 'tabs'])
+    expect(pinned).toContain('data-slot="rail-pins-end"')
+    // Unpinned, Scheduled tasks is back in More, and Design back between Dev and Library.
+    expect(order(draw5({ pinned: [] }))).toEqual(['chat', 'dev', 'design', 'library', 'tabs'])
   })
 })
 

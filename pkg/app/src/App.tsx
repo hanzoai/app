@@ -779,6 +779,7 @@ function Window({ bar, betas }: Hosted) {
           {finding ? <Search go={move} onClose={found} mode={mode} host={host} /> : null}
           {learning ? <Learning open onClose={() => setLearning(false)} /> : null}
           <AppContextMenu
+            pins={pins}
             host={host}
             mode={mode}
             closed={closed}
