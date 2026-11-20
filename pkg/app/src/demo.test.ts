@@ -35,6 +35,18 @@ describe('buildNote (issue 442)', () => {
     expect(buildNote('Build a Hanzo AI showcase with Enso, Zen, Dev and MCP tabs')).toBe(DEMO_NOTE)
   })
 
+  test('the thing being built is not its own description', () => {
+    expect(buildNote('Build a dashboard')).toBe(CLARIFY_NOTE)
+    expect(buildNote('Make a showcase')).toBe(CLARIFY_NOTE)
+    expect(buildNote('Create a web app with Dev please')).toBe(CLARIFY_NOTE)
+  })
+
+  test('the question is put once: a conversation that already has an answer builds', () => {
+    expect(buildNote('anything, just build a landing page')).toBe(CLARIFY_NOTE)
+    expect(buildNote('anything, just build a landing page', true)).toBe(DEMO_NOTE)
+    expect(buildNote('Tell me about hanzo agents', true)).toBe('')
+  })
+
   test('a non-build turn gets no note', () => {
     expect(isInteractiveDemo('Tell me about hanzo agents')).toBe(false)
     expect(buildNote('Tell me about hanzo agents')).toBe('')

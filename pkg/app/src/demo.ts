@@ -32,14 +32,18 @@ export function isInteractiveDemo(text: string): boolean {
   return /\b(make|build|create|design|generate|show)\b[\s\S]*\b(demo|website|web\s*app|landing\s*page|dashboard|interactive|prototype|ui|preview|showcase)\b/i.test(text)
 }
 
-/** Words that show the person said what the build should contain. */
+/**
+ * Words that show the person said what the build should contain. The thing
+ * being built is not one of them: "dashboard" and "showcase" name the build,
+ * so "Build a dashboard" says no more than "Build a landing page" does.
+ */
 const CONTENT_WORDS = [
   "menu", "pricing", "price", "signup", "sign-up", "contact", "hours",
   "location", "features", "feature", "hero", "about", "portfolio",
   "product", "service", "services", "blog", "gallery", "form",
-  "checkout", "cart", "dashboard", "sales", "region", "chart", "data",
+  "checkout", "cart", "sales", "region", "chart", "data",
   "table", "list", "map", "calendar", "booking", "login", "account",
-  "search", "filter", "tabs", "showcase", "mcp", "api", "models",
+  "search", "filter", "tabs", "mcp", "api", "models",
 ]
 
 /**
@@ -70,8 +74,14 @@ export function isUnderspecifiedBuild(text: string): boolean {
  * The note to append to a turn: the build note for a described build,
  * the ask-first note for one that has not been described, and nothing
  * for a turn that is not a build at all.
+ *
+ * `asked` says the conversation already holds an answer. The question is put
+ * once, at the start: a person who answers it with "anything, just build a
+ * landing page" has been asked, and sending the ask-first note again would
+ * refuse them for ever. From then on what was said earlier is the brief, and
+ * `about.ts` still tells the model not to invent what nobody described.
  */
-export function buildNote(text: string): string {
+export function buildNote(text: string, asked = false): string {
   if (!isInteractiveDemo(text)) return ""
-  return isUnderspecifiedBuild(text) ? CLARIFY_NOTE : DEMO_NOTE
+  return !asked && isUnderspecifiedBuild(text) ? CLARIFY_NOTE : DEMO_NOTE
 }

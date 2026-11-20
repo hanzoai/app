@@ -2482,8 +2482,9 @@ function Thread({
     const isPrOrReview = /\b(pull request|pr\s*#?\d+|github\.com\/[^\s]+\/pull\/\d+|\/pull\/\d+|code[\s-]?review|ponytail|pony|review\s+(this\s+)?(pr|diff|patch|changes|commit))\b/i.test(text);
     // A build nobody described gets an ask-first note, not the build note:
     // the build note would tell the model to build a Hanzo showcase at once
-    // (issue 442). `buildNote` keeps the old note for a described build.
-    const demoNote = buildNote(text);
+    // (issue 442). `buildNote` keeps the old note for a described build, and
+    // asks once: after any answer in this conversation it builds.
+    const demoNote = buildNote(text, chat.messages.some((m) => m.role === "assistant"));
     const ponyNote = [
       isPrOrReview
         ? 'Use the skill "code-review" (Ponytail Thermo-Nuclear Code Review + Code Judo): perform a rigorous multi-pass PR/diff review checking correctness, edge cases, race conditions, security, and maintainability.'
