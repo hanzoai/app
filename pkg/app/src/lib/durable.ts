@@ -1,7 +1,7 @@
 /**
  * Hanzo Tasks — the durable execution engine — as the board reaches it.
  *
- * TWO SUBSYSTEMS, ONE SEAM, and the seam is the point. `/v1/todo` holds what
+ * TWO SUBSYSTEMS, ONE SEAM, and the seam is the point. `/v1/task` holds what
  * should be done and who holds it; `/v1/tasks` runs work that survives a crash,
  * event-sourced and replayable. They are not two spellings of one thing: a card
  * is dragged between columns and a run is replayed, and neither verb makes sense

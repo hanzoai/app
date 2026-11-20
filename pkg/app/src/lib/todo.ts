@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * The board's store: `/v1/todo` with resilient local cache fallback.
+ * The board's store: `/v1/task` with resilient local cache fallback.
  *
  * A card IS a forge issue — the platform's own words: "the column is a LABEL on
  * the forge, so the board and the forge web UI are the same object seen twice:
@@ -187,7 +187,7 @@ export async function board(
     if (params.label) query.label = params.label
     if (params.scheduled !== undefined) query.scheduled = String(params.scheduled)
     const out = await client.http.json<{ issues?: Card[]; items?: Card[] } | Card[]>({
-      path: '/v1/todo/board',
+      path: '/v1/task/board',
       query,
       signal,
     })
@@ -223,7 +223,7 @@ async function served(
   const [todoPs, devPs] = await Promise.all([
     client.http
       .json<{ projects?: unknown[] } | unknown[]>({
-        path: '/v1/todo/projects',
+        path: '/v1/task/projects',
         signal,
       })
       .catch(() => null),
@@ -300,7 +300,7 @@ export async function open(
     try {
       const created = await client.http.json<Card>({
         method: 'POST',
-        path: `/v1/todo/projects/${encodeURIComponent(key)}/issues`,
+        path: `/v1/task/projects/${encodeURIComponent(key)}/issues`,
         body: card,
         signal,
       })
@@ -359,7 +359,7 @@ export async function edit(
     try {
       const serverUpdated = await client.http.json<Card>({
         method: 'PATCH',
-        path: `/v1/todo/projects/${encodeURIComponent(key)}/issues/${num}`,
+        path: `/v1/task/projects/${encodeURIComponent(key)}/issues/${num}`,
         body: patch,
         signal,
       })
@@ -383,7 +383,7 @@ export async function claim(
     try {
       return await client.http.json<Card>({
         method: 'POST',
-        path: `/v1/todo/projects/${encodeURIComponent(key)}/issues/${num}/claim`,
+        path: `/v1/task/projects/${encodeURIComponent(key)}/issues/${num}/claim`,
         body: {},
         signal,
       })

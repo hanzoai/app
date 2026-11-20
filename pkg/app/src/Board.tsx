@@ -9,7 +9,7 @@
 // engine, and asks why their cards are not replayable. Tasks keeps the word it
 // earned; this is the Board.
 //
-// A CARD IS A FORGE ISSUE. `/v1/todo` says so itself — "the column is a LABEL on
+// A CARD IS A FORGE ISSUE. `/v1/task` says so itself — "the column is a LABEL on
 // the forge, so the board and the forge web UI are the same object seen twice:
 // relabelling in either moves the card in both" — so this surface keeps no work
 // of its own. Everything drawn here is a row somebody could also have moved from
