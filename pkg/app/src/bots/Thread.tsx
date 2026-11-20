@@ -170,6 +170,7 @@ export function Thread({
   const [shared, setShared] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  const [unsent, setUnsent] = useState<string | null>(null)
   const [scrolledUp, setScrolledUp] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const foot = useRef<HTMLDivElement>(null)
@@ -194,6 +195,7 @@ export function Thread({
     setDraft('')
     setFile(null)
     setNote(null)
+    setUnsent(null)
   }, [bot?.name])
 
   const displayName = bot ? called(bot.name) : ''
@@ -235,12 +237,17 @@ export function Thread({
     setDraft('')
     setFile(null)
     setNote(null)
-    void onSend(input).then((ok) => {
-      if (ok) return
+    setUnsent(null)
+    void deliver(input, words, held)
+  }
+
+  const deliver = (input: string, words: string, held: File | null) =>
+    onSend(input).then((ok) => {
+      if (ok) return setUnsent(null)
+      setUnsent(input)
       setDraft((d) => d || words)
       setFile((f) => f ?? held)
     })
-  }
 
   const hasDraft = Boolean(draft.trim() || file)
 
@@ -657,6 +664,32 @@ export function Thread({
               {note}
             </Text>
           ) : null}
+          {unsent ? (
+            <XStack role="alert" items="center" gap={8} px={8}>
+              <Text fontSize={13} lineHeight={18} color="var(--state-error)">
+                {t('Couldn’t send. Nothing has been lost.')}
+              </Text>
+              <XStack
+                render="button"
+                {...{ type: 'button', onClick: () => {
+                    setDraft('')
+                    setFile(null)
+                    void deliver(unsent, unsent, null)
+                  } }}
+                px={10}
+                height={28}
+                items="center"
+                rounded={999}
+                borderWidth={1}
+                borderColor={EDGE}
+                disabled={!live || Boolean(pending)}
+              >
+                <Text fontSize={13} fontWeight="500" color={INK}>
+                  {t('Try again')}
+                </Text>
+              </XStack>
+            </XStack>
+          ) : null}
 
           <Composer
             render="form"
@@ -699,10 +732,15 @@ export function Thread({
                 placeholder={t('Message {name}', { name: displayName })}
                 aria-label={t('Message {name}', { name: displayName })}
                 disabled={!live}
+                multiline
+                rows={1}
                 fontSize={15}
                 px={4}
+                py={8}
                 flex={1}
                 minW={0}
+                maxH={160}
+                $platform-web={{ fieldSizing: 'content', resize: 'none' }}
               />
               <Control asChild>
                 <VoiceSlot voice={voice} disabled={!live}>
