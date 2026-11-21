@@ -390,12 +390,14 @@ export function Account({
   }, [read, tokenTick])
 
   const other = usePlan(personal && personal.name !== currentOrg ? personal.name : null, hoverOpen || menuOpen)
-  const plan = spoken(read.value?.label ?? null) || currentTierPlan
+  // The platform SuperAdmin (owner == "admin") is never offered a plan: the badge names the role.
+  const sudo = superAdmin()
+  const plan = sudo ? t('Admin') : spoken(read.value?.label ?? null) || currentTierPlan
   const planFor = (o: Org) => (o.name === currentOrg ? plan : o.personal ? other : '')
   const who = host.person?.name || host.person?.email || ''
   // A plan not yet read is not Free: Free is what billing answered, and no answer shows no plan and no offer.
   const known = Boolean(plan) || read.value !== null
-  const isFree = known && (!plan || plan.toLowerCase() === 'free')
+  const isFree = !sudo && known && (!plan || plan.toLowerCase() === 'free')
   const planName = plan || (known ? t('Free') : '')
   const working = [here ? (here.personal ? t('Personal') : here.display) : currentOrg, planName].filter(Boolean).join(' - ')
   const plans = upgrade(read.value?.label?.name)
