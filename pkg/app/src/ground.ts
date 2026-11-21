@@ -1,25 +1,15 @@
 /**
- * The ground the workspace's cards stand on, and how each card is cut.
- *
- * A PANE is a card floating on the ground, cut by the `--pane-*` tokens
- * (@hanzo/design elevation.css): a corner, an edge, the lens behind it, and the
- * first paper rung's lit edge and drop — the second's 15px drop and the floor's
- * strong glass read as a gradient through a translucent pane, so both stay one
- * rung down. The fill is the caller's rung: `--pane-fill`
- * in the app's frame, `sheet(1)`/`sheet(2)` where a pane lies in the shell.
- *
- * The drop is a prop and not `sheet(2)`'s `elevation-2` class, whose shadow is
- * `!important`: a Dev run's pane steps aside for the two panes inside it by
- * slot (@hanzo/build's `run-split`), and an important shadow would stay behind.
+ * One theme, Dev's: a pure black ground and flat panes split by hairline dividers, no
+ * floating card, no corner, no lens (@hanzo/design `--background` is the ground in both
+ * schemes). A PANE is only a fill and a hairline on its start edge, where it meets the
+ * sidebar or the pane beside it. The `--pane-*` tokens are @hanzo/design's (0.5.45), flat.
  */
-export const pane = (fill = 'var(--pane-fill, var(--card))') =>
+export const pane = (fill = 'var(--background)') =>
   ({
     backgroundColor: fill,
-    borderRadius: 'var(--pane-round)',
-    borderWidth: 1,
+    borderInlineStartWidth: 1,
     borderStyle: 'solid',
-    borderColor: 'var(--pane-edge, var(--white-08))',
-    backdropFilter: 'var(--pane-blur)',
+    borderColor: 'var(--pane-edge)',
   }) as const
 
 /**
@@ -63,11 +53,7 @@ export const SIDE = 256
  */
 export const inPane = (row: number): number => row
 
-/**
- * THE FLOOR under the app's frame (app/_web.tsx, components/settings/Frame.tsx):
- * the ground colour with `--pane-ground`, the host's soft radial light, on it.
- */
+/** THE FLOOR under the app's frame: the ground colour, flat. */
 export const floor = {
-  backgroundColor: 'var(--pane-floor)',
-  backgroundImage: 'var(--pane-ground)',
+  backgroundColor: 'var(--background)',
 } as const

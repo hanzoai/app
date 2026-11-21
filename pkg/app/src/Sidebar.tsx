@@ -1254,7 +1254,7 @@ export function Sidebar({
                         rounded: 9999,
                         borderWidth: 1,
                         borderColor: 'var(--border-strong)',
-                        bg: 'var(--pane-fill)',
+                        bg: 'var(--background)',
                       }
                     : HEAD)}
                 >

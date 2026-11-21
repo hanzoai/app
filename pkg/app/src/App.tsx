@@ -393,7 +393,6 @@ function Window({ bar, betas }: Hosted) {
           minW={0}
           height={bar ? '100%' : '100dvh'}
           overflow="hidden"
-          rounded={bar ? '$3' : undefined}
           // Clipped, not hidden, on a phone: the drawer slides the pane past the window's edge, and a
           // hidden overflow is still a scroller that a `scrollIntoView` inside the pane would move.
           $max-md={{ position: 'fixed', t: TOP, l: 0, r: 0, height: HEIGHT, ...({ overflow: 'clip' } as object) }}

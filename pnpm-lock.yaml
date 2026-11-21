@@ -19,8 +19,8 @@ catalogs:
       specifier: 0.2.0
       version: 0.2.0
     '@hanzo/design':
-      specifier: 0.5.39
-      version: 0.5.39
+      specifier: 0.5.45
+      version: 0.5.45
     '@hanzo/event':
       specifier: 0.3.67
       version: 0.3.67
@@ -149,7 +149,7 @@ importers:
         version: 0.2.0(@hanzo/gui@8.3.5(react-dom@19.2.8(react@19.2.8))(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(react@19.2.8))(react@19.2.8)
       '@hanzo/design':
         specifier: 'catalog:'
-        version: 0.5.39
+        version: 0.5.45
       '@hanzo/event':
         specifier: 'catalog:'
         version: 0.3.67(react@19.2.8)
@@ -269,7 +269,7 @@ importers:
     devDependencies:
       '@hanzo/design':
         specifier: 'catalog:'
-        version: 0.5.39
+        version: 0.5.45
       '@hanzo/gui':
         specifier: 8.3.5
         version: 8.3.5(react-dom@19.2.8(react@19.2.8))(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(react@19.2.8)
@@ -736,8 +736,8 @@ packages:
     resolution: {integrity: sha512-CNGAkwN4BYKaIf852uJ5KDFh8wF08SIQvEUEQ3v4/zQso9jRSCRv3RF6iLwRADZfWGQcIjS9OUJUCX0/mX/nUg==}
     hasBin: true
 
-  '@hanzo/design@0.5.39':
-    resolution: {integrity: sha512-xuwm76nw7xahucWwWNM+qlW2VJoVfM8PQpyhO4p0eK81uzdLQIbzjAGq0k9CJ6+L4KGazd6bKCYfthSRsWA1ow==}
+  '@hanzo/design@0.5.45':
+    resolution: {integrity: sha512-GXIII1BdDDJJWriiKeLZk4xp28XL3xg7ZNzCaslKgJfbwIHc6JKa1AJiUcuMUjPoDD/10B6oOvFEsvEXbHbs4w==}
     hasBin: true
 
   '@hanzo/dev-core@0.1.2':
@@ -3996,7 +3996,7 @@ snapshots:
 
   '@hanzo/design@0.5.38': {}
 
-  '@hanzo/design@0.5.39': {}
+  '@hanzo/design@0.5.45': {}
 
   '@hanzo/dev-core@0.1.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:

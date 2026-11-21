@@ -36,7 +36,7 @@ catalog:
   '@hanzo/appearance': 0.2.15
   '@hanzo/build': 0.2.141
   '@hanzo/composer': 0.2.0
-  '@hanzo/design': 0.5.39
+  '@hanzo/design': 0.5.45
   '@hanzo/event': 0.3.67
   '@hanzo/gui': 8.3.5
   '@hanzo/i18n': 0.5.5
