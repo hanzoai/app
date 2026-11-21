@@ -493,6 +493,16 @@ describe('the unified desktop sidebar', () => {
     expect(src).toContain('data-slot="signin-prompt"')
   })
 
+  test('every sign-in door goes through the host’s addresses, never a hard-coded /login or /signup', async () => {
+    const { readFileSync } = await import('node:fs')
+    for (const file of ['./Sidebar.tsx', './DevPane.tsx', './Chat.tsx']) {
+      const src = readFileSync(new URL(file, import.meta.url), 'utf8')
+      expect(src, file).not.toMatch(/assign\(['"]\/(login|signup)/)
+    }
+    const sidebar = readFileSync(new URL('./Sidebar.tsx', import.meta.url), 'utf8')
+    expect(sidebar).toContain('data-slot="signin-prompt-signup" onPress={() => enter(signUp())}')
+  })
+
   test('a window of its own (Hanzo Desktop) offers no Open in new tab; a browser does', () => {
     const inside = (windowed: boolean) =>
       renderToStaticMarkup(createElement(Windowed.Provider, { value: windowed }, createElement(Sidebar, { pins, host, mode: 'chat', thread: null, go: noop, onShut: noop, onBack: noop })))

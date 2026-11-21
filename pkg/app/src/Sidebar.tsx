@@ -65,7 +65,7 @@ import { empty } from './open'
 import { useSpan } from './span'
 import { useDevMode } from './lib/dev-mode'
 import { app, design, flow, hosted, studio, talk, TERMINALS, type Place } from './lib/host'
-import { enter, LOGIN } from './lib/destination'
+import { enter, LOGIN, signUp } from './lib/destination'
 import { HOSTED_APPS } from './lib/hosted'
 import { pick } from './lib/session'
 import { brand, site } from './where'
@@ -1663,10 +1663,11 @@ export function Sidebar({
           <DialogContent data-slot="signin-prompt" width={380} maxW="calc(100vw - 24px)" gap="$3">
             <DialogTitle>{gated ?? ''}</DialogTitle>
             <XStack gap="$2" justify="flex-end">
-              <Button variant="outline" rounded={9999} data-slot="signin-prompt-login" onPress={() => window.location.assign('/login?next=%2Fchat')}>
+              <Button variant="outline" rounded={9999} data-slot="signin-prompt-login" onPress={() => enter(LOGIN)}>
                 {t('Log in')}
               </Button>
-              <Button rounded={9999} data-slot="signin-prompt-signup" onPress={() => window.location.assign('/signup?next=%2Fchat')}>
+              {/* The host names where an account starts (`where().signUp`: /start on hanzo.team). */}
+              <Button rounded={9999} data-slot="signin-prompt-signup" onPress={() => enter(signUp())}>
                 {t('Sign up for free')}
               </Button>
             </XStack>
