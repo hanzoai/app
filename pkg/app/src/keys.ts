@@ -113,6 +113,37 @@ export function cyclePanel(step: 1 | -1, root: Document = document): void {
   }
 }
 
+const ROW = 'a[href], button, [role="button"], [role="link"]'
+
+/**
+ * The sidebar's own keys, on its root: ↑ and ↓ (Home, End) move between its rows, and Shift+F10
+ * or the menu key opens the focused row's menu as a right press does (ContextMenu.tsx listens
+ * for that event). Enter and Space are the row's own.
+ */
+export function railKeys(
+  e: { key: string; shiftKey: boolean; target: EventTarget | null; preventDefault(): void },
+  root: HTMLElement,
+): void {
+  const from = e.target instanceof HTMLElement ? e.target : null
+  if (!from || typing(from)) return
+  const row = from.closest<HTMLElement>(ROW)
+  if (!row) return
+  if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) {
+    e.preventDefault()
+    const box = row.getBoundingClientRect()
+    row.dispatchEvent(
+      new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: box.left + box.width / 2, clientY: box.top + box.height / 2 }),
+    )
+    return
+  }
+  const rows = [...root.querySelectorAll<HTMLElement>(ROW)].filter((r) => !r.hasAttribute('disabled') && r.getAttribute('aria-hidden') !== 'true')
+  const at = rows.indexOf(row)
+  const next = e.key === 'ArrowDown' ? rows[at + 1] : e.key === 'ArrowUp' ? rows[at - 1] : e.key === 'Home' ? rows[0] : e.key === 'End' ? rows[rows.length - 1] : undefined
+  if (!next) return
+  e.preventDefault()
+  next.focus()
+}
+
 /** Focuses the first row of the sidebar's list. */
 export function focusSidebar(root: Document = document): boolean {
   const row = root.querySelector<HTMLElement>('[data-slot="sidebar-nav"] a[href], [data-slot="sidebar-nav"] [role="button"], [data-slot="sidebar-nav"] button')

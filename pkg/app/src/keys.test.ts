@@ -5,7 +5,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 
 vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s }) }))
 
-const { handle, useGlobalKeys, cyclePanel } = await import('./keys')
+const { handle, useGlobalKeys, cyclePanel, railKeys } = await import('./keys')
 const km = await import('@hanzo/dev-core/keymap')
 
 const say = (s: string) => s
@@ -124,6 +124,49 @@ describe('panels', () => {
     expect(at()).toBe('a')
     cyclePanel(-1)
     expect(at()).toBe('c')
+  })
+})
+
+describe('the sidebar rows', () => {
+  const rail = () => {
+    document.body.innerHTML = '<nav><button id="a">a</button><button id="b">b</button><button id="c" disabled>c</button><input id="q" /></nav>'
+    return document.querySelector('nav') as HTMLElement
+  }
+  const key = (init: { key: string; shiftKey?: boolean }, target: HTMLElement) => {
+    const calls = { prevented: false }
+    railKeys({ shiftKey: false, ...init, target, preventDefault: () => (calls.prevented = true) }, document.querySelector('nav') as HTMLElement)
+    return calls.prevented
+  }
+
+  test('↑ and ↓ move between rows, skipping disabled ones, and Home and End go to the ends', () => {
+    rail()
+    const a = document.getElementById('a')!
+    const b = document.getElementById('b')!
+    expect(key({ key: 'ArrowDown' }, a)).toBe(true)
+    expect(document.activeElement).toBe(b)
+    expect(key({ key: 'ArrowUp' }, b)).toBe(true)
+    expect(document.activeElement).toBe(a)
+    key({ key: 'End' }, a)
+    expect(document.activeElement).toBe(b)
+    key({ key: 'Home' }, b)
+    expect(document.activeElement).toBe(a)
+  })
+
+  test('Shift+F10 and the menu key open the focused row\'s menu as a right press does', () => {
+    rail()
+    const b = document.getElementById('b')!
+    const seen: string[] = []
+    window.addEventListener('contextmenu', (e) => seen.push((e.target as HTMLElement).id), { once: true })
+    expect(key({ key: 'F10', shiftKey: true }, b)).toBe(true)
+    expect(seen).toEqual(['b'])
+    window.addEventListener('contextmenu', (e) => seen.push((e.target as HTMLElement).id), { once: true })
+    key({ key: 'ContextMenu' }, b)
+    expect(seen).toEqual(['b', 'b'])
+  })
+
+  test('arrows in a field are the field\'s', () => {
+    rail()
+    expect(key({ key: 'ArrowDown' }, document.getElementById('q')!)).toBe(false)
   })
 })
 
