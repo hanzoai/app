@@ -108,7 +108,7 @@ export const BETAS: readonly Beta[] = [
   { id: 'authz', name: 'Authz', line: phrase('Fine-grained authorization, Zanzibar style'), group: 'Security', href: `${PLATFORM}/authz` },
   { id: 'hsm', name: 'HSM', line: phrase('Hardware-backed keys across cloud KMSs'), group: 'Security', href: `${PLATFORM}/hsm` },
 
-  { id: 'studio', name: 'Studio', line: phrase('AI cinema director, camera motion rig and multi-shot timeline'), group: 'Creative', href: '/studio' },
+  { id: 'studio', name: 'Studio', line: phrase('Create images, video, ads and posts, then send them to Post'), group: 'Creative', href: '/studio' },
   { id: 'koma', name: 'Koma', line: phrase('Cinematic video with character continuity and shot-level control'), group: 'Creative' },
   { id: 'iro', name: 'Iro', line: phrase('High-fidelity images, creative direction and consistent visual assets'), group: 'Creative' },
   { id: 'mori', name: 'Mori', line: phrase('3D assets, materials, environments and spatially consistent scenes'), group: 'Creative' },
