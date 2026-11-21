@@ -43,4 +43,10 @@ describe('given', () => {
     expect(given('0x6a8aCe50f9D89aA9')).toBe('')
     expect(given('evmaldo')).toBe('Evmaldo')
   })
+  test('a handle is not a name: a single word with a digit or an @ greets no one', () => {
+    expect(given('Jamessburnss1313')).toBe('')
+    expect(given('ada@example.com')).toBe('')
+    expect(given('Agent 47')).toBe('Agent')
+    expect(given('james')).toBe('James')
+  })
 })
