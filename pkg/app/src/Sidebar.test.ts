@@ -180,9 +180,9 @@ describe('the folded rail', () => {
   })
 
   test('the expand button leads the rail when folded and calls onOpen', () => {
-    expect(rail('chat')).not.toContain('rail-expand')
+    expect(rail('chat')).not.toContain('sidebar-toggle')
     const html = rail('chat', noop)
-    expect(at(html, 'data-slot="rail-expand"')).toBeLessThan(at(html, 'aria-label="Chat"'))
+    expect(at(html, 'data-slot="sidebar-toggle"')).toBeLessThan(at(html, 'aria-label="Chat"'))
     expect(html).toContain('aria-label="Open sidebar"')
   })
 
@@ -245,8 +245,8 @@ describe('the unified desktop sidebar', () => {
     const html = column('chat')
     expect(at(html, 'Hanzo')).toBeLessThan(at(html, 'aria-label="Activity"'))
     expect(at(html, 'aria-label="Activity"')).toBeLessThan(at(html, 'aria-label="Search"'))
-    expect(at(html, 'aria-label="Search"')).toBeLessThan(at(html, 'data-slot="sidebar-fold"'))
-    expect(at(html, 'data-slot="sidebar-fold"')).toBeLessThan(at(html, 'New chat'))
+    expect(at(html, 'aria-label="Search"')).toBeLessThan(at(html, 'data-slot="sidebar-toggle"'))
+    expect(at(html, 'data-slot="sidebar-toggle"')).toBeLessThan(at(html, 'New chat'))
     expect(at(html, 'New chat')).toBeLessThan(at(html, 'data-slot="sidebar-nav"'))
     expect(at(html, 'data-slot="rail-pinned"')).toBeLessThan(at(html, 'data-slot="recents"'))
     expect(at(html, 'data-slot="recents"')).toBeLessThan(at(html, 'data-slot="place-more"'))

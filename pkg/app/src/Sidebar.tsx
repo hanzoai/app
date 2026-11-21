@@ -3,7 +3,7 @@
 // The single unified desktop sidebar (and mobile drawer column):
 // 1. Single Top Header Row (`data-slot="app-head"`): `Hanzo` wordmark (or `← Back` + section
 //    title in a sub-page like Library / Scheduled tasks / Customize), Activity bell,
-//    Search (⌘K) button, and ONE fold button (`PanelLeftClose`, `Fold sidebar to icons`).
+//    Search (⌘K) button, and ONE fold button (`Toggle`, `Fold sidebar to icons`).
 // 2. Primary New Action (`+ New chat` / `+ New run` / `+ New design`).
 // 3. Unified Product Menu (5 core items `Chat`, `Dev`, `Design`, `Library`, `Tabs` + user-pinned
 //    items with drag-to-reorder), monochrome active state (`bg="$raised"`),
@@ -34,7 +34,6 @@ import {
   Link2,
   Monitor,
   MoreHorizontal,
-  PanelLeftClose,
   Pencil,
   Pin,
   PinOff,
@@ -44,7 +43,7 @@ import {
   Settings,
   Sparkles,
 } from 'lucide-react'
-import { DOTS, Gutter, library, MARKS, NEW, own, Rename, tabs, useLanguage, useScheduled, useSessions, type Host } from '@hanzo/build'
+import { DOTS, Gutter, library, NEW, own, Rename, tabs, useLanguage, useScheduled, useSessions, type Host } from '@hanzo/build'
 import { rename, useDeviceNames, type Names } from '@hanzo/build/names'
 import { showDevice, showShell, type Shown } from './lib/devices'
 
@@ -56,6 +55,8 @@ import { useEffect, useId, useMemo, useState, type DragEvent, type ReactNode } f
 import { Account, Made } from './Account'
 import { useBetas } from './Betas'
 import { Recents } from './Recents'
+import { Toggle } from './Toggle'
+import { MARKS } from './icons'
 import { DEFAULT_NAV, fullNavUrl, raised, useNavEntries, type NavEntry, type Pins, type Raised } from './Rail'
 import { MoreMenu } from './MoreMenu'
 import { Setup } from './Setup'
@@ -1216,17 +1217,7 @@ export function Sidebar({
                   <Search size={15} aria-hidden />
                 </SidebarIconButton>
               )}
-              {drawer || !onShut ? null : (
-                <SidebarIconButton
-                  label={t('Fold sidebar to icons')}
-                  data-slot="sidebar-fold"
-                  data-tauri-drag-region="false"
-                  onPress={onShut}
-                  {...SUB_HEAD}
-                >
-                  <PanelLeftClose size={15} aria-hidden data-i18n-mirror />
-                </SidebarIconButton>
-              )}
+              {drawer || !onShut ? null : <Toggle open onPress={onShut} tooltip />}
             </XStack>
           ) : (
             <XStack
@@ -1269,36 +1260,7 @@ export function Sidebar({
                   <Search size={drawer ? 18 : 15} aria-hidden />
                 </SidebarIconButton>
               )}
-              {drawer || !onShut ? null : (
-                <Tooltip placement="bottom" offset={6}>
-                  <TooltipTrigger asChild>
-                    <XStack
-                      render={<button type="button" />}
-                      aria-label={t('Fold sidebar to icons')}
-                      data-slot="sidebar-fold"
-                      data-tauri-drag-region="false"
-                      onClick={onShut}
-                      {...HEAD}
-                      borderWidth={0}
-                      bg="transparent"
-                      items="center"
-                      justify="center"
-                      cursor="pointer"
-                      opacity={0.7}
-                      hoverStyle={{ bg: '$hover', opacity: 1 }}
-                      pressStyle={{ bg: '$raised' }}
-                      focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
-                    >
-                      <PanelLeftClose size={15} aria-hidden data-i18n-mirror />
-                    </XStack>
-                  </TooltipTrigger>
-                  <TooltipContent px="$2.5" py="$1.5" rounded="$3" bg="var(--popover)" borderWidth={1} borderColor="$edge" z="var(--z-tooltip)">
-                    <Text fontFamily="$body" fontSize="$1" color="$ink">
-                      {t('Fold sidebar to icons')}
-                    </Text>
-                  </TooltipContent>
-                </Tooltip>
-              )}
+              {drawer || !onShut ? null : <Toggle open onPress={onShut} tooltip />}
             </XStack>
           )}
 

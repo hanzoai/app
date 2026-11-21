@@ -20,13 +20,15 @@ const { part, pressed, mark } = vi.hoisted(() => {
 vi.mock('@hanzo/gui', () => ({ Text: part, XStack: part }))
 const made = vi.fn()
 vi.mock('./Sidebar', () => ({ dispatchTabsAction: (d: { kind: string }) => calls.push(`tabs ${d.kind}`) }))
-vi.mock('@hanzo/build', () => ({
+vi.mock('./icons', () => ({
   MARKS: {
     chat: { icon: mark('chat'), make: mark('chat-make') },
     dev: { icon: mark('dev'), make: mark('dev-make') },
     studio: { icon: mark('studio'), make: mark('studio-make') },
     tabs: { icon: mark('tabs'), make: mark('tabs-make') },
   },
+}))
+vi.mock('@hanzo/build', () => ({
   NEW: 'new',
   nav: () => [{ id: 'work', label: 'Work', links: [{ id: 'new', label: 'New run', onPress: made }, { id: 'projects', label: 'Projects' }] }],
 }))

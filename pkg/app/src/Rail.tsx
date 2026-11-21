@@ -17,7 +17,6 @@ import {
   Ellipsis,
   FlaskConical,
   PanelLeft,
-  PanelLeftOpen,
   Plus,
   Settings,
   Sparkles,
@@ -26,7 +25,10 @@ import {
 } from 'lucide-react'
 import { useState, type DragEvent, type ReactNode } from 'react'
 import { XStack, YStack, Text } from '@hanzo/gui'
-import { MARKS, route, type Host } from '@hanzo/build'
+import { Toggle } from './Toggle'
+export { Toggle, TOGGLE } from './Toggle'
+import { route, type Host } from '@hanzo/build'
+import { MARKS } from './icons'
 import {
   Tooltip,
   TooltipContent,
@@ -204,7 +206,7 @@ export function useNavEntries({
       label: t('Chat'),
       href: talk(),
       on: mode === 'chat',
-      icon: <MARKS.chat.icon size={17} aria-hidden />,
+      icon: <MARKS.chat.icon aria-hidden />,
       onPress: onChat,
     },
     {
@@ -213,7 +215,7 @@ export function useNavEntries({
       label: 'Dev',
       href: app(''),
       on: mode === 'dev' && !here,
-      icon: <MARKS.dev.icon size={17} aria-hidden />,
+      icon: <MARKS.dev.icon aria-hidden />,
       onPress: onDev,
     },
     ...(anon
@@ -225,7 +227,7 @@ export function useNavEntries({
             label: 'Design',
             href: design(''),
                   on: mode === 'design',
-            icon: <MARKS.design.icon size={17} aria-hidden />,
+            icon: <MARKS.design.icon aria-hidden />,
             onPress: () => onDesign?.(),
           } satisfies NavEntry,
         ]),
@@ -235,7 +237,7 @@ export function useNavEntries({
       label: t('Library'),
       href: app(RAISED.library),
       on: here === 'library',
-      icon: <MARKS.library.icon size={17} aria-hidden />,
+      icon: <MARKS.library.icon aria-hidden />,
       onPress: to(RAISED.library),
     },
     ...(anon
@@ -247,7 +249,7 @@ export function useNavEntries({
             label: t('Scheduled tasks'),
             href: app(RAISED.scheduled),
             on: here === 'scheduled',
-            icon: <MARKS.scheduled.icon size={17} aria-hidden />,
+            icon: <MARKS.scheduled.icon aria-hidden />,
             onPress: to(RAISED.scheduled),
           } satisfies NavEntry,
           {
@@ -256,7 +258,7 @@ export function useNavEntries({
             label: t('Customize'),
             href: app(RAISED.customize),
             on: here === 'customize',
-            icon: <MARKS.customize.icon size={17} aria-hidden />,
+            icon: <MARKS.customize.icon aria-hidden />,
             onPress: to(RAISED.customize),
           } satisfies NavEntry,
           ...(opened('studio')
@@ -267,7 +269,7 @@ export function useNavEntries({
                   label: 'Studio',
                   href: studio(''),
                   on: mode === 'studio',
-                  icon: <MARKS.studio.icon size={17} aria-hidden />,
+                  icon: <MARKS.studio.icon aria-hidden />,
                   onPress: onStudio,
                 } satisfies NavEntry,
               ]
@@ -291,7 +293,7 @@ export function useNavEntries({
             label: 'Tabs',
             href: TERMINALS,
                   on: mode === 'tabs',
-            icon: <MARKS.tabs.icon size={17} aria-hidden />,
+            icon: <MARKS.tabs.icon aria-hidden />,
             onPress: onTabs,
           } satisfies NavEntry,
           {
@@ -555,16 +557,6 @@ export function RailMark({
   )
 }
 
-/** The sidebar's toggle: the same mark wherever a host draws it. */
-export function Toggle({ open, onPress, label }: { open: boolean; onPress: () => void; label?: string }) {
-  const { t } = useI18n()
-  return (
-    <Mark label={label ?? t(open ? 'Close sidebar' : 'Open sidebar')} data-slot="sidebar-toggle" aria-expanded={open} onClick={onPress}>
-      <PanelLeft size={18} aria-hidden data-i18n-mirror />
-    </Mark>
-  )
-}
-
 export function Rail({
   host,
   mode,
@@ -673,14 +665,7 @@ export function Rail({
       >
         {/* Top expand button (only in folded desktop rail, never duplicated in compact drawer rail) */}
         {!compact && expandHandler ? (
-          <Mark
-            label={t('Open sidebar')}
-            data-slot="rail-expand"
-            tooltip
-            onClick={expandHandler}
-          >
-            <PanelLeftOpen size={18} aria-hidden data-i18n-mirror />
-          </Mark>
+          <Toggle open={false} tooltip onPress={expandHandler} />
         ) : null}
 
         {/* Primary + New icon button when folded */}

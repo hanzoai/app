@@ -62,7 +62,7 @@
 
 import { useI18n } from '@hanzo/i18n/react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, Clapperboard, RefreshCw, Sparkles, Workflow } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clapperboard, RefreshCw, Sparkles, Workflow } from 'lucide-react'
 import { AiProvider } from '@hanzo/ai/react'
 import { XStack, YStack } from '@hanzo/gui'
 import { Button, Text } from '@hanzo/ui'
@@ -78,6 +78,7 @@ import { isPlans, leave, useDevHost } from './dev'
 import { Gate } from './Gate'
 import { useHost } from './host'
 import { useKept } from './kept'
+import { CHEVRON } from './icons'
 import { Mark, raised, Rail, RAIL_FOLDED, Toggle, usePinnedNav } from './Rail'
 import { Layer, Lift, useDrawer } from './Drawer'
 import { empty, openThread, showSettings, useOpen } from './open'
@@ -410,16 +411,16 @@ function Window({ bar, betas }: Hosted) {
                 {...bar.drag}
               >
                 <XStack $md={{ display: 'none' }}>
-                  <Toggle open={drawer.state === 'open'} onPress={drawer.open} label={t('Open sidebar')} />
+                  <Toggle open={drawer.state === 'open'} onPress={drawer.open} />
                 </XStack>
                 <XStack $max-md={{ display: 'none' }}>
                   <Toggle open={!closed} onPress={flip} />
                 </XStack>
                 <Mark label={t('Back')} data-slot="back" onPress={() => router.back()}>
-                  <ArrowLeft size={15} aria-hidden data-i18n-mirror />
+                  <ChevronLeft size={16} strokeWidth={CHEVRON} aria-hidden data-i18n-mirror />
                 </Mark>
                 <Mark label={t('Forward')} data-slot="forward" onPress={() => router.forward()}>
-                  <ArrowRight size={15} aria-hidden data-i18n-mirror />
+                  <ChevronRight size={16} strokeWidth={CHEVRON} aria-hidden data-i18n-mirror />
                 </Mark>
               </XStack>
               <XStack data-slot="title-bar-main" flex={1} minW={0} self="stretch" items="center" justify="space-between" pl={14} pr={8} gap={6} {...bar.drag}>

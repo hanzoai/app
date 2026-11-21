@@ -99,7 +99,7 @@ describe('folded 52px icons-only rail with monochrome chrome', () => {
     expect(DEFAULT_PINNED_NAV).toEqual(['chat', 'dev', 'design', 'library', 'tabs'])
     const html = draw5()
     expect(html).toContain('data-expanded="false"')
-    expect(html).toContain('data-slot="rail-expand"')
+    expect(html).toContain('data-slot="sidebar-toggle"')
     expect(html).toContain('data-slot="rail-new"')
     expect(html).not.toContain('data-slot="rail-fold-toggle"')
     expect(html).toContain('aria-label="Chat"')

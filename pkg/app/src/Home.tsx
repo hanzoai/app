@@ -21,7 +21,7 @@ import { AtSign, Blocks, Bot, FolderGit2, Hash, Plus, UserPlus } from 'lucide-re
 import { useAgents, usePeople, useSessions, useThreads } from '@hanzo/ai/react'
 import type { AiClient } from '@hanzo/ai'
 import { Composer } from '@hanzo/ui/chat'
-import { MARKS } from '@hanzo/build'
+import { MARKS } from './icons'
 import { Box, Text, View, XStack, YStack } from '@hanzo/ui'
 import { tap } from './lib/tap'
 import { useIam, useOrganizations } from '@hanzo/iam/react'
