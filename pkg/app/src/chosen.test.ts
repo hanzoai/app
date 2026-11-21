@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
 // Kai's answer and the skills' words, as @hanzo/build gives them: each test says what Kai picks.
-const kai = vi.hoisted(() => ({ found: [] as { name: string; skill: boolean }[], asked: [] as string[], taught: [] as string[][], fail: false }))
+const kai = vi.hoisted(() => ({ found: [] as { name: string; skill: boolean; probability?: number }[], asked: [] as string[], taught: [] as string[][], fail: false }))
 vi.mock('@hanzo/build', () => ({
   detect: async (_t: unknown, prompt: string) => {
     kai.asked.push(prompt)
     if (kai.fail) throw new Error('kai is away')
-    return kai.found.map((f) => ({ ...f, source: f.skill ? 'skill' : 'mcp', description: '', probability: 0.9 }))
+    return kai.found.map((f) => ({ source: f.skill ? 'skill' : 'mcp', description: '', probability: 0.9, ...f }))
   },
   skillsSaid: async (_t: unknown, names: string[], max: number) => {
     kai.taught.push(names)
@@ -14,7 +14,7 @@ vi.mock('@hanzo/build', () => ({
   },
 }))
 
-const { CHOSEN_MAX, NONE, carried, choose, personas, within } = await import('./chosen')
+const { CHOSEN_MAX, NONE, carried, choosable, choose, personas, within } = await import('./chosen')
 const target = { api: 'https://api.hanzo.ai', token: () => 'tok' } as never
 
 afterEach(() => {
@@ -55,6 +55,24 @@ describe('Hanzo chooses the skills, agents and personas a message needs (hanzo-i
     expect(kai.asked).toEqual([])
     kai.fail = true
     expect(await choose(target, 'Plan a launch for my new bakery')).toEqual(NONE)
+  })
+
+  test('chooses only what Kai is sure of and a person could have picked from +', async () => {
+    kai.found = [
+      { name: 'react-doctor', skill: true, probability: 0.95 },
+      { name: 'audit_audit', skill: true, probability: 0.93 },
+      { name: 'agent-browser', skill: true, probability: 0.62 },
+      { name: 'security-review', skill: true, probability: 0.86 },
+      { name: 'simplify', skill: true, probability: 0.81 },
+    ]
+    const shelf = ['security-review', 'simplify', 'code-review', 'audit_audit']
+    const got = await choose(target, 'Find the security problems in my login code and simplify it', [], [], undefined, shelf)
+    expect(got.names).toEqual(['security-review', 'simplify'])
+    // Until the shelf is read, any skill Kai is sure of may join, never an API descriptor.
+    expect((await choose(target, 'Find the security problems in my login code and simplify it')).names).toEqual(['react-doctor', 'security-review'])
+    expect(choosable('audit_audit')).toBe(false)
+    expect(choosable('frontend-design', ['simplify'])).toBe(false)
+    expect(choosable('simplify', ['simplify'])).toBe(true)
   })
 
   test('reads which skills earlier turns carried', () => {

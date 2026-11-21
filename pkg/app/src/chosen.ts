@@ -18,6 +18,16 @@ import { TEAM } from './team'
 /** At most this many skills join one message. */
 export const CHOSEN = 2
 
+/** How many candidates Kai is asked for, before the ones that fall short are left out. */
+const ASKED = 8
+
+/**
+ * How sure Kai must be. Its default (0.55) let in skills that had nothing to do
+ * with the message (an org audit-log reader for "make my landing page look
+ * better on phones"), so a chosen skill must clear a higher bar.
+ */
+export const SURE = 0.8
+
 /** The most of one chosen skill a message carries. A chosen skill stays in the conversation's history, so it carries less than a preloaded one. */
 export const CHOSEN_MAX = 3000
 
@@ -47,17 +57,35 @@ export function carried(turns: readonly { role: string; content?: unknown }[]): 
 }
 
 /**
- * What Kai chooses for `prompt`: up to `CHOSEN` skills that apply, leaving out
- * the ones `skip` names (preloaded, or said another way already). A skill an
- * earlier turn carried (`had`) is named again rather than carried twice. Never
- * throws: a message Kai cannot answer for goes as it is.
+ * Whether a skill may be chosen on its own: a skill a person could pick from
+ * `+` (`known`, when the shelf has been read), never one of the platform's API
+ * descriptors (`audit_audit`, `ai_chats`: an underscore, not a skill's hyphen).
  */
-export async function choose(t: Target, prompt: string, skip: readonly string[] = [], had: readonly string[] = [], signal?: AbortSignal): Promise<Chosen> {
+export const choosable = (name: string, known: readonly string[] = []): boolean => !name.includes('_') && (!known.length || known.includes(name))
+
+/**
+ * What Kai chooses for `prompt`: up to `CHOSEN` skills it is `SURE` of that a
+ * person could have picked themselves (`choosable`), leaving out the ones `skip`
+ * names (preloaded, or said another way already). A skill an earlier turn
+ * carried (`had`) is named again rather than carried twice. Never throws: a
+ * message Kai cannot answer for goes as it is.
+ */
+export async function choose(
+  t: Target,
+  prompt: string,
+  skip: readonly string[] = [],
+  had: readonly string[] = [],
+  signal?: AbortSignal,
+  known: readonly string[] = [],
+): Promise<Chosen> {
   const words = prompt.trim()
   if (words.length < SHORT) return NONE
   try {
-    const found = await detect(t, words, { maxSkills: CHOSEN + skip.length, maxTools: 1, signal })
-    const names = found.filter((d) => d.skill && !skip.includes(d.name)).map((d) => d.name).slice(0, CHOSEN)
+    const found = await detect(t, words, { maxSkills: ASKED, maxTools: 1, signal })
+    const names = found
+      .filter((d) => d.skill && d.probability >= SURE && !skip.includes(d.name) && choosable(d.name, known))
+      .map((d) => d.name)
+      .slice(0, CHOSEN)
     if (!names.length) return NONE
     const fresh = names.filter((n) => !had.includes(n))
     const again = names.filter((n) => had.includes(n)).map((n) => `Use the "${n}" skill where it applies, as earlier in this conversation.`)

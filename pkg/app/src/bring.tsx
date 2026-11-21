@@ -31,7 +31,7 @@ export function Bring({ value, onChange, last = [] }: { value: Way; onChange: (n
           render="button"
           data-slot="composer-bring"
           data-bring={value}
-          aria-label={t('Skills, agents and personas: {way}', { way: label })}
+          aria-label={t('Skills, agents and personas: {way}', { way: value === 'preload' ? t('Preload') : t('Auto') })}
           items="center"
           gap="$1"
           height={28}
