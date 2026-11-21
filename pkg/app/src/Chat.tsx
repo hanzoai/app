@@ -29,7 +29,6 @@
 // pre-emptively refuses on the gateway's behalf.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { english, isolate, phrase, type Say } from "@hanzo/i18n";
 import { useI18n } from "@hanzo/i18n/react";
 import { billed, detail, familyOf, ours, planRequired, plainly, refused } from "./failure";
@@ -2770,14 +2769,6 @@ function Thread({
   }, [initial, open, anonymous, settled, sendAnon]);
 
   const families = useFamilies(mind, (id) => setAsk({ model: nameOf(id, listed) } as Ask));
-  const [titlebarSlot, setTitlebarSlot] = useState<HTMLElement | null>(null);
-  const [titleSlot, setTitleSlot] = useState<HTMLElement | null>(null);
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    setTitlebarSlot(document.getElementById("hanzo-titlebar-slot"));
-    setTitleSlot(document.getElementById("hanzo-titlebar-title"));
-  }, [media.md]);
-  const inTopChrome = Boolean(media.md && titlebarSlot);
   const showAccessMode =
     devMode || carry.on.length > 0 || cast.length > 0 || chatPrefs.approvalMode === "manual";
   // ON A PHONE THE PREVIEW IS NAMED where the message box is. The panel is a
@@ -3211,164 +3202,6 @@ function Thread({
           </YStack>
         </YStack>
       ) : null}
-      {inTopChrome && titleSlot
-        ? createPortal(
-            <XStack items="center" gap="$2" minW={0} flex={1} data-tauri-drag-region="false">
-              {editingTitle && shownTitle ? (
-                <Input
-                  data-slot="conversation-title-input"
-                  aria-label={t("Chat title")}
-                  value={titleDraft}
-                  autoFocus
-                  maxLength={200}
-                  size="sm"
-                  minW={160}
-                  maxW={360}
-                  onChangeText={setTitleDraft}
-                  onBlur={commitTitle}
-                  onKeyDown={(e: { key?: string; preventDefault?: () => void; stopPropagation?: () => void }) => {
-                    e.stopPropagation?.();
-                    if (e.key === "Enter") {
-                      e.preventDefault?.();
-                      commitTitle();
-                    } else if (e.key === "Escape") {
-                      e.preventDefault?.();
-                      setEditingTitle(false);
-                    }
-                  }}
-                />
-              ) : shownTitle ? (
-                <XStack
-                  render="button"
-                  data-slot="conversation-title"
-                  aria-label={shownTitle}
-                  items="center"
-                  gap="$1.5"
-                  px="$1.5"
-                  py="$0.5"
-                  rounded="$2"
-                  minW={0}
-                  shrink={1}
-                  cursor="pointer"
-                  hoverStyle={{ bg: "$hover" }}
-                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
-                  onClick={() => {
-                    setTitleDraft(shownTitle);
-                    setEditingTitle(true);
-                  }}
-                >
-                  <Text fontSize={13} lineHeight={18} fontWeight="500" color="$ink" numberOfLines={1} shrink={1} minW={0}>
-                    {shownTitle}
-                  </Text>
-                </XStack>
-              ) : (
-                <Text data-slot="page-title" fontSize={13} lineHeight={18} fontWeight="500" color="$ink" numberOfLines={1}>
-                  {t("Chat")}
-                </Text>
-              )}
-            </XStack>,
-            titleSlot,
-          )
-        : null}
-      {inTopChrome && titlebarSlot
-        ? createPortal(
-            <XStack
-              data-slot="chat-titlebar-portal"
-              items="center"
-              justify="flex-end"
-              gap={6}
-              minW={0}
-            >
-              <XStack data-slot="conversation-controls" data-tauri-drag-region="false" items="center" gap={4} shrink={0}>
-                {!anonymous ? <WalletPill compact /> : null}
-                {anonymous ? (
-                  <XStack items="center" gap="$2">
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      rounded={9999}
-                      px="$3"
-                      data-slot="header-login"
-                      onPress={() => {
-                        if (typeof window !== "undefined") window.location.assign("/login?next=%2Fchat");
-                      }}
-                    >
-                      {t("Log in")}
-                    </Button>
-                    <Button
-                      size="xs"
-                      rounded={9999}
-                      px="$3"
-                      data-slot="header-signup"
-                      onPress={() => {
-                        if (typeof window !== "undefined") window.location.assign("/signup?next=%2Fchat");
-                      }}
-                    >
-                      {t("Sign up for free")}
-                    </Button>
-                  </XStack>
-                ) : null}
-                {said.length > 0 ? (
-                  <ConversationMenu
-                    threads={currentThreadMap}
-                    active={open || currentThread.id}
-                    onSchedule={anonymous || forgetful ? undefined : () => setPlan(lastAsked())}
-                  >
-                    <XStack>
-                      <ThreadMore t={currentThread} />
-                    </XStack>
-                  </ConversationMenu>
-                ) : (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <XStack
-                        render="button"
-                        data-slot="header-private-chat"
-                        aria-label={t("Private chat")}
-                        aria-pressed={forgetful}
-                        width={32}
-                        height={32}
-                        items="center"
-                        justify="center"
-                        rounded="$3"
-                        bg="transparent"
-                        cursor="pointer"
-                        hoverStyle={{ bg: "$hover" }}
-                        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
-                        onClick={() => setForgetful(!forgetful)}
-                      >
-                        <Ghost
-                          size={16}
-                          strokeWidth={1.75}
-                          color={forgetful ? "var(--foreground)" : "var(--muted-foreground)"}
-                          fill={forgetful ? "currentColor" : "none"}
-                          aria-hidden
-                        />
-                      </XStack>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {forgetful ? t("Private chat is on: this conversation is not saved") : t("Private chat")}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-                {open ? <Share thread={open} /> : null}
-                <Summary
-                  sections={sections}
-                  docked={dockSummary}
-                  open={summaryOpen}
-                  onOpenChange={setSummaryOpen}
-                  onOpen={() => setPanel(true)}
-                  label={t("Summary")}
-                />
-                <PanelToggle open={panel} onToggle={() => setPanel(!panel)} />
-              </XStack>
-            </XStack>,
-            titlebarSlot,
-          )
-        : null}
-      {/* The conversation's own row: on desktop its title & controls portal into the
-          38px top chrome bar above; here it stays for mobile or multi-agent cast pills. */}
-      {inTopChrome && !cast.length ? null : (
       <XStack
         data-slot="conversation-head"
         group
@@ -3510,6 +3343,7 @@ function Thread({
         </XStack>
 
         <XStack data-slot="conversation-controls" data-tauri-drag-region="false" items="center" gap={4} shrink={0}>
+          {!anonymous ? <WalletPill compact /> : null}
           {anonymous ? (
             <XStack items="center" gap="$2">
               <Button
@@ -3624,14 +3458,11 @@ function Thread({
           {/* THE TABS' OWN CONTROL, at the header's end while they are shut;
               open, the strip beside the conversation holds it. Its mark is
               never the sidebar's: that toggle is the window's, at its top-left. */}
-          {inTopChrome ? null : (
-            <XStack $max-md={{ display: 'none' }}>
-              <PanelToggle open={panel} onToggle={() => setPanel(!panel)} />
-            </XStack>
-          )}
+          <XStack $max-md={{ display: 'none' }}>
+            <PanelToggle open={panel} onToggle={() => setPanel(!panel)} />
+          </XStack>
         </XStack>
       </XStack>
-      )}
 
 
       {/* The frame owns the column on a laptop; this is what Chat puts in it.

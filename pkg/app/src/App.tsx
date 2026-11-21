@@ -123,6 +123,9 @@ const Betas = lazy(() => import('./Betas').then((m) => ({ default: m.BetasPane }
 /** `/` is Chat on a new conversation. */
 const HOME: Place = { mode: 'chat', thread: null }
 
+/** What a window's bar names the page by; Chat names itself in the sidebar. */
+const TITLES: Record<string, string> = { dev: 'Dev', studio: 'Studio', design: 'Design', flow: 'Flow', tabs: 'Tabs' }
+
 /**
  * The window's bar, for a host that is a window of its own: `inset` px kept
  * clear at its left for the window's own controls (macOS paints its traffic
@@ -397,85 +400,40 @@ function Window({ bar, betas }: Hosted) {
           $max-md={{ position: 'fixed', t: TOP, l: 0, r: 0, height: HEIGHT, ...({ overflow: 'clip' } as object) }}
         >
           <SkipLink />
-          <XStack
-            data-slot="title-bar"
-            height={BAR}
-            shrink={0}
-            items="center"
-            display={bar ? 'flex' : 'none'}
-            onMouseDown={bar ? dragWindow : undefined}
-            onDoubleClick={bar ? toggleWindowMaximize : undefined}
-            {...(bar?.drag ?? null)}
-          >
-            <XStack
-              data-slot="title-bar-start"
-              height="100%"
-              items="center"
-              gap={2}
-              pl={(bar?.inset ?? 0) + 4}
-              pr={6}
-              shrink={0}
-              width={closed ? RAIL_FOLDED : ('calc(var(--pane-gap) + var(--app-sidebar-span, 256px))' as never)}
-              {...(bar?.drag ?? null)}
-            >
-              <XStack $md={{ display: 'none' }}>
-                <Toggle open={drawer.state === 'open'} onPress={drawer.open} label={t('Open sidebar')} />
+          {bar ? (
+            <XStack data-slot="title-bar" height={BAR} shrink={0} items="center" onMouseDown={dragWindow} onDoubleClick={toggleWindowMaximize} {...bar.drag}>
+              <XStack
+                data-slot="title-bar-start"
+                height="100%"
+                items="center"
+                gap={2}
+                pl={(bar.inset ?? 0) + 4}
+                pr={6}
+                shrink={0}
+                width={closed ? RAIL_FOLDED : ('calc(var(--pane-gap) + var(--app-sidebar-span, 256px))' as never)}
+                {...bar.drag}
+              >
+                <XStack $md={{ display: 'none' }}>
+                  <Toggle open={drawer.state === 'open'} onPress={drawer.open} label={t('Open sidebar')} />
+                </XStack>
+                <XStack $max-md={{ display: 'none' }}>
+                  <Toggle open={!closed} onPress={flip} />
+                </XStack>
+                <Mark label={t('Back')} data-slot="back" onPress={() => router.back()}>
+                  <ArrowLeft size={15} aria-hidden data-i18n-mirror />
+                </Mark>
+                <Mark label={t('Forward')} data-slot="forward" onPress={() => router.forward()}>
+                  <ArrowRight size={15} aria-hidden data-i18n-mirror />
+                </Mark>
               </XStack>
-              {bar ? (
-                <>
-                  <XStack $max-md={{ display: 'none' }}>
-                    <Toggle open={!closed} onPress={flip} />
-                  </XStack>
-                  <Mark label={t('Back')} data-slot="back" onPress={() => router.back()}>
-                    <ArrowLeft size={15} aria-hidden data-i18n-mirror />
-                  </Mark>
-                  <Mark label={t('Forward')} data-slot="forward" onPress={() => router.forward()}>
-                    <ArrowRight size={15} aria-hidden data-i18n-mirror />
-                  </Mark>
-                </>
-              ) : null}
-            </XStack>
-            <XStack
-              id="hanzo-titlebar-slot"
-              data-slot="title-bar-main"
-              flex={1}
-              minW={0}
-              self="stretch"
-              items="center"
-              justify="space-between"
-              pl={14}
-              pr={8}
-              gap={6}
-              {...(bar?.drag ?? null)}
-            >
-              <XStack data-slot="titlebar-fallback" flex={1} minW={0} items="center" justify="space-between" gap={8}>
+              <XStack data-slot="title-bar-main" flex={1} minW={0} self="stretch" items="center" justify="space-between" pl={14} pr={8} gap={6} {...bar.drag}>
                 <Text fontSize="$2" fontWeight="500" color="$ink" numberOfLines={1}>
-                  {bar
-                    ? mode === 'chat'
-                      ? ''
-                      : mode === 'dev'
-                        ? 'Dev'
-                        : mode === 'studio'
-                          ? 'Studio'
-                          : mode === 'design'
-                            ? 'Design'
-                            : mode === 'flow'
-                              ? 'Flow'
-                              : mode === 'tabs'
-                                ? 'Tabs'
-                                : ''
-                    : ''}
+                  {TITLES[mode] ?? ''}
                 </Text>
+                {bar.controls !== undefined ? bar.controls : !bar.inset ? <WindowControls /> : null}
               </XStack>
-              {bar ? (
-                bar.controls !== undefined ? (
-                  bar.controls
-                ) : !bar.inset ? (
-                  <WindowControls />
-                ) : null
-              ) : null}
             </XStack>
-          </XStack>
+          ) : null}
           <XStack
             ref={drawer.pane}
             data-app={mode}
@@ -488,8 +446,7 @@ function Window({ bar, betas }: Hosted) {
             minH={0}
             paddingInlineEnd="var(--pane-gap)"
             pb="var(--pane-gap)"
-            // The gap above the pane is only needed when the top title-bar row is hidden.
-            pt={bar || mode === 'chat' || mode === 'dev' ? 0 : 'var(--pane-gap)'}
+            pt="var(--pane-gap)"
             // A phone's frame is full-bleed on the floor, which follows the theme,
             // so the top of the page the browser's bar tints from does too.
             $max-md={{ p: 0 }}

@@ -179,29 +179,24 @@ describe('Betas and hosted apps keep the sidebar column', () => {
 describe('the pane keeps one gap all round', () => {
   const frame = (html: string) => html.match(/<div[^>]*data-slot="frame"[^>]*>/)![0]
 
-  test('below and at its end the frame leaves the gap; Chat and Dev sit flush with the top bar', () => {
-    const tag = frame(draw('/chat'))
-    // First Build: Chat/Dev have a title bar above, so no gap above the frame.
-    expect(tag).toContain('data-pt="0"')
-    expect(tag).toContain('data-pb="var(--pane-gap)"')
-    expect(tag).toContain('data-pe="var(--pane-gap)"')
+  test('the panels leave the same gap above, below and at the end, in every app and under a window’s bar', () => {
+    for (const path of ['/chat', '/dev', '/beta', '/tabs']) {
+      for (const tag of [frame(draw(path)), frame(draw(path, undefined, {}))]) {
+        expect(tag).toContain('data-pt="var(--pane-gap)"')
+        expect(tag).toContain('data-pb="var(--pane-gap)"')
+        expect(tag).toContain('data-pe="var(--pane-gap)"')
+      }
+    }
   })
 
-  test('a window’s own bar stands for the gap above', () => {
-    expect(frame(draw('/chat', undefined, {}))).toContain('data-pt="0"')
-  })
-
-  test('the same holds in Betas and Tabs', () => {
-    for (const path of ['/beta', '/tabs']) expect(frame(draw(path))).toContain('data-pt="var(--pane-gap)"')
-  })
-
-  test('only a desktop window bar draws back and forward, and web hides the duplicate title-bar toggle', () => {
-    expect(draw('/chat')).not.toContain('data-slot="back"')
-    expect(draw('/chat')).not.toContain('data-slot="forward"')
-    const webStart = draw('/chat').match(/<div data-slot="title-bar-start"[^>]*>([\s\S]*?)<\/div>/)?.[0] ?? ''
-    expect(webStart).toContain('data-slot="sidebar-toggle"') // mobile drawer toggle only; desktop toggle omitted on web
-    expect(draw('/chat', undefined, {})).toContain('data-slot="back"')
-    expect(draw('/chat', undefined, {})).toContain('data-slot="forward"')
-    expect(draw('/chat')).toContain('data-display="none"') // desktop rail hidden while sidebar is open
+  test('only a desktop window draws a bar, with Back and Forward; the web draws none above the panels', () => {
+    const web = draw('/chat')
+    expect(web).not.toContain('data-slot="title-bar"')
+    expect(web).not.toContain('data-slot="back"')
+    expect(web).not.toContain('data-slot="forward"')
+    const window = draw('/chat', undefined, {})
+    expect(window).toContain('data-slot="title-bar"')
+    expect(window).toContain('data-slot="back"')
+    expect(window).toContain('data-slot="forward"')
   })
 })
