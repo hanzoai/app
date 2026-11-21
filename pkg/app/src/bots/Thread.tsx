@@ -11,7 +11,8 @@ import { useI18n } from '@hanzo/i18n/react'
 import { useIamToken } from '@hanzo/iam/react'
 import { Text, XStack, YStack } from '@hanzo/gui'
 import { Caret } from '@hanzo/ui/chat'
-import { Composer, Control, Field } from '@hanzo/composer'
+import { Composer, Control } from '@hanzo/composer'
+import { Textarea } from '@hanzo/ui'
 import { speech, useDictation, useVoice, Voice } from '@hanzo/voice'
 
 /** Strip gui-injected `onPress` before forwarding props to `@hanzo/voice`'s native HTML `<button>`. */
@@ -720,20 +721,29 @@ export function Thread({
               <Control type="button" aria-label={t('Add a text file')} onClick={() => pick.current?.click()} disabled={!live}>
                 <Plus size={16} />
               </Control>
-              <Field
+              <Textarea
                 value={draft}
                 onChangeText={setDraft}
-                onKeyDown={(e: { key: string; shiftKey?: boolean; nativeEvent?: { isComposing?: boolean }; preventDefault: () => void }) => {
-                  if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent?.isComposing) {
-                    e.preventDefault()
-                    submit()
-                  }
-                }}
+                onKeyDown={
+                  ((e: { key?: string; shiftKey?: boolean; nativeEvent?: { key?: string; shiftKey?: boolean; isComposing?: boolean }; preventDefault?: () => void }) => {
+                    const key = e.key ?? e.nativeEvent?.key
+                    const shift = e.shiftKey ?? e.nativeEvent?.shiftKey
+                    if (key === 'Enter' && !shift && !e.nativeEvent?.isComposing) {
+                      e.preventDefault?.()
+                      submit()
+                    }
+                  }) as never
+                }
                 placeholder={t('Message {name}', { name: displayName })}
                 aria-label={t('Message {name}', { name: displayName })}
                 disabled={!live}
-                multiline
                 rows={1}
+                bg="transparent"
+                borderWidth={0}
+                outlineWidth={0}
+                focusVisibleStyle={{ outlineWidth: 0 }}
+                minH={0}
+                height="auto"
                 fontSize={15}
                 px={4}
                 py={8}
