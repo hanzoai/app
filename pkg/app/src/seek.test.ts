@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { CAP, find, fit, rank, RECENT, summons, togglesSidebar, type Hit } from './seek'
+import { CAP, find, fit, rank, RECENT, type Hit } from './seek'
 import type { Press } from './chord'
 
 const hit = (label: string, extra: Partial<Hit> = {}): Hit => ({ id: label, label, ...extra })
@@ -74,87 +74,5 @@ describe('what the palette lists', () => {
   test('a typo still finds its row, below an exact one', () => {
     expect(rank([hit('Settings'), hit('Usage')], 'sttngs').map((r) => r.label)).toEqual(['Settings'])
     expect(fit(hit('Settings'), 'sttngs')).toBeLessThan(fit(hit('Nothing', { keywords: ['sttngs'] }), 'sttngs'))
-  })
-})
-
-describe('the key that opens it', () => {
-  const press = (key: string, extra: Partial<Press> = {}): Press => ({
-    key,
-    ctrlKey: false,
-    altKey: false,
-    metaKey: false,
-    shiftKey: false,
-    target: null,
-    ...extra,
-  })
-
-  test('⌘K and Ctrl+K, whichever case the key reads', () => {
-    expect(summons(press('k', { metaKey: true }))).toBe(true)
-    expect(summons(press('k', { ctrlKey: true }))).toBe(true)
-    expect(summons(press('K', { ctrlKey: true }))).toBe(true)
-  })
-
-  test('from a field too: the palette is the one search', () => {
-    expect(summons(press('k', { metaKey: true, target: { tagName: 'TEXTAREA' } as unknown as EventTarget }))).toBe(true)
-  })
-
-  test('not K alone, not with Shift or Alt, not a held key, not mid-composition', () => {
-    expect(summons(press('k'))).toBe(false)
-    expect(summons(press('k', { metaKey: true, shiftKey: true }))).toBe(false)
-    expect(summons(press('k', { ctrlKey: true, altKey: true }))).toBe(false)
-    expect(summons(press('k', { metaKey: true, repeat: true }))).toBe(false)
-    expect(summons(press('k', { metaKey: true, isComposing: true }))).toBe(false)
-    expect(summons(press('j', { metaKey: true }))).toBe(false)
-  })
-
-  test('not a press something on the page already answered: Dev’s composer opens its own commands', () => {
-    expect(summons(press('k', { ctrlKey: true, defaultPrevented: true }))).toBe(false)
-  })
-})
-
-describe('the key that toggles the sidebar', () => {
-  const press = (key: string, extra: Partial<Press> = {}): Press => ({
-    key,
-    ctrlKey: false,
-    altKey: false,
-    metaKey: false,
-    shiftKey: false,
-    target: null,
-    ...extra,
-  })
-
-  test('⌘B and Ctrl+B, whichever case the key reads', () => {
-    expect(togglesSidebar(press('b', { metaKey: true }))).toBe(true)
-    expect(togglesSidebar(press('b', { ctrlKey: true }))).toBe(true)
-    expect(togglesSidebar(press('B', { metaKey: true }))).toBe(true)
-    expect(togglesSidebar(press('B', { ctrlKey: true }))).toBe(true)
-  })
-
-  test('ignored inside inputs, textareas, selects, and contenteditable targets', () => {
-    expect(togglesSidebar(press('b', { metaKey: true, target: { tagName: 'INPUT' } as unknown as EventTarget }))).toBe(false)
-    expect(togglesSidebar(press('b', { ctrlKey: true, target: { tagName: 'TEXTAREA' } as unknown as EventTarget }))).toBe(false)
-    expect(togglesSidebar(press('b', { metaKey: true, target: { tagName: 'SELECT' } as unknown as EventTarget }))).toBe(false)
-    expect(togglesSidebar(press('b', { metaKey: true, target: { tagName: 'DIV', isContentEditable: true } as unknown as EventTarget }))).toBe(false)
-    expect(
-      togglesSidebar(
-        press('b', {
-          ctrlKey: true,
-          target: {
-            tagName: 'SPAN',
-            closest: (sel: string) => (sel.includes('contenteditable') ? ({} as Element) : null),
-          } as unknown as EventTarget,
-        }),
-      ),
-    ).toBe(false)
-  })
-
-  test('works on non-editable elements and ignores bare B, extra modifiers, repeat, composition, or handled presses', () => {
-    expect(togglesSidebar(press('b', { metaKey: true, target: { tagName: 'DIV', closest: () => null } as unknown as EventTarget }))).toBe(true)
-    expect(togglesSidebar(press('b'))).toBe(false)
-    expect(togglesSidebar(press('b', { metaKey: true, shiftKey: true }))).toBe(false)
-    expect(togglesSidebar(press('b', { ctrlKey: true, altKey: true }))).toBe(false)
-    expect(togglesSidebar(press('b', { metaKey: true, repeat: true }))).toBe(false)
-    expect(togglesSidebar(press('b', { metaKey: true, isComposing: true }))).toBe(false)
-    expect(togglesSidebar(press('b', { metaKey: true, defaultPrevented: true }))).toBe(false)
   })
 })

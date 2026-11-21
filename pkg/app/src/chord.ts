@@ -6,9 +6,6 @@
 
 export type Act = 'rename' | 'pin'
 
-/** Workspace-wide keyboard commands handled outside inputs and dialogs. */
-export type GlobalAct = 'new-chat' | 'toggle-sidebar' | 'toggle-theme' | 'toggle-dev-mode'
-
 const LETTERS: Record<string, Act> = { r: 'rename', p: 'pin' }
 
 /** The part of a keydown this reads. */
@@ -66,27 +63,6 @@ export function chord(e: Press): Act | null {
   const act = l ? LETTERS[l] : undefined
   if (!act || typing(e.target) || inDialog(e.target)) return null
   return act
-}
-
-/**
- * Non-browser-conflicting global workspace shortcuts, never firing while typing
- * or inside a dialog:
- * - ⌘⇧O / Ctrl+Shift+O: New chat
- * - ⌘B  / Ctrl+B:       Toggle sidebar
- * - ⌘⇧L / Ctrl+Shift+L: Toggle light / dark theme
- * - ⌘⇧D / Ctrl+Shift+D: Toggle Developer mode
- */
-export function globalAction(e: Press): GlobalAct | null {
-  if (e.repeat || e.isComposing || e.defaultPrevented || e.altKey) return null
-  const mod = e.metaKey || e.ctrlKey
-  if (!mod || typing(e.target) || inDialog(e.target)) return null
-  const l = letter(e)
-  if (!l) return null
-  if (!e.shiftKey && l === 'b') return 'toggle-sidebar'
-  if (e.shiftKey && l === 'o') return 'new-chat'
-  if (e.shiftKey && l === 'l') return 'toggle-theme'
-  if (e.shiftKey && l === 'd') return 'toggle-dev-mode'
-  return null
 }
 
 /** A chord as a menu prints it: ⌃⌥R on a Mac, Ctrl+Alt+R elsewhere. */

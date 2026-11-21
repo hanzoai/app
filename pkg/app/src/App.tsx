@@ -86,8 +86,8 @@ import { empty, openThread, showSettings, useOpen } from './open'
 import { SkipLink } from './SkipLink'
 import { Split } from './Shell'
 import { Search } from './Search'
-import { inDialog, typing as isTyping } from './chord'
-import { useGlobalKeys } from './keys'
+import { cyclePanel, focusSidebar, useGlobalKeys } from './keys'
+import { Shortcuts } from './Shortcuts'
 import { BAR, floor, pane } from './ground'
 import { org as currentOrg, pick } from './lib/session'
 import { rememberSettingsReturn } from './lib/dev-mode'
@@ -177,6 +177,7 @@ function Window({ bar, betas }: Hosted) {
   const [closed, setClosed] = useKept('hanzo.build.rail', false)
   // The palette is open (the sidebar's search; ⌘K toggles it).
   const [finding, setFinding] = useState(false)
+  const [listing, setListing] = useState(false)
   const [learning, setLearning] = useState(false)
   const [anonSettings, setAnonSettings] = useState(false)
   const found = useCallback(() => setFinding(false), [])
@@ -321,14 +322,29 @@ function Window({ bar, betas }: Hosted) {
     move(settings(wanted))
   }, [wanted, move, host])
 
-  // The app's keys: the global ones once (keys.ts), and Back and Forward in a window.
+  // The app's keys: the one keymap's, handled once (keys.ts). A section is the nth of the rail.
+  const sections = [() => toChat(), () => toDev(), () => toDesign(), () => toStudio(), () => toTabs()]
   useGlobalKeys({
+    desktop: Boolean(bar),
     find: () => setFinding((open) => !open),
     newChat: () => {
       empty()
-      move(talk())
+      move(mode === 'dev' ? app('') : talk())
     },
     sidebar: flip,
+    shortcuts: () => setListing((open) => !open),
+    back: () => router.back(),
+    forward: () => router.forward(),
+    section: (n) => sections[n - 1]?.(),
+    focusComposer: () => {
+      if (mode === 'dev') void import('@hanzo/dev-core').then((m) => m.focusComposer())
+      else document.querySelector<HTMLElement>('#main-content textarea, #main-content [contenteditable="true"]')?.focus()
+    },
+    focusList: () => {
+      if (mode === 'dev') void import('@hanzo/dev-core').then((m) => m.focusThreadList() || focusSidebar())
+      else focusSidebar()
+    },
+    panel: (step) => cyclePanel(step),
     settings: () => {
       if (!host.token?.()) {
         window.dispatchEvent(new CustomEvent('hanzo:anon-settings'))
@@ -340,20 +356,6 @@ function Window({ bar, betas }: Hosted) {
     chooseTheme: host.chooseTheme,
     say: (message) => void import('@hanzo/ui').then((m) => m.toast?.success(message)),
   })
-  useEffect(() => {
-    if (!bar) return
-    const key = (e: KeyboardEvent) => {
-      if (isTyping(e.target) || inDialog(e.target)) return
-      const back = (e.metaKey && e.key === '[') || (e.altKey && e.key === 'ArrowLeft')
-      const forth = (e.metaKey && e.key === ']') || (e.altKey && e.key === 'ArrowRight')
-      if ((!back && !forth) || e.ctrlKey || e.shiftKey) return
-      e.preventDefault()
-      if (back) router.back()
-      else router.forward()
-    }
-    window.addEventListener('keydown', key)
-    return () => window.removeEventListener('keydown', key)
-  }, [bar, router])
 
   const back = () => move(away.current || app(''))
   const toChat = () => move(last.chat || talk())
@@ -733,6 +735,7 @@ function Window({ bar, betas }: Hosted) {
             </Layer>
           )}
           {finding ? <Search go={move} onClose={found} mode={mode} host={host} /> : null}
+          {listing ? <Shortcuts onClose={() => setListing(false)} /> : null}
           {learning ? <Learning open onClose={() => setLearning(false)} /> : null}
           <AppContextMenu
             pins={pins}

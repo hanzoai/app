@@ -187,7 +187,8 @@ import { Search, type Action } from "./Search";
 import { tidy } from "./lib/title";
 import { MAIN, SkipLink } from "./SkipLink";
 import { useSidebar } from "./rail-open";
-import { useGlobalKeys } from "./keys";
+import { cyclePanel, focusSidebar, useGlobalKeys } from "./keys";
+import { Shortcuts } from "./Shortcuts";
 import { useDevHost } from "./dev";
 import { called } from "./team";
 import { checkoutUrl } from './lib/pay';
@@ -2582,8 +2583,12 @@ function Frame({
   const onPick = typeof window !== "undefined" && window.innerWidth < 1024 ? dismiss : undefined;
   const { empty: emptyChat } = useOpen();
   const dev = useDevHost();
+  const [listing, setListing] = useState(false);
   useGlobalKeys({
     find: () => setFinding((open) => !open),
+    shortcuts: () => setListing((open) => !open),
+    focusList: () => void focusSidebar(),
+    panel: (step) => cyclePanel(step),
     newChat: () => {
       emptyChat();
       navigate?.(chat());
@@ -3502,7 +3507,7 @@ function Frame({
             go={(to) => navigate?.(to.startsWith(TALK) ? chat() : site(to))}
           />
         ) : null}
-
+        {listing ? <Shortcuts onClose={() => setListing(false)} /> : null}
 
     </YStack>
     </YStack>
