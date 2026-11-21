@@ -17,7 +17,7 @@ import { useDevMode } from './lib/dev-mode'
 import { showDevice } from './lib/devices'
 import { InfoHint } from './lib/info-hint'
 import { bearer } from './lib/session'
-import { followUp, showCalmEmpty as calmEmpty } from './terminalsState'
+import { followUp, LAYOUT, restores, showCalmEmpty as calmEmpty } from './terminalsState'
 
 type LaunchKind = 'dev' | 'desktop' | 'browser'
 
@@ -98,7 +98,7 @@ export default function Terminals() {
   const [launchingKind, setLaunchingKind] = useState<LaunchKind | null>(null)
   const [launchError, setLaunchError] = useState<string | null>(null)
   const [openedWorkspace, setOpenedWorkspace] = useState(false)
-  const [pendingAction, setPendingAction] = useState<{ kind: 'shell' | 'page' | 'desktop'; machine: string } | null>(null)
+  const [pendingAction, setPendingAction] = useState<{ kind: 'shell' | 'page' | 'desktop'; machine: string; restoring: boolean } | null>(null)
   const launching = launchingKind !== null
 
   // The names a person gave their devices (kept on their account; the sidebar renames them).
@@ -140,11 +140,19 @@ export default function Terminals() {
       if (launchingKind !== null) return
       setLaunchingKind(kind)
       setLaunchError(null)
+      // The layout as it is before the Workspace sees the new machine: once it opens its default shell it saves that too.
+      let saved: string | null = null
+      try {
+        saved = window.localStorage.getItem(LAYOUT)
+      } catch {
+        // no storage: the Workspace has no layout to restore either
+      }
       try {
         const machine = await fleet.launch(kind)
         setPendingAction({
           kind: kind === 'dev' ? 'shell' : kind === 'browser' ? 'page' : 'desktop',
           machine,
+          restoring: restores(saved, new Set([...liveHosts.map((h) => h.machine), machine])),
         })
         setOpenedWorkspace(true)
       } catch (e: unknown) {
@@ -153,7 +161,7 @@ export default function Terminals() {
         setLaunchingKind(null)
       }
     },
-    [token, launchingKind, fleet, t],
+    [token, launchingKind, fleet, t, liveHosts],
   )
 
   useEffect(() => {
@@ -195,11 +203,11 @@ export default function Terminals() {
 
   useEffect(() => {
     if (!pendingAction || showCalmEmpty || !(fleet.read || fleet.error)) return
-    const action = pendingAction
+    const { restoring, ...action } = pendingAction
     if (typeof window === 'undefined') return
     const id = window.setTimeout(() => {
       setPendingAction(null)
-      const detail = followUp(action)
+      const detail = followUp(action, restoring)
       if (detail) window.dispatchEvent(new CustomEvent('hanzo:tabs-action', { detail }))
     }, 0)
     return () => window.clearTimeout(id)
