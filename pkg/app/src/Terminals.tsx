@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button, Skeleton, Text, View, XStack, YStack } from '@hanzo/ui'
 import { useFleet, Workspace } from '@hanzo/tabs'
+import { Loading } from './slow'
 import { useI18n } from '@hanzo/i18n/react'
 import { Cloud, Globe, Laptop, Monitor, SquareTerminal } from 'lucide-react'
 import { api } from './lib/api'
@@ -20,12 +21,10 @@ import { bearer } from './lib/session'
 
 type LaunchKind = 'dev' | 'desktop' | 'browser'
 
-function TerminalsSkeleton({ label }: { label: string }) {
+function TerminalsSkeleton({ label, onRetry }: { label: string; onRetry?: () => void }) {
   return (
     <YStack
-      role="status"
       aria-busy={true}
-      aria-label={label}
       flex={1}
       minH={0}
       minW={0}
@@ -43,10 +42,8 @@ function TerminalsSkeleton({ label }: { label: string }) {
         $max-sm={{ px: '$3', pt: '$5', pb: '$8' }}
         gap="$6"
       >
-        <YStack gap="$2">
-          <Skeleton layout="block" width={120} height={24} rounded="$2" />
-          <Skeleton layout="block" width="72%" height={14} rounded="$2" />
-        </YStack>
+        {/* The wait in words, where the title will stand: the cards alone said nothing for 10 to 15 s. */}
+        <Loading label={label} onRetry={onRetry} />
         <View
           display="grid"
           gridTemplateColumns="repeat(3, minmax(0, 1fr))"
@@ -521,7 +518,7 @@ export default function Terminals() {
           agent={fleet.agent}
         />
       ) : (
-        <TerminalsSkeleton label={devMode ? t('Reading your machines…') : t('Loading your workspaces…')} />
+        <TerminalsSkeleton label={devMode ? t('Reading your machines…') : t('Loading your machines…')} onRetry={() => fleet.refresh()} />
       )}
     </YStack>
   )
