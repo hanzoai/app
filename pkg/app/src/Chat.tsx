@@ -1565,13 +1565,13 @@ function Thread({
   // The choice opens once for the turn that was turned away, and never while a turn is in flight.
   // It is keyed by the reader's turn, not the last message: the answer to a retry after credits are
   // on is a new last message, and it must not reopen what that retry settled.
-  const turn = pause ? `${kept ?? open ?? ""}:${[...chat.messages].reverse().find((m) => m.role === "user")?.id ?? ""}` : null;
+  const askedTurn = pause ? `${kept ?? open ?? ""}:${[...chat.messages].reverse().find((m) => m.role === "user")?.id ?? ""}` : null;
   useEffect(() => {
-    if (isUsageLimitReached && !chat.streaming && turn && which !== shut && seenUsageLimit.current !== turn) {
-      seenUsageLimit.current = turn;
+    if (isUsageLimitReached && !chat.streaming && askedTurn && which !== shut && seenUsageLimit.current !== askedTurn) {
+      seenUsageLimit.current = askedTurn;
       setNeedMoreUsageOpen(true);
     }
-  }, [isUsageLimitReached, chat.streaming, turn, which, shut]);
+  }, [isUsageLimitReached, chat.streaming, askedTurn, which, shut]);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onNeedMore = (ev: Event) => {
