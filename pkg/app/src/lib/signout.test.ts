@@ -91,7 +91,7 @@ describe('signing out', () => {
       expect(state.out).toHaveBeenCalledTimes(1)
       expect(said.error, 'not on the page that is leaving: nobody would see it').not.toHaveBeenCalled()
       await land()
-      expect(said.error).toHaveBeenCalledTimes(1)
+      await vi.waitFor(() => expect(said.error).toHaveBeenCalledTimes(1))
       expect(said.error).toHaveBeenCalledWith('Signed out, but this device could not finish forgetting you. Sign out again if anything remains.')
       await land()
       expect(said.error, 'the next page after that says nothing').toHaveBeenCalledTimes(1)

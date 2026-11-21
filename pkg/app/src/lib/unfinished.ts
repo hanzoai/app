@@ -8,7 +8,6 @@
  */
 
 import { useEffect } from 'react'
-import { toast } from '@hanzo/ui'
 import { useI18n } from '@hanzo/i18n/react'
 import { subject } from './session'
 
@@ -52,6 +51,8 @@ export function useUnfinished(): void {
     if (!note || !(Date.now() - note.at <= FRESH)) return
     const now = subject()
     if (now && now !== note.sub) return
-    toast.error(t('Signed out, but this device could not finish forgetting you. Sign out again if anything remains.'))
+    // Loaded here, not at the top: `Look` is in the package root, and the root must load in plain Node.
+    const say = t('Signed out, but this device could not finish forgetting you. Sign out again if anything remains.')
+    void import('@hanzo/ui').then((m) => m.toast.error(say))
   }, [t])
 }
