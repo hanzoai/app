@@ -1,6 +1,6 @@
 {
   "name": "@hanzo/app",
-  "version": "0.3.137",
+  "version": "0.3.138",
   "description": "Hanzo's app: the shell and its apps (Home, Chat, Inbox, Contacts, Meet, Calendar, Drive, Board, Work, Bots), once, for every Hanzo surface.",
   "type": "module",
   "main": "./dist/index.js",
@@ -53,6 +53,7 @@
     "@hanzo/dev-core": "^0.1.2",
     "@hanzo/glass": "workspace:*",
     "@hanzo/mod": "workspace:*",
+    "@hanzo/sources": "workspace:*",
     "@hanzo/personas": "catalog:",
     "marked": "catalog:",
     "simple-icons": "catalog:"
@@ -99,7 +100,6 @@
     "@hanzogui/lucide-icons-2": "catalog:",
     "@hanzogui/shell": "catalog:",
     "@hanzogui/web": "catalog:",
-    "@playwright/test": "^1.65.1",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -109,7 +109,6 @@
     "react-dom": "catalog:",
     "react-native-web": "catalog:",
     "typescript": "catalog:",
-    "vite": "8.3.2",
     "vitest": "catalog:"
   },
   "repository": {

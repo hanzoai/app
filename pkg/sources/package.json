@@ -1,0 +1,64 @@
+{
+  "name": "@hanzo/sources",
+  "version": "0.1.0",
+  "description": "Hanzo's linked sources: the one view of every desktop and browser a person linked, the account picker, the cloud client and the availability rule (HIP-1350).",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.js",
+      "default": "./dist/*.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE-APACHE",
+    "LICENSE-MIT"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && node ../app/scripts/specifiers.mjs ./dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint:design": "hanzo-design-lint src",
+    "e2e": "playwright test"
+  },
+  "license": "Apache-2.0 OR MIT",
+  "peerDependencies": {
+    "@hanzo/design": ">=0.5.39",
+    "@hanzo/gui": "^8.3.5",
+    "@hanzo/i18n": ">=0.5.5",
+    "@hanzo/ui": ">=8.33.5",
+    "react": ">=19.2.8",
+    "react-dom": ">=19.2.8"
+  },
+  "devDependencies": {
+    "@hanzo/design": "catalog:",
+    "@hanzo/gui": "catalog:",
+    "@hanzo/i18n": "catalog:",
+    "@hanzo/ui": "catalog:",
+    "@playwright/test": "^1.65.1",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "happy-dom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-native-web": "catalog:",
+    "typescript": "catalog:",
+    "vite": "8.3.2",
+    "vitest": "catalog:"
+  }
+}
