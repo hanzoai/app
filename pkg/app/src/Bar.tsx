@@ -2,7 +2,7 @@
 
 // A phone's bar, which has neither rail nor sidebar to move the app: the
 // drawer's button at the start and New at the end. The drawer lists the places
-// (Chat, Dev, Studio, Tabs, Library, Scheduled tasks, Customize) as rows, so the
+// (Chat, Dev, Design, Tabs, Library, Scheduled tasks, Customize) as rows, so the
 // bar carries no switch of its own. Right to left the row turns with the page,
 // and the drawer's mark is mirrored.
 //
@@ -100,7 +100,7 @@ export function Bar({
 }: {
   host: Host
   mode: Place['mode']
-  /** The mode's places, where they are not Dev's (Studio's `nav`). */
+  /** The mode's places, where they are not Dev's (@hanzo/studio's `nav`). */
   places?: { id: string; links: RailLink[] }[]
   /** The drawer is open: hide the pane's open button so it does not peek through the strip. */
   open?: boolean
@@ -122,7 +122,7 @@ export function Bar({
       : mode === 'tabs'
         ? { label: t('New terminal'), onPress: () => dispatchTabsAction({ kind: 'shell' }) }
         : { label: made?.label ?? t('New'), onPress: made?.onPress }
-  const Make = mode === 'chat' || mode === 'dev' || mode === 'tabs' || mode === 'studio' ? MARKS[mode].make : MARKS.chat.make
+  const Make = mode === 'chat' || mode === 'dev' || mode === 'tabs' ? MARKS[mode].make : MARKS.chat.make
   return (
     // The gap above the bar is the gap the pane keeps all round, under the device's inset; the bar's row is the
     // head band (BAND), the drawer's title row on the same line.

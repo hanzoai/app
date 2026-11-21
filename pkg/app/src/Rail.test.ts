@@ -1,5 +1,5 @@
 // Folded 52px icons-only rail & shared Hanzo product list:
-// - Real Hanzo names and order (`Chat`, `Dev`, `Design`, `Studio` if opened,
+// - Real Hanzo names and order (`Chat`, `Dev`, `Design`,
 //   `Library`, `Scheduled tasks`, `Customize`, `Tabs`, `Betas`; Developer mode hides none of them).
 // - Strictly monochrome active chrome (`bg="$raised"`, zero `--data-*` colors or dots).
 // - Never auto-injects `HOSTED_APPS` (`app-*`) into Pinned; keeps them in More unless pinned.
@@ -29,7 +29,7 @@ const through = ({ children }: { children?: ReactNode }) => createElement(Fragme
 const { MARKS } = vi.hoisted(() => {
   const mark = () => () => null
   const one = { icon: mark(), make: mark() }
-  return { MARKS: { chat: one, dev: one, design: one, studio: one, tabs: one, library: one, scheduled: one, customize: one } }
+  return { MARKS: { chat: one, dev: one, design: one, tabs: one, library: one, scheduled: one, customize: one } }
 })
 vi.mock('@hanzo/gui', () => ({ Text: draw, XStack: draw, YStack: draw }))
 vi.mock('@hanzo/build', () => ({ MARKS, route: () => ({ kind: 'home' }) }))
@@ -80,7 +80,6 @@ const draw5 = (props: { mode?: 'chat' | 'hosted'; inside?: string | null; compac
       onChat: () => {},
       onDev: () => {},
       onDesign: () => {},
-      onStudio: () => {},
       onTabs: () => {},
       go: () => {},
       onOrg: () => {},
@@ -114,11 +113,11 @@ describe('folded 52px icons-only rail with monochrome chrome', () => {
     expect(html).toContain('data-slot="rail-more"')
   })
 
-  test('keeps hosted apps, granted betas, Studio and Flow reachable in More without Developer mode (Developer mode hides nothing that was visible before)', async () => {
-        state.opened = new Set(['crm', 'commerce', 'finance', 'studio', 'flow'])
+  test('keeps hosted apps, granted betas and Flow reachable in More without Developer mode (Developer mode hides nothing that was visible before)', async () => {
+        state.opened = new Set(['crm', 'commerce', 'finance', 'flow'])
     const menuOf = () => [...draw5().matchAll(/data-item="((?!pin-)[^"]*)"/g)].map((m) => m[1]).join(',')
     const offMenu = menuOf()
-    expect(offMenu).toContain('scheduled,customize,studio,flow,betas')
+    expect(offMenu).toContain('scheduled,customize,flow,betas')
     expect(offMenu).toContain('app-crm,app-commerce')
     expect(offMenu).toContain('beta-finance')
     // Every place appears exactly once, under headings, and pinning is a button on the row, not a second row.

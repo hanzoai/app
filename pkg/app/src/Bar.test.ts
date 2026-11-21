@@ -24,7 +24,6 @@ vi.mock('./icons', () => ({
   MARKS: {
     chat: { icon: mark('chat'), make: mark('chat-make') },
     dev: { icon: mark('dev'), make: mark('dev-make') },
-    studio: { icon: mark('studio'), make: mark('studio-make') },
     tabs: { icon: mark('tabs'), make: mark('tabs-make') },
   },
 }))
@@ -102,8 +101,8 @@ describe('a phone’s bar', () => {
     expect(calls).toEqual(['tabs shell'])
   })
 
-  test('New is Studio’s own New row, named as the sidebar names it', () => {
-    const html = top('studio', [{ id: 'make', links: [{ id: 'new', label: 'New creation', icon: null, onPress: () => calls.push('creation') }] }])
+  test('New is Design’s own New row, named as the sidebar names it', () => {
+    const html = top('design', [{ id: 'make', links: [{ id: 'new', label: 'New creation', icon: null, onPress: () => calls.push('creation') }] }])
     expect(html).toContain('aria-label="New creation"')
     pressed.get('bar-new')?.()
     expect(calls).toEqual(['creation'])

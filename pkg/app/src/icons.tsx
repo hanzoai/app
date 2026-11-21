@@ -1,7 +1,6 @@
 import {
   AppWindow,
   CalendarClock,
-  Clapperboard,
   Library,
   MessageSquare,
   Palette,
@@ -29,7 +28,6 @@ export const MARKS = {
   design: pair(Palette, Palette),
   library: pair(Library, Plus),
   tabs: pair(AppWindow, Plus),
-  studio: pair(Clapperboard, Clapperboard),
   scheduled: pair(CalendarClock, CalendarClock),
   customize: pair(SlidersHorizontal, SlidersHorizontal),
 }

@@ -2,7 +2,7 @@
 
 // The web app as the whole window, in three modes: Chat, a conversation with
 // the product's AI; Dev, @hanzo/dev-core's thread view and its thread list (one Dev, no Builder);
-// and Studio, @hanzo/studio's `<Studio>` the same way, its places (`nav`) in the
+// and Design, @hanzo/studio's `<Studio>` the same way, its places (`nav`) in the
 // sidebar where Dev's stand for Dev.
 //
 //   OUTER  the rail (Rail.tsx) and the sidebar beside it (Sidebar.tsx), on the
@@ -17,11 +17,11 @@
 // Recents. The address says the mode, as a path (lib/host `talk`, `app`,
 // `place`): `/` and `/chat` are Chat on a new conversation, `/chat/<id>` one of
 // the reader's, and a path under `/dev` is Dev: `/dev/run/<id>` a run, `/dev/projects/<org>/<repo>` a project; a path
-// under `/studio` is Studio, its own address after it (`c/<id>`, `library`). Moving
+// under `/design` is Design, its own address after it (`c/<id>`, `explore`). Moving
 // between the modes is a history entry (`go`), never a load, so a host serves
 // this one component for every path under each.
 //
-// Every host draws this: hanzo.ai at `/`, `/chat`, `/dev` and `/studio`, and the desktop
+// Every host draws this: hanzo.ai at `/`, `/chat`, `/dev` and `/design`, and the desktop
 // app as its main window. The host mounts IamProvider and `<Host>` with its
 // router and the path, and draws this only for a signed-in reader; what a
 // stranger sees is the host's.
@@ -53,7 +53,7 @@
 // the history (`depart`), so Back never reopens it.
 //
 // STUDIO LOADS WITH ITS MODE. Its module (and three.js behind a 3D tab) is
-// fetched the first time the reader stands in Studio; its places are a few
+// fetched the first time the reader stands in Design; its places are a few
 // lines and come with the app. Another organization opens it at its New, so
 // nothing it read under the last one stays.
 //
@@ -62,7 +62,7 @@
 
 import { useI18n } from '@hanzo/i18n/react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Clapperboard, RefreshCw, Sparkles, Workflow } from 'lucide-react'
+import { ChevronLeft, ChevronRight, RefreshCw, Sparkles, Workflow } from 'lucide-react'
 import { AiProvider } from '@hanzo/ai/react'
 import { XStack, YStack } from '@hanzo/gui'
 import { Button, Text } from '@hanzo/ui'
@@ -95,7 +95,8 @@ import { useFree } from './Upgrade'
 import { payUrl } from './lib/pay'
 import { Ask, useBetas } from './Betas'
 import { BETAS } from './lib/betas'
-import { app, design, flow, go, hosted, place, settings, studio, talk, TERMINALS, visit, type Place } from './lib/host'
+import { useMaking } from './Confirm'
+import { app, design, flow, go, hosted, place, settings, talk, TERMINALS, visit, type Place } from './lib/host'
 import { Bar } from './Bar'
 import { Report } from './Report'
 import { FOOT, HEIGHT, TOP, useView } from './view'
@@ -105,7 +106,7 @@ import { Windowed } from './windowed'
 
 const flowNav = (Reflect.get(studioPkg, 'flowNav') as typeof places | undefined) ?? places
 
-/** Studio, fetched the first time the reader stands in it. */
+/** Design (@hanzo/studio's `Studio`), fetched the first time the reader stands in it. */
 const Studio = lazy(() => import('@hanzo/studio').then((m) => ({ default: m.Studio })))
 const FlowStudio = lazy(() =>
   import('@hanzo/studio').then((m) => ({
@@ -122,7 +123,7 @@ const Betas = lazy(() => import('./Betas').then((m) => ({ default: m.BetasPane }
 const HOME: Place = { mode: 'chat', thread: null }
 
 /** What a window's bar names the page by; Chat names itself in the sidebar. */
-const TITLES: Record<string, string> = { dev: 'Dev', studio: 'Studio', design: 'Design', flow: 'Flow', tabs: 'Tabs' }
+const TITLES: Record<string, string> = { dev: 'Dev', design: 'Design', flow: 'Flow', tabs: 'Tabs' }
 
 /**
  * The window's bar, for a host that is a window of its own: `inset` px kept
@@ -149,7 +150,7 @@ export interface Hosted {
 
 
 /** Where each mode was last, so the rail goes back to it. */
-const last = { chat: '', dev: '', studio: '', design: '', flow: '', tabs: '' }
+const last = { chat: '', dev: '', design: '', flow: '', tabs: '' }
 
 export function App({ bar, betas }: Hosted = {}) {
   return (
@@ -214,20 +215,21 @@ function Window({ bar, betas }: Hosted) {
   const at = place(here) ?? HOME
   const mode = at.mode
   const { open: betaOpen } = useBetas()
-  const blockedBeta = (mode === 'studio' || mode === 'flow') && !betaOpen(mode)
+  const blockedBeta = mode === 'flow' && !betaOpen(mode)
   // Every mode carries its sidebar beside the rail (or its title when it has no places of its own).
   const alone = false
   // The hosted app the address names (lib/hosted), for the rail to light.
   const inside = at.mode === 'hosted' ? at.id : null
   const where = at.mode === 'dev' ? at.at : null
-  // Studio, Design & Flow host: Dev's, at Studio's (/studio), Design's (/design) or Flow's (/flow) address.
+  // Design's & Flow's host: Dev's, at Design's (/design) or Flow's (/flow) address.
   const inDesign = at.mode === 'design'
-  const inStudio = at.mode === 'studio'
   const inFlow = at.mode === 'flow'
-  const made = inDesign || inStudio || inFlow ? at.at : ''
-  const modeRoute = inDesign ? design : inFlow ? flow : studio
-  const modeName = inDesign ? 'Design' : inFlow ? 'Flow' : 'Studio'
-  const maker = useMemo<Host>(
+  const made = inDesign || inFlow ? at.at : ''
+  const modeRoute = inFlow ? flow : design
+  const modeName = inFlow ? 'Flow' : 'Design'
+  // Design's and Flow's paid calls ask through the one spend confirm: @hanzo/studio reads `spend` off its host.
+  const making = useMaking()
+  const maker = useMemo<Host & { spend: typeof making.spend }>(
     () => ({
       ...host,
       name: modeName,
@@ -237,8 +239,9 @@ function Window({ bar, betas }: Hosted) {
         pick(next)
         window.location.assign(modeRoute(''))
       },
+      spend: making.spend,
     }),
-    [host, modeName, modeRoute, made, depart],
+    [host, modeName, modeRoute, made, depart, making.spend],
   )
   // A run floats two panes of its own, so the pane it stands in is not cut.
   const run = where !== null && route(where).kind === 'run'
@@ -326,7 +329,7 @@ function Window({ bar, betas }: Hosted) {
   }, [wanted, move, host])
 
   // The app's keys: the one keymap's, handled once (keys.ts). A section is the nth of the rail.
-  const sections = [() => toChat(), () => toDev(), () => toDesign(), () => toStudio(), () => toTabs()]
+  const sections = [() => toChat(), () => toDev(), () => toDesign(), () => toTabs()]
   useGlobalKeys({
     desktop: Boolean(bar),
     find: () => setFinding((open) => !open),
@@ -364,14 +367,13 @@ function Window({ bar, betas }: Hosted) {
   const toChat = () => move(last.chat || talk())
   const toDev = () => move(mode === 'dev' && !inPlace ? app('') : last.dev || app(''))
   const toDesign = () => move(last.design || design(''))
-  const toStudio = () => move(last.studio || studio(''))
   const toTabs = () => move(TERMINALS)
   // Another organization: picked, and the app opened in it at the mode's New.
   const org = (o: string) => {
     pick(o)
-    window.location.assign(mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'flow' ? flow('') : mode === 'studio' ? studio('') : mode === 'tabs' ? TERMINALS : inside ? hosted(inside) : talk())
+    window.location.assign(mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'flow' ? flow('') : mode === 'tabs' ? TERMINALS : inside ? hosted(inside) : talk())
   }
-  const sidebar = mode === 'beta' || mode === 'hosted' ? [] : mode === 'design' ? places(maker, (p) => maker.go(p)) : mode === 'flow' ? flowNav(maker, (p) => maker.go(p)) : mode === 'studio' ? places(maker, (p) => maker.go(p)) : mode === 'dev' && raised(where) === 'customize'
+  const sidebar = mode === 'beta' || mode === 'hosted' ? [] : mode === 'design' ? places(maker, (p) => maker.go(p)) : mode === 'flow' ? flowNav(maker, (p) => maker.go(p)) : mode === 'dev' && raised(where) === 'customize'
     ? tabs(host, (p) => host.go(p), t).map((group) => ({ ...group, links: [...group.links, {
       id: 'learning', label: t('Learning'), active: learning, icon: <RefreshCw size={16} aria-hidden />,
       onPress: () => { shut(); setLearning(true) },
@@ -470,7 +472,6 @@ function Window({ bar, betas }: Hosted) {
                 onNew={() => {
                   if (mode === 'dev') move(app(''))
                   else if (mode === 'design') move(design(''))
-                  else if (mode === 'studio') move(studio(''))
                   else if (mode === 'flow') move(flow(''))
                   else if (mode === 'tabs') dispatchTabsAction({ kind: 'shell' })
                   else {
@@ -481,7 +482,6 @@ function Window({ bar, betas }: Hosted) {
                 onChat={toChat}
                 onDev={toDev}
                 onDesign={toDesign}
-                onStudio={toStudio}
                 onTabs={toTabs}
                 go={move}
                 onOrg={org}
@@ -533,8 +533,7 @@ function Window({ bar, betas }: Hosted) {
                   onChat={toChat}
                   onDev={toDev}
                   onDesign={toDesign}
-                  onStudio={toStudio}
-                  onTabs={toTabs}
+                    onTabs={toTabs}
                   onOrg={org}
                   places={sidebar}
                   made={maker}
@@ -634,37 +633,6 @@ function Window({ bar, betas }: Hosted) {
                       </YStack>
                     )}
                   </YStack>
-                ) : mode === 'studio' ? (
-                  <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
-                    {blockedBeta ? (
-                      <YStack data-slot="hosted-request" flex={1} minH={0} items="center" justify="center" p="$6">
-                        <YStack width="100%" maxW={440} gap="$4">
-                          <XStack items="center" gap="$3">
-                            <XStack width={44} height={44} rounded="$4" bg="$hover" items="center" justify="center" shrink={0}>
-                              <Clapperboard size={22} aria-hidden />
-                            </XStack>
-                            <YStack gap={2} minW={0}>
-                              <XStack items="center" gap="$2">
-                                <Text fontSize="$6" fontWeight="600" color="$ink">Studio</Text>
-                                <Text fontSize="$1" color="$quiet" px="$2" py={2} rounded="$2" bg="$hover">{t('Beta')}</Text>
-                              </XStack>
-                              <Text fontSize="$3" color="$quiet">{BETAS.find((b) => b.id === 'studio')?.line ?? 'Director Studio for AI film, video, and creative production.'}</Text>
-                            </YStack>
-                          </XStack>
-                          <XStack items="center" gap="$2" pt="$1">
-                            <Ask beta={BETAS.find((b) => b.id === 'studio')!} go={move} />
-                            <Button variant="ghost" size="sm" onPress={() => move('/beta')}>{t('All betas')}</Button>
-                          </XStack>
-                        </YStack>
-                      </YStack>
-                    ) : (
-                      <YStack flex={1} minH={0} height="100%">
-                        <Suspense fallback={null}>
-                          <Studio host={maker} rail={false} />
-                        </Suspense>
-                      </YStack>
-                    )}
-                  </YStack>
                 ) : at.mode === 'hosted' ? (
                   <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
                     <Suspense fallback={null}>
@@ -728,8 +696,7 @@ function Window({ bar, betas }: Hosted) {
                     onChat={toChat}
                     onDev={toDev}
                     onDesign={toDesign}
-                    onStudio={toStudio}
-                    onTabs={toTabs}
+                        onTabs={toTabs}
                     onOrg={org}
                     drawer
                     places={sidebar}
@@ -742,6 +709,7 @@ function Window({ bar, betas }: Hosted) {
           {finding ? <Search go={move} onClose={found} mode={mode} host={host} /> : null}
           {listing ? <Shortcuts onClose={() => setListing(false)} /> : null}
           {learning ? <Learning open onClose={() => setLearning(false)} /> : null}
+          {making.dialog}
           <AppContextMenu
             pins={pins}
             host={host}

@@ -13,16 +13,16 @@ describe('the apps in beta', () => {
     for (const g of GROUPS) expect(BETAS.some((b) => b.group === g)).toBe(true)
   })
 
-  it('lists Studio and the six creative models, and the next Zen as a preview with no href', () => {
+  it('lists the six creative models, and the next Zen as a preview with no href', () => {
     const creative = BETAS.filter((b) => b.group === 'Creative').map((b) => b.id)
-    expect(creative).toEqual(['studio', 'koma', 'iro', 'mori', 'oto', 'koe', 'uta'])
+    expect(creative).toEqual(['koma', 'iro', 'mori', 'oto', 'koe', 'uta'])
     const zen = BETAS.find((b) => b.id === 'zen7')
     expect(zen).toMatchObject({ name: 'Zen 7', group: 'Models' })
     expect(zen?.href).toBeUndefined()
   })
 
-  it('opens Studio for every reader and keeps Flow behind its switch', () => {
-    expect(opens('studio', {}, false)).toBe(true)
+  it('keeps Flow behind its switch, and has no Studio beta: Studio is Design, which every reader has', () => {
+    expect(BETAS.some((b) => b.id === 'studio')).toBe(false)
     expect(opens('flow', {}, false)).toBe(false)
     expect(opens('flow', { 'beta.flow': true }, false)).toBe(true)
   })

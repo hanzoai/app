@@ -36,7 +36,7 @@ const { part, menu, menuItem, menuLabel, menuBack, menuSeparator, through, devSt
 const { MARKS } = vi.hoisted(() => {
   const mark = () => () => null
   const one = { icon: mark(), make: mark() }
-  return { MARKS: { chat: one, dev: one, design: one, studio: one, tabs: one, library: one, scheduled: one, customize: one } }
+  return { MARKS: { chat: one, dev: one, design: one, tabs: one, library: one, scheduled: one, customize: one } }
 })
 vi.mock('@hanzo/gui', () => ({ Text: part, XStack: part, YStack: part }))
 vi.mock('@hanzo/ui', () => ({
@@ -132,7 +132,6 @@ const rail = (mode: Place['mode'], onOpen?: () => void, where: string | null = n
       onChat: noop,
       onDev: noop,
       onDesign: noop,
-      onStudio: noop,
       onTabs: noop,
       go: noop,
       onOrg: noop,
@@ -164,7 +163,7 @@ describe('the folded rail', () => {
   test('in anonymous mode (person === null), hides Design, Tabs, Scheduled tasks, Customize, and Betas on the rail', () => {
     const anonHost = { ...host, person: null } as unknown as Parameters<typeof Sidebar>[0]['host']
     const html = renderToStaticMarkup(
-      createElement(Rail, { pins, host: anonHost, mode: 'chat', at: null, open: false, onChat: noop, onDev: noop, onDesign: noop, onStudio: noop, onTabs: noop, go: noop, onOrg: noop }),
+      createElement(Rail, { pins, host: anonHost, mode: 'chat', at: null, open: false, onChat: noop, onDev: noop, onDesign: noop, onTabs: noop, go: noop, onOrg: noop }),
     )
     for (const kept of ['Chat', 'Dev', 'Library']) {
       expect(html).toContain(`aria-label="${kept}"`)
@@ -322,7 +321,7 @@ describe('the unified desktop sidebar', () => {
 
   test('every list item sits in a list, in each sidebar a person can be in', () => {
     const places = [{ id: 'g', label: 'Gallery', links: [{ id: 'a', label: 'A', icon: () => null }] }]
-    for (const html of [column('chat'), column('dev'), column('dev', '-/customize'), renderToStaticMarkup(createElement(Sidebar, { pins, host: hostAt(''), mode: 'studio', thread: null, go: noop, onShut: noop, onBack: noop, places: places as never }))]) {
+    for (const html of [column('chat'), column('dev'), column('dev', '-/customize'), renderToStaticMarkup(createElement(Sidebar, { pins, host: hostAt(''), mode: 'flow', thread: null, go: noop, onShut: noop, onBack: noop, places: places as never }))]) {
       const doc = new Window().document
       doc.body.innerHTML = html
       const items = [...doc.querySelectorAll('[role="listitem"]')]
@@ -350,18 +349,19 @@ describe('the unified desktop sidebar', () => {
     expect(column('dev', '-/customize')).not.toContain('data-slot="place-more"')
   })
 
-  test('an app that lives in More draws its own row and sub-links in the list while the reader is in it (Studio)', () => {
-    devState.opened = new Set(['finance', 'studio'])
-    const places = [{ id: 'studio', label: '', links: [{ id: 'new', label: 'New creation', icon: null }, { id: 'gallery', label: 'Gallery', icon: null }] }]
-    const html = renderToStaticMarkup(createElement(Sidebar, { pins, host: hostAt(''), mode: 'studio', thread: null, go: noop, onShut: noop, onBack: noop, places }))
-    expect(at(html, 'data-slot="rail-pinned"')).toBeLessThan(at(html, 'data-slot="rail-studio"'))
-    expect(at(html, 'data-slot="rail-studio"')).toBeLessThan(at(html, 'data-slot="nav-sublinks"'))
+  test('an app that lives in More draws its own row and sub-links in the list while the reader is in it (Flow)', () => {
+    devState.opened = new Set(['finance', 'flow'])
+    const places = [{ id: 'flow', label: '', links: [{ id: 'new', label: 'New flow', icon: null }, { id: 'gallery', label: 'Gallery', icon: null }] }]
+    const html = renderToStaticMarkup(createElement(Sidebar, { pins, host: hostAt(''), mode: 'flow', thread: null, go: noop, onShut: noop, onBack: noop, places }))
+    expect(at(html, 'data-slot="rail-pinned"')).toBeLessThan(at(html, 'data-slot="rail-flow"'))
+    expect(at(html, 'data-slot="rail-flow"')).toBeLessThan(at(html, 'data-slot="nav-sublinks"'))
     expect(at(html, 'data-slot="nav-sublinks"')).toBeLessThan(at(html, 'Gallery'))
     expect(at(html, 'Gallery')).toBeLessThan(at(html, 'data-slot="place-more"'))
-    // Not lit twice: the More row stays plain, the menu still lists Studio.
+    // Not lit twice: the More row stays plain, the menu still lists Flow.
     expect(html).not.toMatch(/data-slot="place-more"[^>]*aria-current/)
-    expect(html).toContain('data-item="studio"')
-    expect(column('chat')).not.toContain('data-slot="rail-studio"')
+    expect(html).toContain('data-item="flow"')
+    devState.opened = new Set(['finance'])
+    expect(column('chat')).not.toContain('data-slot="rail-flow"')
   })
 
   test('the phone’s drawer lists the five apps and the grouped More, with Recents below', () => {
@@ -413,7 +413,7 @@ describe('the unified desktop sidebar', () => {
   })
 
   test('the search is the palette, in every mode: the sidebar holds no field of its own', () => {
-    for (const mode of ['chat', 'dev', 'studio'] as const) {
+    for (const mode of ['chat', 'dev', 'design'] as const) {
       const html = column(mode, '')
       expect(html).toContain('aria-label="Search"')
       expect(html).not.toContain('<input')
@@ -439,8 +439,7 @@ describe('the unified desktop sidebar', () => {
     }
   })
 
-  test('Design lists its own conversations, through the host Studio is mounted with; Studio and Flow list none, never Chat’s', () => {
-    expect(column('studio')).not.toContain('data-slot="recents"')
+  test('Design lists its own conversations, through the host it is mounted with; Flow lists none, never Chat’s', () => {
     expect(column('flow')).not.toContain('data-slot="recents"')
     expect(column('design')).not.toContain('data-slot="recents"')
     const made = { ...hostAt(''), name: 'Design' }

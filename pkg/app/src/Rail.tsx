@@ -3,7 +3,7 @@
 // Folded left navigation rail (52px icons-only, shown when the unified sidebar
 // is folded, plus the compact phone drawer rail):
 // - Shared `useNavEntries()` model keeps Hanzo's exact product names & order
-//   (`Chat`, `Dev`, `Design`, `Studio` if opened, `Library`, `Scheduled tasks`,
+//   (`Chat`, `Dev`, `Design`, `Library`, `Scheduled tasks`,
 //   `Customize`, `Tabs`, `Betas`, and every hosted app or beta the reader may open;
 //   Developer mode hides none of them) across both the unified Sidebar and the 52px folded Rail.
 // - Strictly monochrome active chrome (`bg="$raised"`, `color="$ink"`).
@@ -38,14 +38,14 @@ import {
 import { SidebarItem } from '@hanzo/ui/chat'
 import { MoreMenu } from './MoreMenu'
 import { BetasDialog, useBetas } from './Betas'
-import { out } from './help'
 import { BETAS } from './lib/betas'
 import { HOSTED_APPS } from './lib/hosted'
 import { Account } from './Account'
 import { useDevMode } from './lib/dev-mode'
 import { usePref } from './pref'
 import { HEAD, MARK, TOUCH_HEAD } from './ground'
-import { apex, app, design, flow, hosted, studio, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
+import { out } from './help'
+import { apex, app, design, flow, hosted, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
 import { site } from './where'
 
 export { MARK }
@@ -163,7 +163,6 @@ export function useNavEntries({
   onChat,
   onDev,
   onDesign,
-  onStudio,
   onTabs,
   go,
   pins,
@@ -176,7 +175,6 @@ export function useNavEntries({
   onChat: () => void
   onDev: () => void
   onDesign?: () => void
-  onStudio: () => void
   onTabs: () => void
   go: (address: string) => void
 }) {
@@ -188,8 +186,8 @@ export function useNavEntries({
   const anon = host.person === null
   const here = mode === 'dev' ? raised(at) : null
   const to = (p: string) => () => go(app(p))
-  const team = mode !== 'studio' && mode !== 'design'
-  const rawGranted = BETAS.filter((b) => b.href && b.embed === undefined && b.id !== 'studio' && b.id !== 'flow' && opened(b.id))
+  const team = mode !== 'design'
+  const rawGranted = BETAS.filter((b) => b.href && b.embed === undefined && b.id !== 'flow' && opened(b.id))
   const rawApps = HOSTED_APPS.filter((a) => opened(a.id))
   const reach = (address: string) => (address.startsWith('/') ? go(address) : out(address))
   const pinnedSet = new Set(pinnedIds)
@@ -261,19 +259,6 @@ export function useNavEntries({
             icon: <MARKS.customize.icon aria-hidden />,
             onPress: to(RAISED.customize),
           } satisfies NavEntry,
-          ...(opened('studio')
-            ? [
-                {
-                  id: 'studio',
-                  slot: 'rail-studio',
-                  label: 'Studio',
-                  href: studio(''),
-                  on: mode === 'studio',
-                  icon: <MARKS.studio.icon aria-hidden />,
-                  onPress: onStudio,
-                } satisfies NavEntry,
-              ]
-            : []),
           ...(opened('flow') || mode === 'flow'
             ? [
                 {
@@ -570,7 +555,6 @@ export function Rail({
   onChat,
   onDev,
   onDesign,
-  onStudio,
   onTabs,
   go,
   onOrg,
@@ -594,11 +578,10 @@ export function Rail({
   compact?: boolean
   /** The hosted app (lib/hosted) the reader is in, if any. */
   inside?: string | null
-  /** To Chat, Dev, Design and Studio, each where the reader left it. */
+  /** To Chat, Dev and Design, each where the reader left it. */
   onChat: () => void
   onDev: () => void
   onDesign?: () => void
-  onStudio: () => void
   onTabs: () => void
   /** Moves the app to an address of this page. */
   go: (address: string) => void
@@ -617,7 +600,6 @@ export function Rail({
     onChat,
     onDev,
     onDesign,
-    onStudio,
     onTabs,
     go,
     pins,
@@ -642,7 +624,6 @@ export function Rail({
     (() => {
       if (mode === 'dev') go(app(''))
       else if (mode === 'design') go(design(''))
-      else if (mode === 'studio') go(studio(''))
       else go(talk())
     })
 

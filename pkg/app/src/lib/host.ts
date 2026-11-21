@@ -71,8 +71,8 @@ const rooted = (): boolean => typeof window !== 'undefined' && apex(window.locat
 /** Chat's own address on this host: `/` on the app's, /chat on every other. */
 export const chat = (): string => (rooted() ? '/' : CHAT)
 /**
- * Studio: making images, audio, video and documents, and editing them.
- * hanzo.ai/studio, whose page draws the app for a signed-in reader.
+ * Design: making images, audio, video and documents, and editing them (@hanzo/studio), at /design.
+ * /studio was the same screen under a second name; its addresses (hanzo.ai still serves them) open Design.
  */
 export const STUDIO = '/studio'
 export const DESIGN = '/design'
@@ -106,8 +106,6 @@ export const hosted = (id: string, at?: string): string => `${HOSTED}/${id}${at 
 /** Whether `id` is an app in beta that draws inside the app. */
 const inside = (id: string): boolean => BETAS.some((b) => b.id === id && b.embed !== undefined)
 
-/** Studio at an address of its own (@hanzo/studio `route`): '' is New, /studio. */
-export const studio = (at: string): string => (at ? `${STUDIO}/${at.replace(/^\/+/, '')}` : STUDIO)
 /** Design at an address of its own (@hanzo/studio `route`): '' is New, /design. */
 export const design = (at: string): string => (at ? `${DESIGN}/${at.replace(/^\/+/, '')}` : DESIGN)
 /** Flow at an address of its own (@hanzo/studio `FlowStudio`): '' is New, /flow. */
@@ -161,7 +159,6 @@ export function app(at: string): string {
 export type Place =
   | { mode: 'chat'; thread: string | null }
   | { mode: 'dev'; at: string }
-  | { mode: 'studio'; at: string }
   | { mode: 'design'; at: string }
   | { mode: 'flow'; at: string }
   | { mode: 'tabs' }
@@ -176,7 +173,9 @@ export function place(pathname: string): Place | null {
   const p = pathname.replace(/\/+$/, '') || '/'
   if (p === CHAT || (p === '/' && rooted())) return { mode: 'chat', thread: null }
   if (p === DEV || p.startsWith(`${DEV}/`)) return { mode: 'dev', at: path(parse(p.slice(DEV.length))) }
-  if (p === STUDIO || p.startsWith(`${STUDIO}/`)) return { mode: 'studio', at: p.slice(STUDIO.length + 1) }
+  if (p === STUDIO || p.startsWith(`${STUDIO}/`)) return place(`${DESIGN}${p.slice(STUDIO.length)}`)
+  // Design kept a Library of its own; the app's one Library lists the same things, every kind, so its old address opens that.
+  if (p === `${DESIGN}/library`) return { mode: 'dev', at: '-/artifacts' }
   if (p === DESIGN || p.startsWith(`${DESIGN}/`)) return { mode: 'design', at: p.slice(DESIGN.length + 1) }
   if (p === FLOW || p.startsWith(`${FLOW}/`)) return { mode: 'flow', at: p.slice(FLOW.length + 1) }
   if (p === TERMINALS) return { mode: 'tabs' }
@@ -208,7 +207,6 @@ export function page(pathname: string): string {
   if (!at) return pathname
   if (at.mode === 'chat') return at.thread ? `${CHAT}/:id` : CHAT
   if (at.mode === 'tabs') return TERMINALS
-  if (at.mode === 'studio') return STUDIO
   if (at.mode === 'design') return DESIGN
   if (at.mode === 'flow') return FLOW
   if (at.mode === 'beta') return BETA
@@ -296,7 +294,7 @@ export function remember(mode: Place['mode']): void {
 export function resume(): string {
   try {
     const kept = window.localStorage.getItem(MODE)
-    return kept === 'dev' ? DEV : kept === 'studio' ? STUDIO : kept === 'design' ? DESIGN : kept === 'flow' ? FLOW : kept === 'tabs' ? TERMINALS : chat()
+    return kept === 'dev' ? DEV : kept === 'studio' || kept === 'design' ? DESIGN : kept === 'flow' ? FLOW : kept === 'tabs' ? TERMINALS : chat()
   } catch {
     return chat()
   }
