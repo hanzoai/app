@@ -152,9 +152,12 @@ export function paused(
 export const house = (family: string | undefined): boolean => family === 'enso' || family === 'zen'
 
 /**
- * Whether a model can answer a chat turn: it names no outputs, or names text
- * among them. `zen-scribe` (a transcript) and `zen-voice-mini` (audio) are
- * Zen ids the catalog lists, and neither answers a question.
+ * Whether a model writes replies: it names text among its outputs (or names none), and its
+ * endpoint is not the decisions endpoint. `zen-scribe` (a transcript), `zen-voice-mini`
+ * (audio) and the Kai decision models (`outputs: ["decision"]`, `/v1/decisions`) are listed
+ * by the catalog and none answers a question; decision models stay usable inside the product
+ * (gate scoring, routing), they are just never the model that writes the reply. One predicate
+ * for the picker, the default and the fallback.
  */
-export const chats = (model: { id: string; outputs?: unknown }): boolean =>
-  !Array.isArray(model.outputs) || model.outputs.includes('text')
+export const chats = (model: { id: string; outputs?: unknown; endpoint?: unknown }): boolean =>
+  model.endpoint !== '/v1/decisions' && (!Array.isArray(model.outputs) || model.outputs.includes('text'))

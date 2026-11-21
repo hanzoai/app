@@ -1479,12 +1479,12 @@ function Thread({
            family.startsWith('enso') || family.startsWith('zen') || family.startsWith('kai') ||
            m.class === 'ours';
   };
-  const listed = mind.models;
+  const listed = useMemo(() => mind.models.filter(chats), [mind.models]);
   const filteredListed = useMemo(() => {
     if (chatPrefs.allowThirdPartyModels) return listed;
     return listed.filter((m) => isHouseModel(m) || m.id === ENSO);
   }, [listed, chatPrefs.allowThirdPartyModels]);
-  const models = useMemo(() => filteredListed.filter(chats), [filteredListed]);
+  const models = filteredListed;
   // EVERY MODEL THE GATEWAY LISTS is offered here, through the one picker, and
   // read from the catalog's own fields (`parseModels`): its class, its family.
   // A premium model is picked for THIS conversation and never remembered as

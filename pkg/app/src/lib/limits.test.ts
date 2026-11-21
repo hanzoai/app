@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { format } from '@hanzo/i18n'
 import type { LimitNotice } from '@hanzo/ui/product/limits'
-import { paused, resets, spends, uncapped } from './limits'
+import { chats, paused, resets, spends, uncapped } from './limits'
 
 // This browser works in one organization, which every pay address names.
 vi.mock('./session', async (real) => ({ ...(await real<typeof import('./session')>()), org: () => 'acme' }))
@@ -219,5 +219,22 @@ describe('resets', () => {
       expect(resets(iso, NOW, en), String(iso)).toBeNull()
     expect(resets('2026-10-07T11:00:00Z', NOW, en)).toBeNull()
     expect(resets('2026-10-07T12:00:00Z', NOW, en)).toBeNull()
+  })
+})
+
+describe('chats: the models that write replies', () => {
+  it('lists text models and models that name no outputs', () => {
+    expect(chats({ id: 'zen6', outputs: ['text'] })).toBe(true)
+    expect(chats({ id: 'zen6', outputs: ['text', 'image'] })).toBe(true)
+    expect(chats({ id: 'enso' })).toBe(true)
+  })
+  it('never lists a decision model, by outputs or by endpoint', () => {
+    expect(chats({ id: 'kai-1.8', outputs: ['decision'], endpoint: '/v1/decisions' })).toBe(false)
+    expect(chats({ id: 'kai', endpoint: '/v1/decisions' })).toBe(false)
+    expect(chats({ id: 'kai-x', outputs: ['decision'] })).toBe(false)
+  })
+  it('never lists speech models', () => {
+    expect(chats({ id: 'zen-scribe', outputs: ['transcript'] })).toBe(false)
+    expect(chats({ id: 'zen-voice-mini', outputs: ['audio'] })).toBe(false)
   })
 })

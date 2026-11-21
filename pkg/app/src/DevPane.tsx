@@ -113,7 +113,7 @@ export function DevList({ host, path }: { host: Host; path: string }) {
   if (!runtime) return null
   return (
     <Suspense fallback={null}>
-      <List active={refOf(path)} onOpen={(ref) => host.go(app(ref ? `thread/${ref}` : ''))} />
+      <List tools active={refOf(path)} onOpen={(ref) => host.go(app(ref ? `thread/${ref}` : ''))} />
     </Suspense>
   )
 }

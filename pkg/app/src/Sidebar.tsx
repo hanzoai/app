@@ -24,7 +24,6 @@ import {
   Bell,
   ChevronDown,
   ChevronUp,
-  CircleHelp,
   Cloud,
   ExternalLink,
   Globe,
@@ -41,7 +40,6 @@ import {
   Puzzle,
   Search,
   Settings,
-  Sparkles,
 } from 'lucide-react'
 import { DOTS, Gutter, library, NEW, own, Rename, tabs, useLanguage, useScheduled, useSessions, type Host } from '@hanzo/build'
 import { rename, useDeviceNames, type Names } from '@hanzo/build/names'
@@ -1590,56 +1588,11 @@ export function Sidebar({
                 </XStack>
               </YStack>
               {!drawer ? (
-                <XStack items="center" justify="space-between" px="$2" pt="$1" borderTopWidth={1} borderColor="$edge">
-                  <XStack
-                    render={<button type="button" />}
-                    data-slot="anon-pricing"
-                    onClick={() => {
-                      if (typeof window !== 'undefined') window.location.assign('/pricing')
-                    }}
-                    items="center"
-                    gap="$1"
-                    px="$1.5"
-                    py="$1"
-                    minH={28}
-                    $touchable={{ minH: TOUCH }}
-                    $max-sm={{ minH: TOUCH }}
-                    rounded="$2"
-                    borderWidth={0}
-                    bg="transparent"
-                    cursor="pointer"
-                    hoverStyle={{ bg: '$hover' }}
-                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
-                  >
-                    <Sparkles size={13} aria-hidden />
-                    <Text fontSize="$1" color="$aside">{t('Pricing')}</Text>
-                  </XStack>
-                  <XStack
-                    render={<button type="button" />}
-                    data-slot="anon-help"
-                    onClick={() => {
-                      if (typeof window !== 'undefined') window.open('https://docs.hanzo.ai', '_blank', 'noopener,noreferrer')
-                    }}
-                    items="center"
-                    gap="$1"
-                    px="$1.5"
-                    py="$1"
-                    minH={28}
-                    $touchable={{ minH: TOUCH }}
-                    $max-sm={{ minH: TOUCH }}
-                    rounded="$2"
-                    borderWidth={0}
-                    bg="transparent"
-                    cursor="pointer"
-                    hoverStyle={{ bg: '$hover' }}
-                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
-                  >
-                    <CircleHelp size={13} aria-hidden />
-                    <Text fontSize="$1" color="$aside">{t('Help')}</Text>
-                  </XStack>
+                <XStack items="center" justify="flex-start" px="$2" pt="$1" borderTopWidth={1} borderColor="$edge">
                   <XStack
                     render={<button type="button" />}
                     data-slot="anon-settings"
+                    aria-label={t('Settings')}
                     onClick={() => {
                       if (typeof window !== 'undefined') {
                         window.dispatchEvent(new CustomEvent('hanzo:anon-settings', { detail: { open: true } }))
@@ -1659,8 +1612,7 @@ export function Sidebar({
                     hoverStyle={{ bg: '$hover' }}
                     focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                   >
-                    <Settings size={13} aria-hidden />
-                    <Text fontSize="$1" color="$aside">{t('Settings')}</Text>
+                    <Settings size={16} aria-hidden />
                   </XStack>
                 </XStack>
               ) : null}
