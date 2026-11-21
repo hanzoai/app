@@ -26,7 +26,7 @@ afterEach(() => {
 describe('resolveRuntime', () => {
   test('a linked machine comes first', async () => {
     serve({
-      '/v1/agents/targets': { targets: [{ id: 'm1', label: 'Mac', host: 'm1.tunnel.test', status: 'online' }] },
+      '/v1/sources': { sources: [{ id: 'm1', name: 'Mac', kind: 'desktop', zap: 'm1.tunnel.test', state: 'online' }] },
       '/v1/dev/sessions': { id: 'c1', zap: 'cell.test', sandbox: 'sb1' },
     })
     const r = await resolveRuntime(signal)
@@ -36,18 +36,18 @@ describe('resolveRuntime', () => {
   })
   test('an offline machine is skipped for the cell, which carries the sandbox', async () => {
     serve({
-      '/v1/agents/targets': { targets: [{ id: 'm1', host: 'm1.tunnel.test', status: 'offline' }] },
+      '/v1/sources': { sources: [{ id: 'm1', zap: 'm1.tunnel.test', state: 'offline' }] },
       '/v1/dev/sessions': { id: 'c1', zap: 'https://cell.test/zap', sandbox: 'sb1' },
     })
     expect(await resolveRuntime(signal)).toMatchObject({ kind: 'cell', zap: 'https://cell.test/zap', sandbox: 'sb1' })
     expect(calls).toContain('POST /v1/dev/sessions')
   })
   test('no machine and no cell (404) is null, not an error', async () => {
-    serve({ '/v1/agents/targets': { targets: [] } })
+    serve({ '/v1/sources': { sources: [] } })
     expect(await resolveRuntime(signal)).toBeNull()
   })
   test("the host's own Dev comes before a machine, a lease and any request", async () => {
-    serve({ '/v1/agents/targets': { targets: [{ id: 'm1', host: 'm1.tunnel.test', status: 'online' }] } })
+    serve({ '/v1/sources': { sources: [{ id: 'm1', zap: 'm1.tunnel.test', state: 'online' }] } })
     configure({ runtime: async () => ({ kind: 'machine', id: 'here', label: 'This computer', zap: 'http://127.0.0.1:3773', token: async () => 'p' }) })
     expect(await resolveRuntime(signal)).toMatchObject({ id: 'here', zap: 'http://127.0.0.1:3773' })
     expect(calls).toEqual([])
@@ -58,14 +58,14 @@ describe('resolveRuntime', () => {
 describe('a runtime that will not pair', () => {
   test('a machine on plain http is never offered, and a skipped machine falls through to the cloud cell', async () => {
     serve({
-      '/v1/agents/targets': { targets: [{ id: 'dgx', host: 'http://dgx.test', status: 'online' }, { id: 'm2', host: 'm2.tunnel.test', status: 'online' }] },
+      '/v1/sources': { sources: [{ id: 'dgx', zap: 'http://dgx.test', state: 'online' }, { id: 'm2', zap: 'm2.tunnel.test', state: 'online' }] },
       '/v1/dev/sessions': { id: 'c1', zap: 'https://cell.test/zap', sandbox: 'sb1' },
     })
     expect(await resolveRuntime(signal)).toMatchObject({ kind: 'machine', id: 'm2' })
     expect(await resolveRuntime(signal, new Set(['m2']))).toMatchObject({ kind: 'cell', id: 'c1' })
   })
   test('with every machine skipped and no cell, there is none: Dev draws its start state', async () => {
-    serve({ '/v1/agents/targets': { targets: [{ id: 'm2', host: 'm2.tunnel.test', status: 'online' }] } })
+    serve({ '/v1/sources': { sources: [{ id: 'm2', zap: 'm2.tunnel.test', state: 'online' }] } })
     expect(await resolveRuntime(signal, new Set(['m2']))).toBeNull()
   })
 })

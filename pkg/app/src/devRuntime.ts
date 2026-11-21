@@ -3,7 +3,7 @@
 //
 //   local    the host's own Dev (where().runtime): Hanzo Desktop's computer.
 //   machine  a computer they linked with `hanzo link` (Hanzo Link): the first of
-//            GET /v1/agents/targets that is online and publishes an endpoint.
+//            GET /v1/sources that is online and publishes a ZAP endpoint.
 //   cell     their cloud sandbox: POST /v1/dev/sessions leases it and answers
 //            { id, label, zap, sandbox } (HIP-1330); DELETE /v1/dev/sessions/:id
 //            releases it. A lease creates state, so it is asked for only when no
@@ -18,11 +18,13 @@ import { api } from './lib/api'
 import { bearer } from './lib/session'
 import { where } from './where'
 
-interface Target {
+/** A linked computer, as `GET /v1/sources` lists it (Hanzo Link). */
+interface Source {
   id: string
-  label?: string
-  host?: string
-  status?: string
+  kind: string
+  name?: string
+  state?: string
+  zap?: string
 }
 
 interface Lease {
@@ -54,10 +56,10 @@ const token = async (): Promise<string> => bearer() ?? ''
 
 /** The linked machines, online, that a browser can reach over ZAP (https; WebTransport has no plain http). Reads only; nothing is leased. */
 export async function machines(signal: AbortSignal): Promise<readonly DevRuntime[]> {
-  const found = await call<{ targets?: Target[] }>('GET', '/v1/agents/targets', signal)
-  return (found?.targets ?? [])
-    .filter((m) => m.host && m.status === 'online' && origin(m.host).startsWith('https:'))
-    .map((m) => ({ kind: 'machine', id: m.id, label: m.label ?? m.id, zap: origin(m.host as string), token }))
+  const found = await call<{ sources?: Source[] }>('GET', '/v1/sources', signal)
+  return (found?.sources ?? [])
+    .filter((m) => m.zap && m.state === 'online' && origin(m.zap).startsWith('https:'))
+    .map((m) => ({ kind: 'machine', id: m.id, label: m.name ?? m.id, zap: origin(m.zap as string), token }))
 }
 
 /** The host's own Dev first, then a linked machine, else a leased cloud cell, else null. `skip` names runtimes that would not pair this session. */

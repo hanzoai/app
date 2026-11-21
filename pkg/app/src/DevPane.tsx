@@ -1,7 +1,9 @@
 'use client'
 
-// Dev's interior when the person has a runtime (devRuntime.ts): the Dev core's
-// thread view with a dock beside it. The dock is Tabs' own panes for the
+// Dev's and Chat's interior is the Dev core, always. With nothing open it is the composer
+// ("Build what's next.": `DevHome`, runnable with no environment: Cloud is plain chat on the
+// account); a turn aimed at a linked Mac (`GET /v1/sources`) hands over to that Mac's runtime
+// (`DevProvider` + `DevWorkspace`), a thread view with a dock beside it. The dock is Tabs' own panes for the
 // runtime's sandbox (@hanzo/tabs `frameUrl`): the terminal, and the browser as
 // pixels with Watching / Take control (the screen page's own view-only switch,
 // as the bot computer's dialog drives it).
@@ -9,25 +11,18 @@
 import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Button, Text, XStack, YStack } from '@hanzo/ui'
 import { frameUrl, type Door } from '@hanzo/tabs'
-import type { DevRuntime } from '@hanzo/dev-core'
+import type { DevEnvironment, DevRuntime } from '@hanzo/dev-core'
 import { useI18n } from '@hanzo/i18n/react'
 import { api } from './lib/api'
 import { bearer } from './lib/session'
-import { cell, useDevRuntime } from './devRuntime'
+import { machines } from './devRuntime'
 import type { Host } from '@hanzo/build'
-import { app, TERMINALS } from './lib/host'
+import { app, talk } from './lib/host'
+import { org as currentOrg } from './lib/session'
 
 const Core = lazy(() => import('./core').then((m) => ({ default: m.DevWorkspace })))
 const Provider = lazy(() => import('./core').then((m) => ({ default: m.DevProvider })))
-/** Leases the person's cloud cell and re-enters Dev on it; false says there is none to be had. */
-async function leaseAndEnter(): Promise<boolean> {
-  const leased = await cell(new AbortController().signal)
-  if (!leased) return false
-  window.location.reload()
-  return true
-}
-
-const Start = lazy(() => import('./core').then((m) => ({ default: m.DevStart })))
+const Home = lazy(() => import('./core').then((m) => ({ default: m.DevHome })))
 const List = lazy(() => import('./core').then((m) => ({ default: m.DevThreadList })))
 
 /** A dock pane: one single-use ticket per mount, so a reload mints a fresh one. */
@@ -88,20 +83,89 @@ export function Dock({ runtime, thread }: { runtime: DevRuntime; thread: string 
   )
 }
 
-export const Scope = createContext<DevRuntime | null | undefined>(undefined)
+/** Where a turn can run: Cloud first (plain chat on the account; sandbox sessions are not there yet), then each linked Mac that would pair. */
+export const environmentsOf = (t: (s: string) => string, linked: readonly DevRuntime[], skip: ReadonlySet<string>): readonly DevEnvironment[] => [
+  { id: 'cloud', kind: 'cloud', label: t('Cloud'), available: false, note: t('Not available yet') },
+  ...linked
+    .filter((m) => !skip.has(m.id))
+    .map((m): DevEnvironment => ({ id: m.id, kind: 'machine', label: m.label, available: true, runtime: m })),
+]
 
-/** Resolves the runtime once Dev is entered and mounts the Dev core's provider over everything that draws it: the sidebar's thread list and the interior share one connection. */
-export function DevScope({ active, children }: { active: boolean; children: ReactNode }) {
+const CHOSEN = 'hanzo.dev.environment'
+const remembered = (): string | null => {
+  try {
+    return window.localStorage.getItem(CHOSEN)
+  } catch {
+    return null
+  }
+}
+const remember = (id: string): void => {
+  try {
+    window.localStorage.setItem(CHOSEN, id)
+  } catch {}
+}
+
+/** What the scope gives the sidebar's list and the interior. */
+interface Dev {
+  /** The Mac the Dev core is mounted on, null until a turn went to one or a thread of one is open. */
+  runtime: DevRuntime | null
+  environments: readonly DevEnvironment[]
+  environment: string | null
+  choose: (id: string) => void
+  /** A turn for a Mac: mount its runtime. */
+  handoff: (environment: DevEnvironment, prompt: string) => void
+  /** The Mac would not pair: it is not offered again this session. */
+  fail: (runtime: DevRuntime) => void
+}
+
+export const Scope = createContext<Dev | undefined>(undefined)
+
+/**
+ * Finds the person's linked Macs once Dev or Chat is entered and keeps the environment they chose.
+ * The Dev core's provider wraps everything that draws it (the sidebar's thread list and the interior
+ * share one connection) only once a Mac is in use; before that the composer needs no connection.
+ */
+export function DevScope({ active, path, children }: { active: boolean; path: string; children: ReactNode }) {
+  const { t } = useI18n()
   const [on, setOn] = useState(active)
   useEffect(() => {
     if (active) setOn(true)
   }, [active])
-  const { runtime, fail } = useDevRuntime(on)
+  const [linked, setLinked] = useState<readonly DevRuntime[]>([])
+  const [skip, setSkip] = useState<ReadonlySet<string>>(() => new Set())
+  const [chosen, setChosen] = useState<string | null>(null)
+  const [using, setUsing] = useState<DevRuntime | null>(null)
+  useEffect(() => {
+    if (!on) return
+    const ctl = new AbortController()
+    void machines(ctl.signal).then((m) => !ctl.signal.aborted && setLinked(m))
+    setChosen(remembered())
+    return () => ctl.abort()
+  }, [on])
+  const environments = environmentsOf(t, linked, skip)
+  const environment = environments.some((e) => e.id === chosen) ? chosen : 'cloud'
+  // A thread of a Mac is open (a reload, a shared link): the first Mac that is there.
+  const open = REF.test(path)
+  const runtime = using ?? (open ? (linked.find((m) => !skip.has(m.id)) ?? null) : null)
+  const dev: Dev = {
+    runtime,
+    environments,
+    environment,
+    choose: (id) => {
+      remember(id)
+      setChosen(id)
+    },
+    handoff: (e, _prompt) => e.runtime && setUsing(e.runtime),
+    fail: (r) => {
+      setSkip((prev) => new Set(prev).add(r.id))
+      setUsing((u) => (u?.id === r.id ? null : u))
+    },
+  }
   return (
-    <Scope.Provider value={runtime}>
+    <Scope.Provider value={dev}>
       {runtime ? (
         <Suspense fallback={null}>
-          <Provider runtime={runtime} onFail={fail}>{children}</Provider>
+          <Provider runtime={runtime} onFail={dev.fail}>{children}</Provider>
         </Suspense>
       ) : (
         children
@@ -115,10 +179,10 @@ export const useScope = () => useContext(Scope)
 const REF = /^\/dev\/thread\/(.+)$/
 const refOf = (path: string): string | null => REF.exec(path)?.[1] ?? null
 
-/** The thread list nested under Dev in the sidebar; nothing without a runtime. */
+/** The thread list nested under Dev in the sidebar; the shell's own Recents until a Mac is in use. */
 export function DevList({ host, path }: { host: Host; path: string }) {
-  const runtime = useScope()
-  if (!runtime) return null
+  const dev = useScope()
+  if (!dev?.runtime) return null
   return (
     <Suspense fallback={null}>
       <List tools active={refOf(path)} onOpen={(ref) => host.go(app(ref ? `thread/${ref}` : ''))} />
@@ -126,26 +190,42 @@ export function DevList({ host, path }: { host: Host; path: string }) {
   )
 }
 
-/** Dev's interior: the Dev core when the person has a runtime, Dev's own start state when they have none. */
-export function DevInterior({ host, path }: { host: Host; path: string }) {
-  const runtime = useScope()
+/** The Dev core's cloud account: plain chat needs no environment. */
+const cloud = () => ({ api: api(), token: async () => bearer() ?? '', org: currentOrg() ?? undefined })
+
+/**
+ * The interior of Dev and of Chat: the Dev core, always. A Mac's thread is the thread view with the
+ * dock; everything else is the composer. `mode` says which of the two the address is: Chat hides
+ * the code tools, and its conversation is the shell's `/chat/<id>`.
+ */
+export function DevInterior({ host, path, mode = 'dev', conversation = null }: { host: Host; path: string; mode?: 'dev' | 'chat'; conversation?: string | null }) {
+  const dev = useScope()
   const project = path.startsWith('/dev/projects/')
   useEffect(() => {
-    if (runtime && project) host.go(app(''), { replace: true })
-  }, [runtime, project, host])
-  if (runtime === undefined) return null
-  if (runtime === null) {
-    // No runtime is Dev's own state, not a second UI: lease a cell, or link a machine (Tabs lists the devices).
+    if (project) host.go(app(''), { replace: true })
+  }, [project, host])
+  if (!dev) return null
+  const thread = mode === 'dev' ? refOf(path) : null
+  if (dev.runtime && thread) {
+    const dock = (ctx: { runtime: DevRuntime; thread: string | null }) => <Dock {...ctx} />
     return (
       <Suspense fallback={null}>
-        <Start onCloud={leaseAndEnter} onLink={() => host.go(TERMINALS)} />
+        <Core thread={thread} onNavigate={(ref) => host.go(app(ref ? `thread/${ref}` : ''))} dock={dock} />
       </Suspense>
     )
   }
-  const dock = (ctx: { runtime: DevRuntime; thread: string | null }) => <Dock {...ctx} />
   return (
     <Suspense fallback={null}>
-      <Core thread={refOf(path)} onNavigate={(ref) => host.go(app(ref ? `thread/${ref}` : ''))} dock={dock} />
+      <Home
+        cloud={cloud()}
+        mode={mode}
+        environments={dev.environments}
+        environment={dev.environment}
+        onEnvironment={dev.choose}
+        onHandoff={dev.handoff}
+        conversation={conversation}
+        onConversation={(id) => host.go(talk(id ?? undefined))}
+      />
     </Suspense>
   )
 }

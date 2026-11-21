@@ -70,7 +70,6 @@ import { HostProvider, PrefsProvider, route, tabs, type Host } from '@hanzo/buil
 import * as studioPkg from '@hanzo/studio'
 import { nav as places } from '@hanzo/studio'
 import { useAi } from './lib/ai'
-import { Chat } from './Chat'
 import { UsageProvider } from './Usage'
 import { AnonSettingsPane, dispatchTabsAction, Sidebar } from './Sidebar'
 import { Learning } from './Learning'
@@ -385,7 +384,7 @@ function Window({ bar, betas }: Hosted) {
         {/* The person's preferences, read once for Chat and Dev: the side panel's width is one of them. */}
         <PrefsProvider>
           <UsageProvider>
-            <DevScope active={mode === 'dev'}>
+            <DevScope active={mode === 'dev' || mode === 'chat'} path={here}>
         {/* The floor runs under the bar where there is one, so the window is one ground. */}
         <YStack
           ref={windowRef}
@@ -582,7 +581,7 @@ function Window({ bar, betas }: Hosted) {
                   </YStack>
                 ) : mode === 'chat' ? (
                   <Split framed>
-                    <Chat />
+                    <DevInterior host={host} path={here} mode="chat" conversation={asked} />
                   </Split>
                 ) : mode === 'tabs' ? (
                   <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>

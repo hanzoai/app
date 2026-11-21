@@ -923,7 +923,7 @@ export function Sidebar({
   const span = useSpan(SPAN, WIDTH, FLOOR, CEIL)
 
   const dev = (p: string) => host.go(p)
-  const runtime = useScope()
+  const runtime = useScope()?.runtime
   const at = mode === 'dev' ? raised(host.path) : null
   const Make = mode === 'chat' || mode === 'dev' || mode === 'tabs' || mode === 'studio' ? MARKS[mode].make : MARKS.chat.make
 

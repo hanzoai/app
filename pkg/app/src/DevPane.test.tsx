@@ -7,23 +7,38 @@ vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s }) }
 vi.mock('@hanzo/ui', () => ({ Button: 'button', Text: 'span', XStack: 'div', YStack: 'div' }))
 vi.mock('./core', () => ({}))
 vi.mock('./lib/api', () => ({ api: () => 'https://api.test' }))
-vi.mock('./lib/session', () => ({ bearer: () => 't' }))
-vi.mock('./lib/host', () => ({ app: (p: string) => `/dev/${p}`, TERMINALS: '/tabs' }))
+vi.mock('./lib/session', () => ({ bearer: () => 't', org: () => 'hanzo' }))
+vi.mock('./lib/host', () => ({ app: (p: string) => `/dev/${p}`, talk: (id?: string) => `/chat/${id ?? ''}` }))
 
-import { DevInterior, DevList, Scope } from './DevPane'
+import { DevInterior, DevList, environmentsOf, Scope } from './DevPane'
 
 const host = { go: () => {}, path: '/dev' } as never
-const draw = (runtime: unknown, el = createElement(DevInterior, { host, path: '/dev' })) =>
-  renderToStaticMarkup(createElement(Scope.Provider, { value: runtime as never }, el))
+const mac = (id: string) => ({ kind: 'machine', id, label: id, zap: `https://${id}.test`, token: async () => 't' }) as never
+const dev = (runtime: unknown) => ({ runtime, environments: [], environment: 'cloud', choose: () => {}, handoff: () => {}, fail: () => {} }) as never
+const draw = (value: unknown, el = createElement(DevInterior, { host, path: '/dev' })) =>
+  renderToStaticMarkup(createElement(Scope.Provider, { value: value as never }, el))
 
-describe('Dev interior', () => {
-  test('no runtime is Dev\'s own start state, never a second surface', () => {
-    expect(draw(null)).not.toContain('builder')
-  })
-  test('a runtime being found draws nothing', () => {
+describe('Dev and Chat interior', () => {
+  test('nothing is drawn before the scope is there', () => {
     expect(draw(undefined)).toBe('')
   })
-  test('the thread list draws only with a runtime', () => {
-    expect(draw(null, createElement(DevList, { host, path: '/dev' }))).toBe('')
+  test('the thread list nests under Dev only once a Mac is in use; before that the shell lists its own', () => {
+    expect(draw(dev(null), createElement(DevList, { host, path: '/dev' }))).toBe('')
+  })
+})
+
+describe('environments', () => {
+  const t = (s: string) => s
+  test('Cloud is first and says it is not available yet; each linked Mac follows, available', () => {
+    const list = environmentsOf(t, [mac('mac1'), mac('mac2')], new Set())
+    expect(list.map((e) => e.id)).toEqual(['cloud', 'mac1', 'mac2'])
+    expect(list[0]).toMatchObject({ kind: 'cloud', available: false, note: 'Not available yet' })
+    expect(list[1]).toMatchObject({ kind: 'machine', available: true })
+  })
+  test('a Mac that would not pair is not offered again', () => {
+    expect(environmentsOf(t, [mac('mac1'), mac('mac2')], new Set(['mac1'])).map((e) => e.id)).toEqual(['cloud', 'mac2'])
+  })
+  test('no linked Mac leaves Cloud alone, so the composer is still there', () => {
+    expect(environmentsOf(t, [], new Set()).map((e) => e.id)).toEqual(['cloud'])
   })
 })
