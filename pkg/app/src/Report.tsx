@@ -66,6 +66,8 @@ export function Broke({ error, onBack }: { error: Error; onBack: () => void }) {
         <Button
           data-slot="broke-chat"
           onPress={() => {
+            // Broke on Chat itself: pushing the same address moves nothing, so the app is drawn again here.
+            if (path === talk()) return onBack()
             router.push(talk())
             // A router that moved at once (the desktop window's history): draw the app again now.
             if (window.location.pathname !== path) onBack()

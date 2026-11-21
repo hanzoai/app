@@ -47,6 +47,15 @@ describe('the crash screen', () => {
     expect(back).toHaveBeenCalled()
   })
 
+  test('Back to Chat on Chat itself draws the app again without moving', () => {
+    window.history.replaceState(null, '', '/chat')
+    const back = vi.fn()
+    act(() => root.render(createElement(Broke, { error: new Error('boom'), onBack: back })))
+    act(() => (box.querySelector('[data-slot="broke-chat"]') as HTMLElement).click())
+    expect(push).not.toHaveBeenCalled()
+    expect(back).toHaveBeenCalledOnce()
+  })
+
   test('Copy details puts the error, the screen and the version on the clipboard', async () => {
     const write = vi.fn(async (_text: string) => {})
     Object.defineProperty(navigator, 'clipboard', { value: { writeText: write }, configurable: true })
