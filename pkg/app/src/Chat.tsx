@@ -1562,15 +1562,16 @@ function Thread({
   const [needMoreUsageOpen, setNeedMoreUsageOpen] = useState(false);
   const [simulatedResetAt, setSimulatedResetAt] = useState<string | null>(null);
   const seenUsageLimit = useRef<string | null>(null);
-  // The choice opens for a turn that was turned away, and never while a turn is
-  // in flight: asking again after credits are on adds a message to a refusal that
-  // stands until the answer comes, and the answer ends it.
+  // The choice opens once for the turn that was turned away, and never while a turn is in flight.
+  // It is keyed by the reader's turn, not the last message: the answer to a retry after credits are
+  // on is a new last message, and it must not reopen what that retry settled.
+  const askedTurn = pause ? `${kept ?? open ?? ""}:${[...chat.messages].reverse().find((m) => m.role === "user")?.id ?? ""}` : null;
   useEffect(() => {
-    if (isUsageLimitReached && !chat.streaming && which && which !== shut && seenUsageLimit.current !== which) {
-      seenUsageLimit.current = which;
+    if (isUsageLimitReached && !chat.streaming && askedTurn && which !== shut && seenUsageLimit.current !== askedTurn) {
+      seenUsageLimit.current = askedTurn;
       setNeedMoreUsageOpen(true);
     }
-  }, [isUsageLimitReached, chat.streaming, which, shut]);
+  }, [isUsageLimitReached, chat.streaming, askedTurn, which, shut]);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onNeedMore = (ev: Event) => {
