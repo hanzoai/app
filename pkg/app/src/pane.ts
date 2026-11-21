@@ -18,7 +18,7 @@
 // goes with the next message by reference. Sending spends what is held; from
 // then on the turn itself is the record Sources reads.
 
-import { useSyncExternalStore } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 import { chatKey, follow, pool, register, settled, upload, workspace, type Api, type WorkFile } from './lib/files'
 
 /**
@@ -100,6 +100,9 @@ function subscribe(l: () => void): () => void {
 
 const read = (key: string): Pane => live.get(key) ?? BARE
 
+/** What conversation `key` holds right now; `usePane` is the same read as a hook. */
+export const paneOf = read
+
 /** The server renders nothing held, so every pane starts bare there. */
 const onServer = (): Pane => BARE
 
@@ -153,6 +156,9 @@ export const localOf = (id: string): string => local.get(id) ?? ''
 // Each held file's upload, by held id: what stops it, and what it settles to.
 const carrying = new Map<string, { stop: AbortController; done: Promise<WorkFile | null> }>()
 
+// The bytes each held file was picked from, by held id, so a failed upload can go up again.
+const sources = new Map<string, File>()
+
 /** How many files go up at once; each large one also sends several parts at once. */
 const FILES_AT_ONCE = 3
 
@@ -201,6 +207,7 @@ export async function hold(key: string, list: readonly File[], via: Via): Promis
     sent: 0,
   }))
   edit(key, (was) => ({ ...was, held: [...was.held, ...taken], refused: null }))
+  taken.forEach((h, i) => sources.set(h.id, list[i]))
   const jobs = taken.map((h, i) => {
     const stop = new AbortController()
     let land!: (f: WorkFile | null) => void
@@ -208,22 +215,44 @@ export async function hold(key: string, list: readonly File[], via: Via): Promis
     carrying.set(h.id, { stop, done })
     return { h, file: list[i], stop, land }
   })
-  await pool(jobs, FILES_AT_ONCE, async ({ h, file, stop, land }) => {
-    try {
-      if (stop.signal.aborted) return land(null)
-      const bucket = await workspace(via.api, org)
-      const objectKey = chatKey(file)
-      await upload(via.api, bucket, objectKey, file, (sent) => patch(key, h.id, { sent }), stop.signal)
-      const got = await register(via.api, bucket, objectKey)
-      local.set(got.id, h.href)
-      patch(key, h.id, fromFile(got))
-      watch(via.api, got, key, h.id)
-      land(got)
-    } catch (e) {
-      if (!stop.signal.aborted) patch(key, h.id, { state: 'failed', error: (e as Error)?.message || `${file.name} did not upload.` })
-      land(null)
-    }
-  })
+  await pool(jobs, FILES_AT_ONCE, async ({ h, file, stop, land }) => land(await transfer(key, h, file, org, via, stop)))
+}
+
+/**
+ * One file's way to the workspace: upload, register, follow. It lands as the
+ * workspace file, or fails in place with the reason on its chip (`Held.error`).
+ */
+async function transfer(key: string, h: Held, file: File, org: string, via: Via, stop: AbortController): Promise<WorkFile | null> {
+  try {
+    if (stop.signal.aborted) return null
+    const bucket = await workspace(via.api, org)
+    const objectKey = chatKey(file)
+    await upload(via.api, bucket, objectKey, file, (sent) => patch(key, h.id, { sent }), stop.signal)
+    const got = await register(via.api, bucket, objectKey)
+    local.set(got.id, h.href)
+    patch(key, h.id, fromFile(got))
+    watch(via.api, got, key, h.id)
+    return got
+  } catch (e) {
+    if (!stop.signal.aborted) patch(key, h.id, { state: 'failed', error: (e as Error)?.message || `${file.name} did not upload.` })
+    return null
+  }
+}
+
+/** Whether a failed file can go up again: its bytes are still on this machine. */
+export const retryable = (id: string): boolean => sources.has(id)
+
+/** Sends a failed file up again from the bytes the reader picked, in place on its chip. */
+export async function retry(key: string, id: string, via: Via): Promise<void> {
+  const file = sources.get(id)
+  const was = read(key).held.find((h) => h.id === id)
+  if (!file || !via.org || was?.state !== 'failed') return
+  const stop = new AbortController()
+  let land!: (f: WorkFile | null) => void
+  const done = new Promise<WorkFile | null>((r) => (land = r))
+  carrying.set(id, { stop, done })
+  patch(key, id, { state: 'uploading', sent: 0, error: undefined })
+  land(await transfer(key, was, file, via.org, via, stop))
 }
 
 /**
@@ -273,6 +302,7 @@ export function spend(key: string): Held[] {
   const was = read(key)
   if (!was.held.length && !was.refused) return []
   write(key, { ...was, held: [], refused: null })
+  for (const h of was.held) sources.delete(h.id)
   return was.held
 }
 
@@ -283,6 +313,7 @@ export function drop(key: string, id: string): void {
     if (!going) return was
     carrying.get(id)?.stop.abort()
     carrying.delete(id)
+    sources.delete(id)
     if (going.href) {
       if (going.file) local.delete(going.file.id)
       URL.revokeObjectURL(going.href)
@@ -299,4 +330,39 @@ export function usePane(key: string): Pane {
     () => read(key),
     onServer,
   )
+}
+
+// WHAT IS TYPED AND NOT YET SENT, PER CONVERSATION, kept outside React for the
+// reason the rest of this file is: the router mounts the apps, so a draft held in
+// the composer's own state is destroyed when the reader goes to Dev and comes
+// back. It is not written down, and it has its own listeners so a keystroke
+// redraws the field and nothing that only reads the held files.
+const drafts = new Map<string, string>()
+const draftListeners = new Set<() => void>()
+
+/** The draft typed into conversation `key`, or '' where there is none. */
+export const draftOf = (key: string): string => drafts.get(key) ?? ''
+
+/** Sets conversation `key`'s draft; an empty one is forgotten. */
+export function setDraft(key: string, next: string): void {
+  if (next === draftOf(key)) return
+  if (next) drafts.set(key, next)
+  else drafts.delete(key)
+  for (const l of draftListeners) l()
+}
+
+/** A conversation's draft and the way to change it, as `useState` gives them. */
+export function useDraft(key: string): [string, (next: string | ((was: string) => string)) => void] {
+  const draft = useSyncExternalStore(
+    (l) => {
+      draftListeners.add(l)
+      return () => {
+        draftListeners.delete(l)
+      }
+    },
+    () => draftOf(key),
+    () => '',
+  )
+  const set = useCallback((next: string | ((was: string) => string)) => setDraft(key, typeof next === 'function' ? next(draftOf(key)) : next), [key])
+  return [draft, set]
 }
