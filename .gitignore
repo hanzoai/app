@@ -2,3 +2,5 @@ node_modules
 dist
 /assets/
 pkg/app/assets/personas
+test-results
+playwright-report

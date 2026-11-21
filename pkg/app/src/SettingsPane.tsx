@@ -27,6 +27,7 @@ import { parseModels } from '@hanzo/ui/models/catalog'
 import { UsagePanel } from '@hanzo/usage/panel'
 import { administers, Credits, label, Plan, Title, useChoice } from '@hanzo/build'
 import { Catalog } from './Directory'
+import { Sources } from './Sources'
 import { payPage } from './lib/pay'
 import { api } from './lib/api'
 import { renewal, useSubscription, useTier } from './lib/tier'
@@ -84,6 +85,7 @@ function Pane({ id, note }: { id: string; note?: string }) {
   if (id === 'billing') return <Billing />
   if (id === 'referrals') return <Referrals />
   if (id === 'usage') return <Usage />
+  if (id === 'sources') return <Sources />
   if (id === 'model') return <Model />
   if (id === 'models') return <Served />
   if (id === 'agent') return <AgentSettings />
