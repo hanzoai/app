@@ -84,7 +84,7 @@ import { Share } from "./Share";
 import { useBuildSpend, useSpend } from "./Confirm";
 import { ended, why, type Failed } from "./lib/unanswered";
 import { questionOf, type Turn } from "./lib/asked";
-import { ConversationMenu, Delete, ThreadMore, useThreadActions, useThreadList, type Thread } from "./thread";
+import { ConversationMenu, Delete, useThreadActions, useThreadList, type Thread } from "./thread";
 import { Schedule } from "./Schedule";
 import { holdItem, keepFile, useAttach, useKeep } from "./keep";
 import { useKept } from "./kept";
