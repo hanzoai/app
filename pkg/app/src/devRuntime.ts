@@ -66,6 +66,11 @@ export async function resolveRuntime(signal: AbortSignal, skip: ReadonlySet<stri
   if (local && !skip.has(local.id)) return local
   const linked = (await machines(signal)).find((m) => !skip.has(m.id))
   if (linked) return linked
+  return cell(signal)
+}
+
+/** A cloud cell, leased: null when `/v1/dev/sessions` is not there or refuses. */
+export async function cell(signal: AbortSignal): Promise<DevRuntime | null> {
   const lease = await call<Lease>('POST', '/v1/dev/sessions', signal)
   return lease?.zap
     ? { kind: 'cell', id: lease.id, label: lease.label ?? 'Hanzo cloud', zap: origin(lease.zap), token, sandbox: lease.sandbox }

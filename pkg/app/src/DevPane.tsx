@@ -13,12 +13,20 @@ import type { DevRuntime } from '@hanzo/dev-core'
 import { useI18n } from '@hanzo/i18n/react'
 import { api } from './lib/api'
 import { bearer } from './lib/session'
-import { resolveRuntime, useDevRuntime } from './devRuntime'
+import { cell, useDevRuntime } from './devRuntime'
 import type { Host } from '@hanzo/build'
 import { app, TERMINALS } from './lib/host'
 
 const Core = lazy(() => import('./core').then((m) => ({ default: m.DevWorkspace })))
 const Provider = lazy(() => import('./core').then((m) => ({ default: m.DevProvider })))
+/** Leases the person's cloud cell and re-enters Dev on it; false says there is none to be had. */
+async function leaseAndEnter(): Promise<boolean> {
+  const leased = await cell(new AbortController().signal)
+  if (!leased) return false
+  window.location.reload()
+  return true
+}
+
 const Start = lazy(() => import('./core').then((m) => ({ default: m.DevStart })))
 const List = lazy(() => import('./core').then((m) => ({ default: m.DevThreadList })))
 
@@ -130,7 +138,7 @@ export function DevInterior({ host, path }: { host: Host; path: string }) {
     // No runtime is Dev's own state, not a second UI: lease a cell, or link a machine (Tabs lists the devices).
     return (
       <Suspense fallback={null}>
-        <Start onCloud={() => void resolveRuntime(new AbortController().signal).then((r) => r && window.location.reload())} onLink={() => host.go(TERMINALS)} />
+        <Start onCloud={leaseAndEnter} onLink={() => host.go(TERMINALS)} />
       </Suspense>
     )
   }

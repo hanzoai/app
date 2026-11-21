@@ -4,7 +4,7 @@ vi.mock('./lib/api', () => ({ api: () => 'https://api.test' }))
 vi.mock('./lib/session', () => ({ bearer: () => 'iam-token' }))
 
 import { configure } from './where'
-import { resolveRuntime } from './devRuntime'
+import { cell, resolveRuntime } from './devRuntime'
 
 const calls: string[] = []
 const serve = (routes: Record<string, unknown | null>) =>
@@ -67,5 +67,16 @@ describe('a runtime that will not pair', () => {
   test('with every machine skipped and no cell, there is none: Dev draws its start state', async () => {
     serve({ '/v1/agents/targets': { targets: [{ id: 'm2', host: 'm2.tunnel.test', status: 'online' }] } })
     expect(await resolveRuntime(signal, new Set(['m2']))).toBeNull()
+  })
+})
+
+describe('cell', () => {
+  test('a refused or missing lease is null, so Dev can say there is no cloud session', async () => {
+    serve({})
+    expect(await cell(signal)).toBeNull()
+  })
+  test('a lease is a cell with its sandbox', async () => {
+    serve({ '/v1/dev/sessions': { id: 'c1', zap: 'https://cell.test/zap', sandbox: 'sb1' } })
+    expect(await cell(signal)).toMatchObject({ kind: 'cell', id: 'c1', sandbox: 'sb1' })
   })
 })
