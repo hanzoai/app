@@ -37,7 +37,7 @@ import { useAi, type ChatMessage } from '@hanzo/ai/react'
 import { artifacts, name as titleOf, PAGE, type Deck, type Entry, type Section, type Tabs } from '@hanzo/build'
 import { said as told } from './lib/attach'
 import { download, fileOf, type Api } from './lib/files'
-import { org, scope } from './lib/session'
+import { live, org, scope } from './lib/session'
 import { api } from './lib/api'
 import { list } from './lib/list'
 import { localOf, take, type Held } from './pane'
@@ -454,6 +454,8 @@ export function useSites(): { title: string; url: string }[] {
   const site = t('Site')
   const [rows, setRows] = useState<{ title: string; url: string }[]>([])
   useEffect(() => {
+    // A visitor with no session has no organization and no sites, and the read answers 401.
+    if (!live()) return
     const stop = new AbortController()
     fetch(`${api()}/v1/project`, { headers: scope(), signal: stop.signal })
       .then((r) => (r.ok ? r.json() : null))
