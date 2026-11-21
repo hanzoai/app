@@ -1,17 +1,18 @@
-// The runtime behind Dev for this person: one interface, `DevRuntime`
-// (@hanzo/dev/runtime), resolved in order.
+// The runtime behind Dev for this person: one interface, `DevRuntime` (@hanzo/dev-core),
+// resolved in order.
 //
-//   machine  a computer they linked with `hanzo link` (Hanzo Connect): the first
-//            of GET /v1/agents/targets that is online and publishes a host.
-//   cell     their cloud sandbox: GET /v1/dev/cell -> { id, label, host, sandbox }
-//            (HIP-1330). Not found or refused is no cell, never an error.
+//   machine  a computer they linked with `hanzo link` (Hanzo Connect): the first of
+//            GET /v1/agents/targets that is online and publishes an endpoint.
+//   cell     their cloud sandbox: POST /v1/dev/sessions leases it and answers
+//            { id, label, zap, sandbox } (HIP-1330); DELETE /v1/dev/sessions/:id
+//            releases it. A lease creates state, so it is asked for only when no
+//            machine is linked. Refused or unavailable is no cell, never an error.
 //   null     neither: the shell keeps drawing @hanzo/build's Builder.
 //
-// Both speak the Dev environment protocol at `host`, authenticated with the
-// person's Hanzo IAM bearer.
+// Both are reached over ZAP (WebTransport) with the person's Hanzo IAM bearer.
 
 import { useEffect, useState } from 'react'
-import type { DevRuntime } from '@hanzo/dev/runtime'
+import type { DevRuntime } from '@hanzo/dev-core'
 import { api } from './lib/api'
 import { bearer } from './lib/session'
 
@@ -22,20 +23,25 @@ interface Target {
   status?: string
 }
 
-interface Cell {
+interface Lease {
   id: string
   label?: string
-  host: string
+  zap: string
   sandbox?: string
 }
 
 const origin = (host: string): string => (/^https?:\/\//.test(host) ? host : `https://${host}`)
 
-async function read<T>(path: string, signal: AbortSignal): Promise<T | null> {
+const headers = (): HeadersInit | null => {
   const token = bearer()
-  if (!token) return null
+  return token ? { Authorization: `Bearer ${token}` } : null
+}
+
+async function call<T>(method: string, path: string, signal?: AbortSignal): Promise<T | null> {
+  const auth = headers()
+  if (!auth) return null
   try {
-    const res = await fetch(`${api()}${path}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store', signal })
+    const res = await fetch(`${api()}${path}`, { method, headers: auth, cache: 'no-store', signal })
     return res.ok ? ((await res.json()) as T) : null
   } catch {
     return null
@@ -44,24 +50,27 @@ async function read<T>(path: string, signal: AbortSignal): Promise<T | null> {
 
 const token = async (): Promise<string> => bearer() ?? ''
 
-export async function listRuntimes(signal: AbortSignal): Promise<readonly DevRuntime[]> {
-  const [targets, cell] = await Promise.all([
-    read<{ targets?: Target[] }>('/v1/agents/targets', signal),
-    read<Cell>('/v1/dev/cell', signal),
-  ])
-  const machines: DevRuntime[] = (targets?.targets ?? [])
+/** The linked machines, online. Reads only; nothing is leased. */
+export async function machines(signal: AbortSignal): Promise<readonly DevRuntime[]> {
+  const found = await call<{ targets?: Target[] }>('GET', '/v1/agents/targets', signal)
+  return (found?.targets ?? [])
     .filter((m) => m.host && m.status === 'online')
-    .map((m) => ({ kind: 'machine', id: m.id, label: m.label ?? m.id, host: origin(m.host as string), token }))
-  const cloud: DevRuntime[] = cell?.host
-    ? [{ kind: 'cell', id: cell.id, label: cell.label ?? 'Hanzo cloud', host: origin(cell.host), token, sandbox: cell.sandbox }]
-    : []
-  return [...machines, ...cloud]
+    .map((m) => ({ kind: 'machine', id: m.id, label: m.label ?? m.id, zap: origin(m.host as string), token }))
 }
 
-/** A linked machine first, else the cloud cell, else null. */
+/** A linked machine first, else a leased cloud cell, else null. */
 export async function resolveRuntime(signal: AbortSignal): Promise<DevRuntime | null> {
-  return (await listRuntimes(signal))[0] ?? null
+  const linked = (await machines(signal))[0]
+  if (linked) return linked
+  const lease = await call<Lease>('POST', '/v1/dev/sessions', signal)
+  return lease?.zap
+    ? { kind: 'cell', id: lease.id, label: lease.label ?? 'Hanzo cloud', zap: origin(lease.zap), token, sandbox: lease.sandbox }
+    : null
 }
+
+/** Gives a cell back; a machine is never ours to release. */
+export const release = (runtime: DevRuntime): Promise<unknown> =>
+  runtime.kind === 'cell' ? call('DELETE', `/v1/dev/sessions/${encodeURIComponent(runtime.id)}`) : Promise.resolve()
 
 /** undefined while it is being found, null when there is none. */
 export function useDevRuntime(on: boolean): DevRuntime | null | undefined {
@@ -69,8 +78,16 @@ export function useDevRuntime(on: boolean): DevRuntime | null | undefined {
   useEffect(() => {
     if (!on) return
     const ctl = new AbortController()
-    void resolveRuntime(ctl.signal).then((r) => !ctl.signal.aborted && setRuntime(r))
-    return () => ctl.abort()
+    let found: DevRuntime | null = null
+    void resolveRuntime(ctl.signal).then((r) => {
+      found = r
+      if (!ctl.signal.aborted) setRuntime(r)
+      else if (r) void release(r)
+    })
+    return () => {
+      ctl.abort()
+      if (found) void release(found)
+    }
   }, [on])
   return runtime
 }

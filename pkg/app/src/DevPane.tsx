@@ -9,7 +9,7 @@
 import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Button, Text, XStack, YStack } from '@hanzo/ui'
 import { frameUrl, type Door } from '@hanzo/tabs'
-import type { DevRuntime } from '@hanzo/dev/runtime'
+import type { DevRuntime } from '@hanzo/dev-core'
 import { useI18n } from '@hanzo/i18n/react'
 import { api } from './lib/api'
 import { bearer } from './lib/session'
@@ -17,9 +17,9 @@ import { useDevRuntime } from './devRuntime'
 import { Builder, type Host } from '@hanzo/build'
 import { app } from './lib/host'
 
-const Core = lazy(() => import('@hanzo/dev').then((m) => ({ default: m.DevWorkspace })))
-const Provider = lazy(() => import('@hanzo/dev').then((m) => ({ default: m.DevProvider })))
-const List = lazy(() => import('@hanzo/dev').then((m) => ({ default: m.DevThreadList })))
+const Core = lazy(() => import('@hanzo/dev-core').then((m) => ({ default: m.DevWorkspace })))
+const Provider = lazy(() => import('@hanzo/dev-core').then((m) => ({ default: m.DevProvider })))
+const List = lazy(() => import('@hanzo/dev-core').then((m) => ({ default: m.DevThreadList })))
 
 /** A dock pane: one single-use ticket per mount, so a reload mints a fresh one. */
 function Pane({ sandbox, door, arg, watching }: { sandbox: string; door: Door; arg?: string; watching?: boolean }) {
@@ -112,7 +112,7 @@ export function DevList({ host, path }: { host: Host; path: string }) {
   if (!runtime) return null
   return (
     <Suspense fallback={null}>
-      <List active={refOf(path)} onOpen={(ref) => host.go(app(ref ? `thread/${ref}` : ''))} onNew={() => host.go(app(''))} />
+      <List active={refOf(path)} onOpen={(ref) => host.go(app(ref ? `thread/${ref}` : ''))} />
     </Suspense>
   )
 }
