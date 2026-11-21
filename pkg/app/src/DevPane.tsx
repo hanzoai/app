@@ -44,7 +44,7 @@ function Pane({ sandbox, door, arg, watching }: { sandbox: string; door: Door; a
   }, [door, watching, src])
   if (failed) return <Text p="$3" color="$soft">{t('This could not be opened.')}</Text>
   if (!src) return null
-  return <iframe ref={frame} src={src} title={door} style={{ border: 0, width: '100%', height: '100%' }} allow="clipboard-read; clipboard-write" />
+  return <iframe ref={frame} src={src} title={door} width="100%" height="100%" frameBorder="0" allow="clipboard-read; clipboard-write" />
 }
 
 type Tab = 'terminal' | 'browser'
