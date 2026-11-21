@@ -48,6 +48,9 @@ vi.mock('@hanzo/ui', () => ({
   DropdownMenuPage: through,
   DropdownMenuBack: menuBack,
   DropdownMenuSeparator: menuSeparator,
+  Dialog: ({ open, children }: { open?: boolean; children?: ReactNode }) => (open ? createElement('div', { 'data-slot': 'dialog' }, children) : null),
+  DialogContent: part,
+  DialogTitle: part,
   Switch: part,
   Text: part,
   Tooltip: through,
@@ -106,6 +109,7 @@ import { AnonSettingsPane, Sidebar } from './Sidebar'
 import { moreGroups } from './MoreMenu'
 import { Rail, type Pins } from './Rail'
 import { TABS, WORKSPACE, type Place } from './lib/host'
+import { Windowed } from './windowed'
 
 const hostAt = (path = '') => ({ go: () => {}, path }) as unknown as Parameters<typeof Sidebar>[0]['host']
 const host = hostAt()
@@ -452,5 +456,60 @@ describe('the unified desktop sidebar', () => {
     expect(html).toContain('Desktop')
     expect(html).toContain('Browser')
     expect(html).not.toContain('data-slot="recents"')
+  })
+
+  test('the product rows keep their place in every section: the New row stands above them in each, for guests too', () => {
+    const rows = ['data-slot="app-new"', 'data-slot="rail-chat"', 'data-slot="rail-dev"', 'data-slot="rail-design"']
+    for (const mode of ['chat', 'dev', 'design', 'studio', 'tabs', 'hosted'] as Place['mode'][]) {
+      const html = column(mode)
+      const order = rows.map((r) => at(html, r))
+      expect(order, mode).toEqual([...order].sort((a, b) => a - b))
+    }
+    expect(column('tabs')).toContain('New terminal')
+    const guest = (mode: Place['mode']) =>
+      renderToStaticMarkup(createElement(Sidebar, { pins, host: { ...host, person: null } as never, mode, thread: null, go: noop, onShut: noop, onBack: noop }))
+    for (const mode of ['chat', 'dev'] as Place['mode'][]) {
+      const html = guest(mode)
+      const order = ['data-slot="app-new"', 'data-slot="app-images"', 'data-slot="rail-chat"'].map((r) => at(html, r))
+      expect(order, mode).toEqual([...order].sort((a, b) => a - b))
+      expect(html, 'a guest’s New is a chat').toContain('New chat')
+    }
+    // Only Chat hears a guest's Plugins (its dialog): the row stands in Chat alone, before the product rows.
+    expect(at(guest('chat'), 'data-slot="app-plugins"')).toBeLessThan(at(guest('chat'), 'data-slot="rail-chat"'))
+    for (const mode of ['dev', 'design', 'tabs'] as Place['mode'][]) expect(guest(mode), mode).not.toContain('data-slot="app-plugins"')
+  })
+
+  test('signed out, every section has one compact Log in at the foot, never the old two-button card', () => {
+    for (const mode of ['chat', 'dev', 'design', 'tabs'] as Place['mode'][]) {
+      const html = renderToStaticMarkup(createElement(Sidebar, { pins, host: { ...host, person: null } as never, mode, thread: null, go: noop, onShut: noop, onBack: noop }))
+      for (const slot of ['column-login', 'column-signup', 'anon-tailored']) expect(html, mode).not.toContain(`data-slot="${slot}"`)
+      expect(html.split('data-slot="anon-login"').length - 1, mode).toBe(1)
+      expect(html, mode).toContain('data-slot="anon-settings"')
+    }
+  })
+
+  test('a guest’s Images says why it cannot, with the way in, never a silent prefill', async () => {
+    const src = (await import('node:fs')).readFileSync(new URL('./Sidebar.tsx', import.meta.url), 'utf8')
+    expect(src).toContain("onPress={() => setGated(t('Sign in to create images'))}")
+    expect(src).not.toContain("hanzo:anon-prompt")
+    expect(src).toContain('data-slot="signin-prompt"')
+  })
+
+  test('every sign-in door goes through the host’s addresses, never a hard-coded /login or /signup', async () => {
+    const { readFileSync } = await import('node:fs')
+    for (const file of ['./Sidebar.tsx', './DevPane.tsx', './Chat.tsx']) {
+      const src = readFileSync(new URL(file, import.meta.url), 'utf8')
+      expect(src, file).not.toMatch(/assign\(['"]\/(login|signup)/)
+    }
+    const sidebar = readFileSync(new URL('./Sidebar.tsx', import.meta.url), 'utf8')
+    expect(sidebar).toContain('data-slot="signin-prompt-signup" onPress={() => enter(signUp())}')
+  })
+
+  test('a window of its own (Hanzo Desktop) offers no Open in new tab; a browser does', () => {
+    const inside = (windowed: boolean) =>
+      renderToStaticMarkup(createElement(Windowed.Provider, { value: windowed }, createElement(Sidebar, { pins, host, mode: 'chat', thread: null, go: noop, onShut: noop, onBack: noop })))
+    expect(inside(false)).toContain('data-item="new-tab"')
+    expect(inside(true)).not.toContain('data-item="new-tab"')
+    expect(inside(true)).toContain('data-item="copy-link"')
   })
 })

@@ -32,9 +32,12 @@ export function tidy(title: string | null | undefined, max = 80, fallback = 'Unt
 /** What a wallet's account is called until its person names it ("evm:0x6a8a...22b7"): an address, not a name. */
 const WALLET = /^(?:evm|eth|sol|solana|btc):|^0x[0-9a-f]{4}/i
 
-/** A name's first word, its first letter capitalised ("z" → "Z", "ada lovelace" → "Ada"), or '' for none, or for a wallet's address. */
+/** One word with a digit or an @ in it ("jamessburnss1313", "ada@x.com"): a handle IAM made, not a name to greet. */
+const HANDLE = /^\S*[\d@]\S*$/
+
+/** A name's first word, its first letter capitalised ("z" → "Z", "ada lovelace" → "Ada"), or '' for none, a wallet's address or a handle. */
 export function given(name: string): string {
   const w = name.trim().split(/\s+/)[0] ?? ''
-  if (WALLET.test(w)) return ''
+  if (WALLET.test(w) || HANDLE.test(name.trim())) return ''
   return w ? w[0]!.toUpperCase() + w.slice(1) : ''
 }

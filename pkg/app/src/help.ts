@@ -72,6 +72,12 @@ export const KEYS: Key[] = [
   { does: phrase('Forward'), mac: '⌘]', pc: 'Alt+→', group: 'Window' },
 ]
 
+/**
+ * A row's identity, for the lists that draw KEYS: its words AND its keys. Two rows may share
+ * words (Hanzo Desktop adds ⌘N beside ⌘⇧O, both "New chat"), so words alone repeat a React key.
+ */
+export const keyOf = (k: Key): string => `${k.does}\u0000${k.mac}\u0000${k.pc}`
+
 /** The part of a keydown `asked` reads. */
 export interface Press {
   key?: string

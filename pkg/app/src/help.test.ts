@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { said } from './chord'
-import { asked, KEYS, legal, pages } from './help'
+import { asked, keyOf, KEYS, legal, pages } from './help'
 import { configure, where } from './where'
 
 const before = { ...where() }
@@ -60,5 +60,13 @@ describe('the keyboard shortcuts', () => {
     expect(asked({ ...key, ctrlKey: true, altKey: true })).toBe(false)
     expect(asked({ ...key, ctrlKey: true, repeat: true })).toBe(false)
     expect(asked({ ...key, key: 'k', ctrlKey: true })).toBe(false)
+  })
+})
+
+describe("each row's identity", () => {
+  test('is unique, even when a host adds a second row with the same words (Hanzo Desktop: ⌘N beside ⌘⇧O)', () => {
+    const rows = [...KEYS, { does: 'New chat', mac: '⌘N', pc: 'Ctrl+N', group: 'Navigation' as const }]
+    expect(rows.filter((k) => k.does === 'New chat')).toHaveLength(2)
+    expect(new Set(rows.map(keyOf)).size).toBe(rows.length)
   })
 })

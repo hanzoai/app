@@ -100,6 +100,7 @@ import { Report } from './Report'
 import { FOOT, HEIGHT, TOP, useView } from './view'
 import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowControls'
 import { AppContextMenu } from './ContextMenu'
+import { Windowed } from './windowed'
 
 const flowNav = (Reflect.get(studioPkg, 'flowNav') as typeof places | undefined) ?? places
 
@@ -378,6 +379,7 @@ function Window({ bar, betas }: Hosted) {
   }
 
   return (
+    <Windowed.Provider value={Boolean(bar)}>
     <Report>
     <AiProvider client={client ?? undefined}>
       <HostProvider host={host}>
@@ -756,5 +758,6 @@ function Window({ bar, betas }: Hosted) {
       </HostProvider>
     </AiProvider>
     </Report>
+    </Windowed.Provider>
   )
 }

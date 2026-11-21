@@ -81,7 +81,7 @@ import { rememberSettingsReturn, useDevMode } from './lib/dev-mode'
 import { InfoHint } from './lib/info-hint'
 import { leave } from './dev'
 import { reportProblem } from './Report'
-import { KEYS, legal, out, pages, type Key, type KeyGroup } from './help'
+import { keyOf, KEYS, legal, out, pages, type Key, type KeyGroup } from './help'
 import { showSettings } from './open'
 import { MARK } from './ground'
 import { site, where } from './where'
@@ -1131,7 +1131,7 @@ export function Shortcuts({ open, onOpenChange, apple }: { open: boolean; onOpen
                   const caps = splitShortcut(apple ? k.mac : k.pc)
                   return (
                     <XStack
-                      key={k.does}
+                      key={keyOf(k)}
                       items="center"
                       justify="space-between"
                       gap="$3"

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import { body, catches, fingerprint, hear, lines, note, pathOf, scrub } from './fault'
+import { body, catches, details, fingerprint, hear, lines, note, pathOf, screenOf, scrub } from './fault'
+import { VERSION } from './version.gen'
 
 describe('scrub', () => {
   test('takes tokens, keys, cookies and emails out', () => {
@@ -43,5 +44,20 @@ describe('catches', () => {
     const text = body({ caught: c, title: 't', description: 'it broke', shot: null }, 'https://api.hanzo.ai/s.png')
     expect(text).toContain(`<!-- fp:${c.fingerprint} -->`)
     expect(text).toContain('![screenshot](https://api.hanzo.ai/s.png)')
+  })
+})
+
+describe('the crash screen', () => {
+  test('names the screen by its path', () => {
+    expect(screenOf('/tabs')).toBe('Tabs')
+    expect(screenOf('/chat/abc')).toBe('Chat')
+    expect(screenOf('/dev/-/artifacts')).toBe('Dev')
+    expect(screenOf('/')).toBe('')
+  })
+  test('Copy details carries the error, the path without its query, and the version, with secrets out', () => {
+    const out = details('Failed for z@hanzo.ai', 'https://hanzo.app/tabs?token=abc')
+    expect(out).toBe(`Error: ${scrub('Failed for z@hanzo.ai')}\nScreen: /tabs\nVersion: ${VERSION}`)
+    expect(out).not.toContain('z@hanzo.ai')
+    expect(out).not.toContain('token')
   })
 })
