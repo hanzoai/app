@@ -195,9 +195,11 @@ export function DevList({ host, path }: { host: Host; path: string }) {
 export function ChatList({ host, path }: { host: Host; path: string }) {
   const id = /^\/chat\/([^/]+)/.exec(path)?.[1]
   return (
-    <Suspense fallback={null}>
-      <Chats cloud={cloud()} active={id ? decodeURIComponent(id) : null} onOpen={(ref) => host.go(talk(ref ?? undefined))} />
-    </Suspense>
+    <YStack data-slot="recents" data-mode="chat" flex={1} minH={0} overflow="scroll">
+      <Suspense fallback={null}>
+        <Chats cloud={cloud()} active={id ? decodeURIComponent(id) : null} onOpen={(ref) => host.go(talk(ref ?? undefined))} />
+      </Suspense>
+    </YStack>
   )
 }
 

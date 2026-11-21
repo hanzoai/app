@@ -92,6 +92,12 @@ vi.mock('./Account', () => ({ Made: () => null, Account: () => createElement('di
 vi.mock('./Recents', () => ({
   Recents: ({ mode, host }: { mode: string; host: { name?: string } }) => createElement('div', { 'data-slot': 'recents', 'data-mode': mode, 'data-host': host.name ?? '' }),
 }))
+vi.mock('./DevPane', () => ({
+  // The Dev core's lists are fetched lazily and draw only in a browser; the sidebar's own structure is what is read here.
+  ChatList: () => createElement('div', { 'data-slot': 'recents', 'data-mode': 'chat' }),
+  DevList: () => null,
+  useScope: () => undefined,
+}))
 vi.mock('./Setup', () => ({ Setup: () => createElement('div', { 'data-slot': 'setup-card' }) }))
 vi.mock('./span', () => ({ useSpan: () => ({ ref: null, style: {}, span: 256, move: () => {}, keep: () => {} }) }))
 vi.mock('./lib/dev-mode', () => ({ useDevMode: () => [devState.on, () => {}], rememberSettingsReturn: () => {} }))
