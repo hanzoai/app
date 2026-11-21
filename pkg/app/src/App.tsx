@@ -1,7 +1,7 @@
 'use client'
 
 // The web app as the whole window, in three modes: Chat, a conversation with
-// the product's AI; Dev, @hanzo/build's `<Builder>` without a rail of its own;
+// the product's AI; Dev, @hanzo/dev-core's thread view and its thread list (one Dev, no Builder);
 // and Studio, @hanzo/studio's `<Studio>` the same way, its places (`nav`) in the
 // sidebar where Dev's stand for Dev.
 //

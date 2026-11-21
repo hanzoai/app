@@ -13,12 +13,13 @@ import type { DevRuntime } from '@hanzo/dev-core'
 import { useI18n } from '@hanzo/i18n/react'
 import { api } from './lib/api'
 import { bearer } from './lib/session'
-import { useDevRuntime } from './devRuntime'
-import { Builder, type Host } from '@hanzo/build'
-import { app } from './lib/host'
+import { resolveRuntime, useDevRuntime } from './devRuntime'
+import type { Host } from '@hanzo/build'
+import { app, TERMINALS } from './lib/host'
 
 const Core = lazy(() => import('@hanzo/dev-core').then((m) => ({ default: m.DevWorkspace })))
 const Provider = lazy(() => import('@hanzo/dev-core').then((m) => ({ default: m.DevProvider })))
+const Start = lazy(() => import('@hanzo/dev-core').then((m) => ({ default: m.DevStart })))
 const List = lazy(() => import('@hanzo/dev-core').then((m) => ({ default: m.DevThreadList })))
 
 /** A dock pane: one single-use ticket per mount, so a reload mints a fresh one. */
@@ -117,7 +118,7 @@ export function DevList({ host, path }: { host: Host; path: string }) {
   )
 }
 
-/** Dev's interior: the Dev core when the person has a runtime, the Builder when they have none. */
+/** Dev's interior: the Dev core when the person has a runtime, Dev's own start state when they have none. */
 export function DevInterior({ host, path }: { host: Host; path: string }) {
   const runtime = useScope()
   const project = path.startsWith('/dev/projects/')
@@ -125,7 +126,14 @@ export function DevInterior({ host, path }: { host: Host; path: string }) {
     if (runtime && project) host.go(app(''), { replace: true })
   }, [runtime, project, host])
   if (runtime === undefined) return null
-  if (runtime === null) return <Builder host={host} rail={false} />
+  if (runtime === null) {
+    // No runtime is Dev's own state, not a second UI: lease a cell, or link a machine (Tabs lists the devices).
+    return (
+      <Suspense fallback={null}>
+        <Start onCloud={() => void resolveRuntime(new AbortController().signal).then((r) => r && window.location.reload())} onLink={() => host.go(TERMINALS)} />
+      </Suspense>
+    )
+  }
   const dock = (ctx: { runtime: DevRuntime; thread: string | null }) => <Dock {...ctx} />
   return (
     <Suspense fallback={null}>
