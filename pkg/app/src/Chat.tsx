@@ -99,6 +99,7 @@ import {
   Summary,
   useDeck,
   useKey,
+  Roles,
   Suggestions,
   useCarry,
   useLanguage,
@@ -3965,6 +3966,15 @@ function Thread({
                   >
                     {mate?.description ?? persona?.description}
                   </Text>
+                ) : null}
+
+                {/* A NEW PERSON IS ASKED, ONCE, WHAT THEY DO, and offered the skills that suit it
+                    (issue 462). The card draws nothing for anyone who has said what they work on or put
+                    it off, for a member who cannot add skills, and for a conversation with someone. */}
+                {!anonymous && cast.length === 0 ? (
+                  <YStack data-slot="opening-roles" width="100%" maxW={560} mt="$4">
+                    <Roles first />
+                  </YStack>
                 ) : null}
 
               </YStack>
