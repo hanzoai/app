@@ -447,8 +447,9 @@ function Window({ bar, betas }: Hosted) {
             pb="var(--pane-gap)"
             pt="var(--pane-gap)"
             // A phone's frame is full-bleed on the floor, which follows the theme,
-            // so the top of the page the browser's bar tints from does too.
-            $max-md={{ p: 0 }}
+            // so the top of the page the browser's bar tints from does too. Under a window's bar the
+            // panel still stands the gap from it.
+            $max-md={{ p: 0, ...(bar ? { pt: 'var(--pane-gap)' } : null) }}
           >
             {drawer.slide ? <Lift /> : null}
             <YStack height="100%" position="relative" display={closed ? 'flex' : 'none'} $max-md={{ display: 'none' }}>
@@ -546,7 +547,8 @@ function Window({ bar, betas }: Hosted) {
               minW={0}
               minH={0}
               marginInlineStart={closed || alone ? 0 : 'var(--pane-gap)'}
-              $max-md={{ marginInlineStart: 0, pb: `max(var(--pane-gap), ${FOOT})` }}
+              // On a phone the bar above the panel is the page's own: the panel stands the same gap from it as from the foot.
+              $max-md={{ marginInlineStart: 0, gap: 'var(--pane-gap)', pb: `max(var(--pane-gap), ${FOOT})` }}
             >
               {/* A phone has no rail and no sidebar: its bar opens them as a drawer, and the drawer lists the places. */}
               {bar ? null : <Bar host={host} mode={mode} places={sidebar} open={drawer.state !== 'shut'} go={move} onMenu={drawer.open} />}

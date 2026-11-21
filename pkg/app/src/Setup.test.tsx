@@ -101,6 +101,7 @@ import { GOOGLE_KEY, GOOGLE_ACCOUNTS_KEY, GOOGLE_WORKSPACE_SCOPES, buildGoogleWo
 describe('Setup 1-2-3 in-app onboarding', () => {
   beforeEach(() => {
     store.clear()
+    store.set('hanzo.onboarding.open', true)
   })
 
   test('renders Step 1 (Connect GitHub) in sidebar by default', () => {
@@ -281,6 +282,7 @@ describe('GitHub changed on the page', () => {
 
   beforeEach(() => {
     store.clear()
+    store.set('hanzo.onboarding.open', true)
     calls = []
     vi.stubGlobal(
       'fetch',
@@ -340,5 +342,29 @@ describe('GitHub changed on the page', () => {
     } finally {
       window.removeEventListener(GITHUB_CHANGED, hear)
     }
+  })
+})
+
+describe('Setup is one row until it is opened', () => {
+  beforeEach(() => {
+    store.clear()
+  })
+
+  test('says its progress in one row, and keeps the steps for when it is opened', () => {
+    const html = renderToStaticMarkup(createElement(Setup))
+    expect(html).toContain('data-slot="setup-toggle"')
+    expect(html).toContain('lucide-chevron-right')
+    expect(html).toContain('Quick setup (0/3)')
+    expect(html).toContain('data-slot="setup-dismiss"')
+    expect(html).not.toContain('Connect GitHub')
+    expect(html).not.toContain('Expand onboarding popup')
+  })
+
+  test('opened, it draws the steps and the way to its full view', () => {
+    store.set('hanzo.onboarding.open', true)
+    const html = renderToStaticMarkup(createElement(Setup))
+    expect(html).toContain('lucide-chevron-down')
+    expect(html).toContain('1. Connect GitHub')
+    expect(html).toContain('Expand onboarding popup')
   })
 })
