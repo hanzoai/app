@@ -21,6 +21,12 @@ describe('the apps in beta', () => {
     expect(zen?.href).toBeUndefined()
   })
 
+  it('opens Studio for every reader and keeps Flow behind its switch', () => {
+    expect(opens('studio', {}, false)).toBe(true)
+    expect(opens('flow', {}, false)).toBe(false)
+    expect(opens('flow', { 'beta.flow': true }, false)).toBe(true)
+  })
+
   it('holds Google Workspace as a private beta in Data, with no href', () => {
     const ws = BETAS.find((b) => b.id === 'workspace')
     expect(ws).toMatchObject({ name: 'Google Workspace', group: 'Data' })
