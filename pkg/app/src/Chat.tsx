@@ -2504,7 +2504,8 @@ function Thread({
     const key = `${leave.join(",")}\n${text.trim()}`;
     const kept = kai.current.get(key);
     if (kept) return kept;
-    const p = choose(target, text, leave, skillsCarried(chat.messages));
+    // Only what the `+` shelf offers this person may be chosen for them (chosen.ts `choosable`).
+    const p = choose(target, text, leave, skillsCarried(chat.messages), undefined, carry.skills.rows.map((r) => r.id));
     kai.current.set(key, p);
     if (kai.current.size > 8) kai.current.delete(kai.current.keys().next().value!);
     return p;
