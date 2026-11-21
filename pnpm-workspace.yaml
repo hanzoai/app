@@ -4,7 +4,11 @@ packages:
 
 # What may run its own install script, asked once.
 allowBuilds:
+  '@hanzo/dev': set this to true or false
   esbuild: true
+  jsautogui: set this to true or false
+  protobufjs: set this to true or false
+  sharp: set this to true or false
 
 # One gui runtime in the tree, whatever asked for it. Two copies are two config
 # singletons, and a component rendered under one looks for the other.
