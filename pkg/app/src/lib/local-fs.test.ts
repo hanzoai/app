@@ -79,6 +79,25 @@ describe('This computer for Dev (hanzo-inc/app issues 309 and 310)', () => {
     expect(calls.indexOf('plugin:event|listen')).toBeLessThan(calls.indexOf('local_workspace_run_dev'))
   })
 
+  it('cancels the agent being fetched through the desktop, and the run ends as the desktop says it ended', async () => {
+    let release: (v: unknown) => void = () => {}
+    const invoke = vi.fn(async (cmd: string) => {
+      if (cmd === 'local_workspace_run_dev') return new Promise((resolve, reject) => ((release = reject), void resolve))
+      if (cmd === 'local_dev_setup_cancel') {
+        release(new Error('Setup was cancelled.'))
+        return true
+      }
+      return null
+    })
+    desktop(invoke)
+    const here = desktopLocal()!
+    const run = here.run('/Users/me/api', 'x')
+    await Promise.resolve()
+    await here.cancel!()
+    expect(invoke).toHaveBeenCalledWith('local_dev_setup_cancel', undefined)
+    await expect(run).rejects.toThrow('Setup was cancelled.')
+  })
+
   it('runs without listening in a window that has no event plugin', async () => {
     const invoke = vi.fn(async (cmd: string) => (cmd === 'local_workspace_run_dev' ? { session_id: 'local_4', output: 'Done.', success: true } : null))
     desktop(invoke)
