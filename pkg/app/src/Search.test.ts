@@ -27,6 +27,7 @@ vi.mock('@hanzo/build', async () => {
     path,
     // As @hanzo/build's reads it: the host's api, token, org and person, at once.
     useSessions: (h: { api: string; person: unknown }) => (asked.push(h), h.api, Boolean(h.person), { value: [] }),
+    useRunMarks: () => [{}, () => {}],
     nav: (_: unknown, go: Go) => [
       { id: 'work', label: 'Work', links: [link(go, 'new', 'New run', ''), link(go, 'projects', 'Projects', path({ kind: 'screen', screen: 'projects' }))] },
       { id: 'run', label: 'Run', links: [settings(go, 'machines', 'Machines')] },

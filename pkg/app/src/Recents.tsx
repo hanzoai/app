@@ -14,7 +14,7 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'rea
 import { ScrollView, SizableText, XStack, YStack } from '@hanzo/gui'
 import { CheckSquare, ChevronDown, ChevronRight, GitPullRequest, ListFilter } from 'lucide-react'
 import type { Thread } from '@hanzo/ai'
-import { DOTS, route, useSessions, type Host } from '@hanzo/build'
+import { DOTS, route, useRunMarks, useSessions, type Host } from '@hanzo/build'
 import * as studio from '@hanzo/studio'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { SidebarItem, StatusDot } from '@hanzo/ui/chat'
@@ -268,22 +268,10 @@ function Chats({
   )
 }
 
-type RunMeta = { title?: string; pinned?: boolean; archived?: boolean; deleted?: boolean }
-
-/** Dev's Recents: the org's coding runs alone. */
+/** Dev's Recents: the org's coding runs alone. What a person did to a run (pinned, archived, deleted, renamed) is @hanzo/build's store, the one a run's own menu writes too. */
 function Runs({ host, view, keep, onOpen }: { host: Host; view: View; keep: (v: View) => void; onOpen: (r: Recent) => void }) {
   const store = useSessions(host)
-  const [meta, setMeta] = useKept<Record<string, RunMeta>>('hanzo.dev.runs.meta', {})
-  const metaRef = useRef(meta)
-  metaRef.current = meta
-  const patchMeta = (id: string, patch: Partial<RunMeta>) => {
-    const next = {
-      ...(metaRef.current ?? {}),
-      [id]: { ...(metaRef.current?.[id] ?? {}), ...patch },
-    }
-    metaRef.current = next
-    setMeta(next)
-  }
+  const [meta, patchMeta] = useRunMarks()
   const r = route(host.path)
   const run = r.kind === 'run' ? r.id : null
   // A run this list has not seen is one just begun: read the store again, once for it.
@@ -617,6 +605,7 @@ function List({
         onGone={onNew}
         customActions={customActions}
         canShare={mode === 'chat'}
+        noun={mode === 'dev' ? 'run' : mode === 'design' ? 'design' : 'chat'}
         hrefOf={hrefOf}
         primary={primary}
       >
