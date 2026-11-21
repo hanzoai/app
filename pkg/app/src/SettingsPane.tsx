@@ -37,6 +37,7 @@ import { ProviderMark } from './ProviderMark'
 import { bearer, org, pick } from './lib/session'
 import { usePref } from './pref'
 import { Experimental } from './experimental'
+import { DeveloperMode } from './developer'
 import { site } from './where'
 import { named, ROWS } from './Settings'
 
@@ -75,6 +76,7 @@ function Pane({ id, note }: { id: string; note?: string }) {
     return (
       <YStack gap="$5">
         <Look />
+        <DeveloperMode />
         <Experimental />
       </YStack>
     )

@@ -6,12 +6,17 @@
  * - approvalMode: whether tools/actions run automatically ('auto') or ask for confirmation first ('manual') (default: 'auto')
  * - effort: the reasoning effort a message asks for (default: auto, the router decides)
  * - showLanguage: dictation listens in the person's own language rather than Auto
+ * - bring: how skills, agents and personas join a message: 'choose' (default) lets Hanzo
+ *   bring in what each one needs, 'preload' carries only what the person picked, in every message (issue 314)
  */
 import { useEffect, useState } from 'react'
 import { EFFORTS as DEV, type Effort as Level } from '@hanzo/build/mind'
 import { EFFORTS, type Effort } from '@hanzo/ui/chat/pure'
 
 export type ApprovalMode = 'auto' | 'manual'
+
+/** How skills, agents and personas join a message (chosen.ts): Hanzo chooses, or only the preloaded ones. */
+export type Bring = 'choose' | 'preload'
 
 export const DEFAULT_EFFORT: Effort = 'auto'
 
@@ -21,6 +26,7 @@ export interface ChatPreferences {
   thirdPartyChosen?: boolean
   effort: Effort
   approvalMode: ApprovalMode
+  bring: Bring
   showLanguage?: boolean
   effortVersion?: number
 }
@@ -34,6 +40,7 @@ const DEFAULT_PREFERENCES: ChatPreferences = {
   allowThirdPartyModels: false,
   effort: DEFAULT_EFFORT,
   approvalMode: 'auto',
+  bring: 'choose',
   showLanguage: false,
   effortVersion: EFFORT_SCHEMA_VERSION,
 }
@@ -74,6 +81,7 @@ export function getChatPreferences(): ChatPreferences {
       ...(parsed.thirdPartyChosen ? { thirdPartyChosen: true } : {}),
       effort: migratedEffort,
       approvalMode: validApprovalMode(parsed.approvalMode, autonomy),
+      bring: parsed.bring === 'preload' ? 'preload' : 'choose',
       showLanguage: Boolean(parsed.showLanguage),
       effortVersion: EFFORT_SCHEMA_VERSION,
     }

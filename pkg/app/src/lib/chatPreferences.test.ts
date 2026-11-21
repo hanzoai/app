@@ -46,6 +46,10 @@ describe('what Chat does', () => {
     expect(getChatPreferences().approvalMode).toBe('auto')
     expect(getChatPreferences().showLanguage).toBe(true)
     expect(map.get('hanzo.agent.autonomy')).toBe('autonomous')
+    // Hanzo chooses the skills, agents and personas a message needs until the person preloads instead (issue 314).
+    expect(getChatPreferences().bring).toBe('choose')
+    setChatPreferences({ bring: 'preload' })
+    expect(getChatPreferences().bring).toBe('preload')
     vi.unstubAllGlobals()
   })
 
@@ -53,7 +57,7 @@ describe('what Chat does', () => {
     const map = new Map<string, string>()
     vi.stubGlobal('window', { localStorage: { getItem: (k: string) => map.get(k) ?? null, setItem: (k: string, v: string) => map.set(k, v) } })
     map.set('hanzo.chat.preferences', JSON.stringify({ effortVersion: 4, showModelSelector: true, showTurboApproval: true }))
-    expect(Object.keys(getChatPreferences()).sort()).toEqual(['allowThirdPartyModels', 'approvalMode', 'effort', 'effortVersion', 'showLanguage'])
+    expect(Object.keys(getChatPreferences()).sort()).toEqual(['allowThirdPartyModels', 'approvalMode', 'bring', 'effort', 'effortVersion', 'showLanguage'])
     vi.unstubAllGlobals()
   })
 
