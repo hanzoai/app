@@ -68,6 +68,12 @@ export interface Addresses {
    * it: one row, every spelling.
    */
   keys?: readonly Key[]
+  /**
+   * One Settings section of the host's own (Hanzo Desktop's "This computer"), listed under
+   * Preferences and drawn as `Page` in the pane. `id` is its own, never an app section's; `label`
+   * is authored English, drawn through `t`.
+   */
+  section?: { id: string; label: string; Page: ComponentType }
   /** The plan catalogue as the host's build last read it: the first paint. */
   plans?: BillingPlan[]
   /**
