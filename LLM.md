@@ -441,6 +441,20 @@ from the page's origin and `useClient` posts the credential calls there. hanzo.a
 and hanzo.market (`src/choose.tsx`, `src/menu.tsx`) are the two callers; the bar's
 own menu (Header.tsx) and the Accounts section keep their markup.
 
+## Dev on Hanzo Desktop: This computer, and a site to redesign
+
+`dev.tsx` hands @hanzo/build's Dev what only the desktop window has, as `Host.local` and `Host.site`; a browser
+page gets neither (`isTauri()` is false), and Dev offers the cloud workspace and the org's machines only.
+
+- `lib/local-fs.ts` `desktopLocal()`: the folders the window opened, its folder dialog, and a run of the `dev` agent
+  in one folder (`local_workspace_run_dev`).
+- `lib/local-site.ts` `desktopSite()` (hanzo-inc/app issue 312): opening a site from the computer's own connection and
+  saving a copy of it into a folder for the agent (`local_site_capture`: the page, its words, its stylesheets, a picture
+  when a paired browser can take one), naming a new folder under Documents/Hanzo (`local_site_folder`), serving the
+  folder's `redesign/` live with reload on every file change (`local_preview_start`, `local_preview_stop`) and showing
+  it in Chrome (`local_preview_open`, which opens only a preview the window is serving). What the desktop refuses (a
+  private-network address, a site that will not answer) comes back in plain words and is shown as it comes.
+
 ## Build and ship
 
 The repository is a pnpm workspace of the packages it publishes, each under
