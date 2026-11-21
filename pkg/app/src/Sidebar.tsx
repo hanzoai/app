@@ -31,6 +31,7 @@ import {
   Image as ImageMark,
   Info,
   Link2,
+  LogIn,
   Monitor,
   MoreHorizontal,
   Pencil,
@@ -64,6 +65,7 @@ import { empty } from './open'
 import { useSpan } from './span'
 import { useDevMode } from './lib/dev-mode'
 import { app, design, flow, hosted, studio, talk, TERMINALS, type Place } from './lib/host'
+import { enter, LOGIN } from './lib/destination'
 import { HOSTED_APPS } from './lib/hosted'
 import { pick } from './lib/session'
 import { brand, site } from './where'
@@ -1536,9 +1538,32 @@ export function Sidebar({
               shrink={0}
               z="var(--z-raised)"
             >
-              {/* No Log in / Sign up here: the pane's top right carries them, and it stands with the sidebar folded too. */}
-              {!drawer ? (
-                <XStack items="center" justify="flex-start" px="$2" pt="$1" borderTopWidth={1} borderColor="$edge">
+              {/* One compact Log in, in every section: Chat and Dev are the Dev core's DevHome, which offers a guest no way to sign in (only a "Sign in to chat." line after a send fails). */}
+              <XStack items="center" gap="$1" px="$2" pt="$1" borderTopWidth={1} borderColor="$edge">
+                <XStack
+                  render={<button type="button" />}
+                  data-slot="anon-login"
+                  onClick={() => enter(LOGIN)}
+                  flex={1}
+                  minW={0}
+                  items="center"
+                  gap="$2"
+                  px="$1.5"
+                  py="$1"
+                  minH={28}
+                  $touchable={{ minH: TOUCH }}
+                  $max-sm={{ minH: TOUCH }}
+                  rounded="$2"
+                  borderWidth={0}
+                  bg="transparent"
+                  cursor="pointer"
+                  hoverStyle={{ bg: '$hover' }}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                >
+                  <LogIn size={15} aria-hidden />
+                  <Text fontSize="$2" color="$ink">{t('Log in')}</Text>
+                </XStack>
+                {!drawer ? (
                   <XStack
                     render={<button type="button" />}
                     data-slot="anon-settings"
@@ -1564,8 +1589,8 @@ export function Sidebar({
                   >
                     <Settings size={16} aria-hidden />
                   </XStack>
-                </XStack>
-              ) : null}
+                ) : null}
+              </XStack>
             </YStack>
           ) : at || mode === 'beta' || mode === 'hosted' ? null : devMode ? (
             <YStack gap="$2" pt="$2" shrink={0} minW={0} maxW="100%">

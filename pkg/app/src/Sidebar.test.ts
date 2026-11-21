@@ -477,10 +477,13 @@ describe('the unified desktop sidebar', () => {
     }
   })
 
-  test('signed out, the sidebar carries no second Log in / Sign up: the pane’s top right has them', () => {
-    const html = renderToStaticMarkup(createElement(Sidebar, { pins, host: { ...host, person: null } as never, mode: 'chat', thread: null, go: noop, onShut: noop, onBack: noop }))
-    for (const slot of ['column-login', 'column-signup', 'anon-tailored']) expect(html).not.toContain(`data-slot="${slot}"`)
-    expect(html).toContain('data-slot="anon-settings"')
+  test('signed out, every section has one compact Log in at the foot, never the old two-button card', () => {
+    for (const mode of ['chat', 'dev', 'design', 'tabs'] as Place['mode'][]) {
+      const html = renderToStaticMarkup(createElement(Sidebar, { pins, host: { ...host, person: null } as never, mode, thread: null, go: noop, onShut: noop, onBack: noop }))
+      for (const slot of ['column-login', 'column-signup', 'anon-tailored']) expect(html, mode).not.toContain(`data-slot="${slot}"`)
+      expect(html.split('data-slot="anon-login"').length - 1, mode).toBe(1)
+      expect(html, mode).toContain('data-slot="anon-settings"')
+    }
   })
 
   test('a guest’s Images says why it cannot, with the way in, never a silent prefill', async () => {
