@@ -1,6 +1,6 @@
 import { createElement, Fragment, isValidElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 // What the account stands on, as @hanzo/build's read answers it: none unless a test says.
 const standing = vi.hoisted(() => ({ value: null as null | { kind: string; label: { name: string; tag: string } | null; limits: null; allowance: null; balance: null } }))
@@ -128,7 +128,10 @@ afterEach(() => {
   settings.mockClear()
   left.mockClear()
   remembered.mockClear()
-  standing.value = null
+  standing.value = { kind: 'free', label: { name: 'Free', tag: '' }, limits: null, allowance: null, balance: null }
+})
+beforeEach(() => {
+  standing.value = { kind: 'free', label: { name: 'Free', tag: '' }, limits: null, allowance: null, balance: null }
 })
 
 describe('profile trigger and HoverCard', () => {
@@ -255,5 +258,18 @@ describe('the full account overflow menu (`⋯` inside HoverCard)', () => {
     expect(planOf(tier({ plan: 'max-20x' }))).toBe('Max 20x')
     expect(planOf(tier({ plan: '' }))).toBe('Pro')
     expect(planOf(null)).toBe('')
+  })
+
+  test('Free shows the Upgrade offer in the sidebar, expanded and folded; a paid plan and an unread plan show none', () => {
+    const free = { kind: 'free', label: { name: 'Free', tag: '' }, limits: null, allowance: null, balance: null }
+    standing.value = free
+    expect(renderAccount().html).toContain('data-slot="me-upgrade"')
+    expect(renderAccount(false, true).html).toContain('data-slot="me-upgrade"')
+    standing.value = { ...free, kind: 'plan', label: { name: 'Enterprise', tag: '' } }
+    expect(renderAccount().html).not.toContain('data-slot="me-upgrade"')
+    standing.value = null
+    const html = renderAccount().html
+    expect(html).not.toContain('data-slot="me-upgrade"')
+    expect(html).not.toContain('Free')
   })
 })

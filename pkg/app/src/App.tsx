@@ -402,8 +402,7 @@ function Window({ bar, betas }: Hosted) {
             height={BAR}
             shrink={0}
             items="center"
-            display={!bar && mode !== 'chat' && mode !== 'dev' ? 'none' : 'flex'}
-            $max-md={bar ? undefined : { display: 'none' }}
+            display={bar ? 'flex' : 'none'}
             onMouseDown={bar ? dragWindow : undefined}
             onDoubleClick={bar ? toggleWindowMaximize : undefined}
             {...(bar?.drag ?? null)}

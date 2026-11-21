@@ -391,8 +391,10 @@ export function Account({
   const plan = spoken(read.value?.label ?? null) || currentTierPlan
   const planFor = (o: Org) => (o.name === currentOrg ? plan : o.personal ? other : '')
   const who = host.person?.name || host.person?.email || ''
-  const isFree = !plan || plan.toLowerCase() === 'free'
-  const planName = plan || t('Free')
+  // A plan not yet read is not Free: Free is what billing answered, and no answer shows no plan and no offer.
+  const known = Boolean(plan) || read.value !== null
+  const isFree = known && (!plan || plan.toLowerCase() === 'free')
+  const planName = plan || (known ? t('Free') : '')
   const working = [here ? (here.personal ? t('Personal') : here.display) : currentOrg, planName].filter(Boolean).join(' - ')
   const plans = upgrade(read.value?.label?.name)
   const apple = mac()
@@ -450,8 +452,40 @@ export function Account({
     </XStack>
   )
 
+  const offer = isFree ? (
+    <XStack
+      render={<button type="button" />}
+      data-slot="me-upgrade"
+      aria-label={t('Upgrade plan')}
+      onClick={triggerUpgrade}
+      width={narrow ? (above ? 44 : MARK) : '100%'}
+      height={narrow ? (above ? 44 : MARK) : undefined}
+      minH={narrow ? undefined : 36}
+      px={narrow ? 0 : '$2.5'}
+      mb="$1"
+      gap="$2"
+      rounded={narrow ? 12 : '$3'}
+      items="center"
+      justify="center"
+      bg="$raised"
+      borderWidth={1}
+      borderColor={STRONG}
+      hoverStyle={{ bg: '$hover' }}
+      focusVisibleStyle={FOCUS_RING}
+      cursor="pointer"
+    >
+      <Sparkles size={14} color={INK} aria-hidden />
+      {narrow ? null : (
+        <Text fontFamily="$body" fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>
+          {t('Upgrade')}
+        </Text>
+      )}
+    </XStack>
+  ) : null
+
   return (
     <>
+      {offer}
       <HoverCard
         open={hoverOpen}
         onOpenChange={(next) => {
@@ -497,7 +531,7 @@ export function Account({
                     {who}
                   </Text>
                 </YStack>
-                {tierPill}
+                {planName ? tierPill : null}
               </>
             )}
           </XStack>
