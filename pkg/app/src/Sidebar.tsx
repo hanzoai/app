@@ -59,7 +59,6 @@ import { Recents } from './Recents'
 import { DEFAULT_NAV, fullNavUrl, raised, useNavEntries, type NavEntry, type Pins, type Raised } from './Rail'
 import { MoreMenu } from './MoreMenu'
 import { Setup } from './Setup'
-import { RoleCard, RoleDialog } from './RolePicker'
 import { ago, PINNED, UNTITLED_RUN, type Recent } from './recent'
 import { empty } from './open'
 import { useSpan } from './span'
@@ -932,8 +931,6 @@ export function Sidebar({
   const account = !anon && typeof host.token === 'function' ? host : null
   const names = useDeviceNames(account)
   const [renaming, setRenaming] = useState<Renaming | null>(null)
-  // Customize's row "Skills for your role" opens the role picker (RolePicker.tsx, issue 323).
-  const [roles, setRoles] = useState(false)
   const tabsGroups = useTabsGroups(t, mode === 'tabs', devMode, names, setRenaming)
   const { open: betaOpen } = useBetas()
   const hostedGroups = useMemo(() => {
@@ -962,12 +959,7 @@ export function Sidebar({
           (mode === 'tabs'
             ? tabsGroups
             : at === 'customize'
-              ? [
-                  ...tabs(host, dev, t),
-                  ...(anon
-                    ? []
-                    : [{ id: 'roles', label: '', links: [{ id: 'roles', label: t('Skills for your role'), icon: <Sparkles size={16} aria-hidden />, onPress: () => setRoles(true) }] }]),
-                ]
+              ? tabs(host, dev, t)
               : at === 'library'
                 ? library(host, dev, t)
                 : at === 'scheduled'
@@ -1714,14 +1706,10 @@ export function Sidebar({
           ) : at || mode === 'beta' || mode === 'hosted' ? null : devMode ? (
             <YStack gap="$2" pt="$2" shrink={0} minW={0} maxW="100%">
               <Made />
-              <RoleCard go={go} />
               <Setup go={go} />
             </YStack>
           ) : (
-            <>
-              <Made />
-              <RoleCard go={go} mt="$2" />
-            </>
+            <Made />
           )}
 
           <UpdatePill />
@@ -1782,7 +1770,6 @@ export function Sidebar({
             label={t('Resize sidebar')}
           />
         )}
-        <RoleDialog open={roles} onOpenChange={setRoles} go={go} />
         <Rename
           open={renaming !== null}
           onOpenChange={(o) => !o && setRenaming(null)}

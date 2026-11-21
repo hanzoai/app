@@ -92,8 +92,6 @@ vi.mock('./Recents', () => ({
   Recents: ({ mode, host }: { mode: string; host: { name?: string } }) => createElement('div', { 'data-slot': 'recents', 'data-mode': mode, 'data-host': host.name ?? '' }),
 }))
 vi.mock('./Setup', () => ({ Setup: () => createElement('div', { 'data-slot': 'setup-card' }) }))
-// The role picker (issue 323) is its own test's; here it is where it is drawn.
-vi.mock('./RolePicker', () => ({ RoleCard: () => createElement('div', { 'data-slot': 'role-card' }), RoleDialog: () => null }))
 vi.mock('./span', () => ({ useSpan: () => ({ ref: null, style: {}, span: 256, move: () => {}, keep: () => {} }) }))
 vi.mock('./lib/dev-mode', () => ({ useDevMode: () => [devState.on, () => {}], rememberSettingsReturn: () => {} }))
 
@@ -235,14 +233,11 @@ describe('the unified desktop sidebar', () => {
     expect(simpleHtml).not.toContain('data-slot="setup-card"')
     expect(simpleHtml).toContain('data-slot="sidebar-account"')
     expect(simpleHtml).toContain('data-slot="me"')
-    // The role card asks a new customer in either mode (issue 323); it draws nothing for anyone else.
-    expect(simpleHtml).toContain('data-slot="role-card"')
 
     devState.on = true
     const devHtml = column('chat')
     expect(devHtml).not.toContain('data-slot="column-settings"')
     expect(devHtml).toContain('data-slot="setup-card"')
-    expect(at(devHtml, 'data-slot="role-card"')).toBeLessThan(at(devHtml, 'data-slot="setup-card"'))
   })
 
   test('carries one fold button, Activity bell, Search, primary New action, Pinned products, Recents, the More row under it, and Account', () => {
@@ -383,8 +378,6 @@ describe('the unified desktop sidebar', () => {
     expect(at(customize, '>Customize<')).toBeLessThan(at(customize, 'Agents'))
     expect(at(customize, 'Agents')).toBeLessThan(at(customize, 'Bots'))
     expect(at(customize, 'Bots')).toBeLessThan(at(customize, 'Skills'))
-    // Skills for your role (issue 323) follows Customize's own tabs.
-    expect(at(customize, 'Plugins')).toBeLessThan(at(customize, 'Skills for your role'))
     const library = column('dev', '-/artifacts')
     expect(at(library, '>Library<')).toBeLessThan(at(library, 'Upload'))
     expect(at(library, 'Upload')).toBeLessThan(at(library, 'Images'))
