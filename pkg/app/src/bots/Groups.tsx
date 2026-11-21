@@ -13,7 +13,6 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useI18n } from '@hanzo/i18n/react'
 import { Input, Text, XStack, YStack } from '@hanzo/gui'
 import {
-  Button,
   Dialog,
   DialogContent,
   DialogTitle,
@@ -64,6 +63,7 @@ import {
 import { policyBadge } from './grid'
 import { CARD, CLIP, LABEL, PILL, ROUND, WORD } from './kit'
 import { DIM, FLOOR, GROUND, INK, LINE, PICKED, RAISED } from './ink'
+import { Confirm } from '../Confirm'
 
 const FIELD = {
   unstyled: true,
@@ -1156,33 +1156,15 @@ export function GroupPanel({
         </XStack>
       </YStack>
 
-      <Dialog open={deleting} onOpenChange={setDeleting}>
-        <DialogContent maxW={420} rounded={20} gap={14}>
-          <DialogTitle>{t('Delete group {name}?', { name: group.name })}</DialogTitle>
-          <Text fontSize={14} lineHeight={20} color={DIM}>
-            {t('Member bots are kept intact; only the {name} coordination group is removed.', { name: group.name })}
-          </Text>
-          <XStack gap={8} justify="flex-end">
-            <Button size="sm" variant="outline" rounded={999} onPress={() => setDeleting(false)}>
-              {t('Cancel')}
-            </Button>
-            <XStack
-              {...PILL}
-              height={34}
-              bg={INK}
-              borderColor={INK}
-              onClick={() => {
-                setDeleting(false)
-                void onDelete()
-              }}
-            >
-              <Text {...WORD} color="var(--background)">
-                {t('Delete')}
-              </Text>
-            </XStack>
-          </XStack>
-        </DialogContent>
-      </Dialog>
+      <Confirm
+        open={deleting}
+        danger
+        title={t('Delete group {name}?', { name: group.name })}
+        body={t('Member bots are kept intact; only the {name} coordination group is removed.', { name: group.name })}
+        yes={t('Delete')}
+        onYes={() => void onDelete()}
+        onOpenChange={setDeleting}
+      />
     </YStack>
   )
 }

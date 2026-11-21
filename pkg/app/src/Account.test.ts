@@ -88,6 +88,8 @@ vi.mock('@hanzo/build', async () => {
 })
 vi.mock('./lib/session', () => ({ choose: () => {}, org: () => 'acme', orgs: () => ['acme'], pick: () => {}, renew: () => {}, reopen: () => {}, scope: () => ({}), superAdmin: () => false }))
 vi.mock('./lib/org', () => ({ createOrg: async () => '', say: String }))
+const spend = vi.hoisted(() => ({ kinds: [] as string[], forget: vi.fn() }))
+vi.mock('./lib/spend', () => ({ trusts: () => spend.kinds.length > 0, forget: spend.forget }))
 vi.mock('./dev', () => ({ leave: left }))
 vi.mock('./lib/dev-mode', () => ({ rememberSettingsReturn: remembered, useDevMode: () => [false, () => {}] }))
 vi.mock('./open', () => ({ showSettings: settings }))
@@ -274,5 +276,16 @@ describe('the full account overflow menu (`⋯` inside HoverCard)', () => {
     const html = renderAccount().html
     expect(html).not.toContain('data-slot="me-upgrade"')
     expect(html).not.toContain('Free')
+  })
+})
+
+describe('Ask me again before spending', () => {
+  test('stands in the menu only while a "Don\'t ask again" is kept, and a press takes every one back', () => {
+    spend.kinds = []
+    expect(menu(true).map((r) => r.label)).not.toContain('Ask me again before spending')
+    spend.kinds = ['tabs-machine', 'credits']
+    press('Ask me again before spending')
+    expect(spend.forget).toHaveBeenCalledTimes(1)
+    spend.kinds = []
   })
 })

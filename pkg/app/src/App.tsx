@@ -74,6 +74,7 @@ import { UsageProvider } from './Usage'
 import { AnonSettingsPane, dispatchTabsAction, Sidebar } from './Sidebar'
 import { Learning } from './Learning'
 import { isPlans, leave, useDevHost } from './dev'
+import { useBuildSpend } from './Confirm'
 import { Gate } from './Gate'
 import { DevInterior, DevScope } from './DevPane'
 import { useHost } from './host'
@@ -185,7 +186,9 @@ function Window({ bar, betas }: Hosted) {
   closedRef.current = closed
   const flip = useCallback(() => setClosed(!closedRef.current), [setClosed])
   const pins = usePinnedNav()
-  const dev = useDevHost()
+  // The builder's spends ask through the app's one question (Confirm `useBuildSpend`), never its own.
+  const spend = useBuildSpend()
+  const dev = useDevHost(spend.confirm)
   useEffect(() => {
     if (typeof window === 'undefined') return
     const onAnonSettings = (e: Event) => {
@@ -383,6 +386,7 @@ function Window({ bar, betas }: Hosted) {
     <Report>
     <AiProvider client={client ?? undefined}>
       <HostProvider host={host}>
+        {spend.dialog}
         {/* The person's preferences, read once for Chat and Dev: the side panel's width is one of them. */}
         <PrefsProvider>
           <UsageProvider>

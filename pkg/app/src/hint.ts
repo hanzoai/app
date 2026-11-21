@@ -1,4 +1,4 @@
-import type { Act, Hint } from '@hanzo/build'
+import type { Act, Hint, Spend } from '@hanzo/build'
 import { book, hand, want, path as devPath } from '@hanzo/build'
 import { app, go } from './lib/host'
 
@@ -6,6 +6,8 @@ export interface HintActions {
   reopen: (threadId: string) => void
   submit: (query: string) => void
   target?: unknown
+  /** The app's one spend confirm: a scheduled task runs on its own, so it is asked for first (@hanzo/build `book`). */
+  confirm: (spend: Spend) => Promise<boolean>
   setPrepWrong?: (err: string | null) => void
   t?: (s: string) => string
 }
@@ -17,10 +19,11 @@ export interface HintActions {
  *         if another app route, navigates via go;
  *         fallback: submits row title as query.
  * - send / task: submits prompt or title directly into the conversation.
- * - schedule: books automation or falls back to submitting the prompt.
+ * - schedule: makes the task once the person says yes, and opens it; a no makes nothing, and a
+ *   refusal is said, never sent as a chat message in its place.
  */
 export function handleHint(a: Act, row: Hint | undefined, actions: HintActions): void {
-  const { reopen, submit, target, setPrepWrong, t = (s: string) => s } = actions
+  const { reopen, submit, target, confirm, setPrepWrong, t = (s: string) => s } = actions
 
   switch (a.kind) {
     case 'open': {
@@ -64,12 +67,11 @@ export function handleHint(a: Act, row: Hint | undefined, actions: HintActions):
     }
     case 'schedule': {
       if (target) {
-        void book(target as any, a as any, 'chat').then(
-          (made) => go(app(devPath({ kind: 'automation', id: made.id }))),
-          (e: unknown) => {
-            if (a.prompt) submit(a.prompt)
-            else if (setPrepWrong) setPrepWrong(e instanceof Error && e.message ? e.message : t('The scheduled task could not be made.'))
+        void book(target as any, a, 'chat', confirm, t).then(
+          (made) => {
+            if (made) go(app(devPath({ kind: 'automation', id: made.id })))
           },
+          (e: unknown) => setPrepWrong?.(e instanceof Error && e.message ? e.message : t('The scheduled task could not be made.')),
         )
       } else if (a.prompt) {
         submit(a.prompt)

@@ -79,6 +79,7 @@ import { CARD, CLIP, LABEL, PILL, ROUND, WORD } from './kit'
 import { DIM, FLOOR, GROUND, INK, LINE, PICKED, RAISED } from './ink'
 import { partsOf } from './said'
 import { cron as words } from './time'
+import { Confirm, useSpend } from '../Confirm'
 
 const VOICES = ['Liora', 'Aria', 'Sol', 'Koe', 'Nova', 'Echo'] as const
 const SPEEDS = ['0.9x', '1x', '1.25x', '1.5x', '2x'] as const
@@ -350,6 +351,10 @@ export function Panel({
   const [autoCustomWhen, setAutoCustomWhen] = useState('')
   const [autoEventId, setAutoEventId] = useState('slack:mention')
   const [autoBusy, setAutoBusy] = useState(false)
+  // The automation a Delete press is asking about.
+  const [unmaking, setUnmaking] = useState<BotAutomation | null>(null)
+  // A run is billed: Run now asks first.
+  const runNow = useSpend('automation-run', t('Run this automation now?'), t('This starts one run of the automation right away.'), t('Run now'))
 
   // Slack workspace + channel routing state
   const [slackConn, setSlackConn] = useState<{ connected: boolean; account?: string }>({ connected: false })
@@ -843,7 +848,7 @@ export function Panel({
                         render={<button type="button" />}
                         aria-label={t('Run {name} now', { name: a.name })}
                         disabled={autoBusy}
-                        onClick={() => void handleRunAutoNow(a)}
+                        onClick={() => runNow.ask(() => void handleRunAutoNow(a))}
                         width={26}
                         height={26}
                         $max-sm={{ width: 44, height: 44 }}
@@ -869,7 +874,7 @@ export function Panel({
                         render={<button type="button" />}
                         aria-label={t('Delete {name}', { name: a.name })}
                         disabled={autoBusy}
-                        onClick={() => void handleDeleteAuto(a)}
+                        onClick={() => setUnmaking(a)}
                         ml={4}
                         width={24}
                         height={24}
@@ -1656,48 +1661,25 @@ export function Panel({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={deleting} onOpenChange={setDeleting}>
-        <DialogContent maxW={440} width="calc(100vw - 24px)" rounded={20} gap={16}>
-          <YStack gap={6}>
-            <DialogTitle>{t('Delete {name}?', { name: displayName })}</DialogTitle>
-            <Text fontSize={14} lineHeight={20} color={DIM}>
-              {t('{name} and every message it was sent are deleted for good.', { name: displayName })}
-            </Text>
-          </YStack>
-          <XStack gap={8} justify="flex-end" flexWrap="wrap">
-            <Button
-              size="sm"
-              variant="outline"
-              rounded={999}
-              minH={36}
-              borderColor="var(--border-strong)"
-              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
-              $max-sm={{ minH: 44 }}
-              onClick={() => setDeleting(false)}
-            >
-              {t('Cancel')}
-            </Button>
-            <XStack
-              {...PILL}
-              height={36}
-              $max-sm={{ minH: 44 }}
-              bg="var(--state-error)"
-              borderColor="var(--state-error)"
-              hoverStyle={{ bg: 'var(--state-error)', opacity: 0.9 }}
-              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
-              onClick={() => {
-                if (!deleting) return
-                setDeleting(false)
-                onDelete().catch((e) => setWrong(say(e, displayName, 'save', t)))
-              }}
-            >
-              <Text {...WORD} fontWeight="600" color="var(--pure-white)">
-                {t('Delete')}
-              </Text>
-            </XStack>
-          </XStack>
-        </DialogContent>
-      </Dialog>
+      {runNow.dialog}
+      <Confirm
+        open={unmaking !== null}
+        danger
+        title={t('Delete {name}?', { name: unmaking?.name ?? '' })}
+        body={t('The automation stops and is deleted for good, with its schedule.')}
+        yes={t('Delete')}
+        onYes={() => unmaking && void handleDeleteAuto(unmaking)}
+        onOpenChange={(o) => !o && setUnmaking(null)}
+      />
+      <Confirm
+        open={deleting}
+        danger
+        title={t('Delete {name}?', { name: displayName })}
+        body={t('{name} and every message it was sent are deleted for good.', { name: displayName })}
+        yes={t('Delete')}
+        onYes={() => void onDelete().catch((e) => setWrong(say(e, displayName, 'save', t)))}
+        onOpenChange={setDeleting}
+      />
 
       <ComputerDialog
         open={computerOpen}

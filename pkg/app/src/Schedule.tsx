@@ -16,6 +16,7 @@ import { cron, schedule, zone, type When } from './lib/auto'
 import { app } from './lib/host'
 import { site } from './where'
 import { BAD } from './lib/mix'
+import { useSpend } from './Confirm'
 
 /** A model the dialog offers: its id and the name a reader knows it by. */
 export interface Choice {
@@ -105,12 +106,21 @@ export function Schedule({
   }, [said, open, ai])
 
   const ready = Boolean(words.trim() && read && !reading && !busy)
-  const create = async () => {
-    if (!ready || !read) return
+  // A task runs itself, again and again, each run on the plan: Create (and Enter) asks first.
+  const task = useSpend(
+    'schedule',
+    t('Schedule this task?'),
+    t('It runs by itself on the schedule you set, and keeps running until you pause or delete it in Scheduled tasks.'),
+    t('Schedule task'),
+  )
+  const create = () => {
+    if (ready && read) task.ask(() => void keep(read))
+  }
+  const keep = async (when: When) => {
     setBusy(true)
     setWrong('')
     try {
-      await schedule(ai, words, read.schedule, chose || undefined)
+      await schedule(ai, words, when.schedule, chose || undefined)
       setMade(true)
     } catch (e) {
       setWrong((e as Error)?.message || t('The task was not scheduled.'))
@@ -123,6 +133,7 @@ export function Schedule({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent maxW={520} rounded="$6" gap="$3" data-slot="schedule">
+        {task.dialog}
         <DialogTitle>{t('Schedule this')}</DialogTitle>
         {made ? (
           <YStack gap="$3">

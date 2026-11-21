@@ -79,6 +79,7 @@ import { chord, named, said, type Act } from './chord'
 import { carry } from './stars'
 import { ShareDialog } from './Share'
 import { useWindowed } from './windowed'
+import { Confirm } from './Confirm'
 import { english, phrase, type Say } from '@hanzo/i18n'
 
 export interface ThreadList {
@@ -216,12 +217,13 @@ const DANGER = BAD
 
 const mac = (): boolean => typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent)
 
-type Dialogue = 'rename' | 'delete' | 'share' | 'organize'
+type Dialogue = 'rename' | 'delete' | 'deleteMany' | 'share' | 'organize'
 
 /** What a list holds, and the menu's words for it. */
 export type Noun = 'chat' | 'run' | 'design'
 
 const FOREVER = phrase('“{title}” is deleted for good, with every link it was shared by. To keep it out of the list instead, archive it.')
+const MANY = phrase('These are deleted for good, with every link they were shared by. To keep them out of the list instead, archive them.')
 
 const NOUNS = {
   chat: {
@@ -233,7 +235,9 @@ const NOUNS = {
     rename: phrase('Rename chat'),
     name: phrase('Chat title'),
     remove: phrase('Delete chat?'),
+    removeMany: phrase('Delete {n} chats?'),
     gone: FOREVER,
+    goneMany: MANY,
   },
   run: {
     archived: phrase('Archived run'),
@@ -244,7 +248,9 @@ const NOUNS = {
     rename: phrase('Rename run'),
     name: phrase('Run title'),
     remove: phrase('Delete run?'),
+    removeMany: phrase('Delete {n} runs?'),
     gone: FOREVER,
+    goneMany: MANY,
   },
   design: {
     archived: phrase('Archived design'),
@@ -255,7 +261,9 @@ const NOUNS = {
     rename: phrase('Rename design'),
     name: phrase('Design title'),
     remove: phrase('Delete design?'),
+    removeMany: phrase('Delete {n} designs?'),
     gone: phrase('“{title}” is deleted for good. To keep it out of the list instead, archive it.'),
+    goneMany: phrase('These are deleted for good. To keep them out of the list instead, archive them.'),
   },
 } as const
 
@@ -614,8 +622,9 @@ export function ConversationMenu({
         return
       }
       if (e.key === 'Backspace' || e.key === 'Delete') {
+        // One key never deletes a whole selection: it asks first, naming them.
         e.preventDefault()
-        batchRemove(selectedThreads)
+        if (selectedThreads.length) setDialogue('deleteMany')
         return
       }
       if ((e.metaKey || e.ctrlKey) && (e.key === 'a' || e.key === 'A')) {
@@ -628,7 +637,7 @@ export function ConversationMenu({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selected.size, selectedThreads, dialogue, clearSelect, batchRemove, orderedIds])
+  }, [selected.size, selectedThreads, dialogue, clearSelect, orderedIds])
 
   // The conversation the menu or a dialog acts on, by id, read from the list so
   // it is current; the last one read stands in once the list lets it go (a
@@ -1040,11 +1049,11 @@ export function ConversationMenu({
       />
       <Delete
         noun={noun}
-        t={subject}
+        t={subject ? [subject] : []}
         open={dialogue === 'delete'}
         onOpenChange={shut}
         onCloseAutoFocus={after}
-        remove={(t) => {
+        remove={([t]) => {
           // Focus goes on to the row after it, or the one before, not to the page.
           const rows = listRows(list)
           const at = rows.findIndex((row) => row.getAttribute('data-thread') === t.id)
@@ -1054,6 +1063,7 @@ export function ConversationMenu({
           })
         }}
       />
+      <Delete noun={noun} t={selectedThreads} open={dialogue === 'deleteMany'} onOpenChange={shut} onCloseAutoFocus={after} remove={batchRemove} />
       {canShare ? <ShareDialog thread={subject?.id ?? null} open={dialogue === 'share'} onOpenChange={shut} onCloseAutoFocus={after} /> : null}
       <Dialog open={dialogue === 'organize'} onOpenChange={shut}>
         <DialogContent maxW={440} width="calc(100vw - 24px)" rounded="$6" gap="$3" onCloseAutoFocus={after}>
@@ -1500,63 +1510,65 @@ function Rename({
   )
 }
 
-/** Deleting asks first, and says what goes with it: every turn, and every link it was shared by. */
-function Delete({
+/**
+ * Deleting asks first, through the one confirm (Confirm.tsx), and says what goes
+ * with it: every turn, and every link it was shared by. Several at once are
+ * counted and named. `unsaved` is a conversation kept nowhere (private, or a
+ * guest's): clearing it cannot be undone either.
+ */
+export function Delete({
   noun,
-  t: thread,
+  t: targets,
   open,
   onOpenChange,
   onCloseAutoFocus,
   remove,
+  unsaved = false,
 }: {
   noun: Noun
-  t: Thread | null
+  t: Thread[]
   open: boolean
   onOpenChange: (open: boolean) => void
-  onCloseAutoFocus: (e: Event) => void
-  remove: (t: Thread) => void
+  onCloseAutoFocus?: (e: Event) => void
+  remove: (t: Thread[]) => void
+  unsaved?: boolean
 }) {
   const { t } = useI18n()
+  const untitled = t('Untitled')
+  const many = targets.length > 1
+  const SHOWN = 5
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent maxW={440} width="calc(100vw - 24px)" rounded="$6" gap="$3" onCloseAutoFocus={onCloseAutoFocus}>
-        <DialogTitle>{t(NOUNS[noun].remove)}</DialogTitle>
-        <SizableText size="$2" color="$soft">
-          {t(NOUNS[noun].gone, { title: thread ? titleOf(thread, t('Untitled')) : '' })}
-        </SizableText>
-        <XStack gap="$2" justify="flex-end" flexWrap="wrap">
-          <Button
-            size="sm"
-            variant="outline"
-            rounded={999}
-            borderColor="var(--border-strong)"
-            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
-            $max-sm={{ minH: 44 }}
-            onPress={() => onOpenChange(false)}
-          >
-            {t('Cancel')}
-          </Button>
-          <Button
-            size="sm"
-            rounded={999}
-            bg="var(--state-error)"
-            borderColor="var(--state-error)"
-            color="var(--pure-white)"
-            hoverStyle={{ bg: 'var(--state-error)', opacity: 0.9 }}
-            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
-            $max-sm={{ minH: 44 }}
-            disabled={!thread}
-            onPress={() => {
-              // Once: a second press while the dialog closes would ask the store to delete it again.
-              if (!open || !thread) return
-              onOpenChange(false)
-              remove(thread)
-            }}
-          >
-            {t('Delete')}
-          </Button>
-        </XStack>
-      </DialogContent>
-    </Dialog>
+    <Confirm
+      open={open && targets.length > 0}
+      danger
+      title={unsaved ? t('Clear this conversation?') : many ? t(NOUNS[noun].removeMany, { n: targets.length }) : t(NOUNS[noun].remove)}
+      body={
+        unsaved
+          ? t('It was never saved, so once it is cleared it cannot be brought back.')
+          : many
+            ? t(NOUNS[noun].goneMany)
+            : t(NOUNS[noun].gone, { title: targets[0] ? titleOf(targets[0], untitled) : '' })
+      }
+      detail={
+        many && !unsaved ? (
+          <YStack data-slot="delete-confirm-titles" render="ul" gap="$1" pl="$4" m={0}>
+            {targets.slice(0, SHOWN).map((one) => (
+              <SizableText key={one.id} render="li" size="$2" color="$ink" numberOfLines={1}>
+                {titleOf(one, untitled)}
+              </SizableText>
+            ))}
+            {targets.length > SHOWN ? (
+              <SizableText render="li" size="$2" color="$soft">
+                {t('and {n} more', { n: targets.length - SHOWN })}
+              </SizableText>
+            ) : null}
+          </YStack>
+        ) : null
+      }
+      yes={unsaved ? t('Clear') : t('Delete')}
+      onYes={() => remove(targets)}
+      onOpenChange={onOpenChange}
+      onCloseAutoFocus={onCloseAutoFocus}
+    />
   )
 }

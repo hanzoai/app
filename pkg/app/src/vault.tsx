@@ -20,6 +20,7 @@ import { scope } from './lib/session'
 import { say } from './failure'
 import { CARD, CLIP, LABEL, PILL, ROUND, WORD } from './bots/kit'
 import { DIM, FLOOR, GROUND, INK, LINE, PICKED, RAISED } from './bots/ink'
+import { Confirm } from './Confirm'
 
 export type VaultSource = 'hanzo' | '1password' | 'lastpass'
 export type VaultKind = 'login' | 'api_key' | 'secret'
@@ -302,6 +303,8 @@ export function VaultManager({
   const [doc, setDoc] = useState<VaultDoc>({ items: [], providers: {}, secretKeys: [] })
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  // The saved item a Remove press is asking about: removing it deletes the secret for good.
+  const [removing, setRemoving] = useState<{ id: string; name: string } | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -1030,7 +1033,7 @@ export function VaultManager({
                     render="button"
                     {...{ type: 'button' }}
                     aria-label={t('Remove {name}', { name: item.name })}
-                    onClick={() => void handleRemove(item.id)}
+                    onClick={() => setRemoving({ id: item.id, name: item.name })}
                     width={28}
                     height={28}
                     rounded={999}
@@ -1049,6 +1052,15 @@ export function VaultManager({
           </YStack>
         )
       ) : null}
+      <Confirm
+        open={removing !== null}
+        danger
+        title={t('Remove {name}?', { name: removing?.name ?? '' })}
+        body={t('The saved secret is deleted from your vault for good. Anything that signs in with it stops working.')}
+        yes={t('Remove')}
+        onYes={() => removing && void handleRemove(removing.id)}
+        onOpenChange={(o) => !o && setRemoving(null)}
+      />
     </YStack>
   )
 }

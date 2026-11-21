@@ -8,6 +8,7 @@
 // - A subtle `⋯` menu inside the hover card exposes multi-account switching,
 //   language selection, keyboard shortcuts, and organization creation.
 
+import { forget, trusts } from './lib/spend'
 import { phrase, locales } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -35,6 +36,7 @@ import {
   MoreHorizontal,
   Palette,
   Plus,
+  RotateCcw,
   ScrollText,
   Settings,
   ShieldCheck,
@@ -842,6 +844,12 @@ export function Account({
                     ) : null}
                   </DropdownMenuSub>
 
+                  {/* Drawn only while there is a "Don't ask again" to take back: a row that does nothing is not drawn. */}
+                  {trusts() ? (
+                    <DropdownMenuItem data-slot="me-ask-again" onSelect={forget}>
+                      <Line icon={<RotateCcw size={16} aria-hidden />}>{t('Ask me again before spending')}</Line>
+                    </DropdownMenuItem>
+                  ) : null}
                   {several && signedIn.current ? (
                     // The menu stays open while it signs out, so the row pressed can say so.
                     <DropdownMenuItem

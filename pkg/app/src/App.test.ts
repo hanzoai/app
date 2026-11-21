@@ -41,6 +41,8 @@ vi.mock('./lib/ai', () => ({ useAi: () => ({ client: null }) }))
 vi.mock('./Chat', () => ({ Chat: stub('chat') }))
 vi.mock('./Sidebar', () => ({ Sidebar: stub('app-column') }))
 vi.mock('./Learning', () => ({ Learning: () => null }))
+// The builder's spend question is Confirm's (Confirm.gui.test.tsx); here only that App draws it.
+vi.mock('./Confirm', () => ({ useBuildSpend: () => ({ confirm: async () => false, dialog: null }) }))
 vi.mock('./dev', () => ({ isPlans: () => false, leave: () => {}, useDevHost: () => ({ go: () => {}, path: '', token: () => '' }) }))
 vi.mock('./Gate', () => ({ Gate: through }))
 vi.mock('./Report', () => ({ Report: through, reportProblem: () => {} }))
