@@ -45,6 +45,7 @@ import { app, place, settings, visit } from './lib/host'
 import { link } from './lib/tags'
 import { payUrl, topUp } from './lib/pay'
 import { desktopLocal } from './lib/local-fs'
+import { desktopSite } from './lib/local-site'
 
 /** Where the builder links out: every one of them an address of this site. */
 const LINKS: Host['links'] = {
@@ -102,6 +103,8 @@ export function useDevHost(): Host {
   const signedIn = Boolean(accessToken || bearer() || u)
   // Hanzo Desktop's folders, so Dev offers This computer (hanzo-inc/app issues 309 and 310); none in a browser.
   const local = useMemo(() => desktopLocal(), [])
+  // The same window opens a site, saves a copy for the agent and serves its redesign live (hanzo-inc/app issue 312).
+  const site = useMemo(() => desktopSite(), [])
 
   return useMemo<Host>(
     () => ({
@@ -155,7 +158,8 @@ export function useDevHost(): Host {
       signIn: () => enter(),
       signOut: () => void logout(),
       ...(local ? { local } : {}),
+      ...(site ? { site } : {}),
     }),
-    [scoped, memberships, look.pref.theme, look.set, signedIn, name, email, avatar, here, router, logout, local],
+    [scoped, memberships, look.pref.theme, look.set, signedIn, name, email, avatar, here, router, logout, local, site],
   )
 }
