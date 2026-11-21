@@ -24,11 +24,23 @@ describe('tidy', () => {
 })
 
 describe('given', () => {
+  test("a wallet's address is not a name: the greeting asks nothing of it", () => {
+    expect(given('evm:0x6a8a...22b7')).toBe('')
+    expect(given('sol:7xKX...9Qp')).toBe('')
+    expect(given('0x6a8aCe50f9D89aA9')).toBe('')
+    expect(given('evmaldo')).toBe('Evmaldo')
+  })
   test('the first word of a display name, its first letter capitalised', () => {
     expect(given('z')).toBe('Z')
     expect(given(' ada lovelace ')).toBe('Ada')
     expect(given('Zach Kelling')).toBe('Zach')
     expect(given('')).toBe('')
     expect(given('   ')).toBe('')
+  })
+  test("a wallet's address is not a name: the greeting asks nothing of it", () => {
+    expect(given('evm:0x6a8a...22b7')).toBe('')
+    expect(given('sol:7xKX...9Qp')).toBe('')
+    expect(given('0x6a8aCe50f9D89aA9')).toBe('')
+    expect(given('evmaldo')).toBe('Evmaldo')
   })
 })

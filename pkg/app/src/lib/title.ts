@@ -29,8 +29,12 @@ export function tidy(title: string | null | undefined, max = 80, fallback = 'Unt
   return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t
 }
 
-/** A name's first word, its first letter capitalised ("z" → "Z", "ada lovelace" → "Ada"), or '' for none. */
+/** What a wallet's account is called until its person names it ("evm:0x6a8a...22b7"): an address, not a name. */
+const WALLET = /^(?:evm|eth|sol|solana|btc):|^0x[0-9a-f]{4}/i
+
+/** A name's first word, its first letter capitalised ("z" → "Z", "ada lovelace" → "Ada"), or '' for none, or for a wallet's address. */
 export function given(name: string): string {
   const w = name.trim().split(/\s+/)[0] ?? ''
+  if (WALLET.test(w)) return ''
   return w ? w[0]!.toUpperCase() + w.slice(1) : ''
 }
