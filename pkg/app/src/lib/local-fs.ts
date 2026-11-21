@@ -9,9 +9,10 @@
  * 5. Run local coding tasks against the workspace with `hanzoai/dev`.
  *
  * Dev's This computer is `desktopLocal()` (hanzo-inc/app issues 309 and 310): on Hanzo Desktop it hands @hanzo/build
- * the folders opened here, the window's folder dialog and the `dev` runner, so a run works in a folder with no
- * repository. Auto there is the folder used most recently (`lastOpenedAt`). A browser page has no folder of its own,
- * and gets none.
+ * the folders opened here and the project folders the desktop finds on the computer, the window's folder dialog and
+ * the `dev` runner, so a run works in a folder with no repository. Auto there is the folder the ask is about, else
+ * the one used most recently (`lastOpenedAt`), as @hanzo/build's `route` reads them. A browser page has no folder of
+ * its own, and gets none.
  */
 import type { Folder, Local } from '@hanzo/build'
 
@@ -280,32 +281,81 @@ export async function deleteLocalPath(path: string): Promise<void> {
 }
 
 /**
- * Run local coding task with `dev` CLI. Hanzo Desktop answers `{session_id, output, success}` (its Rust struct's own
- * names); `ok` is false only when it said the agent failed.
+ * Run local coding task with `dev` CLI. Hanzo Desktop answers `{session_id, output, process, success}` (its Rust struct's own
+ * names): `output` is the agent's final message, `process` what it did on the way. `ok` is false only when it said the agent
+ * failed. The desktop fetches the agent itself when the computer has none.
  */
-export async function runLocalDev(workspacePath: string, prompt: string): Promise<{ sessionId: string; output?: string; ok: boolean }> {
+export async function runLocalDev(workspacePath: string, prompt: string): Promise<{ sessionId: string; output?: string; process?: string; ok: boolean }> {
   if (isTauri()) {
-    const r = await tauriInvoke<{ sessionId?: string; session_id?: string; output?: string; success?: boolean }>('local_workspace_run_dev', {
+    const r = await tauriInvoke<{ sessionId?: string; session_id?: string; output?: string; process?: string; success?: boolean }>('local_workspace_run_dev', {
       workspacePath,
       prompt,
     })
-    return { sessionId: r?.sessionId ?? r?.session_id ?? '', output: r?.output, ok: r?.success !== false }
+    return { sessionId: r?.sessionId ?? r?.session_id ?? '', output: r?.output, process: r?.process, ok: r?.success !== false }
   }
   throw new Error('Local Dev agent execution requires Hanzo Desktop')
 }
+
+/** A project folder the desktop found on the computer, as `local_workspace_discover` answers it. */
+interface Found {
+  name: string
+  path: string
+  modified: number
+}
+
+/**
+ * Listen to an event Hanzo Desktop emits, through the window's own IPC (what `@tauri-apps/api/event`'s `listen` does,
+ * without the package). Answers how to stop listening; a window without the event plugin hears nothing.
+ */
+async function tauriListen<T>(event: string, handler: (payload: T) => void): Promise<() => void> {
+  const win = window as unknown as {
+    __TAURI_INTERNALS__?: { transformCallback?: (cb: (e: { payload: T }) => void) => number; invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown> }
+    __TAURI_EVENT_PLUGIN_INTERNALS__?: { unregisterListener?: (event: string, id: number) => void }
+  }
+  const internals = win.__TAURI_INTERNALS__
+  if (!internals?.transformCallback) return () => {}
+  const id = (await internals.invoke('plugin:event|listen', {
+    event,
+    target: { kind: 'Any' },
+    handler: internals.transformCallback((e) => handler(e.payload)),
+  })) as number
+  return () => {
+    win.__TAURI_EVENT_PLUGIN_INTERNALS__?.unregisterListener?.(event, id)
+    void internals.invoke('plugin:event|unlisten', { event, eventId: id }).catch(() => {})
+  }
+}
+
+/** The event the desktop emits while it fetches Hanzo Dev for a computer that has none: `{ percent }`, 0 to 100. */
+const SETUP_EVENT = 'local-dev-setup'
 
 /** A workspace as Dev's Folder pill reads it. */
 const folderOf = (w: LocalWorkspace): Folder => ({ path: w.path, name: w.name, used: w.lastOpenedAt || w.addedAt || 0 })
 
 /**
- * This computer, as @hanzo/build's Dev takes it (`Host.local`): the folders Hanzo Desktop opened, its folder dialog,
- * and a run of the `dev` agent in one folder (`dev exec -C <folder>`, its workspace-write sandbox). Null outside the
- * desktop window, so a browser page offers the cloud workspace and the org's machines only.
+ * This computer, as @hanzo/build's Dev takes it (`Host.local`): the folders Hanzo Desktop opened and the project folders it
+ * finds on the computer (asked once, when this is made, and announced through `changed` when they arrive), its folder
+ * dialog, and a run of the `dev` agent in one folder (`dev exec -C <folder>`, its workspace-write sandbox). Null outside
+ * the desktop window, so a browser page offers the cloud workspace and the org's machines only.
  */
 export function desktopLocal(): Local | null {
   if (!isTauri()) return null
+  let found: Folder[] = []
+  tauriInvoke<Found[] | null>('local_workspace_discover').then(
+    (list) => {
+      found = (Array.isArray(list) ? list : []).filter((f) => f && typeof f.path === 'string' && f.path).map((f) => ({ path: f.path, name: f.name || f.path.split(/[/\\]/).filter(Boolean).pop() || f.path }))
+      if (found.length) notify()
+    },
+    () => {
+      // A desktop that cannot look offers the folders it opened, as before.
+    },
+  )
   return {
-    folders: () => getLocalWorkspaces().map(folderOf),
+    folders: () => {
+      const opened = getLocalWorkspaces().map(folderOf)
+      const known = new Set(opened.map((f) => f.path))
+      return [...opened, ...found.filter((f) => !known.has(f.path))]
+    },
+    changed: subscribeLocalFs,
     pick: async () => {
       const ws = await pickLocalFolder({ browser: false })
       return ws ? folderOf(ws) : null
@@ -315,9 +365,14 @@ export function desktopLocal(): Local | null {
       if (ws) setActiveWorkspace(ws)
       else addLocalWorkspace(path)
     },
-    run: async (folder, prompt) => {
-      const r = await runLocalDev(folder, prompt)
-      return { ok: r.ok, output: r.output ?? '' }
+    run: async (folder, prompt, setup) => {
+      const stop = setup ? await tauriListen<{ percent: number }>(SETUP_EVENT, (p) => setup(p.percent)).catch(() => () => {}) : () => {}
+      try {
+        const r = await runLocalDev(folder, prompt)
+        return { ok: r.ok, output: r.output ?? '', process: r.process ?? '' }
+      } finally {
+        stop()
+      }
     },
   }
 }
