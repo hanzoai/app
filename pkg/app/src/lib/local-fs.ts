@@ -365,6 +365,10 @@ export function desktopLocal(): Local | null {
       if (ws) setActiveWorkspace(ws)
       else addLocalWorkspace(path)
     },
+    // Stops the agent being fetched for the first run; the run's own call then answers `Setup was cancelled.` (@hanzo/build `failed`).
+    cancel: async () => {
+      await tauriInvoke<boolean>('local_dev_setup_cancel')
+    },
     run: async (folder, prompt, setup) => {
       const stop = setup ? await tauriListen<{ percent: number }>(SETUP_EVENT, (p) => setup(p.percent)).catch(() => () => {}) : () => {}
       try {
