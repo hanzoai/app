@@ -66,7 +66,7 @@ import { ChevronLeft, ChevronRight, Clapperboard, RefreshCw, Sparkles, Workflow 
 import { AiProvider } from '@hanzo/ai/react'
 import { XStack, YStack } from '@hanzo/gui'
 import { Button, Text } from '@hanzo/ui'
-import { Builder, HostProvider, PrefsProvider, route, tabs, type Host } from '@hanzo/build'
+import { HostProvider, PrefsProvider, route, tabs, type Host } from '@hanzo/build'
 import * as studioPkg from '@hanzo/studio'
 import { nav as places } from '@hanzo/studio'
 import { useAi } from './lib/ai'
@@ -76,6 +76,7 @@ import { AnonSettingsPane, dispatchTabsAction, Sidebar } from './Sidebar'
 import { Learning } from './Learning'
 import { isPlans, leave, useDevHost } from './dev'
 import { Gate } from './Gate'
+import { DevInterior, DevScope } from './DevPane'
 import { useHost } from './host'
 import { useKept } from './kept'
 import { CHEVRON } from './icons'
@@ -382,6 +383,7 @@ function Window({ bar, betas }: Hosted) {
         {/* The person's preferences, read once for Chat and Dev: the side panel's width is one of them. */}
         <PrefsProvider>
           <UsageProvider>
+            <DevScope active={mode === 'dev'}>
         {/* The floor runs under the bar where there is one, so the window is one ground. */}
         <YStack
           ref={windowRef}
@@ -694,7 +696,7 @@ function Window({ bar, betas }: Hosted) {
                         </XStack>
                       </XStack>
                     ) : null}
-                    {plans ? null : <Builder host={host} rail={false} />}
+                    {plans ? null : <DevInterior host={host} path={here} />}
                   </YStack>
                 )}
               </XStack>
@@ -745,6 +747,7 @@ function Window({ bar, betas }: Hosted) {
             go={move}
           />
         </YStack>
+            </DevScope>
           </UsageProvider>
         </PrefsProvider>
       </HostProvider>

@@ -57,6 +57,7 @@ import { useBetas } from './Betas'
 import { Recents } from './Recents'
 import { Toggle } from './Toggle'
 import { MARKS } from './icons'
+import { DevList, useScope } from './DevPane'
 import { DEFAULT_NAV, fullNavUrl, raised, useNavEntries, type NavEntry, type Pins, type Raised } from './Rail'
 import { MoreMenu } from './MoreMenu'
 import { Setup } from './Setup'
@@ -923,6 +924,7 @@ export function Sidebar({
   const span = useSpan(SPAN, WIDTH, FLOOR, CEIL)
 
   const dev = (p: string) => host.go(p)
+  const runtime = useScope()
   const at = mode === 'dev' ? raised(host.path) : null
   const Make = mode === 'chat' || mode === 'dev' || mode === 'tabs' || mode === 'studio' ? MARKS[mode].make : MARKS.chat.make
 
@@ -1139,6 +1141,7 @@ export function Sidebar({
             ))}
           </YStack>
         ) : null}
+        {item.id === 'dev' && mode === 'dev' && !at ? <DevList host={host} path={host.path ?? ''} /> : null}
       </YStack>
     )
   }
@@ -1154,7 +1157,7 @@ export function Sidebar({
     mode === 'dev' ? t('New run') : mode === 'design' ? t('New design') : mode === 'studio' ? t('New creation') : mode === 'flow' ? t('New flow') : t('New chat')
 
   const showPrimaryNew = !at && (mode === 'chat' || (!anon && (mode === 'dev' || mode === 'design' || mode === 'studio' || mode === 'flow')))
-  const showRecents = !(mode === 'hosted' || mode === 'beta' || mode === 'tabs' || mode === 'studio' || mode === 'flow' || anon || at)
+  const showRecents = !(mode === 'dev' && runtime) && !(mode === 'hosted' || mode === 'beta' || mode === 'tabs' || mode === 'studio' || mode === 'flow' || anon || at)
 
   return (
     <TooltipProvider delay={120}>
