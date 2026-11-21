@@ -207,8 +207,8 @@ export default function Terminals() {
     {
       kind: 'dev' as const,
       title: t('Terminal'),
-      summary: t('Run commands, git, and builds in a saved Linux shell.'),
-      info: t('A cloud Linux shell for running scripts, git, builds, and local servers with files kept between sessions.'),
+      summary: t('Run commands, git and builds in a cloud terminal that keeps your files.'),
+      info: t('A cloud terminal for running scripts, git, builds and local servers, with your files kept between sessions.'),
       action: !token ? t('Sign in') : launchingKind === 'dev' ? t('Starting…') : t('Open terminal'),
       primary: true,
       icon: <SquareTerminal size={17} color="var(--foreground)" aria-hidden />,

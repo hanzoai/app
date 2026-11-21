@@ -1659,7 +1659,7 @@ function Cards() {
           <XStack display="none" $md={{ display: 'flex' }}>
             <Act
               icon={SquareTerminal}
-              label={t('Tabs & shell')}
+              label={t('Tabs & terminal')}
               on={Boolean(aside)}
               onPress={() => showAside(aside ? null : "tasks")}
             />

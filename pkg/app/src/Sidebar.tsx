@@ -650,7 +650,7 @@ function useTabsGroups(
       {
         id: 'new-terminal',
         label: t('Terminal'),
-        hint: t('Cloud command-line shell with saved files.'),
+        hint: t('A cloud terminal that keeps your files.'),
         icon: <MARKS.tabs.make size={15} aria-hidden />,
         onPress: () => dispatchTabsAction({ kind: 'shell' }),
       },
@@ -695,7 +695,7 @@ function useTabsGroups(
         id: `sandbox-${h.machine}`,
         label: shown.title,
         hint: [
-          h.desktop ? t('Connect to this device’s live desktop session.') : t('Open a terminal shell on this connected device.'),
+          h.desktop ? t('Connect to this device’s live desktop session.') : t('Open a terminal on this connected device.'),
           shown.detail,
         ]
           .filter(Boolean)
