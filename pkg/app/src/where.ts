@@ -82,6 +82,17 @@ export interface Addresses {
    * tag manager.
    */
   track?: (name: string, params: Record<string, unknown>) => void
+  /**
+   * The host's own leaving, AWAITED before the app ends the session and moves
+   * the page: on every sign-out the person chooses (the account menu's Log out,
+   * Sign out of all accounts, the palette's Log out, Sign out <name> on the
+   * account in use), never on a token that expired or a refresh that was
+   * refused. One order on every path: this, then IAM's session ended, then the
+   * page moved, whatever IAM answers (lib/signout `signingOut`). If it throws,
+   * or has not finished after a few seconds (`PATIENCE`), the sign-out still
+   * completes and the page it moves to says so. Hanzo Desktop forgets the person's identity on this machine here.
+   */
+  signOut?: () => Promise<void>
 }
 
 let addresses: Addresses = { site: '', home: '/home', signUp: '/signup' }

@@ -23,6 +23,7 @@
  * React context, and an app reads them with `useHost()`.
  */
 
+import { useUnfinished } from './lib/unfinished'
 import { createContext, useContext, useEffect, type AnchorHTMLAttributes, type ComponentType, type ReactNode } from 'react'
 import { useIam, useOrganizations } from '@hanzo/iam/react'
 import { useAppearance } from '@hanzo/appearance'
@@ -106,6 +107,8 @@ export function useLook(): ReturnType<typeof useAppearance> {
 export function Look() {
   const org = useOrg()
   useLook()
+  // The one component every page mounts, so the page a sign-out lands on is told what it left unfinished.
+  useUnfinished()
   useEffect(() => {
     if (typeof window === 'undefined') return
     try {

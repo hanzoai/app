@@ -7,12 +7,13 @@
  * several signed in it says so.
  */
 
+import { useState } from 'react'
 import { Check, Plus } from 'lucide-react'
 import { useI18n } from '@hanzo/i18n/react'
 import { Text, XStack, YStack } from '@hanzo/gui'
 import { Avatar, Button } from '@hanzo/ui'
 import { label, useAccounts, type Account } from './lib/accounts'
-import { useSignOut } from './lib/signout'
+import { useSignOut, useSigningOut } from './lib/signout'
 
 /** One account's face and words, the same wherever it is drawn. */
 export function Face({ account }: { account: Account }) {
@@ -38,6 +39,10 @@ export function Accounts() {
   const { t } = useI18n()
   const out = useSignOut()
   const { accounts, current, switchTo, add, leave } = useAccounts()
+  // The control pressed says "Signing out…" while the one sign-out runs, and every one stands disabled.
+  const signingOut = useSigningOut()
+  const [pressed, setPressed] = useState<string | null>(null)
+  const says = (which: string, words: string) => (signingOut && pressed === which ? t('Signing out…') : words)
   if (accounts.length === 0) return null
   return (
     <YStack render="section" aria-label={t('Accounts')} mt={36}>
@@ -70,8 +75,18 @@ export function Accounts() {
                 <Face account={a} />
                 {here ? <Check size={16} aria-label={t('Current')} /> : null}
               </XStack>
-              <Button type="button" size="xs" variant="ghost" aria-label={t('Sign out {name}', { name: title })} onClick={() => void leave(a)}>
-                {t('Sign out')}
+              <Button
+                type="button"
+                size="xs"
+                variant="ghost"
+                aria-label={says(a.sub, t('Sign out {name}', { name: title }))}
+                disabled={signingOut}
+                onClick={() => {
+                  setPressed(a.sub)
+                  void leave(a)
+                }}
+              >
+                {says(a.sub, t('Sign out'))}
               </Button>
             </XStack>
           )
@@ -82,8 +97,16 @@ export function Accounts() {
           <Plus size={16} aria-hidden />
           {t('Add account')}
         </Button>
-        <Button type="button" variant="ghost" onClick={() => void out()}>
-          {accounts.length > 1 ? t('Sign out of all accounts') : t('Log out')}
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={signingOut}
+          onClick={() => {
+            setPressed('all')
+            void out()
+          }}
+        >
+          {says('all', accounts.length > 1 ? t('Sign out of all accounts') : t('Log out'))}
         </Button>
       </XStack>
     </YStack>

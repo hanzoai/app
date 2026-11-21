@@ -69,6 +69,7 @@ import {
   Text,
 } from '@hanzo/ui'
 import { label as accountLabel, useAccounts } from './lib/accounts'
+import { useSigningOut } from './lib/signout'
 import { api } from './lib/api'
 import { createOrg, say } from './lib/org'
 import type { Tier } from './lib/tier'
@@ -310,6 +311,10 @@ export function Account({
   const rtl = dir === 'rtl'
   const [devMode, setDevMode] = useDevMode()
   const [hoverOpen, setHoverOpen] = useState(false)
+  // Which sign-out control was pressed: it says "Signing out…" while the one sign-out runs (lib/signout).
+  const signingOut = useSigningOut()
+  const [pressed, setPressed] = useState<'one' | 'all' | 'hover' | null>(null)
+  const leaving = (which: 'one' | 'all' | 'hover') => signingOut && pressed === which
   const [menuOpen, setMenuOpen] = useState(false)
   const [workspacesOpen, setWorkspacesOpen] = useState(false)
   const [account, setAccount] = useState(defaultAccountOpen ?? false)
@@ -838,13 +843,34 @@ export function Account({
                   </DropdownMenuSub>
 
                   {several && signedIn.current ? (
-                    <DropdownMenuItem data-slot="me-leave" onSelect={() => void signedIn.leave(signedIn.current!)}>
-                      <Line icon={<LogOut size={16} aria-hidden data-i18n-mirror />}>{t('Sign out {name}', { name: accountLabel(signedIn.current).title })}</Line>
+                    // The menu stays open while it signs out, so the row pressed can say so.
+                    <DropdownMenuItem
+                      data-slot="me-leave"
+                      preventCloseOnSelect
+                      disabled={signingOut}
+                      onSelect={() => {
+                        setPressed('one')
+                        void signedIn.leave(signedIn.current!)
+                      }}
+                    >
+                      <Line icon={<LogOut size={16} aria-hidden data-i18n-mirror />}>
+                        {leaving('one') ? t('Signing out…') : t('Sign out {name}', { name: accountLabel(signedIn.current).title })}
+                      </Line>
                     </DropdownMenuItem>
                   ) : null}
                   {host.signOut ? (
-                    <DropdownMenuItem onSelect={() => host.signOut?.()}>
-                      <Line icon={<LogOut size={16} aria-hidden data-i18n-mirror />}>{several ? t('Sign out of all accounts') : t('Log out')}</Line>
+                    <DropdownMenuItem
+                      data-slot="me-log-out"
+                      preventCloseOnSelect
+                      disabled={signingOut}
+                      onSelect={() => {
+                        setPressed('all')
+                        host.signOut?.()
+                      }}
+                    >
+                      <Line icon={<LogOut size={16} aria-hidden data-i18n-mirror />}>
+                        {leaving('all') ? t('Signing out…') : several ? t('Sign out of all accounts') : t('Log out')}
+                      </Line>
                     </DropdownMenuItem>
                   ) : null}
                 </DropdownMenuContent>
@@ -1040,8 +1066,10 @@ export function Account({
                 <XStack
                   render={<button type="button" />}
                   data-slot="me-hover-logout"
+                  disabled={signingOut}
+                  aria-disabled={signingOut || undefined}
                   onClick={() => {
-                    setHoverOpen(false)
+                    setPressed('hover')
                     host.signOut?.()
                   }}
                   items="center"
@@ -1058,7 +1086,7 @@ export function Account({
                 >
                   <LogOut size={14} color={SOFT} aria-hidden data-i18n-mirror />
                   <Text fontFamily="$body" fontSize="$2" color="$aside" flex={1} text="start">
-                    {t('Log out')}
+                    {leaving('hover') ? t('Signing out…') : t('Log out')}
                   </Text>
                 </XStack>
               ) : null}

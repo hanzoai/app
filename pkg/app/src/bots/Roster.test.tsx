@@ -77,7 +77,7 @@ vi.mock('../kept', () => ({
     return [value, (next: T) => { keptState[key] = next }]
   },
 }))
-vi.mock('../lib/signout', () => ({ useSignOut: () => async () => {} }))
+vi.mock('../lib/signout', () => ({ useSigningOut: () => false, useSignOut: () => async () => {} }))
 vi.mock('../PreferencesDialog', () => ({ PreferencesDialog: () => null }))
 vi.mock('./ConnectorsDialog', () => ({ ConnectorsDialog: () => null }))
 vi.mock('./face', () => ({

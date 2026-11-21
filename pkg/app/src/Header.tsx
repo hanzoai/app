@@ -40,7 +40,7 @@ import { HanzoWordmark } from '@hanzogui/shell'
 import { Face } from './Accounts'
 import { label, useAccounts } from './lib/accounts'
 import { named } from './lib/session'
-import { useSignOut } from './lib/signout'
+import { useSignOut, useSigningOut } from './lib/signout'
 import { brand, site } from './where'
 import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowControls'
 
@@ -85,8 +85,15 @@ export function Header({ back, account }: { back?: ReactNode; account?: ReactNod
   const email = u?.email || claimed?.email || ''
   const avatar = typeof u?.avatar === 'string' && u.avatar.startsWith('https://') ? u.avatar : ''
   const who = name || email
-  const out = () => void signOut()
   const { accounts, current, switchTo, add, leave } = useAccounts()
+  // The row pressed says "Signing out…" while the one sign-out runs; the menu stays open to show it.
+  const signingOut = useSigningOut()
+  const [pressed, setPressed] = useState<'one' | 'all' | null>(null)
+  const says = (which: 'one' | 'all', words: string) => (signingOut && pressed === which ? t('Signing out…') : words)
+  const out = () => {
+    setPressed('all')
+    void signOut()
+  }
   const others = accounts.filter((a) => a.sub !== current?.sub)
   const signed = isAuthenticated && Boolean(who)
   const moved = useMoved()
@@ -174,15 +181,22 @@ export function Header({ back, account }: { back?: ReactNode; account?: ReactNod
                 </Text>
               </DropdownMenuItem>
               {others.length > 0 && current ? (
-                <DropdownMenuItem onSelect={() => void leave(current)}>
+                <DropdownMenuItem
+                  preventCloseOnSelect
+                  disabled={signingOut}
+                  onSelect={() => {
+                    setPressed('one')
+                    void leave(current)
+                  }}
+                >
                   <Text fontSize="$3" color="$ink">
-                    {t('Sign out {name}', { name: label(current).title })}
+                    {says('one', t('Sign out {name}', { name: label(current).title }))}
                   </Text>
                 </DropdownMenuItem>
               ) : null}
-              <DropdownMenuItem onSelect={out}>
+              <DropdownMenuItem preventCloseOnSelect disabled={signingOut} onSelect={out}>
                 <Text fontSize="$3" color="$ink">
-                  {others.length > 0 ? t('Sign out of all accounts') : t('Log out')}
+                  {says('all', others.length > 0 ? t('Sign out of all accounts') : t('Log out'))}
                 </Text>
               </DropdownMenuItem>
             </DropdownMenuContent>

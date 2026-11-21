@@ -35,7 +35,7 @@ import {
 } from 'lucide-react'
 import { useKept } from '../kept'
 import { FLOW } from '../lib/host'
-import { useSignOut } from '../lib/signout'
+import { useSignOut, useSigningOut } from '../lib/signout'
 import { PreferencesDialog } from '../PreferencesDialog'
 import { called } from '../team'
 import { ConnectorsDialog } from './ConnectorsDialog'
@@ -846,6 +846,7 @@ export function Roster({
 function Foot({ me }: { me: Me | null }) {
   const { t } = useI18n()
   const leave = useSignOut()
+  const signingOut = useSigningOut()
   const [prefsOpen, setPrefsOpen] = useState(false)
   const [connectorsOpen, setConnectorsOpen] = useState(false)
   const name = me?.displayName || me?.name || ''
@@ -937,9 +938,10 @@ function Foot({ me }: { me: Me | null }) {
                 {t('Preferences')}
               </Text>
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => void leave()}>
+            {/* The one sign-out control here: it stays open, saying so, until the page moves. */}
+            <DropdownMenuItem preventCloseOnSelect disabled={signingOut} onSelect={() => void leave()}>
               <Text fontSize="$3" color="$ink">
-                {t('Log out')}
+                {signingOut ? t('Signing out…') : t('Log out')}
               </Text>
             </DropdownMenuItem>
           </DropdownMenuContent>

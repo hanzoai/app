@@ -26,7 +26,7 @@ vi.mock('./host', () => ({
   useHost: () => ({ router: { push: (to: string) => void routed.push(to), replace: (to: string) => void routed.push(to) }, path: '/chat' }),
   useLook: () => ({ pref: {}, set: () => {} }),
 }))
-vi.mock('./lib/signout', () => ({ useSignOut: () => () => {} }))
+vi.mock('./lib/signout', () => ({ useSigningOut: () => false, useSignOut: () => () => {} }))
 vi.mock('./lib/session', () => ({ bearer: () => 't', named: () => null, org: () => 'acme', orgs: () => ['acme'], pick: () => {} }))
 vi.mock('./lib/destination', () => ({ enter: () => {} }))
 vi.mock('./lib/api', () => ({ api: () => 'https://api.hanzo.ai' }))

@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   iam: { isAuthenticated: true, user: { email: 'bob@hanzo.ai', name: 'bob' } as Record<string, string> | null, config: { serverUrl: 'https://hanzo.id', clientId: 'hanzo-app' } },
   named: null as { name: string; email: string } | null,
   here: false,
+  leaving: vi.fn(async () => {}),
   url: vi.fn(async (_: unknown) => 'https://hanzo.ai/v1/iam/oauth/authorize?client_id=app'),
   remembered: vi.fn(),
   cleared: vi.fn(),
@@ -16,7 +17,14 @@ const state = vi.hoisted(() => ({
 vi.mock('@hanzo/iam/react', () => ({ useIam: () => state.iam }))
 vi.mock('./destination', () => ({ rememberDestination: () => state.remembered() }))
 vi.mock('./session', () => ({ named: () => state.named }))
-vi.mock('./signout', () => ({ here: () => state.here, OUT: '/login?from=logout', useClient: () => ({ getSigninUrl: state.url, clearTokens: state.cleared }) }))
+vi.mock('./signout', () => ({
+  here: () => state.here,
+  // The one sign-out, its host step stood in: the order is what is under test here (signout.test.ts proves the rest).
+  signingOut: async (finish: () => Promise<void>) => (await state.leaving(), await finish(), true),
+  OUT: '/login?from=logout',
+  PATIENCE: 5000,
+  useClient: () => ({ getSigninUrl: state.url, clearTokens: state.cleared }),
+}))
 
 const { read, put, end, is, label, useAccounts } = await import('./accounts')
 
@@ -167,6 +175,33 @@ describe('being another account, and adding one', () => {
     expect(window.location.assign).not.toHaveBeenCalled()
   })
 
+  test("Sign out <name> on the account in use keeps the one order: the host's leaving, then IAM's session, then the tab cleared and moved; another's does not run it", async () => {
+    await mount()
+    const order: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async () => (order.push('session ended'), { ok: true, type: 'basic' }) as Response))
+    state.leaving.mockImplementation(() => new Promise<void>((done) => setTimeout(() => (order.push('host forgot'), done()), 20)))
+    state.cleared.mockImplementation(() => void order.push('cleared'))
+    ;(window.location.assign as ReturnType<typeof vi.fn>).mockImplementation(() => void order.push('moved'))
+    await act(async () => { await seen.leave(seen.accounts[1]) })
+    expect(order, "carol's session alone, and no host step").toEqual(['session ended'])
+    order.length = 0
+    await act(async () => { await seen.leave(seen.accounts[0]) })
+    expect(order).toEqual(['host forgot', 'session ended', 'cleared', 'moved'])
+    state.leaving.mockImplementation(async () => {})
+    state.cleared.mockImplementation(() => {})
+  })
+
+  test('offline, the account in use still leaves as Log out does: the tab is cleared and moved, and the answer is that IAM did not end it', async () => {
+    await mount()
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch') }))
+    let ended = true
+    await act(async () => { ended = await seen.leave(seen.accounts[0]) })
+    expect(ended).toBe(false)
+    expect(state.leaving).toHaveBeenCalled()
+    expect(state.cleared).toHaveBeenCalledTimes(1)
+    expect(window.location.assign).toHaveBeenCalledWith('/login?from=logout')
+  })
+
   test('the reader signed out alone clears this tab and leaves for the sign-in, which offers the rest', async () => {
     await mount()
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, type: 'basic' }) as Response))
@@ -177,15 +212,31 @@ describe('being another account, and adding one', () => {
     expect(window.location.assign).toHaveBeenLastCalledWith('/login?client_id=hanzo-cli')
   })
 
-  test('an end-session IAM refuses leaves everything as it was', async () => {
+  test('an end-session IAM never answers is given up after a few seconds: the tab is cleared and moves', async () => {
+    await mount()
+    vi.stubGlobal('fetch', vi.fn((_: unknown, init?: RequestInit) => new Promise<Response>((_, fail) => init?.signal?.addEventListener('abort', () => fail(init.signal!.reason)))))
+    let ended = true
+    const began = Date.now()
+    await act(async () => { ended = await seen.leave(seen.accounts[0]) })
+    expect(Date.now() - began).toBeGreaterThanOrEqual(4900)
+    expect(ended).toBe(false)
+    expect(state.cleared).toHaveBeenCalledTimes(1)
+    expect(window.location.assign).toHaveBeenCalledWith('/login?from=logout')
+  }, 10_000)
+
+  test("an end-session IAM refuses for another's account leaves everything as it was; for the account in use the tab still leaves", async () => {
     await mount()
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, type: 'basic' }) as Response))
     let ended = true
-    await act(async () => { ended = await seen.leave(seen.accounts[0]) })
+    await act(async () => { ended = await seen.leave(seen.accounts[1]) })
     expect(ended).toBe(false)
     expect(seen.accounts.map((a) => a.sub)).toEqual(['s1', 's2'])
     expect(state.cleared).not.toHaveBeenCalled()
     expect(window.location.assign).not.toHaveBeenCalled()
+    await act(async () => { ended = await seen.leave(seen.accounts[0]) })
+    expect(ended).toBe(false)
+    expect(state.cleared).toHaveBeenCalledTimes(1)
+    expect(window.location.assign).toHaveBeenCalledTimes(1)
   })
 
   test('adding one is the sign-in that asks for credentials and keeps the others', async () => {

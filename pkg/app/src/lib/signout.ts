@@ -10,13 +10,15 @@
  * passes through its end-session page on the way out (`useSignOut`).
  */
 
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useSyncExternalStore } from 'react'
 import { IAM } from '@hanzo/iam'
 import { useIam } from '@hanzo/iam/react'
 import { useSignOut as useUiSignOut } from '@hanzo/ui/auth'
 import { track } from './tags'
 import { answers, SIGNIN } from './host'
 import { where } from '../where'
+import { unfinished } from './unfinished'
+import { outward } from './outward'
 
 /**
  * Whether the page in front of us is on an origin that answers IAM itself: one of
@@ -69,6 +71,83 @@ export function endsAt(serverUrl: string, hostname: string): string {
 }
 
 /**
+ * How long the host's leaving is waited for. Hanzo Desktop revokes the sign-in
+ * over the network, and offline that could hang: Log out would then do nothing.
+ */
+export const PATIENCE = 5000
+
+/**
+ * Whether `work` finished within `ms`: false when it failed or is still running.
+ * The one wait a sign-out has, for the host's step and for IAM's calls alike.
+ */
+export async function settles(work: Promise<unknown>, ms: number = PATIENCE): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const late = new Promise<false>((done) => (timer = setTimeout(() => done(false), ms)))
+  try {
+    return await Promise.race([work.then(() => true as const), late])
+  } catch (e) {
+    console.error('sign-out step', e)
+    return false
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/** Whether a sign-out is under way: set until both its finish and the host's leaving have settled. */
+let held = false
+const heard = new Set<() => void>()
+const hold = (on: boolean) => {
+  held = on
+  heard.forEach((f) => f())
+}
+
+/**
+ * Whether a sign-out is under way, from the press until the page has moved: the
+ * host's step can take seconds (Hanzo Desktop waits for the server), so every
+ * sign-out control reads this to say "Signing out…" on the one pressed and to
+ * stand disabled.
+ */
+export function useSigningOut(): boolean {
+  return useSyncExternalStore(
+    (f) => (heard.add(f), () => void heard.delete(f)),
+    () => held,
+    () => false,
+  )
+}
+
+/**
+ * THE ONE SIGN-OUT. Every sign-out the person chooses (Log out, Sign out of all
+ * accounts, the palette's Log out, Sign out <name> on the account in use) runs
+ * through here, so its order cannot drift: the host's own leaving
+ * (`configure({ signOut })`), waited for `PATIENCE` at most, then `finish` —
+ * IAM's session ended, the tab cleared, the page moved — whatever IAM answers;
+ * and Google One Tap told not to sign the person straight back in.
+ * A leaving that failed or ran late is said on the page the sign-out moves to
+ * (`unfinished`). Never on a token that expired or a refresh that was refused.
+ *
+ * One at a time: a press while one runs is ignored (false). The lock is held
+ * until the host's leaving SETTLES, not only until the wait gives up on it, so a
+ * late leaving never overlaps the next sign-out's.
+ */
+export async function signingOut(finish: () => Promise<void>): Promise<boolean> {
+  if (held) return false
+  hold(true)
+  // Google One Tap signs a returning person in on its own (`auto_select`), which
+  // would put them straight back in the account they just left. Leaving says so.
+  ;(window as unknown as { google?: { accounts?: { id?: { disableAutoSelect?: () => void } } } }).google?.accounts?.id?.disableAutoSelect?.()
+  const own = where().signOut
+  // Started inside a promise, so a host step that throws at once is a failure like any other.
+  const step: Promise<void> = own ? Promise.resolve().then(own) : Promise.resolve()
+  const flow = (async () => {
+    if (!(await settles(step))) unfinished()
+    await finish()
+  })()
+  void Promise.allSettled([step, flow]).then(() => hold(false))
+  await flow
+  return true
+}
+
+/**
  * Sign-out on this site: @hanzo/ui/auth's `signOut` — the tokens handed back to
  * IAM's /v1/iam routes, IAM's session here ended, the local session cleared —
  * counted as logout_completed, and then this site's home page (or `to`: the
@@ -92,9 +171,11 @@ export function useSignOut(to: string = HOME): () => Promise<void> {
   const issuer = plain && typeof window !== 'undefined' ? endsAt(config.serverUrl, window.location.hostname) : ''
   const signOut: () => Promise<void> = useUiSignOut({ to, track, everywhere: true, issuer })
   return useCallback(async () => {
-    // Google One Tap signs a returning person in on its own (`auto_select`), which
-    // would put them straight back in the account they just left. Leaving says so.
-    ;(window as unknown as { google?: { accounts?: { id?: { disableAutoSelect?: () => void } } } }).google?.accounts?.id?.disableAutoSelect?.()
-    await signOut()
-  }, [signOut])
+    await signingOut(async () => {
+      // IAM's calls inside @hanzo/ui's sign-out take no signal, and offline they can hang. The
+      // tokens are cleared before them, so this device is signed out already: past `PATIENCE`
+      // the page moves to `to` without waiting for IAM's answer.
+      if (!(await settles(signOut()))) outward(to)
+    })
+  }, [signOut, to])
 }

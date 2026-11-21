@@ -48,7 +48,7 @@ vi.mock('./agents', () => ({ ordered: (a: unknown[]) => a }))
 vi.mock('./team', () => ({ called: (n: string) => n }))
 vi.mock('./thread', () => ({ useThreadList: () => ({ threads: [] }) }))
 vi.mock('./open', () => ({ empty, openThread: () => {}, withAgents: () => {} }))
-vi.mock('./lib/signout', () => ({ useSignOut: () => () => {} }))
+vi.mock('./lib/signout', () => ({ useSigningOut: () => false, useSignOut: () => () => {} }))
 vi.mock('./lib/session', () => ({ choose: () => {} }))
 vi.mock('./Betas', () => ({ useBetas: () => ({ open: () => false }) }))
 
@@ -134,6 +134,15 @@ describe('Actions', () => {
     expect(ids({ ...host, chooseTheme: () => {} } as Host)).toContain('theme')
     expect(ids()).not.toContain('upload')
     expect(ids()).not.toContain('make')
+  })
+
+  test('Log out is found by its own words, "log out", and by "sign out", while it says "Signing out…" too', async () => {
+    const { rank } = await import('./seek')
+    for (const out of [false, true]) {
+      const rows = actions(host, vi.fn(), () => {}, () => {}, undefined, out)
+      expect(rows.find((a) => a.id === 'logout')?.label).toBe(out ? 'Signing out…' : 'Log out')
+      for (const words of ['log out', 'sign out']) expect(rank(rows, words).map((a) => a.id), `${words}, signing out: ${out}`).toContain('logout')
+    }
   })
 
   test('Make something new opens the Library’s template picker in Dev', () => {

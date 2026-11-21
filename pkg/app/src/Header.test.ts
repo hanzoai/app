@@ -45,7 +45,7 @@ vi.mock('@hanzogui/shell', () => ({ HanzoWordmark: ({ label }: { label: string }
 vi.mock('@hanzo/iam/react', () => ({ useIam: () => state.iam }))
 vi.mock('./lib/session', () => ({ named: () => state.named }))
 vi.mock('./lib/accounts', async (original) => ({ ...(await original<typeof import('./lib/accounts')>()), useAccounts: () => state.accounts }))
-vi.mock('./lib/signout', () => ({ useSignOut: () => async () => {} }))
+vi.mock('./lib/signout', () => ({ useSigningOut: () => false, useSignOut: () => async () => {} }))
 vi.mock('./where', () => ({ brand: () => 'Hanzo AI', site: (p: string) => p }))
 
 const { Header } = await import('./Header')

@@ -17,7 +17,7 @@ vi.mock('@hanzo/ui', () => ({
 }))
 vi.mock('@hanzo/ui/marketing', () => ({ TextLink: ({ children, onPress }: { children?: ReactNode; onPress?: () => void }) => createElement('a', { onClick: onPress, role: 'link' }, children) }))
 vi.mock('@hanzo/iam/react', () => ({ useIam: () => ({ user: state.user }) }))
-vi.mock('./lib/signout', () => ({ useSignOut: () => state.out }))
+vi.mock('./lib/signout', () => ({ useSigningOut: () => false, useSignOut: () => state.out }))
 
 const { Choose } = await import('./Choose')
 

@@ -99,6 +99,7 @@ const signed = vi.hoisted(() => ({
   leave: vi.fn(async () => true),
   signOut: vi.fn(),
 }))
+vi.mock('./lib/signout', () => ({ useSigningOut: () => false }))
 vi.mock('./lib/accounts', () => ({
   label: (a: { displayName: string; name: string; email: string }) => ({ title: a.displayName || a.name, line: a.email }),
   useAccounts: () => ({
