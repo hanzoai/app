@@ -17,10 +17,10 @@ import { resolveRuntime, useDevRuntime } from './devRuntime'
 import type { Host } from '@hanzo/build'
 import { app, TERMINALS } from './lib/host'
 
-const Core = lazy(() => import('@hanzo/dev-core').then((m) => ({ default: m.DevWorkspace })))
-const Provider = lazy(() => import('@hanzo/dev-core').then((m) => ({ default: m.DevProvider })))
-const Start = lazy(() => import('@hanzo/dev-core').then((m) => ({ default: m.DevStart })))
-const List = lazy(() => import('@hanzo/dev-core').then((m) => ({ default: m.DevThreadList })))
+const Core = lazy(() => import('./core').then((m) => ({ default: m.DevWorkspace })))
+const Provider = lazy(() => import('./core').then((m) => ({ default: m.DevProvider })))
+const Start = lazy(() => import('./core').then((m) => ({ default: m.DevStart })))
+const List = lazy(() => import('./core').then((m) => ({ default: m.DevThreadList })))
 
 /** A dock pane: one single-use ticket per mount, so a reload mints a fresh one. */
 function Pane({ sandbox, door, arg, watching }: { sandbox: string; door: Door; arg?: string; watching?: boolean }) {

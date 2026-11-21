@@ -5,7 +5,7 @@ import { describe, expect, test, vi } from 'vitest'
 vi.mock('@hanzo/tabs', () => ({ frameUrl: async () => '' }))
 vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s }) }))
 vi.mock('@hanzo/ui', () => ({ Button: 'button', Text: 'span', XStack: 'div', YStack: 'div' }))
-vi.mock('@hanzo/dev-core', () => ({}))
+vi.mock('./core', () => ({}))
 vi.mock('./lib/api', () => ({ api: () => 'https://api.test' }))
 vi.mock('./lib/session', () => ({ bearer: () => 't' }))
 vi.mock('./lib/host', () => ({ app: (p: string) => `/dev/${p}`, TERMINALS: '/tabs' }))
