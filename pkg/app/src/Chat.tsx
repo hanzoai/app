@@ -122,7 +122,7 @@ import {
 import type { ModelCatalogEntry as Model } from "@hanzo/ui/models/catalog";
 import { payUrl, topUp } from './lib/pay';
 import { requestUpgrade, Upgrade, useFree, type Ask } from './Upgrade';
-import { enter, LOGIN } from './lib/destination';
+import { enter, LOGIN, signUp } from './lib/destination';
 import { first } from './lib/first';
 import { BAD } from "./lib/mix";
 import { brand } from './where'
@@ -3411,7 +3411,7 @@ function Thread({
                 px="$3"
                 data-slot="header-login"
                 onPress={() => {
-                  if (typeof window !== "undefined") window.location.assign("/login?next=%2Fchat");
+                  if (typeof window !== "undefined") enter(LOGIN);
                 }}
               >
                 {t("Log in")}
@@ -3423,7 +3423,7 @@ function Thread({
                   px="$3"
                   data-slot="header-signup"
                   onPress={() => {
-                    if (typeof window !== "undefined") window.location.assign("/signup?next=%2Fchat");
+                    if (typeof window !== "undefined") enter(signUp());
                   }}
                 >
                   {t("Sign up for free")}
@@ -3436,7 +3436,7 @@ function Thread({
                   px="$3"
                   data-slot="header-signup-compact"
                   onPress={() => {
-                    if (typeof window !== "undefined") window.location.assign("/signup?next=%2Fchat");
+                    if (typeof window !== "undefined") enter(signUp());
                   }}
                 >
                   {t("Sign up")}
@@ -3972,7 +3972,7 @@ function Thread({
             {t("Sign in or create a free Hanzo account to save this conversation and continue chatting.")}
           </Text>
           <YStack gap="$2" pt="$1">
-            <Button variant="primary" size="lg" width="100%" onPress={() => window.location.assign("/signup?next=%2Fchat")}>
+            <Button variant="primary" size="lg" width="100%" onPress={() => enter(signUp())}>
               {t("Create free account")}
             </Button>
             <Button variant="outline" size="default" width="100%" onPress={() => enter(LOGIN)}>

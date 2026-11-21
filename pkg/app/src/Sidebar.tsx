@@ -31,6 +31,7 @@ import {
   Image as ImageMark,
   Info,
   Link2,
+  LogIn,
   Monitor,
   MoreHorizontal,
   Pencil,
@@ -47,7 +48,7 @@ import { showDevice, showShell, type Shown } from './lib/devices'
 
 type Theme = NonNullable<Host['theme']>
 import { tidy } from './lib/title'
-import { Button, DropdownMenu, Switch, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, toast, type DropdownMenuProps } from '@hanzo/ui'
+import { Button, Dialog, DialogContent, DialogTitle, DropdownMenu, Switch, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, toast, type DropdownMenuProps } from '@hanzo/ui'
 import { Sidebar as Base, SidebarIconButton, SidebarItem, StatusDot, type RailLink } from '@hanzo/ui/chat'
 import { useEffect, useId, useMemo, useState, type DragEvent, type ReactNode } from 'react'
 import { Account, Made } from './Account'
@@ -64,12 +65,14 @@ import { empty } from './open'
 import { useSpan } from './span'
 import { useDevMode } from './lib/dev-mode'
 import { app, design, flow, hosted, studio, talk, TERMINALS, type Place } from './lib/host'
+import { enter, LOGIN, signUp } from './lib/destination'
 import { HOSTED_APPS } from './lib/hosted'
 import { pick } from './lib/session'
 import { brand, site } from './where'
 import { dragWindow, toggleWindowMaximize } from './WindowControls'
 import { BAND, HEAD as LINE, pane, SIDE, TOUCH_HEAD } from './ground'
 import { railKeys } from './keys'
+import { useWindowed } from './windowed'
 
 /** The sidebar fills the column. Its `width` is typed in px alone, though its frame takes any gui size — the type is
  *  @hanzo/ui's to widen. */
@@ -197,6 +200,7 @@ function NavMenuRow({
   t: (key: string, params?: Record<string, string | number>) => string
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const windowed = useWindowed()
   const canPin = pinnable && item.pinnable !== false
   const handleTogglePin = () => {
     onTogglePin(item.id)
@@ -223,16 +227,21 @@ function NavMenuRow({
       : []),
     ...(onMove?.up ? [{ key: 'move-up', label: t('Move up'), icon: <ChevronUp size={15} aria-hidden />, onSelect: onMove.up }] : []),
     ...(onMove?.down ? [{ key: 'move-down', label: t('Move down'), icon: <ChevronDown size={15} aria-hidden />, onSelect: onMove.down }] : []),
-    {
-      key: 'new-tab',
-      label: t('Open in new tab'),
-      icon: <ExternalLink size={15} aria-hidden />,
-      onSelect: () => {
-        if (typeof window !== 'undefined') {
-          window.open(fullNavUrl(item.href), '_blank', 'noopener,noreferrer')
-        }
-      },
-    },
+    // A window of its own (Hanzo Desktop) has no browser tabs to open it in.
+    ...(windowed
+      ? []
+      : [
+          {
+            key: 'new-tab',
+            label: t('Open in new tab'),
+            icon: <ExternalLink size={15} aria-hidden />,
+            onSelect: () => {
+              if (typeof window !== 'undefined') {
+                window.open(fullNavUrl(item.href), '_blank', 'noopener,noreferrer')
+              }
+            },
+          },
+        ]),
     {
       key: 'copy-link',
       label: t('Copy link'),
@@ -412,6 +421,7 @@ function PlaceRow({
   t: (key: string, params?: Record<string, string | number>) => string
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const windowed = useWindowed()
   const routePath = resolvePlaceHref(link.id, mode)
   const MakeIcon = makeIcon
 
@@ -421,16 +431,20 @@ function PlaceRow({
       : []),
     ...(routePath
       ? [
-          {
-            key: 'new-tab',
-            label: t('Open in new tab'),
-            icon: <ExternalLink size={15} aria-hidden />,
-            onSelect: () => {
-              if (typeof window !== 'undefined') {
-                window.open(fullPlaceUrl(routePath), '_blank', 'noopener,noreferrer')
-              }
-            },
-          },
+          ...(windowed
+            ? []
+            : [
+                {
+                  key: 'new-tab',
+                  label: t('Open in new tab'),
+                  icon: <ExternalLink size={15} aria-hidden />,
+                  onSelect: () => {
+                    if (typeof window !== 'undefined') {
+                      window.open(fullPlaceUrl(routePath), '_blank', 'noopener,noreferrer')
+                    }
+                  },
+                },
+              ]),
           {
             key: 'copy-link',
             label: t('Copy link'),
@@ -893,7 +907,8 @@ export function Sidebar({
   const [dropId, setDropId] = useState<string | null>(null)
   const anon = host.person === null
   const [anonSettingsOpen, setAnonSettingsOpen] = useState(false)
-  const [tailoredOpen, setTailoredOpen] = useState(true)
+  /** Why a guest's press needs an account ("Sign in to create images"), or null while no prompt is open. */
+  const [gated, setGated] = useState<string | null>(null)
   const [anonThreadTitle, setAnonThreadTitle] = useState('')
   useEffect(() => {
     if (!anon || typeof window === 'undefined') return
@@ -991,7 +1006,9 @@ export function Sidebar({
   }
 
   const createPrimary = () => {
-    if (mode === 'dev') dev('')
+    if (anon) create()
+    else if (mode === 'tabs') dispatchTabsAction({ kind: 'shell' })
+    else if (mode === 'dev') dev('')
     else if (mode === 'design') made ? made.go('') : go(design(''))
     else if (mode === 'studio') made ? made.go('') : go(studio(''))
     else if (mode === 'flow') made ? made.go('') : go(flow(''))
@@ -1152,10 +1169,15 @@ export function Sidebar({
       if (typeof window !== 'undefined') window.location.reload()
     })
 
-  const primaryNewLabel =
-    mode === 'dev' ? t('New run') : mode === 'design' ? t('New design') : mode === 'studio' ? t('New creation') : mode === 'flow' ? t('New flow') : t('New chat')
+  // A guest's New is always a chat: Chat is the one place a guest's work goes.
+  const primaryNewLabel = anon
+    ? t('New chat')
+    : mode === 'dev' ? t('New run') : mode === 'design' ? t('New design') : mode === 'studio' ? t('New creation') : mode === 'flow' ? t('New flow') : mode === 'tabs' ? t('New terminal') : t('New chat')
 
-  const showPrimaryNew = !at && (mode === 'chat' || (!anon && (mode === 'dev' || mode === 'design' || mode === 'studio' || mode === 'flow')))
+  // THE NEW ROW (and a guest's Images) STANDS IN EVERY SECTION, so Chat, Dev, Design, Library and Tabs keep
+  // their place under the cursor: drawn in some sections and not others, it moved every product row by one, and a
+  // press meant for Dev landed on Design. A place that takes the sidebar (`at`) has a head of its own instead.
+  const showPrimaryNew = !at
   const showRecents = !(mode === 'dev' && runtime) && !(mode === 'hosted' || mode === 'beta' || mode === 'tabs' || mode === 'studio' || mode === 'flow' || anon || at)
 
   return (
@@ -1289,7 +1311,7 @@ export function Sidebar({
                   </Text>
                 </SidebarItem>
               </YStack>
-              {anon && mode === 'chat' ? (
+              {anon ? (
                 <>
                   <YStack role="listitem" self="flex-start" width="100%">
                     <SidebarItem
@@ -1302,22 +1324,15 @@ export function Sidebar({
                           <ImageMark size={15} aria-hidden />
                         </XStack>
                       }
-                      onPress={() => {
-                        create()
-                        if (typeof window !== 'undefined') {
-                          window.dispatchEvent(new CustomEvent('hanzo:anon-prompt', { detail: { text: t('Create an image of ') } }))
-                        }
-                      }}
-                      {...keys(() => {
-                        create()
-                        if (typeof window !== 'undefined') {
-                          window.dispatchEvent(new CustomEvent('hanzo:anon-prompt', { detail: { text: t('Create an image of ') } }))
-                        }
-                      })}
+                      // A guest cannot make images: the press says so and offers the way in, never a silent prefill.
+                      onPress={() => setGated(t('Sign in to create images'))}
+                      {...keys(() => setGated(t('Sign in to create images')))}
                     >
                       <Text fontSize="$2" color="$ink">{t('Images')}</Text>
                     </SidebarItem>
                   </YStack>
+                  {/* Only Chat hears hanzo:anon-plugins (its dialog), so the row is Chat's alone; Images is answered here, in every section. */}
+                  {mode === 'chat' ? (
                   <YStack role="listitem" self="flex-start" width="100%">
                     <SidebarItem
                       data-slot="app-plugins"
@@ -1345,6 +1360,7 @@ export function Sidebar({
                       <Text fontSize="$2" color="$ink">{t('Plugins')}</Text>
                     </SidebarItem>
                   </YStack>
+                  ) : null}
                 </>
               ) : null}
             </YStack>
@@ -1531,66 +1547,32 @@ export function Sidebar({
               shrink={0}
               z="var(--z-raised)"
             >
-              <YStack data-slot="anon-tailored" gap="$2" pt="$1" pb="$1" px="$2">
+              {/* One compact Log in, in every section: only Chat's header has its own, and Dev, Library and Design have none. */}
+              <XStack items="center" gap="$1" px="$2" pt="$1" borderTopWidth={1} borderColor="$edge">
                 <XStack
                   render={<button type="button" />}
-                  aria-expanded={tailoredOpen}
-                  aria-label={t('Get responses tailored to you')}
+                  data-slot="anon-login"
+                  onClick={() => enter(LOGIN)}
+                  flex={1}
+                  minW={0}
                   items="center"
-                  justify="space-between"
-                  gap="$1.5"
-                  minH={32}
+                  gap="$2"
+                  px="$1.5"
+                  py="$1"
+                  minH={28}
                   $touchable={{ minH: TOUCH }}
                   $max-sm={{ minH: TOUCH }}
+                  rounded="$2"
                   borderWidth={0}
                   bg="transparent"
                   cursor="pointer"
-                  onClick={() => setTailoredOpen((v) => !v)}
-                  hoverStyle={{ opacity: 0.85 }}
+                  hoverStyle={{ bg: '$hover' }}
                   focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                 >
-                  <Text fontSize="$2" fontWeight="700" color="$ink" numberOfLines={1} flex={1} text="start">
-                    {t('Get responses tailored to you')}
-                  </Text>
-                  {tailoredOpen ? (
-                    <ChevronDown size={14} aria-hidden color="var(--soft, var(--muted-foreground))" />
-                  ) : (
-                    <ChevronUp size={14} aria-hidden color="var(--soft, var(--muted-foreground))" />
-                  )}
+                  <LogIn size={15} aria-hidden />
+                  <Text fontSize="$2" color="$ink">{t('Log in')}</Text>
                 </XStack>
-                {tailoredOpen ? (
-                  <Text fontSize="$1" color="$soft">
-                    {t('Log in to get answers based on saved chats, plus create images and upload files.')}
-                  </Text>
-                ) : null}
-                <XStack gap="$2" pt="$0.5">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    flex={1}
-                    rounded={9999}
-                    data-slot="column-login"
-                    onPress={() => {
-                      if (typeof window !== 'undefined') window.location.assign('/login?next=%2Fchat')
-                    }}
-                  >
-                    {t('Log in')}
-                  </Button>
-                  <Button
-                    size="sm"
-                    flex={1}
-                    rounded={9999}
-                    data-slot="column-signup"
-                    onPress={() => {
-                      if (typeof window !== 'undefined') window.location.assign('/signup?next=%2Fchat')
-                    }}
-                  >
-                    {t('Sign up')}
-                  </Button>
-                </XStack>
-              </YStack>
-              {!drawer ? (
-                <XStack items="center" justify="flex-start" px="$2" pt="$1" borderTopWidth={1} borderColor="$edge">
+                {!drawer ? (
                   <XStack
                     render={<button type="button" />}
                     data-slot="anon-settings"
@@ -1616,8 +1598,8 @@ export function Sidebar({
                   >
                     <Settings size={16} aria-hidden />
                   </XStack>
-                </XStack>
-              ) : null}
+                ) : null}
+              </XStack>
             </YStack>
           ) : at || mode === 'beta' || mode === 'hosted' ? null : devMode ? (
             <YStack gap="$2" pt="$2" shrink={0} minW={0} maxW="100%">
@@ -1686,6 +1668,20 @@ export function Sidebar({
             label={t('Resize sidebar')}
           />
         )}
+        <Dialog open={gated !== null} onOpenChange={(o) => !o && setGated(null)}>
+          <DialogContent data-slot="signin-prompt" width={380} maxW="calc(100vw - 24px)" gap="$3">
+            <DialogTitle>{gated ?? ''}</DialogTitle>
+            <XStack gap="$2" justify="flex-end">
+              <Button variant="outline" rounded={9999} data-slot="signin-prompt-login" onPress={() => enter(LOGIN)}>
+                {t('Log in')}
+              </Button>
+              {/* The host names where an account starts (`where().signUp`: /start on hanzo.team). */}
+              <Button rounded={9999} data-slot="signin-prompt-signup" onPress={() => enter(signUp())}>
+                {t('Sign up for free')}
+              </Button>
+            </XStack>
+          </DialogContent>
+        </Dialog>
         <Rename
           open={renaming !== null}
           onOpenChange={(o) => !o && setRenaming(null)}
