@@ -77,7 +77,7 @@ import { attempt, bind, enlist, reread, snapshot, subscribe, sweep, tick, view, 
 import { chord, named, said, type Act } from './chord'
 import { carry } from './stars'
 import { ShareDialog } from './Share'
-import { english, type Say } from '@hanzo/i18n'
+import { english, phrase, type Say } from '@hanzo/i18n'
 
 export interface ThreadList {
   threads: Thread[]
@@ -216,8 +216,46 @@ const mac = (): boolean => typeof navigator !== 'undefined' && /Mac|iPhone|iPad|
 
 type Dialogue = 'rename' | 'delete' | 'share' | 'organize'
 
-/** What a list holds: a conversation, a Dev run or a design. The menu says it in that word wherever it names one. */
+/** What a list holds, and the menu's words for it. */
 export type Noun = 'chat' | 'run' | 'design'
+
+const FOREVER = phrase('“{title}” is deleted for good, with every link it was shared by. To keep it out of the list instead, archive it.')
+
+const NOUNS = {
+  chat: {
+    archived: phrase('Archived chat'),
+    archivedMany: phrase('Archived {n} chats'),
+    unarchived: phrase('Unarchived chat'),
+    unarchivedMany: phrase('Unarchived {n} chats'),
+    options: phrase('Chat options'),
+    rename: phrase('Rename chat'),
+    name: phrase('Chat title'),
+    remove: phrase('Delete chat?'),
+    gone: FOREVER,
+  },
+  run: {
+    archived: phrase('Archived run'),
+    archivedMany: phrase('Archived {n} runs'),
+    unarchived: phrase('Unarchived run'),
+    unarchivedMany: phrase('Unarchived {n} runs'),
+    options: phrase('Run options'),
+    rename: phrase('Rename run'),
+    name: phrase('Run title'),
+    remove: phrase('Delete run?'),
+    gone: FOREVER,
+  },
+  design: {
+    archived: phrase('Archived design'),
+    archivedMany: phrase('Archived {n} designs'),
+    unarchived: phrase('Unarchived design'),
+    unarchivedMany: phrase('Unarchived {n} designs'),
+    options: phrase('Design options'),
+    rename: phrase('Rename design'),
+    name: phrase('Design title'),
+    remove: phrase('Delete design?'),
+    gone: phrase('“{title}” is deleted for good. To keep it out of the list instead, archive it.'),
+  },
+} as const
 
 /** What a row needs of the list's menu. */
 interface Menus {
@@ -507,9 +545,7 @@ export function ConversationMenu({
         if (!allArchived) {
           const snapshots = succeeded.map((th) => ({ ...th, archived: true }))
           toast(
-            snapshots.length === 1
-              ? noun === 'run' ? t('Archived run') : noun === 'design' ? t('Archived design') : t('Archived chat')
-              : noun === 'run' ? t('Archived {n} runs', { n: snapshots.length }) : noun === 'design' ? t('Archived {n} designs', { n: snapshots.length }) : t('Archived {n} chats', { n: snapshots.length }),
+            snapshots.length === 1 ? t(NOUNS[noun].archived) : t(NOUNS[noun].archivedMany, { n: snapshots.length }),
             {
               duration: 5000,
               action: {
@@ -522,9 +558,7 @@ export function ConversationMenu({
           )
         } else {
           toast.success(
-            succeeded.length === 1
-              ? noun === 'run' ? t('Unarchived run') : noun === 'design' ? t('Unarchived design') : t('Unarchived chat')
-              : noun === 'run' ? t('Unarchived {n} runs', { n: succeeded.length }) : noun === 'design' ? t('Unarchived {n} designs', { n: succeeded.length }) : t('Unarchived {n} chats', { n: succeeded.length }),
+            succeeded.length === 1 ? t(NOUNS[noun].unarchived) : t(NOUNS[noun].unarchivedMany, { n: succeeded.length }),
           )
         }
       })
@@ -1299,7 +1333,7 @@ export function ThreadRow({
             render="button"
             // Named for what it is, not for the row: the row's own name is its title,
             // and a second button named with that title would answer for it too.
-            aria-label={menus.noun === 'run' ? t('Run options') : menus.noun === 'design' ? t('Design options') : t('Chat options')}
+            aria-label={t(NOUNS[menus.noun].options)}
             aria-describedby={about}
             id={id}
             data-slot="thread-options"
@@ -1414,12 +1448,12 @@ function Rename({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent maxW={440} width="calc(100vw - 24px)" rounded="$6" gap="$3" onCloseAutoFocus={onCloseAutoFocus}>
-        <DialogTitle>{noun === 'run' ? t('Rename run') : noun === 'design' ? t('Rename design') : t('Rename chat')}</DialogTitle>
+        <DialogTitle>{t(NOUNS[noun].rename)}</DialogTitle>
         <Input
           autoFocus
           value={words}
           onChangeText={setWords}
-          aria-label={noun === 'run' ? t('Run title') : noun === 'design' ? t('Design title') : t('Chat title')}
+          aria-label={t(NOUNS[noun].name)}
           borderColor="var(--border-strong)"
           focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
           $max-sm={{ minH: 44 }}
@@ -1481,15 +1515,9 @@ function Delete({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent maxW={440} width="calc(100vw - 24px)" rounded="$6" gap="$3" onCloseAutoFocus={onCloseAutoFocus}>
-        <DialogTitle>{noun === 'run' ? t('Delete run?') : noun === 'design' ? t('Delete design?') : t('Delete chat?')}</DialogTitle>
+        <DialogTitle>{t(NOUNS[noun].remove)}</DialogTitle>
         <SizableText size="$2" color="$soft">
-          {noun === 'design'
-            ? t('“{title}” is deleted for good. To keep it out of the list instead, archive it.', {
-                title: thread ? titleOf(thread, t('Untitled')) : '',
-              })
-            : t('“{title}” is deleted for good, with every link it was shared by. To keep it out of the list instead, archive it.', {
-                title: thread ? titleOf(thread, t('Untitled')) : '',
-              })}
+          {t(NOUNS[noun].gone, { title: thread ? titleOf(thread, t('Untitled')) : '' })}
         </SizableText>
         <XStack gap="$2" justify="flex-end" flexWrap="wrap">
           <Button
