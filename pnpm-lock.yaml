@@ -114,8 +114,8 @@ importers:
   pkg/app:
     dependencies:
       '@hanzo/dev-core':
-        specifier: ^0.1.17
-        version: 0.1.17(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: ^0.1.19
+        version: 0.1.19(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@hanzo/glass':
         specifier: workspace:*
         version: link:../glass
@@ -740,8 +740,8 @@ packages:
     resolution: {integrity: sha512-GXIII1BdDDJJWriiKeLZk4xp28XL3xg7ZNzCaslKgJfbwIHc6JKa1AJiUcuMUjPoDD/10B6oOvFEsvEXbHbs4w==}
     hasBin: true
 
-  '@hanzo/dev-core@0.1.17':
-    resolution: {integrity: sha512-+8CKiZl8G9i0DY/tGvCD9Z6I86y/pDbw0UpsJgZmrAgjCl4YFwSRNh0P0GL7S9aWHZR0oUjZruSqDtAF+wt88Q==}
+  '@hanzo/dev-core@0.1.19':
+    resolution: {integrity: sha512-EPWZ7ybXqJNqiXUoZtwPfasIQIk0Hj/Rkqgr2O9HEMarln3BQL/DqKrw9SCccLyjc4g5MYEYgyGkaja8UEyIiQ==}
     peerDependencies:
       react: ^19
       react-dom: ^19
@@ -4053,7 +4053,7 @@ snapshots:
 
   '@hanzo/design@0.5.45': {}
 
-  '@hanzo/dev-core@0.1.17(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@hanzo/dev-core@0.1.19(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       '@tanstack/react-router': 1.170.46(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@tanstack/react-store': 0.8.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
