@@ -858,7 +858,7 @@ export function Account({
                 <Text fontFamily="$body" fontSize="$2" fontWeight="500" color="$ink" numberOfLines={1}>
                   {t('Developer mode')}
                 </Text>
-                <InfoHint text={t('Show GitHub repositories, branches, terminals, and technical settings.')} />
+                <InfoHint text={t('Shows the process: the terminal, the commands Hanzo runs and each step. Off, Hanzo shows the result.')} />
               </XStack>
               <Switch
                 size="sm"

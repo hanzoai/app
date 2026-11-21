@@ -73,6 +73,8 @@ import { branched } from "./lib/branch";
 import { openModelPicker } from "./lib/model-picker";
 import { open as openBoardCard, home as boardHome } from "./lib/todo";
 import { useDevMode } from "./lib/dev-mode";
+import { Bring } from "./bring";
+import { NONE as UNCHOSEN, WAIT, carried as skillsCarried, choose, personas, within, type Chosen } from "./chosen";
 import { InfoHint } from "./lib/info-hint";
 import { ENSO } from "./lib/ai";
 import { openThread, empty as emptyOpen, useOpen } from "./open";
@@ -129,6 +131,10 @@ import { shared, useChatPreferences } from './lib/chatPreferences'
 import { handleHint } from './hint'
 import { ProviderMark } from './ProviderMark'
 import { ToBottom } from './ToBottom'
+
+/** A message that asks for a review: a pull request, a diff, a commit, or the review itself. */
+const reviewing = (text: string): boolean =>
+  /\b(pull request|pr\s*#?\d+|github\.com\/[^\s]+\/pull\/\d+|\/pull\/\d+|code[\s-]?review|ponytail|pony|review\s+(this\s+)?(pr|diff|patch|changes|commit))\b/i.test(text);
 
 // NO REASONING PANEL HERE. Every assistant turn opened a "Thinking" disclosure
 // listing seven steps — "Planning CSS extraction for chat styles", "Designing
@@ -1226,6 +1232,9 @@ function Thread({
   // never resets Dev's.
   const [chatPrefs, setChatPrefs] = useChatPreferences();
   const [devMode] = useDevMode();
+  // HANZO CHOOSES the skills, agents and personas a message needs (chosen.ts, issue 314) unless the
+  // person preloads instead; signed out there is nothing to ask Kai with.
+  const choosing = !anonymous && chatPrefs.bring !== "preload";
   const [sidebarClosed] = useKept('hanzo.build.rail', false);
   const ai = useAi();
   const opened = useOpen();
@@ -1624,7 +1633,10 @@ function Thread({
   // of them talks. It is the first turn every request carries and it follows the cast, so
   // pressing a face adds them to the conversation that is open rather than
   // starting another; the turns already said stay where they are.
-  const turn = useMemo(() => [castTurn(cast, brief), carry.text].filter(Boolean).join("\n\n") || null, [cast, brief, carry.text]);
+  const turn = useMemo(
+    () => [castTurn(cast, brief), carry.text, choosing ? personas(cast) : ""].filter(Boolean).join("\n\n") || null,
+    [cast, brief, carry.text, choosing],
+  );
   const turnNow = useRef(turn);
   turnNow.current = turn;
   const castNow = useRef(cast);
@@ -2483,34 +2495,62 @@ function Thread({
         .catch(() => {});
   };
 
+  // WHAT KAI CHOOSES FOR A MESSAGE (chosen.ts), asked while it is written so it is ready when it
+  // goes: one answer a wording, the last few kept. The skills already preloaded are never chosen again.
+  const kai = useRef(new Map<string, Promise<Chosen>>());
+  const [lastChosen, setLastChosen] = useState<string[]>([]);
+  const chosenFor = (text: string, skip: readonly string[]): Promise<Chosen> => {
+    const leave = [...skip, ...carry.gear.gear.skills];
+    const key = `${leave.join(",")}\n${text.trim()}`;
+    const kept = kai.current.get(key);
+    if (kept) return kept;
+    const p = choose(target, text, leave, skillsCarried(chat.messages));
+    kai.current.set(key, p);
+    if (kai.current.size > 8) kai.current.delete(kai.current.keys().next().value!);
+    return p;
+  };
+  useEffect(() => {
+    if (!choosing || draft.trim().length < 12) return;
+    const soon = setTimeout(() => void chosenFor(draft, reviewing(draft) ? ["code-review"] : []), 700);
+    return () => clearTimeout(soon);
+    // `chosenFor` reads the conversation as it is when the draft rests.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft, choosing]);
+
   const submit = (ask: string = draft) => {
     const text = ask.trim();
     if (preparing || (!text && !files.length)) return;
     setWalletRecovery(null);
     if (text) lastSubmittedPromptRef.current = text;
-    const isPrOrReview = /\b(pull request|pr\s*#?\d+|github\.com\/[^\s]+\/pull\/\d+|\/pull\/\d+|code[\s-]?review|ponytail|pony|review\s+(this\s+)?(pr|diff|patch|changes|commit))\b/i.test(text);
+    const isPrOrReview = reviewing(text);
     // A build nobody described gets an ask-first note, not the build note:
     // the build note would tell the model to build a Hanzo showcase at once
     // (issue 442). `buildNote` keeps the old note for a described build, and
     // asks once: after any answer in this conversation it builds.
     const demoNote = buildNote(text, chat.messages.some((m) => m.role === "assistant"));
+    // A review brings the review skill to THAT message while Hanzo chooses; it is no longer
+    // preloaded into the chat for every message after. Preloading, only the person's picks join.
     const ponyNote = [
-      isPrOrReview
+      isPrOrReview && chatPrefs.bring !== "preload"
         ? 'Use the skill "code-review" (Ponytail Thermo-Nuclear Code Review + Code Judo): perform a rigorous multi-pass PR/diff review checking correctness, edge cases, race conditions, security, and maintainability.'
         : "",
       demoNote,
     ]
       .filter(Boolean)
       .join("\n\n");
-    if (isPrOrReview && !carry.gear.gear.skills.includes("code-review")) {
-      carry.gear.toggle("skills", "code-review");
-    }
-    if (!carry.preparing) return deliver(text, ponyNote);
+    if (!choosing && !carry.preparing) return deliver(text, ponyNote);
     setDraft("");
     setPrepWrong(null);
     void (async () => {
-      setPreparing(t("Preparing"));
+      // Kai's answer is usually in hand: the status shows only while it is still awaited.
+      const slow = carry.preparing ? null : setTimeout(() => setPreparing(t("Choosing skills")), 200);
+      if (carry.preparing) setPreparing(t("Preparing"));
       try {
+        const picked = choosing && text ? await within(chosenFor(text, isPrOrReview ? ["code-review"] : []), WAIT, UNCHOSEN) : UNCHOSEN;
+        if (slow) clearTimeout(slow);
+        if (choosing) setLastChosen([...(isPrOrReview ? ["code-review"] : []), ...picked.names]);
+        const notes = [picked.text, ponyNote].filter(Boolean).join("\n\n");
+        if (!carry.preparing) return deliver(text, notes);
         // The files held for this message, as bytes, for a plugin that reads them (PDF).
         const bytes = await Promise.all(
           files.filter((h) => h.href).map(async (h) => new File([await (await fetch(h.href)).blob()], h.name, { type: h.type })),
@@ -2518,11 +2558,12 @@ function Thread({
         const got = await carry.prep({ text, files: bytes, thread: open ?? "" }, new AbortController().signal);
         // An answer of a plugin's own (a deck) is the answer, whatever else was prepared.
         if (got.reply) return answered(text, got.reply);
-        deliver(text, [got.system, ponyNote].filter(Boolean).join("\n\n"));
+        deliver(text, [got.system, notes].filter(Boolean).join("\n\n"));
       } catch (e) {
         setPrepWrong(e instanceof Error ? e.message : String(e));
         setDraft(text);
       } finally {
+        if (slow) clearTimeout(slow);
         setPreparing(null);
       }
     })();
@@ -2761,57 +2802,61 @@ function Thread({
           flex={1}
           minW={0}
           items="center"
-          justify={showAccessMode ? "space-between" : "flex-end"}
+          justify="space-between"
           gap="$1.5"
           flexWrap="wrap"
         >
-          {showAccessMode ? (
-            <XStack items="center" gap="$0.5" minW={0}>
-              <XStack
-                render="button"
-                data-slot="composer-access-mode"
-                data-mode={chatPrefs.approvalMode === "manual" ? "manual" : "auto"}
-                aria-label={chatPrefs.approvalMode === "manual" ? t("Ask first") : t("Auto-run")}
-                items="center"
-                gap="$1"
-                height={28}
-                px="$1.5"
-                rounded="$3"
-                cursor="pointer"
-                borderWidth={1}
-                borderColor="transparent"
-                transition="quickest"
-                hoverStyle={{ bg: "$hover", borderColor: "var(--border-strong)" }}
-                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
-                $max-sm={{ minH: 44 }}
-                onClick={() => {
-                  const next = chatPrefs.approvalMode === "manual" ? "auto" : "manual";
-                  setChatPrefs({ approvalMode: next });
-                  carry.mode.set(next);
-                }}
-              >
-                <ShieldCheck
-                  size={13.5}
-                  strokeWidth={1.8}
-                  color="var(--text-secondary)"
-                  aria-hidden
-                />
-                <Text
-                  fontSize="$1"
-                  lineHeight={16}
-                  fontWeight="500"
-                  color="$aside"
-                  numberOfLines={1}
+          <XStack items="center" gap="$0.5" minW={0} flexWrap="wrap">
+            {/* How skills, agents and personas join a message: Hanzo chooses, or only what was preloaded (issue 314). */}
+            <Bring value={chatPrefs.bring} onChange={(bring) => setChatPrefs({ bring })} last={lastChosen} />
+            {showAccessMode ? (
+              <>
+                <XStack
+                  render="button"
+                  data-slot="composer-access-mode"
+                  data-mode={chatPrefs.approvalMode === "manual" ? "manual" : "auto"}
+                  aria-label={chatPrefs.approvalMode === "manual" ? t("Ask first") : t("Auto-run")}
+                  items="center"
+                  gap="$1"
+                  height={28}
+                  px="$1.5"
+                  rounded="$3"
+                  cursor="pointer"
+                  borderWidth={1}
+                  borderColor="transparent"
+                  transition="quickest"
+                  hoverStyle={{ bg: "$hover", borderColor: "var(--border-strong)" }}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+                  $max-sm={{ minH: 44 }}
+                  onClick={() => {
+                    const next = chatPrefs.approvalMode === "manual" ? "auto" : "manual";
+                    setChatPrefs({ approvalMode: next });
+                    carry.mode.set(next);
+                  }}
                 >
-                  {chatPrefs.approvalMode === "manual" ? t("Ask first") : t("Auto-run")}
-                </Text>
-              </XStack>
-              <InfoHint
-                text={t("Controls whether Hanzo runs tools automatically or asks before each step.")}
-                size={13}
-              />
-            </XStack>
-          ) : null}
+                  <ShieldCheck
+                    size={13.5}
+                    strokeWidth={1.8}
+                    color="var(--text-secondary)"
+                    aria-hidden
+                  />
+                  <Text
+                    fontSize="$1"
+                    lineHeight={16}
+                    fontWeight="500"
+                    color="$aside"
+                    numberOfLines={1}
+                  >
+                    {chatPrefs.approvalMode === "manual" ? t("Ask first") : t("Auto-run")}
+                  </Text>
+                </XStack>
+                <InfoHint
+                  text={t("Controls whether Hanzo runs tools automatically or asks before each step.")}
+                  size={13}
+                />
+              </>
+            ) : null}
+          </XStack>
           <XStack items="center" gap="$1" shrink={0} minW={0}>
             <Tune
               mind={{ ...mind, models: filteredListed }}
