@@ -1563,12 +1563,15 @@ function Thread({
   const [needMoreUsageOpen, setNeedMoreUsageOpen] = useState(false);
   const [simulatedResetAt, setSimulatedResetAt] = useState<string | null>(null);
   const seenUsageLimit = useRef<string | null>(null);
+  // The choice opens for a turn that was turned away, and never while a turn is
+  // in flight: asking again after credits are on adds a message to a refusal that
+  // stands until the answer comes, and the answer ends it.
   useEffect(() => {
-    if (isUsageLimitReached && which && which !== shut && seenUsageLimit.current !== which) {
+    if (isUsageLimitReached && !chat.streaming && which && which !== shut && seenUsageLimit.current !== which) {
       seenUsageLimit.current = which;
       setNeedMoreUsageOpen(true);
     }
-  }, [isUsageLimitReached, which, shut]);
+  }, [isUsageLimitReached, chat.streaming, which, shut]);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onNeedMore = (ev: Event) => {
