@@ -36,10 +36,10 @@ import { path } from '@hanzo/build'
 import { leave, useDevHost } from './dev'
 
 /** The host as one render hands it out. */
-function host(): Host {
+function host(confirm?: Host['confirm']): Host {
   let got: Host | null = null
   const Read = () => {
-    got = useDevHost()
+    got = useDevHost(confirm)
     return null
   }
   renderToStaticMarkup(createElement(Read))
@@ -106,5 +106,11 @@ describe('the app host', () => {
 
   test('names Settings by its page', () => {
     expect(host().links?.settings).toBe('/settings')
+  })
+
+  test("the app's spend question is the builder's confirm, and with none the builder keeps its own", () => {
+    const confirm = vi.fn(async () => true)
+    expect(host(confirm).confirm).toBe(confirm)
+    expect(host().confirm).toBeUndefined()
   })
 })

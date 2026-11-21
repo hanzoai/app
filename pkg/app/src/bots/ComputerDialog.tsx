@@ -57,6 +57,7 @@ import {
 import { CLIP, PILL, ROUND, WORD } from './kit'
 import { DIM, EDGE, FLOOR, GROUND, INK, LINE, PICKED, RAISED } from './ink'
 import { useDevMode } from '../lib/dev-mode'
+import { confirming, useSpend } from '../Confirm'
 
 function PulsingCluster({ label }: { label: string }) {
   const [step, setStep] = useState(0)
@@ -109,7 +110,6 @@ export function ComputerDialog({
   const displayName = called(bot.name)
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
-  const autoBootedRef = useRef(false)
   const controlRef = useRef<'watching' | 'controlling'>('watching')
 
   const [localBox, setLocalBox] = useState<Sandbox | null>(box)
@@ -198,7 +198,7 @@ export function ComputerDialog({
   )
 
   const startOrResume = useCallback(
-    async (manual = false) => {
+    async () => {
       if (!client || busy) return
       setBusy(true)
       setError(null)
@@ -229,9 +229,7 @@ export function ComputerDialog({
             }
           }
         }
-        if (manual) {
-          setStatusToast(t('Desktop ready.'))
-        }
+        setStatusToast(t('Desktop ready.'))
       } catch (e) {
         setError(say(e, t('{name}’s desktop computer', { name: displayName }), 'save', t))
         setPhase('idle')
@@ -242,12 +240,12 @@ export function ComputerDialog({
     [client, busy, bot, activeBox, onUpdated, mode, openStream, displayName, t],
   )
 
-  // Auto-open live stream if running, or auto-boot/resume on open!
+  // Opening shows a desktop that is already running; it never starts one. A cloud desktop is
+  // rented, so it starts only on Start desktop, after the person says yes.
   // Intentionally reads `controlRef.current` rather than depending on `control` so
   // clicking `Take control` / `Watching` sends instant postMessage without reloading the iframe.
   useEffect(() => {
     if (!open) {
-      autoBootedRef.current = false
       setFrameUrl(null)
       setSnapDataUrl(null)
       setError(null)
@@ -258,17 +256,10 @@ export function ComputerDialog({
     }
 
     if (activeBox?.id && activeBox.status === 'running') {
-      autoBootedRef.current = true
       const effectiveMode = activeBox.class === 'desktop' ? mode : 'terminal'
       void openStream(activeBox.id, effectiveMode, controlRef.current === 'watching')
-      return
     }
-
-    if (!autoBootedRef.current && client) {
-      autoBootedRef.current = true
-      void startOrResume(false)
-    }
-  }, [open, activeBox?.id, activeBox?.status, activeBox?.class, mode, client, openStream, startOrResume])
+  }, [open, activeBox?.id, activeBox?.status, activeBox?.class, mode, openStream])
 
   const toggleControl = (nextControl: 'watching' | 'controlling') => {
     setControl(nextControl)
@@ -408,10 +399,24 @@ export function ComputerDialog({
     }
   }
 
-  const submitComputerTask = async (e?: FormEvent, preset?: string) => {
+  const desktop = useSpend(
+    'bot-desktop',
+    t('Start a cloud desktop?'),
+    t('This starts a cloud desktop for {name}. It keeps running until you pause it.', { name: displayName }),
+    t('Start desktop'),
+  )
+  const run = useSpend('bot-task', t('Run this task now?'), t('{name} starts working on it right away.', { name: displayName }), t('Run task'))
+
+  // A task is a run of the bot: it asks first, through the one spend confirm.
+  const submitComputerTask = (e?: FormEvent, preset?: string) => {
     e?.preventDefault()
     const prompt = (preset ?? task).trim()
     if (!client || !prompt || runningTask) return
+    run.ask(() => void runTask(prompt, Boolean(preset)))
+  }
+
+  const runTask = async (prompt: string, preset: boolean) => {
+    if (!client) return
     setRunningTask(true)
     setError(null)
     setStatusToast(null)
@@ -449,7 +454,8 @@ export function ComputerDialog({
   useEffect(() => {
     if (!open || vaultOpen) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      // Escape in a confirm over this dialog closes the confirm alone.
+      if (e.key === 'Escape' && !confirming()) {
         e.preventDefault()
         onOpenChange(false)
       }
@@ -478,6 +484,9 @@ export function ComputerDialog({
           rounded={18}
           overflow="hidden"
         >
+          {/* The confirms open INSIDE this dialog, stacked over it: Escape or Cancel closes the confirm alone. */}
+          {desktop.dialog}
+          {run.dialog}
           <YStack height={expanded ? '92vh' : '86vh'} maxH="94vh" bg={GROUND} minW={0}>
             {/* Clean monochrome window top chrome */}
             <XStack
@@ -842,7 +851,7 @@ export function ComputerDialog({
                     focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
                     $max-sm={{ minH: 44 }}
                     disabled={busy}
-                    onClick={() => void startOrResume(true)}
+                    onClick={() => desktop.ask(() => void startOrResume())}
                   >
                     <Play size={13} color="var(--background)" aria-hidden />
                     <Text {...WORD} color="var(--background)">

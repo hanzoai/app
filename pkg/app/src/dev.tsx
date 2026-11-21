@@ -83,8 +83,12 @@ const at = (pathname: string | null): string => {
   return p?.mode === 'dev' ? p.at : ''
 }
 
-/** The host for a signed-in reader. */
-export function useDevHost(): Host {
+/**
+ * The host for a signed-in reader. `confirm` is the app's spend question
+ * (Confirm `useBuildSpend`), which the caller draws: passed, it is the
+ * builder's only asker.
+ */
+export function useDevHost(confirm?: Host['confirm']): Host {
   const { user, accessToken } = useIam()
   const logout = useSignOut()
   const { router, path: pathname } = useHost()
@@ -159,7 +163,8 @@ export function useDevHost(): Host {
       signOut: () => void logout(),
       ...(local ? { local } : {}),
       ...(site ? { site } : {}),
+      ...(confirm ? { confirm } : {}),
     }),
-    [scoped, memberships, look.pref.theme, look.set, signedIn, name, email, avatar, here, router, logout, local, site],
+    [scoped, memberships, look.pref.theme, look.set, signedIn, name, email, avatar, here, router, logout, local, site, confirm],
   )
 }

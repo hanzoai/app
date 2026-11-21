@@ -17,6 +17,7 @@ import { Check, Link2, Upload } from 'lucide-react'
 import { Box, Button, Dialog, DialogContent, DialogTitle, Text, XStack, YStack } from '@hanzo/ui'
 import { hold, heldToken, link, Refused, shares, type ShareRow, type Viewer } from './lib/share'
 import { BAD } from './lib/mix'
+import { Confirm, confirming } from './Confirm'
 
 /** How long "Link copied" stays. The same 1400 ms `Take` confirms for. */
 const CONFIRM = 1400
@@ -81,10 +82,12 @@ function Panel({ thread, onClose }: { thread: string; onClose: () => void }) {
   useEffect(() => {
     box.current?.querySelector<HTMLElement>('button')?.focus()
     const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape' && !confirming()) onClose()
     }
     const press = (e: MouseEvent) => {
-      if (box.current && !box.current.contains(e.target as Node) && !(e.target as HTMLElement)?.closest?.('[aria-haspopup="dialog"]')) onClose()
+      // A press in a dialog over the panel (Revoke's confirm) is not a press outside it.
+      const on = e.target as HTMLElement | null
+      if (box.current && !box.current.contains(on) && !on?.closest?.('[aria-haspopup="dialog"], [role="dialog"]')) onClose()
     }
     document.addEventListener('keydown', key)
     document.addEventListener('mousedown', press)
@@ -160,6 +163,11 @@ function Sharing({ thread, title, note }: { thread: string; title: ReactNode; no
   const [busy, setBusy] = useState<string | null>(null)
   const [wrong, setWrong] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  // The link a Revoke press is asking about (the one Confirm): a yes ends it.
+  const [asking, setAsking] = useState<string | null>(null)
+  // The link this browser can copy again. The platform keeps only a link's hash,
+  // so one made elsewhere cannot be copied here: making another is said, not done quietly.
+  const kept = live ? heldToken(thread, live) : null
 
   useEffect(() => {
     let on = true
@@ -216,6 +224,7 @@ function Sharing({ thread, title, note }: { thread: string; title: ReactNode; no
   }
 
   const revoke = async (id: string) => {
+    setAsking(null)
     setBusy(id)
     setWrong(null)
     try {
@@ -241,7 +250,7 @@ function Sharing({ thread, title, note }: { thread: string; title: ReactNode; no
           <XStack items="center" gap="$1.5">
             {copied ? <Check size={14} aria-hidden /> : <Link2 size={14} aria-hidden />}
             <Text fontSize="$2" color="inherit">
-              {copied ? t('Link copied') : busy === 'copy' ? t('Making a link…') : t('Copy link')}
+              {copied ? t('Link copied') : busy === 'copy' ? t('Making a link…') : kept ? t('Copy link') : live?.length ? t('Make another link') : t('Make a link')}
             </Text>
           </XStack>
         </Button>
@@ -250,7 +259,11 @@ function Sharing({ thread, title, note }: { thread: string; title: ReactNode; no
         </Text>
       </XStack>
       <Text id={note} aria-live="polite" fontSize="$1" color="$soft" minH={16}>
-        {copied ? t('The link is on your clipboard.') : ''}
+        {copied
+          ? t('The link is on your clipboard.')
+          : !kept && live?.length
+            ? t('This chat already has a link, made on another device or browser, which cannot be copied here. Make another link to copy one, or revoke the old one below.')
+            : ''}
       </Text>
 
       <YStack gap="$2">
@@ -291,7 +304,7 @@ function Sharing({ thread, title, note }: { thread: string; title: ReactNode; no
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => void revoke(row.id)}
+                    onClick={() => setAsking(row.id)}
                     disabled={busy !== null}
                     aria-label={made ? t('Revoke the link made {date}', { date: made }) : t('Revoke the link made earlier')}
                   >
@@ -329,6 +342,15 @@ function Sharing({ thread, title, note }: { thread: string; title: ReactNode; no
         )}
       </YStack>
 
+      <Confirm
+        open={asking !== null}
+        danger
+        title={t('Revoke this link?')}
+        body={t('Everyone who has it, and everyone it lists, can no longer read this chat. A revoked link cannot be turned back on.')}
+        yes={t('Revoke link')}
+        onYes={() => asking && void revoke(asking)}
+        onOpenChange={(o) => !o && setAsking(null)}
+      />
       {wrong ? (
         <Text role="alert" fontSize="$2" color={BAD}>
           {wrong}

@@ -82,6 +82,7 @@ import { OutputsCard, SEED, look, useSections, useSites, type Mark } from "./Rig
 import { Share } from "./Share";
 import { ConversationMenu, ThreadMore, useThreadActions, useThreadList, type Thread } from "./thread";
 import { Schedule } from "./Schedule";
+import { useBuildSpend } from "./Confirm";
 import { keepFile, useAttach, useKeep } from "./keep";
 import { useKept } from "./kept";
 import { dragWindow, toggleWindowMaximize } from "./WindowControls";
@@ -2795,8 +2796,10 @@ function Thread({
   // What pressing a suggestion does, at once: open what it names, send its prompt
   // here (the pane is a new chat while one shows), hand its run to Dev, or make
   // its scheduled task and show it in Scheduled tasks.
+  // A suggestion's scheduled task spends by itself from then on: it asks first, through the app's one question.
+  const scheduling = useBuildSpend();
   const hint = (a: Act, row?: Hint) => {
-    handleHint(a, row, { reopen, submit, target, setPrepWrong, t });
+    handleHint(a, row, { reopen, submit, target, setPrepWrong, t, confirm: scheduling.confirm });
   };
   // A chat a suggestion in Dev left for this pane is sent once the pane is a new
   // chat: the address's own conversation let go of, nothing said yet.
@@ -3148,7 +3151,7 @@ function Thread({
       onLanguage: speakIn,
       talk,
       // While nothing has been said: what is worth doing next.
-      starters: said.length === 0 && !anonymous && !forgetful ? <Suggestions rows={hints.rows} onAct={hint} onDismiss={hints.dismiss} /> : undefined,
+      starters: said.length === 0 && !anonymous && !forgetful ? <Suggestions rows={hints.rows} onAct={hint} onDismiss={hints.dismiss} state={hints.state} onTurn={hints.turn} /> : undefined,
   };
 
   return (
@@ -4102,6 +4105,7 @@ function Thread({
         </DialogContent>
       </Dialog>
       <Upgrade ask={ask} onClose={() => setAsk(null)} />
+      {scheduling.dialog}
       <NeedMoreUsageModal
         open={needMoreUsageOpen}
         onClose={() => setNeedMoreUsageOpen(false)}

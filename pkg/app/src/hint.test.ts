@@ -3,21 +3,24 @@ import type { Act, Hint } from '@hanzo/build'
 import { handleHint } from './hint'
 
 const goMock = vi.fn()
+const booked = vi.hoisted(() => ({ book: vi.fn() }))
 vi.mock('./lib/host', () => ({
   go: (addr: string) => goMock(addr),
+  app: (path: string) => `/dev/${path}`,
 }))
 
 vi.mock('@hanzo/build', () => ({
   app: (path: string) => `/dev/${path}`.replace(/\/+$/, ''),
-  devPath: (p: { kind: string; id: string }) => `-/${p.kind}/${p.id}`,
+  path: (p: { kind: string; id: string }) => `-/${p.kind}/${p.id}`,
   hand: vi.fn(),
   want: vi.fn(),
-  book: vi.fn(() => Promise.reject(new Error('fail'))),
+  book: booked.book,
 }))
 
 describe('handleHint', () => {
   const reopen = vi.fn()
   const submit = vi.fn()
+  const confirm = vi.fn(async () => true)
 
   beforeEach(() => {
     reopen.mockClear()
@@ -35,7 +38,7 @@ describe('handleHint', () => {
       act,
     }
 
-    handleHint(act, row, { reopen, submit })
+    handleHint(act, row, { reopen, submit, confirm })
 
     expect(reopen).toHaveBeenCalledWith('thread-123')
     expect(goMock).toHaveBeenCalledWith('/chat/thread-123')
@@ -52,7 +55,7 @@ describe('handleHint', () => {
       act,
     }
 
-    handleHint(act, row, { reopen, submit })
+    handleHint(act, row, { reopen, submit, confirm })
 
     expect(submit).toHaveBeenCalledWith('Tell me about quantum computing')
     expect(reopen).not.toHaveBeenCalled()
@@ -68,7 +71,7 @@ describe('handleHint', () => {
       act,
     }
 
-    handleHint(act, row, { reopen, submit })
+    handleHint(act, row, { reopen, submit, confirm })
 
     expect(submit).toHaveBeenCalledWith('Run AI coding agent brief')
     expect(reopen).not.toHaveBeenCalled()
@@ -84,7 +87,7 @@ describe('handleHint', () => {
       act,
     }
 
-    handleHint(act, row, { reopen, submit })
+    handleHint(act, row, { reopen, submit, confirm })
 
     expect(submit).toHaveBeenCalledWith('Continue AI discussion')
   })
@@ -102,9 +105,26 @@ describe('handleHint', () => {
       act,
     }
 
-    handleHint(act, row, { reopen, submit })
+    handleHint(act, row, { reopen, submit, confirm })
 
     expect(openMock).toHaveBeenCalledWith('https://github.com/hanzoai/chat', '_blank', 'noopener,noreferrer')
     globalThis.window = originalWindow
+  })
+
+  test('a scheduled task is made only on a yes to the one spend question, and a no makes and says nothing', async () => {
+    const act = { kind: 'schedule', prompt: 'Summarise my week', cron: '0 9 * * 1' } as unknown as Act
+    const target = { api: '', token: () => 't' }
+    const confirm = vi.fn(async () => false)
+    // As @hanzo/build's book does: it asks through the host's confirm and makes nothing without a yes.
+    booked.book.mockImplementation(async (_t: unknown, _a: unknown, _s: unknown, ask: (s: unknown) => Promise<boolean>) => ((await ask({ again: 'task.credits' })) ? { id: 'auto-1' } : null))
+    handleHint(act, undefined, { reopen, submit, target, confirm })
+    await vi.waitFor(() => expect(confirm).toHaveBeenCalledTimes(1))
+    await Promise.resolve()
+    expect(booked.book.mock.calls[0]![3]).toBe(confirm)
+    expect(goMock).not.toHaveBeenCalled()
+    expect(submit).not.toHaveBeenCalled()
+    confirm.mockImplementation(async () => true)
+    handleHint(act, undefined, { reopen, submit, target, confirm })
+    await vi.waitFor(() => expect(goMock).toHaveBeenCalledWith('/dev/-/automation/auto-1'))
   })
 })
