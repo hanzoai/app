@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 vi.mock('./lib/api', () => ({ api: () => 'https://api.test' }))
 vi.mock('./lib/session', () => ({ bearer: () => 'iam-token' }))
 
+import { configure } from './where'
 import { resolveRuntime } from './devRuntime'
 
 const calls: string[] = []
@@ -44,5 +45,12 @@ describe('resolveRuntime', () => {
   test('no machine and no cell (404) is null, not an error', async () => {
     serve({ '/v1/agents/targets': { targets: [] } })
     expect(await resolveRuntime(signal)).toBeNull()
+  })
+  test("the host's own Dev comes before a machine, a lease and any request", async () => {
+    serve({ '/v1/agents/targets': { targets: [{ id: 'm1', host: 'm1.tunnel.test', status: 'online' }] } })
+    configure({ runtime: async () => ({ kind: 'machine', id: 'here', label: 'This computer', zap: 'http://127.0.0.1:3773', token: async () => 'p' }) })
+    expect(await resolveRuntime(signal)).toMatchObject({ id: 'here', zap: 'http://127.0.0.1:3773' })
+    expect(calls).toEqual([])
+    configure({ runtime: undefined })
   })
 })

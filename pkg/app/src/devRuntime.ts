@@ -1,6 +1,7 @@
 // The runtime behind Dev for this person: one interface, `DevRuntime` (@hanzo/dev-core),
 // resolved in order.
 //
+//   local    the host's own Dev (where().runtime): Hanzo Desktop's computer.
 //   machine  a computer they linked with `hanzo link` (Hanzo Connect): the first of
 //            GET /v1/agents/targets that is online and publishes an endpoint.
 //   cell     their cloud sandbox: POST /v1/dev/sessions leases it and answers
@@ -15,6 +16,7 @@ import { useEffect, useState } from 'react'
 import type { DevRuntime } from '@hanzo/dev-core'
 import { api } from './lib/api'
 import { bearer } from './lib/session'
+import { where } from './where'
 
 interface Target {
   id: string
@@ -58,8 +60,10 @@ export async function machines(signal: AbortSignal): Promise<readonly DevRuntime
     .map((m) => ({ kind: 'machine', id: m.id, label: m.label ?? m.id, zap: origin(m.host as string), token }))
 }
 
-/** A linked machine first, else a leased cloud cell, else null. */
+/** The host's own Dev first, then a linked machine, else a leased cloud cell, else null. */
 export async function resolveRuntime(signal: AbortSignal): Promise<DevRuntime | null> {
+  const local = await where().runtime?.().catch(() => null)
+  if (local) return local
   const linked = (await machines(signal))[0]
   if (linked) return linked
   const lease = await call<Lease>('POST', '/v1/dev/sessions', signal)

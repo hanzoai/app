@@ -8,6 +8,7 @@
  * and calling it throws.
  */
 import type { ComponentType } from 'react'
+import type { DevRuntime } from '@hanzo/dev-core'
 import type { BillingPlan } from './lib/plans'
 
 /** The addresses a host serves from, which plain modules read. */
@@ -55,6 +56,11 @@ export interface Addresses {
    * The apps read the access token, its expiry and its claims from it.
    */
   session?: Storage
+  /**
+   * Where a host that runs Dev itself finds it: Hanzo Desktop's own computer. Asked first, before
+   * a linked machine or a cloud cell (devRuntime.ts); null is none. A host with no local Dev omits it.
+   */
+  runtime?: () => Promise<DevRuntime | null>
   /** The plan catalogue as the host's build last read it: the first paint. */
   plans?: BillingPlan[]
   /**
