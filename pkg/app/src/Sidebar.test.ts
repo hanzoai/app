@@ -450,9 +450,10 @@ describe('the unified desktop sidebar', () => {
     expect(column('dev')).toContain('data-slot="recents" data-mode="dev"')
   })
 
-  test('Tabs lists Terminal, Desktop, and Browser inside indented sublinks without Chat’s Recents', () => {
+  test('Tabs lists Desktop and Browser inside indented sublinks without Chat’s Recents; a terminal is the New terminal row alone', () => {
     const html = column('tabs')
-    expect(html).toContain('Terminal')
+    expect(html.split('New terminal').length - 1).toBe(1)
+    expect(html).not.toContain('>Terminal<')
     expect(html).toContain('Desktop')
     expect(html).toContain('Browser')
     expect(html).not.toContain('data-slot="recents"')

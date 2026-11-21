@@ -659,14 +659,8 @@ function useTabsGroups(
 
   return useMemo(() => {
     if (!active) return []
+    // No Terminal here: the New terminal row above sends the same shell action.
     const quickLinks: SidebarPlaceLink[] = [
-      {
-        id: 'new-terminal',
-        label: t('Terminal'),
-        hint: t('A cloud terminal that keeps your files.'),
-        icon: <MARKS.tabs.make size={15} aria-hidden />,
-        onPress: () => dispatchTabsAction({ kind: 'shell' }),
-      },
       {
         id: 'new-desktop',
         label: t('Desktop'),
