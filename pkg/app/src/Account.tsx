@@ -535,7 +535,6 @@ export function Account({
                     {who}
                   </Text>
                 </YStack>
-                {planName ? tierPill : null}
               </>
             )}
           </XStack>

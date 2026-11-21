@@ -146,6 +146,8 @@ describe('profile trigger and HoverCard', () => {
     const { html } = renderAccount(false, false)
     expect(html).toContain('data-slot="me-hover-card"')
     expect(html).toContain('data-slot="me-tier-pill"')
+    // The badge lives in the menu, never on the bottom-left trigger beside the name.
+    expect(html.split('data-slot="me-tier-pill"').length - 1).toBe(1)
     expect(html).toContain('data-slot="meter"')
     expect(html).toContain('data-slot="me-dev-mode"')
     expect(html).toContain('data-slot="me-hover-upgrade"')
