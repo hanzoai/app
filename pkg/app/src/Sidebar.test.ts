@@ -79,6 +79,7 @@ vi.mock('@hanzo/build', () => {
     Rename: () => null,
     route,
     useSessions: () => ({ value: [], loading: false, error: null, reload: () => {} }),
+    useRunMarks: () => [{}, () => {}],
     useLanguage: () => ['', () => {}] as const,
     NEW: 'new',
     own: () => [group('work', 'Work', ['New run', 'Projects', 'Issues', 'Templates'])],

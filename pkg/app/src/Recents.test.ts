@@ -2,7 +2,7 @@ import { createElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-const { part, row, convMenu, presses, state, devState, capturedActions } = vi.hoisted(() => {
+const { part, row, convMenu, presses, state, devState, capturedActions, marked } = vi.hoisted(() => {
   type Part = { children?: ReactNode; 'data-slot'?: string; 'aria-label'?: string; 'aria-expanded'?: boolean; active?: boolean }
   const presses: (() => void)[] = []
   const state = { threads: [] as { id: string; title: string; updatedAt: string; pinned?: boolean }[] }
@@ -10,15 +10,17 @@ const { part, row, convMenu, presses, state, devState, capturedActions } = vi.ho
   const capturedActions: { remove?: (t: { id: string; title?: string }) => Promise<boolean>; rename?: (t: { id: string; title?: string }, next: string) => Promise<boolean> }[] = []
   const part = ({ children, 'data-slot': slot, 'aria-label': label, 'aria-expanded': expanded }: Part) =>
     createElement('div', { 'data-slot': slot, 'aria-label': label, 'aria-expanded': expanded }, children)
-  const convMenu = ({ children, canShare, customActions }: { children?: ReactNode; canShare?: boolean; customActions?: typeof capturedActions[number] }) => {
+  const convMenu = ({ children, canShare, noun, customActions }: { children?: ReactNode; canShare?: boolean; noun?: string; customActions?: typeof capturedActions[number] }) => {
     if (customActions) capturedActions.push(customActions)
-    return createElement('div', { 'data-slot': 'conv-menu', 'data-share': String(Boolean(canShare)) }, children)
+    return createElement('div', { 'data-slot': 'conv-menu', 'data-share': String(Boolean(canShare)), 'data-noun': noun }, children)
   }
+  // What @hanzo/build's run marks store was asked to keep, by run id.
+  const marked: Record<string, Record<string, unknown>> = {}
   const row = ({ children, active, onPress }: Part & { onPress?: () => void }) => {
     if (onPress) presses.push(onPress)
     return createElement('div', { 'data-slot': 'row', 'aria-current': active ? 'page' : undefined }, children)
   }
-  return { part, row, convMenu, presses, state, devState, capturedActions }
+  return { part, row, convMenu, presses, state, devState, capturedActions, marked }
 })
 
 vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s, dir: 'ltr' }) }))
@@ -28,6 +30,7 @@ vi.mock('@hanzo/build', () => ({
   DOTS: { running: 'running', done: 'done', error: 'error' },
   route: () => ({ kind: 'new' }),
   useSessions: () => ({ value: devState.sessions, loading: false, error: null, reload: () => {} }),
+  useRunMarks: () => [marked, (id: string, patch: Record<string, unknown>) => void (marked[id] = { ...marked[id], ...patch })],
 }))
 vi.mock('@hanzo/ui', () => ({
   DropdownMenu: ({ items }: { items: { key: string }[] }) => createElement('div', { 'data-slot': 'menu' }, items.map((i) => createElement('span', { key: i.key, 'data-item': i.key }))),
@@ -59,6 +62,7 @@ afterEach(() => {
   state.threads = []
   devState.sessions = []
   capturedActions.length = 0
+  for (const k of Object.keys(marked)) delete marked[k]
   vi.unstubAllGlobals()
   vi.doUnmock('@hanzo/studio')
 })
@@ -80,7 +84,7 @@ describe('Design’s Recents & collapsible Pinned section', () => {
     // First Build: a row wears its age, and a dot only while it works or when it failed; the settled Logo has none.
     expect(html.match(/data-dot="[a-z]+"/g)).toEqual(['data-dot="running"', 'data-dot="error"'])
     // Design conversations now have full ConversationMenu + Select multiple, with Chat-only Share disabled.
-    expect(html).toContain('data-slot="conv-menu" data-share="false"')
+    expect(html).toContain('data-slot="conv-menu" data-share="false" data-noun="design"')
     expect(html).toContain('select-multiple')
     expect(html).not.toContain('data-item="status-')
     expect(html).not.toContain('No chats yet.')
@@ -96,7 +100,7 @@ describe('Design’s Recents & collapsible Pinned section', () => {
     const { Recents } = await import('./Recents')
     const html = renderToStaticMarkup(createElement(Recents, { host: {} as never, mode: 'chat', thread: null, onOpen: () => {}, onNew: () => {} }))
     expect(html).toContain('data-slot="pinned-group-toggle"')
-    expect(html).toContain('data-slot="conv-menu" data-share="true"')
+    expect(html).toContain('data-slot="conv-menu" data-share="true" data-noun="chat"')
     expect(html.indexOf('Pinned strategy')).toBeLessThan(html.indexOf('Daily notes'))
   })
 
@@ -143,5 +147,42 @@ describe('Design’s Recents & collapsible Pinned section', () => {
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer tok_123', 'X-Org-Id': 'mvee85560' },
       },
     ])
+  })
+
+  test('a Dev run’s menu calls it a run, and its archive, pin and delete go to the store a run’s own menu writes (@hanzo/build)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200 })))
+    devState.sessions = [{ id: 'sess_a', title: 'Add a checkout page', status: 'done', createdAt: new Date(now - 60_000).toISOString() }]
+    const { Recents } = await import('./Recents')
+    const host = { api: 'https://api.hanzo.ai', org: 'acme', token: () => 'tok', path: '', go: () => {} } as never
+    const html = renderToStaticMarkup(createElement(Recents, { host, mode: 'dev', thread: null, onOpen: () => {}, onNew: () => {} }))
+    expect(html).toContain('data-noun="run"')
+    const act = capturedActions[0] as unknown as {
+      archive: (t: { id: string; archived?: boolean }) => Promise<boolean>
+      pin: (t: { id: string; pinned?: boolean }) => Promise<boolean>
+      remove: (t: { id: string }) => Promise<boolean>
+    }
+    await act.archive({ id: 'sess_a', archived: false })
+    await act.pin({ id: 'sess_a', pinned: false })
+    expect(marked.sess_a).toEqual({ archived: true, pinned: true })
+    await act.archive({ id: 'sess_a', archived: true })
+    expect(marked.sess_a).toMatchObject({ archived: false })
+    await act.remove({ id: 'sess_a' })
+    expect(marked.sess_a).toMatchObject({ deleted: true })
+  })
+
+  test('a run archived from its own page is out of the Recents list, and one deleted there too', async () => {
+    devState.sessions = [
+      { id: 'sess_keep', title: 'Fix the footer', status: 'done', createdAt: new Date(now - 60_000).toISOString() },
+      { id: 'sess_arch', title: 'Old experiment', status: 'done', createdAt: new Date(now - 120_000).toISOString() },
+      { id: 'sess_gone', title: 'Wrong turn', status: 'done', createdAt: new Date(now - 180_000).toISOString() },
+    ]
+    marked.sess_arch = { archived: true }
+    marked.sess_gone = { deleted: true }
+    const { Recents } = await import('./Recents')
+    const host = { api: 'https://api.hanzo.ai', org: 'acme', token: () => 'tok', path: '', go: () => {} } as never
+    const html = renderToStaticMarkup(createElement(Recents, { host, mode: 'dev', thread: null, onOpen: () => {}, onNew: () => {} }))
+    expect(html).toContain('Fix the footer')
+    expect(html).not.toContain('Old experiment')
+    expect(html).not.toContain('Wrong turn')
   })
 })
