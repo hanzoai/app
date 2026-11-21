@@ -57,8 +57,8 @@ export function api(): string {
 /**
  * Identity, likewise once. IAM issues the bearer every call above carries and
  * is not reached through the API host, so it is a second address rather than a
- * path on the first. It is NOT proxied and does not need to be — hanzo.id
- * admits localhost on authorize, token and userinfo.
+ * path on the first. It is NOT proxied and does not need to be — IAM admits
+ * localhost on authorize, token and userinfo.
  *
  * `NEXT_PUBLIC_HANZO_IAM_URL` is the name — the one `.env.example` documents
  * and `AccountContext` already reads. `team.ts` read `NEXT_PUBLIC_HANZO_ID_URL`
@@ -74,7 +74,10 @@ export function api(): string {
  */
 export function iam(): string {
   if (onDevnet()) return IAM_DEV
-  return (where().iam || 'https://hanzo.id').replace(/\/+$/, '')
+  // Sign-in and IAM's pages live on the site itself (hanzo.ai/login), so with no origin named the
+  // host's own site answers, and a page with neither is its own origin: never a literal host.
+  const named = where().iam || where().site
+  return (named || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/+$/, '')
 }
 
 /**

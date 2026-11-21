@@ -11,7 +11,7 @@ import { api, CLIENT, iam } from './api';
  *             {} → { sent, to }: IAM emails the join link to the address the
  *             invitation is pinned to, from the org of the application the
  *             caller's access token was issued to (hanzo-app here).
- *  - redeem   https://hanzo.id/join?client_id=<CLIENT>&invite=<CODE>&org=<owner>
+ *  - redeem   <iam()>/join?client_id=<CLIENT>&invite=<CODE>&org=<owner>
  *             — the link IAM emails, built here identically. A new person
  *             creates their account there with the code, and a signed-in one
  *             accepts it; the server model (iam pkg/schema/invitation.go)

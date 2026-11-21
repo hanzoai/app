@@ -22,7 +22,7 @@ export interface Addresses {
    * one, and answers a PNG data URL.
    */
   report?: { repo?: string; version?: string; capture?: () => Promise<string | null> }
-  /** IAM's origin. Absent, hanzo.id. */
+  /** IAM's origin. Absent, the site's own (sign-in starts at `<site>/login`). */
   iam?: string
   /**
    * Where the app's own pages live — `/dev`, `/account`, `/legal/*`.

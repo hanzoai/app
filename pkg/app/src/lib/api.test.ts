@@ -65,21 +65,21 @@ describe('every other host answers as it did', () => {
     for (const host of ['hanzo.ai', 'www.hanzo.ai', 'dev.hanzo.ai', 'a.b-dev.hanzo.ai']) {
       at(host)
       expect(api(), host).toBe('https://api.hanzo.ai')
-      expect(iam(), host).toBe('https://hanzo.id')
+      expect(iam(), host).toBe(`https://${host}`) // sign-in starts on the site itself: no literal host
     }
   })
 
-  test('a lookalike keeps its own origin and production identity', () => {
+  test('a lookalike keeps its own origin for sign-in too', () => {
     configure({ api: undefined, iam: undefined })
     at('app-dev.hanzo.ai.evil.com')
     expect(api()).toBe('https://app-dev.hanzo.ai.evil.com')
-    expect(iam()).toBe('https://hanzo.id')
+    expect(iam()).toBe('https://app-dev.hanzo.ai.evil.com')
   })
 
-  test('the prerender has no window and answers production', () => {
+  test('the prerender has no window and answers production, with no IAM origin to name', () => {
     configure({ api: undefined, iam: undefined })
     expect(api()).toBe('https://api.hanzo.ai')
-    expect(iam()).toBe('https://hanzo.id')
+    expect(iam()).toBe('')
   })
 })
 
