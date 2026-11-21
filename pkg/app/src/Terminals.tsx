@@ -17,6 +17,7 @@ import { useDevMode } from './lib/dev-mode'
 import { showDevice } from './lib/devices'
 import { InfoHint } from './lib/info-hint'
 import { bearer } from './lib/session'
+import { showCalmEmpty as calmEmpty } from './terminalsState'
 
 type LaunchKind = 'dev' | 'desktop' | 'browser'
 
@@ -190,7 +191,7 @@ export default function Terminals() {
     return () => window.removeEventListener('hanzo:tabs-action', onTabsAction)
   }, [liveHosts.length, openedWorkspace, startWorkspace])
 
-  const showCalmEmpty = (!token || (fleet.read && !fleet.error && liveHosts.length === 0)) && !openedWorkspace
+  const showCalmEmpty = calmEmpty({ token, read: fleet.read, error: Boolean(fleet.error), hosts: liveHosts.length, opened: openedWorkspace })
 
   useEffect(() => {
     if (!pendingAction || showCalmEmpty || !(fleet.read || fleet.error)) return
