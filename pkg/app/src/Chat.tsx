@@ -42,7 +42,7 @@ import {
 import { Chat as ChatSurface, ChatHandoffProvider, EFFORTS, Failure, Parts, Tune, useFamilies, words, type ComposerProps, type Said } from "@hanzo/ui/chat";
 import { carriedIn, carrying, compose, partsOf, said as told, weigh } from "./lib/attach";
 import { download, dropped, fileOf, pct, readable, refOf, retrieve, type Api, type FileRef, type WorkFile } from "./lib/files";
-import { conversation, drop, hold, landed, localOf, spend, take, usePane, useWorkFile, type Held, type Via } from "./pane";
+import { conversation, drop, hold, landed, localOf, retry, retryable, spend, take, useDraft, usePane, useWorkFile, type Held, type Via } from "./pane";
 import { Face, brief as castBrief, join, roleOf, castTurn, roster as rosterLine, rosterOf, speakers, speaksOf, voiceOf } from "./cast";
 import { cleanForSpeech, speakAgent } from "./speech";
 import { AgentMaker, HOUSE, useAgentShelf, useCrew } from "./crew";
@@ -919,6 +919,7 @@ function Chip({
   picture,
   onOpen,
   onRemove,
+  onRetry,
   onSave,
 }: {
   name: string;
@@ -931,6 +932,8 @@ function Chip({
   picture: string;
   onOpen: () => void;
   onRemove?: () => void;
+  /** Sends it up again, on a file whose upload failed. */
+  onRetry?: () => void;
   /** Keeps it in the reader's Library. */
   onSave?: () => Promise<unknown>;
 }) {
@@ -948,6 +951,28 @@ function Chip({
     .join(" \u00b7 ");
   const remove = (
     <>
+      {onRetry ? (
+        <XStack
+          render="button"
+          aria-label={t("Retry {name}", { name })}
+          data-slot="retry"
+          onClick={onRetry}
+          items="center"
+          gap="$1"
+          px="$1.5"
+          py="$1"
+          rounded="$10"
+          shrink={0}
+          cursor="pointer"
+          hoverStyle={{ bg: "$hover" }}
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+        >
+          <RefreshCw size={12} aria-hidden />
+          <Text fontSize="$1" color="$ink">
+            {t("Retry")}
+          </Text>
+        </XStack>
+      ) : null}
       {onSave ? <Keep name={name} onSave={onSave} /> : null}
       {onRemove ? (
         <Box
@@ -1110,7 +1135,7 @@ function Keep({ name, onSave }: { name: string; onSave: () => Promise<unknown> }
 }
 
 /** A file held for the next message: uploading, then indexing, then ready. */
-function HeldChip({ one, onOpen, onRemove, onSave }: { one: Held; onOpen: (m: Mark) => void; onRemove: () => void; onSave?: (url: string, id: string) => Promise<unknown> }) {
+function HeldChip({ one, onOpen, onRemove, onRetry, onSave }: { one: Held; onOpen: (m: Mark) => void; onRemove: () => void; onRetry?: () => void; onSave?: (url: string, id: string) => Promise<unknown> }) {
   const live = useWorkFile(one.file?.id);
   const file = live ?? one.file;
   const state = one.state === "uploading" ? one.state : (file?.status ?? one.state);
@@ -1128,6 +1153,7 @@ function HeldChip({ one, onOpen, onRemove, onSave }: { one: Held; onOpen: (m: Ma
       picture={picture}
       onOpen={() => onOpen(mark)}
       onRemove={onRemove}
+      onRetry={onRetry}
       // Its bytes are on this machine until the upload lands, and are kept by the workspace file it became.
       onSave={onSave && one.href ? () => onSave(one.href, file?.id ?? one.id) : undefined}
     />
@@ -1730,7 +1756,7 @@ function Thread({
   // it. `Chat` owns a draft of its own and spreads `composer` after it, so
   // passing value/onChange/onSend takes that ownership over rather than fighting
   // it.
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useDraft(at);
   // FILES WITH THE NEXT MESSAGE, held by `pane.ts` for this conversation: the
   // paperclip, a drop anywhere on the pane, a paste into the field and the
   // column's `+` all go through its one `hold`, so the chips here and the rows
@@ -2983,6 +3009,7 @@ function Thread({
                     one={one}
                     onOpen={openFile}
                     onRemove={() => drop(at, one.id)}
+                    onRetry={one.state === "failed" && retryable(one.id) ? () => void retry(at, one.id, via) : undefined}
                     onSave={anonymous ? undefined : (url, id) => keepOne(url, id, one.name, one.type)}
                   />
                 ))}

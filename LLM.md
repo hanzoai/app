@@ -648,7 +648,7 @@ catalog files under Enso or Zen (`house`).
   or a pull back out; the strip's full-screen button puts the panel over the
   window and Escape returns. A drag writes two elements a frame, no React commit.
   An answer that finishes writing a page while the panel is open opens it there.
-- `pane.ts` holds only what goes with the next message (files, refusals).
+- `pane.ts` holds only what goes with the next message: files and refusals, and the unsent draft (`useDraft`), per conversation and outside React, so a draft survives a visit to Dev or Design and back. A file whose upload failed keeps the bytes it was picked from (`retry`) and its chip offers Retry.
 
 ## Agents
 
