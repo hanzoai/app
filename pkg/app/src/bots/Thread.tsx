@@ -622,7 +622,7 @@ export function Thread({
                     </Text>
                   ) : null}
                 </YStack>
-                <XStack {...ROUND} width={28} height={28} bg="transparent" borderWidth={0} aria-label={t('Dismiss')} onClick={onDismiss}>
+                <XStack {...ROUND} width={28} height={28} bg="transparent" borderWidth={0} aria-label={t('Dismiss')} onClick={() => { setUnsent(null); onDismiss() }}>
                   <X size={14} color={DIM} aria-hidden />
                 </XStack>
               </XStack>
@@ -665,7 +665,8 @@ export function Thread({
               {note}
             </Text>
           ) : null}
-          {unsent ? (
+          {/* A refusal (an empty balance, a reached limit) is answered by its own notice above: retrying cannot change it, so the line that says the bot could not be reached stays out of its way. */}
+          {unsent && !notice ? (
             <XStack role="alert" items="center" gap={8} px={8}>
               <Text fontSize={13} lineHeight={18} color="var(--state-error)">
                 {t('Could not reach this conversation. Nothing has been lost — try again shortly.')}
