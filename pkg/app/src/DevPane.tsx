@@ -23,6 +23,7 @@ import { org as currentOrg } from './lib/session'
 const Core = lazy(() => import('./core').then((m) => ({ default: m.DevWorkspace })))
 const Provider = lazy(() => import('./core').then((m) => ({ default: m.DevProvider })))
 const Home = lazy(() => import('./core').then((m) => ({ default: m.DevHome })))
+const Chats = lazy(() => import('./core').then((m) => ({ default: m.DevChatList })))
 const List = lazy(() => import('./core').then((m) => ({ default: m.DevThreadList })))
 
 /** A dock pane: one single-use ticket per mount, so a reload mints a fresh one. */
@@ -186,6 +187,16 @@ export function DevList({ host, path }: { host: Host; path: string }) {
   return (
     <Suspense fallback={null}>
       <List tools active={refOf(path)} onOpen={(ref) => host.go(app(ref ? `thread/${ref}` : ''))} />
+    </Suspense>
+  )
+}
+
+/** The account's conversations under Chat in the sidebar: the Dev core's list of them (the cloud holds them, so the history survives). */
+export function ChatList({ host, path }: { host: Host; path: string }) {
+  const id = /^\/chat\/([^/]+)/.exec(path)?.[1]
+  return (
+    <Suspense fallback={null}>
+      <Chats cloud={cloud()} active={id ? decodeURIComponent(id) : null} onOpen={(ref) => host.go(talk(ref ?? undefined))} />
     </Suspense>
   )
 }
