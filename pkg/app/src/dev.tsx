@@ -44,6 +44,7 @@ import { CAST, personas } from './agents'
 import { app, place, settings, visit } from './lib/host'
 import { link } from './lib/tags'
 import { payUrl, topUp } from './lib/pay'
+import { desktopLocal } from './lib/local-fs'
 
 /** Where the builder links out: every one of them an address of this site. */
 const LINKS: Host['links'] = {
@@ -99,6 +100,8 @@ export function useDevHost(): Host {
   const email = u?.email || claimed?.email || ''
   const avatar = typeof u?.avatar === 'string' && u.avatar.startsWith('https://') ? u.avatar : ''
   const signedIn = Boolean(accessToken || bearer() || u)
+  // Hanzo Desktop's folders, so Dev offers This computer (hanzo-inc/app issues 309 and 310); none in a browser.
+  const local = useMemo(() => desktopLocal(), [])
 
   return useMemo<Host>(
     () => ({
@@ -151,7 +154,8 @@ export function useDevHost(): Host {
       },
       signIn: () => enter(),
       signOut: () => void logout(),
+      ...(local ? { local } : {}),
     }),
-    [scoped, memberships, look.pref.theme, look.set, signedIn, name, email, avatar, here, router, logout],
+    [scoped, memberships, look.pref.theme, look.set, signedIn, name, email, avatar, here, router, logout, local],
   )
 }

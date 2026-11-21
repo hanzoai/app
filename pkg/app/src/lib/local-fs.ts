@@ -7,7 +7,13 @@
  * 3. Create new files and folders.
  * 4. Read, view, and edit local files with real-time saving.
  * 5. Run local coding tasks against the workspace with `hanzoai/dev`.
+ *
+ * Dev's This computer is `desktopLocal()` (hanzo-inc/app issues 309 and 310): on Hanzo Desktop it hands @hanzo/build
+ * the folders opened here, the window's folder dialog and the `dev` runner, so a run works in a folder with no
+ * repository. Auto there is the folder used most recently (`lastOpenedAt`). A browser page has no folder of its own,
+ * and gets none.
  */
+import type { Folder, Local } from '@hanzo/build'
 
 export interface LocalWorkspace {
   id: string
@@ -142,8 +148,11 @@ export function removeLocalWorkspace(idOrPath: string): void {
   notify()
 }
 
-/** Open native dialog to pick a local folder */
-export async function pickLocalFolder(): Promise<LocalWorkspace | null> {
+/**
+ * Open native dialog to pick a local folder. `browser: false` takes only the window's own dialog: the browser's
+ * directory picker names a folder without its path, which a run cannot work in.
+ */
+export async function pickLocalFolder({ browser = true }: { browser?: boolean } = {}): Promise<LocalWorkspace | null> {
   if (isTauri()) {
     try {
       const selected = await tauriInvoke<string | null>('local_workspace_open_dialog')
@@ -156,7 +165,7 @@ export async function pickLocalFolder(): Promise<LocalWorkspace | null> {
   }
 
   // Browser File System Access API
-  if (typeof window !== 'undefined' && 'showDirectoryPicker' in window) {
+  if (browser && typeof window !== 'undefined' && 'showDirectoryPicker' in window) {
     try {
       const picker = (window as unknown as { showDirectoryPicker: () => Promise<{ name: string }> }).showDirectoryPicker
       const handle = await picker()
@@ -270,13 +279,45 @@ export async function deleteLocalPath(path: string): Promise<void> {
   throw new Error('Local deletion requires Hanzo Desktop')
 }
 
-/** Run local coding task with `dev` CLI */
-export async function runLocalDev(workspacePath: string, prompt: string): Promise<{ sessionId: string; output?: string }> {
+/**
+ * Run local coding task with `dev` CLI. Hanzo Desktop answers `{session_id, output, success}` (its Rust struct's own
+ * names); `ok` is false only when it said the agent failed.
+ */
+export async function runLocalDev(workspacePath: string, prompt: string): Promise<{ sessionId: string; output?: string; ok: boolean }> {
   if (isTauri()) {
-    return await tauriInvoke<{ sessionId: string; output?: string }>('local_workspace_run_dev', {
+    const r = await tauriInvoke<{ sessionId?: string; session_id?: string; output?: string; success?: boolean }>('local_workspace_run_dev', {
       workspacePath,
       prompt,
     })
+    return { sessionId: r?.sessionId ?? r?.session_id ?? '', output: r?.output, ok: r?.success !== false }
   }
   throw new Error('Local Dev agent execution requires Hanzo Desktop')
+}
+
+/** A workspace as Dev's Folder pill reads it. */
+const folderOf = (w: LocalWorkspace): Folder => ({ path: w.path, name: w.name, used: w.lastOpenedAt || w.addedAt || 0 })
+
+/**
+ * This computer, as @hanzo/build's Dev takes it (`Host.local`): the folders Hanzo Desktop opened, its folder dialog,
+ * and a run of the `dev` agent in one folder (`dev exec -C <folder>`, its workspace-write sandbox). Null outside the
+ * desktop window, so a browser page offers the cloud workspace and the org's machines only.
+ */
+export function desktopLocal(): Local | null {
+  if (!isTauri()) return null
+  return {
+    folders: () => getLocalWorkspaces().map(folderOf),
+    pick: async () => {
+      const ws = await pickLocalFolder({ browser: false })
+      return ws ? folderOf(ws) : null
+    },
+    use: (path) => {
+      const ws = getLocalWorkspaces().find((w) => w.path === path)
+      if (ws) setActiveWorkspace(ws)
+      else addLocalWorkspace(path)
+    },
+    run: async (folder, prompt) => {
+      const r = await runLocalDev(folder, prompt)
+      return { ok: r.ok, output: r.output ?? '' }
+    },
+  }
 }
