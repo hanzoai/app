@@ -23,6 +23,7 @@
 
 import { useI18n } from '@hanzo/i18n/react'
 import { tidy } from './lib/title'
+import { copyId } from './lib/copy-id'
 import { InlineRename } from './InlineRename'
 import { archiveWithUndo } from './archive'
 import { useRenaming } from './renaming'
@@ -43,7 +44,7 @@ import {
 import type { AiClient, Thread, ThreadChange } from '@hanzo/ai'
 export type { Thread }
 import { useAi } from '@hanzo/ai/react'
-import { Archive, ArchiveRestore, Check, CheckSquare, Clock, ExternalLink, FolderInput, Link2, MoreHorizontal, Pencil, Pin, PinOff, Share2, Trash2, X } from 'lucide-react'
+import { Archive, ArchiveRestore, Check, CheckSquare, Clock, Copy, ExternalLink, FolderInput, Link2, MoreHorizontal, Pencil, Pin, PinOff, Share2, Trash2, X } from 'lucide-react'
 import {
   Button,
   ContextMenu,
@@ -807,6 +808,7 @@ export function ConversationMenu({
           ...(canShare ? [{ key: 'share', label: t('Share…'), icon: <Share2 size={16} aria-hidden />, run: () => ask('share', subject) }] : []),
           ...(onSchedule ? [{ key: 'schedule', label: t('Schedule…'), icon: <Clock size={16} aria-hidden />, run: () => onSchedule(subject) }] : []),
           { key: 'copy', label: t('Copy link'), icon: <Link2 size={16} aria-hidden />, run: () => void copy(subject.id, t, hrefOf) },
+          { key: 'copy-id', label: t('Copy id'), icon: <Copy size={16} aria-hidden />, run: () => void copyId(subject.id, t) },
           { key: 'tab', label: t('Open in new tab'), icon: <ExternalLink size={16} aria-hidden />, run: () => away(subject.id, hrefOf) },
           {
             key: 'archive',
