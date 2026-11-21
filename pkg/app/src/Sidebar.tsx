@@ -68,7 +68,7 @@ import { HOSTED_APPS } from './lib/hosted'
 import { pick } from './lib/session'
 import { brand, site } from './where'
 import { dragWindow, toggleWindowMaximize } from './WindowControls'
-import { BAND, HEAD as LINE, SIDE, TOUCH_HEAD } from './ground'
+import { BAND, HEAD as LINE, pane, SIDE, TOUCH_HEAD } from './ground'
 
 /** The sidebar fills the column. Its `width` is typed in px alone, though its frame takes any gui size — the type is
  *  @hanzo/ui's to widen. */
@@ -1168,10 +1168,7 @@ export function Sidebar({
         height="100%"
         width={drawer ? undefined : `var(--span, ${WIDTH}px)`}
         maxW={drawer ? undefined : `var(--span, ${WIDTH}px)`}
-        bg={drawer ? undefined : 'var(--side-fill, var(--background))'}
-        rounded={drawer ? undefined : 'var(--pane-round)'}
-        borderWidth={drawer ? 0 : 1}
-        borderColor="var(--pane-edge, var(--edge, var(--white-08)))"
+        {...(drawer ? null : pane())}
       >
         <Base
           data-slot="app-rail"
