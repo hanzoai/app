@@ -1,6 +1,6 @@
 {
   "name": "@hanzo/app",
-  "version": "0.3.147",
+  "version": "0.3.148",
   "description": "Hanzo's app: the shell and its apps (Home, Chat, Inbox, Contacts, Meet, Calendar, Drive, Board, Work, Bots), once, for every Hanzo surface.",
   "type": "module",
   "main": "./dist/index.js",
@@ -50,7 +50,7 @@
   },
   "license": "Apache-2.0 OR MIT",
   "dependencies": {
-    "@hanzo/dev-core": "^0.1.7",
+    "@hanzo/dev-core": "^0.1.13",
     "@hanzo/glass": "workspace:*",
     "@hanzo/mod": "workspace:*",
     "@hanzo/sources": "workspace:*",
