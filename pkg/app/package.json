@@ -1,6 +1,6 @@
 {
   "name": "@hanzo/app",
-    "@hanzo/dev-core": "^0.1.7",
+  "version": "0.3.144",
   "description": "Hanzo's app: the shell and its apps (Home, Chat, Inbox, Contacts, Meet, Calendar, Drive, Board, Work, Bots), once, for every Hanzo surface.",
   "type": "module",
   "main": "./dist/index.js",
