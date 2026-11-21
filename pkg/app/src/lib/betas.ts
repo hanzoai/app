@@ -136,7 +136,9 @@ export const opens = (id: string, flags: Record<string, boolean>, sudo: boolean,
   if (flags?.[key(id)] === true) return true
   if (local) return true
   if ((id === 'science' || id === 'notebook') && hanzoAdmin()) return true
-  if (id === 'studio' || id === 'flow') return false
+  // Studio is open to every signed-in reader; Flow is still by switch.
+  if (id === 'studio') return true
+  if (id === 'flow') return false
   return Boolean(sudo || hanzoAdmin())
 }
 
