@@ -38,7 +38,6 @@ import {
   Pin,
   PinOff,
   Plus,
-  Puzzle,
   Search,
   Settings,
 } from 'lucide-react'
@@ -1168,7 +1167,7 @@ export function Sidebar({
     ? t('New chat')
     : mode === 'dev' ? t('New run') : mode === 'design' ? t('New design') : mode === 'studio' ? t('New creation') : mode === 'flow' ? t('New flow') : mode === 'tabs' ? t('New terminal') : t('New chat')
 
-  // THE NEW ROW (and a guest's Images and Plugins) STANDS IN EVERY SECTION, so Chat, Dev, Design, Library and Tabs keep
+  // THE NEW ROW (and a guest's Images) STANDS IN EVERY SECTION, so Chat, Dev, Design, Library and Tabs keep
   // their place under the cursor: drawn in some sections and not others, it moved every product row by one, and a
   // press meant for Dev landed on Design. A place that takes the sidebar (`at`) has a head of its own instead.
   const showPrimaryNew = !at
@@ -1325,33 +1324,7 @@ export function Sidebar({
                       <Text fontSize="$2" color="$ink">{t('Images')}</Text>
                     </SidebarItem>
                   </YStack>
-                  <YStack role="listitem" self="flex-start" width="100%">
-                    <SidebarItem
-                      data-slot="app-plugins"
-                      {...COMPACT_ROW}
-                      bg="transparent"
-                      hoverStyle={{ bg: '$hover' }}
-                      icon={
-                        <XStack width={18} height={18} items="center" justify="center" shrink={0}>
-                          <Puzzle size={15} aria-hidden />
-                        </XStack>
-                      }
-                      onPress={() => {
-                        setAnonSettings(false)
-                        if (typeof window !== 'undefined') {
-                          window.dispatchEvent(new CustomEvent('hanzo:anon-plugins'))
-                        }
-                      }}
-                      {...keys(() => {
-                        setAnonSettings(false)
-                        if (typeof window !== 'undefined') {
-                          window.dispatchEvent(new CustomEvent('hanzo:anon-plugins'))
-                        }
-                      })}
-                    >
-                      <Text fontSize="$2" color="$ink">{t('Plugins')}</Text>
-                    </SidebarItem>
-                  </YStack>
+                  {/* No guest Plugins row: only Chat.tsx heard hanzo:anon-plugins, and the app no longer mounts it (Chat is DevHome). */}
                 </>
               ) : null}
             </YStack>

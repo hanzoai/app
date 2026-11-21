@@ -471,9 +471,10 @@ describe('the unified desktop sidebar', () => {
       renderToStaticMarkup(createElement(Sidebar, { pins, host: { ...host, person: null } as never, mode, thread: null, go: noop, onShut: noop, onBack: noop }))
     for (const mode of ['chat', 'dev'] as Place['mode'][]) {
       const html = guest(mode)
-      const order = ['data-slot="app-new"', 'data-slot="app-images"', 'data-slot="app-plugins"', 'data-slot="rail-chat"'].map((r) => at(html, r))
+      const order = ['data-slot="app-new"', 'data-slot="app-images"', 'data-slot="rail-chat"'].map((r) => at(html, r))
       expect(order, mode).toEqual([...order].sort((a, b) => a - b))
       expect(html, 'a guest’s New is a chat').toContain('New chat')
+      expect(html, 'nothing the app mounts answers a guest’s Plugins').not.toContain('data-slot="app-plugins"')
     }
   })
 
