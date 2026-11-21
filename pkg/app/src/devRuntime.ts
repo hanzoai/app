@@ -2,7 +2,7 @@
 // resolved in order.
 //
 //   local    the host's own Dev (where().runtime): Hanzo Desktop's computer.
-//   machine  a computer they linked with `hanzo link` (Hanzo Connect): the first of
+//   machine  a computer they linked with `hanzo link` (Hanzo Link): the first of
 //            GET /v1/agents/targets that is online and publishes an endpoint.
 //   cell     their cloud sandbox: POST /v1/dev/sessions leases it and answers
 //            { id, label, zap, sandbox } (HIP-1330); DELETE /v1/dev/sessions/:id

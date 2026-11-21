@@ -505,7 +505,7 @@ export default function Terminals() {
                   >
                     <Laptop size={14} color="var(--muted-foreground)" aria-hidden />
                     <Text fontSize="$1" color="$soft">
-                      {t('Run hanzo link to connect a local machine')}
+                      {t('Run hanzo link to add a local machine to Hanzo Link')}
                     </Text>
                   </XStack>
                 ) : null}
