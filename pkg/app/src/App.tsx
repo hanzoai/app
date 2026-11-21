@@ -75,6 +75,7 @@ import { AnonSettingsPane, dispatchTabsAction, Sidebar } from './Sidebar'
 import { Learning } from './Learning'
 import { isPlans, leave, useDevHost } from './dev'
 import { Gate } from './Gate'
+import { Chat } from './Chat'
 import { DevInterior, DevScope } from './DevPane'
 import { useHost } from './host'
 import { useKept } from './kept'
@@ -384,7 +385,7 @@ function Window({ bar, betas }: Hosted) {
         {/* The person's preferences, read once for Chat and Dev: the side panel's width is one of them. */}
         <PrefsProvider>
           <UsageProvider>
-            <DevScope active={mode === 'dev' || mode === 'chat'} path={here}>
+            <DevScope active={mode === 'dev'} path={here}>
         {/* The floor runs under the bar where there is one, so the window is one ground. */}
         <YStack
           ref={windowRef}
@@ -581,7 +582,7 @@ function Window({ bar, betas }: Hosted) {
                   </YStack>
                 ) : mode === 'chat' ? (
                   <Split framed>
-                    <DevInterior host={host} path={here} mode="chat" conversation={asked} />
+                    <Chat />
                   </Split>
                 ) : mode === 'tabs' ? (
                   <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>

@@ -55,7 +55,7 @@ import { useBetas } from './Betas'
 import { Recents } from './Recents'
 import { Toggle } from './Toggle'
 import { MARKS } from './icons'
-import { ChatList, DevList, useScope } from './DevPane'
+import { DevList, useScope } from './DevPane'
 import { DEFAULT_NAV, fullNavUrl, raised, useNavEntries, type NavEntry, type Pins, type Raised } from './Rail'
 import { MoreMenu } from './MoreMenu'
 import { Setup } from './Setup'
@@ -1474,7 +1474,7 @@ export function Sidebar({
           ) : mode === 'design' ? (
             made ? <Recents host={made} mode="design" thread={null} onOpen={open} onNew={create} /> : <YStack flex={1} minH={0} />
           ) : (
-            mode === 'chat' ? <ChatList host={host} path={host.path ?? ''} /> : <Recents host={host} mode={mode === 'dev' ? 'dev' : 'chat'} thread={thread} onOpen={open} onNew={create} />
+            <Recents host={host} mode={mode === 'dev' ? 'dev' : 'chat'} thread={thread} onOpen={open} onNew={create} />
           )}
 
           {/* More: one small row under Recents that pops a menu, so the sidebar never changes height. */}
