@@ -95,6 +95,7 @@ import { Ask, useBetas } from './Betas'
 import { BETAS } from './lib/betas'
 import { app, design, flow, go, hosted, place, settings, studio, talk, TERMINALS, visit, type Place } from './lib/host'
 import { Bar } from './Bar'
+import { Report } from './Report'
 import { FOOT, HEIGHT, TOP, useView } from './view'
 import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowControls'
 import { AppContextMenu } from './ContextMenu'
@@ -380,6 +381,7 @@ function Window({ bar, betas }: Hosted) {
   }
 
   return (
+    <Report>
     <AiProvider client={client ?? undefined}>
       <HostProvider host={host}>
         {/* The person's preferences, read once for Chat and Dev: the side panel's width is one of them. */}
@@ -752,5 +754,6 @@ function Window({ bar, betas }: Hosted) {
         </PrefsProvider>
       </HostProvider>
     </AiProvider>
+    </Report>
   )
 }

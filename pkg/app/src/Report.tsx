@@ -1,0 +1,199 @@
+'use client'
+
+// "Something broke — Report it": the quiet toast, the sheet it opens, and the
+// boundary that catches a render that threw. ONE MOUNT POINT: App wraps itself
+// in <Report>, and Help in the account menu opens the same sheet with
+// `reportProblem()`.
+//
+// Nothing leaves the device before the person presses Send. The sheet lists what
+// goes (the error, the page path, the version, the browser, the console's last
+// lines with secrets taken out, and the screenshot if it is kept), shows the
+// screenshot, and can show the exact text of the issue.
+
+import { Component, useCallback, useEffect, useState, type ReactNode } from 'react'
+import { Button, Dialog, DialogContent, DialogTitle, Input, SizableText, Text, Textarea, View, XStack, YStack } from '@hanzo/ui'
+import { useI18n } from '@hanzo/i18n/react'
+import { body, catches, hear, listen, repo, send, type Caught, type Filed } from './fault'
+import { shoot } from './shot'
+import { bearer, superAdmin } from './lib/session'
+
+const OPEN = 'hanzo:report'
+
+/** Opens the report sheet by hand: Help's "Report a problem". */
+export const reportProblem = (): void => void window.dispatchEvent(new CustomEvent(OPEN))
+
+/** Catches what React threw while rendering, files it with the report listener, and says so. */
+class Catch extends Component<{ children: ReactNode }, { broke: boolean }> {
+  state = { broke: false }
+  static getDerivedStateFromError() {
+    return { broke: true }
+  }
+  componentDidCatch(error: Error, info: { componentStack?: string | null }) {
+    catches('render', Object.assign(new Error(error.message), { stack: `${error.stack ?? ''}\n${info.componentStack ?? ''}` }))
+  }
+  render() {
+    if (!this.state.broke) return this.props.children
+    // Plain elements: the providers above may be the thing that broke.
+    return (
+      <View role="alert" height="100dvh" items="center" justify="center" gap={12}>
+        <Text>Something broke.</Text>
+        <Button onPress={() => window.location.reload()}>Reload</Button>
+      </View>
+    )
+  }
+}
+
+/** A superadmin's way to prove the path end to end: `?report-test=error|render|http`. */
+function Probe({ kind }: { kind: string }): null {
+  useEffect(() => {
+    if (kind === 'error') setTimeout(() => { throw new Error('Report test: a thrown error') }, 0)
+    if (kind === 'http') void fetch('/v1/report-test/unavailable').catch(() => undefined)
+  }, [kind])
+  if (kind === 'render') throw new Error('Report test: a render that threw')
+  return null
+}
+
+export function Report({ children }: { children: ReactNode }) {
+  const { t } = useI18n()
+  const [caught, setCaught] = useState<Caught | null>(null)
+  const [open, setOpen] = useState(false)
+  const [title, setTitle] = useState('')
+  const [note, setNote] = useState('')
+  const [shot, setShot] = useState<string | null>(null)
+  const [keep, setKeep] = useState(true)
+  const [state, setState] = useState<'idle' | 'sending' | 'done' | 'failed'>('idle')
+  const [filed, setFiled] = useState<Filed | null>(null)
+  const [probe, setProbe] = useState('')
+
+  useEffect(() => {
+    listen()
+    const q = new URLSearchParams(window.location.search).get('report-test')
+    if (q && superAdmin()) setProbe(q)
+    return hear((c) => {
+      if (!bearer()) return
+      // The picture is taken as the break happens, not after the sheet has changed the page.
+      void shoot().then(setShot)
+      setCaught(c)
+    })
+  }, [])
+
+  const begin = useCallback((c: Caught) => {
+    setCaught(c)
+    setTitle(c.message.slice(0, 100))
+    setNote('')
+    setKeep(true)
+    setState('idle')
+    setFiled(null)
+    setOpen(true)
+  }, [])
+
+  useEffect(() => {
+    const by = () => {
+      if (caught) return begin(caught)
+      void shoot().then((s) => {
+        setShot(s)
+        begin({
+          kind: 'error',
+          message: 'Reported by hand',
+          stack: '',
+          route: window.location.pathname,
+          at: new Date().toISOString(),
+          fingerprint: `hand${Date.now().toString(16)}`,
+          version: '',
+          agent: navigator.userAgent,
+          lines: [],
+        })
+      })
+    }
+    window.addEventListener(OPEN, by)
+    return () => window.removeEventListener(OPEN, by)
+  }, [caught, begin])
+
+  const go = async () => {
+    if (!caught) return
+    setState('sending')
+    try {
+      setFiled(await send({ caught, title, description: note, shot: keep ? shot : null }))
+      setState('done')
+    } catch (e) {
+      console.warn('report', (e as Error).message)
+      setState('failed')
+    }
+  }
+
+  const close = (next: boolean) => {
+    setOpen(next)
+    if (!next && state === 'done') setCaught(null)
+  }
+
+  return (
+    <Catch>
+      {probe ? <Probe kind={probe} /> : null}
+      {children}
+      {caught && !open ? (
+        <XStack
+          role="status"
+          data-slot="report-toast"
+          position="fixed"
+          b={16}
+          l={16}
+          z={2147483000}
+          items="center"
+          gap="$3"
+          px="$3"
+          py="$2"
+          rounded="$4"
+          borderWidth={1}
+          borderColor="var(--border-strong)"
+          bg="var(--popover)"
+        >
+          <SizableText size="$2" color="$quiet">
+            {t('Something broke')} —
+          </SizableText>
+          <Button size="sm" variant="ghost" onPress={() => begin(caught)}>
+            {t('Report it')}
+          </Button>
+          <Button size="sm" variant="ghost" aria-label={t('Dismiss')} onPress={() => setCaught(null)}>
+            ×
+          </Button>
+        </XStack>
+      ) : null}
+      <Dialog open={open} onOpenChange={close}>
+        <DialogContent data-slot="report-sheet" width={520} maxW="calc(100vw - 24px)" maxH="88dvh" bg="var(--popover)" borderWidth={1} borderColor="var(--border-strong)" rounded="$6" gap="$3" overflow="hidden">
+          <DialogTitle>{t('Report a problem')}</DialogTitle>
+          {state === 'done' && filed ? (
+            <YStack gap="$3">
+              <Text data-slot="report-done">{filed.again ? t('Added to {id}, already open. Thank you.', { id: filed.identifier }) : t('Filed as {id}. Thank you.', { id: filed.identifier })}</Text>
+              <Button onPress={() => close(false)}>{t('Close')}</Button>
+            </YStack>
+          ) : caught ? (
+            <YStack gap="$3" overflowY="auto" minH={0}>
+              <Input aria-label={t('Title')} value={title} onChangeText={setTitle} />
+              <Textarea aria-label={t('What happened?')} placeholder={t('What were you doing? (optional)')} value={note} onChangeText={setNote} rows={3} />
+              {shot ? (
+                <YStack gap="$2">
+                  {keep ? <View data-slot="report-shot" render={<img alt={t('Screenshot of the page')} src={shot} />} width="100%" rounded="$3" borderWidth={1} borderColor="var(--border)" /> : null}
+                  <Button size="sm" variant="ghost" self="flex-start" onPress={() => setKeep(!keep)}>
+                    {keep ? t('Remove screenshot') : t('Include screenshot')}
+                  </Button>
+                </YStack>
+              ) : null}
+              <SizableText size="$1" color="$quiet">
+                {t('Nothing is sent until you press Send. Sent to {repo}: the error, the page path, the app version, your browser, the last console lines with tokens, keys, cookies and emails removed, and the screenshot if kept.', { repo: repo() })}
+              </SizableText>
+              <View render={<details />}>
+                <Text render="summary" fontSize="$1" cursor="pointer">{t('See exactly what will be sent')}</Text>
+                <Text render="pre" fontSize="$1" whiteSpace="pre-wrap" maxH={180} overflowY="auto">{body({ caught, title, description: note, shot: keep ? shot : null }, keep && shot ? '(screenshot)' : undefined)}</Text>
+              </View>
+              {state === 'failed' ? <SizableText size="$2" color="$red10" role="alert">{t('Could not send. Check your connection and try again.')}</SizableText> : null}
+              <XStack gap="$2" justify="flex-end">
+                <Button variant="ghost" onPress={() => close(false)}>{t('Cancel')}</Button>
+                <Button data-slot="report-send" disabled={state === 'sending'} onPress={go}>{state === 'sending' ? t('Sending…') : t('Send')}</Button>
+              </XStack>
+            </YStack>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </Catch>
+  )
+}

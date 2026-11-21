@@ -20,6 +20,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  Bug,
   CircleHelp,
   CircleUserRound,
   Download,
@@ -79,6 +80,7 @@ import { ENTRY, settings } from './lib/host'
 import { rememberSettingsReturn, useDevMode } from './lib/dev-mode'
 import { InfoHint } from './lib/info-hint'
 import { leave } from './dev'
+import { reportProblem } from './Report'
 import { KEYS, legal, out, pages, type Key, type KeyGroup } from './help'
 import { showSettings } from './open'
 import { MARK } from './ground'
@@ -820,6 +822,9 @@ export function Account({
                         ))}
                         <DropdownMenuItem aria-keyshortcuts="Control+/ Meta+/" onSelect={() => setKeys(true)}>
                           <Line icon={<Keyboard size={16} aria-hidden />} trail={<DropdownMenuShortcut aria-hidden><bdi dir="ltr">{apple ? '⌘/' : 'Ctrl+/'}</bdi></DropdownMenuShortcut>}>{t('Keyboard shortcuts')}</Line>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={reportProblem}>
+                          <Line icon={<Bug size={16} aria-hidden />}>{t('Report a problem')}</Line>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         {legal().map((p) => (

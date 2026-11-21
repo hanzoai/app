@@ -14,6 +14,13 @@ import type { BillingPlan } from './lib/plans'
 export interface Addresses {
   /** The gateway's origin. Absent, the apps derive it from the page's host. */
   api?: string
+  /**
+   * Where a report of a break files, and what it says it came from. `repo` is
+   * the product repository for the surface (hanzoai/app on the web), or the one
+   * Dev is open on; `capture` is a native window capture, where the host has
+   * one, and answers a PNG data URL.
+   */
+  report?: { repo?: string; version?: string; capture?: () => Promise<string | null> }
   /** IAM's origin. Absent, hanzo.id. */
   iam?: string
   /**
