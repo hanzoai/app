@@ -11,6 +11,7 @@ import type { ComponentType } from 'react'
 import type { DevRuntime } from '@hanzo/dev-core'
 import type { BillingPlan } from './lib/plans'
 import type { Key } from './help'
+import type { Turn } from './lib/local'
 
 /** The addresses a host serves from, which plain modules read. */
 export interface Addresses {
@@ -68,6 +69,13 @@ export interface Addresses {
    * it: one row, every spelling.
    */
   keys?: readonly Key[]
+  /**
+   * Where a signed-out turn is answered when the host has an engine of its own (Hanzo Desktop's, on
+   * this computer): `chat` gets the whole conversation, the last turn the new question, and returns
+   * the answer. A refusal to answer is a thrown error. The host owns the lane, so the free lane's
+   * turn limit and sign-in gate do not apply. Unset, a signed-out turn goes to the public gateway.
+   */
+  local?: { chat: (turn: { messages: Turn[]; signal: AbortSignal }) => Promise<string> }
   /**
    * One Settings section of the host's own (Hanzo Desktop's "This computer"), listed under
    * Preferences and drawn as `Page` in the pane. `id` is its own, never an app section's; `label`

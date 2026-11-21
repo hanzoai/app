@@ -133,6 +133,7 @@ import { requestUpgrade, Upgrade, useFree, type Ask } from './Upgrade';
 import { enter, LOGIN, signUp } from './lib/destination';
 import { first } from './lib/first';
 import { BAD } from "./lib/mix";
+import { conversation as continued } from './lib/local'
 import { brand, site } from './where'
 import { useWindowed } from './windowed'
 import { BAND, HEAD, inPane, INSET, TOUCH_HEAD } from './ground'
@@ -1985,7 +1986,10 @@ function Thread({
       sessionStorage.setItem("hanzo.anon.thread_title", shortTitle);
       window.dispatchEvent(new CustomEvent("hanzo:anon-thread", { detail: { title: shortTitle } }));
     } catch {}
-    if (anonCountRef.current >= MAX_ANON_TURNS) {
+    // A host's own engine (`configure({ local })`) is not the free lane: no turn limit, no gate.
+    const local = where().local
+    const asked = local ? continued(turns.current, clean, new Set(["…", STOPPED, DROPPED, NO_ANSWER])) : []
+    if (!local && anonCountRef.current >= MAX_ANON_TURNS) {
       const uId = `u-anon-gate-${Date.now()}`;
       apply.current((held) => [...held, { id: uId, role: "user", content: clean }]);
       setAnonGateOpen(true);
@@ -2008,17 +2012,21 @@ function Thread({
     anonRequest.current = controller;
     const timer = window.setTimeout(() => controller.abort(), 60000);
     try {
-      const res = await fetch("https://api.hanzo.ai/v1/chat/public", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "enso", messages: [{ role: "user", content: clean }] }),
-        signal: controller.signal,
-      });
-      if (res.ok) {
-        const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-        const raw = data?.choices?.[0]?.message?.content?.trim();
-        if (raw) {
-          replyText = raw.replace(/\n*NEXT:\s*\S+\s*$/i, "").trim();
+      if (local) {
+        replyText = (await local.chat({ messages: asked, signal: controller.signal })).trim();
+      } else {
+        const res = await fetch("https://api.hanzo.ai/v1/chat/public", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: "enso", messages: [{ role: "user", content: clean }] }),
+          signal: controller.signal,
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+          const raw = data?.choices?.[0]?.message?.content?.trim();
+          if (raw) {
+            replyText = raw.replace(/\n*NEXT:\s*\S+\s*$/i, "").trim();
+          }
         }
       }
     } catch {
@@ -2034,10 +2042,10 @@ function Thread({
     if (!replyText) {
       // No answer came back: say so, never a made-up reply. A refusal asks for a sign-in; a dropped connection is retried.
       apply.current((held) =>
-        held.map((m) => (m.id === aId ? { ...m, content: dropped ? DROPPED : NO_ANSWER } : m)),
+        held.map((m) => (m.id === aId ? { ...m, content: dropped || local ? DROPPED : NO_ANSWER } : m)),
       );
       setAnonBusy(false);
-      if (!dropped) setAnonGateOpen(true);
+      if (!dropped && !local) setAnonGateOpen(true);
       return;
     }
     const wordsList = replyText.split(" ");
@@ -2061,7 +2069,7 @@ function Thread({
       step();
     });
     setAnonBusy(false);
-    if (turnNum >= MAX_ANON_TURNS) {
+    if (!local && turnNum >= MAX_ANON_TURNS) {
       window.setTimeout(() => setAnonGateOpen(true), 450);
     }
   }, []);
