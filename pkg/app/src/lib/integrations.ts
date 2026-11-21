@@ -108,9 +108,9 @@ client = anthropic.Anthropic(
 )
 
 message = client.messages.create(
-    model="anthropic/claude-sonnet-4-6",
+    model="zen6",
     max_tokens=1024,
-    messages=[{"role": "user", "content": "Hello, Claude!"}],
+    messages=[{"role": "user", "content": "Hello!"}],
 )
 print(message.content[0].text)`,
       },
@@ -125,7 +125,7 @@ const client = new Anthropic({
 });
 
 const message = await client.messages.create({
-  model: "anthropic/claude-sonnet-4-6",
+  model: "zen6",
   max_tokens: 1024,
   messages: [{ role: "user", content: "Hello!" }],
 });`,
@@ -148,7 +148,7 @@ const message = await client.messages.create({
   -H "x-api-key: $HANZO_API_KEY" \\
   -H "anthropic-version: 2023-06-01" \\
   -H "content-type: application/json" \\
-  -d '{"model":"anthropic/claude-sonnet-4-6","max_tokens":100,"messages":[{"role":"user","content":"Hi"}]}'`,
+  -d '{"model":"zen6","max_tokens":100,"messages":[{"role":"user","content":"Hi"}]}'`,
       },
     ],
   },
@@ -742,7 +742,7 @@ export HANZO_API_KEY="your-hanzo-api-key"`,
   "name": "Hanzo AI",
   "baseUrl": "https://api.hanzo.ai/v1",
   "apiKey": "your-hanzo-api-key",
-  "models": ["zen4-pro", "zen4-max", "openai/gpt-4.1", "anthropic/claude-sonnet-4-6"]
+  "models": ["zen4-pro", "zen4-max", "openai/gpt-4.1", "zen6"]
 }`,
       },
       {

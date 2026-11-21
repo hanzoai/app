@@ -72,7 +72,7 @@ export const PRETRAINED_AGENTS: ContactAgent[] = [
   {
     id: 'pretrained-researcher',
     name: 'Hanzo Researcher',
-    model: 'claude-3-5-sonnet',
+    model: 'zen6',
     role: 'Deep Intelligence & Research Specialist',
     description: 'Deep web search, arXiv paper extraction, competitive intelligence, and synthesis.',
     avatar: '/agents/sci.png',
