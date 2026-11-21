@@ -6,8 +6,9 @@
 // mints each pane's address.
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Button, Skeleton, Text, View, XStack, YStack } from '@hanzo/ui'
-import { useFleet, Workspace } from '@hanzo/tabs'
+import { Button, Skeleton, Text, toast, View, XStack, YStack } from '@hanzo/ui'
+import { useFleet, Workspace, type StartAsk } from '@hanzo/tabs'
+import { Loading } from './slow'
 import { useI18n } from '@hanzo/i18n/react'
 import { Cloud, Globe, Laptop, Monitor, SquareTerminal } from 'lucide-react'
 import { api } from './lib/api'
@@ -17,16 +18,15 @@ import { useDevMode } from './lib/dev-mode'
 import { showDevice } from './lib/devices'
 import { InfoHint } from './lib/info-hint'
 import { bearer } from './lib/session'
-import { followUp, LAYOUT, restores, showCalmEmpty as calmEmpty } from './terminalsState'
+import { answersActions, followUp, showCalmEmpty as calmEmpty } from './terminalsState'
+import { useSpend } from './Confirm'
 
-type LaunchKind = 'dev' | 'desktop' | 'browser'
+type LaunchKind = StartAsk['kind']
 
-function TerminalsSkeleton({ label }: { label: string }) {
+function TerminalsSkeleton({ label, onRetry }: { label: string; onRetry?: () => void }) {
   return (
     <YStack
-      role="status"
       aria-busy={true}
-      aria-label={label}
       flex={1}
       minH={0}
       minW={0}
@@ -44,10 +44,8 @@ function TerminalsSkeleton({ label }: { label: string }) {
         $max-sm={{ px: '$3', pt: '$5', pb: '$8' }}
         gap="$6"
       >
-        <YStack gap="$2">
-          <Skeleton layout="block" width={120} height={24} rounded="$2" />
-          <Skeleton layout="block" width="72%" height={14} rounded="$2" />
-        </YStack>
+        {/* The wait in words, where the title will stand: the cards alone said nothing for 10 to 15 s. */}
+        <Loading label={label} onRetry={onRetry} />
         <View
           display="grid"
           gridTemplateColumns="repeat(3, minmax(0, 1fr))"
@@ -98,8 +96,54 @@ export default function Terminals() {
   const [launchingKind, setLaunchingKind] = useState<LaunchKind | null>(null)
   const [launchError, setLaunchError] = useState<string | null>(null)
   const [openedWorkspace, setOpenedWorkspace] = useState(false)
-  const [pendingAction, setPendingAction] = useState<{ kind: 'shell' | 'page' | 'desktop'; machine: string; restoring: boolean } | null>(null)
+  const [pendingAction, setPendingAction] = useState<{ kind: 'shell' | 'page' | 'desktop'; machine: string } | null>(null)
   const launching = launchingKind !== null
+
+  // EVERY START ASKS ONCE, and here: the page's cards, the sidebar's actions and the
+  // Workspace's own New, split, picker and temporary starts all go through `confirm`,
+  // the Workspace's only asker (`confirmLease`), which says everything the start is.
+  // One spend kind per class of machine, so a yes kept for terminals never starts a desktop.
+  const machines = {
+    dev: useSpend('tabs-dev', t('Start a cloud machine?'), t('This starts a cloud machine for you. It keeps running until you stop it.'), t('Start machine')),
+    desktop: useSpend('tabs-desktop', t('Start a cloud machine?'), t('This starts a cloud machine for you. It keeps running until you stop it.'), t('Start machine')),
+    browser: useSpend('tabs-browser', t('Start a cloud machine?'), t('This starts a cloud machine for you. It keeps running until you stop it.'), t('Start machine')),
+  }
+  // The page's own starts (below) have no Workspace waiting on them, so no deadline.
+  const confirm = useCallback(
+    (ask: Omit<StartAsk, 'expires'> & { expires?: number }) =>
+      new Promise<boolean>((answer) => {
+        const what = { dev: t('This starts a cloud terminal for you.'), desktop: t('This starts a cloud desktop for you.'), browser: t('This starts a cloud browser for you.') }[ask.kind]
+        const keeps = ask.temporary
+          ? t('It keeps running until you stop it, and keeps no files: everything on it is lost when it stops.')
+          : t('It keeps running until you stop it.')
+        const unseen = !ask.beyond
+          ? ''
+          : ask.limit === 0
+            ? t('Your plan does not stream tabs, so you will not see it, though it still runs.')
+            : t('Your plan streams {limit} tabs at once and they are all open, so it would run where you cannot see it until one frees up.', { limit: ask.limit ?? 0 })
+        machines[ask.kind].ask(
+          () => answer(true),
+          () => answer(false),
+          {
+            title: ask.temporary ? t('Start a temporary cloud machine?') : t('Start a cloud machine?'),
+            what: [what, keeps, unseen].filter(Boolean).join(' '),
+            // A yes is kept per person, for a start they will see: never one that loses its files,
+            // nor one past the plan's streamed tabs (or with no limit told), where it runs unseen.
+            once: !fleet.account || ask.temporary || ask.beyond || ask.limit === null || ask.limit === 0,
+            // The Workspace stops waiting at `expires`: the question goes with it, so a yes after
+            // it cannot seem to start anything, and the person is told nothing started.
+            expires: ask.expires,
+            late: () => {
+              toast(t('Nothing was started, because the question timed out.'))
+              answer(false)
+            },
+          },
+        )
+      }),
+    // Each `ask` is its hook's stable callback; the object holding them is new every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [machines.dev.ask, machines.desktop.ask, machines.browser.ask, fleet.account, t],
+  )
 
   // The names a person gave their devices (kept on their account; the sidebar renames them).
   const names = useDeviceNames()
@@ -140,19 +184,13 @@ export default function Terminals() {
       if (launchingKind !== null) return
       setLaunchingKind(kind)
       setLaunchError(null)
-      // The layout as it is before the Workspace sees the new machine: once it opens its default shell it saves that too.
-      let saved: string | null = null
       try {
-        saved = window.localStorage.getItem(LAYOUT)
-      } catch {
-        // no storage: the Workspace has no layout to restore either
-      }
-      try {
-        const machine = await fleet.launch(kind)
+        // The page's own start, outside the Workspace: the same one question.
+        if (!(await confirm({ kind, temporary: false, beyond: false, limit: fleet.streams, from: 'menu' }))) return
+        const started = await fleet.launch(kind, { temporary: false })
         setPendingAction({
           kind: kind === 'dev' ? 'shell' : kind === 'browser' ? 'page' : 'desktop',
-          machine,
-          restoring: restores(saved, new Set([...liveHosts.map((h) => h.machine), machine])),
+          machine: started,
         })
         setOpenedWorkspace(true)
       } catch (e: unknown) {
@@ -161,7 +199,7 @@ export default function Terminals() {
         setLaunchingKind(null)
       }
     },
-    [token, launchingKind, fleet, t, liveHosts],
+    [token, launchingKind, confirm, fleet, t],
   )
 
   useEffect(() => {
@@ -183,8 +221,11 @@ export default function Terminals() {
     }
   }, [liveHosts, fleet.read])
 
+  const showCalmEmpty = calmEmpty({ token, read: fleet.read, error: Boolean(fleet.error), hosts: liveHosts.length, opened: openedWorkspace })
+  const answers = answersActions({ calm: showCalmEmpty, read: fleet.read, error: Boolean(fleet.error) })
+
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    if (typeof window === 'undefined' || !answers) return
     const onTabsAction = (ev: Event) => {
       const detail = (ev as CustomEvent<{ kind?: string }>).detail
       if (!detail?.kind) return
@@ -197,21 +238,20 @@ export default function Terminals() {
     }
     window.addEventListener('hanzo:tabs-action', onTabsAction)
     return () => window.removeEventListener('hanzo:tabs-action', onTabsAction)
-  }, [liveHosts.length, openedWorkspace, startWorkspace])
-
-  const showCalmEmpty = calmEmpty({ token, read: fleet.read, error: Boolean(fleet.error), hosts: liveHosts.length, opened: openedWorkspace })
+  }, [answers, liveHosts.length, openedWorkspace, startWorkspace])
 
   useEffect(() => {
     if (!pendingAction || showCalmEmpty || !(fleet.read || fleet.error)) return
-    const { restoring, ...action } = pendingAction
+    const action = pendingAction
     if (typeof window === 'undefined') return
+    const detail = followUp(action, liveHosts)
+    if (detail === 'wait') return
     const id = window.setTimeout(() => {
       setPendingAction(null)
-      const detail = followUp(action, restoring)
       if (detail) window.dispatchEvent(new CustomEvent('hanzo:tabs-action', { detail }))
     }, 0)
     return () => window.clearTimeout(id)
-  }, [pendingAction, showCalmEmpty, fleet.read, fleet.error])
+  }, [pendingAction, showCalmEmpty, fleet.read, fleet.error, liveHosts])
 
   const launchers = [
     {
@@ -245,6 +285,9 @@ export default function Terminals() {
 
   return (
     <YStack data-slot="terminals" flex={1} minH={0} minW={0} bg="$background">
+      {machines.dev.dialog}
+      {machines.desktop.dialog}
+      {machines.browser.dialog}
       {fleet.error ? (
         <XStack
           role="alert"
@@ -527,11 +570,16 @@ export default function Terminals() {
         <Workspace
           hosts={hosts}
           mint={fleet.mint}
+          confirmLease={confirm}
           onLaunch={fleet.launch}
+          onStop={fleet.stop}
           agent={fleet.agent}
+          account={fleet.account}
+          // The plan's cap on tabs streaming at once (GET /v1/entitlements): null enforces nothing.
+          streams={fleet.streams}
         />
       ) : (
-        <TerminalsSkeleton label={devMode ? t('Reading your machines…') : t('Loading your workspaces…')} />
+        <TerminalsSkeleton label={devMode ? t('Reading your machines…') : t('Loading your machines…')} onRetry={() => fleet.refresh()} />
       )}
     </YStack>
   )
