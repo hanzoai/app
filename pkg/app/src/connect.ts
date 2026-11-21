@@ -52,6 +52,20 @@ export async function activate(name: string, on: boolean): Promise<string[]> {
   return done.enabled ?? []
 }
 
+/**
+ * Switches several skills on at once, by their catalogue names (`marketing_campaigns`),
+ * and answers with the whole resulting set: the same write as {@link activate},
+ * in one request, so a role's set is added in one click (roles.ts). The handler
+ * checks every name, and the caller's right to switch them, before it switches
+ * any: switching a skill takes an admin of the org, and a member is refused 403
+ * with nothing switched, which the caller says in words.
+ */
+export async function install(names: readonly string[]): Promise<string[]> {
+  if (!names.length) return []
+  const done = await ask<{ enabled?: string[] }>('/v1/tools/activation', { activate: names.map((n) => `skill_${n}`) })
+  return done.enabled ?? []
+}
+
 /** What a device sign-in needs from the reader. */
 export interface Device {
   /** The short code they type at {@link Device.verifyUrl}. */
