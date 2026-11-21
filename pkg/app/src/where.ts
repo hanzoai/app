@@ -10,6 +10,7 @@
 import type { ComponentType } from 'react'
 import type { DevRuntime } from '@hanzo/dev-core'
 import type { BillingPlan } from './lib/plans'
+import type { Key } from './help'
 
 /** The addresses a host serves from, which plain modules read. */
 export interface Addresses {
@@ -61,6 +62,12 @@ export interface Addresses {
    * a linked machine or a cloud cell (devRuntime.ts); null is none. A host with no local Dev omits it.
    */
   runtime?: () => Promise<DevRuntime | null>
+  /**
+   * The keys the host answers itself (Hanzo Desktop's ⌘N), listed with the app's in the shortcuts
+   * dialog and the palette. A key that does what an app key does (same `does`) is another way to do
+   * it: one row, every spelling.
+   */
+  keys?: readonly Key[]
   /** The plan catalogue as the host's build last read it: the first paint. */
   plans?: BillingPlan[]
   /**

@@ -108,7 +108,7 @@ import { app, design, flow, hosted, paged, settings, talk, TERMINALS, WORKSPACE,
 import { BETAS } from './lib/betas'
 import { useBetas } from './Betas'
 import { tidy } from './lib/title'
-import { KEYS, legal, out, pages } from './help'
+import { legal, out, pages, rows as keyRows } from './help'
 import { site } from './where'
 import { find, rank, type Group, type Hit } from './seek'
 
@@ -641,13 +641,11 @@ export function Search({
         {
           id: 'keys',
           label: t('Keyboard shortcuts'),
-          items: KEYS.filter((k) => {
+          items: keyRows().map((k) => ({ ...k, chord: k.chords.map((c) => (apple ? c.mac : c.pc)).join(' · ') })).filter((k) => {
             const needle = query.trim().toLowerCase()
             if (!needle) return true
-            const label = t(k.does).toLowerCase()
-            const chord = (apple ? k.mac : k.pc).toLowerCase()
-            return label.includes(needle) || chord.includes(needle)
-          }).map((k) => ({ id: `key-${k.does}`, label: t(k.does), contextual: spelled(apple ? k.mac : k.pc), onSelect: () => setKeys(false) })),
+            return t(k.does).toLowerCase().includes(needle) || k.chord.toLowerCase().includes(needle)
+          }).map((k) => ({ id: `key-${k.does}`, label: t(k.does), contextual: spelled(k.chord), onSelect: () => setKeys(false) })),
         },
       ]
     : groups
