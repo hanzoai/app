@@ -165,8 +165,12 @@ const reviewing = (text: string): boolean =>
  */
 const MAX_ANON_TURNS = 3;
 
-/** What an anonymous send says when the API gave no answer. */
+/** What an anonymous send says when the API refused or gave no answer. */
 const NO_ANSWER = phrase("No answer came back. Sign in to keep going.");
+/** What it says when the connection dropped, or the wait ran out, before an answer came: nothing to sign in for. */
+const DROPPED = phrase("The connection dropped before an answer came. Try again.");
+/** What it says when the reader pressed Stop before the answer came. */
+const STOPPED = phrase("Stopped.");
 
 
 function readOpeningQuery(): { text: string; thread: string | null } {
@@ -1871,6 +1875,13 @@ function Thread({
   const [anonBusy, setAnonBusy] = useState(false);
   const [anonGateOpen, setAnonGateOpen] = useState(false);
   const anonCountRef = useRef(0);
+  // The anonymous send in flight, and whether its reader pressed Stop: the send is one request, not a stream the chat hook holds.
+  const anonRequest = useRef<AbortController | null>(null);
+  const anonStopped = useRef(false);
+  const stopAnon = useCallback(() => {
+    anonStopped.current = true;
+    anonRequest.current?.abort();
+  }, []);
   const sendAnon = useCallback(async (rawText: string) => {
     const clean = (rawText || "").trim();
     if (!clean) return;
@@ -1897,16 +1908,18 @@ function Thread({
     ]);
     setAnonBusy(true);
     let replyText = "";
+    let dropped = false;
+    anonStopped.current = false;
+    const controller = new AbortController();
+    anonRequest.current = controller;
+    const timer = window.setTimeout(() => controller.abort(), 60000);
     try {
-      const controller = new AbortController();
-      const timer = window.setTimeout(() => controller.abort(), 60000);
       const res = await fetch("https://api.hanzo.ai/v1/chat/public", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model: "enso", messages: [{ role: "user", content: clean }] }),
         signal: controller.signal,
       });
-      window.clearTimeout(timer);
       if (res.ok) {
         const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
         const raw = data?.choices?.[0]?.message?.content?.trim();
@@ -1914,20 +1927,34 @@ function Thread({
           replyText = raw.replace(/\n*NEXT:\s*\S+\s*$/i, "").trim();
         }
       }
-    } catch {}
+    } catch {
+      dropped = true;
+    }
+    window.clearTimeout(timer);
+    if (anonStopped.current) {
+      // Stopped before an answer: the turn says so, and Regenerate asks it again.
+      apply.current((held) => held.map((m) => (m.id === aId ? { ...m, content: STOPPED } : m)));
+      setAnonBusy(false);
+      return;
+    }
     if (!replyText) {
-      // No answer came back: say so and ask for a sign-in, never a made-up reply.
+      // No answer came back: say so, never a made-up reply. A refusal asks for a sign-in; a dropped connection is retried.
       apply.current((held) =>
-        held.map((m) => (m.id === aId ? { ...m, content: NO_ANSWER } : m)),
+        held.map((m) => (m.id === aId ? { ...m, content: dropped ? DROPPED : NO_ANSWER } : m)),
       );
       setAnonBusy(false);
-      setAnonGateOpen(true);
+      if (!dropped) setAnonGateOpen(true);
       return;
     }
     const wordsList = replyText.split(" ");
     let idx = 0;
     await new Promise<void>((resolve) => {
       const step = () => {
+        // Stop ends the reveal where it stands.
+        if (anonStopped.current) {
+          resolve();
+          return;
+        }
         idx = Math.min(wordsList.length, idx + 4);
         const slice = wordsList.slice(0, idx).join(" ");
         apply.current((held) => held.map((m) => (m.id === aId ? { ...m, content: slice } : m)));
@@ -2808,7 +2835,10 @@ function Thread({
       value: draft,
       onChange: setDraft,
       onSend: () => submit(),
-      onStop: chat.stop,
+      onStop: () => {
+        stopAnon();
+        chat.stop();
+      },
       busy: chat.streaming || anonBusy,
       // Files alone are a message: what is held goes with an empty draft too.
       ready: Boolean(draft.trim() || files.length),
