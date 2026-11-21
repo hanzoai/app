@@ -8,7 +8,7 @@
 //            { id, label, zap, sandbox } (HIP-1330); DELETE /v1/dev/sessions/:id
 //            releases it. A lease creates state, so it is asked for only when no
 //            machine is linked. Refused or unavailable is no cell, never an error.
-//   null     neither: the shell keeps drawing @hanzo/build's Builder.
+//   null     neither: Dev's own start state.
 //
 // Both are reached over ZAP (WebTransport) with the person's Hanzo IAM bearer.
 
@@ -52,19 +52,19 @@ async function call<T>(method: string, path: string, signal?: AbortSignal): Prom
 
 const token = async (): Promise<string> => bearer() ?? ''
 
-/** The linked machines, online. Reads only; nothing is leased. */
+/** The linked machines, online, that a browser can reach over ZAP (https; WebTransport has no plain http). Reads only; nothing is leased. */
 export async function machines(signal: AbortSignal): Promise<readonly DevRuntime[]> {
   const found = await call<{ targets?: Target[] }>('GET', '/v1/agents/targets', signal)
   return (found?.targets ?? [])
-    .filter((m) => m.host && m.status === 'online')
+    .filter((m) => m.host && m.status === 'online' && origin(m.host).startsWith('https:'))
     .map((m) => ({ kind: 'machine', id: m.id, label: m.label ?? m.id, zap: origin(m.host as string), token }))
 }
 
-/** The host's own Dev first, then a linked machine, else a leased cloud cell, else null. */
-export async function resolveRuntime(signal: AbortSignal): Promise<DevRuntime | null> {
+/** The host's own Dev first, then a linked machine, else a leased cloud cell, else null. `skip` names runtimes that would not pair this session. */
+export async function resolveRuntime(signal: AbortSignal, skip: ReadonlySet<string> = new Set()): Promise<DevRuntime | null> {
   const local = await where().runtime?.().catch(() => null)
-  if (local) return local
-  const linked = (await machines(signal))[0]
+  if (local && !skip.has(local.id)) return local
+  const linked = (await machines(signal)).find((m) => !skip.has(m.id))
   if (linked) return linked
   const lease = await call<Lease>('POST', '/v1/dev/sessions', signal)
   return lease?.zap
@@ -76,14 +76,19 @@ export async function resolveRuntime(signal: AbortSignal): Promise<DevRuntime | 
 export const release = (runtime: DevRuntime): Promise<unknown> =>
   runtime.kind === 'cell' ? call('DELETE', `/v1/dev/sessions/${encodeURIComponent(runtime.id)}`) : Promise.resolve()
 
-/** undefined while it is being found, null when there is none. */
-export function useDevRuntime(on: boolean): DevRuntime | null | undefined {
+/**
+ * `runtime` is undefined while it is being found, null when there is none. `fail` is for a runtime
+ * that would not pair: it is not tried again this session, and the next (a machine, else a cloud
+ * cell, else none: Dev's start state) takes its place.
+ */
+export function useDevRuntime(on: boolean): { runtime: DevRuntime | null | undefined; fail: (r: DevRuntime) => void } {
   const [runtime, setRuntime] = useState<DevRuntime | null | undefined>(undefined)
+  const [skip, setSkip] = useState<ReadonlySet<string>>(() => new Set())
   useEffect(() => {
     if (!on) return
     const ctl = new AbortController()
     let found: DevRuntime | null = null
-    void resolveRuntime(ctl.signal).then((r) => {
+    void resolveRuntime(ctl.signal, skip).then((r) => {
       found = r
       if (!ctl.signal.aborted) setRuntime(r)
       else if (r) void release(r)
@@ -92,6 +97,7 @@ export function useDevRuntime(on: boolean): DevRuntime | null | undefined {
       ctl.abort()
       if (found) void release(found)
     }
-  }, [on])
-  return runtime
+  }, [on, skip])
+  const fail = (r: DevRuntime) => setSkip((prev) => new Set(prev).add(r.id))
+  return { runtime, fail }
 }

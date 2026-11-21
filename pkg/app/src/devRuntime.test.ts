@@ -54,3 +54,18 @@ describe('resolveRuntime', () => {
     configure({ runtime: undefined })
   })
 })
+
+describe('a runtime that will not pair', () => {
+  test('a machine on plain http is never offered, and a skipped machine falls through to the cloud cell', async () => {
+    serve({
+      '/v1/agents/targets': { targets: [{ id: 'dgx', host: 'http://dgx.test', status: 'online' }, { id: 'm2', host: 'm2.tunnel.test', status: 'online' }] },
+      '/v1/dev/sessions': { id: 'c1', zap: 'https://cell.test/zap', sandbox: 'sb1' },
+    })
+    expect(await resolveRuntime(signal)).toMatchObject({ kind: 'machine', id: 'm2' })
+    expect(await resolveRuntime(signal, new Set(['m2']))).toMatchObject({ kind: 'cell', id: 'c1' })
+  })
+  test('with every machine skipped and no cell, there is none: Dev draws its start state', async () => {
+    serve({ '/v1/agents/targets': { targets: [{ id: 'm2', host: 'm2.tunnel.test', status: 'online' }] } })
+    expect(await resolveRuntime(signal, new Set(['m2']))).toBeNull()
+  })
+})

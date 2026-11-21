@@ -88,12 +88,12 @@ export function DevScope({ active, children }: { active: boolean; children: Reac
   useEffect(() => {
     if (active) setOn(true)
   }, [active])
-  const runtime = useDevRuntime(on)
+  const { runtime, fail } = useDevRuntime(on)
   return (
     <Scope.Provider value={runtime}>
       {runtime ? (
         <Suspense fallback={null}>
-          <Provider runtime={runtime}>{children}</Provider>
+          <Provider runtime={runtime} onFail={fail}>{children}</Provider>
         </Suspense>
       ) : (
         children

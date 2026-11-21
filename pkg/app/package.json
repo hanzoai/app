@@ -50,7 +50,7 @@
   },
   "license": "Apache-2.0 OR MIT",
   "dependencies": {
-    "@hanzo/dev-core": "^0.1.13",
+    "@hanzo/dev-core": "^0.1.14",
     "@hanzo/glass": "workspace:*",
     "@hanzo/mod": "workspace:*",
     "@hanzo/sources": "workspace:*",
