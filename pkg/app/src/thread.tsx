@@ -78,6 +78,7 @@ import { attempt, bind, enlist, reread, snapshot, subscribe, sweep, tick, view, 
 import { chord, named, said, type Act } from './chord'
 import { carry } from './stars'
 import { ShareDialog } from './Share'
+import { useWindowed } from './windowed'
 import { english, phrase, type Say } from '@hanzo/i18n'
 
 export interface ThreadList {
@@ -390,6 +391,7 @@ export function ConversationMenu({
   children: ReactElement
 }) {
   const { t } = useI18n()
+  const windowed = useWindowed()
   const defaultAct = useThreadActions()
   const act = customActions ?? defaultAct
   // The conversation the pane holds NOW: a delete answered after the reader moved on leaves the conversation they moved to.
@@ -809,7 +811,8 @@ export function ConversationMenu({
           ...(onSchedule ? [{ key: 'schedule', label: t('Schedule…'), icon: <Clock size={16} aria-hidden />, run: () => onSchedule(subject) }] : []),
           { key: 'copy', label: t('Copy link'), icon: <Link2 size={16} aria-hidden />, run: () => void copy(subject.id, t, hrefOf) },
           { key: 'copy-id', label: t('Copy id'), icon: <Copy size={16} aria-hidden />, run: () => void copyId(subject.id, t) },
-          { key: 'tab', label: t('Open in new tab'), icon: <ExternalLink size={16} aria-hidden />, run: () => away(subject.id, hrefOf) },
+          // A window of its own (Hanzo Desktop) has no browser tabs to open it in.
+          ...(windowed ? [] : [{ key: 'tab', label: t('Open in new tab'), icon: <ExternalLink size={16} aria-hidden />, run: () => away(subject.id, hrefOf) }]),
           {
             key: 'archive',
             label: t(subject.archived ? 'Unarchive' : 'Archive'),
