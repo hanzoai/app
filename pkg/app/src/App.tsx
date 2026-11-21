@@ -100,16 +100,10 @@ import { FOOT, HEIGHT, TOP, useView } from './view'
 import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowControls'
 import { AppContextMenu } from './ContextMenu'
 
-const directorNav = (Reflect.get(studioPkg, 'directorNav') as typeof places | undefined) ?? places
 const flowNav = (Reflect.get(studioPkg, 'flowNav') as typeof places | undefined) ?? places
 
 /** Studio, fetched the first time the reader stands in it. */
 const Studio = lazy(() => import('@hanzo/studio').then((m) => ({ default: m.Studio })))
-const DirectorStudio = lazy(() =>
-  import('@hanzo/studio').then((m) => ({
-    default: (m as unknown as { DirectorStudio?: React.ComponentType<{ host: Host }> }).DirectorStudio ?? m.Studio,
-  })),
-)
 const FlowStudio = lazy(() =>
   import('@hanzo/studio').then((m) => ({
     default: (m as unknown as { FlowStudio?: React.ComponentType<{ host: Host }> }).FlowStudio ?? m.Studio,
@@ -370,7 +364,7 @@ function Window({ bar, betas }: Hosted) {
     pick(o)
     window.location.assign(mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'flow' ? flow('') : mode === 'studio' ? studio('') : mode === 'tabs' ? TERMINALS : inside ? hosted(inside) : talk())
   }
-  const sidebar = mode === 'beta' || mode === 'hosted' ? [] : mode === 'design' ? places(maker, (p) => maker.go(p)) : mode === 'flow' ? flowNav(maker, (p) => maker.go(p)) : mode === 'studio' ? directorNav(maker, (p) => maker.go(p)) : mode === 'dev' && raised(where) === 'customize'
+  const sidebar = mode === 'beta' || mode === 'hosted' ? [] : mode === 'design' ? places(maker, (p) => maker.go(p)) : mode === 'flow' ? flowNav(maker, (p) => maker.go(p)) : mode === 'studio' ? places(maker, (p) => maker.go(p)) : mode === 'dev' && raised(where) === 'customize'
     ? tabs(host, (p) => host.go(p), t).map((group) => ({ ...group, links: [...group.links, {
       id: 'learning', label: t('Learning'), active: learning, icon: <RefreshCw size={16} aria-hidden />,
       onPress: () => { shut(); setLearning(true) },
@@ -655,7 +649,7 @@ function Window({ bar, betas }: Hosted) {
                     ) : (
                       <YStack flex={1} minH={0} height="100%">
                         <Suspense fallback={null}>
-                          <DirectorStudio host={maker} />
+                          <Studio host={maker} rail={false} />
                         </Suspense>
                       </YStack>
                     )}
