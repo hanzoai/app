@@ -29,6 +29,14 @@ describe('This computer for Dev (hanzo-inc/app issues 309 and 310)', () => {
     expect(desktopLocal()).toBeNull()
   })
 
+  it('names this computer by its OS hostname, as `hanzo link` registers it', async () => {
+    const invoke = vi.fn(async (cmd: string) => (cmd === 'plugin:os|hostname' ? 'daves-mbp.local' : null))
+    desktop(invoke)
+    await expect(desktopLocal()!.host!()).resolves.toBe('daves-mbp.local')
+    desktop(async () => null)
+    await expect(desktopLocal()!.host!()).resolves.toBe('')
+  })
+
   it('lists the folders Hanzo Desktop opened, each with when it was used last', () => {
     desktop(async () => null, { 'hanzo.local_workspaces': two })
     expect(desktopLocal()!.folders()).toEqual([

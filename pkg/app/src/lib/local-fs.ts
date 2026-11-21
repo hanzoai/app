@@ -11,8 +11,9 @@
  * Dev's This computer is `desktopLocal()` (hanzo-inc/app issues 309 and 310): on Hanzo Desktop it hands @hanzo/build
  * the folders opened here and the project folders the desktop finds on the computer, the window's folder dialog and
  * the `dev` runner, so a run works in a folder with no repository. Auto there is the folder the ask is about, else
- * the one used most recently (`lastOpenedAt`), as @hanzo/build's `route` reads them. A browser page has no folder of
- * its own, and gets none.
+ * the one used most recently (`lastOpenedAt`), as @hanzo/build's `route` reads them. Its hostname (`host`) is how
+ * Settings → Machines finds this computer's own machine, to share a folder of it with the web (hanzo-inc/app issue 310).
+ * A browser page has no folder of its own, and gets none.
  */
 import type { Folder, Local } from '@hanzo/build'
 
@@ -365,6 +366,8 @@ export function desktopLocal(): Local | null {
       if (ws) setActiveWorkspace(ws)
       else addLocalWorkspace(path)
     },
+    // The name `hanzo link` registers this computer under: the OS hostname, from the window's os plugin.
+    host: async () => (await tauriInvoke<string | null>('plugin:os|hostname')) ?? '',
     // Stops the agent being fetched for the first run; the run's own call then answers `Setup was cancelled.` (@hanzo/build `failed`).
     cancel: async () => {
       await tauriInvoke<boolean>('local_dev_setup_cancel')

@@ -440,8 +440,9 @@ own menu (Header.tsx) and the Accounts section keep their markup.
 `dev.tsx` hands @hanzo/build's Dev what only the desktop window has, as `Host.local` and `Host.site`; a browser
 page gets neither (`isTauri()` is false), and Dev offers the cloud workspace and the org's machines only.
 
-- `lib/local-fs.ts` `desktopLocal()`: the folders the window opened, its folder dialog, and a run of the `dev` agent
-  in one folder (`local_workspace_run_dev`).
+- `lib/local-fs.ts` `desktopLocal()`: the folders the window opened, its folder dialog, a run of the `dev` agent
+  in one folder (`local_workspace_run_dev`), and the computer's hostname (`host`, the os plugin's `hostname`), by
+  which Settings → Machines finds this computer's machine to share a folder of it with the web (hanzo-inc/app#310).
 - `lib/local-site.ts` `desktopSite()` (hanzo-inc/app issue 312): opening a site from the computer's own connection and
   saving a copy of it into a folder for the agent (`local_site_capture`: the page, its words, its stylesheets, a picture
   when a paired browser can take one), naming a new folder under Documents/Hanzo (`local_site_folder`), serving the
