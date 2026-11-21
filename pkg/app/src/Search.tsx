@@ -101,7 +101,7 @@ import { useThreadList } from './thread'
 import { useKept } from './kept'
 import { payPage } from './lib/pay'
 import { openModelPicker } from './lib/model-picker'
-import { useSignOut } from './lib/signout'
+import { useSignOut, useSigningOut } from './lib/signout'
 import { choose } from './lib/session'
 import { getDevMode, rememberSettingsReturn, setDevMode, useDevMode } from './lib/dev-mode'
 import { app, design, flow, hosted, paged, settings, studio, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
@@ -162,6 +162,8 @@ export interface Action extends Hit {
   run: () => void
   /** Pressing it keeps the palette open. */
   stay?: boolean
+  /** Drawn, and not pressable. */
+  disabled?: boolean
 }
 
 const ICON = { size: 15, color: 'var(--foreground)', 'aria-hidden': true } as const
@@ -250,7 +252,7 @@ function tune(go: (address: string) => void) {
 }
 
 /** The palette's actions, named through `t`; a host that cannot do one (no theme to change, no org to pick) is not offered it. */
-export function actions(host: Host | undefined, go: (address: string) => void, signOut: () => void, keys: () => void, t: Say = english): Action[] {
+export function actions(host: Host | undefined, go: (address: string) => void, signOut: () => void, keys: () => void, t: Say = english, out = false): Action[] {
   const anon = host?.person === null
   // The Library's own acts (@hanzo/build `library`): Make something new and Upload, where the build has them.
   const acts = host && !anon ? (library(host, (p) => go(app(p)), t)[0]?.links ?? []) : []
@@ -273,7 +275,9 @@ export function actions(host: Host | undefined, go: (address: string) => void, s
     },
     !!host && !anon && { id: 'org', label: t('Switch organization'), icon: <Building2 {...ICON} />, keywords: ['org', 'team', 'workspace'], run: choose },
     { id: 'keys', label: t('Keyboard shortcuts'), icon: <Keyboard {...ICON} />, stay: true, run: keys },
-    !anon && { id: 'logout', label: t('Log out'), icon: <LogOut {...ICON} data-i18n-mirror />, keywords: ['sign out'], run: signOut },
+    // It keeps the palette open, saying "Signing out…" until the page moves (lib/signout `useSigningOut`);
+    // its own words stay among its keywords, so "log out" still finds it once the label has changed.
+    !anon && { id: 'logout', label: out ? t('Signing out…') : t('Log out'), icon: <LogOut {...ICON} data-i18n-mirror />, keywords: ['log out', 'sign out'], stay: true, disabled: out, run: signOut },
   ]
   return list.filter((a): a is Action => !!a)
 }
@@ -355,6 +359,7 @@ export function Search({
   const known = useRead('/v1/tool/skills?activated=true', skills)
   const plugged = useRead('/v1/tool/mcp/servers', connectors)
   const signOut = useSignOut()
+  const signingOut = useSigningOut()
   const runs = useSessions(host ?? NOBODY)
   const { open: opened } = useBetas()
 
@@ -374,7 +379,7 @@ export function Search({
       run: () => (b.embed !== undefined ? go(hosted(b.id)) : (b.href as string).startsWith('/') ? go(b.href as string) : out(b.href as string)),
     }))
     const here = [...top.map(swap), ...frame.filter((b) => !top.some((a) => a.id === b.id)), ...granted]
-    const baseDoing = actions(host, go, () => void signOut(), () => (setQuery(''), setKeys(true)), t).filter(
+    const baseDoing = actions(host, go, () => void signOut(), () => (setQuery(''), setKeys(true)), t, signingOut).filter(
       (a) => a.id !== 'new-creation' || opened('studio'),
     )
     const lightNow = isLightTheme(host)
@@ -619,6 +624,7 @@ export function Search({
         icon: a.icon,
         contextual: a.where || undefined,
         shortcut: a.shortcut,
+        disabled: a.disabled,
         // The palette ranked these against the query; the menu's own filter passes what it kept.
         keywords: [query],
         onSelect: () => {
@@ -630,7 +636,7 @@ export function Search({
         },
       })),
     }))
-  }, [query, devMode, recentJumps, threads, agents, repos, known, plugged, frame, go, onClose, signOut, mode, runs, host, opened, t])
+  }, [query, devMode, recentJumps, threads, agents, repos, known, plugged, frame, go, onClose, signOut, signingOut, mode, runs, host, opened, t])
 
   const apple = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent)
   // A key's spelling keeps its writing order in right-to-left prose (`contextual` is plain text, so Unicode's isolate, not <bdi>).

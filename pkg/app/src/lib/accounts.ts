@@ -19,11 +19,12 @@
  * `put`), so a read made with the session cookie says the same person the tokens do.
  */
 
+import { outward } from './outward'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useIam } from '@hanzo/iam/react'
 import { rememberDestination } from './destination'
 import { named } from './session'
-import { here, OUT, useClient } from './signout'
+import { here, OUT, PATIENCE, signingOut, useClient } from './signout'
 
 /** One person signed in on this browser: enough to recognise them, and to name them in a `login_hint`. */
 export interface Account {
@@ -103,6 +104,8 @@ export async function end(base: string, a: Account, client?: string): Promise<bo
       redirect: 'manual',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ logout_hint: a.sub, ...(client ? { client_id: client } : {}) }).toString(),
+      // Offline IAM may never answer: the sign-out that asked goes on without it (signout `PATIENCE`).
+      signal: AbortSignal.timeout(PATIENCE),
     })
     return res.ok || res.type === 'opaqueredirect'
   } catch {
@@ -184,14 +187,20 @@ export function useAccounts(listing?: boolean): Accounts {
   const add = useCallback(() => go({ additionalParams: { prompt: 'login' } }), [go])
   const leave = useCallback(
     async (a: Account, to: string = OUT) => {
-      if (!(await end(base, a, config.clientId))) return false
       if (a.sub !== current?.sub) {
+        if (!(await end(base, a, config.clientId))) return false
         setAccounts((list) => list.filter((x) => x.sub !== a.sub))
         return true
       }
-      client.clearTokens()
-      window.location.assign(to)
-      return true
+      // The account in use leaves by the one sign-out (signout `signingOut`): the host's
+      // leaving, then IAM's session, then the tab cleared and moved, whatever IAM answers.
+      let ended = false
+      await signingOut(async () => {
+        ended = await end(base, a, config.clientId)
+        client.clearTokens()
+        outward(to)
+      })
+      return ended
     },
     [base, config.clientId, current, client],
   )

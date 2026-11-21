@@ -44,7 +44,7 @@ vi.mock('./lib/ai', () => ({ useAi: () => ({ client: null }) }))
 vi.mock('./lib/hostname', () => ({ useHostname: () => state.host }))
 vi.mock('./lib/hydrated', () => ({ useHydrated: () => true }))
 vi.mock('./lib/api', () => ({ api: () => 'https://api.hanzo.ai' }))
-vi.mock('./lib/signout', () => ({ useSignOut: () => () => {} }))
+vi.mock('./lib/signout', () => ({ useSigningOut: () => false, useSignOut: () => () => {} }))
 vi.mock('./lib/tier', () => ({
   useTier: () => ({ tier: state.tier, wrong: null, reload: () => {} }),
   usePersonal: () => state.personal,

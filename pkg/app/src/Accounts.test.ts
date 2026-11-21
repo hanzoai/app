@@ -27,7 +27,7 @@ vi.mock('@hanzo/ui', () => ({
   Button: ({ children, onClick }: { children?: ReactNode; onClick?: () => void }) => createElement('button', { onClick }, children),
 }))
 vi.mock('./lib/accounts', async (original) => ({ ...(await original<typeof import('./lib/accounts')>()), useAccounts: () => state.accounts }))
-vi.mock('./lib/signout', () => ({ useSignOut: () => state.out }))
+vi.mock('./lib/signout', () => ({ useSigningOut: () => false, useSignOut: () => state.out }))
 
 const { Accounts } = await import('./Accounts')
 

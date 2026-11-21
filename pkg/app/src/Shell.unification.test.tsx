@@ -53,7 +53,7 @@ vi.mock('./cast', () => ({ Face: () => null }))
 vi.mock('./host', () => ({ useHost: () => ({ router: { push: () => {} }, path: '/' }) }))
 vi.mock('./network', () => ({ channelName: (c: { key: string }) => c.key }))
 vi.mock('./SettingsPane', () => ({ SettingsPane: () => null }))
-vi.mock('./lib/signout', () => ({ useSignOut: () => async () => {} }))
+vi.mock('./lib/signout', () => ({ useSigningOut: () => false, useSignOut: () => async () => {} }))
 vi.mock('./lib/tiers', () => ({ useTiers: () => new Set<string>(), useHidden: () => [new Set<string>(), () => {}] as const }))
 vi.mock('@hanzo/ui/glass', () => ({
   scrim: {},
