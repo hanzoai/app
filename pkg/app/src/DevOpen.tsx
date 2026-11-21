@@ -1,7 +1,7 @@
 'use client'
 
 // A deep link's start of Dev work (hanzo.ai/dev/open): finds the person's runtime (devRuntime.ts:
-// a linked machine, else a cloud cell), mounts the Dev core on it, opens the repository there
+// the host's own Dev or a linked machine; visiting a link never leases a cloud cell), mounts the Dev core on it, opens the repository there
 // as a project with a new thread on it (@hanzo/dev-core `useDevOpen`), and says where that
 // thread is. The host replaces its address with it; Dev's own surface then draws the thread.
 

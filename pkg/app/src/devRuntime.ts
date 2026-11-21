@@ -6,8 +6,9 @@
 //            GET /v1/sources that is online and publishes a ZAP endpoint.
 //   cell     their cloud sandbox: POST /v1/dev/sessions leases it and answers
 //            { id, label, zap, sandbox } (HIP-1330); DELETE /v1/dev/sessions/:id
-//            releases it. A lease creates state, so it is asked for only when no
-//            machine is linked. Refused or unavailable is no cell, never an error.
+//            releases it. A lease creates state and is billed while held, so resolving
+//            never takes one: only an explicit action of the person's calls `cell`.
+//            Refused or unavailable is no cell, never an error.
 //   null     neither: Dev's own start state.
 //
 // Both are reached over ZAP (WebTransport) with the person's Hanzo IAM bearer.
@@ -62,13 +63,12 @@ export async function machines(signal: AbortSignal): Promise<readonly DevRuntime
     .map((m) => ({ kind: 'machine', id: m.id, label: m.name ?? m.id, zap: origin(m.zap as string), token }))
 }
 
-/** The host's own Dev first, then a linked machine, else a leased cloud cell, else null. `skip` names runtimes that would not pair this session. */
+/** The host's own Dev first, then a linked machine, else null; never a cloud cell, which only an explicit action leases (`cell`). `skip` names runtimes that would not pair this session. */
 export async function resolveRuntime(signal: AbortSignal, skip: ReadonlySet<string> = new Set()): Promise<DevRuntime | null> {
   const local = await where().runtime?.().catch(() => null)
   if (local && !skip.has(local.id)) return local
   const linked = (await machines(signal)).find((m) => !skip.has(m.id))
-  if (linked) return linked
-  return cell(signal)
+  return linked ?? null
 }
 
 /** A cloud cell, leased: null when `/v1/dev/sessions` is not there or refuses. */
@@ -85,8 +85,8 @@ export const release = (runtime: DevRuntime): Promise<unknown> =>
 
 /**
  * `runtime` is undefined while it is being found, null when there is none. `fail` is for a runtime
- * that would not pair: it is not tried again this session, and the next (a machine, else a cloud
- * cell, else none: Dev's start state) takes its place.
+ * that would not pair: it is not tried again this session, and the next (a machine, else none:
+ * Dev's start state) takes its place.
  */
 export function useDevRuntime(on: boolean): { runtime: DevRuntime | null | undefined; fail: (r: DevRuntime) => void } {
   const [runtime, setRuntime] = useState<DevRuntime | null | undefined>(undefined)
