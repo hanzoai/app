@@ -118,6 +118,17 @@ export function hear(fn: (c: Caught) => void): () => void {
 
 const seen = new Map<string, number>()
 
+/** What the screen at a path is called on the crash screen ("/tabs" → "Tabs", "/chat/abc" → "Chat"), or '' at the root. */
+export function screenOf(path: string): string {
+  const first = path.split(/[/?#]/).filter(Boolean)[0] ?? ''
+  return first ? first[0]!.toUpperCase() + first.slice(1) : ''
+}
+
+/** What the crash screen's Copy details puts on the clipboard: the error, the screen's path and the version, secrets out. */
+export function details(message: string, path: string): string {
+  return [`Error: ${scrub(message).slice(0, 500)}`, `Screen: ${pathOf(path)}`, `Version: ${where().report?.version ?? VERSION}`].join('\n')
+}
+
 /** Records a break, once per fingerprint a minute: a render loop is one report, not a thousand. */
 export function catches(kind: Kind, error: unknown, route?: string): Caught | null {
   const e = error as { message?: unknown; stack?: unknown } | string | null | undefined

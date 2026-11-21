@@ -13,7 +13,9 @@
 import { Component, useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Button, Dialog, DialogContent, DialogTitle, Input, SizableText, Text, Textarea, View, XStack, YStack } from '@hanzo/ui'
 import { useI18n } from '@hanzo/i18n/react'
-import { body, catches, hear, listen, repo, send, type Caught, type Filed } from './fault'
+import { body, catches, details, hear, listen, repo, screenOf, send, type Caught, type Filed } from './fault'
+import { useHost } from './host'
+import { talk } from './lib/host'
 import { shoot } from './shot'
 import { bearer, superAdmin } from './lib/session'
 
@@ -23,24 +25,67 @@ const OPEN = 'hanzo:report'
 export const reportProblem = (): void => void window.dispatchEvent(new CustomEvent(OPEN))
 
 /** Catches what React threw while rendering, files it with the report listener, and says so. */
-class Catch extends Component<{ children: ReactNode }, { broke: boolean }> {
-  state = { broke: false }
-  static getDerivedStateFromError() {
-    return { broke: true }
+class Catch extends Component<{ children: ReactNode }, { broke: Error | null }> {
+  state: { broke: Error | null } = { broke: null }
+  static getDerivedStateFromError(error: Error) {
+    return { broke: error }
   }
   componentDidCatch(error: Error, info: { componentStack?: string | null }) {
     catches('render', Object.assign(new Error(error.message), { stack: `${error.stack ?? ''}\n${info.componentStack ?? ''}` }))
   }
   render() {
     if (!this.state.broke) return this.props.children
-    // Plain elements: the providers above may be the thing that broke.
-    return (
-      <View role="alert" height="100dvh" items="center" justify="center" gap={12}>
-        <Text>Something broke.</Text>
-        <Button onPress={() => window.location.reload()}>Reload</Button>
-      </View>
-    )
+    return <Broke error={this.state.broke} onBack={() => this.setState({ broke: null })} />
   }
+}
+
+/**
+ * The crash screen: which screen broke, in plain words, and three ways on. Back to
+ * Chat moves through the host's router and draws the app again without a reload,
+ * so the window's other state survives. Plain English, no i18n: the providers
+ * above may be the thing that broke. No stack on screen; Copy details has the
+ * error, the path and the version for a bug report.
+ */
+export function Broke({ error, onBack }: { error: Error; onBack: () => void }) {
+  const { router, route, path: moved } = useHost()
+  const [copied, setCopied] = useState(false)
+  const [path] = useState(() => (typeof window === 'undefined' ? '' : window.location.pathname))
+  const name = screenOf(path)
+  // A router that moves after the press returns (Next's) is heard here: the app is drawn again once the address moved.
+  const [from] = useState(() => `${route}|${moved}`)
+  useEffect(() => {
+    if (`${route}|${moved}` !== from) onBack()
+  }, [route, moved, from, onBack])
+  return (
+    <View role="alert" data-slot="broke" height="100dvh" items="center" justify="center" gap={12} p={24}>
+      <Text fontSize="$5" fontWeight="600">{name ? `The ${name} screen hit an error.` : 'This screen hit an error.'}</Text>
+      <SizableText size="$2" color="$quiet" text="center" maxW={420}>
+        You can go back to Chat, or reload to try this screen again.
+      </SizableText>
+      <XStack gap={8} flexWrap="wrap" justify="center">
+        <Button
+          data-slot="broke-chat"
+          onPress={() => {
+            router.push(talk())
+            // A router that moved at once (the desktop window's history): draw the app again now.
+            if (window.location.pathname !== path) onBack()
+          }}
+        >
+          Back to Chat
+        </Button>
+        <Button data-slot="broke-reload" variant="outline" onPress={() => window.location.reload()}>
+          Reload
+        </Button>
+        <Button
+          data-slot="broke-copy"
+          variant="ghost"
+          onPress={() => void navigator.clipboard?.writeText(details(error.message, window.location.href)).then(() => setCopied(true), () => undefined)}
+        >
+          {copied ? 'Copied' : 'Copy details'}
+        </Button>
+      </XStack>
+    </View>
+  )
 }
 
 /** A superadmin's way to prove the path end to end: `?report-test=error|render|http`. */
