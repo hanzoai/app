@@ -42,6 +42,7 @@ import { rememberSettingsReturn } from './lib/dev-mode'
 import { useOpen } from './open'
 import { usePinnedNav, type Pins } from './Rail'
 import { site } from './where'
+import { useWindowed } from './windowed'
 
 type MenuEntry =
   | {
@@ -156,6 +157,7 @@ export function AppContextMenu({
   pins?: Pins
 }) {
   const { t } = useI18n()
+  const windowed = useWindowed()
   const { thread: activeThread } = useOpen()
   const [state, setState] = useState<MenuState | null>(null)
   const [compact, setCompact] = useState(() =>
@@ -733,12 +735,13 @@ export function AppContextMenu({
       const x = Math.max(8, Math.min(e.clientX, vw - menuW - 8))
       const y = Math.max(8, Math.min(e.clientY, vh - menuH - 8))
       setCompact(vw < 640)
-      setState({ x, y, title, entries })
+      // A window of its own has no browser tabs: its menus offer no Open in new tab.
+      setState({ x, y, title, entries: windowed ? entries.filter((e) => !e.key.endsWith('-tab')) : entries })
     }
 
     window.addEventListener('contextmenu', onContextMenu)
     return () => window.removeEventListener('contextmenu', onContextMenu)
-  }, [activeThread, apple, closed, go, host, mode, onNewChat, onSeek, onToggleSidebar, pins, togglePin, t])
+  }, [activeThread, apple, closed, go, host, mode, onNewChat, onSeek, onToggleSidebar, pins, togglePin, t, windowed])
 
   useEffect(() => {
     if (!state) return
