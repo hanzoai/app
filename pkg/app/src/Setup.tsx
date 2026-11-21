@@ -20,7 +20,7 @@ import { useEffect, useState } from 'react'
 import { useI18n } from '@hanzo/i18n/react'
 import { Box, Dialog, DialogContent, DialogTitle, SizableText, Text, XStack, YStack } from '@hanzo/ui'
 import { useIam } from '@hanzo/iam/react'
-import { Check, Maximize2, Plug, Plus, Sparkles, X } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Maximize2, Plug, Plus, Sparkles, X } from 'lucide-react'
 import { ProviderMark } from './ProviderMark'
 import { useBetas } from './Betas'
 import { useHost } from './host'
@@ -39,6 +39,7 @@ export const LATER_KEY = 'hanzo.onboarding.later'
 export const GITHUB_KEY = 'hanzo.onboarding.github'
 export const SLACK_KEY = 'hanzo.onboarding.slack'
 export const STEP_KEY = 'hanzo.onboarding.step'
+export const OPEN_KEY = 'hanzo.onboarding.open'
 export const PLUGIN_KEY = 'hanzo.onboarding.plugin'
 
 /** Where plugins and connectors live: Dev's Customize. */
@@ -137,6 +138,8 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
 
   const [busy, setBusy] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  // One row until the person opens it; kept on the account, so it stays as they left it.
+  const [open, setOpen] = usePref(OPEN_KEY, false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   // A first press on Disconnect asks; the second lets go of GitHub.
   const [dropping, setDropping] = useState(false)
@@ -449,7 +452,8 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
         role="region"
         aria-label={t('Onboarding (1-2-3)')}
         gap="$2.5"
-        p="$3"
+        px="$3"
+        py={open ? '$3' : '$2'}
         rounded="$4"
         borderWidth={1}
         borderColor="$borderColor"
@@ -461,14 +465,29 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
       >
         {/* Header with Step Dots & Controls */}
         <XStack items="center" justify="space-between" gap="$1.5" minW={0}>
-          <XStack items="center" gap="$1.5" minW={0} flex={1}>
+          <XStack
+            render="button"
+            data-slot="setup-toggle"
+            aria-expanded={open}
+            onClick={() => setOpen(!open)}
+            items="center"
+            gap="$1.5"
+            minW={0}
+            flex={1}
+            minH={26}
+            bg="transparent"
+            borderWidth={0}
+            cursor="pointer"
+            focusVisibleStyle={FOCUS_RING}
+          >
             <Sparkles size={15} color="var(--primary)" aria-hidden />
             <SizableText size="$2" fontWeight="600" color="$ink" numberOfLines={1}>
               {allDone ? t('Onboarding complete') : t('Quick setup ({n}/3)', { n: totalDone })}
             </SizableText>
+            {open ? <ChevronDown size={14} aria-hidden color="var(--muted-foreground)" /> : <ChevronRight size={14} aria-hidden color="var(--muted-foreground)" data-i18n-mirror />}
           </XStack>
           <XStack items="center" gap="$1" shrink={0}>
-            <Box
+            {open ? <Box
               render={<button type="button" title={t('Expand onboarding popup')} />}
               aria-label={t('Expand onboarding popup')}
               onClick={() => setModalOpen(true)}
@@ -486,7 +505,7 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
               cursor="pointer"
             >
               <Maximize2 size={13} aria-hidden color="var(--muted-foreground)" />
-            </Box>
+            </Box> : null}
             <Box
               render={<button type="button" title={t('Dismiss quick setup')} />}
               data-slot="setup-dismiss"
@@ -510,173 +529,190 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
           </XStack>
         </XStack>
 
-        {/* Interactive 3-step progress bar: click any segment to jump directly to Step 1, 2, or 3 */}
-        <XStack gap="$1" width="100%">
-          <Box
-            render="button"
-            aria-label={t('Step 1: Connect GitHub')}
-            aria-current={activeStep === 1 ? 'step' : undefined}
-            onClick={() => setStep(1)}
-            flex={1}
-            height={6}
-            rounded={3}
-            borderWidth={0}
-            bg={githubDone ? GOOD : activeStep === 1 ? '$ink' : '$edge'}
-            hoverStyle={{ opacity: 0.85 }}
-            focusVisibleStyle={FOCUS_RING}
-            cursor="pointer"
-          />
-          <Box
-            render="button"
-            aria-label={t('Step 2: Connect Slack')}
-            aria-current={activeStep === 2 ? 'step' : undefined}
-            onClick={() => setStep(2)}
-            flex={1}
-            height={6}
-            rounded={3}
-            borderWidth={0}
-            bg={slackDone ? GOOD : activeStep === 2 ? '$ink' : '$edge'}
-            hoverStyle={{ opacity: 0.85 }}
-            focusVisibleStyle={FOCUS_RING}
-            cursor="pointer"
-          />
-          <Box
-            render="button"
-            aria-label={t('Step 3: Connect a plugin')}
-            aria-current={activeStep === 3 ? 'step' : undefined}
-            onClick={() => setStep(3)}
-            flex={1}
-            height={6}
-            rounded={3}
-            borderWidth={0}
-            bg={pluginDone ? GOOD : activeStep === 3 ? '$ink' : '$edge'}
-            hoverStyle={{ opacity: 0.85 }}
-            focusVisibleStyle={FOCUS_RING}
-            cursor="pointer"
-          />
-        </XStack>
+        {open ? (
+          <>
+          {/* Interactive 3-step progress bar: click any segment to jump directly to Step 1, 2, or 3 */}
+          <XStack gap="$1" width="100%">
+            <Box
+              render="button"
+              aria-label={t('Step 1: Connect GitHub')}
+              aria-current={activeStep === 1 ? 'step' : undefined}
+              onClick={() => setStep(1)}
+              flex={1}
+              height={6}
+              rounded={3}
+              borderWidth={0}
+              bg={githubDone ? GOOD : activeStep === 1 ? '$ink' : '$edge'}
+              hoverStyle={{ opacity: 0.85 }}
+              focusVisibleStyle={FOCUS_RING}
+              cursor="pointer"
+            />
+            <Box
+              render="button"
+              aria-label={t('Step 2: Connect Slack')}
+              aria-current={activeStep === 2 ? 'step' : undefined}
+              onClick={() => setStep(2)}
+              flex={1}
+              height={6}
+              rounded={3}
+              borderWidth={0}
+              bg={slackDone ? GOOD : activeStep === 2 ? '$ink' : '$edge'}
+              hoverStyle={{ opacity: 0.85 }}
+              focusVisibleStyle={FOCUS_RING}
+              cursor="pointer"
+            />
+            <Box
+              render="button"
+              aria-label={t('Step 3: Connect a plugin')}
+              aria-current={activeStep === 3 ? 'step' : undefined}
+              onClick={() => setStep(3)}
+              flex={1}
+              height={6}
+              rounded={3}
+              borderWidth={0}
+              bg={pluginDone ? GOOD : activeStep === 3 ? '$ink' : '$edge'}
+              hoverStyle={{ opacity: 0.85 }}
+              focusVisibleStyle={FOCUS_RING}
+              cursor="pointer"
+            />
+          </XStack>
 
-        {allDone ? (
-          <YStack gap="$2" pt="$1">
-            <XStack items="center" gap="$2">
-              <Check size={16} color={GOOD} aria-hidden />
-              <Text fontSize="$2" color="$ink" fontWeight="500">
-                {t('GitHub, Slack & a plugin connected')}
-              </Text>
-            </XStack>
-            {workspace && accountList.length > 0 ? (
-              <XStack gap="$1" flexWrap="wrap">
-                {accountList.map((acct) => (
-                  <XStack
-                    key={acct}
-                    items="center"
-                    gap="$1"
-                    px="$2"
-                    py="$0.5"
-                    rounded="$2"
-                    bg="$edge"
-                  >
-                    <Text fontSize="$1" color="$ink" numberOfLines={1}>
-                      {acct}
-                    </Text>
+          {allDone ? (
+            <YStack gap="$2" pt="$1">
+              <XStack items="center" gap="$2">
+                <Check size={16} color={GOOD} aria-hidden />
+                <Text fontSize="$2" color="$ink" fontWeight="500">
+                  {t('GitHub, Slack & a plugin connected')}
+                </Text>
+              </XStack>
+              {workspace && accountList.length > 0 ? (
+                <XStack gap="$1" flexWrap="wrap">
+                  {accountList.map((acct) => (
+                    <XStack
+                      key={acct}
+                      items="center"
+                      gap="$1"
+                      px="$2"
+                      py="$0.5"
+                      rounded="$2"
+                      bg="$edge"
+                    >
+                      <Text fontSize="$1" color="$ink" numberOfLines={1}>
+                        {acct}
+                      </Text>
+                      <Box
+                        render="button"
+                        aria-label={t('Remove {account}', { account: acct })}
+                        onClick={() => removeGoogleAccount(acct)}
+                        rounded="$1"
+                        focusVisibleStyle={FOCUS_RING}
+                        cursor="pointer"
+                      >
+                        <X size={11} color="$soft" aria-hidden />
+                      </Box>
+                    </XStack>
+                  ))}
+                </XStack>
+              ) : null}
+              <XStack gap="$1.5" items="center" flexWrap="wrap">
+                {workspace ? (
                     <Box
                       render="button"
-                      aria-label={t('Remove {account}', { account: acct })}
-                      onClick={() => removeGoogleAccount(acct)}
-                      rounded="$1"
+                      onClick={handleConnectGoogle}
+                      px="$2.5"
+                      py="$1"
+                      $max-sm={{ minH: 44 }}
+                      rounded="$3"
+                      bg="$edge"
+                      hoverStyle={{ bg: '$hover' }}
                       focusVisibleStyle={FOCUS_RING}
                       cursor="pointer"
                     >
-                      <X size={11} color="$soft" aria-hidden />
+                      <XStack items="center" gap="$1">
+                        <Plus size={12} color="$ink" aria-hidden />
+                        <Text fontSize="$1" fontWeight="500" color="$ink">
+                          {t('Add Google account')}
+                        </Text>
+                      </XStack>
                     </Box>
-                  </XStack>
-                ))}
+                ) : null}
+                <Box
+                  render="button"
+                  onClick={dismissSetup}
+                  px="$2.5"
+                  py="$1"
+                  $max-sm={{ minH: 44 }}
+                  rounded="$3"
+                  bg="$edge"
+                  hoverStyle={{ bg: '$hover' }}
+                  focusVisibleStyle={FOCUS_RING}
+                  items="center"
+                  justify="center"
+                  cursor="pointer"
+                >
+                  <Text fontSize="$2" fontWeight="500">{t('Done')}</Text>
+                </Box>
               </XStack>
-            ) : null}
-            <XStack gap="$1.5" items="center" flexWrap="wrap">
-              {workspace ? (
+            </YStack>
+          ) : activeStep === 1 ? (
+            /* Step 1: GitHub */
+            <YStack gap="$2" minW={0}>
+              <XStack items="center" justify="space-between" gap="$1.5" flexWrap="wrap" minW={0}>
+                <XStack items="center" gap="$2" minW={0} flex={1}>
+                  <ProviderMark org="github" size={18} />
+                  <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>{t('1. Connect GitHub')}</Text>
+                </XStack>
+                {githubDone ? (
+                  <XStack items="center" gap="$1" shrink={0}>
+                    <Check size={12} color={GOOD} aria-hidden />
+                    <Text fontSize="$1" color={GOOD} fontWeight="600">{t('Connected')}</Text>
+                  </XStack>
+                ) : null}
+              </XStack>
+              <Text fontSize="$1" color="$soft">
+                {t('Sync repositories, PRs, and team repository context.')}
+              </Text>
+              <XStack gap="$1.5" items="center" pt="$1" flexWrap="wrap">
+                <Box
+                  render="button"
+                  onClick={handleConnectGithub}
+                  aria-disabled={busy === 'github'}
+                  px="$2.5"
+                  py="$1"
+                  $max-sm={{ minH: 44 }}
+                  rounded="$3"
+                  bg="var(--accent)"
+                  borderWidth={1}
+                  borderColor="var(--border-strong)"
+                  hoverStyle={{ bg: 'var(--accent-hover)' }}
+                  focusVisibleStyle={FOCUS_RING}
+                  cursor="pointer"
+                  opacity={busy === 'github' ? 0.6 : 1}
+                >
+                  <Text fontSize="$1" fontWeight="600" color="var(--accent-foreground)">
+                    {busy === 'github' ? t('Connecting…') : githubDone ? t('Reconnect') : t('Connect GitHub')}
+                  </Text>
+                </Box>
+                {githubDone ? (
                   <Box
                     render="button"
-                    onClick={handleConnectGoogle}
-                    px="$2.5"
+                    onClick={() => void handleDisconnectGithub()}
+                    aria-disabled={busy === 'github'}
+                    px="$2"
                     py="$1"
                     $max-sm={{ minH: 44 }}
                     rounded="$3"
-                    bg="$edge"
+                    bg="transparent"
                     hoverStyle={{ bg: '$hover' }}
                     focusVisibleStyle={FOCUS_RING}
                     cursor="pointer"
                   >
-                    <XStack items="center" gap="$1">
-                      <Plus size={12} color="$ink" aria-hidden />
-                      <Text fontSize="$1" fontWeight="500" color="$ink">
-                        {t('Add Google account')}
-                      </Text>
-                    </XStack>
+                    <Text fontSize="$1" color={dropping ? '$ink' : '$soft'}>{dropping ? t('Confirm disconnect') : t('Disconnect')}</Text>
                   </Box>
-              ) : null}
-              <Box
-                render="button"
-                onClick={dismissSetup}
-                px="$2.5"
-                py="$1"
-                $max-sm={{ minH: 44 }}
-                rounded="$3"
-                bg="$edge"
-                hoverStyle={{ bg: '$hover' }}
-                focusVisibleStyle={FOCUS_RING}
-                items="center"
-                justify="center"
-                cursor="pointer"
-              >
-                <Text fontSize="$2" fontWeight="500">{t('Done')}</Text>
-              </Box>
-            </XStack>
-          </YStack>
-        ) : activeStep === 1 ? (
-          /* Step 1: GitHub */
-          <YStack gap="$2" minW={0}>
-            <XStack items="center" justify="space-between" gap="$1.5" flexWrap="wrap" minW={0}>
-              <XStack items="center" gap="$2" minW={0} flex={1}>
-                <ProviderMark org="github" size={18} />
-                <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>{t('1. Connect GitHub')}</Text>
-              </XStack>
-              {githubDone ? (
-                <XStack items="center" gap="$1" shrink={0}>
-                  <Check size={12} color={GOOD} aria-hidden />
-                  <Text fontSize="$1" color={GOOD} fontWeight="600">{t('Connected')}</Text>
-                </XStack>
-              ) : null}
-            </XStack>
-            <Text fontSize="$1" color="$soft">
-              {t('Sync repositories, PRs, and team repository context.')}
-            </Text>
-            <XStack gap="$1.5" items="center" pt="$1" flexWrap="wrap">
-              <Box
-                render="button"
-                onClick={handleConnectGithub}
-                aria-disabled={busy === 'github'}
-                px="$2.5"
-                py="$1"
-                $max-sm={{ minH: 44 }}
-                rounded="$3"
-                bg="var(--accent)"
-                borderWidth={1}
-                borderColor="var(--border-strong)"
-                hoverStyle={{ bg: 'var(--accent-hover)' }}
-                focusVisibleStyle={FOCUS_RING}
-                cursor="pointer"
-                opacity={busy === 'github' ? 0.6 : 1}
-              >
-                <Text fontSize="$1" fontWeight="600" color="var(--accent-foreground)">
-                  {busy === 'github' ? t('Connecting…') : githubDone ? t('Reconnect') : t('Connect GitHub')}
-                </Text>
-              </Box>
-              {githubDone ? (
+                ) : null}
                 <Box
                   render="button"
-                  onClick={() => void handleDisconnectGithub()}
-                  aria-disabled={busy === 'github'}
+                  onClick={() => setStep(2)}
                   px="$2"
                   py="$1"
                   $max-sm={{ minH: 44 }}
@@ -686,219 +722,206 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                   focusVisibleStyle={FOCUS_RING}
                   cursor="pointer"
                 >
-                  <Text fontSize="$1" color={dropping ? '$ink' : '$soft'}>{dropping ? t('Confirm disconnect') : t('Disconnect')}</Text>
+                  <Text fontSize="$1" color="$soft">{t('Skip')}</Text>
                 </Box>
-              ) : null}
-              <Box
-                render="button"
-                onClick={() => setStep(2)}
-                px="$2"
-                py="$1"
-                $max-sm={{ minH: 44 }}
-                rounded="$3"
-                bg="transparent"
-                hoverStyle={{ bg: '$hover' }}
-                focusVisibleStyle={FOCUS_RING}
-                cursor="pointer"
-              >
-                <Text fontSize="$1" color="$soft">{t('Skip')}</Text>
-              </Box>
-            </XStack>
-          </YStack>
-        ) : activeStep === 2 ? (
-          /* Step 2: Slack */
-          <YStack gap="$2" minW={0}>
-            <XStack items="center" justify="space-between" gap="$1.5" flexWrap="wrap" minW={0}>
-              <XStack items="center" gap="$2" minW={0} flex={1}>
-                <SlackMark size={18} />
-                <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>{t('2. Connect Slack')}</Text>
               </XStack>
-              {slackDone ? (
-                <XStack items="center" gap="$1" shrink={0}>
-                  <Check size={12} color={GOOD} aria-hidden />
-                  <Text fontSize="$1" color={GOOD} fontWeight="600">{t('Connected')}</Text>
+            </YStack>
+          ) : activeStep === 2 ? (
+            /* Step 2: Slack */
+            <YStack gap="$2" minW={0}>
+              <XStack items="center" justify="space-between" gap="$1.5" flexWrap="wrap" minW={0}>
+                <XStack items="center" gap="$2" minW={0} flex={1}>
+                  <SlackMark size={18} />
+                  <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>{t('2. Connect Slack')}</Text>
                 </XStack>
-              ) : null}
-            </XStack>
-            <Text fontSize="$1" color="$soft">
-              {t('Route agent notifications and chat in team channels.')}
-            </Text>
-            <XStack gap="$1.5" items="center" pt="$1" flexWrap="wrap">
-              <Box
-                render="button"
-                onClick={handleConnectSlack}
-                aria-disabled={busy === 'slack'}
-                px="$2.5"
-                py="$1"
-                $max-sm={{ minH: 44 }}
-                rounded="$3"
-                bg="var(--accent)"
-                borderWidth={1}
-                borderColor="var(--border-strong)"
-                hoverStyle={{ bg: 'var(--accent-hover)' }}
-                focusVisibleStyle={FOCUS_RING}
-                cursor="pointer"
-                opacity={busy === 'slack' ? 0.6 : 1}
-              >
-                <Text fontSize="$1" fontWeight="600" color="var(--accent-foreground)">
-                  {busy === 'slack' ? t('Connecting…') : slackDone ? t('Reconnect') : t('Connect Slack')}
-                </Text>
-              </Box>
-              <Box
-                render="button"
-                onClick={() => setStep(3)}
-                px="$2"
-                py="$1"
-                $max-sm={{ minH: 44 }}
-                rounded="$3"
-                bg="transparent"
-                hoverStyle={{ bg: '$hover' }}
-                focusVisibleStyle={FOCUS_RING}
-                cursor="pointer"
-              >
-                <Text fontSize="$1" color="$soft">{t('Skip')}</Text>
-              </Box>
-            </XStack>
-          </YStack>
-        ) : (
-          /* Step 3: a plugin or connector, in Dev's Customize; Google Workspace below it for the private beta */
-          <YStack gap="$2" minW={0}>
-            <XStack items="center" justify="space-between" gap="$1.5" flexWrap="wrap" minW={0}>
-              <XStack items="center" gap="$2" minW={0} flex={1}>
-                <Plug size={18} color="var(--foreground)" aria-hidden />
-                <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>{t('3. Connect a plugin')}</Text>
-              </XStack>
-              {pluginDone ? (
-                <XStack items="center" gap="$1" shrink={0}>
-                  <Check size={12} color={GOOD} aria-hidden />
-                  <Text fontSize="$1" color={GOOD} fontWeight="600">{t('Connected')}</Text>
-                </XStack>
-              ) : null}
-            </XStack>
-            <Text fontSize="$1" color="$soft">
-              {t('Give your agents tools: build a plugin or add an MCP server in Customize.')}
-            </Text>
-            <XStack gap="$1.5" items="center" pt="$1" flexWrap="wrap">
-              <Box
-                render="button"
-                onClick={openPlugins}
-                px="$2.5"
-                py="$1"
-                $max-sm={{ minH: 44 }}
-                rounded="$3"
-                bg="var(--accent)"
-                borderWidth={1}
-                borderColor="var(--border-strong)"
-                hoverStyle={{ bg: 'var(--accent-hover)' }}
-                focusVisibleStyle={FOCUS_RING}
-                cursor="pointer"
-              >
-                <Text fontSize="$1" fontWeight="600" color="var(--accent-foreground)">
-                  {pluginDone ? t('Open plugins') : t('Connect a plugin')}
-                </Text>
-              </Box>
-              <Box
-                render="button"
-                onClick={dismissSetup}
-                px="$2"
-                py="$1"
-                $max-sm={{ minH: 44 }}
-                rounded="$3"
-                bg="transparent"
-                hoverStyle={{ bg: '$hover' }}
-                focusVisibleStyle={FOCUS_RING}
-                cursor="pointer"
-              >
-                <Text fontSize="$1" color="$soft">
-                  {pluginDone ? t('Done') : t('Skip')}
-                </Text>
-              </Box>
-            </XStack>
-            {workspace ? (
-              <YStack gap="$2" minW={0} pt="$2" borderTopWidth={1} borderColor="$borderColor" data-slot="setup-workspace">
-                <XStack items="center" justify="space-between" gap="$1.5" flexWrap="wrap" minW={0}>
-                  <XStack items="center" gap="$2" minW={0} flex={1}>
-                    <ProviderMark org="google" size={18} />
-                    <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>{t('Google Workspace')}</Text>
-                  </XStack>
-                  {hasGoogle ? (
-                    <XStack items="center" gap="$1" shrink={0}>
-                      <Check size={12} color={GOOD} aria-hidden />
-                      <Text fontSize="$1" color={GOOD} fontWeight="600">
-                        {accountList.length > 1
-                          ? t('{n} connected', { n: accountList.length })
-                          : t('Connected')}
-                      </Text>
-                    </XStack>
-                  ) : null}
-                </XStack>
-                <Text fontSize="$1" color="$soft">
-                  {t('Grant Drive, Docs, Sheets, Gmail & Calendar permissions. Add personal, work, or multiple org accounts.')}
-                </Text>
-                {accountList.length > 0 ? (
-                  <XStack gap="$1" flexWrap="wrap">
-                    {accountList.map((acct) => (
-                      <XStack
-                        key={acct}
-                        items="center"
-                        gap="$1"
-                        px="$2"
-                        py="$0.5"
-                        rounded="$2"
-                        bg="$edge"
-                      >
-                        <Text fontSize="$1" color="$ink" numberOfLines={1}>
-                          {acct}
-                        </Text>
-                        <Box
-                          render="button"
-                          aria-label={t('Remove {account}', { account: acct })}
-                          onClick={() => removeGoogleAccount(acct)}
-                          rounded="$1"
-                          focusVisibleStyle={FOCUS_RING}
-                          cursor="pointer"
-                        >
-                          <X size={11} color="var(--muted-foreground)" aria-hidden />
-                        </Box>
-                      </XStack>
-                    ))}
+                {slackDone ? (
+                  <XStack items="center" gap="$1" shrink={0}>
+                    <Check size={12} color={GOOD} aria-hidden />
+                    <Text fontSize="$1" color={GOOD} fontWeight="600">{t('Connected')}</Text>
                   </XStack>
                 ) : null}
-                <XStack gap="$1.5" items="center" pt="$1" flexWrap="wrap">
-                  <Box
-                    render="button"
-                    onClick={handleConnectGoogle}
-                    aria-disabled={busy === 'google'}
-                    px="$2.5"
-                    py="$1"
-                    $max-sm={{ minH: 44 }}
-                    rounded="$3"
-                    bg="var(--accent)"
-                    borderWidth={1}
-                    borderColor="var(--border-strong)"
-                    hoverStyle={{ bg: 'var(--accent-hover)' }}
-                    focusVisibleStyle={FOCUS_RING}
-                    cursor="pointer"
-                    opacity={busy === 'google' ? 0.6 : 1}
-                  >
-                    <Text fontSize="$1" fontWeight="600" color="var(--accent-foreground)">
-                      {busy === 'google'
-                        ? t('Connecting…')
-                        : hasGoogle
-                          ? t('+ Add Google account')
-                          : t('Connect Google')}
-                    </Text>
-                  </Box>
+              </XStack>
+              <Text fontSize="$1" color="$soft">
+                {t('Route agent notifications and chat in team channels.')}
+              </Text>
+              <XStack gap="$1.5" items="center" pt="$1" flexWrap="wrap">
+                <Box
+                  render="button"
+                  onClick={handleConnectSlack}
+                  aria-disabled={busy === 'slack'}
+                  px="$2.5"
+                  py="$1"
+                  $max-sm={{ minH: 44 }}
+                  rounded="$3"
+                  bg="var(--accent)"
+                  borderWidth={1}
+                  borderColor="var(--border-strong)"
+                  hoverStyle={{ bg: 'var(--accent-hover)' }}
+                  focusVisibleStyle={FOCUS_RING}
+                  cursor="pointer"
+                  opacity={busy === 'slack' ? 0.6 : 1}
+                >
+                  <Text fontSize="$1" fontWeight="600" color="var(--accent-foreground)">
+                    {busy === 'slack' ? t('Connecting…') : slackDone ? t('Reconnect') : t('Connect Slack')}
+                  </Text>
+                </Box>
+                <Box
+                  render="button"
+                  onClick={() => setStep(3)}
+                  px="$2"
+                  py="$1"
+                  $max-sm={{ minH: 44 }}
+                  rounded="$3"
+                  bg="transparent"
+                  hoverStyle={{ bg: '$hover' }}
+                  focusVisibleStyle={FOCUS_RING}
+                  cursor="pointer"
+                >
+                  <Text fontSize="$1" color="$soft">{t('Skip')}</Text>
+                </Box>
+              </XStack>
+            </YStack>
+          ) : (
+            /* Step 3: a plugin or connector, in Dev's Customize; Google Workspace below it for the private beta */
+            <YStack gap="$2" minW={0}>
+              <XStack items="center" justify="space-between" gap="$1.5" flexWrap="wrap" minW={0}>
+                <XStack items="center" gap="$2" minW={0} flex={1}>
+                  <Plug size={18} color="var(--foreground)" aria-hidden />
+                  <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>{t('3. Connect a plugin')}</Text>
                 </XStack>
-              </YStack>
-            ) : null}
-          </YStack>
-        )}
+                {pluginDone ? (
+                  <XStack items="center" gap="$1" shrink={0}>
+                    <Check size={12} color={GOOD} aria-hidden />
+                    <Text fontSize="$1" color={GOOD} fontWeight="600">{t('Connected')}</Text>
+                  </XStack>
+                ) : null}
+              </XStack>
+              <Text fontSize="$1" color="$soft">
+                {t('Give your agents tools: build a plugin or add an MCP server in Customize.')}
+              </Text>
+              <XStack gap="$1.5" items="center" pt="$1" flexWrap="wrap">
+                <Box
+                  render="button"
+                  onClick={openPlugins}
+                  px="$2.5"
+                  py="$1"
+                  $max-sm={{ minH: 44 }}
+                  rounded="$3"
+                  bg="var(--accent)"
+                  borderWidth={1}
+                  borderColor="var(--border-strong)"
+                  hoverStyle={{ bg: 'var(--accent-hover)' }}
+                  focusVisibleStyle={FOCUS_RING}
+                  cursor="pointer"
+                >
+                  <Text fontSize="$1" fontWeight="600" color="var(--accent-foreground)">
+                    {pluginDone ? t('Open plugins') : t('Connect a plugin')}
+                  </Text>
+                </Box>
+                <Box
+                  render="button"
+                  onClick={dismissSetup}
+                  px="$2"
+                  py="$1"
+                  $max-sm={{ minH: 44 }}
+                  rounded="$3"
+                  bg="transparent"
+                  hoverStyle={{ bg: '$hover' }}
+                  focusVisibleStyle={FOCUS_RING}
+                  cursor="pointer"
+                >
+                  <Text fontSize="$1" color="$soft">
+                    {pluginDone ? t('Done') : t('Skip')}
+                  </Text>
+                </Box>
+              </XStack>
+              {workspace ? (
+                <YStack gap="$2" minW={0} pt="$2" borderTopWidth={1} borderColor="$borderColor" data-slot="setup-workspace">
+                  <XStack items="center" justify="space-between" gap="$1.5" flexWrap="wrap" minW={0}>
+                    <XStack items="center" gap="$2" minW={0} flex={1}>
+                      <ProviderMark org="google" size={18} />
+                      <Text fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>{t('Google Workspace')}</Text>
+                    </XStack>
+                    {hasGoogle ? (
+                      <XStack items="center" gap="$1" shrink={0}>
+                        <Check size={12} color={GOOD} aria-hidden />
+                        <Text fontSize="$1" color={GOOD} fontWeight="600">
+                          {accountList.length > 1
+                            ? t('{n} connected', { n: accountList.length })
+                            : t('Connected')}
+                        </Text>
+                      </XStack>
+                    ) : null}
+                  </XStack>
+                  <Text fontSize="$1" color="$soft">
+                    {t('Grant Drive, Docs, Sheets, Gmail & Calendar permissions. Add personal, work, or multiple org accounts.')}
+                  </Text>
+                  {accountList.length > 0 ? (
+                    <XStack gap="$1" flexWrap="wrap">
+                      {accountList.map((acct) => (
+                        <XStack
+                          key={acct}
+                          items="center"
+                          gap="$1"
+                          px="$2"
+                          py="$0.5"
+                          rounded="$2"
+                          bg="$edge"
+                        >
+                          <Text fontSize="$1" color="$ink" numberOfLines={1}>
+                            {acct}
+                          </Text>
+                          <Box
+                            render="button"
+                            aria-label={t('Remove {account}', { account: acct })}
+                            onClick={() => removeGoogleAccount(acct)}
+                            rounded="$1"
+                            focusVisibleStyle={FOCUS_RING}
+                            cursor="pointer"
+                          >
+                            <X size={11} color="var(--muted-foreground)" aria-hidden />
+                          </Box>
+                        </XStack>
+                      ))}
+                    </XStack>
+                  ) : null}
+                  <XStack gap="$1.5" items="center" pt="$1" flexWrap="wrap">
+                    <Box
+                      render="button"
+                      onClick={handleConnectGoogle}
+                      aria-disabled={busy === 'google'}
+                      px="$2.5"
+                      py="$1"
+                      $max-sm={{ minH: 44 }}
+                      rounded="$3"
+                      bg="var(--accent)"
+                      borderWidth={1}
+                      borderColor="var(--border-strong)"
+                      hoverStyle={{ bg: 'var(--accent-hover)' }}
+                      focusVisibleStyle={FOCUS_RING}
+                      cursor="pointer"
+                      opacity={busy === 'google' ? 0.6 : 1}
+                    >
+                      <Text fontSize="$1" fontWeight="600" color="var(--accent-foreground)">
+                        {busy === 'google'
+                          ? t('Connecting…')
+                          : hasGoogle
+                            ? t('+ Add Google account')
+                            : t('Connect Google')}
+                      </Text>
+                    </Box>
+                  </XStack>
+                </YStack>
+              ) : null}
+            </YStack>
+          )}
 
-        {errorMsg ? (
-          <Text fontSize="$1" color={BAD}>
-            {errorMsg}
-          </Text>
+          {errorMsg ? (
+            <Text fontSize="$1" color={BAD}>
+              {errorMsg}
+            </Text>
+          ) : null}
+          </>
         ) : null}
       </YStack>
 
