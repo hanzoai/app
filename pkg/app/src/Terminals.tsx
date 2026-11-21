@@ -17,7 +17,7 @@ import { useDevMode } from './lib/dev-mode'
 import { showDevice } from './lib/devices'
 import { InfoHint } from './lib/info-hint'
 import { bearer } from './lib/session'
-import { showCalmEmpty as calmEmpty } from './terminalsState'
+import { followUp, showCalmEmpty as calmEmpty } from './terminalsState'
 
 type LaunchKind = 'dev' | 'desktop' | 'browser'
 
@@ -199,7 +199,8 @@ export default function Terminals() {
     if (typeof window === 'undefined') return
     const id = window.setTimeout(() => {
       setPendingAction(null)
-      window.dispatchEvent(new CustomEvent('hanzo:tabs-action', { detail: action }))
+      const detail = followUp(action)
+      if (detail) window.dispatchEvent(new CustomEvent('hanzo:tabs-action', { detail }))
     }, 0)
     return () => window.clearTimeout(id)
   }, [pendingAction, showCalmEmpty, fleet.read, fleet.error])
