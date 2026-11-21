@@ -176,6 +176,17 @@ repository or a site from any surface.
   Customize row and Settings' Plugins and Skills rows lead there (`app()`), and
   Directory lists only Works with and Channels. A list is the registry's answer
   or a plain line saying why there is none — never rows standing in for it.
+- Skills for a person's role are one map, `roles.ts` (`ROLES`, `ELSE`, `SKILLS`):
+  each role names brand-catalogue skills (`/.well-known/agent-skills/index.json`,
+  `service_thing`), and nothing else lists them. `RolePicker.tsx` draws it: a
+  role (or Something else, or Skip), its skills to untick, and one click that
+  switches the rest on for the org (connect.ts `install`, one
+  `PUT /v1/tools/activation`, an org admin's). The answer is the person's,
+  `hanzo.onboarding.role` through `usePref`. A new account (made in the last two
+  weeks) that has not answered meets `RoleCard` in the sidebar's column, in
+  either Developer mode; anyone reaches the picker later from Customize's row
+  "Skills for your role" or the host's Settings (`RoleDialog`). Never an
+  interstitial: the owner retired the onboarding page (2026-10-29).
 - The apps and models in beta are one list, `lib/betas.ts` (`BETAS`, `GROUPS`):
   every app or model no one has yet on hanzo.ai or platform.hanzo.ai, with its id,
   name, line, group and where it opens. The Creative group is the six creative
