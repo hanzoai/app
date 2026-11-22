@@ -1523,8 +1523,8 @@ export function Sidebar({
             <YStack data-slot="rail-unpinned" shrink={0} pt="$1" width="100%">
               <MoreMenu
                 placement="top-start"
-                minWidth={220}
-                maxHeight={420}
+                minWidth={240}
+                maxHeight={320}
                 entries={nav.moreEntries}
                 onPin={togglePin}
                 t={t}

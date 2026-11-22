@@ -37,7 +37,9 @@ vi.mock('@hanzo/ui', () => ({
   DropdownMenu: ({ trigger, items, children }: { trigger?: ReactNode; items?: { key?: string; label?: string }[]; children?: ReactNode }) =>
     createElement('div', { 'data-slot': 'menu', 'data-items': (items ?? []).map((i) => i.key ?? '-').join(',') }, trigger, children),
   DropdownMenuContent: through,
+  DropdownMenuEmpty: ({ children }: { children?: ReactNode }) => createElement('div', { 'data-empty': '' }, children),
   DropdownMenuPage: through,
+  DropdownMenuSearch: ({ placeholder, 'aria-label': label }: { placeholder?: string; 'aria-label'?: string }) => createElement('div', { 'data-slot': 'more-search', 'data-placeholder': placeholder, 'aria-label': label }),
   DropdownMenuBack: ({ children }: { children?: ReactNode }) => createElement('span', { 'data-back': '' }, children),
   DropdownMenuItem: ({ children, actions, onSelect, page, 'aria-current': current, 'data-item': key }: { children?: ReactNode; actions?: ReactNode; onSelect?: () => void; page?: string; 'aria-current'?: string; 'data-item'?: string }) => {
     if (key && onSelect) state.selects.set(key, onSelect)
@@ -193,14 +195,18 @@ describe('hosted apps never auto-inject into Pinned', () => {
     expect(marks(html)).toEqual([])
   })
 
-  test('unlocked hosted apps in devMode stay inside More overflow unless explicitly pinned or currently active', () => {
+  test('unlocked hosted apps in devMode stay inside More overflow unless explicitly pinned or currently active, with a filterable scrollable list and eSign naming', () => {
     state.devMode = true
-    state.opened = new Set(['crm', 'commerce', 'cms', 'analytics', 'insights', 'erp', 'finance'])
+    state.opened = new Set(['crm', 'commerce', 'cms', 'analytics', 'insights', 'erp', 'finance', 'sign'])
     const html = draw5()
     expect(marks(html)).toEqual([])
+    expect(html).toContain('data-slot="more-search"')
+    expect(html).toContain('data-slot="more-scroll"')
+    expect(html).toContain('eSign')
     const menuItems = [...html.matchAll(/data-item="((?!pin-)[^"]*)"/g)].map((m) => m[1]).join(',')
     for (const id of ['app-crm', 'app-commerce', 'app-cms', 'app-analytics', 'app-insights']) expect(menuItems).toContain(id)
     expect(menuItems).toContain('beta-finance')
+    expect(menuItems).toContain('beta-sign')
     // ERP is an ordinary granted beta like Finance (Hanzo's main lists it too), not a gated stub.
     expect(menuItems).toContain('beta-erp')
   })

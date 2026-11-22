@@ -745,8 +745,8 @@ export function Rail({
           {!anon && foldedEntries.length > 0 ? (
             <MoreMenu
               placement={dir === 'rtl' ? 'left-start' : 'right-start'}
-              minWidth={220}
-              maxHeight={420}
+              minWidth={240}
+              maxHeight={320}
               entries={foldedEntries}
               onPin={nav.togglePin}
               t={t}

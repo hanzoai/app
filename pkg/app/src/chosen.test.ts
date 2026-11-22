@@ -14,7 +14,7 @@ vi.mock('@hanzo/build', () => ({
   },
 }))
 
-const { CHOSEN_MAX, NONE, carried, choosable, choose, personas, within } = await import('./chosen')
+const { CHOSEN_MAX, EXPLICIT_CHOSEN, EXPLICIT_SURE, NONE, carried, choosable, choose, parseSkillCommand, personas, within } = await import('./chosen')
 const target = { api: 'https://api.hanzo.ai', token: () => 'tok' } as never
 
 afterEach(() => {
@@ -100,5 +100,26 @@ describe('Hanzo chooses the skills, agents and personas a message needs (hanzo-i
     expect(await late).toBe('gone without')
     vi.useRealTimers()
     expect(await within(Promise.resolve('in time'), 1200, 'gone without')).toBe('in time')
+  })
+
+  test('parses explicit /skill commands and applies broader Kai recall on demand', async () => {
+    expect(parseSkillCommand('/skill audit auth')).toBe('audit auth')
+    expect(parseSkillCommand('/skills   figma design system')).toBe('figma design system')
+    expect(parseSkillCommand('/skill')).toBeNull()
+    expect(parseSkillCommand('normal message')).toBeNull()
+
+    kai.found = [
+      { name: 'security-threat-model', skill: true, probability: 0.72 },
+      { name: 'security-best-practices', skill: true, probability: 0.65 },
+      { name: 'code-review', skill: true, probability: 0.58 },
+      { name: 'low-confidence', skill: true, probability: 0.42 },
+    ]
+    const got = await choose(target, 'auth', [], [], undefined, [], {
+      minProbability: EXPLICIT_SURE,
+      maxSkills: EXPLICIT_CHOSEN,
+      explicit: true,
+    })
+    expect(got.names).toEqual(['security-threat-model', 'security-best-practices', 'code-review'])
+    expect(kai.asked).toEqual(['auth'])
   })
 })
