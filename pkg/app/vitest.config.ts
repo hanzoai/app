@@ -33,6 +33,8 @@ export default defineConfig({
           name: 'gui',
           include: ['src/**/*.gui.test.tsx'],
           environment: 'happy-dom',
+          // Each test draws the real kit; a loaded CI runner takes more than the default 5 s for one turn.
+          testTimeout: 30_000,
           setupFiles: ['./vitest.setup.ts', './vitest.gui.ts'],
           server: { deps: { inline: [/@hanzo\//, /@hanzogui\//, /react-native/] } },
         },

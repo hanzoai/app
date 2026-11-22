@@ -24,8 +24,7 @@ afterEach(async () => {
   vi.useRealTimers()
 })
 
-// Four turns on a slow runner take more than the default 5 s.
-describe('a host answers signed-out turns with its own engine', { timeout: 30_000 }, () => {
+describe('a host answers signed-out turns with its own engine', () => {
   test('each turn goes to local.chat with the whole conversation, and nothing goes to the public gateway', async () => {
     const sent: { role: string; content: string }[][] = []
     const chat = vi.fn(async ({ messages }: { messages: { role: string; content: string }[] }) => {
