@@ -150,6 +150,52 @@ export const rows = (): Row[] => groups().flatMap((g) => g.rows)
 /** The row Settings opens on when nothing has asked for another. */
 export const FIRST = GROUPS[0].rows[0].id
 
+const PATH_TO_ROW: Readonly<Record<string, string>> = {
+  '/settings': 'account',
+  '/settings/account': 'account',
+  '/settings/profile': 'account',
+  '/settings/organization': 'account',
+  '/settings/organization/members': 'account',
+  '/settings/general': 'general',
+  '/settings/personalization': 'general',
+  '/settings/appearance': 'general',
+  '/settings/billing': 'billing',
+  '/settings/organization/billing': 'billing',
+  '/account/billing': 'billing',
+  '/settings/usage': 'usage',
+  '/settings/organization/usage': 'usage',
+  '/account/usage': 'usage',
+  '/settings/referrals': 'referrals',
+  '/settings/rewards': 'referrals',
+  '/settings/ai/models': 'model',
+}
+
+/** Whether a pathname names an in-app Settings route when the host delegates `/settings*` to `<App />`. */
+export function isSettingsPath(pathname: string): boolean {
+  const clean = (pathname.split(/[?#]/)[0] || '/').replace(/\/+$/, '') || '/'
+  return clean === '/settings' || clean.startsWith('/settings/') || clean === '/account/billing' || clean === '/account/usage'
+}
+
+/** Which Settings row id a pathname opens. */
+export function settingsRowOf(pathname: string): string {
+  const clean = (pathname.split(/[?#]/)[0] || '/').replace(/\/+$/, '') || '/'
+  const mapped = PATH_TO_ROW[clean]
+  if (mapped) return mapped
+  if (clean.startsWith('/settings/')) {
+    const sub = clean.slice('/settings/'.length).split('/')[0] ?? ''
+    if (rows().some((r) => r.id === sub && !r.href)) return sub
+  }
+  return 'account'
+}
+
+/** The canonical path for an in-app Settings row id. */
+export function settingsPathFor(id: string): string {
+  if (id === 'billing') return '/settings/organization/billing'
+  if (id === 'usage') return '/settings/organization/usage'
+  if (id === 'account') return '/settings'
+  return `/settings/${id}`
+}
+
 /**
  * The rail's second level: every settings row, grouped.
  *

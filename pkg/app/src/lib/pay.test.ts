@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { money, topUpAmountUrl, topUpUrl } from './pay'
+import { money, payPage, topUpAmountUrl, topUpUrl } from './pay'
 
 describe('money', () => {
   test('English stays $20, and another locale writes its own', () => {
@@ -38,5 +38,14 @@ describe('a fixed top-up', () => {
     expect(to.origin + to.pathname).toBe('https://hanzo.ai/pay/confirm/card')
     expect(to.searchParams.get('amount')).toBe('25.00')
     expect(to.searchParams.get('returnUrl')).toBe('https://hanzo.app/chat')
+  })
+
+  test('payPage carries returnUrl when supplied and omits it when absent', () => {
+    vi.stubGlobal('window', { location: { href: 'https://hanzo.app/chat', hostname: 'hanzo.app', assign: () => {} }, localStorage: { getItem: () => null } })
+    expect(payPage()).toBe('https://hanzo.ai/pay')
+    expect(payPage('/cart', 'https://hanzo.app/chat')).toBe('https://hanzo.ai/pay/cart?returnUrl=https%3A%2F%2Fhanzo.app%2Fchat')
+    expect(payPage('/', 'https://hanzo.app/settings/organization/billing')).toBe(
+      'https://hanzo.ai/pay/?returnUrl=https%3A%2F%2Fhanzo.app%2Fsettings%2Forganization%2Fbilling',
+    )
   })
 })

@@ -27,7 +27,7 @@ vi.mock('./lib/dev-mode', () => ({ useDevMode: () => [false] }))
 vi.mock('./lib/devices', () => ({ showDevice: () => ({ title: '', detail: '' }) }))
 vi.mock('./lib/info-hint', () => ({ InfoHint: () => null }))
 vi.mock('./slow', () => ({ Loading: () => null }))
-vi.mock('./lib/session', () => ({ bearer: () => 'tk', subject: () => 'ada', org: () => 'acme' }))
+vi.mock('./lib/session', () => ({ bearer: () => 'tk', subject: () => 'ada', org: () => 'acme', named: () => null }))
 vi.mock('./lib/api', () => ({ api: () => 'https://api.test' }))
 vi.mock('./lib/destination', () => ({ enter: vi.fn(), LOGIN: '/login' }))
 vi.mock('@hanzo/ui', () => {

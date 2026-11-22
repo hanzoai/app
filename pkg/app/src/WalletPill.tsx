@@ -39,7 +39,7 @@ export function WalletPill({
   return (
     <XStack
       render="a"
-      {...{ href: payPage('/amount/card') }}
+      {...{ href: payPage('/amount/card', typeof window !== 'undefined' ? window.location.href : undefined) }}
       data-slot="wallet-pill"
       aria-label={t('Wallet credits: {balance}. Add funds', { balance })}
       height={compact ? 26 : 30}

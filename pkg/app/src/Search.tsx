@@ -459,7 +459,18 @@ export function Search({
         keywords: ['upgrade', 'plan', 'credits', 'top', 'up', 'billing', 'pricing', 'pro', 'max'],
         run: () => {
           if (typeof window !== 'undefined') {
-            window.location.assign(payPage('/cart'))
+            window.location.assign(payPage('/cart', window.location.href))
+          }
+        },
+      },
+      {
+        id: 'open-billing',
+        label: t('Manage billing & payments'),
+        icon: <Wallet {...ICON} />,
+        keywords: ['billing', 'pay', 'payment', 'invoices', 'receipts', 'card', 'subscription'],
+        run: () => {
+          if (typeof window !== 'undefined') {
+            window.location.assign(payPage('/', window.location.href))
           }
         },
       },
