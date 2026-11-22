@@ -14,7 +14,7 @@ vi.mock('@hanzo/build', () => ({
   },
 }))
 
-const { CHOSEN_MAX, EXPLICIT_CHOSEN, EXPLICIT_SURE, NONE, carried, choosable, choose, parseSkillCommand, personas, skillContext, within } = await import('./chosen')
+const { CHOSEN_MAX, EXPLICIT_CHOSEN, EXPLICIT_SURE, NONE, carried, choosable, choose, isSkillAuthoring, parseSkillCommand, personas, skillCommandNote, skillContext, within } = await import('./chosen')
 const target = { api: 'https://api.hanzo.ai', token: () => 'tok' } as never
 
 afterEach(() => {
@@ -133,5 +133,39 @@ describe('Hanzo chooses the skills, agents and personas a message needs (hanzo-i
     })
     expect(got.names).toEqual(['security-threat-model', 'security-best-practices', 'code-review'])
     expect(kai.asked).toEqual(['auth'])
+  })
+
+  test('detects skill authoring/adaptation requests and guides finding, adapting, or drafting SKILL.md', async () => {
+    expect(isSkillAuthoring('make me a new skill for cooking')).toBe(true)
+    expect(isSkillAuthoring('adapt code-review for Go concurrency')).toBe(true)
+    expect(isSkillAuthoring('create a skill to write SQL migrations')).toBe(true)
+    expect(isSkillAuthoring('a skill for sourdough baking')).toBe(true)
+    expect(isSkillAuthoring('audit my OAuth callback')).toBe(false)
+
+    // When Kai finds no cooking skill, `prefer: ['skill-creator']` still brings in skill-creator if on shelf.
+    kai.found = []
+    const shelf = ['skill-creator', 'code-review']
+    const created = await choose(target, 'make me a new skill for cooking', [], [], undefined, shelf, {
+      minProbability: EXPLICIT_SURE,
+      maxSkills: EXPLICIT_CHOSEN,
+      explicit: true,
+      prefer: ['skill-creator'],
+    })
+    expect(created.names).toEqual(['skill-creator'])
+
+    const createNote = skillCommandNote('make me a new skill for cooking', created.names, true)
+    expect(createNote).toContain('no existing skill closely matched')
+    expect(createNote).toContain('SKILL.md')
+
+    // When Kai finds a related skill, the note guides adapting/extending it.
+    const adaptNote = skillCommandNote('adapt code-review for Go', ['code-review', 'skill-creator'], true)
+    expect(adaptNote).toContain('code-review')
+    expect(adaptNote).toContain('Adapt or extend')
+
+    // Non-authoring `/skill <topic>` with 0 matches answers directly and offers a SKILL.md draft.
+    const missNote = skillCommandNote('sourdough baking', [], false)
+    expect(missNote).toContain('no matching pre-installed skill')
+    expect(missNote).toContain('SKILL.md')
+    expect(skillCommandNote('audit auth', ['code-review'], false)).toBe('')
   })
 })
