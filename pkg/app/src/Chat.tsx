@@ -134,7 +134,7 @@ import { enter, LOGIN, signUp } from './lib/destination';
 import { first } from './lib/first';
 import { BAD } from "./lib/mix";
 import { conversation as continued } from './lib/local'
-import { brand, site } from './where'
+import { brand, site, where } from './where'
 import { useWindowed } from './windowed'
 import { BAND, HEAD, inPane, INSET, TOUCH_HEAD } from './ground'
 import { shared, useChatPreferences } from './lib/chatPreferences'
