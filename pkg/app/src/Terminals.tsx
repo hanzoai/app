@@ -20,6 +20,7 @@ import { InfoHint } from './lib/info-hint'
 import { bearer, named } from './lib/session'
 import { answersActions, followUp, showCalmEmpty as calmEmpty } from './terminalsState'
 import { useSpend } from './Confirm'
+import { dispatchTabsAction } from './tabsAction'
 import { where } from './where'
 
 type LaunchKind = StartAsk['kind']
@@ -273,7 +274,7 @@ export default function Terminals() {
     if (detail === 'wait') return
     const id = window.setTimeout(() => {
       setPendingAction(null)
-      if (detail) window.dispatchEvent(new CustomEvent('hanzo:tabs-action', { detail }))
+      if (detail) dispatchTabsAction(detail)
     }, 0)
     return () => window.clearTimeout(id)
   }, [pendingAction, showCalmEmpty, fleet.read, fleet.error, liveHosts])

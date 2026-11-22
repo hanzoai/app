@@ -5,7 +5,7 @@
  * `col`) and `close` (`res.handled` says whether a pane answered).
  */
 export function dispatchTabsAction(detail: {
-  kind: string
+  kind: 'shell' | 'desktop' | 'page' | 'cloud' | 'focus' | 'split' | 'close'
   id?: string
   machine?: string
   dir?: 'row' | 'col'
