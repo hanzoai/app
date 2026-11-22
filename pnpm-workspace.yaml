@@ -47,7 +47,7 @@ catalog:
   '@hanzo/ui': 8.33.6
   '@hanzo/usage': 0.1.18
   '@hanzo/studio': 0.1.24
-  '@hanzo/tabs': github:hanzo-inc/tabs
+  '@hanzo/tabs': github:hanzo-inc/tabs#00a6c09de87ebf627a7210061d6ef27f4c4f4132
   '@hanzo/voice': 0.1.19
   '@hanzogui/config': 8.3.5
   '@hanzogui/core': 8.3.5

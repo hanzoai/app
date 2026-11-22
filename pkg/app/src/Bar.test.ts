@@ -19,7 +19,7 @@ const { part, pressed, mark } = vi.hoisted(() => {
 
 vi.mock('@hanzo/gui', () => ({ Text: part, XStack: part }))
 const made = vi.fn()
-vi.mock('./Sidebar', () => ({ dispatchTabsAction: (d: { kind: string }) => calls.push(`tabs ${d.kind}`) }))
+vi.mock('./tabsAction', () => ({ dispatchTabsAction: (d: { kind: string }) => calls.push(`tabs ${d.kind}`) }))
 vi.mock('./icons', () => ({
   MARKS: {
     chat: { icon: mark('chat'), make: mark('chat-make') },

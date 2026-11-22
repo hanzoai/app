@@ -27,7 +27,7 @@ import type { RailLink } from '@hanzo/ui/chat'
 import { BAND, pane } from './ground'
 import { empty } from './open'
 import { talk, type Place } from './lib/host'
-import { dispatchTabsAction } from './Sidebar'
+import { dispatchTabsAction } from './tabsAction'
 
 /** A button, px: compact and refined. */
 const ROUND = 34

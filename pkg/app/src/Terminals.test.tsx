@@ -54,6 +54,7 @@ vi.mock('@hanzo/ui', () => {
 })
 
 import Terminals from './Terminals'
+import { configure } from './where'
 
 let root: Root
 let host: HTMLElement
@@ -73,6 +74,23 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount())
   host.remove()
+})
+
+describe('Tabs takes what the host states of the workspace', () => {
+  test('a configured `tabs` reaches the Workspace as props, and unset adds none', async () => {
+    fleet.read = false
+    fleet.error = 'timeout'
+    await act(async () => root.render(createElement(Terminals)))
+    expect(fleet.workspace.at(-1)).not.toHaveProperty('shortcuts')
+    expect(fleet.workspace.at(-1)).not.toHaveProperty('minPane')
+    configure({ tabs: { shortcuts: true, minPane: 420 } })
+    try {
+      await act(async () => root.render(createElement(Terminals, { key: 'again' })))
+      expect(fleet.workspace.at(-1)).toMatchObject({ shortcuts: true, minPane: 420 })
+    } finally {
+      configure({ tabs: undefined })
+    }
+  })
 })
 
 describe('Tabs leases a cloud machine', () => {

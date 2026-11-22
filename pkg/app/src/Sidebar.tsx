@@ -71,6 +71,7 @@ import { dragWindow, toggleWindowMaximize } from './WindowControls'
 import { BAND, HEAD as LINE, pane, SIDE, TOUCH_HEAD } from './ground'
 import { railKeys } from './keys'
 import { useWindowed } from './windowed'
+import { dispatchTabsAction } from './tabsAction'
 
 /** The sidebar fills the column. Its `width` is typed in px alone, though its frame takes any gui size — the type is
  *  @hanzo/ui's to widen. */
@@ -597,11 +598,6 @@ interface TabsSavedBind {
   machine?: string
   url?: string
   want?: string
-}
-
-export function dispatchTabsAction(detail: { kind: string; id?: string; machine?: string }) {
-  if (typeof window === 'undefined') return
-  window.dispatchEvent(new CustomEvent('hanzo:tabs-action', { detail }))
 }
 
 function useTabsGroups(

@@ -7,7 +7,8 @@
  * outside any component, where a client module's export is only a reference
  * and calling it throws.
  */
-import type { ComponentType } from 'react'
+import type { ComponentProps, ComponentType } from 'react'
+import type { Workspace } from '@hanzo/tabs'
 import type { DevRuntime } from '@hanzo/dev-core'
 import type { BillingPlan } from './lib/plans'
 import type { Key } from './help'
@@ -87,6 +88,15 @@ export interface Addresses {
    * is authored English, drawn through `t`.
    */
   section?: { id: string; label: string; Page: ComponentType }
+  /**
+   * What the host states of the Tabs workspace (@hanzo/tabs `Workspace`), passed to it as props.
+   * `shortcuts` claims ⌘D / ⇧⌘D (split), ⌘W (close the focused pane) and ⌘= ⌘- ⌘0 (type size), and
+   * admits the split and close that arrive as `hanzo:tabs-action`; `minPane` is the narrowest a pane
+   * may be, in px, before the row scrolls sideways. A browser tab keeps those keys for itself, so
+   * the web states neither; Hanzo Desktop has no browser around it and turns on both. Unset, the
+   * workspace is what it is today.
+   */
+  tabs?: Pick<ComponentProps<typeof Workspace>, 'shortcuts' | 'minPane'>
   /** The plan catalogue as the host's build last read it: the first paint. */
   plans?: BillingPlan[]
   /**
