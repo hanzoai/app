@@ -1,4 +1,6 @@
-import { cloneElement, createElement, Fragment, isValidElement, type ReactElement, type ReactNode } from 'react'
+// @vitest-environment happy-dom
+import { act, cloneElement, createElement, Fragment, isValidElement, type ReactElement, type ReactNode } from 'react'
+import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { Window } from 'happy-dom'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
@@ -15,11 +17,12 @@ const { part, menu, menuItem, menuLabel, menuBack, menuSeparator, through, devSt
     role?: string
     'data-item'?: string
     active?: boolean
+    onPress?: () => void
   }
   const devState = { on: false, opened: new Set(['finance']) }
   const through = ({ children }: { children?: ReactNode }) => createElement(Fragment, null, children)
-  const part = ({ children, render, icon, label, 'aria-label': named, 'aria-current': current, 'data-slot': slot, 'data-item': item, role, active }: Part) => {
-    const attrs = { 'data-slot': slot, 'data-item': item, 'aria-label': label ?? named, 'aria-current': current ?? (active ? 'page' : undefined), role }
+  const part = ({ children, render, icon, label, 'aria-label': named, 'aria-current': current, 'data-slot': slot, 'data-item': item, role, active, onPress }: Part) => {
+    const attrs = { onClick: onPress, 'data-slot': slot, 'data-item': item, 'aria-label': label ?? named, 'aria-current': current ?? (active ? 'page' : undefined), role }
     const kids = [icon, children].filter((k) => k != null)
     if (isValidElement(render)) return cloneElement(render, attrs, ...kids)
     return createElement(typeof render === 'string' ? render : 'div', attrs, ...kids)
@@ -110,6 +113,8 @@ import { moreGroups } from './MoreMenu'
 import { Rail, type Pins } from './Rail'
 import { TABS, WORKSPACE, type Place } from './lib/host'
 import { Windowed } from './windowed'
+import { LOGIN } from './lib/destination'
+import { configure } from './where'
 
 const hostAt = (path = '') => ({ go: () => {}, path }) as unknown as Parameters<typeof Sidebar>[0]['host']
 const host = hostAt()
@@ -487,21 +492,47 @@ describe('the unified desktop sidebar', () => {
     }
   })
 
-  test('a guest’s Images says why it cannot, with the way in, never a silent prefill', async () => {
-    const src = (await import('node:fs')).readFileSync(new URL('./Sidebar.tsx', import.meta.url), 'utf8')
-    expect(src).toContain("onPress={() => setGated(t('Sign in to create images'))}")
-    expect(src).not.toContain("hanzo:anon-prompt")
-    expect(src).toContain('data-slot="signin-prompt"')
-  })
-
-  test('every sign-in door goes through the host’s addresses, never a hard-coded /login or /signup', async () => {
-    const { readFileSync } = await import('node:fs')
-    for (const file of ['./Sidebar.tsx', './DevPane.tsx', './Chat.tsx']) {
-      const src = readFileSync(new URL(file, import.meta.url), 'utf8')
-      expect(src, file).not.toMatch(/assign\(['"]\/(login|signup)/)
+  describe('a guest pressing Images', () => {
+    const draw = async () => {
+      const box = document.body.appendChild(document.createElement('div'))
+      const root = createRoot(box)
+      ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+      await act(async () => root.render(createElement(Sidebar, { pins, host: { ...host, person: null } as never, mode: 'chat', thread: null, go: noop, onShut: noop, onBack: noop })))
+      return () => act(async () => (root.unmount(), box.remove()))
     }
-    const sidebar = readFileSync(new URL('./Sidebar.tsx', import.meta.url), 'utf8')
-    expect(sidebar).toContain('data-slot="signin-prompt-signup" onPress={() => enter(signUp())}')
+    const press = (slot: string) => act(async () => void document.querySelector<HTMLElement>(`[data-slot="${slot}"]`)!.click())
+
+    test('is told why it cannot, with the way in, and nothing is filled in silently', async () => {
+      const sent = vi.spyOn(window, 'dispatchEvent')
+      const undraw = await draw()
+      try {
+        expect(document.querySelector('[data-slot="signin-prompt"]')).toBeNull()
+        await press('app-images')
+        expect(document.querySelector('[data-slot="signin-prompt"]')?.textContent).toContain('Sign in to create images')
+        expect(sent.mock.calls.map(([e]) => e.type)).not.toContain('hanzo:anon-prompt')
+      } finally {
+        sent.mockRestore()
+        await undraw()
+      }
+    })
+
+    test('and each way in goes to the host’s address, never a hard-coded /signup', async () => {
+      const assign = vi.spyOn(window.location, 'assign').mockImplementation(() => {})
+      // A host whose accounts start at its own page (hanzo.team: /start).
+      configure({ signUp: '/start' })
+      const undraw = await draw()
+      try {
+        await press('app-images')
+        await press('signin-prompt-signup')
+        expect(String(assign.mock.calls.at(-1)?.[0])).toMatch(/^\/start(\?|$)/)
+        await press('signin-prompt-login')
+        expect(String(assign.mock.calls.at(-1)?.[0])).toContain(LOGIN)
+      } finally {
+        assign.mockRestore()
+        configure({ signUp: '/signup' })
+        await undraw()
+      }
+    })
   })
 
   test('a window of its own (Hanzo Desktop) offers no Open in new tab; a browser does', () => {
