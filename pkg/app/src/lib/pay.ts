@@ -57,8 +57,8 @@ export function checkoutUrl(id?: string, back?: string): string {
  * offers it. Call it at the moment of leaving: the organization lives in this
  * browser and moves with the switcher.
  */
-export function payPage(path = "/"): string {
-  return payUrl(path, { org: org() });
+export function payPage(path = "/", returnUrl?: string): string {
+  return payUrl(path, { org: org(), returnUrl });
 }
 
 /** The pay address with its query, written in one place for both callers above. */

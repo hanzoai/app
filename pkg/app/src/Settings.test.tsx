@@ -9,7 +9,7 @@ vi.mock('@hanzo/ui/chat', () => ({
   SidebarSection: ({ label, children }: { label: string; children: ReactNode }) => createElement('section', { 'aria-label': label }, children),
 }))
 
-import { FIRST, pageOf, rows, SettingsList } from './Settings'
+import { FIRST, isSettingsPath, pageOf, rows, settingsPathFor, settingsRowOf, SettingsList } from './Settings'
 import { configure, where } from './where'
 
 const before = { ...where() }
@@ -40,5 +40,21 @@ describe("the host's Settings section", () => {
     configure({ section: { id: 'this-computer', label: 'This computer', Page: Mine } })
     expect(list('computer')).toContain('This computer')
     expect(list('computer')).not.toContain('General')
+  })
+
+  test('maps Settings and Billing addresses to their in-app pane ids', () => {
+    expect(isSettingsPath('/settings')).toBe(true)
+    expect(isSettingsPath('/settings/organization/billing')).toBe(true)
+    expect(isSettingsPath('/account/billing')).toBe(true)
+    expect(isSettingsPath('/chat')).toBe(false)
+    expect(settingsRowOf('/settings')).toBe('account')
+    expect(settingsRowOf('/settings/organization/billing')).toBe('billing')
+    expect(settingsRowOf('/settings/billing')).toBe('billing')
+    expect(settingsRowOf('/account/billing')).toBe('billing')
+    expect(settingsRowOf('/settings/organization/usage')).toBe('usage')
+    expect(settingsRowOf('/settings/personalization')).toBe('general')
+    expect(settingsPathFor('billing')).toBe('/settings/organization/billing')
+    expect(settingsPathFor('usage')).toBe('/settings/organization/usage')
+    expect(settingsPathFor('account')).toBe('/settings')
   })
 })

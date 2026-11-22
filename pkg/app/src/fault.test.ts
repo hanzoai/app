@@ -75,6 +75,9 @@ describe('send resilience', () => {
     configure({
       api: 'https://api.example.test',
       session: {
+        length: 0,
+        key: () => null,
+        clear: () => {},
         getItem: (k: string) => (k.includes('access_token') ? 'tok_test' : null),
         setItem: () => {},
         removeItem: () => {},

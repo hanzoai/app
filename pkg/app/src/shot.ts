@@ -40,8 +40,10 @@ export async function shoot(): Promise<string | null> {
     const style = document.createElement('style')
     style.textContent = css()
     clone.querySelector('head')?.append(style)
-    const rootBg = getComputedStyle(document.documentElement).backgroundColor
-    const bodyBg = getComputedStyle(document.body).backgroundColor
+    const rootStyle = getComputedStyle(document.documentElement)
+    const bodyStyle = getComputedStyle(document.body)
+    const rootBg = rootStyle.backgroundColor
+    const bodyBg = bodyStyle.backgroundColor
     const isDark =
       document.documentElement.classList.contains('dark') ||
       document.documentElement.classList.contains('t_dark') ||
@@ -50,14 +52,15 @@ export async function shoot(): Promise<string | null> {
     const fill =
       (bodyBg && bodyBg !== 'rgba(0, 0, 0, 0)' && bodyBg !== 'transparent' ? bodyBg : '') ||
       (rootBg && rootBg !== 'rgba(0, 0, 0, 0)' && rootBg !== 'transparent' ? rootBg : '') ||
-      (isDark ? '#000000' : '#ffffff')
+      rootStyle.getPropertyValue('--surface-page').trim() ||
+      (isDark ? 'black' : 'white')
     clone.style.width = `${w}px`
     clone.style.height = `${h}px`
     clone.style.backgroundColor = fill
     const cloneBody = clone.querySelector('body')
     if (cloneBody) {
       cloneBody.style.backgroundColor = fill
-      cloneBody.style.color = isDark ? '#f5f5f5' : '#111111'
+      cloneBody.style.color = bodyStyle.color || rootStyle.getPropertyValue('--foreground').trim() || (isDark ? 'white' : 'black')
     }
     const xhtml = new XMLSerializer().serializeToString(clone)
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="100%" height="100%" fill="${fill}"/><foreignObject width="100%" height="100%">${xhtml}</foreignObject></svg>`

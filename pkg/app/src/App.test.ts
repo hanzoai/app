@@ -80,7 +80,15 @@ vi.mock('./seek', () => ({ summons: () => false, togglesSidebar: () => false }))
 vi.mock('./ground', () => ({ floor: {}, pane: () => ({}), SIDE: 256, BAR: 44, RAIL: 56 }))
 vi.mock('./lib/session', () => ({ org: () => null, pick: () => {}, bearer: () => null, hasSession: () => true }))
 vi.mock('./lib/pay', () => ({ payUrl: (p: string) => p }))
-vi.mock('./Upgrade', () => ({ useFree: () => false }))
+vi.mock('./Upgrade', () => ({ Upgrade: () => null, useFree: () => false }))
+vi.mock('./Settings', () => ({
+  FIRST: 'general',
+  isSettingsPath: (p: string) => p === '/settings' || p.startsWith('/settings/') || p === '/account/billing',
+  settingsRowOf: (p: string) => (p.includes('billing') ? 'billing' : 'account'),
+  settingsPathFor: (id: string) => (id === 'billing' ? '/settings/organization/billing' : `/settings/${id}`),
+  SettingsList: ({ active }: { active: string }) => createElement('div', { 'data-slot': 'settings-list', 'data-active': active }),
+}))
+vi.mock('./SettingsPane', () => ({ SettingsPane: ({ id }: { id: string }) => createElement('div', { 'data-slot': 'settings-pane', 'data-id': id }) }))
 vi.mock('./ContextMenu', () => ({ AppContextMenu: () => null }))
 vi.mock('./lib/host', () => ({
   TERMINALS: '/tabs',
@@ -178,6 +186,14 @@ describe('Betas and hosted apps keep the sidebar column', () => {
 
   test('Chat keeps its sidebar', () => {
     expect(draw('/chat')).toContain('data-slot="app-column"')
+  })
+
+  test('in-app /settings/organization/billing draws SettingsList and SettingsPane on billing', async () => {
+    draw('/settings/organization/billing')
+    await new Promise((r) => setTimeout(r, 0))
+    const html = draw('/settings/organization/billing')
+    expect(html).toContain('data-slot="settings-list" data-active="billing"')
+    expect(html).toContain('data-slot="settings-pane" data-id="billing"')
   })
 })
 

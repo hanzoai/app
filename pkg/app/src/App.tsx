@@ -88,11 +88,12 @@ import { Split } from './Shell'
 import { Search } from './Search'
 import { cyclePanel, focusSidebar, useGlobalKeys } from './keys'
 import { Shortcuts } from './Shortcuts'
-import { BAR, floor, pane } from './ground'
+import { BAR, floor, pane, SIDE } from './ground'
 import { org as currentOrg, pick } from './lib/session'
-import { rememberSettingsReturn } from './lib/dev-mode'
-import { useFree } from './Upgrade'
+import { readSettingsReturn, rememberSettingsReturn } from './lib/dev-mode'
+import { Upgrade, useFree } from './Upgrade'
 import { payUrl } from './lib/pay'
+import { FIRST, isSettingsPath, settingsPathFor, settingsRowOf, SettingsList, type Row as SettingsRow } from './Settings'
 import { Ask, useBetas } from './Betas'
 import { BETAS } from './lib/betas'
 import { useMaking } from './Confirm'
@@ -119,6 +120,8 @@ const Terminals = lazy(() => import('./Terminals'))
 const Hosted = lazy(() => import('./Hosted').then((m) => ({ default: m.HostedPane })))
 /** Betas, fetched when opening /beta in the app. */
 const Betas = lazy(() => import('./Betas').then((m) => ({ default: m.BetasPane })))
+/** Settings pane, fetched when a host delegates `/settings*` to `<App />`. */
+const SettingsPane = lazy(() => import('./SettingsPane').then((m) => ({ default: m.SettingsPane })))
 /** `/` is Chat on a new conversation. */
 const HOME: Place = { mode: 'chat', thread: null }
 
@@ -212,6 +215,8 @@ function Window({ bar, betas }: Hosted) {
   const free = useFree(Boolean(host.token?.()))
   const { router, path } = useHost()
   const here = path ?? '/'
+  const inSettings = host.person !== null && isSettingsPath(here)
+  const settingsRow = inSettings ? settingsRowOf(here) : FIRST
   const at = place(here) ?? HOME
   const mode = at.mode
   const { open: betaOpen } = useBetas()
@@ -364,6 +369,15 @@ function Window({ bar, betas }: Hosted) {
   })
 
   const back = () => move(away.current || app(''))
+  const leaveSettings = () => move(readSettingsReturn(talk()))
+  const pickSettings = (row: SettingsRow) => {
+    if (row.href) {
+      if (/^https?:\/\//.test(row.href)) window.open(row.href, '_blank', 'noopener,noreferrer')
+      else move(row.href)
+      return
+    }
+    move(settingsPathFor(row.id))
+  }
   const toChat = () => move(last.chat || talk())
   const toDev = () => move(mode === 'dev' && !inPlace ? app('') : last.dev || app(''))
   const toDesign = () => move(last.design || design(''))
@@ -544,24 +558,39 @@ function Window({ bar, betas }: Hosted) {
             {/* Unified desktop sidebar (hidden when folded to the 52px icon rail). */}
             {closed || alone ? null : (
               <YStack marginInlineStart="var(--pane-gap)" $max-md={{ display: 'none' }}>
-                <Sidebar
-                  pins={pins}
-                  host={host}
-                  mode={mode}
-                  thread={thread}
-                  inside={inside}
-                  go={move}
-                  onShut={bar ? undefined : () => setClosed(true)}
-                  onSeek={seek}
-                  onBack={back}
-                  onChat={toChat}
-                  onDev={toDev}
-                  onDesign={toDesign}
+                {inSettings ? (
+                  <YStack
+                    data-slot="settings-column"
+                    width={SIDE}
+                    height="100%"
+                    px={8}
+                    py="$2"
+                    overflowY="auto"
+                    overflowX="hidden"
+                    {...pane()}
+                  >
+                    <SettingsList active={settingsRow} filter="" onPick={pickSettings} onBack={leaveSettings} />
+                  </YStack>
+                ) : (
+                  <Sidebar
+                    pins={pins}
+                    host={host}
+                    mode={mode}
+                    thread={thread}
+                    inside={inside}
+                    go={move}
+                    onShut={bar ? undefined : () => setClosed(true)}
+                    onSeek={seek}
+                    onBack={back}
+                    onChat={toChat}
+                    onDev={toDev}
+                    onDesign={toDesign}
                     onTabs={toTabs}
-                  onOrg={org}
-                  places={sidebar}
-                  made={maker}
-                />
+                    onOrg={org}
+                    places={sidebar}
+                    made={maker}
+                  />
+                )}
               </YStack>
             )}
             <YStack
@@ -596,7 +625,13 @@ function Window({ bar, betas }: Hosted) {
                 minW={0}
                 minH={0}
               >
-                {anonSettings && host.person === null ? (
+                {inSettings ? (
+                  <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                    <Suspense fallback={null}>
+                      <SettingsPane id={settingsRow} />
+                    </Suspense>
+                  </YStack>
+                ) : anonSettings && host.person === null ? (
                   <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
                     <AnonSettingsPane
                       host={host}
@@ -707,25 +742,31 @@ function Window({ bar, betas }: Hosted) {
             <Layer drawer={drawer} top={bar ? BAR : 0}>
               <XStack flex={1} minH={0}>
                 <YStack flex={1} minW={0}>
-                  <Sidebar
-                    pins={pins}
-                    host={host}
-                    mode={mode}
-                    thread={thread}
-                    inside={inside}
-                    go={move}
-                    onShut={shut}
-                    onSeek={seek}
-                    onBack={back}
-                    onChat={toChat}
-                    onDev={toDev}
-                    onDesign={toDesign}
-                        onTabs={toTabs}
-                    onOrg={org}
-                    drawer
-                    places={sidebar}
-                    made={maker}
-                  />
+                  {inSettings ? (
+                    <YStack flex={1} minW={0} px={8} py="$2" overflowY="auto" overflowX="hidden">
+                      <SettingsList active={settingsRow} filter="" onPick={pickSettings} onBack={leaveSettings} />
+                    </YStack>
+                  ) : (
+                    <Sidebar
+                      pins={pins}
+                      host={host}
+                      mode={mode}
+                      thread={thread}
+                      inside={inside}
+                      go={move}
+                      onShut={shut}
+                      onSeek={seek}
+                      onBack={back}
+                      onChat={toChat}
+                      onDev={toDev}
+                      onDesign={toDesign}
+                      onTabs={toTabs}
+                      onOrg={org}
+                      drawer
+                      places={sidebar}
+                      made={maker}
+                    />
+                  )}
                 </YStack>
               </XStack>
             </Layer>
@@ -733,6 +774,7 @@ function Window({ bar, betas }: Hosted) {
           {finding ? <Search go={move} onClose={found} mode={mode} host={host} /> : null}
           {listing ? <Shortcuts onClose={() => setListing(false)} /> : null}
           {learning ? <Learning open onClose={() => setLearning(false)} /> : null}
+          <Upgrade />
           {making.dialog}
           <AppContextMenu
             pins={pins}

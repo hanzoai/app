@@ -318,7 +318,7 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
             </XStack>
             {creditsLabel ? (
               <Anchor
-                href={payPage('/amount/card')}
+                href={payPage('/amount/card', typeof window !== 'undefined' ? window.location.href : undefined)}
                 data-slot="composer-buy-credits"
                 fontFamily="$body"
                 fontSize="$1"
@@ -411,7 +411,7 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
                 data-slot="composer-safety-add-credits"
                 onClick={() => {
                   setOpen(false)
-                  window.location.assign(payPage('/cart'))
+                  window.location.assign(payPage('/amount/card', window.location.href))
                 }}
                 px="$2"
                 py={2}
@@ -448,7 +448,7 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
               data-slot="composer-upgrade"
               onClick={() => {
                 setOpen(false)
-                window.location.assign(payPage('/cart'))
+                window.location.assign(payPage('/cart', window.location.href))
               }}
               items="center"
               justify="center"

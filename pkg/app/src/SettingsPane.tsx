@@ -28,7 +28,8 @@ import { UsagePanel } from '@hanzo/usage/panel'
 import { administers, Credits, label, Plan, Title, useChoice } from '@hanzo/build'
 import { Catalog } from './Directory'
 import { Sources } from './Sources'
-import { payPage, payUrl } from './lib/pay'
+import { stays } from './Account'
+import { money, payPage, payUrl, topUpAmountUrl } from './lib/pay'
 import { api, iam } from './lib/api'
 import { renewal, useSubscription, useTier } from './lib/tier'
 import { spendShown, useLimits } from './lib/limits'
@@ -668,6 +669,8 @@ function Billing() {
   const upgradeHref = payUrl('/cart', { org: org(), returnUrl })
   const addCreditsHref = payUrl('/amount/card', { org: org(), returnUrl })
   const manageHref = payUrl('/', { org: org(), returnUrl })
+  const canUpgrade = !stays(plan?.name)
+  const presets = [10, 25, 50] as const
 
   return (
     <YStack gap="$5">
@@ -677,14 +680,33 @@ function Billing() {
           <Text fontSize="$2" color="$soft">
             {sub ? renewal(sub, t, locale) : tier?.plan ? t('Your plan.') : t('No paid plan. Usage is paid from credits.')}
           </Text>
-          <XStack gap="$2" pt="$1" flexWrap="wrap">
-            <Button size="sm" onClick={() => window.location.assign(upgradeHref)}>
-              <Sparkles size={14} aria-hidden />
-              {t('Upgrade plan')}
-            </Button>
+          <XStack gap="$2" pt="$1" flexWrap="wrap" items="center">
+            {canUpgrade ? (
+              <Button size="sm" onClick={() => window.location.assign(upgradeHref)}>
+                <Sparkles size={14} aria-hidden />
+                {t('Upgrade plan')}
+              </Button>
+            ) : (
+              <Button size="sm" onClick={() => window.location.assign(manageHref)}>
+                {t('Manage plan')}
+              </Button>
+            )}
             <Button size="sm" variant="outline" onClick={() => window.location.assign(addCreditsHref)}>
               {t('Add credits')}
             </Button>
+            {returnUrl
+              ? presets.map((amount) => (
+                  <Button
+                    key={amount}
+                    size="sm"
+                    variant="outline"
+                    data-slot={`billing-topup-${amount}`}
+                    onClick={() => window.location.assign(topUpAmountUrl(amount, returnUrl))}
+                  >
+                    {`+${money(amount, locale)}`}
+                  </Button>
+                ))
+              : null}
           </XStack>
         </YStack>
       ) : (
@@ -698,7 +720,7 @@ function Billing() {
           {t('A card is entered on hanzo.ai/pay and nowhere else, so checkout and billing management open there and return here.')}
         </Text>
         <XStack>
-          <Box render={<a href={manageHref} target="_blank" rel="noreferrer" />} {...tap}>
+          <Box render={<a href={manageHref} />} {...tap}>
             <XStack items="center" gap="$2" py="$2">
               <Text fontSize="$3" color="$ink">{t('Manage plan, payment method and invoices')}</Text>
               <ExternalLink size={13} aria-hidden />
@@ -741,7 +763,12 @@ function Usage() {
   return (
     <YStack gap="$6">
       {plan}
-      <UsagePanel baseUrl={api()} token={accessToken} upgrade={payPage()} title={t('Spend')} />
+      <UsagePanel
+        baseUrl={api()}
+        token={accessToken}
+        upgrade={payPage('/cart', typeof window !== 'undefined' ? window.location.href : undefined)}
+        title={t('Spend')}
+      />
     </YStack>
   )
 }
