@@ -4,7 +4,8 @@
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Mounted } from '../vitest.real'
-import { ask, drawChat, platform, settle, shown, type Platform } from '../vitest.chat'
+import { ask, drawChat, field, platform, settle, shown, type Platform } from '../vitest.chat'
+import type { Turn } from './lib/local'
 import { configure, where } from './where'
 
 let at: Mounted | undefined
@@ -26,8 +27,8 @@ afterEach(async () => {
 
 describe('a host answers signed-out turns with its own engine', () => {
   test('each turn goes to local.chat with the whole conversation, and nothing goes to the public gateway', async () => {
-    const sent: { role: string; content: string }[][] = []
-    const chat = vi.fn(async ({ messages }: { messages: { role: string; content: string }[] }) => {
+    const sent: Turn[][] = []
+    const chat = vi.fn(async ({ messages }: { messages: Turn[] }) => {
       sent.push(messages.map((m) => ({ ...m })))
       return sent.length === 1 ? 'Paris.' : 'About two million.'
     })
@@ -91,5 +92,32 @@ describe('a host answers signed-out turns with its own engine', () => {
     await settle(60)
     expect(shown()).toContain('Worth the wait.')
     vi.useRealTimers()
+  })
+
+  test('a picture and a text file attached signed out are read here and go to local.chat as parts, and nothing is uploaded', async () => {
+    const chat = vi.fn(async (_turn: { messages: Turn[] }) => 'A red dot, and a note.')
+    configure({ local: { chat } })
+    at = await drawChat()
+    const png = new File([new Uint8Array([137, 80, 78, 71])], 'dot.png', { type: 'image/png' })
+    const note = new File(['hello from the file'], 'notes.txt', { type: 'text/plain' })
+    await act(async () => {
+      const paste = new Event('paste', { bubbles: true, cancelable: true })
+      Object.defineProperty(paste, 'clipboardData', { value: { files: [png, note], items: [], getData: () => '' } })
+      field().dispatchEvent(paste)
+      await new Promise((r) => setTimeout(r, 200))
+    })
+    await ask('What are these?')
+    await settle(200)
+    expect(chat).toHaveBeenCalledTimes(1)
+    const last = chat.mock.calls[0]![0].messages.at(-1)!
+    expect(last.role).toBe('user')
+    expect(last.content).toEqual([
+      { type: 'text', text: 'What are these?' },
+      { type: 'image_url', image_url: { url: expect.stringMatching(/^data:image\/png;base64,/) } },
+      { type: 'text', text: 'notes.txt:\nhello from the file' },
+    ])
+    expect(shown()).toContain('A red dot, and a note.')
+    // Only the page's own reads went out: no upload, no workspace, no chat.
+    expect(api.calls.filter((c) => c.method !== 'GET' || /file|workspace|upload|chat/.test(c.path))).toEqual([])
   })
 })

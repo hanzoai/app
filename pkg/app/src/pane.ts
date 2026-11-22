@@ -19,6 +19,8 @@
 // then on the turn itself is the record Sources reads.
 
 import { useCallback, useSyncExternalStore } from 'react'
+import { localRead } from './lib/local'
+import { where } from './where'
 import { chatKey, follow, pool, register, settled, upload, workspace, type Api, type WorkFile } from './lib/files'
 
 /**
@@ -44,6 +46,8 @@ export interface Held {
   file?: WorkFile
   /** Why it failed, in the reader's words. */
   error?: string
+  /** Signed out on a host with its own engine: what was read from the file in this window (it is never uploaded). */
+  read?: { text: string } | { image: string }
 }
 
 /** What carries a file: the client that reaches the platform, and the org whose workspace it lands in. */
@@ -192,11 +196,12 @@ function watch(api: Api, f: WorkFile, key?: string, id?: string): void {
  */
 export async function hold(key: string, list: readonly File[], via: Via): Promise<void> {
   if (!list.length) return
-  if (!via.org) {
+  // Signed out, a host with its own engine reads the files here; nothing goes up.
+  const here = !via.org && Boolean(where().local)
+  if (!via.org && !here) {
     edit(key, (was) => ({ ...was, refused: 'Sign in to attach files: they are kept in your workspace Drive.' }))
     return
   }
-  const org = via.org
   const taken: Held[] = list.map((file) => ({
     id: mint('h'),
     name: file.name,
@@ -207,6 +212,12 @@ export async function hold(key: string, list: readonly File[], via: Via): Promis
     sent: 0,
   }))
   edit(key, (was) => ({ ...was, held: [...was.held, ...taken], refused: null }))
+  if (here) {
+    taken.forEach((h, i) => reads.set(h.id, readHere(key, h, list[i])))
+    return
+  }
+  const org = via.org
+  if (!org) return
   taken.forEach((h, i) => sources.set(h.id, list[i]))
   const jobs = taken.map((h, i) => {
     const stop = new AbortController()
@@ -216,6 +227,38 @@ export async function hold(key: string, list: readonly File[], via: Via): Promis
     return { h, file: list[i], stop, land }
   })
   await pool(jobs, FILES_AT_ONCE, async ({ h, file, stop, land }) => land(await transfer(key, h, file, org, via, stop)))
+}
+
+// The files read in this window, by held id: what a send waits on (`readLocal`).
+const reads = new Map<string, Promise<Held['read']>>()
+
+/** Reads one file in this window as a picture or as text; a file it cannot read fails in place, with why. */
+async function readHere(key: string, h: Held, file: File): Promise<Held['read']> {
+  const how = localRead(file)
+  if (how !== 'image' && how !== 'text') return patch(key, h.id, { state: 'failed', error: how }), undefined
+  try {
+    const read =
+      how === 'text'
+        ? { text: await file.text() }
+        : {
+            image: await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader()
+              reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '')
+              reader.onerror = () => reject(new Error(`Could not read ${file.name}`))
+              reader.readAsDataURL(file)
+            }),
+          }
+    patch(key, h.id, { state: 'ready', sent: 1, read })
+    return read
+  } catch (e) {
+    patch(key, h.id, { state: 'failed', error: (e as Error)?.message || `${file.name} could not be read.` })
+    return undefined
+  }
+}
+
+/** What was read from a file held here, once it has been; undefined when it could not be read. */
+export function readLocal(h: Held): Promise<Held['read']> {
+  return h.read ? Promise.resolve(h.read) : (reads.get(h.id) ?? Promise.resolve(undefined))
 }
 
 /**
@@ -302,7 +345,7 @@ export function spend(key: string): Held[] {
   const was = read(key)
   if (!was.held.length && !was.refused) return []
   write(key, { ...was, held: [], refused: null })
-  for (const h of was.held) sources.delete(h.id)
+  for (const h of was.held) (sources.delete(h.id), reads.delete(h.id))
   return was.held
 }
 
@@ -313,6 +356,7 @@ export function drop(key: string, id: string): void {
     if (!going) return was
     carrying.get(id)?.stop.abort()
     carrying.delete(id)
+    reads.delete(id)
     sources.delete(id)
     if (going.href) {
       if (going.file) local.delete(going.file.id)
