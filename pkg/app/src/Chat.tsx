@@ -1932,9 +1932,10 @@ function Thread({
   // BOARD IS THE HOST SITE'S PAGE, not one of the app's. A window of its own has no such page, so
   // there it opens only through the one way out (lib/outward), and only where the site is another
   // origin; an address of the window's own would land on nothing, so it is not offered.
+  // It loads in this window: the desktop has no handler for a new one, so a tab would open nothing.
   const windowed = useWindowed();
   const board = site("/board");
-  const openBoard = !windowed ? () => visit(chatHost.router, "/board") : /^https?:\/\//.test(board) ? () => outward(board, "tab") : null;
+  const openBoard = !windowed ? () => visit(chatHost.router, "/board") : /^https?:\/\//.test(board) ? () => outward(board) : null;
 
   const createBoardCardFromTurn = useCallback(
     (turnText: string) => {

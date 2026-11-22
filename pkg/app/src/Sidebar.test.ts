@@ -503,11 +503,17 @@ describe('the unified desktop sidebar', () => {
     const press = (slot: string) => act(async () => void document.querySelector<HTMLElement>(`[data-slot="${slot}"]`)!.click())
 
     test('is told why it cannot, with the way in, and nothing is filled in silently', async () => {
+      const sent = vi.spyOn(window, 'dispatchEvent')
       const undraw = await draw()
-      expect(document.querySelector('[data-slot="signin-prompt"]')).toBeNull()
-      await press('app-images')
-      expect(document.querySelector('[data-slot="signin-prompt"]')?.textContent).toContain('Sign in to create images')
-      await undraw()
+      try {
+        expect(document.querySelector('[data-slot="signin-prompt"]')).toBeNull()
+        await press('app-images')
+        expect(document.querySelector('[data-slot="signin-prompt"]')?.textContent).toContain('Sign in to create images')
+        expect(sent.mock.calls.map(([e]) => e.type)).not.toContain('hanzo:anon-prompt')
+      } finally {
+        sent.mockRestore()
+        await undraw()
+      }
     })
 
     test('and each way in goes to the host’s address, never a hard-coded /signup', async () => {
@@ -515,14 +521,17 @@ describe('the unified desktop sidebar', () => {
       // A host whose accounts start at its own page (hanzo.team: /start).
       configure({ signUp: '/start' })
       const undraw = await draw()
-      await press('app-images')
-      await press('signin-prompt-signup')
-      expect(String(assign.mock.calls.at(-1)?.[0])).toMatch(/^\/start(\?|$)/)
-      await press('signin-prompt-login')
-      expect(String(assign.mock.calls.at(-1)?.[0])).toContain(LOGIN)
-      assign.mockRestore()
-      configure({ signUp: '/signup' })
-      await undraw()
+      try {
+        await press('app-images')
+        await press('signin-prompt-signup')
+        expect(String(assign.mock.calls.at(-1)?.[0])).toMatch(/^\/start(\?|$)/)
+        await press('signin-prompt-login')
+        expect(String(assign.mock.calls.at(-1)?.[0])).toContain(LOGIN)
+      } finally {
+        assign.mockRestore()
+        configure({ signUp: '/signup' })
+        await undraw()
+      }
     })
   })
 

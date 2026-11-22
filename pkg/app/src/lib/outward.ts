@@ -1,6 +1,6 @@
 /**
- * The way out of the app's page for the callers that use it (sign-in, checkout,
- * accounts, Chat): an address loads in this page, or opens a tab of its own.
+ * The way out of the app's page for the callers that use it (sign-out, accounts, and
+ * Chat's checkout and links): an address loads in this page, or opens a tab of its own.
  * Many other places still call `window.location.assign` or `window.open` directly.
  *
  * A plain module, not React context, because the callers that leave are plain

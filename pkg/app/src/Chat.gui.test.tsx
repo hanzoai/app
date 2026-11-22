@@ -33,6 +33,7 @@ afterEach(async () => {
   at = undefined
   vi.useRealTimers()
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
 })
 
 describe('an answer that does not come', () => {
@@ -128,7 +129,7 @@ describe('out of credit', () => {
     expect(document.body.textContent).toContain(ASK_ADMIN)
   })
 
-  test('there is one way to buy: each offer asks once, turns credits on once, and nothing else does', async () => {
+  test('there is one way to buy: each of the three offers asks once, turns credits on once, and nothing else does', async () => {
     broke()
     api.on('PUT /v1/ai/limits', { status: 200, body: {} })
     vi.spyOn(window.location, 'assign').mockImplementation(() => {})
@@ -153,6 +154,17 @@ describe('out of credit', () => {
     expect(turnedOn()).toHaveLength(1)
     await yes()
     expect(turnedOn()).toHaveLength(2)
+    // The plan-limit banner's own offer, once the server names credits as a way on.
+    api.refuse(402, {
+      error: { type: 'billing_error', code: 'model_cap', class: 'premium', message: 'Premium models are paused.', actions: [{ kind: 'credits', label: 'Continue with credits' }] },
+    })
+    await ask('And next week?')
+    await settle(60)
+    await press('Continue with credits')
+    expect(document.querySelector('[data-slot="confirm"]')).not.toBeNull()
+    expect(turnedOn()).toHaveLength(2)
+    await yes()
+    expect(turnedOn()).toHaveLength(3)
     expect(turnedOn().every((c) => JSON.stringify(c.body) === '{"creditsAfterAllowance":true}')).toBe(true)
   })
 })
@@ -475,18 +487,19 @@ describe('Create Board card, in a window of its own', () => {
     expect(button('Open Board')).toBeUndefined()
   })
 
-  test('with the site elsewhere, Open Board goes through the one way out', async () => {
+  test('with the site elsewhere, Open Board loads it in this window: a window of its own opens no new one', async () => {
     board()
     const { configure } = await import('./where')
-    const opened = vi.spyOn(window, 'open').mockReturnValue(null)
+    const assign = vi.spyOn(window.location, 'assign').mockImplementation(() => {})
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
     configure({ site: 'https://hanzo.ai' })
     try {
       await filed()
       await press('Open Board')
-      expect(opened.mock.calls.map(([u]) => u)).toEqual(['https://hanzo.ai/board'])
+      expect(assign.mock.calls.map(([u]) => u)).toEqual(['https://hanzo.ai/board'])
+      expect(open).not.toHaveBeenCalled()
     } finally {
       configure({ site: '' })
-      opened.mockRestore()
     }
   })
 })
