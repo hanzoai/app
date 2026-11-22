@@ -109,6 +109,7 @@ export function Report({ children }: { children: ReactNode }) {
   const [shot, setShot] = useState<string | null>(null)
   const [keep, setKeep] = useState(true)
   const [state, setState] = useState<'idle' | 'sending' | 'done' | 'failed'>('idle')
+  const [failedReason, setFailedReason] = useState('')
   const [filed, setFiled] = useState<Filed | null>(null)
   const [probe, setProbe] = useState('')
 
@@ -159,11 +160,14 @@ export function Report({ children }: { children: ReactNode }) {
   const go = async () => {
     if (!caught) return
     setState('sending')
+    setFailedReason('')
     try {
       setFiled(await send({ caught, title, description: note, shot: keep ? shot : null }))
       setState('done')
     } catch (e) {
-      console.warn('report', (e as Error).message)
+      const msg = e instanceof Error ? e.message : String(e)
+      console.warn('report', msg)
+      setFailedReason(msg)
       setState('failed')
     }
   }
@@ -232,7 +236,11 @@ export function Report({ children }: { children: ReactNode }) {
                 <Text render="summary" fontSize="$1" cursor="pointer">{t('See exactly what will be sent')}</Text>
                 <Text render="pre" fontSize="$1" whiteSpace="pre-wrap" maxH={180} overflowY="auto">{body({ caught, title, description: note, shot: keep ? shot : null }, keep && shot ? '(screenshot)' : undefined)}</Text>
               </View>
-              {state === 'failed' ? <SizableText size="$2" color="$red10" role="alert">{t('Could not send. Check your connection and try again.')}</SizableText> : null}
+              {state === 'failed' ? (
+                <SizableText size="$2" color="$red10" role="alert">
+                  {failedReason ? `${t('Could not send.')} ${failedReason}` : t('Could not send. Check your connection and try again.')}
+                </SizableText>
+              ) : null}
               <XStack gap="$2" justify="flex-end">
                 <Button variant="ghost" onPress={() => close(false)}>{t('Cancel')}</Button>
                 <Button data-slot="report-send" disabled={state === 'sending'} onPress={go}>{state === 'sending' ? t('Sending…') : t('Send')}</Button>

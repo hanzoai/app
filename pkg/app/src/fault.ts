@@ -241,9 +241,27 @@ const call = async (path: string, init: RequestInit = {}): Promise<Response> => 
 
 const BUCKET = 'reports'
 
+/** Decode a data: URL in memory without fetch() so strict CSP connect-src never blocks it. */
+function dataUrlToBlob(data: string): Blob {
+  const comma = data.indexOf(',')
+  if (!data.startsWith('data:') || comma === -1) {
+    throw new Error('invalid screenshot data URL')
+  }
+  const meta = data.slice(5, comma)
+  const mime = meta.split(';')[0] || 'image/png'
+  const raw = data.slice(comma + 1)
+  if (meta.includes(';base64')) {
+    const bin = atob(raw)
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    return new Blob([bytes], { type: mime })
+  }
+  return new Blob([decodeURIComponent(raw)], { type: mime })
+}
+
 /** One presigned PUT to Hanzo S3, then the address the issue carries. */
 async function store(data: string, fp: string): Promise<string> {
-  const png = await (await fetch(data)).blob()
+  const png = dataUrlToBlob(data)
   const made = await call('/v1/s3/buckets', { method: 'POST', body: JSON.stringify({ name: BUCKET }) })
   if (!made.ok && made.status !== 409) throw new Error(`screenshot store ${made.status}`)
   const key = `${fp}/${Date.now()}.png`
@@ -276,21 +294,58 @@ export async function send(f: Filing): Promise<Filed> {
   }
 }
 
-async function file(f: Filing): Promise<Filed> {
-  const board = encodeURIComponent(repo().split('/').pop() ?? repo())
-  const found = await call(`/v1/task/projects/${board}/issues`)
+async function callSeated(path: string, init: RequestInit = {}): Promise<Response> {
+  const res = await call(path, init)
+  if (res.status !== 403) return res
+  // Match lib/todo.ts: opening /v1/git/workspace idempotently seats the principal/org on the forge.
+  await call('/v1/git/workspace').catch(() => undefined)
+  return call(path, init)
+}
+
+async function resolveBoard(preferred: string): Promise<{ board: string; rows: Row[] }> {
+  let board = encodeURIComponent(preferred)
+  let found = await callSeated(`/v1/task/projects/${board}/issues`)
+  if (found.status === 404) {
+    const listed = await callSeated('/v1/task/projects').catch(() => null)
+    if (listed?.ok) {
+      const payload = (await listed.json().catch(() => null)) as
+        | Array<{ key?: string; id?: string; slug?: string }>
+        | { projects?: Array<{ key?: string; id?: string; slug?: string }>; data?: Array<{ key?: string; id?: string; slug?: string }> }
+        | null
+      const items = Array.isArray(payload) ? payload : (payload?.projects ?? payload?.data ?? [])
+      const firstKey = items.map((p) => p.key ?? p.slug ?? p.id).find((k): k is string => Boolean(k && k !== preferred))
+      if (firstKey) {
+        board = encodeURIComponent(firstKey)
+        found = await callSeated(`/v1/task/projects/${board}/issues`)
+      }
+    }
+  }
   if (!found.ok) throw new Error(`Could not reach the tracker (${found.status}).`)
-  const open = ((await found.json()) as Row[] | { data?: Row[] })
-  const rows = Array.isArray(open) ? open : (open.data ?? [])
+  const open = (await found.json()) as Row[] | { data?: Row[]; issues?: Row[] }
+  const rows = Array.isArray(open) ? open : (open.data ?? open.issues ?? [])
+  return { board, rows }
+}
+
+async function file(f: Filing): Promise<Filed> {
+  const preferred = repo().split('/').pop() ?? repo()
+  const { board, rows } = await resolveBoard(preferred)
   const twin = rows.find((r) => r.status !== 'done' && r.status !== 'canceled' && r.description?.includes(mark(f.caught.fingerprint)))
-  const shot = f.shot ? await store(f.shot, f.caught.fingerprint) : undefined
+  let shot: string | undefined
+  if (f.shot) {
+    try {
+      shot = await store(f.shot, f.caught.fingerprint)
+    } catch (e) {
+      // Never block filing a bug report just because screenshot upload failed.
+      console.warn('report screenshot skipped:', e instanceof Error ? e.message : String(e))
+    }
+  }
   if (twin) {
     const note = `+1 from ${f.caught.version} on \`${f.caught.route}\` at ${f.caught.at}${f.description.trim() ? `\n\n${scrub(f.description.trim())}` : ''}${shot ? `\n\n![screenshot](${shot})` : ''}`
-    const r = await call(`/v1/task/projects/${board}/issues/${twin.number}`, { method: 'PATCH', body: JSON.stringify({ comment: note }) })
+    const r = await callSeated(`/v1/task/projects/${board}/issues/${twin.number}`, { method: 'PATCH', body: JSON.stringify({ comment: note }) })
     if (!r.ok) throw new Error(`Could not add to the issue (${r.status}).`)
     return { identifier: twin.identifier ?? `${board}#${twin.number}`, again: true }
   }
-  const r = await call(`/v1/task/projects/${board}/issues`, {
+  const r = await callSeated(`/v1/task/projects/${board}/issues`, {
     method: 'POST',
     body: JSON.stringify({ title: scrub(f.title.trim()) || f.caught.message.slice(0, 100), description: body(f, shot), status: 'backlog' }),
   })

@@ -40,10 +40,27 @@ export async function shoot(): Promise<string | null> {
     const style = document.createElement('style')
     style.textContent = css()
     clone.querySelector('head')?.append(style)
+    const rootBg = getComputedStyle(document.documentElement).backgroundColor
+    const bodyBg = getComputedStyle(document.body).backgroundColor
+    const isDark =
+      document.documentElement.classList.contains('dark') ||
+      document.documentElement.classList.contains('t_dark') ||
+      document.documentElement.dataset.themeProfile === 'zen' ||
+      document.documentElement.dataset.themeProfile === 'lelouch'
+    const fill =
+      (bodyBg && bodyBg !== 'rgba(0, 0, 0, 0)' && bodyBg !== 'transparent' ? bodyBg : '') ||
+      (rootBg && rootBg !== 'rgba(0, 0, 0, 0)' && rootBg !== 'transparent' ? rootBg : '') ||
+      (isDark ? '#000000' : '#ffffff')
     clone.style.width = `${w}px`
     clone.style.height = `${h}px`
+    clone.style.backgroundColor = fill
+    const cloneBody = clone.querySelector('body')
+    if (cloneBody) {
+      cloneBody.style.backgroundColor = fill
+      cloneBody.style.color = isDark ? '#f5f5f5' : '#111111'
+    }
     const xhtml = new XMLSerializer().serializeToString(clone)
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><foreignObject width="100%" height="100%">${xhtml}</foreignObject></svg>`
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="100%" height="100%" fill="${fill}"/><foreignObject width="100%" height="100%">${xhtml}</foreignObject></svg>`
     const img = new Image()
     const loaded = new Promise<void>((ok, no) => {
       img.onload = () => ok()
@@ -54,7 +71,12 @@ export async function shoot(): Promise<string | null> {
     const canvas = document.createElement('canvas')
     canvas.width = w
     canvas.height = h
-    canvas.getContext('2d')?.drawImage(img, 0, 0)
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      ctx.fillStyle = fill
+      ctx.fillRect(0, 0, w, h)
+      ctx.drawImage(img, 0, 0)
+    }
     return canvas.toDataURL('image/png')
   } catch {
     return null
