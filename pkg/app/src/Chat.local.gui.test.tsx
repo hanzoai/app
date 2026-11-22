@@ -150,6 +150,26 @@ describe('a host answers signed-out turns with its own engine', () => {
     expect(earlier.content).toMatchObject([{ type: 'text', text: 'Look at these.' }, { type: 'image_url' }, { type: 'text', text: 'notes.txt:\nhello from the file' }])
   })
 
+  test('Regenerate asks again with the same files', async () => {
+    const chat = vi.fn(async (_turn: { messages: Turn[] }) => 'An answer.')
+    configure({ local: { chat } })
+    at = await drawChat()
+    await attach(png(), note())
+    await until(() => (document.body.textContent ?? '').includes('notes.txt'))
+    await ask('Look at these.')
+    await until(() => shown().includes('An answer.'))
+    await act(async () => {
+      document.querySelector('[data-turn-role="assistant"]')?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+    })
+    await press(/regenerate/i)
+    await until(() => chat.mock.calls.length === 2)
+    expect(called(chat, 1).at(-1)!.content).toMatchObject([
+      { type: 'text', text: 'Look at these.' },
+      { type: 'image_url', image_url: { url: expect.stringMatching(/^data:image\/png;base64,/) } },
+      { type: 'text', text: 'notes.txt:\nhello from the file' },
+    ])
+  })
+
   test('a file that cannot be read signed out says why on its chip and is not sent', async () => {
     const chat = vi.fn(async (_turn: { messages: Turn[] }) => 'Fine.')
     configure({ local: { chat } })

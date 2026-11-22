@@ -2441,11 +2441,10 @@ function Thread({
       const list = turns.current;
       const uIdx = list.findIndex((m) => m.id === turnId);
       if (uIdx < 0) return;
-      const was = list[uIdx]!;
       if (anonymous) {
         apply.current((held) => held.slice(0, uIdx));
         if (anonCountRef.current > 0) anonCountRef.current -= 1;
-        void sendAnon(next, filesOf(was.content));
+        void sendAnon(next);
         return;
       }
       setFailures((all) => {
