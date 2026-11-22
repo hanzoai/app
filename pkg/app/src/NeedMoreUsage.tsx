@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { useI18n } from "@hanzo/i18n/react";
 import { Box, Dialog, DialogContent, DialogTitle, Text, XStack, YStack } from "@hanzo/ui";
 import { X } from "lucide-react";
+import { BAD } from "./lib/mix";
 
 const INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/i;
 
@@ -215,8 +215,12 @@ export interface NeedMoreUsageModalProps {
   open: boolean;
   onClose: () => void;
   resetsAt?: string | null;
-  onBuyCredits: () => Promise<void> | void;
+  onBuyCredits: () => void;
   onSetupTeam: () => void;
+  /** Turning credits on is under way: the button says so and takes no second press. */
+  busy?: boolean;
+  /** Why turning credits on was refused, said under the buy button. */
+  error?: string;
 }
 
 export function NeedMoreUsageModal({
@@ -225,9 +229,10 @@ export function NeedMoreUsageModal({
   resetsAt,
   onBuyCredits,
   onSetupTeam,
+  error,
+  busy = false,
 }: NeedMoreUsageModalProps) {
   const { t } = useI18n();
-  const [busy, setBusy] = useState(false);
   const reset = formatResetParts(resetsAt);
 
   const subtitle = reset
@@ -243,16 +248,6 @@ export function NeedMoreUsageModal({
         date: reset.monthDay,
       })
     : t("Use usage credits until your limit resets. Billed on top of your plan.");
-
-  const handleBuy = async () => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      await onBuyCredits();
-    } finally {
-      setBusy(false);
-    }
-  };
 
   return (
     <Dialog open={open} onOpenChange={(v) => (v ? undefined : onClose())}>
@@ -335,9 +330,10 @@ export function NeedMoreUsageModal({
 
             <YStack gap={8} items="center" width="100%" pt={4}>
               <Box
-                render={<button type="button" />}
+                render={<button type="button" disabled={busy} />}
                 data-slot="buy-usage-credits"
-                onClick={() => void handleBuy()}
+                aria-busy={busy}
+                onClick={() => (busy ? undefined : onBuyCredits())}
                 width="100%"
                 py={9}
                 px={14}
@@ -360,6 +356,11 @@ export function NeedMoreUsageModal({
               <Text fontSize={11.5} lineHeight={15} color="$soft" text="center">
                 {t("Buying turns on usage credits")}
               </Text>
+              {error ? (
+                <Text role="alert" data-slot="buy-usage-credits-wrong" fontSize={12} lineHeight={16} color={BAD} text="center">
+                  {error}
+                </Text>
+              ) : null}
             </YStack>
           </YStack>
 

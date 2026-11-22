@@ -15,7 +15,8 @@
  * therefore never asks for a lookup of its own: the client's one lookup is the
  * turn's web.
  *
- * Which turns: every question about the world, in any language. The web is
+ * Which turns: under Web search, which the person turned on, every turn
+ * (`tool_choice: 'required'` marks it); otherwise every question about the world, in any language. The web is
  * skipped only for a turn that plainly needs none (`needs`) — code, arithmetic,
  * a passage supplied to work on, a greeting — and for a turn about the person's
  * own files or picture, whose words never leave for a search engine. The test
@@ -594,8 +595,11 @@ interface Lookup {
 /**
  * The lookup the last turn needs, or null. A short follow-up ("and in
  * Moscow?") is read with the question before it, the way the person meant it.
+ * `always`: the person turned Web search on, so the turn is searched whatever
+ * its shape (`needs`, code and passages are not asked); a turn carrying their
+ * files or a picture still never leaves.
  */
-function lookup(messages: ChatCompletionMessage[], spoken: readonly string[]): Lookup | null {
+function lookup(messages: ChatCompletionMessage[], spoken: readonly string[], always = false): Lookup | null {
   const last = messages.at(-1)
   if (last?.role !== 'user') return null
   const { text: said, carried } = told(textOf(last.content))
@@ -603,18 +607,18 @@ function lookup(messages: ChatCompletionMessage[], spoken: readonly string[]): L
   // what it asks never leaves for an outside search engine.
   if (carried || pictured(last.content)) return null
   const text = said.trim().slice(0, GATE)
-  if (code(text)) return null
+  if (!text || (!always && code(text))) return null
   const { open: pages, held } = pointed(text)
   const plain = spell(text).trim()
   if (pages.length) {
     const asks = ASKS.test(text.replace(LINK, ' '))
     return { pages, held, q: asks ? plain.slice(0, QUERY) : '', lang: asks ? language(plain, spoken) : '', about: keywords(plain) }
   }
-  if (passage(text.replace(LINK, ' ')) || !needs(text)) return null
+  if (!always && (passage(text.replace(LINK, ' ')) || !needs(text))) return null
   const asked = messages.filter((m) => m.role === 'user')
   const before = asked.length > 1 ? spell(told(textOf(asked[asked.length - 2].content)).text.trim().slice(0, GATE)).trim() : ''
   const q = words(text.replace(LINK, ' ')).length < 4 && before ? `${before.slice(0, Math.max(0, QUERY - plain.length - 1))} ${plain}` : plain
-  if (!needs(q)) return null
+  if (!always && !needs(q)) return null
   return { pages: [], held, q: q.slice(0, QUERY).trim(), lang: language(plain, spoken) || language(q, spoken), about: keywords(q) }
 }
 
@@ -689,7 +693,7 @@ export function researched(base: typeof fetch, clock: () => Date = () => new Dat
     if (!asked.stream || !Array.isArray(asked.messages) || !WEB.every((t) => names.has(t.function.name))) return base(input, init)
     const { tools: _tools, tool_choice: _choice, ...bare } = asked
 
-    const look = lookup(asked.messages, spoken())
+    const look = lookup(asked.messages, spoken(), asked.tool_choice === 'required')
     if (!look) return base(input, { ...init, body: JSON.stringify(bare) })
 
     // The reader's stop, and the stream's own cancel, end every request below.

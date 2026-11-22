@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { branched } from './branch'
+import { branchName, branched } from './branch'
 
 const chat = [
   { id: 'u1', role: 'user', content: 'hi' },
@@ -21,3 +21,11 @@ describe('branched', () => {
     expect(branched([{ id: 's', role: 'system', content: 'x' }], 's', text, {})).toBeNull()
   })
 })
+
+describe('a branch', () => {
+  it('is named as a branch of its chat, never the same title', () => {
+    expect(branchName('Murphy quote')).toBe('Murphy quote (branch)')
+    expect(branchName('Murphy quote')).not.toBe('Murphy quote')
+  })
+})
+

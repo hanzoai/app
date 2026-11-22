@@ -28,6 +28,7 @@
 // belongs in the thread where the reader can see it, not in a caption that
 // pre-emptively refuses on the gateway's behalf.
 
+import { outward } from './lib/outward';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { english, isolate, phrase, type Say } from "@hanzo/i18n";
 import { useI18n } from "@hanzo/i18n/react";
@@ -39,7 +40,7 @@ import {
   useChat,
   type ChatMessage,
 } from "@hanzo/ai/react";
-import { Chat as ChatSurface, ChatHandoffProvider, EFFORTS, Failure, Parts, Tune, useFamilies, words, type ComposerProps, type Said } from "@hanzo/ui/chat";
+import { Chat as ChatSurface, EFFORTS, Failure, Parts, Tune, useFamilies, words, type ComposerProps, type Said } from "@hanzo/ui/chat";
 import { carriedIn, carrying, compose, partsOf, said as told, weigh } from "./lib/attach";
 import { download, dropped, fileOf, pct, readable, refOf, retrieve, type Api, type FileRef, type WorkFile } from "./lib/files";
 import { conversation, drop, hold, landed, localOf, retry, retryable, spend, take, useDraft, usePane, useWorkFile, type Held, type Via } from "./pane";
@@ -54,7 +55,7 @@ import { Box, Button, Dialog, DialogContent, DialogTitle, Input, Text, Tooltip, 
 import { useMedia } from "@hanzo/gui";
 import { given, tidy } from "./lib/title";
 import { useIam, useIamToken } from "@hanzo/iam/react";
-import { bearer, greeted, hasSession, named, org } from "./lib/session";
+import { bearer, greeted, hasSession, named, org, role } from "./lib/session";
 import { api } from "./lib/api";
 import { app, dev, follow, go, visit } from "./lib/host";
 import { useHost } from "./host";
@@ -67,8 +68,8 @@ import { useHydrated } from "./lib/hydrated";
 import { base, served } from "./lib/ai";
 import { onServed, type Served as Heard } from "./lib/served";
 import { refused as worded, speech, useDictation, useTalk, useVoice } from "@hanzo/voice";
-import { CalendarClock, Check, Code2, Copy, Download, FileText, Ghost, GitBranch, Globe, Image as ImageMark, KanbanSquare, Library as LibraryMark, PanelRight, Paperclip, Pencil, RefreshCw, ShieldCheck, Sparkles, Upload, X } from "lucide-react";
-import { branched } from "./lib/branch";
+import { CalendarClock, Check, Copy, Download, FileText, Ghost, GitBranch, Globe, Image as ImageMark, KanbanSquare, Library as LibraryMark, PanelRight, Paperclip, Pencil, RefreshCw, ShieldCheck, Sparkles, Upload, X } from "lucide-react";
+import { branchName, branched } from "./lib/branch";
 import { openModelPicker } from "./lib/model-picker";
 import { open as openBoardCard, home as boardHome } from "./lib/todo";
 import { useDevMode } from "./lib/dev-mode";
@@ -80,10 +81,12 @@ import { openThread, empty as emptyOpen, useOpen } from "./open";
 import { Side } from "./Shell";
 import { OutputsCard, SEED, look, useSections, useSites, type Mark } from "./RightPane";
 import { Share } from "./Share";
-import { ConversationMenu, ThreadMore, useThreadActions, useThreadList, type Thread } from "./thread";
+import { useBuildSpend, useSpend } from "./Confirm";
+import { ended, why, type Failed } from "./lib/unanswered";
+import { questionOf, type Turn } from "./lib/asked";
+import { ConversationMenu, Delete, ThreadMore, useThreadActions, useThreadList, type Thread } from "./thread";
 import { Schedule } from "./Schedule";
-import { useBuildSpend } from "./Confirm";
-import { keepFile, useAttach, useKeep } from "./keep";
+import { holdItem, keepFile, useAttach, useKeep } from "./keep";
 import { useKept } from "./kept";
 import { dragWindow, toggleWindowMaximize } from "./WindowControls";
 import { WalletPill } from "./WalletPill";
@@ -105,6 +108,10 @@ import {
   useLanguage,
   useMind,
   useSuggestions,
+  items as library,
+  type Item,
+  type Target,
+  type Spend,
   book,
   hand,
   taken,
@@ -126,7 +133,8 @@ import { requestUpgrade, Upgrade, useFree, type Ask } from './Upgrade';
 import { enter, LOGIN, signUp } from './lib/destination';
 import { first } from './lib/first';
 import { BAD } from "./lib/mix";
-import { brand } from './where'
+import { brand, site } from './where'
+import { useWindowed } from './windowed'
 import { BAND, HEAD, inPane, INSET, TOUCH_HEAD } from './ground'
 import { shared, useChatPreferences } from './lib/chatPreferences'
 import { handleHint } from './hint'
@@ -171,7 +179,7 @@ const NO_ANSWER = phrase("No answer came back. Sign in to keep going.");
 /** What it says when the connection dropped, or the wait ran out, before an answer came: nothing to sign in for. */
 const DROPPED = phrase("The connection dropped before an answer came. Try again.");
 /** What it says when the reader pressed Stop before the answer came. */
-const STOPPED = phrase("Stopped.");
+const STOPPED = phrase("You stopped this answer.");
 
 
 function readOpeningQuery(): { text: string; thread: string | null } {
@@ -366,11 +374,6 @@ const blank = (one: ChatMessage): boolean =>
   one.role === "assistant" && !String(one.content ?? "").trim() && !one.tool_calls?.length;
 
 /** What an unanswered question met: a refusal, an empty answer, or a stream that said nothing. */
-interface Failed {
-  error: Error | null;
-  empty?: boolean;
-  stalled?: boolean;
-}
 
 /**
  * The agents a question speaks to: those it names, or the whole cast when it
@@ -554,7 +557,6 @@ function AssistantTurnActions({
   onBranch,
   onOpen,
   preview = false,
-  onOpenInDev,
   onCreateBoardCard,
   onSchedule,
 }: {
@@ -566,7 +568,6 @@ function AssistantTurnActions({
   onOpen?: () => void;
   /** What `onOpen` opens is a page or a picture the answer wrote: the button says Preview, the name the model is told (about.ts). */
   preview?: boolean;
-  onOpenInDev?: () => void;
   onCreateBoardCard?: () => void;
   onSchedule?: () => void;
 }) {
@@ -668,17 +669,6 @@ function AssistantTurnActions({
           <GitBranch size={13} color="var(--muted-foreground)" aria-hidden />
         </Box>
       ) : null}
-      {onOpenInDev ? (
-        <Box
-          render={<button type="button" title={t("Open in Dev")} />}
-          data-slot="assistant-turn-dev"
-          aria-label={t("Open in Dev")}
-          onClick={onOpenInDev}
-          {...actionButton}
-        >
-          <Code2 size={13} color="var(--muted-foreground)" aria-hidden />
-        </Box>
-      ) : null}
       {onCreateBoardCard ? (
         <Box
           render={<button type="button" title={t("Create Board card")} />}
@@ -773,6 +763,12 @@ function PreviewButton({ name, onOpen }: { name: string; onOpen: () => void }) {
  * writes, which streams no words while it does.
  */
 const STALL = 300_000;
+
+/**
+ * How long a turn may go without a word or a thought before it says it is taking longer than
+ * usual and offers Stop: long past a routed model's first word, long before `STALL`.
+ */
+const SLOW = 20_000;
 
 /** Characters of a streaming reasoning trace a turn shows: its tail. */
 const THOUGHT = 320;
@@ -1219,6 +1215,109 @@ function Carried({
  * identical, which is the point: signing in later changes the models on the
  * menu, not the conversation.
  */
+/**
+ * WHAT THE SUGGESTIONS ARE MADE FROM, in full, under @hanzo/build's own line and its Turn off: exactly
+ * what `useSuggestions` sends Hanzo's model to write them (suggest.ts `inputs` and `seed`). Off, nothing
+ * is sent, and @hanzo/build's own line offers the way back on: the one switch is its `turn`.
+ */
+function Suggested() {
+  const { t } = useI18n();
+  return (
+    <Text data-slot="suggested" fontSize="$1" color="$soft" px="$3">
+      {t(
+        "To write these, a Hanzo model is sent your recent chat titles; Board issue and pull request titles, each with its repository and first line; your Dev run titles, repositories and branches; your automations’ names with their last result or first line; your Library file names; and your name, work, role, whether you use Hanzo alone or with a team, and your custom instructions.",
+      )}
+    </Text>
+  );
+}
+
+/**
+ * "Add from library": the person's newest Library items, one press each to hold it for THIS
+ * conversation's next message (keep.ts `holdItem`, the road the Library's "Use in Chat" takes).
+ * Chat never leaves for the Library page to do it.
+ */
+function FromLibrary({ target, open, onOpenChange, onPick }: { target: Target; open: boolean; onOpenChange: (open: boolean) => void; onPick: (item: Item) => void }) {
+  const { t } = useI18n();
+  const [q, setQ] = useState("");
+  const [items, setItems] = useState<Item[] | null>(null);
+  const [next, setNext] = useState("");
+  const [wrong, setWrong] = useState("");
+  const read = useCallback(
+    (cursor = "") =>
+      library(target, { q: q.trim() || undefined, cursor: cursor || undefined, limit: 50 }).then(
+        (page) => {
+          setItems((was) => (cursor ? [...(was ?? []), ...page.data] : page.data));
+          setNext(page.next);
+        },
+        (e: unknown) => setWrong(e instanceof Error && e.message ? e.message : t("Your Library could not be read.")),
+      ),
+    [target, q, t],
+  );
+  // Read on open, and again as the search rests (the Library narrows it, so every item is reachable).
+  useEffect(() => {
+    if (!open) return;
+    setWrong("");
+    const soon = setTimeout(() => void read(), q ? 250 : 0);
+    return () => clearTimeout(soon);
+  }, [open, read, q]);
+  useEffect(() => {
+    if (!open) {
+      setQ("");
+      setItems(null);
+    }
+  }, [open]);
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent maxW={480} width="calc(100vw - 24px)" gap="$3" data-slot="from-library">
+        <DialogTitle>{t("Add from library")}</DialogTitle>
+        <Input data-slot="from-library-search" aria-label={t("Search your Library")} placeholder={t("Search your Library")} value={q} onChangeText={setQ} />
+        {wrong ? (
+          <Text role="alert" fontSize="$2" color={BAD}>
+            {wrong}
+          </Text>
+        ) : items === null ? (
+          <Text role="status" fontSize="$2" color="$soft">
+            {t("Reading your Library…")}
+          </Text>
+        ) : !items.length ? (
+          <Text fontSize="$2" color="$soft">
+            {q.trim() ? t("Nothing in your Library matches.") : t("Nothing is in your Library yet.")}
+          </Text>
+        ) : (
+          <YStack maxH={360} overflowY="auto" overflowX="hidden" gap="$1">
+            {items.map((item) => (
+              <XStack
+                key={item.id}
+                render="button"
+                data-slot="from-library-item"
+                onClick={() => onPick(item)}
+                items="center"
+                gap="$2"
+                p="$2"
+                rounded="$3"
+                cursor="pointer"
+                hoverStyle={{ bg: "$hover" }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+                $max-sm={{ minH: 44 }}
+              >
+                <FileText size={14} color="var(--muted-foreground)" aria-hidden />
+                <Text fontSize="$2" color="$ink" numberOfLines={1} shrink={1} minW={0}>
+                  {item.name}
+                </Text>
+              </XStack>
+            ))}
+            {next ? (
+              <Button size="sm" variant="outline" self="flex-start" $max-sm={{ minH: 44 }} onPress={() => void read(next)}>
+                {t("Show more")}
+              </Button>
+            ) : null}
+          </YStack>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function Thread({
   placeholder = message(),
   initial,
@@ -1304,7 +1403,10 @@ function Thread({
   const firstName = useMemo(() => (signedAs ? given(named()?.display ?? "") : ""), [signedAs]);
   // Private / forgetful mode: an ephemeral conversation kept in memory only, never saved to server history.
   const [forgetful, setForgetful] = useState(false);
-  // Up to three things worth doing next, from the person's own activity (@hanzo/build).
+  // Up to three things worth doing next, from the person's own activity (@hanzo/build), which it
+  // sends Hanzo's model to write them; the opening says what (`Suggested`). Whether it does is the
+  // account's preference, which useSuggestions reads itself and `hints.turn` alone writes. A
+  // guest has no token, and with none @hanzo/build reads nothing and asks nothing.
   const hints = useSuggestions(target);
   // THE HEADER'S ⋯ IS THE ROW'S MENU (thread.tsx): rename, pin, share, its
   // link, a new tab, archive and delete, kept by the server. A conversation not
@@ -1549,6 +1651,10 @@ function Thread({
   // opens the upgrade, titled with the model.
   const free = useFree(!anonymous) && !held;
   const [ask, setAsk] = useState<Ask | null>(null);
+  // WEB SEARCH, for this conversation: its turns carry the web tools, so lib/web.ts searches the
+  // web before the model is asked. Only Enso and Zen turns are looked up, so only they offer it.
+  const [web, setWeb] = useState(false);
+  const searches = !anonymous && house(rowOf(model)?.family);
   // KEEPING THE CONVERSATION is the reader's account, not this pane's choice:
   // the store is per-org, so a signed-in reader has somewhere for it to go and
   // an anonymous one does not. `thread` names the conversation being continued
@@ -1561,14 +1667,15 @@ function Thread({
     // completion, so the effort chosen on the bar rides the request. An
     // upstream that does not read `reasoning_effort` answers as it would have,
     // the way it does for `temperature`.
-    // THE LIVE WEB rides every signed-in turn on an Enso or Zen model: the two
-    // web tools mark the turn, and the client's fetch (lib/web.ts) looks it up
-    // before the model is asked and asks without them, so a question about the
-    // world, in any language, is answered from what the web says now and streams.
+    // THE LIVE WEB rides a signed-in turn on an Enso or Zen model while Web search or Deep
+    // research is on: the two web tools mark the turn, and the client's fetch (lib/web.ts) looks
+    // it up before the model is asked and asks without them. Deep research looks up the turns
+    // that need the web; Web search, which the person asked for, every turn (`tool_choice:
+    // "required"`), save one carrying their files or a picture, whose words never leave.
     params: {
       stream_options: { include_usage: true },
       reasoning_effort: chatPrefs.effort || 'auto',
-      ...(!anonymous && carry.gear.gear.research && house(rowOf(model)?.family) ? { tools: WEB } : {}),
+      ...(searches && (web || carry.gear.gear.research) ? { tools: WEB, ...(web ? { tool_choice: "required" as const } : {}) } : {}),
     },
     ...(open ? { thread: open } : {}),
     onError: (e) => {
@@ -1635,6 +1742,11 @@ function Thread({
   // fetch for one, and fetching anyway would race a live conversation to
   // replace it with the server's copy mid-sentence.
   const written = useRef(new Set<string>());
+  // Web search is the conversation's: another one opened, or a new chat, starts without it; the
+  // one this pane just wrote down (minted from the new chat) keeps it.
+  useEffect(() => {
+    if (!open || !written.current.has(open)) setWeb(false);
+  }, [open, emptied]);
   // The cast each thread last recorded, by thread, as the names joined.
   const recorded = useRef(new Map<string, string>());
 
@@ -1773,6 +1885,8 @@ function Thread({
   lent.current = { draft, setDraft, attach: (f) => void hold(at, f, via) };
   // "Use in Chat" from the Library: `?attach=<item>` holds it for the next message.
   useAttach(at, via);
+  // "Add from library" in `+`: the picker over this conversation, open or shut.
+  const [picking, setPicking] = useState(false);
   // "Schedule this": the prompt the dialog opens on, or null while it is shut.
   const [plan, setPlan] = useState<string | null>(null);
   const [anonPluginsOpen, setAnonPluginsOpen] = useState(false);
@@ -1815,28 +1929,12 @@ function Thread({
   }, [setDraft]);
 
   const chatHost = useHost();
-  const openInDev = useCallback(
-    (payload: { prompt?: string; code?: string; language?: string; title?: string }) => {
-      try {
-        if (typeof window !== "undefined") {
-          window.sessionStorage.setItem(
-            "hanzo.handoff.dev",
-            JSON.stringify({
-              prompt: payload.prompt ?? (payload.title ? `Continue working on ${payload.title}` : "Continue implementing this from Chat:"),
-              code: payload.code ?? "",
-              language: payload.language ?? "",
-              title: payload.title ?? "",
-              ts: Date.now(),
-            }),
-          );
-        }
-      } catch {
-        // Ignore storage failures.
-      }
-      visit(chatHost.router, app(""));
-    },
-    [chatHost.router],
-  );
+  // BOARD IS THE HOST SITE'S PAGE, not one of the app's. A window of its own has no such page, so
+  // there it opens only through the one way out (lib/outward), and only where the site is another
+  // origin; an address of the window's own would land on nothing, so it is not offered.
+  const windowed = useWindowed();
+  const board = site("/board");
+  const openBoard = !windowed ? () => visit(chatHost.router, "/board") : /^https?:\/\//.test(board) ? () => outward(board, "tab") : null;
 
   const createBoardCardFromTurn = useCallback(
     (turnText: string) => {
@@ -1860,17 +1958,12 @@ function Thread({
             labels: ["chat"],
           }).then((card) => {
             if (card.local) return void toast.error(t("Saved on this device only"));
-            toast.success(t("Added to Board"), {
-              action: {
-                label: t("Open Board"),
-                onClick: () => visit(chatHost.router, "/board"),
-              },
-            });
+            toast.success(t("Added to Board"), openBoard ? { action: { label: t("Open Board"), onClick: openBoard } } : undefined);
           });
         })
         .catch(() => toast.error(t("Could not add to Board")));
     },
-    [ai, chatHost.router, t],
+    [ai, openBoard, t],
   );
 
   const [anonBusy, setAnonBusy] = useState(false);
@@ -2030,12 +2123,7 @@ function Thread({
   turns.current = chat.messages;
   // The conversation's last question as its person wrote it: what the header's
   // Schedule… opens on.
-  const lastAsked = () => {
-    const q = [...turns.current].reverse().find((m) => m.role === "user");
-    if (!q) return "";
-    if (typeof q.content === "string") return told(q.content).text;
-    return Array.isArray(q.content) ? partsOf(q.content).flatMap((p) => (p.type === "text" ? [p.text] : [])).join("\n") : "";
-  };
+  const lastAsked = () => questionOf(turns.current as Turn[]);
 
   /**
    * WHAT EACH UNANSWERED QUESTION WAS TOLD, by the question's own turn id: the
@@ -2103,9 +2191,18 @@ function Thread({
     reread();
   }, [chat.streaming, error, reread]);
   const wasBusy = useRef(false);
+  // Stop pressed during this answer: an answer it left empty is the person's stop, not the model's silence.
+  const stopping = useRef(false);
+  // The stall timer stopped this answer: its own note stands, never "answered with nothing".
+  const stalling = useRef(false);
   useEffect(() => {
     const held = turns.current[turns.current.length - 1];
-    if (wasBusy.current && !chat.streaming && !error && held && blank(held)) note({ error: null, empty: true });
+    const left = stalling.current ? null : ended({ was: wasBusy.current, streaming: chat.streaming, error, blank: Boolean(held && blank(held)), stopping: stopping.current });
+    if (left) note(left);
+    if (!chat.streaming) {
+      stopping.current = false;
+      stalling.current = false;
+    }
     wasBusy.current = chat.streaming;
   }, [chat.streaming, error, note]);
 
@@ -2141,10 +2238,67 @@ function Thread({
   // with credits turns the org's choice on and asks the last question again on
   // the model the reader picked; a switch moves the picker. A refusal of the
   // write (only an org admin may make it) is said under the banner.
-  const [actWrong, setActWrong] = useState("");
+  // Credits are money: each way of buying asks first, and says what it will do. Where the org
+  // holds credit, buying turns usage credits on and asks the last question again; where it
+  // holds none, it turns them on and opens the payment page to add some.
+  const again = useSpend(
+    "credits",
+    t("Turn on usage credits?"),
+    t("This turns on usage credits for your organization and asks your last question again."),
+    t("Turn on credits"),
+  );
+  const pay = useSpend(
+    "credits",
+    t("Buy usage credits?"),
+    t("This turns on usage credits for your organization and opens the payment page, where you add credit to it."),
+    t("Continue to payment"),
+  );
+  const [buyWrong, setBuyWrong] = useState("");
+  const [buying, setBuying] = useState(false);
+  // Only an owner or admin may turn credits on (the limits route answers anyone else 403), so a
+  // member is told who can, rather than offered a press that cannot work.
+  const member = role(org()) === "member";
+  const ASK_ADMIN = t("Only an owner or admin of your organization can buy usage credits. Ask one of them to add credit.");
+  /**
+   * BUY USAGE CREDITS, the ONE way, wherever it is offered: the banner's Continue with credits,
+   * the Need more usage dialog, a refused turn. A refusal is said in the dialog, never swallowed.
+   */
+  const buyCredits = () => {
+    const ready = Boolean(pause?.actions?.some((a) => a.kind === "credits"));
+    if (member) {
+      setBuyWrong(ASK_ADMIN);
+      setNeedMoreUsageOpen(true);
+      return;
+    }
+    (ready ? again : pay).ask(async () => {
+      setBuyWrong("");
+      // While the request runs the button says so and takes no second press.
+      setBuying(true);
+      const refused = await setCreditsAfterAllowance(true).then(
+        () => "",
+        (e: unknown) =>
+          (e as { status?: number })?.status === 403 ? ASK_ADMIN : e instanceof Error && e.message ? e.message : t("Credits could not be turned on."),
+      );
+      setBuying(false);
+      if (refused) {
+        setBuyWrong(refused);
+        setNeedMoreUsageOpen(true);
+        return;
+      }
+      setNeedMoreUsageOpen(false);
+      reread();
+      if (ready) {
+        // A refused question is asked again in its place; one a free model answered is asked once more after that answer.
+        const q = [...turns.current].reverse().find((m) => m.role === "user");
+        if (q) speak(words(q.content as Said), failures[q.id] ? q.id : undefined);
+        return;
+      }
+      const here = typeof window !== "undefined" ? window.location.href : undefined;
+      if (typeof window !== "undefined") outward(payUrl("/amount/card", { org: org(), returnUrl: here }));
+    });
+  };
   const act = useCallback(
     (a: LimitAction) => {
-      setActWrong("");
       if (a.kind === "later") {
         setShut(which);
         // The banner leaves; the reader is put back in the field it stood over.
@@ -2162,22 +2316,14 @@ function Thread({
       }
       if (a.kind !== "credits") {
         const to = ours(a.url);
-        if (to) window.location.assign(to);
+        if (to) outward(to);
         return;
       }
-      setCreditsAfterAllowance(true)
-        .then(() => {
-          reread();
-          // A refused question is asked again in its place; one a free model
-          // answered is asked once more after that answer.
-          const q = [...turns.current].reverse().find((m) => m.role === "user");
-          if (q) speak(words(q.content as Said), failures[q.id] ? q.id : undefined);
-        })
-        .catch((e: unknown) => setActWrong(e instanceof Error ? e.message : t("Credits could not be turned on.")));
+      buyCredits();
     },
-    // `mind.pick` is rebuilt each render; the handler follows it.
+    // `mind.pick` and `buyCredits` are rebuilt each render; the handler follows them.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [reread, speak, failures, mind.model, listed, t, which],
+    [mind.model, listed, which, buyCredits],
   );
 
   // A TURN THAT NEVER SPEAKS IS STOPPED. A stream that stays open with nothing
@@ -2190,6 +2336,8 @@ function Thread({
       const held = turns.current[turns.current.length - 1];
       if (held && blank(held)) {
         note({ error: null, stalled: true });
+        // The stop below ends the turn empty; it is the stall's, so ended() keeps what was said.
+        stalling.current = true;
         chat.stop();
       }
     }, STALL);
@@ -2197,6 +2345,22 @@ function Thread({
     // Armed once per turn; `chat.stop` is the hook's stable callback.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chat.streaming]);
+
+  // A TURN THAT IS SLOW TO SPEAK SAYS SO, long before the stall ends it: the answer's place says
+  // it is taking longer than usual and offers Stop, so a silent wait is never a blank.
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    setSlow(false);
+    if (!chat.streaming) return;
+    const clock = window.setTimeout(() => setSlow(true), SLOW);
+    return () => window.clearTimeout(clock);
+  }, [chat.streaming]);
+  /** Stop, from the composer or from a slow turn: the person's stop, never the model's silence. */
+  const stopTurn = () => {
+    stopping.current = true;
+    stopAnon();
+    chat.stop();
+  };
 
   // WHICH MODEL ANSWERED each reply, by the reply's turn id, as the gateway named
   // it while the reply streamed (lib/served.ts).
@@ -2229,6 +2393,8 @@ function Thread({
     return Boolean(a && renders(a));
   };
   const threadActions = useThreadActions();
+  // The right-click Delete asks first (thread.tsx `Delete`), as the row menu's does.
+  const [deleting, setDeleting] = useState<Thread | null>(null);
   const [customTitle, setCustomTitle] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
@@ -2284,7 +2450,7 @@ function Thread({
         const next = shared("max");
         if (next) mind.pace(next);
       } else if (action?.mode === "web") {
-        carry.gear.set({ research: true });
+        setWeb(true);
       }
       const nextPrompt =
         action?.mode === "prompt" && action?.prompt
@@ -2301,7 +2467,7 @@ function Thread({
       apply.current((held) => (uIdx >= 0 ? held.slice(0, uIdx) : held.filter((m) => m.id !== turnId && m.id !== q.id)));
       setQueued(nextPrompt);
     },
-    [anonymous, sendAnon, setChatPrefs, mind, carry.gear],
+    [anonymous, sendAnon, setChatPrefs, mind],
   );
 
   // WHAT AN ANSWER MAKES IS KEPT IN THE LIBRARY as it finishes (keep.ts): the
@@ -2379,15 +2545,22 @@ function Thread({
     (turnId: string) => {
       const kept = branched(turns.current, turnId, plainTurnText, { anonymous, forgetful });
       if (!kept) return;
-      ai.threads.record(kept).then(
-        (id) => {
-          reopen(id);
-          toast.success(t("Branched into a new chat"));
-        },
-        () => toast.error(t("Could not branch this chat")),
-      );
+      // The server names a new thread by its first question, the very title it came from: the branch says it is one.
+      ai.threads
+        .record(kept)
+        .then(async (id) => {
+          await ai.threads.update(id, { title: branchName(shownTitle, t) }).catch(() => undefined);
+          return id;
+        })
+        .then(
+          (id) => {
+            reopen(id);
+            toast.success(t("Branched into a new chat"));
+          },
+          () => toast.error(t("Could not branch this chat")),
+        );
     },
-    [ai, anonymous, forgetful, reopen, t],
+    [ai, anonymous, forgetful, reopen, shownTitle, t],
   );
 
   const currentThreadMap = useMemo(() => {
@@ -2482,14 +2655,7 @@ function Thread({
           }
           break;
         case "delete":
-          if (!anonymous && !forgetful && (mine || open)) {
-            void threadActions.remove(mine ?? currentThread).then((ok) => {
-              if (ok) emptyOpen();
-            });
-          } else {
-            apply.current([]);
-            emptyOpen();
-          }
+          setDeleting(mine ?? currentThread);
           break;
       }
     };
@@ -2707,12 +2873,20 @@ function Thread({
     const bill = wrong ? billed(wrong) : null;
     const resign = !bill && !!wrong && (refused(wrong) || /audience not allowed|invalid access token/i.test(wrong.message));
     const lift = free && !bill ? planRequired(wrong) : null;
-    const said = !failed
+    // AN EMPTY WALLET is cleared by money alone: asking again meets the same refusal, so it
+    // offers no Try again, only Buy usage credits.
+    const broke = Boolean(how?.wallet);
+    const reason = why(failed);
+    const said = reason === "gone"
       ? t("No answer came back for this question.")
-      : failed.stalled
+      : reason === "stopped"
+        ? t(STOPPED)
+        : reason === "stalled"
         ? t("{model} sent nothing for {minutes} minutes, so the turn was stopped.", { model: nameOf(model, listed), minutes: STALL / 60_000 })
-        : failed.empty
+        : reason === "empty"
           ? t("{model} answered with nothing.", { model: nameOf(model, listed) })
+          : broke
+            ? t("Your balance is empty.")
           : bill
             ? spent?.message ?? (spends(bill.code) ? (uncapped(limits) ? t("Your balance is empty.") : t("Usage reached.")) : bill.message || plainly(wrong, t("this conversation"), t))
             : resign
@@ -2723,14 +2897,14 @@ function Thread({
               ? t("{model} is unavailable right now.", { model: familyOf(model) || nameOf(model, listed) })
               : plainly(wrong, t("this conversation"), t);
     return (
-      <Failure retryLabel={t("Try again")} onRetry={resign || lift || spends(bill?.code ?? "") ? undefined : () => speak(text, question.id)}>
+      <Failure retryLabel={t("Try again")} onRetry={resign || lift || broke || spends(bill?.code ?? "") ? undefined : () => speak(text, question.id)}>
         <YStack gap="$2">
           <Text fontSize="$3" color="$ink">
             {whom.length ? `${t("No answer from {names}.", { names: join(whom, t) })} ` : ""}
             {said}
           </Text>
           {how?.provider && wrong ? <Why text={detail(wrong)} /> : null}
-          {lift || (!bill && (resign || how?.wallet || how?.visitor)) ? (
+          {lift || broke || (!bill && (resign || how?.visitor)) ? (
             <XStack gap="$2" flexWrap="wrap">
               {resign ? (
                 <Button
@@ -2753,15 +2927,14 @@ function Thread({
                 <Button size="sm" variant="outline" onClick={() => enter()}>
                   {t("Sign in to keep going")}
                 </Button>
+              ) : member ? (
+                <Text data-slot="ask-admin" fontSize="$2" color="$soft">
+                  {ASK_ADMIN}
+                </Text>
               ) : (
-                <>
-                  <Button size="sm" $max-sm={{ minH: 44 }} onPress={() => requestUpgrade()}>
-                    {t("Add credits")}
-                  </Button>
-                  <Button size="sm" variant="outline" borderColor="var(--border-strong)" $max-sm={{ minH: 44 }} onPress={switchModelFromRecovery}>
-                    {t("Switch model")}
-                  </Button>
-                </>
+                <Button size="sm" $max-sm={{ minH: 44 }} disabled={buying} onPress={buyCredits}>
+                  {t("Buy usage credits")}
+                </Button>
               )}
             </XStack>
           ) : null}
@@ -2774,7 +2947,7 @@ function Thread({
   // host's app reads the path (hanzo.ai), else Dev on hanzo.ai, as the shell's
   // Dev place goes from a host without it (hanzo.team).
   const pathed = useHost().path !== null;
-  const create = () => (pathed ? go(app("")) : window.location.assign(dev()));
+  const create = () => (pathed ? go(app("")) : outward(dev()));
   const sections = useSections({ at, said, held: files, deck, onCreate: create });
 
   /** The tabs' browser, as this conversation offers it: the org's sites to start from, and a page asked about, captured or opened in Dev. */
@@ -2787,7 +2960,7 @@ function Thread({
     onCapture: (file: File) => void hold(at, [file], via),
     onDev: (page: { url: string }) => {
       const slug = new URL(page.url).hostname.match(/^([a-z0-9-]+)\.hanzo\.app$/)?.[1] ?? null;
-      window.location.assign(dev(slug));
+      outward(dev(slug));
     },
   };
 
@@ -2838,10 +3011,7 @@ function Thread({
       value: draft,
       onChange: setDraft,
       onSend: () => submit(),
-      onStop: () => {
-        stopAnon();
-        chat.stop();
-      },
+      onStop: stopTurn,
       busy: chat.streaming || anonBusy,
       // Files alone are a message: what is held goes with an empty draft too.
       ready: Boolean(draft.trim() || files.length),
@@ -2966,18 +3136,10 @@ function Thread({
                     {t("Out of credits — your prompt was kept in the composer")}
                   </Text>
                   <Text fontSize="$1" color="$soft">
-                    {t("Add credits to continue with this model, or switch to another model.")}
+                    {t("Switch to another model to keep going now.")}
                   </Text>
                 </YStack>
                 <XStack items="center" gap="$1.5" flexWrap="wrap">
-                  <Button
-                    size="xs"
-                    rounded={999}
-                    $max-sm={{ minH: 44 }}
-                    onPress={() => requestUpgrade()}
-                  >
-                    {t("Add credits")}
-                  </Button>
                   <Button
                     size="xs"
                     variant="outline"
@@ -3029,11 +3191,6 @@ function Thread({
                 labels={{ usage: t("See usage"), dismiss: t("Dismiss") }}
               />
             ) : null}
-            {actWrong ? (
-              <Text role="alert" data-slot="limited-banner-wrong" fontSize="$2" color={BAD}>
-                {actWrong}
-              </Text>
-            ) : null}
             {files.length ? (
               <XStack gap="$1.5" flexWrap="wrap" role="list" aria-label={t("Attached files")} data-slot="composer-attached">
                 {files.map((one) => (
@@ -3083,10 +3240,8 @@ function Thread({
       plus: (() => {
         const commonPlus = {
           upload: () => take(at, via),
-          library: () => {
-            if (!anonymous) go("/library");
-            else take(at, via);
-          },
+          // A visitor has no Library: their files come from this computer.
+          library: () => (anonymous ? take(at, via) : setPicking(true)),
           createImage: () => {
             setDraft((prev) => (prev.trim() ? prev : t("Create an image of ")));
           },
@@ -3096,10 +3251,7 @@ function Thread({
             }
             setPanel(true);
           },
-          webSearch: () => {
-            carry.gear.set({ research: true });
-            setDraft((prev) => (prev.trim() ? prev : t("Search the web for ")));
-          },
+          webSearch: searches ? () => setWeb(true) : undefined,
           thinking: {
             on: chatPrefs.effort === "max",
             set: (on: boolean) => {
@@ -3134,6 +3286,7 @@ function Thread({
           icon: <Face src={faces[name]?.avatar} emoji={faces[name]?.emoji} name={name} size={16} />,
           onRemove: () => seat(cast.filter((one) => one !== name)),
         })),
+        ...(web && searches ? [{ id: "web", label: t("Web search"), icon: <Globe size={14} aria-hidden />, onRemove: () => setWeb(false) }] : []),
         ...carry.on,
       ],
       slash: carry.skills,
@@ -3151,7 +3304,13 @@ function Thread({
       onLanguage: speakIn,
       talk,
       // While nothing has been said: what is worth doing next.
-      starters: said.length === 0 && !anonymous && !forgetful ? <Suggestions rows={hints.rows} onAct={hint} onDismiss={hints.dismiss} state={hints.state} onTurn={hints.turn} /> : undefined,
+      starters:
+        said.length === 0 && !anonymous && !forgetful ? (
+          <YStack gap="$1.5">
+            <Suggestions rows={hints.rows} onAct={hint} onDismiss={hints.dismiss} state={hints.state} onTurn={hints.turn} />
+            {hints.state === "on" && hints.rows.length > 0 ? <Suggested /> : null}
+          </YStack>
+        ) : undefined,
   };
 
   return (
@@ -3461,7 +3620,7 @@ function Thread({
               hoverStyle={{ bg: "$hover" }}
               focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
               $max-sm={{ minH: 44 }}
-              onClick={() => window.location.assign(payUrl('/cart', { org: org(), returnUrl: window.location.href }))}
+              onClick={() => outward(payUrl('/cart', { org: org(), returnUrl: window.location.href }))}
             >
               <Sparkles size={14} color="var(--muted-foreground)" aria-hidden />
               <Text fontSize={15} lineHeight={20} fontWeight="500" color="$soft" numberOfLines={1}>
@@ -3537,7 +3696,6 @@ function Thread({
 
       <XStack flex={1} minH={0} minW={0}>
         <YStack ref={talkRef} data-slot="talk" flex={1} minH={0} minW={0} position="relative">
-        <ChatHandoffProvider value={{ openInDev }}>
         <ChatSurface
           {...chat}
           messages={shown}
@@ -3668,7 +3826,8 @@ function Thread({
             // model's reasoning as it streams (`reasoning` on the turn), dimmed and
             // cut to its last lines.
             const thought = turn.role === "assistant" && !said && chat.streaming ? ((turn as { reasoning?: string }).reasoning ?? "").trim() : "";
-            if (turn.role === "assistant" && !said && chat.streaming && (cast.length || thought)) {
+            const waited = slow && !thought;
+            if (turn.role === "assistant" && !said && chat.streaming && (cast.length || thought || waited)) {
               const q = [...shown].reverse().find((one) => one.role === "user");
               const whom = cast.length ? addressed(words(q?.content as Said), cast) : [];
               return (
@@ -3688,6 +3847,16 @@ function Thread({
                     <Text fontSize="$2" color="$soft" opacity={0.72} data-slot="thought">
                       {thought.length > THOUGHT ? `…${thought.slice(-THOUGHT).replace(/^\S*\s/, "")}` : thought}
                     </Text>
+                  ) : null}
+                  {waited ? (
+                    <XStack data-slot="slow" items="center" gap="$2" flexWrap="wrap">
+                      <Text role="status" fontSize="$2" color="$soft">
+                        {t("This is taking longer than usual.")}
+                      </Text>
+                      <Button size="xs" variant="outline" rounded={999} $max-sm={{ minH: 44 }} onPress={stopTurn}>
+                        {t("Stop")}
+                      </Button>
+                    </XStack>
                   ) : null}
                 </YStack>
               );
@@ -3731,9 +3900,8 @@ function Thread({
                           onBranch={anonymous || forgetful ? undefined : () => branchTurn(turn.id)}
                           onOpen={opener(part.text)}
                           preview={previews(part.text)}
-                          onOpenInDev={() => openInDev({ prompt: part.text })}
                           onCreateBoardCard={anonymous ? undefined : () => createBoardCardFromTurn(part.text)}
-                          onSchedule={anonymous ? undefined : () => setPlan(part.text)}
+                          onSchedule={anonymous ? undefined : () => setPlan(questionOf(shown as Turn[], turn.id))}
                         />
                       ) : null}
                     </YStack>
@@ -3767,9 +3935,8 @@ function Thread({
                     onBranch={anonymous || forgetful ? undefined : () => branchTurn(turn.id)}
                     onOpen={opener(said)}
                     preview={previews(said)}
-                    onOpenInDev={() => openInDev({ prompt: said })}
                     onCreateBoardCard={anonymous ? undefined : () => createBoardCardFromTurn(said)}
-                    onSchedule={anonymous ? undefined : () => setPlan(said)}
+                    onSchedule={anonymous ? undefined : () => setPlan(questionOf(shown as Turn[], turn.id))}
                   />
                 ) : null}
                 {turn.role === "assistant" && said ? byline(turn.id) : null}
@@ -3881,7 +4048,6 @@ function Thread({
           column={{ maxW: "var(--container-prose, 48rem)" as unknown as number, px: "$4", "$max-sm": { px: "$3" } }}
           composer={composer}
         />
-        </ChatHandoffProvider>
           <ToBottom within={talkBox} />
         </YStack>
         {dockSummary && summaryOpen ? (
@@ -3893,6 +4059,15 @@ function Thread({
           />
         ) : null}
       </XStack>
+      <FromLibrary
+        target={target}
+        open={picking}
+        onOpenChange={setPicking}
+        onPick={(item) => {
+          setPicking(false);
+          void holdItem(at, via, item).catch((e: unknown) => toast.error(e instanceof Error && e.message ? e.message : t("That item could not be attached.")));
+        }}
+      />
       <AgentMaker />
       {carry.dialog}
       <Dialog open={anonPluginsOpen} onOpenChange={setAnonPluginsOpen}>
@@ -4104,33 +4279,44 @@ function Thread({
           </YStack>
         </DialogContent>
       </Dialog>
+      <Delete
+        noun="chat"
+        t={deleting ? [deleting] : []}
+        unsaved={anonymous || forgetful || !(mine || open)}
+        open={deleting !== null}
+        onOpenChange={(o) => {
+          if (!o) setDeleting(null);
+        }}
+        remove={([one]) => {
+          if (!anonymous && !forgetful && (mine || open)) {
+            void threadActions.remove(one).then((ok) => {
+              if (ok) emptyOpen();
+            });
+          } else {
+            apply.current([]);
+            emptyOpen();
+          }
+        }}
+      />
       <Upgrade ask={ask} onClose={() => setAsk(null)} />
+      {again.dialog}
+      {pay.dialog}
       {scheduling.dialog}
       <NeedMoreUsageModal
         open={needMoreUsageOpen}
-        onClose={() => setNeedMoreUsageOpen(false)}
-        resetsAt={pause?.resets_at ?? simulatedResetAt}
-        onBuyCredits={async () => {
-          setActWrong("");
-          const hasCreditsReady = Boolean(pause?.actions?.some((a) => a.kind === "credits"));
-          await setCreditsAfterAllowance(true).catch(() => {});
-          if (hasCreditsReady) {
-            setNeedMoreUsageOpen(false);
-            reread();
-            const q = [...turns.current].reverse().find((m) => m.role === "user");
-            if (q) speak(words(q.content as Said), failures[q.id] ? q.id : undefined);
-            return;
-          }
-          const here = typeof window !== "undefined" ? window.location.href : undefined;
-          const url = payUrl("/amount/card", { org: org(), returnUrl: here });
+        onClose={() => {
           setNeedMoreUsageOpen(false);
-          if (typeof window !== "undefined") window.location.assign(url);
+          setBuyWrong("");
         }}
+        resetsAt={pause?.resets_at ?? simulatedResetAt}
+        error={buyWrong}
+        busy={buying}
+        onBuyCredits={buyCredits}
         onSetupTeam={() => {
           const here = typeof window !== "undefined" ? window.location.href : undefined;
           const url = payUrl("/cart", { plan: "team", quantity: "5", org: org(), returnUrl: here });
           setNeedMoreUsageOpen(false);
-          if (typeof window !== "undefined") window.location.assign(url);
+          if (typeof window !== "undefined") outward(url);
         }}
       />
       {/* The banner is drawn, not announced: this region stays mounted, so the
