@@ -408,7 +408,17 @@ function Window({ bar, betas }: Hosted) {
         >
           <SkipLink />
           {bar ? (
-            <XStack data-slot="title-bar" height={BAR} shrink={0} items="center" onMouseDown={dragWindow} onDoubleClick={toggleWindowMaximize} {...bar.drag}>
+            <XStack
+              data-slot="title-bar"
+              display="grid"
+              gridTemplateColumns="auto minmax(0, 1fr)"
+              height={BAR}
+              shrink={0}
+              items="center"
+              onMouseDown={dragWindow}
+              onDoubleClick={toggleWindowMaximize}
+              {...bar.drag}
+            >
               <XStack
                 data-slot="title-bar-start"
                 height="100%"
@@ -420,20 +430,31 @@ function Window({ bar, betas }: Hosted) {
                 width={closed ? RAIL_FOLDED : ('calc(var(--pane-gap) + var(--app-sidebar-span, 256px))' as never)}
                 {...bar.drag}
               >
-                <XStack $md={{ display: 'none' }}>
+                <XStack $md={{ display: 'none' }} data-tauri-drag-region="false">
                   <Toggle open={drawer.state === 'open'} onPress={drawer.open} />
                 </XStack>
-                <XStack $max-md={{ display: 'none' }}>
+                <XStack $max-md={{ display: 'none' }} data-tauri-drag-region="false">
                   <Toggle open={!closed} onPress={flip} />
                 </XStack>
-                <Mark label={t('Back')} data-slot="back" onPress={() => router.back()}>
+                <Mark label={t('Back')} data-slot="back" data-tauri-drag-region="false" onPress={() => router.back()}>
                   <ChevronLeft size={16} strokeWidth={CHEVRON} aria-hidden data-i18n-mirror />
                 </Mark>
-                <Mark label={t('Forward')} data-slot="forward" onPress={() => router.forward()}>
+                <Mark label={t('Forward')} data-slot="forward" data-tauri-drag-region="false" onPress={() => router.forward()}>
                   <ChevronRight size={16} strokeWidth={CHEVRON} aria-hidden data-i18n-mirror />
                 </Mark>
               </XStack>
-              <XStack data-slot="title-bar-main" flex={1} minW={0} self="stretch" items="center" justify="space-between" pl={14} pr={8} gap={6} {...bar.drag}>
+              <XStack
+                data-slot="title-bar-main"
+                display="grid"
+                gridTemplateColumns="minmax(0, 1fr) auto"
+                minW={0}
+                self="stretch"
+                items="center"
+                pl={14}
+                pr={8}
+                gap={6}
+                {...bar.drag}
+              >
                 <Text fontSize="$2" fontWeight="500" color="$ink" numberOfLines={1}>
                   {TITLES[mode] ?? ''}
                 </Text>
@@ -445,6 +466,9 @@ function Window({ bar, betas }: Hosted) {
             ref={drawer.pane}
             data-app={mode}
             data-slot="frame"
+            display="grid"
+            gridTemplateColumns={closed || !alone ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)'}
+            gridTemplateRows="minmax(0, 1fr)"
             bg="transparent"
             // While a phone's drawer is out the pane is raised over it, sliding toward the end side.
             {...drawer.slide}
@@ -457,7 +481,7 @@ function Window({ bar, betas }: Hosted) {
             // A phone's frame is full-bleed on the floor, which follows the theme,
             // so the top of the page the browser's bar tints from does too. Under a window's bar the
             // panel still stands the gap from it.
-            $max-md={{ p: 0, ...(bar ? { pt: 'var(--pane-gap)' } : null) }}
+            $max-md={{ p: 0, gridTemplateColumns: 'minmax(0, 1fr)', ...(bar ? { pt: 'var(--pane-gap)' } : null) }}
           >
             {drawer.slide ? <Lift /> : null}
             <YStack height="100%" position="relative" display={closed ? 'flex' : 'none'} $max-md={{ display: 'none' }}>
