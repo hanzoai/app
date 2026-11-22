@@ -74,7 +74,7 @@ import { openModelPicker } from "./lib/model-picker";
 import { open as openBoardCard, home as boardHome } from "./lib/todo";
 import { useDevMode } from "./lib/dev-mode";
 import { Bring } from "./bring";
-import { EXPLICIT_CHOSEN, EXPLICIT_SURE, NONE as UNCHOSEN, WAIT, carried as skillsCarried, choose, parseSkillCommand, personas, skillContext, within, type ChooseOptions, type Chosen } from "./chosen";
+import { EXPLICIT_CHOSEN, EXPLICIT_SURE, NONE as UNCHOSEN, WAIT, carried as skillsCarried, choose, isSkillAuthoring, parseSkillCommand, personas, skillCommandNote, skillContext, within, type ChooseOptions, type Chosen } from "./chosen";
 import { InfoHint } from "./lib/info-hint";
 import { ENSO } from "./lib/ai";
 import { openThread, empty as emptyOpen, useOpen } from "./open";
@@ -2752,7 +2752,7 @@ function Thread({
   const [lastChosen, setLastChosen] = useState<string[]>([]);
   const chosenFor = (text: string, skip: readonly string[], options?: ChooseOptions): Promise<Chosen> => {
     const leave = [...skip, ...carry.gear.gear.skills];
-    const key = `${options?.explicit ? "1" : "0"}:${leave.join(",")}\n${text.trim()}`;
+    const key = `${options?.explicit ? "1" : "0"}:${(options?.prefer ?? []).join(",")}:${leave.join(",")}\n${text.trim()}`;
     const kept = kai.current.get(key);
     if (kept) return kept;
     // Only what the `+` shelf offers this person may be chosen for them (chosen.ts `choosable`).
@@ -2838,14 +2838,25 @@ function Thread({
       const slow = carry.preparing ? null : setTimeout(() => setPreparing(t("Choosing skills")), 200);
       if (carry.preparing) setPreparing(t("Preparing"));
       try {
+        const authoringSkill = Boolean(skillAsk && isSkillAuthoring(skillAsk));
         const chooseOpts: ChooseOptions | undefined = skillAsk
-          ? { minProbability: EXPLICIT_SURE, maxSkills: EXPLICIT_CHOSEN, explicit: true }
+          ? {
+              minProbability: EXPLICIT_SURE,
+              maxSkills: EXPLICIT_CHOSEN,
+              explicit: true,
+              ...(authoringSkill ? { prefer: ["skill-creator"] } : {}),
+            }
           : undefined;
         const waitMs = skillAsk ? WAIT * 2 : WAIT;
         const picked = wantChoose && text ? await within(chosenFor(text, isPrOrReview ? ["code-review"] : [], chooseOpts), waitMs, UNCHOSEN) : UNCHOSEN;
         if (slow) clearTimeout(slow);
         if (wantChoose) setLastChosen([...(isPrOrReview ? ["code-review"] : []), ...picked.names]);
-        const notes = [picked.text, ponyNote].filter(Boolean).join("\n\n");
+        if (skillAsk && !authoringSkill && picked.names.length) {
+          const nextSkills = [...new Set([...carry.gear.gear.skills, ...picked.names])];
+          carry.gear.set({ skills: nextSkills });
+        }
+        const skillNote = skillAsk ? skillCommandNote(skillAsk, picked.names, authoringSkill) : "";
+        const notes = [picked.text, skillNote, ponyNote].filter(Boolean).join("\n\n");
         if (!carry.preparing) return deliver(text, notes);
         // The files held for this message, as bytes, for a plugin that reads them (PDF).
         const bytes = await Promise.all(

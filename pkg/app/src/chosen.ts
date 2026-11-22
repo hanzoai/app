@@ -104,6 +104,42 @@ export function skillContext(
   return fallback.trim() || 'general coding, productivity, and assistant skills'
 }
 
+/** Detect whether a `/skill <query>` prompt is asking to create, author, or adapt a skill. */
+export function isSkillAuthoring(text: string): boolean {
+  const s = text.trim()
+  if (!s) return false
+  return (
+    /\b(?:make|create|build|write|draft|author|design|generate|new|adapt|customi[sz]\w*|fork|extend|modify|update|turn\s+.+\s+into)\b[\s\S]*\bskills?\b|\bskills?\b[\s\S]*\b(?:for|from|about|that|to\s+handle|to\s+help)\b/i.test(
+      s,
+    ) ||
+    /^(?:adapt|customi[sz]e|fork|extend|modify|draft|author|(?:make|create|build|write)\s+(?:me\s+)?(?:a\s+)?new)\b/i.test(s)
+  )
+}
+
+/**
+ * Extra guidance attached to an explicit `/skill <query>` turn so the model can
+ * use matched skills, adapt a close existing skill, or author a portable SKILL.md
+ * when the user asks to create/adapt one or no catalog skill matches.
+ */
+export function skillCommandNote(query: string, matched: readonly string[], authoring: boolean): string {
+  if (authoring) {
+    const found = matched.filter((n) => n !== 'skill-creator')
+    const basis = found.length
+      ? `Kai found related existing skill(s) in the catalog (${found.join(', ')}) whose instructions are attached above. Adapt or extend them if they fit, or author a fresh skill if a dedicated one is cleaner.`
+      : 'Kai checked the skills catalog and no existing skill closely matched this request.'
+    return [
+      `The user invoked /skill to create or adapt a skill: "${query}".`,
+      basis,
+      'Output a complete, ready-to-use `SKILL.md` with valid YAML frontmatter (`name:` lowercase kebab-case, `description:` concise trigger criteria under 1024 chars) followed by clear, actionable instructions, edge cases, and examples.',
+      'Mention that they can save it in Customize › Skills or at `~/.agents/skills/<name>/SKILL.md` (compatible with Hanzo App, Hanzo Bot, Hanzo Dev, Claude Code, Codex, and Cursor).',
+    ].join(' ')
+  }
+  if (!matched.length) {
+    return `The user invoked /skill for "${query}", and Kai found no matching pre-installed skill in the catalog. Answer the request directly using your best expertise, and offer to turn the workflow into a reusable \`SKILL.md\` (saveable in Customize › Skills or \`~/.agents/skills/<name>/SKILL.md\`) if they want to keep it.`
+  }
+  return ''
+}
+
 export interface ChooseOptions {
   /** Override minimum Kai confidence (default: SURE = 0.8; explicit `/skill` uses EXPLICIT_SURE = 0.55). */
   minProbability?: number
@@ -111,6 +147,8 @@ export interface ChooseOptions {
   maxSkills?: number
   /** Skip the minimum prompt length guard (used for explicit `/skill <short>` invocations). */
   explicit?: boolean
+  /** Extra skill names to include alongside Kai's picks when available (e.g. `skill-creator` for authoring). */
+  prefer?: readonly string[]
 }
 
 /**
@@ -135,10 +173,13 @@ export async function choose(
   const limit = options?.maxSkills ?? CHOSEN
   try {
     const found = await detect(t, words, { maxSkills: ASKED, maxTools: 1, signal })
-    const names = found
+    const detected = found
       .filter((d) => d.skill && d.probability >= minProb && !skip.includes(d.name) && choosable(d.name, known))
       .map((d) => d.name)
-      .slice(0, limit)
+    const extra = (options?.prefer ?? []).filter(
+      (n) => !skip.includes(n) && !detected.includes(n) && choosable(n, known),
+    )
+    const names = [...detected, ...extra].slice(0, limit)
     if (!names.length) return NONE
     const fresh = names.filter((n) => !had.includes(n))
     const again = names.filter((n) => had.includes(n)).map((n) => `Use the "${n}" skill where it applies, as earlier in this conversation.`)
