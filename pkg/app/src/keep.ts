@@ -105,6 +105,9 @@ export async function fileOf(item: Item): Promise<File> {
   return new File([blob], item.name, { type: item.mime || blob.type })
 }
 
+/** A Library item, held for the next message in conversation `at`: the one road a picked file takes. */
+export const holdItem = (at: string, via: Via, item: Item): Promise<unknown> => fileOf(item).then((f) => hold(at, [f], via))
+
 /**
  * `/chat?attach=<item>`: the Library item, held for the next message in
  * conversation `at`. The parameter is struck from the address once read, so a
@@ -122,8 +125,7 @@ export function useAttach(at: string, via: Via): string {
     url.searchParams.delete('attach')
     window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
     get(via.api, id)
-      .then(fileOf)
-      .then((f) => hold(at, [f], via))
+      .then((item) => holdItem(at, via, item))
       .catch((e: unknown) => setWhy((e as Error)?.message || 'That item could not be attached.'))
   }, [at, via])
   return why

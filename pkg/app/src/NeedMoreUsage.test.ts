@@ -67,4 +67,12 @@ describe("NeedMoreUsage", () => {
     expect(html).toContain("Recommended");
     expect(html).toContain("Set up a Team plan");
   });
+
+  it("says why credits were not turned on, never swallowing the refusal", () => {
+    const html = renderToStaticMarkup(
+      createElement(NeedMoreUsageModal, { open: true, onClose: () => {}, onBuyCredits: () => {}, onSetupTeam: () => {}, error: "Only an admin can turn on credits." }),
+    );
+    expect(html).toContain("buy-usage-credits-wrong");
+    expect(html).toContain("Only an admin can turn on credits.");
+  });
 });
