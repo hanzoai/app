@@ -33,6 +33,8 @@ export default defineConfig({
           name: 'gui',
           include: ['src/**/*.gui.test.tsx'],
           environment: 'happy-dom',
+          // A real-kit test draws a whole screen; on CI's shared cores one takes seconds, so the 5 s default times out the behaviour, not a hang.
+          testTimeout: 30_000,
           setupFiles: ['./vitest.setup.ts', './vitest.gui.ts'],
           server: { deps: { inline: [/@hanzo\//, /@hanzogui\//, /react-native/] } },
         },
