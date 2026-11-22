@@ -173,13 +173,13 @@ function Frame({ children }: { children: ReactNode }) {
 }
 
 /** Chat, mounted under the session; `wrap` puts a provider around it (a window's `Windowed`). */
-export async function drawChat(wrap: (node: ReactNode) => ReactNode = (n) => n): Promise<Mounted> {
+export async function drawChat(wrap: (node: ReactNode) => ReactNode = (n) => n, props: Record<string, unknown> = {}): Promise<Mounted> {
   const at = await mount()
   await at.draw(
     createElement(
       IamProvider as never,
       { config: { serverUrl: 'https://hanzo.id', clientId: 'hanzo-app' }, autoInit: false } as never,
-      wrap(createElement(Frame, null, createElement(Chat))),
+      wrap(createElement(Frame, null, createElement(Chat as never, props))),
     ),
   )
   await settle()
