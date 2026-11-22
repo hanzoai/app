@@ -172,16 +172,18 @@ function Frame({ children }: { children: ReactNode }) {
   return createElement(AiProvider as never, { client: client ?? undefined } as never, children)
 }
 
+/** `node` under the session, as App wraps it: the IAM provider and the @hanzo/ai client built from it. */
+export const inApp = (node: ReactNode): ReactNode =>
+  createElement(
+    IamProvider as never,
+    { config: { serverUrl: 'https://hanzo.id', clientId: 'hanzo-app' }, autoInit: false } as never,
+    createElement(Frame, null, node),
+  )
+
 /** Chat, mounted under the session; `wrap` puts a provider around it (a window's `Windowed`). */
 export async function drawChat(wrap: (node: ReactNode) => ReactNode = (n) => n): Promise<Mounted> {
   const at = await mount()
-  await at.draw(
-    createElement(
-      IamProvider as never,
-      { config: { serverUrl: 'https://hanzo.id', clientId: 'hanzo-app' }, autoInit: false } as never,
-      wrap(createElement(Frame, null, createElement(Chat))),
-    ),
-  )
+  await at.draw(inApp(wrap(createElement(Chat))))
   await settle()
   return at
 }

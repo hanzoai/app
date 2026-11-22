@@ -4,7 +4,7 @@ import { asked, KEYS, legal, pages, rows } from './help'
 import { configure, where } from './where'
 
 const before = { ...where() }
-afterEach(() => configure(before))
+afterEach(() => configure({ ...before, keys: undefined }))
 
 const hrefs = () => [...pages(), ...legal()].map((p) => p.href)
 

@@ -237,9 +237,9 @@ dialogs (`Share.tsx` `ShareDialog`, the header's panel in a dialog). A row
 (`ThreadRow`) is its markup and a trigger. Entries: Rename (Ctrl+Alt+R), Pin
 or Unpin (Ctrl+Alt+P), Share…, Copy link, Open in new tab, Archive or
 Unarchive, Delete. The address of a conversation is `site(talk(id))`; a
-⌘/Ctrl-click or a middle-click on a row opens it in a new tab. Chat's header
-offers the same menu from its ⋯ (`ThreadMore`, inside a `ConversationMenu` of
-the one conversation the pane holds).
+⌘/Ctrl-click or a middle-click on a row opens it in a new tab. Chat mounts a
+`ConversationMenu` over the one conversation the pane holds, so the same keys
+act on it.
 
 - The keys act on the row whose menu is open, else on the conversation the
   pane holds — never while the reader types, inside a dialog or one of the
@@ -759,7 +759,7 @@ reference captures; outer window, inner panel):
   `POST /v1/help/tickets` (cloud apps/help), answers 503 "help center not
   configured" until the Help model is installed in the public help org.
 - Chat's header: the conversation's title at the left, then Share (icon and
-  word), the row's own ⋯ menu (`ThreadMore`), the Summary (@hanzo/build
+  word), the Summary (@hanzo/build
   `Summary` over RightPane.tsx `useSections`: Outputs led by Create file or
   site, Sources with its +, each row opening in a tab) and the tabs' control (@hanzo/build `PanelToggle`), never a second
   sidebar toggle. New chat anywhere is `empty()`; App moves an emptied

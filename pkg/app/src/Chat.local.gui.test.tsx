@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 // A signed-out turn on a host with its own engine (`configure({ local })`): Chat sends the whole
 // conversation to the host, and never to the public gateway.
+import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Mounted } from '../vitest.real'
 import { ask, drawChat, platform, settle, shown, type Platform } from '../vitest.chat'
@@ -74,5 +75,20 @@ describe('a host answers signed-out turns with its own engine', () => {
     expect(shown()).not.toContain('connection dropped')
     expect(document.body.textContent).not.toMatch(/sign in to keep going/i)
     expect(api.calls.some((c) => c.path.includes('/chat/public'))).toBe(false)
+  })
+
+  test('a slow on-device model is not cut off at the gateway\'s minute', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] })
+    const chat = vi.fn(({ signal }: { signal: AbortSignal }) => new Promise<string>((resolve, reject) => {
+      signal.addEventListener('abort', () => reject(new Error('aborted')))
+      setTimeout(() => resolve('Worth the wait.'), 90_000)
+    }))
+    configure({ local: { chat } })
+    at = await drawChat()
+    await ask('Think hard.')
+    await act(async () => void vi.advanceTimersByTime(95_000))
+    await settle(60)
+    expect(shown()).toContain('Worth the wait.')
+    vi.useRealTimers()
   })
 })
