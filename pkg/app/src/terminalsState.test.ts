@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { followUp, restores, showCalmEmpty } from './terminalsState'
+import { answersActions, followUp, showCalmEmpty } from './terminalsState'
 
 describe('the Tabs page before its workspace', () => {
   const base = { token: 'tk', read: false, error: false, hosts: 0, opened: false }
@@ -18,34 +18,31 @@ describe('the Tabs page before its workspace', () => {
 })
 
 describe('after the page starts a cloud machine', () => {
+  const listed = [
+    { machine: 'b-1', screen: true },
+    { machine: 'd-1', screen: true },
+  ]
+
   test('a terminal is not asked for twice: the workspace already opens the new machine\'s shell', () => {
-    expect(followUp({ kind: 'shell', machine: 'cloud-1' })).toBeNull()
+    expect(followUp({ kind: 'shell', machine: 'cloud-1' }, listed)).toBeNull()
   })
 
-  test('a browser or desktop is still asked for', () => {
-    expect(followUp({ kind: 'page', machine: 'b-1' })).toEqual({ kind: 'page', machine: 'b-1' })
-    expect(followUp({ kind: 'desktop', machine: 'd-1' })).toEqual({ kind: 'desktop', machine: 'd-1' })
+  test('a browser or desktop is asked for as the new machine\'s screen, never as a page (which starts another machine)', () => {
+    expect(followUp({ kind: 'page', machine: 'b-1' }, listed)).toEqual({ kind: 'desktop', machine: 'b-1' })
+    expect(followUp({ kind: 'desktop', machine: 'd-1' }, listed)).toEqual({ kind: 'desktop', machine: 'd-1' })
+  })
+
+  test('until the new machine is listed with its screen, nothing is asked for (an unlisted one starts another)', () => {
+    expect(followUp({ kind: 'page', machine: 'b-2' }, listed)).toBe('wait')
+    expect(followUp({ kind: 'desktop', machine: 'd-1' }, [{ machine: 'd-1' }])).toBe('wait')
   })
 })
 
-describe('a saved layout the Workspace restores instead of opening a shell', () => {
-  const layout = (bind: Record<string, unknown>) => JSON.stringify({ tree: { id: 'p0' }, bind, seq: 1 })
-  const live = new Set(['cloud-2'])
-
-  test('a saved browser pane is restored, so the new machine\'s terminal is still asked for', () => {
-    const saved = layout({ p0: { kind: 'page', url: 'https://example.com' } })
-    expect(restores(saved, live)).toBe(true)
-    expect(followUp({ kind: 'shell', machine: 'cloud-2' }, restores(saved, live))).toEqual({ kind: 'shell', machine: 'cloud-2' })
-  })
-
-  test('no layout, a corrupt one, or one whose panes are all on machines that are gone: the Workspace opens the shell itself', () => {
-    expect(restores(null, live)).toBe(false)
-    expect(restores('{not json', live)).toBe(false)
-    expect(restores(layout({ p0: { kind: 'shell', shell: { machine: 'cloud-1', name: 'shell-1' } }, p1: { kind: 'screen', machine: 'cloud-1' } }), live)).toBe(false)
-    expect(followUp({ kind: 'shell', machine: 'cloud-2' }, false)).toBeNull()
-  })
-
-  test('a pane on a machine that is still live is restored', () => {
-    expect(restores(layout({ p0: { kind: 'shell', shell: { machine: 'cloud-2', name: 'shell-1' } } }), live)).toBe(true)
+describe('a sidebar Tabs action', () => {
+  test('is the page\'s to answer only while no Workspace is drawn, so one press leases one machine', () => {
+    expect(answersActions({ calm: true, read: true, error: false })).toBe(true)
+    expect(answersActions({ calm: false, read: false, error: false })).toBe(true)
+    expect(answersActions({ calm: false, read: true, error: false })).toBe(false)
+    expect(answersActions({ calm: false, read: false, error: true }), 'the machine list failed: the Workspace answers').toBe(false)
   })
 })

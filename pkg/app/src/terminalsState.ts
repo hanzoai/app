@@ -11,33 +11,22 @@ export function showCalmEmpty(s: { token: string | null; read: boolean; error: b
   return !s.token || (s.read && !s.error && s.hosts === 0 && !s.opened)
 }
 
-/** Where @hanzo/tabs' Workspace keeps its layout (components/workspace.tsx `STORE_KEY`). */
-export const LAYOUT = 'hanzo.tabs.layout.v1'
-
-/**
- * Whether the Workspace will restore the saved layout `raw` rather than open a
- * default shell: it keeps a page pane (a url), and a shell or screen pane on a
- * machine in `live`, and opens the default shell only when no pane survives
- * (@hanzo/tabs components/workspace.tsx, the restore on mount).
- */
-export function restores(raw: string | null, live: ReadonlySet<string>): boolean {
-  try {
-    const saved = raw ? (JSON.parse(raw) as { tree?: unknown; bind?: Record<string, { kind?: string; url?: string; machine?: string; shell?: { machine?: string } }> }) : null
-    if (!saved?.tree || !saved.bind) return false
-    return Object.values(saved.bind).some((b) =>
-      b.kind === 'page' ? Boolean(b.url) : b.kind === 'shell' || b.kind === 'gone' ? live.has(b.shell?.machine ?? '') : b.kind === 'screen' ? live.has(b.machine ?? '') : false,
-    )
-  } catch {
-    return false // a corrupt layout is no layout, as the Workspace reads it
-  }
+/** The event to send the Workspace after the page started a cloud machine:
+ *  null for none, 'wait' until the new machine is listed with its screen.
+ *  The Workspace opens a default shell on the first live machine it is mounted
+ *  with, which is the new one, so asking for a shell as well opened two panes
+ *  for one click. A browser or desktop is asked for as that machine's SCREEN: a
+ *  'page' event, or a 'desktop' one naming a machine the Workspace does not list
+ *  yet, makes the Workspace start ANOTHER machine, so one click leased two. */
+export function followUp(
+  a: { kind: 'shell' | 'page' | 'desktop'; machine: string },
+  live: readonly { machine: string; screen?: unknown }[],
+): { kind: 'desktop'; machine: string } | null | 'wait' {
+  if (a.kind === 'shell') return null
+  return live.some((h) => h.machine === a.machine && h.screen) ? { kind: 'desktop', machine: a.machine } : 'wait'
 }
 
-/** The event to send the Workspace after the page started a cloud machine, or
- *  null. With no saved layout to restore, the Workspace opens a default shell on
- *  the first live machine it is mounted with, which is the new one, so asking for
- *  a shell as well opened two panes (both "cloud-1 · shell-1") for one click.
- *  When it restores a layout (`restoring`, e.g. a browser pane) it opens no
- *  shell, so the shell is asked for: the person paid for a machine to get one. */
-export function followUp(a: { kind: 'shell' | 'page' | 'desktop'; machine: string }, restoring = false) {
-  return a.kind === 'shell' && !restoring ? null : a
-}
+/** Whether the page itself answers a sidebar's Tabs action: only while no
+ *  Workspace is drawn. Once one is (the machines read, or failed to), the
+ *  Workspace hears the same event, and both answering leased two machines. */
+export const answersActions = (s: { calm: boolean; read: boolean; error: boolean }): boolean => s.calm || !(s.read || s.error)
