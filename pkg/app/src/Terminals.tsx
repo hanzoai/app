@@ -17,7 +17,7 @@ import { useDeviceNames } from '@hanzo/build/names'
 import { useDevMode } from './lib/dev-mode'
 import { showDevice } from './lib/devices'
 import { InfoHint } from './lib/info-hint'
-import { bearer } from './lib/session'
+import { bearer, named } from './lib/session'
 import { answersActions, followUp, showCalmEmpty as calmEmpty } from './terminalsState'
 import { useSpend } from './Confirm'
 
@@ -92,6 +92,30 @@ export default function Terminals() {
   const { t } = useI18n()
   const [devMode] = useDevMode()
   const token = bearer()
+  const personEmail = (named()?.email ?? '').trim()
+  const cloudLabel = personEmail ? `Hanzo Cloud (${personEmail})` : 'Hanzo Cloud'
+  const [localHost, setLocalHost] = useState<{ hostname?: string; origin?: string; online?: boolean } | null>(() =>
+    typeof window !== 'undefined'
+      ? ((window as unknown as { __hanzoLocalHost?: { hostname?: string; origin?: string; online?: boolean } }).__hanzoLocalHost ?? null)
+      : null,
+  )
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const sync = () =>
+      setLocalHost(
+        (window as unknown as { __hanzoLocalHost?: { hostname?: string; origin?: string; online?: boolean } }).__hanzoLocalHost ?? null,
+      )
+    sync()
+    window.addEventListener('hanzo:local-host-ready', sync)
+    return () => window.removeEventListener('hanzo:local-host-ready', sync)
+  }, [])
+  const isLocalSelf = (h: { machine?: string; title?: string }) => {
+    const selfName = (localHost?.hostname ?? '').trim().toLowerCase().replace(/\.local$/, '')
+    if (!selfName || !localHost?.online) return false
+    const m = (h.machine ?? '').trim().toLowerCase().replace(/\.local$/, '')
+    const ti = (h.title ?? '').trim().toLowerCase().replace(/\.local$/, '')
+    return m === selfName || ti === selfName
+  }
   const fleet = useFleet(token, api())
   const [launchingKind, setLaunchingKind] = useState<LaunchKind | null>(null)
   const [launchError, setLaunchError] = useState<string | null>(null)
@@ -468,7 +492,7 @@ export default function Terminals() {
                     <Cloud size={15} color="var(--muted-foreground)" aria-hidden />
                     <YStack flex={1} minW={0} items="flex-start" gap="$0.5">
                       <Text fontSize="$2" fontWeight="500" color="$ink" numberOfLines={1} text="start">
-                        {t('Auto (Cloud)')}
+                        {cloudLabel}
                       </Text>
                       <Text fontSize="$1" color="$soft" numberOfLines={1} text="start">
                         {t('Managed cloud workspace · persistent storage')}
@@ -490,13 +514,15 @@ export default function Terminals() {
                 </XStack>
 
                 {linkedLocalHosts.map((host) => {
-                  const online = host.status !== 'offline'
+                  const selfLocal = isLocalSelf(host)
+                  const online = selfLocal || host.status !== 'offline'
                   return (
                     <XStack
                       key={host.machine}
                       render={<button type="button" />}
                       onClick={() => {
-                        if (online) setOpenedWorkspace(true)
+                        if (host.status !== 'offline') setOpenedWorkspace(true)
+                        else if (selfLocal) window.dispatchEvent(new CustomEvent('hanzo:open-local-terminal'))
                       }}
                       disabled={!online}
                       width="100%"
@@ -521,7 +547,7 @@ export default function Terminals() {
                         <Laptop size={15} color="var(--muted-foreground)" aria-hidden />
                         <YStack flex={1} minW={0} items="flex-start" gap="$0.5">
                           <Text fontSize="$2" fontWeight="500" color="$ink" numberOfLines={1} text="start">
-                            {host.title || host.machine}
+                            {selfLocal ? `${host.title || host.machine} (${t('This computer')})` : host.title || host.machine}
                           </Text>
                           <Text fontSize="$1" color="$soft" numberOfLines={1} text="start">
                             {host.detail || t('Connected local machine')}
