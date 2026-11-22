@@ -14,7 +14,7 @@ vi.mock('@hanzo/build', () => ({
   },
 }))
 
-const { CHOSEN_MAX, EXPLICIT_CHOSEN, EXPLICIT_SURE, NONE, carried, choosable, choose, parseSkillCommand, personas, within } = await import('./chosen')
+const { CHOSEN_MAX, EXPLICIT_CHOSEN, EXPLICIT_SURE, NONE, carried, choosable, choose, parseSkillCommand, personas, skillContext, within } = await import('./chosen')
 const target = { api: 'https://api.hanzo.ai', token: () => 'tok' } as never
 
 afterEach(() => {
@@ -102,11 +102,23 @@ describe('Hanzo chooses the skills, agents and personas a message needs (hanzo-i
     expect(await within(Promise.resolve('in time'), 1200, 'gone without')).toBe('in time')
   })
 
-  test('parses explicit /skill commands and applies broader Kai recall on demand', async () => {
-    expect(parseSkillCommand('/skill audit auth')).toBe('audit auth')
-    expect(parseSkillCommand('/skills   figma design system')).toBe('figma design system')
-    expect(parseSkillCommand('/skill')).toBeNull()
+  test('parses explicit /skill commands (with or without query) and applies broader Kai recall on demand', async () => {
+    expect(parseSkillCommand('/skill audit auth')).toEqual({ query: 'audit auth' })
+    expect(parseSkillCommand('/skills   figma design system')).toEqual({ query: 'figma design system' })
+    expect(parseSkillCommand('/skill')).toEqual({ query: '' })
+    expect(parseSkillCommand('/skills')).toEqual({ query: '' })
+    expect(parseSkillCommand('/skill-other')).toBeNull()
     expect(parseSkillCommand('normal message')).toBeNull()
+
+    expect(
+      skillContext([
+        { role: 'user', content: 'Help me audit our OAuth flow\n<workspace-files>ignored</workspace-files>' },
+        { role: 'assistant', content: 'Sure, let us inspect token validation.' },
+        { role: 'user', content: '/skill' },
+      ]),
+    ).toBe('Help me audit our OAuth flow\nSure, let us inspect token validation.')
+    expect(skillContext([], 'terraform deploy')).toBe('terraform deploy')
+    expect(skillContext([])).toBe('general coding, productivity, and assistant skills')
 
     kai.found = [
       { name: 'security-threat-model', skill: true, probability: 0.72 },

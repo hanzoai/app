@@ -74,7 +74,7 @@ import { openModelPicker } from "./lib/model-picker";
 import { open as openBoardCard, home as boardHome } from "./lib/todo";
 import { useDevMode } from "./lib/dev-mode";
 import { Bring } from "./bring";
-import { EXPLICIT_CHOSEN, EXPLICIT_SURE, NONE as UNCHOSEN, WAIT, carried as skillsCarried, choose, parseSkillCommand, personas, within, type ChooseOptions, type Chosen } from "./chosen";
+import { EXPLICIT_CHOSEN, EXPLICIT_SURE, NONE as UNCHOSEN, WAIT, carried as skillsCarried, choose, parseSkillCommand, personas, skillContext, within, type ChooseOptions, type Chosen } from "./chosen";
 import { InfoHint } from "./lib/info-hint";
 import { ENSO } from "./lib/ai";
 import { openThread, empty as emptyOpen, useOpen } from "./open";
@@ -2773,7 +2773,44 @@ function Thread({
     const rawText = ask.trim();
     if (preparing || (!rawText && !files.length)) return;
     setWalletRecovery(null);
-    const skillAsk = parseSkillCommand(rawText);
+    const skillCmd = parseSkillCommand(rawText);
+    if (skillCmd !== null && !skillCmd.query) {
+      setDraft("");
+      setPrepWrong(null);
+      if (anonymous) {
+        answered(rawText, t("Sign in to detect and apply skills with Kai."));
+        return;
+      }
+      void (async () => {
+        setPreparing(t("Choosing skills"));
+        try {
+          const detectQuery = skillContext(chat.messages, lastSubmittedPromptRef.current);
+          const picked = await within(
+            chosenFor(detectQuery, [], {
+              minProbability: EXPLICIT_SURE,
+              maxSkills: EXPLICIT_CHOSEN,
+              explicit: true,
+            }),
+            WAIT * 2,
+            UNCHOSEN,
+          );
+          if (picked.names.length) {
+            const nextSkills = [...new Set([...carry.gear.gear.skills, ...picked.names])];
+            carry.gear.set({ skills: nextSkills });
+            setLastChosen(picked.names);
+            answered(rawText, `Applied skills via Kai: ${picked.names.map((n) => `**${n}**`).join(", ")}.`);
+          } else {
+            answered(rawText, t("No matching skills detected for this conversation yet. Try `/skill <topic>` or describe what you are working on."));
+          }
+        } catch (e) {
+          setPrepWrong(e instanceof Error ? e.message : String(e));
+        } finally {
+          setPreparing(null);
+        }
+      })();
+      return;
+    }
+    const skillAsk = skillCmd?.query || null;
     const text = skillAsk ?? rawText;
     const wantChoose = choosing || (!anonymous && Boolean(skillAsk));
     if (text) lastSubmittedPromptRef.current = text;
