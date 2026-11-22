@@ -2,12 +2,20 @@
 // Chat itself, drawn whole with the real kit against a stand-in platform (vitest.chat.tsx):
 // a person types, the model streams in the platform's own shapes, and the test reads the screen.
 import { act, createElement } from 'react'
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import { press as key, tap, type Mounted } from '../vitest.real'
 import { ask, button, drawChat, platform, press, settle, shown, signIn, type Platform } from '../vitest.chat'
 
 let at: Mounted | undefined
 let api: Platform
+
+// The first draw of Chat pays the kit's cold start (styles, lazy chunks), slow on CI. It is paid here, with
+// its own time, so each test's 5 s measures what a person does and not the first mount.
+beforeAll(async () => {
+  signIn()
+  api = platform()
+  await (await drawChat()).done()
+}, 60_000)
 
 beforeEach(() => {
   localStorage.clear()
