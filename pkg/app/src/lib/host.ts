@@ -88,6 +88,8 @@ export const TERMINALS = '/tabs'
  * Betas: ecosystem betas, early access preview, and waitlist dashboard.
  */
 export const BETA = '/beta'
+export const RESEARCH = '/research'
+export const SCIENCE = '/science'
 
 /**
  * Library: everything a person made across Chat, Studio and Dev, at hanzo.ai/library.
@@ -162,6 +164,7 @@ export type Place =
   | { mode: 'design'; at: string }
   | { mode: 'flow'; at: string }
   | { mode: 'tabs' }
+  | { mode: 'research' }
   | { mode: 'beta' }
   | { mode: 'hosted'; id: string }
 
@@ -179,6 +182,7 @@ export function place(pathname: string): Place | null {
   if (p === DESIGN || p.startsWith(`${DESIGN}/`)) return { mode: 'design', at: p.slice(DESIGN.length + 1) }
   if (p === FLOW || p.startsWith(`${FLOW}/`)) return { mode: 'flow', at: p.slice(FLOW.length + 1) }
   if (p === TERMINALS) return { mode: 'tabs' }
+  if (p === RESEARCH || p.startsWith(`${RESEARCH}/`) || p === SCIENCE || p.startsWith(`${SCIENCE}/`)) return { mode: 'research' }
   if (p === BETA) return { mode: 'beta' }
   if (p === LIBRARY || p.startsWith(`${LIBRARY}/`)) {
     const rest = p.slice(LIBRARY.length)
@@ -207,6 +211,7 @@ export function page(pathname: string): string {
   if (!at) return pathname
   if (at.mode === 'chat') return at.thread ? `${CHAT}/:id` : CHAT
   if (at.mode === 'tabs') return TERMINALS
+  if (at.mode === 'research') return RESEARCH
   if (at.mode === 'design') return DESIGN
   if (at.mode === 'flow') return FLOW
   if (at.mode === 'beta') return BETA
@@ -294,7 +299,7 @@ export function remember(mode: Place['mode']): void {
 export function resume(): string {
   try {
     const kept = window.localStorage.getItem(MODE)
-    return kept === 'dev' ? DEV : kept === 'studio' || kept === 'design' ? DESIGN : kept === 'flow' ? FLOW : kept === 'tabs' ? TERMINALS : chat()
+    return kept === 'dev' ? DEV : kept === 'studio' || kept === 'design' ? DESIGN : kept === 'flow' ? FLOW : kept === 'tabs' ? TERMINALS : kept === 'research' ? RESEARCH : chat()
   } catch {
     return chat()
   }

@@ -88,7 +88,7 @@ import { usePref } from './pref'
 import { HEAD, MARK, TOUCH_HEAD } from './ground'
 import { railKeys } from './keys'
 import { out } from './help'
-import { apex, app, design, flow, hosted, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
+import { apex, app, design, flow, hosted, RESEARCH, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
 import { site } from './where'
 
 export { MARK }
@@ -387,6 +387,15 @@ export function useNavEntries({
             on: mode === 'beta',
             icon: <FlaskConical size={17} aria-hidden />,
             onPress: () => go('/beta'),
+          } satisfies NavEntry,
+          {
+            id: 'research',
+            slot: 'rail-research',
+            label: t('Research'),
+            href: RESEARCH,
+            on: mode === 'research',
+            icon: <Atom size={17} aria-hidden />,
+            onPress: () => go(RESEARCH),
           } satisfies NavEntry,
           ...apps.map(
             (a): NavEntry => ({

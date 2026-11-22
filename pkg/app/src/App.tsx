@@ -97,7 +97,7 @@ import { FIRST, isSettingsPath, settingsPathFor, settingsRowOf, SettingsList, ty
 import { Ask, useBetas } from './Betas'
 import { BETAS } from './lib/betas'
 import { useMaking } from './Confirm'
-import { app, design, flow, go, hosted, place, settings, talk, TERMINALS, visit, type Place } from './lib/host'
+import { app, design, flow, go, hosted, place, RESEARCH, settings, talk, TERMINALS, visit, type Place } from './lib/host'
 import { Bar } from './Bar'
 import { Report } from './Report'
 import { FOOT, HEIGHT, TOP, useView } from './view'
@@ -116,6 +116,8 @@ const FlowStudio = lazy(() =>
 )
 /** Tabs, the same way: the terminals on the reader's machines (Terminals.tsx). */
 const Terminals = lazy(() => import('./Terminals'))
+/** Research: Hanzo Dō hypotheses, sandboxed runs, evolution frontier, and verified XP (Research.tsx). */
+const Research = lazy(() => import('./Research'))
 /** The apps in beta that draw inside the app (lib/hosted), fetched when one is opened at /apps/<id>. */
 const Hosted = lazy(() => import('./Hosted').then((m) => ({ default: m.HostedPane })))
 /** Betas, fetched when opening /beta in the app. */
@@ -126,7 +128,7 @@ const SettingsPane = lazy(() => import('./SettingsPane').then((m) => ({ default:
 const HOME: Place = { mode: 'chat', thread: null }
 
 /** What a window's bar names the page by; Chat names itself in the sidebar. */
-const TITLES: Record<string, string> = { dev: 'Dev', design: 'Design', flow: 'Flow', tabs: 'Tabs' }
+const TITLES: Record<string, string> = { dev: 'Dev', design: 'Design', flow: 'Flow', tabs: 'Tabs', research: 'Research' }
 
 /**
  * The window's bar, for a host that is a window of its own: `inset` px kept
@@ -153,7 +155,7 @@ export interface Hosted {
 
 
 /** Where each mode was last, so the rail goes back to it. */
-const last = { chat: '', dev: '', design: '', flow: '', tabs: '' }
+const last: Record<string, string> = { chat: '', dev: '', design: '', flow: '', tabs: '', research: '' }
 
 export function App({ bar, betas }: Hosted = {}) {
   return (
@@ -385,9 +387,9 @@ function Window({ bar, betas }: Hosted) {
   // Another organization: picked, and the app opened in it at the mode's New.
   const org = (o: string) => {
     pick(o)
-    window.location.assign(mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'flow' ? flow('') : mode === 'tabs' ? TERMINALS : inside ? hosted(inside) : talk())
+    window.location.assign(mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'flow' ? flow('') : mode === 'tabs' ? TERMINALS : mode === 'research' ? RESEARCH : inside ? hosted(inside) : talk())
   }
-  const sidebar = mode === 'beta' || mode === 'hosted' ? [] : mode === 'design' ? places(maker, (p) => maker.go(p)) : mode === 'flow' ? flowNav(maker, (p) => maker.go(p)) : mode === 'dev' && raised(where) === 'customize'
+  const sidebar = mode === 'beta' || mode === 'research' || mode === 'hosted' ? [] : mode === 'design' ? places(maker, (p) => maker.go(p)) : mode === 'flow' ? flowNav(maker, (p) => maker.go(p)) : mode === 'dev' && raised(where) === 'customize'
     ? tabs(host, (p) => host.go(p), t).map((group) => ({ ...group, links: [...group.links, {
       id: 'learning', label: t('Learning'), active: learning, icon: <RefreshCw size={16} aria-hidden />,
       onPress: () => { shut(); setLearning(true) },
@@ -659,6 +661,12 @@ function Window({ bar, betas }: Hosted) {
                   <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
                     <Suspense fallback={null}>
                       <Terminals />
+                    </Suspense>
+                  </YStack>
+                ) : mode === 'research' ? (
+                  <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                    <Suspense fallback={null}>
+                      <Research />
                     </Suspense>
                   </YStack>
                 ) : mode === 'design' ? (

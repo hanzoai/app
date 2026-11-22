@@ -1038,7 +1038,9 @@ export function Sidebar({
               ? 'Flow'
               : mode === 'tabs'
                 ? t('Tabs')
-                : mode === 'beta'
+                : mode === 'research'
+                  ? t('Research')
+                  : mode === 'beta'
                   ? t('Betas')
                   : mode === 'hosted'
                     ? (HOSTED_APPS.find((a) => a.id === inside)?.name ?? brand())
@@ -1200,8 +1202,8 @@ export function Sidebar({
     ? t('New chat')
     : mode === 'dev' ? t('New run') : mode === 'design' ? t('New design') : mode === 'flow' ? t('New flow') : mode === 'tabs' ? t('New terminal') : t('New chat')
 
-  const showPrimaryNew = !at && (drawer || (mode !== 'beta' && mode !== 'hosted'))
-  const showRecents = !(mode === 'dev' && runtime) && !(mode === 'hosted' || mode === 'beta' || mode === 'tabs' || mode === 'flow' || anon || at)
+  const showPrimaryNew = !at && (drawer || (mode !== 'beta' && mode !== 'research' && mode !== 'hosted'))
+  const showRecents = !(mode === 'dev' && runtime) && !(mode === 'hosted' || mode === 'beta' || mode === 'research' || mode === 'tabs' || mode === 'flow' || anon || at)
 
   return (
     <TooltipProvider delay={120}>
