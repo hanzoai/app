@@ -225,8 +225,77 @@ export const guestChat = (mode: 'dev' | 'chat'): boolean => mode === 'chat' && !
  * composer. `mode` says which of the two the address is: Chat hides the code
  * tools, and its conversation is the shell's `/chat/<id>`.
  */
+/** Keeps DevHome's chat transcript scrolled into view as messages arrive or the mobile keyboard opens (preventing iOS viewport panning). */
+function useAutoScrollChat(conversation: string | null) {
+  const hostRef = useRef<HTMLElement | null>(null)
+  const pinnedRef = useRef(true)
+
+  useEffect(() => {
+    pinnedRef.current = true
+  }, [conversation])
+
+  useEffect(() => {
+    const root = hostRef.current
+    if (!root || typeof window === 'undefined') return
+    let raf = 0
+    const scroller = () => root.querySelector<HTMLElement>('.overflow-y-auto')
+    const scrollToBottom = (force = false) => {
+      if (raf) return
+      raf = window.requestAnimationFrame(() => {
+        raf = 0
+        const el = scroller()
+        if (!el) return
+        if (force || pinnedRef.current) {
+          el.scrollTop = el.scrollHeight
+        }
+      })
+    }
+    const onScroll = () => {
+      const el = scroller()
+      if (!el) return
+      pinnedRef.current = el.scrollHeight - el.scrollTop - el.clientHeight <= 96
+    }
+    const onFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement | null
+      if (!target || !target.matches('textarea, input, [contenteditable="true"]')) return
+      pinnedRef.current = true
+      if (window.scrollY !== 0) window.scrollTo(0, 0)
+      scrollToBottom(true)
+      window.setTimeout(() => {
+        if (window.scrollY !== 0) window.scrollTo(0, 0)
+        scrollToBottom(true)
+      }, 280)
+    }
+    const onViewport = () => {
+      if (window.scrollY !== 0) window.scrollTo(0, 0)
+      if (pinnedRef.current) scrollToBottom(true)
+    }
+    const mo = new MutationObserver(() => scrollToBottom(false))
+    mo.observe(root, { childList: true, subtree: true, characterData: true })
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => scrollToBottom(false)) : null
+    ro?.observe(root)
+    root.addEventListener('scroll', onScroll, true)
+    root.addEventListener('focusin', onFocusIn)
+    window.visualViewport?.addEventListener('resize', onViewport)
+    scrollToBottom(true)
+    return () => {
+      if (raf) window.cancelAnimationFrame(raf)
+      mo.disconnect()
+      ro?.disconnect()
+      root.removeEventListener('scroll', onScroll, true)
+      root.removeEventListener('focusin', onFocusIn)
+      window.visualViewport?.removeEventListener('resize', onViewport)
+    }
+  }, [conversation])
+
+  return useCallback((node: unknown) => {
+    hostRef.current = node instanceof HTMLElement ? node : null
+  }, [])
+}
+
 export function DevInterior({ host, path, mode = 'dev', conversation = null }: { host: Host; path: string; mode?: 'dev' | 'chat'; conversation?: string | null }) {
   const dev = useScope()
+  const chatWrapRef = useAutoScrollChat(conversation)
   const project = path.startsWith('/dev/projects/')
   useEffect(() => {
     if (project) host.go(app(''), { replace: true })
@@ -252,17 +321,19 @@ export function DevInterior({ host, path, mode = 'dev', conversation = null }: {
     )
   }
   return (
-    <Suspense fallback={null}>
-      <Home
-        cloud={cloud()}
-        mode={mode}
-        environments={dev.environments}
-        environment={dev.environment}
-        onEnvironment={dev.choose}
-        onHandoff={dev.handoff}
-        conversation={conversation}
-        onConversation={(id) => host.go(talk(id ?? undefined))}
-      />
-    </Suspense>
+    <YStack ref={chatWrapRef} flex={1} minH={0} minW={0} height="100%">
+      <Suspense fallback={null}>
+        <Home
+          cloud={cloud()}
+          mode={mode}
+          environments={dev.environments}
+          environment={dev.environment}
+          onEnvironment={dev.choose}
+          onHandoff={dev.handoff}
+          conversation={conversation}
+          onConversation={(id) => host.go(talk(id ?? undefined))}
+        />
+      </Suspense>
+    </YStack>
   )
 }

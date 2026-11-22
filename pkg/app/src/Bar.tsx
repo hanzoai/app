@@ -130,8 +130,8 @@ export function Bar({
       data-slot="app-bar"
       items="center"
       justify="space-between"
-      height={`calc(${BAND}px + var(--safe-top) + var(--pane-gap))`}
-      pt="calc(var(--safe-top) + var(--pane-gap))"
+      height={`calc(${BAND}px + var(--safe-top, env(safe-area-inset-top, 0px)) + var(--pane-gap, 4px))`}
+      pt="calc(var(--safe-top, env(safe-area-inset-top, 0px)) + var(--pane-gap, 4px))"
       px="$4.5"
       shrink={0}
       $md={{ display: 'none' }}

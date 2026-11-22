@@ -1,11 +1,11 @@
 'use client'
 
-// Folded left navigation rail (52px icons-only, shown when the unified sidebar
-// is folded, plus the compact phone drawer rail):
+// Persistent left navigation rail (52px icons-only, anchored in place while the
+// contextual sidebar beside it opens and closes):
 // - Shared `useNavEntries()` model keeps Hanzo's exact product names & order
 //   (`Chat`, `Dev`, `Design`, `Library`, `Scheduled tasks`,
 //   `Customize`, `Tabs`, `Betas`, and every hosted app or beta the reader may open;
-//   Developer mode hides none of them) across both the unified Sidebar and the 52px folded Rail.
+//   Developer mode hides none of them) across both the desktop Rail and mobile drawer.
 // - Strictly monochrome active chrome (`bg="$raised"`, `color="$ink"`).
 // - Every `render="button"` element uses `onClick` (never `onPress`).
 
@@ -47,9 +47,7 @@ import {
   Network,
   NotebookPen,
   Palette,
-  PanelLeft,
   Phone,
-  Plus,
   Radar,
   ScanFace,
   Search,
@@ -80,7 +78,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@hanzo/ui'
-import { SidebarItem } from '@hanzo/ui/chat'
 import { MoreMenu } from './MoreMenu'
 import { BetasDialog, useBetas } from './Betas'
 import { BETAS } from './lib/betas'
@@ -89,6 +86,7 @@ import { Account } from './Account'
 import { useDevMode } from './lib/dev-mode'
 import { usePref } from './pref'
 import { HEAD, MARK, TOUCH_HEAD } from './ground'
+import { railKeys } from './keys'
 import { out } from './help'
 import { apex, app, design, flow, hosted, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
 import { site } from './where'
@@ -564,84 +562,6 @@ export function Mark({
   )
 }
 
-/**
- * A destination on the folded rail: its mark with its name under it, so the folded rail reads at a glance without a
- * hover (hanzo-inc/app issue 315). The name is small and one line; a long one ends in an ellipsis, and the tooltip says it whole.
- */
-export function RailMark({
-  label,
-  on = false,
-  onClick,
-  children,
-  ...rest
-}: {
-  label: string
-  on?: boolean
-  onClick?: () => void
-  children: ReactNode
-  [attribute: `data-${string}` | `aria-${string}`]: unknown
-}) {
-  return (
-    <Tooltip placement="right" offset={8}>
-      <TooltipTrigger asChild>
-        <YStack
-          render="button"
-          aria-label={label}
-          aria-current={on ? 'page' : undefined}
-          onClick={onClick}
-          width={RAIL_FOLDED - 6}
-          minH={MARK + 6}
-          px={2}
-          py={5}
-          gap={3}
-          rounded={12}
-          items="center"
-          justify="center"
-          shrink={0}
-          cursor="pointer"
-          bg={on ? '$raised' : 'transparent'}
-          hoverStyle={{ bg: on ? '$raised' : '$hover' }}
-          pressStyle={{ bg: '$raised' }}
-          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
-          $touchable={{ minH: TOUCH + 8 }}
-          {...rest}
-        >
-          <XStack width={20} height={20} items="center" justify="center" opacity={on ? 1 : 0.76}>
-            {children}
-          </XStack>
-          <Text
-            data-slot="rail-caption"
-            aria-hidden
-            maxW="100%"
-            fontSize={10}
-            lineHeight={12}
-            fontWeight={on ? '600' : '400'}
-            color={on ? '$ink' : '$aside'}
-            numberOfLines={1}
-            text="center"
-          >
-            {label}
-          </Text>
-        </YStack>
-      </TooltipTrigger>
-      <TooltipContent
-        maxW={240}
-        px="$2.5"
-        py="$1.5"
-        rounded="$3"
-        bg="var(--popover)"
-        borderWidth={1}
-        borderColor="$edge"
-        z="var(--z-tooltip)"
-      >
-        <Text fontFamily="$body" fontSize="$1" fontWeight="500" color="$ink">
-          {label}
-        </Text>
-      </TooltipContent>
-    </Tooltip>
-  )
-}
-
 export function Rail({
   host,
   mode,
@@ -649,7 +569,6 @@ export function Rail({
   open,
   toggle,
   onOpen,
-  onNew,
   compact = false,
   inside = null,
   onChat,
@@ -670,11 +589,9 @@ export function Rail({
   open: boolean
   /** Lead with the sidebar's toggle; absent where the host's bar holds it. */
   toggle?: () => void
-  /** Expand the folded rail back into the unified sidebar. */
+  /** Toggle the contextual sidebar beside the rail. */
   onOpen?: () => void
-  /** Primary + New action when folded. */
-  onNew?: () => void
-  /** Force compact icons-only layout without expand header (e.g. inside narrow phone drawer). */
+  /** Force compact icons-only layout without toggle header. */
   compact?: boolean
   /** The hosted app (lib/hosted) the reader is in, if any. */
   inside?: string | null
@@ -717,48 +634,31 @@ export function Rail({
 
   const foldedEntries = [...overflowBuiltIn, ...overflowExternal]
 
-  const expandHandler = onOpen ?? toggle
-  const newLabel = mode === 'dev' ? t('New run') : mode === 'design' ? t('New design') : t('New chat')
-  const handleNew =
-    onNew ??
-    (() => {
-      if (mode === 'dev') go(app(''))
-      else if (mode === 'design') go(design(''))
-      else go(talk())
-    })
+  const toggleHandler = onOpen ?? toggle
 
   return (
     <TooltipProvider delay={90}>
       <YStack
         data-slot="rail"
-        data-expanded="false"
+        data-expanded={open ? 'true' : 'false'}
         render="nav"
         aria-label={t('Products')}
+        {...({ onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => railKeys(e, e.currentTarget) } as object)}
         width={RAIL_FOLDED}
         flex={1}
         minH={0}
-        pt={(HEAD - MARK) / 2 + 2}
+        pt={4}
         pb={0}
         gap={4}
         shrink={0}
         items="center"
         $touchable={{ pt: (TOUCH_HEAD - TOUCH) / 2, pb: 0 }}
       >
-        {/* Top expand button (only in folded desktop rail, never duplicated in compact drawer rail) */}
-        {!compact && expandHandler ? (
-          <Toggle open={false} tooltip onPress={expandHandler} />
-        ) : null}
-
-        {/* Primary + New icon button when folded */}
-        {!compact && mode !== 'beta' && mode !== 'hosted' ? (
-          <Mark
-            label={newLabel}
-            data-slot="rail-new"
-            tooltip
-            onClick={handleNew}
-          >
-            <Plus size={18} aria-hidden />
-          </Mark>
+        {/* Top sidebar toggle, anchored in place above the product marks */}
+        {!compact && toggleHandler ? (
+          <XStack height={HEAD} items="center" justify="center" shrink={0} $touchable={{ height: TOUCH_HEAD }}>
+            <Toggle open={open} tooltip onPress={toggleHandler} />
+          </XStack>
         ) : null}
 
         {/* Scrollable icons-only product list (drag with grab cursor to reorder) */}
@@ -819,16 +719,17 @@ export function Rail({
                 } as object)}
               >
                 {afterPins ? <YStack data-slot="rail-pins-end" width={20} height={1} bg="$edge" mb={4} aria-hidden /> : null}
-                <RailMark
+                <Mark
                   label={item.label}
                   on={item.on}
+                  tooltip
                   onClick={item.onPress}
                   data-slot={item.slot}
                   data-nav-id={item.id}
                   data-pinned={pinnedSet.has(item.id) ? '' : undefined}
                 >
                   {item.icon}
-                </RailMark>
+                </Mark>
               </YStack>
             )
           })}
@@ -841,32 +742,27 @@ export function Rail({
               onPin={nav.togglePin}
               t={t}
               trigger={
-                <YStack
+                <XStack
                   render="button"
                   aria-label={t('More')}
                   {...({ title: t('More') } as object)}
                   data-slot="rail-more"
-                  width={RAIL_FOLDED - 6}
-                  minH={MARK + 6}
-                  px={2}
-                  py={5}
-                  gap={3}
+                  width={MARK}
+                  height={MARK}
                   rounded={12}
                   items="center"
                   justify="center"
+                  shrink={0}
                   cursor="pointer"
-                  hoverStyle={{ bg: '$hover' }}
+                  opacity={0.76}
+                  bg="transparent"
+                  hoverStyle={{ bg: '$hover', opacity: 1 }}
                   pressStyle={{ bg: '$raised' }}
                   focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' }}
-                  $touchable={{ minH: TOUCH + 8 }}
+                  $touchable={{ width: TOUCH, height: TOUCH }}
                 >
-                  <XStack width={20} height={20} items="center" justify="center" opacity={0.68}>
-                    <Ellipsis size={18} aria-hidden />
-                  </XStack>
-                  <Text data-slot="rail-caption" aria-hidden maxW="100%" fontSize={10} lineHeight={12} color="$aside" numberOfLines={1} text="center">
-                    {t('More')}
-                  </Text>
-                </YStack>
+                  <Ellipsis size={18} aria-hidden />
+                </XStack>
               }
             />
           ) : null}
@@ -874,7 +770,7 @@ export function Rail({
         </YStack>
 
         {anon ? (
-          <YStack gap={4} items="center" pb="$1">
+          <YStack gap={4} items="center" pb="$2">
             <Mark
               label={t('See plans and pricing')}
               data-slot="anon-pricing"
@@ -909,7 +805,7 @@ export function Rail({
             </Mark>
           </YStack>
         ) : (
-          <YStack width="100%" items="center" pt="$1">
+          <YStack width="100%" items="center" pt="$1" pb="$2">
             <Account host={host} narrow onOrg={onOrg} />
           </YStack>
         )}

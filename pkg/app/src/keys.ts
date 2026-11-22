@@ -96,8 +96,8 @@ export function handle(e: Stroke, on: Keys, t: (s: string) => string, km: Keymap
   return true
 }
 
-/** The panels F6 cycles, in reading order: the sidebar's list, the pane, the dock. */
-const PANELS = ['[data-slot="sidebar-nav"]', '#main-content', '[data-slot="dev-dock"]']
+/** The panels F6 cycles, in reading order: the sidebar's list (or rail), the pane, the dock. */
+const PANELS = ['[data-slot="sidebar-nav"], [data-slot="app-rail"], [data-slot="rail"]', '#main-content', '[data-slot="dev-dock"]']
 
 /** Moves focus to the next (or previous) panel that is on screen. */
 export function cyclePanel(step: 1 | -1, root: Document = document): void {
@@ -144,9 +144,11 @@ export function railKeys(
   next.focus()
 }
 
-/** Focuses the first row of the sidebar's list. */
+/** Focuses the first row of the sidebar's list (or the stationary rail when folded). */
 export function focusSidebar(root: Document = document): boolean {
-  const row = root.querySelector<HTMLElement>('[data-slot="sidebar-nav"] a[href], [data-slot="sidebar-nav"] [role="button"], [data-slot="sidebar-nav"] button')
+  const row = root.querySelector<HTMLElement>(
+    '[data-slot="sidebar-nav"] a[href], [data-slot="sidebar-nav"] [role="button"], [data-slot="sidebar-nav"] button, [data-slot="app-rail"] a[href], [data-slot="app-rail"] [role="button"], [data-slot="app-rail"] button, [data-slot="rail"] button',
+  )
   row?.focus()
   return row != null
 }

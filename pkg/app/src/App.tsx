@@ -71,7 +71,7 @@ import * as studioPkg from '@hanzo/studio'
 import { nav as places } from '@hanzo/studio'
 import { useAi } from './lib/ai'
 import { UsageProvider } from './Usage'
-import { AnonSettingsPane, dispatchTabsAction, Sidebar } from './Sidebar'
+import { AnonSettingsPane, Sidebar } from './Sidebar'
 import { Learning } from './Learning'
 import { isPlans, leave, useDevHost } from './dev'
 import { useBuildSpend } from './Confirm'
@@ -441,7 +441,7 @@ function Window({ bar, betas }: Hosted) {
                 pl={(bar.inset ?? 0) + 4}
                 pr={6}
                 shrink={0}
-                width={closed ? RAIL_FOLDED : ('calc(var(--pane-gap) + var(--app-sidebar-span, 256px))' as never)}
+                width={closed ? RAIL_FOLDED : ('calc(52px + var(--app-sidebar-span, 256px))' as never)}
                 {...bar.drag}
               >
                 <XStack $md={{ display: 'none' }} data-tauri-drag-region="false">
@@ -481,7 +481,7 @@ function Window({ bar, betas }: Hosted) {
             data-app={mode}
             data-slot="frame"
             display="grid"
-            gridTemplateColumns={closed || !alone ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)'}
+            gridTemplateColumns="auto auto minmax(0, 1fr)"
             gridTemplateRows="minmax(0, 1fr)"
             bg="transparent"
             // While a phone's drawer is out the pane is raised over it, sliding toward the end side.
@@ -498,7 +498,8 @@ function Window({ bar, betas }: Hosted) {
             $max-md={{ p: 0, gridTemplateColumns: 'minmax(0, 1fr)', ...(bar ? { pt: 'var(--pane-gap)' } : null) }}
           >
             {drawer.slide ? <Lift /> : null}
-            <YStack height="100%" position="relative" display={closed ? 'flex' : 'none'} $max-md={{ display: 'none' }}>
+            {/* Persistent desktop icon rail: stays anchored in place while the contextual sidebar opens and closes beside it. */}
+            <YStack height="100%" position="relative" display="flex" $max-md={{ display: 'none' }}>
               <Rail
                 pins={pins}
                 host={host}
@@ -506,17 +507,7 @@ function Window({ bar, betas }: Hosted) {
                 at={where}
                 inside={inside}
                 open={!closed}
-                onOpen={bar ? undefined : () => setClosed(false)}
-                onNew={() => {
-                  if (mode === 'dev') move(app(''))
-                  else if (mode === 'design') move(design(''))
-                  else if (mode === 'flow') move(flow(''))
-                  else if (mode === 'tabs') dispatchTabsAction({ kind: 'shell' })
-                  else {
-                    empty()
-                    move(talk())
-                  }
-                }}
+                onOpen={bar ? undefined : flip}
                 onChat={toChat}
                 onDev={toDev}
                 onDesign={toDesign}
@@ -555,9 +546,26 @@ function Window({ bar, betas }: Hosted) {
                 />
               ) : null}
             </YStack>
-            {/* Unified desktop sidebar (hidden when folded to the 52px icon rail). */}
-            {closed || alone ? null : (
-              <YStack marginInlineStart="var(--pane-gap)" $max-md={{ display: 'none' }}>
+            {/* Contextual desktop sidebar: expands/collapses smoothly beside the stationary rail. */}
+            <XStack
+              data-slot="sidebar-shell"
+              data-open={closed || alone ? 'false' : 'true'}
+              aria-hidden={closed || alone ? true : undefined}
+              {...(closed || alone ? ({ inert: '' } as object) : null)}
+              display="grid"
+              gridTemplateColumns={closed || alone ? '0fr' : '1fr'}
+              gridTemplateRows="minmax(0, 1fr)"
+              opacity={closed || alone ? 0 : 1}
+              height="100%"
+              minH={0}
+              overflow="hidden"
+              pointerEvents={closed || alone ? 'none' : 'auto'}
+              $max-md={{ display: 'none' }}
+              $platform-web={{
+                transition: 'grid-template-columns 220ms cubic-bezier(0.16, 1, 0.3, 1), opacity 160ms ease',
+              }}
+            >
+              <YStack minW={0} minH={0} height="100%" overflow="hidden">
                 {inSettings ? (
                   <YStack
                     data-slot="settings-column"
@@ -592,7 +600,7 @@ function Window({ bar, betas }: Hosted) {
                   />
                 )}
               </YStack>
-            )}
+            </XStack>
             <YStack
               data-slot="stage"
               // A column: the phone's bar, then the panes taking the rest. Not a grid of `auto` and
@@ -604,7 +612,7 @@ function Window({ bar, betas }: Hosted) {
               flex={1}
               minW={0}
               minH={0}
-              marginInlineStart={closed || alone ? 0 : 'var(--pane-gap)'}
+              marginInlineStart={0}
               // On a phone the bar above the panel is the page's own: the panel stands the same gap from it as from the foot.
               $max-md={{ marginInlineStart: 0, gap: 'var(--pane-gap)', pb: `max(var(--pane-gap), ${FOOT})` }}
             >

@@ -52,9 +52,10 @@ const ZOOM = 1.01
 export function fit(layout: number, view: Viewport): Fit | null {
   if (view.scale > ZOOM) return null
   const height = Math.round(view.height)
-  const keyboard = Math.round(layout) - height
-  if (keyboard < 1) return null
-  return { top: Math.max(0, Math.round(view.offsetTop)), height, keyboard }
+  const top = Math.max(0, Math.round(view.offsetTop))
+  const keyboard = Math.max(0, Math.round(layout) - height)
+  if (keyboard < 1 && top < 1) return null
+  return { top, height, keyboard }
 }
 
 /** The window's top, for a style: the visual viewport's while a keyboard is up. */

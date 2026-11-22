@@ -65,7 +65,7 @@ vi.mock('./lib/dev-mode', () => ({ useDevMode: () => [state.devMode, () => {}] }
 const { carriedPinnedNav, DEFAULT_NAV, DEFAULT_PINNED_NAV, Rail, reorderedPinnedNav, shiftedPinnedNav, toggledPinnedNav } = await import('./Rail')
 
 const host = {} as never
-const draw5 = (props: { mode?: 'chat' | 'hosted'; inside?: string | null; compact?: boolean; pinned?: string[] } = {}) =>
+const draw5 = (props: { mode?: 'chat' | 'hosted'; inside?: string | null; compact?: boolean; pinned?: string[]; open?: boolean } = {}) =>
   renderToStaticMarkup(
     createElement(Rail, {
       pins: [props.pinned ?? [], state.pin, () => {}, () => {}],
@@ -73,10 +73,9 @@ const draw5 = (props: { mode?: 'chat' | 'hosted'; inside?: string | null; compac
       mode: props.mode ?? 'chat',
       at: null,
       inside: props.inside ?? null,
-      open: false,
+      open: props.open ?? false,
       compact: props.compact,
       onOpen: () => {},
-      onNew: () => {},
       onChat: () => {},
       onDev: () => {},
       onDesign: () => {},
@@ -93,13 +92,14 @@ beforeEach(() => {
   state.devMode = false
 })
 
-describe('folded 52px icons-only rail with monochrome chrome', () => {
-  test('defaults primary apps to Chat, Dev, Design, Library, Tabs (never Build/Automations/Extensions) and stays 52px folded', () => {
+describe('persistent 52px icons-only rail with monochrome chrome', () => {
+  test('defaults primary apps to Chat, Dev, Design, Library, Tabs without captions or duplicate + button', () => {
     expect(DEFAULT_PINNED_NAV).toEqual(['chat', 'dev', 'design', 'library', 'tabs'])
     const html = draw5()
     expect(html).toContain('data-expanded="false"')
     expect(html).toContain('data-slot="sidebar-toggle"')
-    expect(html).toContain('data-slot="rail-new"')
+    expect(html).not.toContain('data-slot="rail-new"')
+    expect(html).not.toContain('data-slot="rail-caption"')
     expect(html).not.toContain('data-slot="rail-fold-toggle"')
     expect(html).toContain('aria-label="Chat"')
     expect(html).toContain('aria-label="Dev"')
@@ -111,6 +111,9 @@ describe('folded 52px icons-only rail with monochrome chrome', () => {
     expect(html).not.toContain('data-amber-')
     expect(html).not.toContain('data-jade-')
     expect(html).toContain('data-slot="rail-more"')
+    const openHtml = draw5({ open: true })
+    expect(openHtml).toContain('data-expanded="true"')
+    expect(openHtml).toContain('aria-label="Close sidebar"')
   })
 
   test('keeps hosted apps, granted betas and Flow reachable in More without Developer mode (Developer mode hides nothing that was visible before)', async () => {
@@ -164,10 +167,12 @@ describe('folded 52px icons-only rail with monochrome chrome', () => {
     expect(carriedPinnedNav('chat')).toEqual([])
   })
 
-  test('the folded rail names every destination under its mark, so it reads without a hover (hanzo-inc/app issue 315)', () => {
+  test('the rail stays strictly icon-only (no visible text captions under marks; full names live in aria-label and tooltip)', () => {
     const html = draw5()
-    const captions = [...html.matchAll(/data-slot="rail-caption"[^>]*>([^<]*)</g)].map((m) => m[1])
-    expect(captions).toEqual(['Chat', 'Dev', 'Design', 'Library', 'Tabs', 'More'])
+    expect(html).not.toContain('data-slot="rail-caption"')
+    for (const label of ['Chat', 'Dev', 'Design', 'Library', 'Tabs', 'More']) {
+      expect(html).toContain(`aria-label="${label}"`)
+    }
   })
 
   test('pins stand first on the folded rail, a line under them, and the default apps keep their order after (hanzo-inc/app issue 316)', () => {
