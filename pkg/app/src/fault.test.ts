@@ -148,12 +148,12 @@ describe('send resilience', () => {
       if (url.endsWith('/v1/task/projects/app/issues') && method === 'GET') {
         // Board summary omits description — must still match existing open issue by title shape!
         return new Response(
-          JSON.stringify([{ number: 118, identifier: 'app#118', title: 'POST /v1/responses answered 503', status: 'backlog' }]),
+          JSON.stringify([{ number: 99, identifier: 'app#99', title: 'POST /v1/responses answered 503', status: 'backlog' }]),
           { status: 200 },
         )
       }
-      if (url.endsWith('/v1/task/projects/app/issues/118') && method === 'PATCH') {
-        return new Response(JSON.stringify({ number: 118, identifier: 'app#118' }), { status: 200 })
+      if (url.endsWith('/v1/task/projects/app/issues/99') && method === 'PATCH') {
+        return new Response(JSON.stringify({ number: 99, identifier: 'app#99' }), { status: 200 })
       }
       return new Response('unexpected', { status: 500 })
     }) as typeof fetch
@@ -165,9 +165,9 @@ describe('send resilience', () => {
         description: '',
         shot: null,
       })
-      expect(res).toEqual({ identifier: 'app#118', again: true })
+      expect(res).toEqual({ identifier: 'app#99', again: true })
       expect(calls.some((x) => x.startsWith('POST '))).toBe(false)
-      expect(calls.some((x) => x.startsWith('PATCH https://api.example.test/v1/task/projects/app/issues/118'))).toBe(true)
+      expect(calls.some((x) => x.startsWith('PATCH https://api.example.test/v1/task/projects/app/issues/99'))).toBe(true)
     } finally {
       globalThis.fetch = origFetch
       if (!hadWindow) delete (globalThis as { window?: unknown }).window
