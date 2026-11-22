@@ -17,9 +17,10 @@ beforeAll(async () => {
   await (await drawChat()).done()
 }, 60_000)
 
-// A toast's 4 s removal timer (the kit's, outside any tree) must fire while the page still exists: it
-// sets state, and fired after the file ends it throws "window is not defined" and fails the whole run.
-afterAll(() => new Promise((done) => setTimeout(done, 4_200)), 10_000)
+// shortcut: @hanzogui/toast leaves its removal timer running after unmount; drop this wait when the kit clears it
+// Its 200 ms removal timer (ToastComposable TIME_BEFORE_UNMOUNT) sets state; fired after the file ends it throws
+// "window is not defined" and fails the whole run. Unmounting does not clear it, so the last test's is waited out.
+afterAll(() => new Promise((done) => setTimeout(done, 400)))
 
 beforeEach(() => {
   localStorage.clear()
