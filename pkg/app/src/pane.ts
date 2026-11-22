@@ -248,6 +248,7 @@ async function readHere(key: string, h: Held, file: File): Promise<Held['read']>
               reader.readAsDataURL(file)
             }),
           }
+    local.set(h.id, h.href)
     patch(key, h.id, { state: 'ready', sent: 1, read })
     return read
   } catch (e) {

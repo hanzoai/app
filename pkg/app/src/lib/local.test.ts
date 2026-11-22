@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'vitest'
 import { conversation, localRead, partOf } from './local'
 
-const silent = new Set(['…', 'Stopped.'])
+const quiet = new Set(['…', 'Stopped.'])
+const silent = (said: string) => quiet.has(said)
+const file = (name: string) => ({ id: name, name, type: 'text/plain', size: 2 })
 
 describe('the conversation a host engine is asked to continue', () => {
   test('is every turn that said something, then the new question', () => {
@@ -28,10 +30,21 @@ describe('the conversation a host engine is asked to continue', () => {
   })
 
   test('files that came with the question join it as parts', () => {
-    const img = partOf('dot.png', { image: 'data:image/png;base64,AA==' })
-    expect(conversation([], 'What?', silent, [img, partOf('a.txt', { text: 'hi' })])).toEqual([
-      { role: 'user', content: [{ type: 'text', text: 'What?' }, img, { type: 'text', text: 'a.txt:\nhi' }] },
+    const img = partOf(file('dot.png'), { image: 'data:image/png;base64,AA==' })
+    expect(conversation([], 'What?', silent, [img, partOf(file('a.txt'), { text: 'hi' })])).toEqual([
+      { role: 'user', content: [{ type: 'text', text: 'What?' }, img, { type: 'text', text: 'a.txt:\nhi', file: file('a.txt') }] },
     ])
+  })
+})
+
+describe('files in the conversation', () => {
+  test('an earlier question keeps its files, and a long text file says it was cut', () => {
+    const had = [{ type: 'text', text: 'Read this' }, partOf(file('a.txt'), { text: 'x'.repeat(100_001) })]
+    const turns = conversation([{ role: 'user', content: had }, { role: 'assistant', content: 'Done.' }], 'And?', silent)
+    expect(turns[0]).toEqual({ role: 'user', content: had })
+    expect(had[1]).toMatchObject({ text: expect.stringMatching(/^a\.txt \(first 100,000 characters\):\n/) })
+    expect((had[1] as { text: string }).text.length).toBeLessThan(100_100)
+    expect(partOf(file('b.txt'), { text: 'short' })).toMatchObject({ text: 'b.txt:\nshort' })
   })
 })
 
