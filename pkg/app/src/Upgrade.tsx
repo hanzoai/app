@@ -31,9 +31,9 @@ import { Anchor, Box, Button, Dialog, DialogContent, DialogTitle, Text, View, XS
 import { track } from './lib/tags'
 import { org } from './lib/session'
 import { useTier } from './lib/tier'
-import { term, type Interval } from './lib/plans'
+import { term, usePlan, type Interval } from './lib/plans'
 import { owners } from './lib/owners'
-import { payUrl, topUpAmountUrl } from './lib/pay'
+import { money, payUrl, topUpAmountUrl } from './lib/pay'
 import { site } from './where'
 
 const INK = 'var(--foreground)'
@@ -148,6 +148,20 @@ export function Upgrade({ ask = null, onClose }: { ask?: Ask | null; onClose?: (
   const activeOrg = org()
   const { tier } = useTier(open, activeOrg)
 
+  // Business seats are priced by the catalog, not by this file: the row is
+  // the first charging plan in the `team` category (lib/plans `usePlan`), the
+  // same row /pricing and the workspace gate read. A year is the row's
+  // `priceAnnual` — what each month costs when a year is bought — and the cart
+  // holds the 5-seat minimum, so its value is five seats' worth.
+  const { plan: teamPlan } = usePlan('team')
+  const teamSeat = businessCycle === 'year' ? (teamPlan?.priceAnnual ?? teamPlan?.priceMonthly ?? null) : (teamPlan?.priceMonthly ?? null)
+  const teamValue =
+    teamPlan == null || teamSeat == null
+      ? 0
+      : businessCycle === 'year'
+        ? 5 * (teamPlan.annualTotal ?? teamSeat * 12)
+        : 5 * teamSeat
+
   useEffect(() => {
     if (open) {
       track('upgrade_dialog_opened', { audience })
@@ -200,10 +214,17 @@ export function Upgrade({ ask = null, onClose }: { ask?: Ask | null; onClose?: (
   const topUpHref = payUrl('/amount/card', { org: activeOrg, returnUrl })
   const topUpChips = ['10', '25', '50'] as const
 
+  // The CTA sends its own moments, and the link says so (`data-ga`): the
+  // site's click-out handler (app/providers.tsx `INTENT`) fires
+  // `checkout_started` for any bare link to pay, so without the mark one press
+  // counted `begin_checkout` twice — once here, once there.
   const handleBuy = (planId: string, planName: string, price: number, interval: Interval = 'month') => {
     const items = [{ item_id: planId, item_name: planName }]
     track('plan_clicked', { plan: planId, interval, cta: `Upgrade to ${planName}`, items })
-    track('checkout_started', { currency: 'USD', value: price, items, interval })
+    // No price, no checkout: the Business value is the catalog row's, and if
+    // the row has not resolved there is nothing priced to check out with — a
+    // $0 `begin_checkout` would be a lie in the funnel.
+    if (price > 0) track('checkout_started', { currency: 'USD', value: price, items, interval })
   }
 
   // Strictly one white primary CTA per visible plan group — promote Max if the user is already on Pro.
@@ -618,6 +639,7 @@ export function Upgrade({ ask = null, onClose }: { ask?: Ask | null; onClose?: (
                   ) : (
                     <Anchor
                       data-slot="upgrade-pro-cta"
+                      data-ga
                       href={proHref}
                       onPress={() => handleBuy('pro-3x', 'Pro', 15)}
                       display="flex"
@@ -753,6 +775,7 @@ export function Upgrade({ ask = null, onClose }: { ask?: Ask | null; onClose?: (
                   ) : (
                     <Anchor
                       data-slot="upgrade-max-cta"
+                      data-ga
                       href={maxHref}
                       onPress={() => handleBuy('max-15x', 'Max', 95)}
                       display="flex"
@@ -948,6 +971,7 @@ export function Upgrade({ ask = null, onClose }: { ask?: Ask | null; onClose?: (
                         ) : (
                           <Anchor
                             data-slot={`upgrade-${p.id}-cta`}
+                            data-ga
                             href={p.href}
                             onPress={() => handleBuy(p.id, p.name, p.price)}
                             display="flex"
@@ -1160,7 +1184,7 @@ export function Upgrade({ ask = null, onClose }: { ask?: Ask | null; onClose?: (
                         color="$ink"
                         fontVariant={['tabular-nums']}
                       >
-                        {businessCycle === 'year' ? '$16.67' : '$20'}
+                        {teamSeat == null ? '—' : money(teamSeat)}
                       </Text>
                       <Text fontFamily="$body" fontSize="$2" color="$soft">
                         {t('/ seat / month')}
@@ -1198,8 +1222,9 @@ export function Upgrade({ ask = null, onClose }: { ask?: Ask | null; onClose?: (
                   ) : (
                     <Anchor
                       data-slot="upgrade-business-cta"
+                      data-ga
                       href={businessHref}
-                      onPress={() => handleBuy('team', 'Business', businessCycle === 'year' ? 200 : 20, businessCycle)}
+                      onPress={() => handleBuy('team', 'Business', teamValue, businessCycle)}
                       display="flex"
                       bg="var(--primary)"
                       hoverStyle={{ bg: 'var(--primary-hover)' }}

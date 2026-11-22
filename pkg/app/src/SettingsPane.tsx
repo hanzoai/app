@@ -29,7 +29,7 @@ import { administers, Credits, label, Plan, Title, useChoice } from '@hanzo/buil
 import { Catalog } from './Directory'
 import { Sources } from './Sources'
 import { payPage } from './lib/pay'
-import { api } from './lib/api'
+import { api, iam } from './lib/api'
 import { renewal, useSubscription, useTier } from './lib/tier'
 import { spendShown, useLimits } from './lib/limits'
 import { showSettings } from './open'
@@ -383,6 +383,13 @@ function Account() {
           {identity.email ? <Text fontSize="$2" color="$soft"><bdi dir="ltr">{identity.email}</bdi></Text> : null}
         </YStack>
       </XStack>
+
+      <Box render={<a href={`${iam()}/account`} target="_blank" rel="noreferrer" />} {...tap}>
+        <XStack items="center" justify="space-between" py="$2" width="100%" gap="$2">
+          <Text fontSize="$3" color="$ink">{t('Profile')}</Text>
+          <ExternalLink size={16} aria-hidden />
+        </XStack>
+      </Box>
 
       <Separator />
 

@@ -1,8 +1,12 @@
 'use client'
 
-// Dev's and Chat's interior is the Dev core, always. With nothing open it is the composer
-// ("Build what's next.": `DevHome`, runnable with no environment: Cloud is plain chat on the
-// account); a turn aimed at a linked Mac (`GET /v1/sources`) hands over to that Mac's runtime
+// Dev's and Chat's interior is the Dev core, always — except Chat for a visitor
+// with no session. The core's composer sends a turn on the account, and a guest
+// has none: it discards their message and opens a project instead, so a guest
+// gets the Chat surface, which answers on the free pool (Chat.tsx `sendAnon`).
+// With nothing open it is the composer ("Build what's next.": `DevHome`,
+// runnable with no environment: Cloud is plain chat on the account); a turn
+// aimed at a linked Mac (`GET /v1/sources`) hands over to that Mac's runtime
 // (`DevProvider` + `DevWorkspace`), a thread view with a dock beside it. The dock is Tabs' own panes for the
 // runtime's sandbox (@hanzo/tabs `frameUrl`): the terminal, and the browser as
 // pixels with Watching / Take control (the screen page's own view-only switch,
@@ -14,7 +18,7 @@ import { frameUrl, type Door } from '@hanzo/tabs'
 import type { DevEnvironment, DevRuntime } from '@hanzo/dev-core'
 import { useI18n } from '@hanzo/i18n/react'
 import { api } from './lib/api'
-import { bearer } from './lib/session'
+import { bearer, hasSession } from './lib/session'
 import { machines } from './devRuntime'
 import type { Host } from '@hanzo/build'
 import { app, talk } from './lib/host'
@@ -25,6 +29,7 @@ const Provider = lazy(() => import('./core').then((m) => ({ default: m.DevProvid
 const Home = lazy(() => import('./core').then((m) => ({ default: m.DevHome })))
 const Chats = lazy(() => import('./core').then((m) => ({ default: m.DevChatList })))
 const List = lazy(() => import('./core').then((m) => ({ default: m.DevThreadList })))
+const Chat = lazy(() => import('./Chat').then((m) => ({ default: m.Chat })))
 
 /** A dock pane: one single-use ticket per mount, so a reload mints a fresh one. */
 function Pane({ sandbox, door, arg, watching }: { sandbox: string; door: Door; arg?: string; watching?: boolean }) {
@@ -206,10 +211,19 @@ export function ChatList({ host, path }: { host: Host; path: string }) {
 /** The Dev core's cloud account: plain chat needs no environment. */
 const cloud = () => ({ api: api(), token: async () => bearer() ?? '', org: currentOrg() ?? undefined })
 
+/** Whether Chat, not the Dev core, is the interior: a guest at Chat has no
+ * session, so no account for the core's composer to send a turn on. The core
+ * discards their message and opens a project instead; the Chat surface answers
+ * on the free pool. A signed-in reader keeps the core either way, and Dev keeps
+ * it for everyone. */
+export const guestChat = (mode: 'dev' | 'chat'): boolean => mode === 'chat' && !hasSession()
+
 /**
- * The interior of Dev and of Chat: the Dev core, always. A Mac's thread is the thread view with the
- * dock; everything else is the composer. `mode` says which of the two the address is: Chat hides
- * the code tools, and its conversation is the shell's `/chat/<id>`.
+ * The interior of Dev and of Chat: the Dev core, always — except Chat for a
+ * visitor with no session, who gets the Chat surface instead (see `guestChat`).
+ * A Mac's thread is the thread view with the dock; everything else is the
+ * composer. `mode` says which of the two the address is: Chat hides the code
+ * tools, and its conversation is the shell's `/chat/<id>`.
  */
 export function DevInterior({ host, path, mode = 'dev', conversation = null }: { host: Host; path: string; mode?: 'dev' | 'chat'; conversation?: string | null }) {
   const dev = useScope()
@@ -218,6 +232,16 @@ export function DevInterior({ host, path, mode = 'dev', conversation = null }: {
     if (project) host.go(app(''), { replace: true })
   }, [project, host])
   if (!dev) return null
+  if (guestChat(mode)) {
+    // No session, so no account for the core's turn to bill to: the Chat
+    // surface answers on the free pool, and reads `?q=` for the landing's
+    // question. Lazy, so the chat surface stays out of the signed-in bundle.
+    return (
+      <Suspense fallback={null}>
+        <Chat />
+      </Suspense>
+    )
+  }
   const thread = mode === 'dev' ? refOf(path) : null
   if (dev.runtime && thread) {
     const dock = (ctx: { runtime: DevRuntime; thread: string | null }) => <Dock {...ctx} />

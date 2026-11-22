@@ -1648,7 +1648,7 @@ export function Sidebar({
               </Text>
             </XStack>
           ) : null}
-          {!anon && !drawer ? (
+          {!anon ? (
             <YStack data-slot="sidebar-account" pt="$2" mt="$1.5" borderTopWidth={1} borderColor="$edge" shrink={0}>
               <Account host={host} onOrg={handleOrg} />
             </YStack>

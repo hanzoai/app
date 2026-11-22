@@ -829,7 +829,7 @@ export function ConversationMenu({
             run: () => void archiveOne(subject),
           },
           { key: 'gone', line: true },
-          { key: 'delete', label: t('Delete'), icon: <Trash2 size={16} aria-hidden />, run: () => ask('delete', subject) },
+          { key: 'delete', label: t('Delete'), icon: <Trash2 size={16} aria-hidden />, destructive: true, run: () => ask('delete', subject) },
         ]
       : []
 
