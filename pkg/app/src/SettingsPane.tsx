@@ -28,7 +28,7 @@ import { UsagePanel } from '@hanzo/usage/panel'
 import { administers, Credits, label, Plan, Title, useChoice } from '@hanzo/build'
 import { Catalog } from './Directory'
 import { Sources } from './Sources'
-import { payPage } from './lib/pay'
+import { payPage, payUrl } from './lib/pay'
 import { api, iam } from './lib/api'
 import { renewal, useSubscription, useTier } from './lib/tier'
 import { spendShown, useLimits } from './lib/limits'
@@ -285,7 +285,11 @@ function Model() {
 
         {!paid ? (
           <XStack pt="$1">
-            <Button size="sm" variant="outline" onClick={() => window.location.assign(site('/pricing'))}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => window.location.assign(payUrl('/cart', { org: org(), returnUrl: window.location.href }))}
+            >
               <Sparkles size={14} color="var(--primary)" aria-hidden />
               {t('Upgrade to unlock advanced model controls')}
             </Button>
@@ -660,27 +664,41 @@ function Billing() {
   if (!isAuthenticated) return <Text fontSize="$3" color="$soft">{t('Sign in to see billing.')}</Text>
   // WHAT THE CUSTOMER BOUGHT, by its family: `Max` with `20x` beside it.
   const plan = tier ? label(tier.plan, tier.tier.name) ?? { name: 'Free', tag: '' } : null
+  const returnUrl = typeof window !== 'undefined' ? window.location.href : undefined
+  const upgradeHref = payUrl('/cart', { org: org(), returnUrl })
+  const addCreditsHref = payUrl('/amount/card', { org: org(), returnUrl })
+  const manageHref = payUrl('/', { org: org(), returnUrl })
+
   return (
     <YStack gap="$5">
       {plan ? (
-        <YStack gap="$1" data-slot="billing-plan">
+        <YStack gap="$2" data-slot="billing-plan">
           <Title label={plan} size="$5" />
           <Text fontSize="$2" color="$soft">
             {sub ? renewal(sub, t, locale) : tier?.plan ? t('Your plan.') : t('No paid plan. Usage is paid from credits.')}
           </Text>
+          <XStack gap="$2" pt="$1" flexWrap="wrap">
+            <Button size="sm" onClick={() => window.location.assign(upgradeHref)}>
+              <Sparkles size={14} aria-hidden />
+              {t('Upgrade plan')}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => window.location.assign(addCreditsHref)}>
+              {t('Add credits')}
+            </Button>
+          </XStack>
         </YStack>
       ) : (
         <Text fontSize="$3" color="$soft">{t('Reading your plan…')}</Text>
       )}
-      <Credits target={target} admin={administers(bearer(), org())} add={payPage()} />
+      <Credits target={target} admin={administers(bearer(), org())} add={addCreditsHref} />
       <Separator />
       <YStack gap="$2">
         <Text fontSize="$2" color="$soft">{t('Payment')}</Text>
         <Text fontSize="$3" color="$soft">
-          {t('A card is entered on the payment host and nowhere else, so this is the one control here that opens another surface.')}
+          {t('A card is entered on hanzo.ai/pay and nowhere else, so checkout and billing management open there and return here.')}
         </Text>
         <XStack>
-          <Box render={<a href={payPage()} target="_blank" rel="noreferrer" />} {...tap}>
+          <Box render={<a href={manageHref} target="_blank" rel="noreferrer" />} {...tap}>
             <XStack items="center" gap="$2" py="$2">
               <Text fontSize="$3" color="$ink">{t('Manage plan, payment method and invoices')}</Text>
               <ExternalLink size={13} aria-hidden />
@@ -708,7 +726,13 @@ function Usage() {
   if (!isAuthenticated || !accessToken) {
     return <Text fontSize="$3" color="$soft">{t('Sign in to see your usage.')}</Text>
   }
-  const plan = <Plan target={target} onPlans={() => window.location.assign(site('/pricing'))} onBilling={() => showSettings('billing')} />
+  const plan = (
+    <Plan
+      target={target}
+      onPlans={() => window.location.assign(payUrl('/cart', { org: org(), returnUrl: window.location.href }))}
+      onBilling={() => showSettings('billing')}
+    />
+  )
   if (!spendShown(read)) return plan
   // The address is read HERE rather than at import: the panel sends the bearer
   // with every read, and a credentialed read to an absolute address from a page
