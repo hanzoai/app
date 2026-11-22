@@ -28,7 +28,7 @@ vi.mock('lucide-react', () => ({ ChevronLeft: () => null, ChevronRight: () => nu
 vi.mock('./icons', () => ({ CHEVRON: 2.25, MARKS }))
 vi.mock('@hanzo/ai/react', () => ({ AiProvider: through }))
 vi.mock('@hanzo/gui', () => ({ Text: part, XStack: part, YStack: part }))
-vi.mock('@hanzo/ui', () => ({ Button: part, Text: part }))
+vi.mock('@hanzo/ui', () => ({ Button: part, Text: part, YStack: part }))
 vi.mock('@hanzo/build', () => ({ MARKS,
   Builder: stub('builder'),
   HostProvider: through,
@@ -184,8 +184,11 @@ describe('Betas and hosted apps keep the sidebar column', () => {
     expect(html).toMatch(/data-slot="drawer"[^>]*>.*data-slot="app-column" data-places="0"/)
   })
 
-  test('Chat keeps its sidebar', () => {
-    expect(draw('/chat')).toContain('data-slot="app-column"')
+  test('Chat keeps the stationary Rail visible beside the open contextual sidebar', () => {
+    const html = draw('/chat')
+    expect(html).toContain('data-display="flex"><div data-slot="rail"')
+    expect(html).toContain('data-slot="sidebar-shell"')
+    expect(html).toContain('data-slot="app-column"')
   })
 
   test('in-app /settings/organization/billing draws SettingsList and SettingsPane on billing', async () => {

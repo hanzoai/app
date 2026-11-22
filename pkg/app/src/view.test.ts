@@ -41,6 +41,10 @@ describe('fit', () => {
     expect(fit(LAYOUT, view({ height: LAYOUT + 2 }))).toBeNull()
   })
 
+  test('iOS Safari panning offsetTop without shrinking innerHeight still tracks the visual viewport top', () => {
+    expect(fit(LAYOUT, view({ height: LAYOUT, offsetTop: 64 }))).toEqual({ top: 64, height: LAYOUT, keyboard: 0 })
+  })
+
   test('the styles fall back to the whole window and the home indicator', () => {
     expect(TOP).toBe('var(--view-top, 0px)')
     expect(HEIGHT).toBe('var(--view-height, 100dvh)')

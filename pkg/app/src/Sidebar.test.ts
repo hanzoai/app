@@ -124,6 +124,8 @@ const pins: Pins = [[], noop, noop, noop]
 const FIVE = ['chat', 'dev', 'design', 'library', 'tabs']
 
 const column = (mode: Place['mode'], path = '', held: Pins = pins) => renderToStaticMarkup(createElement(Sidebar, { pins: held, host: hostAt(path), mode, thread: null, go: noop, onShut: noop, onBack: noop }))
+const drawerColumn = (mode: Place['mode'], path = '', held: Pins = pins) =>
+  renderToStaticMarkup(createElement(Sidebar, { pins: held, host: hostAt(path), mode, thread: null, go: noop, onShut: noop, onBack: noop, drawer: true }))
 const rail = (mode: Place['mode'], onOpen?: () => void, where: string | null = null) =>
   renderToStaticMarkup(
     createElement(Rail, {
@@ -133,7 +135,6 @@ const rail = (mode: Place['mode'], onOpen?: () => void, where: string | null = n
       at: where,
       open: false,
       onOpen,
-      onNew: noop,
       onChat: noop,
       onDev: noop,
       onDesign: noop,
@@ -243,14 +244,16 @@ describe('a phone’s menu', () => {
   })
 })
 
-describe('the unified desktop sidebar', () => {
-  test('eliminates duplicate bottom-left column-settings/column-upgrade rows, renders Account at foot, and gates Setup behind Developer mode', () => {
+describe('the contextual desktop sidebar (beside the stationary icon rail)', () => {
+  test('eliminates duplicate Account/product nav/toggle on desktop and gates Setup behind Developer mode', () => {
     const simpleHtml = column('chat')
     expect(simpleHtml).not.toContain('data-slot="column-settings"')
     expect(simpleHtml).not.toContain('data-slot="column-upgrade"')
     expect(simpleHtml).not.toContain('data-slot="setup-card"')
-    expect(simpleHtml).toContain('data-slot="sidebar-account"')
-    expect(simpleHtml).toContain('data-slot="me"')
+    expect(simpleHtml).not.toContain('data-slot="sidebar-account"')
+    expect(simpleHtml).not.toContain('data-slot="sidebar-nav"')
+    expect(simpleHtml).not.toContain('data-slot="sidebar-toggle"')
+    expect(simpleHtml).not.toContain('data-slot="place-more"')
 
     devState.on = true
     const devHtml = column('chat')
@@ -258,51 +261,38 @@ describe('the unified desktop sidebar', () => {
     expect(devHtml).toContain('data-slot="setup-card"')
   })
 
-  test('carries one fold button, Activity bell, Search, primary New action, Pinned products, Recents, the More row under it, and Account', () => {
+  test('carries active place title, Activity bell, Search, primary New action, and Recents without duplicating the Rail', () => {
     const html = column('chat')
-    expect(at(html, 'Hanzo')).toBeLessThan(at(html, 'aria-label="Activity"'))
+    expect(at(html, '>Chat<')).toBeLessThan(at(html, 'aria-label="Activity"'))
     expect(at(html, 'aria-label="Activity"')).toBeLessThan(at(html, 'aria-label="Search"'))
-    expect(at(html, 'aria-label="Search"')).toBeLessThan(at(html, 'data-slot="sidebar-toggle"'))
-    expect(at(html, 'data-slot="sidebar-toggle"')).toBeLessThan(at(html, 'New chat'))
-    expect(at(html, 'New chat')).toBeLessThan(at(html, 'data-slot="sidebar-nav"'))
-    expect(at(html, 'data-slot="rail-pinned"')).toBeLessThan(at(html, 'data-slot="recents"'))
-    expect(at(html, 'data-slot="recents"')).toBeLessThan(at(html, 'data-slot="place-more"'))
-    expect(at(html, 'data-slot="place-more"')).toBeLessThan(at(html, 'data-slot="sidebar-account"'))
+    expect(at(html, 'aria-label="Search"')).toBeLessThan(at(html, 'New chat'))
+    expect(at(html, 'New chat')).toBeLessThan(at(html, 'data-slot="recents"'))
     expect(html).not.toContain('data-slot="nav-latest"')
-    // First Build: Tabs is a locked top-5 app, an internal /tabs page, not tabs.hanzo.ai.
-    expect(html, 'Tabs is locked in the top 5 main apps').toContain('data-slot="rail-tabs"')
   })
 
-  test('Dev: renders New run, indents Dev sub-links (Projects, Issues, Templates) right beneath active Dev row, then Recents; no duplicate column', () => {
+  test('Dev: renders Dev title, New run, Dev places (Projects, Issues, Templates), then Recents', () => {
     const html = column('dev')
-    expect(at(html, 'New run')).toBeLessThan(at(html, 'data-slot="rail-dev"'))
-    expect(at(html, 'data-slot="rail-dev"')).toBeLessThan(at(html, 'data-slot="nav-sublinks"'))
-    expect(at(html, 'data-slot="nav-sublinks"')).toBeLessThan(at(html, 'Templates'))
+    expect(at(html, '>Dev<')).toBeLessThan(at(html, 'New run'))
+    expect(at(html, 'New run')).toBeLessThan(at(html, 'data-slot="app-places"'))
+    expect(at(html, 'data-slot="app-places"')).toBeLessThan(at(html, 'Templates'))
     expect(at(html, 'Templates')).toBeLessThan(at(html, 'data-slot="recents"'))
-    expect(html).not.toContain('data-slot="app-places"')
-    expect(html).toContain('data-slot="nav-item-options"')
-    // Each of the five can be pinned to the top (hanzo-inc/app issue 316); none is pinned yet, so none moves and none is under Pinned.
-    expect(html).toContain('data-item="pin"')
-    expect(html).toContain('aria-label="Pin Dev to top"')
-    expect(html).not.toContain('data-item="move-up"')
-    expect(html).not.toContain('data-slot="nav-pins"')
     expect(html).not.toContain(TABS)
   })
 
-  test('More shrinks as places are pinned and goes away when none is left in it', () => {
-    const inMore = [...column('chat').matchAll(/data-item="pin-([^"]+)"/g)].map((m) => m[1])
+  test('mobile drawer More shrinks as places are pinned and goes away when none is left in it', () => {
+    const inMore = [...drawerColumn('chat').matchAll(/data-item="pin-([^"]+)"/g)].map((m) => m[1])
     expect(inMore).toContain('scheduled')
-    const pinnedOne = column('chat', '', [['scheduled'], noop, noop, noop])
+    const pinnedOne = drawerColumn('chat', '', [['scheduled'], noop, noop, noop])
     expect(pinnedOne).not.toContain('data-item="pin-scheduled"')
     expect(pinnedOne).toContain('data-item="pin-customize"')
     expect(pinnedOne).toContain('data-slot="place-more"')
-    const all = column('chat', '', [[...inMore], noop, noop, noop])
+    const all = drawerColumn('chat', '', [[...inMore], noop, noop, noop])
     expect(all).not.toContain('data-slot="place-more"')
   })
 
-  test('a pinned app can be moved up and down from its menu, not only by dragging: the first has no Move up, the last no Move down', () => {
+  test('mobile drawer pinned apps can be moved up and down from their menu: first has no Move up, last no Move down', () => {
     const moves = (held: Pins) => {
-      const html = column('chat', '', held)
+      const html = drawerColumn('chat', '', held)
       return [...html.matchAll(/data-item="move-(up|down)"/g)].map((m) => m[1])
     }
     const two: Pins = [['chat', 'dev'], noop, noop, noop]
@@ -313,10 +303,10 @@ describe('the unified desktop sidebar', () => {
     expect(moves(pins)).toEqual([])
   })
 
-  test('pinned apps stand first, under Pinned, and an unpinned one is back in its default place (hanzo-inc/app issue 316)', () => {
+  test('mobile drawer pinned apps stand first, under Pinned, and an unpinned one is back in its default place', () => {
     const order = (html: string) => [...html.matchAll(/data-slot="rail-([a-z-]+)"[^>]*aria-label=/g)].map((m) => m[1])
-    expect(order(column('chat'))).toEqual(FIVE)
-    const pinned = column('chat', '', [['scheduled', 'design'], noop, noop, noop])
+    expect(order(drawerColumn('chat'))).toEqual(FIVE)
+    const pinned = drawerColumn('chat', '', [['scheduled', 'design'], noop, noop, noop])
     expect(order(pinned)).toEqual(['scheduled', 'design', 'chat', 'dev', 'library', 'tabs'])
     expect(at(pinned, 'data-slot="nav-pins-head"')).toBeLessThan(at(pinned, 'data-slot="rail-scheduled"'))
     expect(at(pinned, 'data-slot="rail-design"')).toBeLessThan(at(pinned, 'data-slot="rail-chat"'))
@@ -324,7 +314,7 @@ describe('the unified desktop sidebar', () => {
     expect(pinned).toContain('aria-label="Pin Chat to top"')
     // Scheduled tasks pinned is out of More; unpinned it is back in it.
     expect(pinned).not.toContain('data-item="pin-scheduled"')
-    expect(column('chat')).toContain('data-item="pin-scheduled"')
+    expect(drawerColumn('chat')).toContain('data-item="pin-scheduled"')
   })
 
   test('every list item sits in a list, in each sidebar a person can be in', () => {
@@ -338,8 +328,8 @@ describe('the unified desktop sidebar', () => {
     }
   })
 
-  test('More is one row under Recents that opens a menu: every other place in it, each pinnable, none listed inline', () => {
-    const html = column('chat')
+  test('mobile drawer More is one row under Recents that opens a menu: every other place in it, each pinnable, none listed inline', () => {
+    const html = drawerColumn('chat')
     expect(html.match(/data-slot="place-more"/g)).toHaveLength(1)
     for (const k of ['scheduled', 'customize', 'betas', 'ext-team', 'ext-bots', 'ext-market', 'beta-finance']) {
       expect(html, k).toContain(`data-item="${k}"`)
@@ -354,13 +344,13 @@ describe('the unified desktop sidebar', () => {
     // The five locked apps are never offered for pinning, and the menu's entries are not drawn as rows in the column.
     expect(html).not.toContain('data-item="pin-chat"')
     expect(html).not.toContain('aria-label="Scheduled tasks"')
-    expect(column('dev', '-/customize')).not.toContain('data-slot="place-more"')
+    expect(drawerColumn('dev', '-/customize')).not.toContain('data-slot="place-more"')
   })
 
-  test('an app that lives in More draws its own row and sub-links in the list while the reader is in it (Flow)', () => {
+  test('an app that lives in More draws its own row and sub-links in the drawer while the reader is in it (Flow), and its own places on desktop', () => {
     devState.opened = new Set(['finance', 'flow'])
     const places = [{ id: 'flow', label: '', links: [{ id: 'new', label: 'New flow', icon: null }, { id: 'gallery', label: 'Gallery', icon: null }] }]
-    const html = renderToStaticMarkup(createElement(Sidebar, { pins, host: hostAt(''), mode: 'flow', thread: null, go: noop, onShut: noop, onBack: noop, places }))
+    const html = renderToStaticMarkup(createElement(Sidebar, { pins, host: hostAt(''), mode: 'flow', thread: null, go: noop, onShut: noop, onBack: noop, drawer: true, places }))
     expect(at(html, 'data-slot="rail-pinned"')).toBeLessThan(at(html, 'data-slot="rail-flow"'))
     expect(at(html, 'data-slot="rail-flow"')).toBeLessThan(at(html, 'data-slot="nav-sublinks"'))
     expect(at(html, 'data-slot="nav-sublinks"')).toBeLessThan(at(html, 'Gallery'))
@@ -368,8 +358,11 @@ describe('the unified desktop sidebar', () => {
     // Not lit twice: the More row stays plain, the menu still lists Flow.
     expect(html).not.toMatch(/data-slot="place-more"[^>]*aria-current/)
     expect(html).toContain('data-item="flow"')
+    const desktopFlow = renderToStaticMarkup(createElement(Sidebar, { pins, host: hostAt(''), mode: 'flow', thread: null, go: noop, onShut: noop, onBack: noop, places }))
+    expect(at(desktopFlow, '>Flow<')).toBeLessThan(at(desktopFlow, 'New flow'))
+    expect(at(desktopFlow, 'New flow')).toBeLessThan(at(desktopFlow, 'Gallery'))
     devState.opened = new Set(['finance'])
-    expect(column('chat')).not.toContain('data-slot="rail-flow"')
+    expect(drawerColumn('chat')).not.toContain('data-slot="rail-flow"')
   })
 
   test('the phone’s drawer lists the five apps and the grouped More, with Recents below', () => {
@@ -465,16 +458,16 @@ describe('the unified desktop sidebar', () => {
     expect(html).not.toContain('data-slot="recents"')
   })
 
-  test('the product rows keep their place in every section: the New row stands above them in each, for guests too', () => {
+  test('the mobile drawer keeps product rows in place under the New row, and desktop keeps the primary New row in each section', () => {
     const rows = ['data-slot="app-new"', 'data-slot="rail-chat"', 'data-slot="rail-dev"', 'data-slot="rail-design"']
     for (const mode of ['chat', 'dev', 'design', 'studio', 'tabs', 'hosted'] as Place['mode'][]) {
-      const html = column(mode)
+      const html = drawerColumn(mode)
       const order = rows.map((r) => at(html, r))
       expect(order, mode).toEqual([...order].sort((a, b) => a - b))
     }
     expect(column('tabs')).toContain('New terminal')
     const guest = (mode: Place['mode']) =>
-      renderToStaticMarkup(createElement(Sidebar, { pins, host: { ...host, person: null } as never, mode, thread: null, go: noop, onShut: noop, onBack: noop }))
+      renderToStaticMarkup(createElement(Sidebar, { pins, host: { ...host, person: null } as never, mode, thread: null, go: noop, onShut: noop, onBack: noop, drawer: true }))
     for (const mode of ['chat', 'dev'] as Place['mode'][]) {
       const html = guest(mode)
       const order = ['data-slot="app-new"', 'data-slot="app-images"', 'data-slot="rail-chat"'].map((r) => at(html, r))
@@ -540,7 +533,7 @@ describe('the unified desktop sidebar', () => {
 
   test('a window of its own (Hanzo Desktop) offers no Open in new tab; a browser does', () => {
     const inside = (windowed: boolean) =>
-      renderToStaticMarkup(createElement(Windowed.Provider, { value: windowed }, createElement(Sidebar, { pins, host, mode: 'chat', thread: null, go: noop, onShut: noop, onBack: noop })))
+      renderToStaticMarkup(createElement(Windowed.Provider, { value: windowed }, createElement(Sidebar, { pins, host, mode: 'chat', thread: null, go: noop, onShut: noop, onBack: noop, drawer: true })))
     expect(inside(false)).toContain('data-item="new-tab"')
     expect(inside(true)).not.toContain('data-item="new-tab"')
     expect(inside(true)).toContain('data-item="copy-link"')

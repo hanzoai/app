@@ -1,19 +1,18 @@
 'use client'
 
-// The single unified desktop sidebar (and mobile drawer column):
-// 1. Single Top Header Row (`data-slot="app-head"`): `Hanzo` wordmark (or `← Back` + section
-//    title in a sub-page like Library / Scheduled tasks / Customize), Activity bell,
-//    Search (⌘K) button, and ONE fold button (`Toggle`, `Fold sidebar to icons`).
-// 2. Primary New Action (`+ New chat` / `+ New run` / `+ New design`).
-// 3. Unified Product Menu (5 core items `Chat`, `Dev`, `Design`, `Library`, `Tabs` + user-pinned
-//    items with drag-to-reorder), monochrome active state (`bg="$raised"`),
-//    hover `⋯` (`Pin/Unpin`, `Open in new tab`, `Copy link`), and active item's sub-links
-//    indented cleanly underneath with a quiet vertical guide hairline.
+// The contextual desktop sidebar (beside the stationary icon rail) and the
+// mobile drawer column (when no rail is shown):
+// 1. Top Header Row (`data-slot="app-head"`): the active place's name (`Chat`,
+//    `Dev`, `Design`, `Flow`, `Tabs`, `Betas`, hosted app, or `← Back` + sub-place
+//    like Library / Scheduled tasks / Customize; `Hanzo` in the mobile drawer),
+//    Activity bell, and Search (⌘K). The sidebar toggle stays anchored in place on
+//    the Rail (or desktop title bar), never duplicated here.
+// 2. Primary New Action (`+ New chat` / `+ New run` / `+ New design` / `+ New terminal`).
+// 3. On desktop: the active place's own contextual places (`Projects`, `Issues`,
+//    `Templates`, Studio places, Tabs sessions/devices) — never duplicating the Rail's
+//    product list, More, or Account. In the mobile drawer (no rail): the full product
+//    list (`Chat`, `Dev`, `Design`, `Library`, `Tabs`, pinned items), `More`, and `Account`.
 // 4. Conversations / Runs (`<Recents>`) below a subtle `$edge` hairline; the part that scrolls.
-//    `More` is ONE row under it (`place-more`) that pops a menu (never an inline list, so the
-//    sidebar never changes height): every other place, each pinnable to the top from the menu.
-// 5. Single Bottom-Left Profile Row (`<Account host={host} onOrg={handleOrg} />`), zero duplicate
-//    Settings button next to Profile.
 
 import { locales, phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
@@ -54,7 +53,6 @@ import { useEffect, useId, useMemo, useState, type DragEvent, type ReactNode } f
 import { Account, Made } from './Account'
 import { useBetas } from './Betas'
 import { Recents } from './Recents'
-import { Toggle } from './Toggle'
 import { MARKS } from './icons'
 import { ChatList, DevList, useScope } from './DevPane'
 import { DEFAULT_NAV, fullNavUrl, raised, useNavEntries, type NavEntry, type Pins, type Raised } from './Rail'
@@ -1026,9 +1024,51 @@ export function Sidebar({
   })
 
   // The reader's pins lead (under Pinned), the default apps follow in their places, and an app that lives in More draws
-  // its own row (and sub-links) after them while the reader is in it.
+  // its own row (and sub-links) after them while the reader is in it. Only rendered in the phone drawer (desktop keeps
+  // the permanent icon Rail beside this sidebar).
   const rest = [...nav.defaultEntries, ...nav.moreEntries.filter((item) => item.on)]
-  const showMore = !at && !anon && nav.moreEntries.length > 0
+  const showMore = drawer && !at && !anon && nav.moreEntries.length > 0
+
+  const modeTitle =
+    drawer
+      ? brand()
+      : mode === 'chat'
+        ? t('Chat')
+        : mode === 'dev'
+          ? 'Dev'
+          : mode === 'design'
+            ? 'Design'
+            : mode === 'flow'
+              ? 'Flow'
+              : mode === 'tabs'
+                ? t('Tabs')
+                : mode === 'beta'
+                  ? t('Betas')
+                  : mode === 'hosted'
+                    ? (HOSTED_APPS.find((a) => a.id === inside)?.name ?? brand())
+                    : brand()
+
+  // Active place's own contextual places on desktop (when !at and !drawer); excludes NEW because
+  // the primary "+ New …" action row stands above them.
+  const desktopGroups: { id: string; label: string; links: SidebarPlaceLink[] }[] = (() => {
+    if (drawer || at) return []
+    if (mode === 'dev') {
+      const links = own(host, dev, t).flatMap((g) => g.links).filter((l) => l.id !== NEW)
+      return links.length ? [{ id: 'dev-places', label: '', links }] : []
+    }
+    if ((mode === 'design' || mode === 'flow') && places) {
+      return places
+        .map((g) => ({ ...g, links: g.links.filter((l) => l.id !== NEW) }))
+        .filter((g) => g.links.length > 0)
+    }
+    if (mode === 'tabs') {
+      return tabsGroups.filter((g) => g.links.length > 0)
+    }
+    if (mode === 'hosted') {
+      return hostedGroups
+    }
+    return []
+  })()
 
   const subGroupsFor = (entryId: string): { id: string; label: string; links: SidebarPlaceLink[] }[] => {
     if (at) return []
@@ -1164,10 +1204,7 @@ export function Sidebar({
     ? t('New chat')
     : mode === 'dev' ? t('New run') : mode === 'design' ? t('New design') : mode === 'flow' ? t('New flow') : mode === 'tabs' ? t('New terminal') : t('New chat')
 
-  // THE NEW ROW (and a guest's Images) STANDS IN EVERY SECTION, so Chat, Dev, Design, Library and Tabs keep
-  // their place under the cursor: drawn in some sections and not others, it moved every product row by one, and a
-  // press meant for Dev landed on Design. A place that takes the sidebar (`at`) has a head of its own instead.
-  const showPrimaryNew = !at
+  const showPrimaryNew = !at && (drawer || (mode !== 'beta' && mode !== 'hosted'))
   const showRecents = !(mode === 'dev' && runtime) && !(mode === 'hosted' || mode === 'beta' || mode === 'tabs' || mode === 'flow' || anon || at)
 
   return (
@@ -1232,7 +1269,6 @@ export function Sidebar({
                   <Search size={15} aria-hidden />
                 </SidebarIconButton>
               )}
-              {drawer || !onShut ? null : <Toggle open onPress={onShut} tooltip />}
             </XStack>
           ) : (
             <XStack
@@ -1251,7 +1287,7 @@ export function Sidebar({
             >
               <XStack flex={1} minW={0} items="center" gap={4}>
                 <Text fontSize="$4" fontWeight="600" color="$ink" numberOfLines={1}>
-                  {brand()}
+                  {modeTitle}
                 </Text>
               </XStack>
               {drawer || anon ? null : <Activity host={host} />}
@@ -1275,7 +1311,6 @@ export function Sidebar({
                   <Search size={drawer ? 18 : 15} aria-hidden />
                 </SidebarIconButton>
               )}
-              {drawer || !onShut ? null : <Toggle open onPress={onShut} tooltip />}
             </XStack>
           )}
 
@@ -1356,25 +1391,25 @@ export function Sidebar({
             </YStack>
           ) : null}
 
-          {/* 3. Unified Product Menu (desktop open sidebar) OR sub-page places (at) / drawer places */}
-          {at || (drawer && Boolean(rail) && mode !== 'chat' && mode !== 'beta') ? (
+          {/* 3. Contextual places (desktop beside the permanent Rail, or sub-page places `at`) */}
+          {at || (!drawer && (desktopGroups.length > 0 || mode === 'dev')) || (drawer && Boolean(rail) && mode !== 'chat' && mode !== 'beta') ? (
             <YStack data-slot="app-places" shrink={0} pt={drawer ? 0 : 4}>
-              {groups.map((g, i) => {
+              {(at || drawer ? groups : desktopGroups).map((g, i) => {
                 const orderedLinks = [
                   ...g.links.filter((l) => l.id === NEW),
                   ...g.links.filter((l) => l.id !== NEW),
                 ]
                 return (
                   <YStack key={g.id} pt={i ? '$2' : 0}>
-                    {i && g.label ? (
+                    {(i || (!at && !drawer)) && g.label ? (
                       <Text id={`${uid}-${g.id}`} paddingInlineStart="$2" pb={2} fontSize="$2" color="$soft">
                         {g.label}
                       </Text>
                     ) : null}
                     <YStack
                       role="list"
-                      aria-labelledby={i && g.label ? `${uid}-${g.id}` : undefined}
-                      aria-label={i && g.label ? undefined : g.label || (at ? t(TITLE[at]) : g.id)}
+                      aria-labelledby={(i || (!at && !drawer)) && g.label ? `${uid}-${g.id}` : undefined}
+                      aria-label={(i || (!at && !drawer)) && g.label ? undefined : g.label || (at ? t(TITLE[at]) : g.id)}
                       gap={1}
                     >
                       {orderedLinks.map((link) => (
@@ -1390,10 +1425,12 @@ export function Sidebar({
                   </YStack>
                 )
               })}
+              {!drawer && !at && mode === 'dev' ? <DevList host={host} path={host.path ?? ''} /> : null}
             </YStack>
           ) : null}
 
-          {!at ? (
+          {/* Mobile drawer product menu (desktop keeps the permanent icon Rail beside this sidebar) */}
+          {drawer && !at ? (
             <YStack
               data-slot="sidebar-nav"
               render="nav"
@@ -1638,7 +1675,7 @@ export function Sidebar({
               </Text>
             </XStack>
           ) : null}
-          {!anon ? (
+          {!anon && drawer ? (
             <YStack data-slot="sidebar-account" pt="$2" mt="$1.5" borderTopWidth={1} borderColor="$edge" shrink={0}>
               <Account host={host} onOrg={handleOrg} />
             </YStack>
