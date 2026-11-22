@@ -8,7 +8,7 @@ const { empty, asked } = vi.hoisted(() => ({ empty: vi.fn(), asked: [] as unknow
 const { MARKS } = vi.hoisted(() => {
   const mark = () => () => null
   const one = { icon: mark(), make: mark() }
-  return { MARKS: { chat: one, dev: one, design: one, studio: one, tabs: one, library: one, scheduled: one, customize: one } }
+  return { MARKS: { chat: one, dev: one, design: one, tabs: one, library: one, scheduled: one, customize: one } }
 })
 vi.mock('@hanzo/ai/react', () => ({ useAi: () => ({}) }))
 vi.mock('@hanzo/ui', () => ({ Dialog: () => null, DialogContent: () => null, DialogTitle: () => null,
@@ -101,21 +101,21 @@ describe('Go to', () => {
 
   test('the products lead, then Dev’s places from its registry, New run left to the action', () => {
     const { top } = places(host, vi.fn())
-    expect(top.slice(0, 7).map((r) => r.label)).toEqual(['Chat', 'Dev', 'Studio', 'Tabs', 'Team', 'Projects', 'Machines'])
+    expect(top.slice(0, 7).map((r) => r.label)).toEqual(['Chat', 'Dev', 'Design', 'Tabs', 'Team', 'Projects', 'Machines'])
     expect(top.some((r) => r.label === 'New run')).toBe(false)
   })
 
-  test('a place two registries hold is listed once; Studio’s places are Studio’s', () => {
+  test('a place two registries hold is listed once; Design’s places are Design’s', () => {
     const go = vi.fn()
     const { top, deep } = places(host, go)
     expect([...top, ...deep].filter((r) => r.label === 'Machines')).toHaveLength(1)
-    take(deep, 'studio-explore')
-    expect(go).toHaveBeenCalledWith('/studio/explore')
+    take(deep, 'design-explore')
+    expect(go).toHaveBeenCalledWith('/design/explore')
   })
 
   test('without a host the products and the site’s pages are still there', () => {
     const { top, deep } = places(undefined, vi.fn())
-    expect(top.map((r) => r.id)).toEqual(['chat', 'dev', 'studio', 'tabs', 'settings', 'referral', 'beta', 'help-help'])
+    expect(top.map((r) => r.id)).toEqual(['chat', 'dev', 'design', 'tabs', 'settings', 'referral', 'beta', 'help-help'])
     expect(deep.every((r) => r.where === 'Help')).toBe(true)
   })
 })
@@ -130,7 +130,7 @@ describe('Actions', () => {
 
   test('what the host cannot do is not offered', () => {
     const ids = (h?: Host) => actions(h, vi.fn(), () => {}, () => {}).map((a) => a.id)
-    expect(ids(host)).toEqual(['new-chat', 'new-task', 'new-creation', 'new-scheduled', 'make', 'upload', 'model', 'org', 'keys', 'logout'])
+    expect(ids(host)).toEqual(['new-chat', 'new-task', 'new-scheduled', 'make', 'upload', 'model', 'org', 'keys', 'logout'])
     expect(ids({ ...host, chooseTheme: () => {} } as Host)).toContain('theme')
     expect(ids()).not.toContain('upload')
     expect(ids()).not.toContain('make')

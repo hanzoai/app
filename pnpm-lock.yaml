@@ -37,8 +37,8 @@ catalogs:
       specifier: 1.3.3
       version: 1.3.3
     '@hanzo/studio':
-      specifier: 0.1.12
-      version: 0.1.12
+      specifier: 0.1.22
+      version: 0.1.22
     '@hanzo/tabs':
       specifier: github:hanzo-inc/tabs
       version: 0.1.19
@@ -92,6 +92,7 @@ catalogs:
       version: 4.1.11
 
 overrides:
+  '@hanzo/font': 1.11.0
   '@hanzo/gui': 8.3.5
   '@hanzogui/animations-css': 8.3.5
   '@hanzogui/config': 8.3.5
@@ -167,7 +168,7 @@ importers:
         version: 1.0.26(react@19.2.8)
       '@hanzo/studio':
         specifier: 'catalog:'
-        version: 0.1.12(8ddf06ba13a7722c7c6cffda52d57fee)
+        version: 0.1.22(8ddf06ba13a7722c7c6cffda52d57fee)
       '@hanzo/tabs':
         specifier: 'catalog:'
         version: https://codeload.github.com/hanzo-inc/tabs/tar.gz/337ddec8f5c77fc759c920b04a6fce87f4aaae47(@hanzo/gui@8.3.5(react-dom@19.2.8(react@19.2.8))(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(react@19.2.8))(@hanzo/ui@8.33.6(patch_hash=55c0ec6cbb062072f0fb16726890e144dc6564d5e5a7e9ce62c5fb86faa38649)(371139150c118ee5b2dcedf0a66ee0df))(lucide-react@1.42.0(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -768,8 +769,8 @@ packages:
   '@hanzo/events@0.3.4':
     resolution: {integrity: sha512-pW+dHXJIDbUnP3F9En+LhR9IACBDT49etvK4pD9RQQcGR+wbszzUSRwi+8kjFgqL9YfNKZ4Uk/XPZWxksZdP5Q==}
 
-  '@hanzo/font@1.9.2':
-    resolution: {integrity: sha512-CXKXhfRgAj9SnhRJtraS6jEToGz74hbrMSJm85Kp8y6uN64zOH+IvohpWT/Surh9Qn1KWIGXsIx216JMa++X6A==}
+  '@hanzo/font@1.11.0':
+    resolution: {integrity: sha512-aZVL3k4ub3PP2WmwB9jKaTtfxXZ0wTpNaJR1HoCjpLiCaDBrg993081yVctRCIp89qcFHQkAptP8j3lYu1edjQ==}
     peerDependencies:
       next: '>=13.2.0'
 
@@ -832,8 +833,8 @@ packages:
       react:
         optional: true
 
-  '@hanzo/studio@0.1.12':
-    resolution: {integrity: sha512-CFAU/P5Nm8zFQ8qrSSMP5Iv0VQQhRbDd/ca3npgdYV7MGM7lNp1lVBFf01PNVOVga4wVhlAxiLz5puALpwDu5w==}
+  '@hanzo/studio@0.1.22':
+    resolution: {integrity: sha512-/3GpNPZIvNMoOkurvuLjBsWZNYwghEGTq8GTA2xv8v3xNp9YfEhZWQ4hRmfZbxyGG27MG2awb3+ITGX0L8Trmw==}
     engines: {node: '>=22.18'}
     peerDependencies:
       '@hanzo/build': '>=0.2.85'
@@ -4077,7 +4078,7 @@ snapshots:
 
   '@hanzo/events@0.3.4': {}
 
-  '@hanzo/font@1.9.2(next@16.3.8(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.65.1)(@types/node@26.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))':
+  '@hanzo/font@1.11.0(next@16.3.8(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.65.1)(@types/node@26.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))':
     dependencies:
       next: 16.3.8(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.65.1)(@types/node@26.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
 
@@ -4186,7 +4187,7 @@ snapshots:
       '@hanzogui/lucide-icons-2': 8.3.5(react-dom@19.2.8(react@19.2.8))(react-native-svg@15.15.5(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(react@19.2.8))(react@19.2.8)
       react: 19.2.8
 
-  '@hanzo/studio@0.1.12(8ddf06ba13a7722c7c6cffda52d57fee)':
+  '@hanzo/studio@0.1.22(8ddf06ba13a7722c7c6cffda52d57fee)':
     dependencies:
       '@hanzo/build': 0.2.148(40b5ae7c48ccf4ba0ffcf1666f758b7f)
       '@hanzo/composer': 0.2.0(@hanzo/gui@8.3.5(react-dom@19.2.8(react@19.2.8))(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(react@19.2.8))(react@19.2.8)
@@ -4221,7 +4222,7 @@ snapshots:
       '@hanzo/data': 1.2.4(@hanzo/gui@8.3.5(react-dom@19.2.8(react@19.2.8))(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react-native-svg@15.15.5(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(react@19.2.8))(react@19.2.8)
       '@hanzo/design': 0.5.38
       '@hanzo/event': 0.3.67(react@19.2.8)
-      '@hanzo/font': 1.9.2(next@16.3.8(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.65.1)(@types/node@26.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))
+      '@hanzo/font': 1.11.0(next@16.3.8(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.65.1)(@types/node@26.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))
       '@hanzo/gui': 8.3.5(react-dom@19.2.8(react@19.2.8))(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(react@19.2.8)
       '@hanzo/logo': 1.0.26(react@19.2.8)
       '@hanzo/products': 0.2.6(@hanzogui/lucide-icons-2@8.3.5(react-dom@19.2.8(react@19.2.8))(react-native-svg@15.15.5(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1))(react@19.2.8))(react@19.2.8))(react@19.2.8)

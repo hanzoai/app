@@ -1,7 +1,7 @@
 const { MARKS } = vi.hoisted(() => {
   const mark = () => () => null
   const one = { icon: mark(), make: mark() }
-  return { MARKS: { chat: one, dev: one, design: one, studio: one, tabs: one, library: one, scheduled: one, customize: one } }
+  return { MARKS: { chat: one, dev: one, design: one, tabs: one, library: one, scheduled: one, customize: one } }
 })
 vi.mock('./Usage', () => ({ UsageProvider: ({ children }: { children: unknown }) => children }))
 import { createElement, Fragment, type ReactNode } from 'react'
@@ -19,12 +19,12 @@ const { part, stub, state, through } = vi.hoisted(() => {
     createElement('div', { 'data-slot': slot, 'data-pt': pt as string | undefined, 'data-pb': pb as string | undefined, 'data-pe': paddingInlineEnd as string | undefined, 'data-display': display as string | undefined }, children)
   const stub = (slot: string) => (props: { places?: unknown[]; children?: ReactNode }) =>
     createElement('div', { 'data-slot': slot, 'data-places': props.places === undefined ? 'none' : String(props.places.length) }, props.children)
-  const state = { path: '/beta', drawer: 'shut' as 'shut' | 'open' }
+  const state = { path: '/beta', drawer: 'shut' as 'shut' | 'open', leaveAt: '', pushed: [] as string[] }
   return { part, stub, state, through }
 })
 
 vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s }) }))
-vi.mock('lucide-react', () => ({ ChevronLeft: () => null, ChevronRight: () => null, Clapperboard: () => null, RefreshCw: () => null, Sparkles: () => null, Workflow: () => null }))
+vi.mock('lucide-react', () => ({ ChevronLeft: () => null, ChevronRight: () => null, RefreshCw: () => null, Sparkles: () => null, Workflow: () => null }))
 vi.mock('./icons', () => ({ CHEVRON: 2.25, MARKS }))
 vi.mock('@hanzo/ai/react', () => ({ AiProvider: through }))
 vi.mock('@hanzo/gui', () => ({ Text: part, XStack: part, YStack: part }))
@@ -36,13 +36,13 @@ vi.mock('@hanzo/build', () => ({ MARKS,
   route: () => ({ kind: 'home' }),
   tabs: () => [],
 }))
-vi.mock('@hanzo/studio', () => ({ nav: () => [{ id: 'studio', links: [] }], directorNav: () => [{ id: 'studio', links: [] }], flowNav: () => [{ id: 'flow', links: [] }], Studio: stub('studio') }))
+vi.mock('@hanzo/studio', () => ({ nav: () => [{ id: 'make', links: [] }], directorNav: () => [{ id: 'make', links: [] }], flowNav: () => [{ id: 'flow', links: [] }], Studio: stub('studio') }))
 vi.mock('./lib/ai', () => ({ useAi: () => ({ client: null }) }))
 vi.mock('./Chat', () => ({ Chat: stub('chat') }))
 vi.mock('./Sidebar', () => ({ Sidebar: stub('app-column') }))
 vi.mock('./Learning', () => ({ Learning: () => null }))
 // The builder's spend question is Confirm's (Confirm.gui.test.tsx); here only that App draws it.
-vi.mock('./Confirm', () => ({ useBuildSpend: () => ({ confirm: async () => false, dialog: null }) }))
+vi.mock('./Confirm', () => ({ useBuildSpend: () => ({ confirm: async () => false, dialog: null }), useMaking: () => ({ spend: async () => false, dialog: null }) }))
 vi.mock('./dev', () => ({ isPlans: () => false, leave: () => {}, useDevHost: () => ({ go: () => {}, path: '', token: () => '' }) }))
 vi.mock('./Gate', () => ({ Gate: through }))
 vi.mock('./Report', () => ({ Report: through, reportProblem: () => {} }))
@@ -88,7 +88,8 @@ vi.mock('./lib/host', () => ({
   go: () => {},
   hosted: (id: string) => `/apps/${id}`,
   settings: () => '/settings',
-  studio: (at: string) => `/studio/${at}`,
+  design: (at: string) => `/design/${at}`,
+  flow: (at: string) => `/flow/${at}`,
   talk: () => '/chat',
   visit: () => {},
   place: (p: string) =>

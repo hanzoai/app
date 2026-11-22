@@ -6,7 +6,7 @@
 // An empty field lists Recent (the reader's chats and Dev tasks, newest first,
 // each with its kind's icon), Actions, and Go to: the products, the places of
 // the app and the apps in beta the reader may open. A query searches all of it, deeper places too (Settings' pages,
-// Customize's tabs, the Library's kinds, Studio's places, Help), and the
+// Customize's tabs, the Library's kinds, Design's places, Help), and the
 // reader's chats, Dev tasks, projects, agents, skills and connectors by name;
 // each group keeps its best five and the group with the best answer leads
 // (seek.ts `find`). A row opens where it lives; an action runs.
@@ -104,7 +104,7 @@ import { openModelPicker } from './lib/model-picker'
 import { useSignOut, useSigningOut } from './lib/signout'
 import { choose } from './lib/session'
 import { getDevMode, rememberSettingsReturn, setDevMode, useDevMode } from './lib/dev-mode'
-import { app, design, flow, hosted, paged, settings, studio, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
+import { app, design, flow, hosted, paged, settings, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
 import { BETAS } from './lib/betas'
 import { useBetas } from './Betas'
 import { tidy } from './lib/title'
@@ -199,7 +199,7 @@ export function places(host: Host | undefined, go: (address: string) => void, t:
     { id: 'dev', label: 'Dev', icon: <MARKS.dev.icon {...ICON} />, run: () => go(app('')) },
     ...(!anon
       ? [
-          { id: 'studio', label: 'Studio', icon: <MARKS.studio.icon {...ICON} />, run: () => go(studio('')) },
+          { id: 'design', label: 'Design', icon: <MARKS.design.icon {...ICON} />, run: () => go(design('')) },
           { id: 'tabs', label: 'Tabs', icon: <MARKS.tabs.icon {...ICON} />, run: () => go(TERMINALS) },
           ...(host ? [{ id: 'team', label: 'Team', icon: <Users {...ICON} />, keywords: ['workspace'], run: () => out(WORKSPACE) }] : []),
           ...(host ? rows(nav(host, builder, t).map((g) => ({ links: g.links.filter((l) => l.id !== NEW) })), '', 'dev') : []),
@@ -224,7 +224,7 @@ export function places(host: Host | undefined, go: (address: string) => void, t:
           ...rows(sections(host, builder, t).map((g) => ({ links: g.links.filter((l) => paged(l.id)) })), t('Settings'), 'settings'),
           ...rows(tabs(host, builder, t), t('Customize'), 'customize'),
           ...rows(library(host, builder, t).slice(1), t('Library'), 'library'),
-          ...rows(made(host, (p) => go(studio(p))), 'Studio', 'studio').filter((a) => a.id !== `studio-${NEW}`),
+          ...rows(made(host, (p) => go(design(p))), 'Design', 'design').filter((a) => a.id !== `design-${NEW}`),
         ]
       : host && anon
         ? [...rows(library(host, builder, t).slice(1), t('Library'), 'library')]
@@ -261,7 +261,6 @@ export function actions(host: Host | undefined, go: (address: string) => void, s
   const list: (Action | false | undefined)[] = [
     { id: 'new-chat', label: t('New chat'), icon: <MARKS.chat.make {...ICON} />, keywords: ['chat', 'new', 'conversation'], run: () => (empty(), go(talk())) },
     { id: 'new-task', label: t('New run'), icon: <MARKS.dev.make {...ICON} />, keywords: ['run', 'dev', 'task', 'build'], run: () => go(app('')) },
-    !anon && { id: 'new-creation', label: t('New Studio creation'), icon: <MARKS.studio.make {...ICON} />, keywords: ['image', 'video'], run: () => go(studio('')) },
     !anon && { id: 'new-scheduled', label: t('New scheduled task'), icon: <MARKS.scheduled.icon {...ICON} />, keywords: ['automation'], run: () => go(app(written({ kind: 'automation', id: 'new' }))) },
     !!make && { id: 'make', label: t('Make something new'), icon: make.icon, keywords: ['template', 'gallery', 'library'], run: () => make.onPress?.() },
     !!upload && { id: 'upload', label: t('Upload'), icon: upload.icon, keywords: ['file', 'library'], run: () => upload.onPress?.() },
@@ -339,7 +338,7 @@ export function Search({
   host,
 }: {
   onClose: () => void
-  /** Moves the app to one of its addresses (lib/host `talk`, `app`, `studio`). */
+  /** Moves the app to one of its addresses (lib/host `talk`, `app`, `design`). */
   go: (address: string) => void
   /** The frame's own places; one with a palette row's id stands in for it, the rest follow under Go to. */
   actions?: Action[]
@@ -364,12 +363,10 @@ export function Search({
   const { open: opened } = useBetas()
 
   const groups = useMemo<CommandMenuGroup[]>(() => {
-    const { top: allTop, deep: allDeep } = places(host, go, t)
-    const top = allTop.filter((a) => a.id !== 'studio' || opened('studio'))
-    const deep = allDeep.filter((a) => !a.id.startsWith('studio-') || opened('studio'))
+    const { top, deep } = places(host, go, t)
     const swap = (a: Action) => frame.find((b) => b.id === a.id) ?? a
     // The apps in beta this reader may open, each where it lives (the rail's More).
-    const granted: Action[] = BETAS.filter((b) => b.href && b.id !== 'studio' && opened(b.id)).map((b) => ({
+    const granted: Action[] = BETAS.filter((b) => b.href && opened(b.id)).map((b) => ({
       id: `beta-${b.id}`,
       label: b.name,
       icon: <Sparkles {...ICON} />,
@@ -379,9 +376,7 @@ export function Search({
       run: () => (b.embed !== undefined ? go(hosted(b.id)) : (b.href as string).startsWith('/') ? go(b.href as string) : out(b.href as string)),
     }))
     const here = [...top.map(swap), ...frame.filter((b) => !top.some((a) => a.id === b.id)), ...granted]
-    const baseDoing = actions(host, go, () => void signOut(), () => (setQuery(''), setKeys(true)), t, signingOut).filter(
-      (a) => a.id !== 'new-creation' || opened('studio'),
-    )
+    const baseDoing = actions(host, go, () => void signOut(), () => (setQuery(''), setKeys(true)), t, signingOut)
     const lightNow = isLightTheme(host)
     const openKeys = () => {
       setQuery('')

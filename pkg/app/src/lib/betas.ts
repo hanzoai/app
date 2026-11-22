@@ -108,7 +108,6 @@ export const BETAS: readonly Beta[] = [
   { id: 'authz', name: 'Authz', line: phrase('Fine-grained authorization, Zanzibar style'), group: 'Security', href: `${PLATFORM}/authz` },
   { id: 'hsm', name: 'HSM', line: phrase('Hardware-backed keys across cloud KMSs'), group: 'Security', href: `${PLATFORM}/hsm` },
 
-  { id: 'studio', name: 'Studio', line: phrase('Create images, video, ads and posts, then send them to Post'), group: 'Creative', href: '/studio' },
   { id: 'koma', name: 'Koma', line: phrase('Cinematic video with character continuity and shot-level control'), group: 'Creative' },
   { id: 'iro', name: 'Iro', line: phrase('High-fidelity images, creative direction and consistent visual assets'), group: 'Creative' },
   { id: 'mori', name: 'Mori', line: phrase('3D assets, materials, environments and spatially consistent scenes'), group: 'Creative' },
@@ -136,8 +135,7 @@ export const opens = (id: string, flags: Record<string, boolean>, sudo: boolean,
   if (flags?.[key(id)] === true) return true
   if (local) return true
   if ((id === 'science' || id === 'notebook') && hanzoAdmin()) return true
-  // Studio is open to every signed-in reader; Flow is still by switch.
-  if (id === 'studio') return true
+  // Flow is by its switch alone. (Studio was open to every reader, so its switch gated nothing: it is Design now.)
   if (id === 'flow') return false
   return Boolean(sudo || hanzoAdmin())
 }

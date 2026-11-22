@@ -9,7 +9,7 @@
 // one it could stand behind. "Don't ask again for this" is remembered per kind
 // of spend (lib/spend), so one yes never waves another kind through.
 
-import { useCallback, useId, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useCallback, useId, useRef, useState, type ReactNode } from 'react'
 import { useI18n } from '@hanzo/i18n/react'
 import { Button, Checkbox, Dialog, DialogContent, DialogDescription, DialogTitle, Label, XStack } from '@hanzo/ui'
 import { fromBuild, rememberable, trust, trusted, type Spend } from './lib/spend'
@@ -246,4 +246,36 @@ export function useBuildSpend(): { confirm: (spend: BuildSpend) => Promise<boole
     [ask],
   )
   return { confirm, dialog }
+}
+
+/** What Design and Flow (@hanzo/studio) spend on, each its own kind in lib/spend. */
+export type Making = Extract<Spend, 'design-image' | 'design-video' | 'design-gpu' | 'flow-run' | 'flow-mutate'>
+
+/**
+ * Design's and Flow's paid calls through the one confirm. @hanzo/studio is handed `spend` on its host and
+ * awaits it where each paid call starts: true once the person says yes (at once for a kind they trusted),
+ * false for no. A kind not listed here is never started, so a call the app does not know cannot spend.
+ */
+export function useMaking(): { spend: (kind: string, asked?: Asked) => Promise<boolean>; dialog: ReactNode } {
+  const { t } = useI18n()
+  const asks: Record<Making, ReturnType<typeof useSpend>> = {
+    'design-image': useSpend('design-image', t('Make this picture?'), t('This makes one picture.'), t('Make it')),
+    'design-video': useSpend('design-video', t('Make this clip?'), t('This makes one short video clip, which keeps rendering if you leave this page.'), t('Make clip')),
+    'design-gpu': useSpend('design-gpu', t('Render on your GPU?'), t("This renders on your organization's GPU, where it keeps going if you leave this page."), t('Start render')),
+    'flow-run': useSpend('flow-run', t('Run this flow?'), t('This queues the flow on the GPU, where it keeps running if you leave this page.'), t('Run flow')),
+    'flow-mutate': useSpend('flow-mutate', t('Ask Copilot to change the flow?'), t('This sends your words and the flow to a model.'), t('Ask Copilot')),
+  }
+  // The host that carries `spend` is memoized, so `spend` stays one function and reads the latest asks.
+  const latest = useRef(asks)
+  latest.current = asks
+  const spend = useCallback(
+    (kind: string, asked?: Asked) =>
+      new Promise<boolean>((done) => {
+        const one = latest.current[kind as Making]
+        if (!one) return done(false)
+        one.ask(() => done(true), () => done(false), asked)
+      }),
+    [],
+  )
+  return { spend, dialog: Object.values(asks).map((a, i) => <Fragment key={i}>{a.dialog}</Fragment>) }
 }

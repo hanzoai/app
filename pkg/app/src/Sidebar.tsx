@@ -64,7 +64,7 @@ import { ago, PINNED, UNTITLED_RUN, type Recent } from './recent'
 import { empty } from './open'
 import { useSpan } from './span'
 import { useDevMode } from './lib/dev-mode'
-import { app, design, flow, hosted, studio, talk, TERMINALS, type Place } from './lib/host'
+import { app, design, flow, hosted, talk, TERMINALS, type Place } from './lib/host'
 import { enter, LOGIN, signUp } from './lib/destination'
 import { HOSTED_APPS } from './lib/hosted'
 import { pick } from './lib/session'
@@ -132,7 +132,7 @@ function resolvePlaceHref(id: string, mode: Place['mode']): string | null {
   }
   switch (id) {
     case NEW:
-      return mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'studio' ? studio('') : mode === 'tabs' ? TERMINALS : talk()
+      return mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'tabs' ? TERMINALS : talk()
     case 'projects':
       return app('-/projects')
     case 'issues':
@@ -856,7 +856,6 @@ export function Sidebar({
   onChat,
   onDev,
   onDesign,
-  onStudio,
   onTabs,
   onOrg,
   inside = null,
@@ -884,7 +883,6 @@ export function Sidebar({
   onChat?: () => void
   onDev?: () => void
   onDesign?: () => void
-  onStudio?: () => void
   onTabs?: () => void
   onOrg?: (org: string) => void
   inside?: string | null
@@ -894,7 +892,7 @@ export function Sidebar({
   rail?: ReactNode
   /** What stands at its foot: the drawer's account and New chat. */
   foot?: ReactNode
-  /** The mode's places, where they are not Dev's (Studio's `nav`). */
+  /** The mode's places, where they are not Dev's (@hanzo/studio's `nav`). */
   places?: { id: string; label: string; links: RailLink[] }[]
   /** The host Design is mounted with (App.tsx `maker`): where its conversations are read and opened. */
   made?: Host
@@ -940,7 +938,7 @@ export function Sidebar({
   const dev = (p: string) => host.go(p)
   const runtime = useScope()?.runtime
   const at = mode === 'dev' ? raised(host.path) : null
-  const Make = mode === 'chat' || mode === 'dev' || mode === 'tabs' || mode === 'studio' ? MARKS[mode].make : MARKS.chat.make
+  const Make = mode === 'chat' || mode === 'dev' || mode === 'tabs' ? MARKS[mode].make : MARKS.chat.make
 
   const scheduled = useScheduled(host, dev, at === 'scheduled')
   // The names a person gave their devices and shells, read from their account once per page (hanzo-inc/app issue 311).
@@ -1010,7 +1008,6 @@ export function Sidebar({
     else if (mode === 'tabs') dispatchTabsAction({ kind: 'shell' })
     else if (mode === 'dev') dev('')
     else if (mode === 'design') made ? made.go('') : go(design(''))
-    else if (mode === 'studio') made ? made.go('') : go(studio(''))
     else if (mode === 'flow') made ? made.go('') : go(flow(''))
     else create()
   }
@@ -1023,7 +1020,6 @@ export function Sidebar({
     onChat: onChat ?? (() => go(talk())),
     onDev: onDev ?? (() => go(app(''))),
     onDesign: onDesign ?? (() => go(design(''))),
-    onStudio: onStudio ?? (() => go(studio(''))),
     onTabs: onTabs ?? (() => go(TERMINALS)),
     go,
     pins,
@@ -1041,14 +1037,8 @@ export function Sidebar({
       return links.length ? [{ id: 'dev-sub', label: '', links }] : []
     }
     if (entryId === 'design' && mode === 'design' && places) {
-      const links = places
-        .flatMap((g) => g.links)
-        .filter((l) => l.id !== NEW && !(l.id === 'library' && nav.shownInPrimary.has('library')))
-      return links.length ? [{ id: 'design-sub', label: '', links }] : []
-    }
-    if (entryId === 'studio' && mode === 'studio' && places) {
       const links = places.flatMap((g) => g.links).filter((l) => l.id !== NEW)
-      return links.length ? [{ id: 'studio-sub', label: '', links }] : []
+      return links.length ? [{ id: 'design-sub', label: '', links }] : []
     }
     if (entryId === 'flow' && mode === 'flow' && places) {
       const links = places.flatMap((g) => g.links).filter((l) => l.id !== NEW)
@@ -1172,13 +1162,13 @@ export function Sidebar({
   // A guest's New is always a chat: Chat is the one place a guest's work goes.
   const primaryNewLabel = anon
     ? t('New chat')
-    : mode === 'dev' ? t('New run') : mode === 'design' ? t('New design') : mode === 'studio' ? t('New creation') : mode === 'flow' ? t('New flow') : mode === 'tabs' ? t('New terminal') : t('New chat')
+    : mode === 'dev' ? t('New run') : mode === 'design' ? t('New design') : mode === 'flow' ? t('New flow') : mode === 'tabs' ? t('New terminal') : t('New chat')
 
   // THE NEW ROW (and a guest's Images) STANDS IN EVERY SECTION, so Chat, Dev, Design, Library and Tabs keep
   // their place under the cursor: drawn in some sections and not others, it moved every product row by one, and a
   // press meant for Dev landed on Design. A place that takes the sidebar (`at`) has a head of its own instead.
   const showPrimaryNew = !at
-  const showRecents = !(mode === 'dev' && runtime) && !(mode === 'hosted' || mode === 'beta' || mode === 'tabs' || mode === 'studio' || mode === 'flow' || anon || at)
+  const showRecents = !(mode === 'dev' && runtime) && !(mode === 'hosted' || mode === 'beta' || mode === 'tabs' || mode === 'flow' || anon || at)
 
   return (
     <TooltipProvider delay={120}>

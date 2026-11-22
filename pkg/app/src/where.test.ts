@@ -20,7 +20,6 @@ describe('brand', () => {
     expect(wordmark('chat')).toBe('Chat')
     expect(wordmark('dev')).toBe('Dev')
     expect(wordmark('design')).toBe('Design')
-    expect(wordmark('studio')).toBe('Studio')
     expect(wordmark('flow')).toBe('Flow')
     expect(wordmark('tabs')).toBe('Tabs')
     expect(wordmark('beta')).toBe('Betas')

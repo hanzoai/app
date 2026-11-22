@@ -37,7 +37,7 @@ describe('what the palette lists', () => {
   const go = {
     id: 'go',
     label: 'Go to',
-    items: [hit('Chat'), hit('Studio'), hit('Settings'), hit('Account', { keywords: ['Settings', 'profile'] }), hit('Explore', { keywords: ['Studio'] })],
+    items: [hit('Chat'), hit('Design'), hit('Settings'), hit('Account', { keywords: ['Settings', 'profile'] }), hit('Explore', { keywords: ['Design'] })],
   }
 
   test('an empty field: Recent, newest first, then the idle groups as they are', () => {
@@ -59,11 +59,11 @@ describe('what the palette lists', () => {
     expect(groups[0].items.map((r) => r.label)).toEqual(['Settings', 'Account'])
   })
 
-  test('"studio" finds Studio first, then its places, and New Studio creation under Actions', () => {
-    const groups = find('studio', chats, [], [{ ...actions, items: [...actions.items, hit('New Studio creation')] }, go])
+  test('"design" finds Design first, then its places, and New Design under Actions', () => {
+    const groups = find('design', chats, [], [{ ...actions, items: [...actions.items, hit('New Design')] }, go])
     expect(groups.map((g) => g.label)).toEqual(['Go to', 'Actions'])
-    expect(groups[0].items.map((r) => r.label)).toEqual(['Studio', 'Explore'])
-    expect(groups[1].items.map((r) => r.label)).toEqual(['New Studio creation'])
+    expect(groups[0].items.map((r) => r.label)).toEqual(['Design', 'Explore'])
+    expect(groups[1].items.map((r) => r.label)).toEqual(['New Design'])
   })
 
   test('a chat is found by its title, and its group leads when it is the best answer', () => {

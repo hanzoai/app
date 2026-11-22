@@ -37,7 +37,7 @@ import {
   WandSparkles,
 } from 'lucide-react'
 import type { Host } from '@hanzo/build'
-import { app, design, flow, settings, studio, talk, TERMINALS, type Place } from './lib/host'
+import { app, design, flow, settings, talk, TERMINALS, type Place } from './lib/host'
 import { rememberSettingsReturn } from './lib/dev-mode'
 import { useOpen } from './open'
 import { usePinnedNav, type Pins } from './Rail'
@@ -76,7 +76,7 @@ const fullUrl = (path: string): string => {
 const placePath = (id: string, mode: Place['mode']): string | null => {
   switch (id) {
     case 'new':
-      return mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'studio' ? studio('') : talk()
+      return mode === 'dev' ? app('') : mode === 'design' ? design('') : talk()
     case 'projects':
       return app('-/projects')
     case 'issues':
@@ -112,9 +112,6 @@ const railPath = (slot: string): string | null => {
     case 'rail-design':
     case 'place-design':
       return design('')
-    case 'rail-studio':
-    case 'place-studio':
-      return studio('')
     case 'rail-flow':
     case 'place-flow':
       return flow('')

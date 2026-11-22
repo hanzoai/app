@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 import { SECTIONS } from '@hanzo/build/route'
-import { app, BETA, CHAT, DEV, dev, follow, page, paged, place, resume, SETTINGS, settings, studio, talk, visit } from './host'
+import { app, BETA, CHAT, DEV, design, dev, follow, page, paged, place, resume, SETTINGS, settings, talk, visit } from './host'
 import { configure } from '../where'
 
 const RUN = `sess_${'0123456789abcdef'.repeat(2)}`
@@ -131,7 +131,7 @@ describe('the app is two roots of paths', () => {
   })
 })
 
-describe('Studio is the third root', () => {
+describe('Design is the third root', () => {
   test('/tabs is Tabs, drawn in the app, and only /tabs', () => {
     expect(place('/tabs')).toEqual({ mode: 'tabs' })
     expect(place('/tabs/')).toEqual({ mode: 'tabs' })
@@ -142,18 +142,26 @@ describe('Studio is the third root', () => {
     expect(page('/beta')).toBe(BETA)
   })
 
-  test('a path under /studio is Studio at its own address, and Studio writes it back', () => {
-    expect(place('/studio')).toEqual({ mode: 'studio', at: '' })
-    expect(place('/studio/')).toEqual({ mode: 'studio', at: '' })
-    expect(place('/studio/c/abc')).toEqual({ mode: 'studio', at: 'c/abc' })
-    expect(place('/studio/library')).toEqual({ mode: 'studio', at: 'library' })
-    expect(studio('')).toBe('/studio')
-    expect(studio('c/abc')).toBe('/studio/c/abc')
-    expect(studio('/explore')).toBe('/studio/explore')
-    expect(place('/studios'), 'a neighbour of /studio is not Studio').toBeNull()
+  test('a path under /design is Design at its own address, and Design writes it back', () => {
+    expect(place('/design')).toEqual({ mode: 'design', at: '' })
+    expect(place('/design/c/abc')).toEqual({ mode: 'design', at: 'c/abc' })
+    expect(design('')).toBe('/design')
+    expect(design('/explore')).toBe('/design/explore')
+  })
+
+  test('Studio was Design under a second name: every /studio address opens Design, and no mode is Studio', () => {
+    expect(place('/studio')).toEqual({ mode: 'design', at: '' })
+    expect(place('/studio/')).toEqual({ mode: 'design', at: '' })
+    expect(place('/studio/c/abc')).toEqual({ mode: 'design', at: 'c/abc' })
+    expect(page('/studio/c/abc')).toBe('/design')
+    expect(place('/studios'), 'a neighbour of /studio is not Design').toBeNull()
+  })
+
+  test("Design's own Library is gone: its old address opens the app's one Library", () => {
+    expect(place('/design/library')).toEqual(place('/library'))
+    expect(place('/studio/library')).toEqual(place('/library'))
   })
 })
-
 
 // ON THE APP'S HOST CHAT IS THE ROOT. hanzo.app/ is a new conversation and /chat forwards there (the edge); a
 // conversation keeps its path, /chat/<id>, everywhere, so every link to one still opens it. Elsewhere Chat is /chat.
