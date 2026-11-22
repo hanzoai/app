@@ -43,7 +43,7 @@ import {
 import { Chat as ChatSurface, EFFORTS, Failure, Parts, Tune, useFamilies, words, type ComposerProps, type Said } from "@hanzo/ui/chat";
 import { carriedIn, carrying, compose, partsOf, said as told, weigh } from "./lib/attach";
 import { download, dropped, fileOf, pct, readable, refOf, retrieve, type Api, type FileRef, type WorkFile } from "./lib/files";
-import { conversation, drop, hold, landed, localOf, retry, retryable, spend, take, useDraft, usePane, useWorkFile, type Held, type Via } from "./pane";
+import { conversation, drop, hold, landed, localOf, readLocal, retry, retryable, spend, take, useDraft, usePane, useWorkFile, type Held, type Via } from "./pane";
 import { Face, brief as castBrief, join, roleOf, castTurn, roster as rosterLine, rosterOf, speakers, speaksOf, voiceOf } from "./cast";
 import { cleanForSpeech, speakAgent } from "./speech";
 import { AgentMaker, HOUSE, useAgentShelf, useCrew } from "./crew";
@@ -133,7 +133,7 @@ import { requestUpgrade, Upgrade, useFree, type Ask } from './Upgrade';
 import { enter, LOGIN, signUp } from './lib/destination';
 import { first } from './lib/first';
 import { BAD } from "./lib/mix";
-import { conversation as continued } from './lib/local'
+import { conversation as continued, partOf, type Part } from './lib/local'
 import { brand, site, where } from './where'
 import { useWindowed } from './windowed'
 import { BAND, HEAD, inPane, INSET, TOUCH_HEAD } from './ground'
@@ -1979,7 +1979,7 @@ function Thread({
     anonStopped.current = true;
     anonRequest.current?.abort();
   }, []);
-  const sendAnon = useCallback(async (rawText: string) => {
+  const sendAnon = useCallback(async (rawText: string, attached: readonly Part[] = []) => {
     const clean = (rawText || "").trim();
     if (!clean) return;
     try {
@@ -1990,7 +1990,7 @@ function Thread({
     } catch {}
     // A host's own engine (`configure({ local })`) is not the free lane: no turn limit, no gate.
     const local = where().local
-    const asked = local ? continued(turns.current, clean, new Set(["…", STOPPED, DROPPED, NO_ANSWER, LOCAL_FAILED])) : []
+    const asked = local ? continued(turns.current, clean, new Set(["…", STOPPED, DROPPED, NO_ANSWER, LOCAL_FAILED]), attached) : []
     if (!local && anonCountRef.current >= MAX_ANON_TURNS) {
       const uId = `u-anon-gate-${Date.now()}`;
       apply.current((held) => [...held, { id: uId, role: "user", content: clean }]);
@@ -2224,12 +2224,12 @@ function Thread({
    * it leaves its place in the thread and is asked at the end, so it is asked
    * once and not twice.
    */
-  const speak = useCallback((text: string, again?: string) => {
+  const speak = useCallback((text: string, again?: string, attached?: readonly Part[]) => {
     if (!text) return;
     // Activation: the first question this browser asks (a retry is not one).
     if (!again) first("chat_message");
     if (anonymous) {
-      void sendAnon(text);
+      void sendAnon(text, attached);
       return;
     }
     if (!streaming.current && (again || resolvingNow.current || turns.current.some(blank))) {
@@ -2807,6 +2807,21 @@ function Thread({
 
   const deliver = (text: string, extra: string) => {
     const holding = files.slice();
+    // Signed out, files are only held on a host with its own engine (pane.ts `hold`): they are read here and go to it as parts.
+    if (anonymous && holding.length) {
+      void (async () => {
+        const read = await Promise.all(holding.map(readLocal));
+        const attached = holding.flatMap((h, i) => {
+          const got = read[i];
+          return got ? [partOf(h.name, got)] : [];
+        });
+        if (!attached.length && !text) return;
+        setDraft("");
+        spend(at);
+        guarded(text || `What is in ${names(holding)}?`, undefined, attached);
+      })();
+      return;
+    }
     const earlier = carriedIn(chat.messages);
     if (!holding.length && !earlier.length) {
       setDraft("");

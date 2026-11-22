@@ -13,6 +13,8 @@ import type { BillingPlan } from './lib/plans'
 import type { Key } from './help'
 import type { Turn } from './lib/local'
 
+export type { Part, Turn } from './lib/local'
+
 /** The addresses a host serves from, which plain modules read. */
 export interface Addresses {
   /** The gateway's origin. Absent, the apps derive it from the page's host. */
@@ -73,7 +75,9 @@ export interface Addresses {
    * Where a signed-out turn is answered when the host has an engine of its own (Hanzo Desktop's, on
    * this computer): `chat` gets the whole conversation, the last turn the new question, and returns
    * the answer. A refusal to answer is a thrown error. The host owns the lane, so the free lane's
-   * turn limit and sign-in gate do not apply. Unset, a signed-out turn goes to the public gateway.
+   * turn limit and sign-in gate do not apply. A turn's `content` is a string, or parts (`Part`: text,
+   * and pictures as data URLs) when the reader attached files: signed out, a text file and a picture
+   * are read in the window and go only to `chat`, never uploaded. Unset, a signed-out turn goes to the public gateway.
    */
   local?: { chat: (turn: { messages: Turn[]; signal: AbortSignal }) => Promise<string> }
   /**
