@@ -16,7 +16,7 @@ beforeEach(() => {
   api = platform()
 })
 afterEach(async () => {
-  configure(before)
+  configure({ ...before, local: undefined })
   await at?.done()
   at = undefined
   vi.unstubAllGlobals()
@@ -30,7 +30,7 @@ describe('a host answers signed-out turns with its own engine', () => {
       return sent.length === 1 ? 'Paris.' : 'About two million.'
     })
     configure({ local: { chat } })
-    at = await drawChat(undefined, { anonymous: true })
+    at = await drawChat()
     await ask('Capital of France?')
     await settle(60)
     expect(shown()).toContain('Paris.')
@@ -45,6 +45,34 @@ describe('a host answers signed-out turns with its own engine', () => {
         { role: 'user', content: 'And its population?' },
       ],
     ])
+    expect(api.calls.some((c) => c.path.includes('/chat/public'))).toBe(false)
+  })
+
+  test('the fourth question is answered with no sign-in gate, past the free lane\'s limit of three', async () => {
+    const chat = vi.fn(async () => 'Sure.')
+    configure({ local: { chat } })
+    at = await drawChat()
+    for (const q of ['One?', 'Two?', 'Three?', 'Four?']) {
+      await ask(q)
+      await settle(60)
+    }
+    expect(chat).toHaveBeenCalledTimes(4)
+    expect(shown()).toContain('Four?')
+    expect(document.body.textContent).not.toMatch(/sign in to keep going|create a free account/i)
+    expect(document.body.textContent).not.toMatch(/enso/i)
+  })
+
+  test('when the engine throws, the turn says so truthfully, with no connection claim and no sign-in gate', async () => {
+    const chat = vi.fn(async () => {
+      throw new Error('refused')
+    })
+    configure({ local: { chat } })
+    at = await drawChat()
+    await ask('Hello?')
+    await settle(60)
+    expect(shown()).toContain('Your local model did not answer. Try again.')
+    expect(shown()).not.toContain('connection dropped')
+    expect(document.body.textContent).not.toMatch(/sign in to keep going/i)
     expect(api.calls.some((c) => c.path.includes('/chat/public'))).toBe(false)
   })
 })

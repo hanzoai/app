@@ -179,6 +179,8 @@ const MAX_ANON_TURNS = 3;
 const NO_ANSWER = phrase("No answer came back. Sign in to keep going.");
 /** What it says when the connection dropped, or the wait ran out, before an answer came: nothing to sign in for. */
 const DROPPED = phrase("The connection dropped before an answer came. Try again.");
+/** What it says when a host's own engine threw, refused or said nothing: not a dropped connection. */
+const LOCAL_FAILED = phrase("Your local model did not answer. Try again.");
 /** What it says when the reader pressed Stop before the answer came. */
 const STOPPED = phrase("You stopped this answer.");
 
@@ -1988,7 +1990,7 @@ function Thread({
     } catch {}
     // A host's own engine (`configure({ local })`) is not the free lane: no turn limit, no gate.
     const local = where().local
-    const asked = local ? continued(turns.current, clean, new Set(["…", STOPPED, DROPPED, NO_ANSWER])) : []
+    const asked = local ? continued(turns.current, clean, new Set(["…", STOPPED, DROPPED, NO_ANSWER, LOCAL_FAILED])) : []
     if (!local && anonCountRef.current >= MAX_ANON_TURNS) {
       const uId = `u-anon-gate-${Date.now()}`;
       apply.current((held) => [...held, { id: uId, role: "user", content: clean }]);
@@ -2010,7 +2012,8 @@ function Thread({
     anonStopped.current = false;
     const controller = new AbortController();
     anonRequest.current = controller;
-    const timer = window.setTimeout(() => controller.abort(), 60000);
+    // The gateway is given a minute; a host's own engine (a slow on-device model) is not cut off.
+    const timer = local ? 0 : window.setTimeout(() => controller.abort(), 60000);
     try {
       if (local) {
         replyText = (await local.chat({ messages: asked, signal: controller.signal })).trim();
@@ -2042,7 +2045,7 @@ function Thread({
     if (!replyText) {
       // No answer came back: say so, never a made-up reply. A refusal asks for a sign-in; a dropped connection is retried.
       apply.current((held) =>
-        held.map((m) => (m.id === aId ? { ...m, content: dropped || local ? DROPPED : NO_ANSWER } : m)),
+        held.map((m) => (m.id === aId ? { ...m, content: local ? LOCAL_FAILED : dropped ? DROPPED : NO_ANSWER } : m)),
       );
       setAnonBusy(false);
       if (!dropped && !local) setAnonGateOpen(true);
