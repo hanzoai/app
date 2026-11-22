@@ -19,6 +19,8 @@ afterEach(async () => {
   await at?.done()
   at = undefined
   vi.useRealTimers()
+  // The toaster removes a dismissed toast 200 ms later; let it, before the file's window is torn down.
+  await new Promise((r) => setTimeout(r, 250))
   vi.unstubAllGlobals()
 })
 
