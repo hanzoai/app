@@ -62,9 +62,7 @@ describe('out of credit', () => {
     // The meter's billing envelope, as the gateway sends it (bots.test.ts).
     api.refuse(402, { error: { message: 'Insufficient balance. Please add credits at console.hanzo.ai', type: 'billing_error', code: 'insufficient_balance' } })
     api.on('PUT /v1/ai/limits', { status: 200, body: {} })
-    const opened: string[] = []
-    const { windowed } = await import('./lib/outward')
-    const undo = windowed((href) => opened.push(href))
+    const opened = vi.spyOn(window.location, 'assign').mockImplementation(() => {})
     try {
       at = await drawChat()
       await ask('Summarise this week for me')
@@ -84,9 +82,9 @@ describe('out of credit', () => {
       await tap(document.querySelector('[data-slot="confirm-yes"]')!)
       await settle(60)
       expect(api.calls.find((c) => c.method === 'PUT' && c.path === '/v1/ai/limits')?.body).toEqual({ creditsAfterAllowance: true })
-      expect(opened.map((u) => new URL(u).pathname)).toEqual(['/pay/amount/card'])
+      expect(opened.mock.calls.map(([u]) => new URL(String(u)).pathname)).toEqual(['/pay/amount/card'])
     } finally {
-      undo()
+      opened.mockRestore()
     }
   })
 
@@ -117,15 +115,32 @@ describe('out of credit', () => {
     expect(document.body.textContent).toContain(ASK_ADMIN)
   })
 
-  test('there is one way to buy: every offer goes through buyCredits, which alone turns credits on', async () => {
-    const { readFileSync } = await import('node:fs')
-    const { fileURLToPath } = await import('node:url')
-    const { dirname, join } = await import('node:path')
-    const source = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'Chat.tsx'), 'utf8')
-    expect(source.match(/setCreditsAfterAllowance\(/g)).toHaveLength(1)
-    expect(source.match(/onBuyCredits=\{buyCredits\}/g)).toHaveLength(1)
-    // The banner's ways: Continue with credits is the same buy.
-    expect(source).toMatch(/if \(a\.kind !== "credits"\) \{[^}]*\}\s*buyCredits\(\);/)
+  test('there is one way to buy: each offer asks once, turns credits on once, and nothing else does', async () => {
+    broke()
+    api.on('PUT /v1/ai/limits', { status: 200, body: {} })
+    vi.spyOn(window.location, 'assign').mockImplementation(() => {})
+    at = await drawChat()
+    await ask('Summarise this week for me')
+    await settle(60)
+    const turnedOn = () => api.calls.filter((c) => c.method === 'PUT' && c.path === '/v1/ai/limits')
+    const yes = async () => {
+      await tap(document.querySelector('[data-slot="confirm-yes"]')!)
+      await settle(60)
+    }
+    // The refused turn's own offer.
+    await press('Buy usage credits')
+    expect(turnedOn()).toHaveLength(0)
+    await yes()
+    expect(turnedOn()).toHaveLength(1)
+    // The Need more usage dialog's offer.
+    await act(async () => void window.dispatchEvent(new CustomEvent('hanzo:need-more-usage')))
+    await settle()
+    await tap([...document.querySelectorAll('[role="dialog"] button')].find((b) => b.textContent === 'Buy usage credits')!)
+    expect(document.querySelector('[data-slot="confirm"]')).not.toBeNull()
+    expect(turnedOn()).toHaveLength(1)
+    await yes()
+    expect(turnedOn()).toHaveLength(2)
+    expect(turnedOn().every((c) => JSON.stringify(c.body) === '{"creditsAfterAllowance":true}')).toBe(true)
   })
 })
 
@@ -450,17 +465,15 @@ describe('Create Board card, in a window of its own', () => {
   test('with the site elsewhere, Open Board goes through the one way out', async () => {
     board()
     const { configure } = await import('./where')
-    const { windowed } = await import('./lib/outward')
-    const opened: string[] = []
-    const undo = windowed((href) => opened.push(href))
+    const opened = vi.spyOn(window, 'open').mockReturnValue(null)
     configure({ site: 'https://hanzo.ai' })
     try {
       await filed()
       await press('Open Board')
-      expect(opened).toEqual(['https://hanzo.ai/board'])
+      expect(opened.mock.calls.map(([u]) => u)).toEqual(['https://hanzo.ai/board'])
     } finally {
       configure({ site: '' })
-      undo()
+      opened.mockRestore()
     }
   })
 })
