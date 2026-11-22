@@ -10,14 +10,40 @@
 // lines with secrets taken out, and the screenshot if it is kept), shows the
 // screenshot, and can show the exact text of the issue.
 
-import { Component, useCallback, useEffect, useState, type ReactNode } from 'react'
+import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Button, Dialog, DialogContent, DialogTitle, Input, SizableText, Text, Textarea, View, XStack, YStack } from '@hanzo/ui'
 import { useI18n } from '@hanzo/i18n/react'
-import { body, catches, details, hear, listen, repo, screenOf, send, type Caught, type Filed } from './fault'
+import { body, catches, details, DISCORD_HELP_URL, hear, listen, repo, screenOf, send, type Caught, type Filed } from './fault'
 import { useHost } from './host'
 import { talk } from './lib/host'
 import { shoot } from './shot'
 import { bearer, superAdmin } from './lib/session'
+
+async function copyText(text: string): Promise<boolean> {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch {
+    /* fallback below */
+  }
+  try {
+    if (typeof document === 'undefined') return false
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.setAttribute('readonly', '')
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    const ok = document.execCommand('copy')
+    document.body.removeChild(ta)
+    return ok
+  } catch {
+    return false
+  }
+}
 
 const OPEN = 'hanzo:report'
 
@@ -81,9 +107,16 @@ export function Broke({ error, onBack }: { error: Error; onBack: () => void }) {
         <Button
           data-slot="broke-copy"
           variant="ghost"
-          onPress={() => void navigator.clipboard?.writeText(details(error.message, window.location.href)).then(() => setCopied(true), () => undefined)}
+          onPress={() => void copyText(details(error.message, window.location.href)).then((ok) => { if (ok) setCopied(true) })}
         >
-          {copied ? 'Copied' : 'Copy details'}
+          {copied ? '✓ Copied details' : 'Copy details'}
+        </Button>
+        <Button
+          data-slot="broke-discord"
+          variant="ghost"
+          onPress={() => window.open(DISCORD_HELP_URL, '_blank', 'noopener,noreferrer')}
+        >
+          Get help on Discord
         </Button>
       </XStack>
     </View>
@@ -112,6 +145,21 @@ export function Report({ children }: { children: ReactNode }) {
   const [failedReason, setFailedReason] = useState('')
   const [filed, setFiled] = useState<Filed | null>(null)
   const [probe, setProbe] = useState('')
+  const [copied, setCopied] = useState(false)
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current) }, [])
+
+  const copyPayload = useCallback(() => {
+    if (!caught) return
+    const text = body({ caught, title, description: note, shot: null })
+    void copyText(text).then((ok) => {
+      if (!ok) return
+      setCopied(true)
+      if (copyTimer.current) clearTimeout(copyTimer.current)
+      copyTimer.current = setTimeout(() => setCopied(false), 2500)
+    })
+  }, [caught, title, note])
 
   useEffect(() => {
     listen()
@@ -215,7 +263,12 @@ export function Report({ children }: { children: ReactNode }) {
           {state === 'done' && filed ? (
             <YStack gap="$3">
               <Text data-slot="report-done">{filed.again ? t('Added to {id}, already open. Thank you.', { id: filed.identifier }) : t('Filed as {id}. Thank you.', { id: filed.identifier })}</Text>
-              <Button onPress={() => close(false)}>{t('Close')}</Button>
+              <XStack gap="$2" justify="space-between" items="center" flexWrap="wrap">
+                <Button variant="ghost" size="sm" onPress={() => window.open(DISCORD_HELP_URL, '_blank', 'noopener,noreferrer')}>
+                  {t('Get help on Discord')}
+                </Button>
+                <Button onPress={() => close(false)}>{t('Close')}</Button>
+              </XStack>
             </YStack>
           ) : caught ? (
             <YStack gap="$3" overflowY="auto" minH={0}>
@@ -241,9 +294,17 @@ export function Report({ children }: { children: ReactNode }) {
                   {failedReason ? `${t('Could not send.')} ${failedReason}` : t('Could not send. Check your connection and try again.')}
                 </SizableText>
               ) : null}
-              <XStack gap="$2" justify="flex-end">
-                <Button variant="ghost" onPress={() => close(false)}>{t('Cancel')}</Button>
-                <Button data-slot="report-send" disabled={state === 'sending'} onPress={go}>{state === 'sending' ? t('Sending…') : t('Send')}</Button>
+              <XStack gap="$2" justify="space-between" items="center" flexWrap="wrap">
+                <Button variant="ghost" size="sm" onPress={() => window.open(DISCORD_HELP_URL, '_blank', 'noopener,noreferrer')}>
+                  {t('Get help on Discord')}
+                </Button>
+                <XStack gap="$2" items="center">
+                  <Button data-slot="report-copy" variant="ghost" onPress={copyPayload}>
+                    {copied ? t('✓ Copied details') : t('Copy details')}
+                  </Button>
+                  <Button variant="ghost" onPress={() => close(false)}>{t('Cancel')}</Button>
+                  <Button data-slot="report-send" disabled={state === 'sending'} onPress={go}>{state === 'sending' ? t('Sending…') : t('Send')}</Button>
+                </XStack>
               </XStack>
             </YStack>
           ) : null}

@@ -121,4 +121,57 @@ describe('send resilience', () => {
       else (globalThis as { window?: unknown }).window = origWindow
     }
   })
+
+  test('deduplicates against open board summary rows lacking description (no duplicate POST)', async () => {
+    const { configure } = await import('./where')
+    const { send } = await import('./fault')
+    const origFetch = globalThis.fetch
+    const hadWindow = 'window' in globalThis
+    const origWindow = (globalThis as { window?: unknown }).window
+    if (!hadWindow) (globalThis as { window?: unknown }).window = { location: { href: 'https://hanzo.app/dev', hostname: 'hanzo.app', protocol: 'https:', origin: 'https://hanzo.app' } }
+    const calls: string[] = []
+    configure({
+      api: 'https://api.example.test',
+      session: {
+        length: 0,
+        key: () => null,
+        clear: () => {},
+        getItem: (k: string) => (k.includes('access_token') ? 'tok_test' : null),
+        setItem: () => {},
+        removeItem: () => {},
+      },
+    })
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      const method = (init?.method ?? 'GET').toUpperCase()
+      calls.push(`${method} ${url}`)
+      if (url.endsWith('/v1/task/projects/app/issues') && method === 'GET') {
+        // Board summary omits description — must still match existing open issue by title shape!
+        return new Response(
+          JSON.stringify([{ number: 118, identifier: 'app#118', title: 'POST /v1/responses answered 503', status: 'backlog' }]),
+          { status: 200 },
+        )
+      }
+      if (url.endsWith('/v1/task/projects/app/issues/118') && method === 'PATCH') {
+        return new Response(JSON.stringify({ number: 118, identifier: 'app#118' }), { status: 200 })
+      }
+      return new Response('unexpected', { status: 500 })
+    }) as typeof fetch
+    try {
+      const c = catches('http', 'POST /v1/responses answered 503', '/dev/projects/chat/t-999')!
+      const res = await send({
+        caught: c,
+        title: 'POST /v1/responses answered 503',
+        description: '',
+        shot: null,
+      })
+      expect(res).toEqual({ identifier: 'app#118', again: true })
+      expect(calls.some((x) => x.startsWith('POST '))).toBe(false)
+      expect(calls.some((x) => x.startsWith('PATCH https://api.example.test/v1/task/projects/app/issues/118'))).toBe(true)
+    } finally {
+      globalThis.fetch = origFetch
+      if (!hadWindow) delete (globalThis as { window?: unknown }).window
+      else (globalThis as { window?: unknown }).window = origWindow
+    }
+  })
 })
