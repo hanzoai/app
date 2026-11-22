@@ -12,7 +12,7 @@ export { configure, where, site, brand } from './where'
 export type { Addresses } from './where'
 export { Host, Look, Rooms, useHost, useLook, useOrg, useRooms } from './host'
 export type { Router, Link, HostProps, RoomsProps } from './host'
-export { dispatchTabsAction } from './Sidebar'
+export { dispatchTabsAction } from './tabsAction'
 export * from './lib/local-fs'
 // Desktop UI loads through @hanzo/app/WindowControls and @hanzo/app/Editor; keep the root usable
 // by Node tools without loading @hanzo/ui and React Native.

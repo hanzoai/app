@@ -71,6 +71,7 @@ import { dragWindow, toggleWindowMaximize } from './WindowControls'
 import { BAND, HEAD as LINE, pane, SIDE, TOUCH_HEAD } from './ground'
 import { railKeys } from './keys'
 import { useWindowed } from './windowed'
+import { dispatchTabsAction } from './tabsAction'
 
 /** The sidebar fills the column. Its `width` is typed in px alone, though its frame takes any gui size — the type is
  *  @hanzo/ui's to widen. */
@@ -597,22 +598,6 @@ interface TabsSavedBind {
   machine?: string
   url?: string
   want?: string
-}
-
-/**
- * Ask the Tabs workspace for something, the one way a host does: a shell, desktop, page or cloud
- * machine, `focus` a pane, or, once the host states `tabs.shortcuts`, `split` (with `dir`, `row` or
- * `col`) and `close` (`res.handled` says whether a pane answered).
- */
-export function dispatchTabsAction(detail: {
-  kind: string
-  id?: string
-  machine?: string
-  dir?: 'row' | 'col'
-  res?: { handled: boolean }
-}) {
-  if (typeof window === 'undefined') return
-  window.dispatchEvent(new CustomEvent('hanzo:tabs-action', { detail }))
 }
 
 function useTabsGroups(
