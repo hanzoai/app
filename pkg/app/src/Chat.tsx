@@ -43,7 +43,7 @@ import {
 import { Chat as ChatSurface, EFFORTS, Failure, Parts, Tune, useFamilies, words, type ComposerProps, type Said } from "@hanzo/ui/chat";
 import { carriedIn, carrying, compose, partsOf, said as told, weigh } from "./lib/attach";
 import { download, dropped, fileOf, pct, readable, refOf, retrieve, type Api, type FileRef, type WorkFile } from "./lib/files";
-import { conversation, drop, hold, landed, localOf, retry, retryable, spend, take, useDraft, usePane, useWorkFile, type Held, type Via } from "./pane";
+import { conversation, drop, hold, landed, localOf, readLocal, retry, retryable, spend, take, useDraft, usePane, useWorkFile, type Held, type Via } from "./pane";
 import { Face, brief as castBrief, join, roleOf, castTurn, roster as rosterLine, rosterOf, speakers, speaksOf, voiceOf } from "./cast";
 import { cleanForSpeech, speakAgent } from "./speech";
 import { AgentMaker, HOUSE, useAgentShelf, useCrew } from "./crew";
@@ -133,7 +133,7 @@ import { requestUpgrade, Upgrade, useFree, type Ask } from './Upgrade';
 import { enter, LOGIN, signUp } from './lib/destination';
 import { first } from './lib/first';
 import { BAD } from "./lib/mix";
-import { conversation as continued } from './lib/local'
+import { conversation as continued, askedOf, filesOf, partOf, type Part } from './lib/local'
 import { brand, site, where } from './where'
 import { useWindowed } from './windowed'
 import { BAND, HEAD, inPane, INSET, TOUCH_HEAD } from './ground'
@@ -183,6 +183,8 @@ const DROPPED = phrase("The connection dropped before an answer came. Try again.
 const LOCAL_FAILED = phrase("Your local model did not answer. Try again.");
 /** What it says when the reader pressed Stop before the answer came. */
 const STOPPED = phrase("You stopped this answer.");
+/** The turns of a conversation that say nothing a host's engine should hear. */
+const SILENT = new Set(["…", STOPPED, DROPPED, NO_ANSWER]);
 
 
 function readOpeningQuery(): { text: string; thread: string | null } {
@@ -1358,7 +1360,10 @@ function Thread({
   const catalog = useRef<Model[]>([]);
   const planUsage = useLimits(!anonymous, org(), (id) => nameOf(id, catalog.current));
   const { limits, notice, reload: reread } = planUsage;
-  const mind = useMind(target, anonymous ? "free" : limits?.plan, anonymous ? undefined : topUp);
+  // A host's own engine (`configure({ local })`) answers a signed-out turn with its own models, listed in the
+  // catalog it serves at the gateway's address: every one is offered, none is the free lane's Enso.
+  const hosted = anonymous && Boolean(where().local);
+  const mind = useMind(target, anonymous ? (hosted ? undefined : "free") : limits?.plan, anonymous ? undefined : topUp);
   catalog.current = mind.models;
   // Chat's effort is its own (six steps, sent as `reasoning_effort`); a
   // pick of one Dev offers too moves Dev's, where it is made, and opening Chat
@@ -1617,9 +1622,10 @@ function Thread({
   };
   const listed = useMemo(() => mind.models.filter(chats), [mind.models]);
   const filteredListed = useMemo(() => {
+    if (hosted) return listed.filter((m) => m.id !== ENSO);
     if (chatPrefs.allowThirdPartyModels) return listed;
     return listed.filter((m) => isHouseModel(m) || m.id === ENSO);
-  }, [listed, chatPrefs.allowThirdPartyModels]);
+  }, [listed, hosted, chatPrefs.allowThirdPartyModels]);
   const models = filteredListed;
   // EVERY MODEL THE GATEWAY LISTS is offered here, through the one picker, and
   // read from the catalog's own fields (`parseModels`): its class, its family.
@@ -1631,8 +1637,13 @@ function Thread({
   const wanted = mind.model;
   // A model the catalog lists is sent as picked, whatever it answers with; only
   // a name the catalog does not list falls to one that converses (`served`).
-  const sent = anonymous ? ENSO : wanted;
-  const model = persona?.model || (rowOf(sent) ? sent : served(models, sent));
+  const sent = anonymous && !hosted ? ENSO : wanted;
+  // A host's engine is asked only for models its own catalog lists, never the router the catalog may also carry.
+  const offered = (id: string) => (hosted ? models : listed).some((m) => m.id === id);
+  const model = persona?.model || (offered(sent) ? sent : served(models, sent));
+  // The model a host's engine is asked for: one its catalog lists, and the one the reader picked.
+  const localModel = useRef<string | undefined>(undefined);
+  localModel.current = hosted && offered(model) ? model : undefined;
   // THE PLAN'S USAGE (lib/limits.ts), kept current by every chat answer's
   // headers and read again whenever a send settles, below. The pane draws no
   // bars and no near note — those live on Settings → Usage. It says something
@@ -1980,7 +1991,7 @@ function Thread({
     anonStopped.current = true;
     anonRequest.current?.abort();
   }, []);
-  const sendAnon = useCallback(async (rawText: string) => {
+  const sendAnon = useCallback(async (rawText: string, attached: readonly Part[] = []) => {
     const clean = (rawText || "").trim();
     if (!clean) return;
     try {
@@ -1991,7 +2002,7 @@ function Thread({
     } catch {}
     // A host's own engine (`configure({ local })`) is not the free lane: no turn limit, no gate.
     const local = where().local
-    const asked = local ? continued(turns.current, clean, new Set(["…", STOPPED, DROPPED, NO_ANSWER, LOCAL_FAILED])) : []
+    const asked = local ? continued(turns.current, clean, (said) => SILENT.has(said) || said.startsWith(LOCAL_FAILED), attached) : []
     if (!local && anonCountRef.current >= MAX_ANON_TURNS) {
       const uId = `u-anon-gate-${Date.now()}`;
       apply.current((held) => [...held, { id: uId, role: "user", content: clean }]);
@@ -2004,12 +2015,13 @@ function Thread({
     const aId = `a-anon-${Date.now()}-${turnNum}`;
     apply.current((held) => [
       ...held,
-      { id: uId, role: "user", content: clean },
+      { id: uId, role: "user", content: attached.length ? [{ type: "text", text: clean }, ...attached] : clean },
       { id: aId, role: "assistant", content: "…" },
     ]);
     setAnonBusy(true);
     let replyText = "";
     let dropped = false;
+    let why = "";
     anonStopped.current = false;
     const controller = new AbortController();
     anonRequest.current = controller;
@@ -2017,7 +2029,7 @@ function Thread({
     const timer = local ? 0 : window.setTimeout(() => controller.abort(), 60000);
     try {
       if (local) {
-        replyText = (await local.chat({ messages: asked, signal: controller.signal })).trim();
+        replyText = (await local.chat({ messages: asked, model: localModel.current, signal: controller.signal })).trim();
       } else {
         const res = await fetch("https://api.hanzo.ai/v1/chat/public", {
           method: "POST",
@@ -2033,8 +2045,10 @@ function Thread({
           }
         }
       }
-    } catch {
+    } catch (e) {
       dropped = true;
+      // A host's engine says why it would not answer: the turn says it too.
+      if (local) why = (e instanceof Error ? e.message : String(e)).trim();
     }
     window.clearTimeout(timer);
     if (anonStopped.current) {
@@ -2046,7 +2060,7 @@ function Thread({
     if (!replyText) {
       // No answer came back: say so, never a made-up reply. A refusal asks for a sign-in; a dropped connection is retried.
       apply.current((held) =>
-        held.map((m) => (m.id === aId ? { ...m, content: local ? LOCAL_FAILED : dropped ? DROPPED : NO_ANSWER } : m)),
+        held.map((m) => (m.id === aId ? { ...m, content: local ? (why ? `${LOCAL_FAILED}\n\n${why}` : LOCAL_FAILED) : dropped ? DROPPED : NO_ANSWER } : m)),
       );
       setAnonBusy(false);
       if (!dropped && !local) setAnonGateOpen(true);
@@ -2225,12 +2239,12 @@ function Thread({
    * it leaves its place in the thread and is asked at the end, so it is asked
    * once and not twice.
    */
-  const speak = useCallback((text: string, again?: string) => {
+  const speak = useCallback((text: string, again?: string, attached?: readonly Part[]) => {
     if (!text) return;
     // Activation: the first question this browser asks (a retry is not one).
     if (!again) first("chat_message");
     if (anonymous) {
-      void sendAnon(text);
+      void sendAnon(text, attached);
       return;
     }
     if (!streaming.current && (again || resolvingNow.current || turns.current.some(blank))) {
@@ -2456,7 +2470,8 @@ function Thread({
       }
       const q = uIdx >= 0 ? searchSlice[uIdx] : [...list].reverse().find((m) => m.role === "user");
       if (!q) return;
-      const rawQ = typeof q.content === "string" ? told(q.content).text : words(q.content as Said);
+      const rawQ =
+        typeof q.content === "string" ? told(q.content).text : filesOf(q.content).length ? askedOf(q.content as Part[]) : words(q.content as Said);
       if (action?.mode === "think") {
         setChatPrefs({ effort: "max" });
         const next = shared("max");
@@ -2473,7 +2488,7 @@ function Thread({
       if (anonymous) {
         apply.current((held) => (uIdx >= 0 ? held.slice(0, uIdx) : held));
         if (anonCountRef.current > 0) anonCountRef.current -= 1;
-        void sendAnon(nextPrompt);
+        void sendAnon(nextPrompt, filesOf(q.content));
         return;
       }
       apply.current((held) => (uIdx >= 0 ? held.slice(0, uIdx) : held.filter((m) => m.id !== turnId && m.id !== q.id)));
@@ -2808,6 +2823,21 @@ function Thread({
 
   const deliver = (text: string, extra: string) => {
     const holding = files.slice();
+    // Signed out, files are only held on a host with its own engine (pane.ts `hold`): they are read here and go to it as parts.
+    if (anonymous && holding.length) {
+      void (async () => {
+        const read = await Promise.all(holding.map(readLocal));
+        const attached = holding.flatMap((h, i) => {
+          const got = read[i];
+          return got ? [partOf({ id: h.id, name: h.name, type: h.type, size: h.size }, got)] : [];
+        });
+        if (!attached.length && !text) return;
+        setDraft("");
+        spend(at);
+        guarded(text || `What is in ${names(holding)}?`, undefined, attached);
+      })();
+      return;
+    }
     const earlier = carriedIn(chat.messages);
     if (!holding.length && !earlier.length) {
       setDraft("");
@@ -3035,7 +3065,13 @@ function Thread({
       // Private: the frame drops its ground and dashes its edge (@hanzo/ui ≥ 8.29.40); the
       // toggled ghost in the head and this frame are the whole of what says it.
       forgetful,
-      children: anonymous ? undefined : (
+      children: hosted ? (
+        filteredListed.length ? (
+          <XStack flex={1} minW={0} items="center" justify="flex-end" data-slot="host-model">
+            <Tune mind={{ ...mind, model, models: filteredListed }} />
+          </XStack>
+        ) : undefined
+      ) : anonymous ? undefined : (
         <XStack
           flex={1}
           minW={0}
@@ -3758,6 +3794,14 @@ function Thread({
             const isStreamingThisTurn = Boolean((chat.streaming || anonBusy) && isLastTurn);
             // A QUESTION THAT CARRIED PICTURES draws them beside its words.
             if (turn.role === "user" && Array.isArray(turn.content)) {
+              // Files read in this window (signed out, on a host with its own engine) are drawn as the workspace's are.
+              const read = filesOf(turn.content);
+              if (read.length)
+                return (
+                  <YStack gap="$1" data-turn-id={String(turn.id)} data-turn-role={turn.role}>
+                    <Carried text={askedOf(turn.content as Part[])} attached={read.map((p) => p.file!)} reused={[]} onOpen={openFile} />
+                  </YStack>
+                );
               const parts = partsOf(turn.content);
               return (
                 <YStack gap="$1" data-turn-id={String(turn.id)} data-turn-role={turn.role}>
@@ -3937,6 +3981,14 @@ function Thread({
                   </Text>
                 ) : null}
                 <Prose text={said} />
+                {/* A host's engine that would not answer: Settings is where its model is chosen (the one door). */}
+                {anonymous && turn.role === "assistant" && said.startsWith(LOCAL_FAILED) ? (
+                  <XStack>
+                    <Button size="sm" variant="outline" onClick={() => window.dispatchEvent(new CustomEvent("hanzo:anon-settings"))}>
+                      {t("Open settings")}
+                    </Button>
+                  </XStack>
+                ) : null}
                 {/* Clean hover/focus-reveal monochrome action row under every completed assistant response. */}
                 {turn.role === "assistant" && said && !isStreamingThisTurn ? (
                   <AssistantTurnActions
