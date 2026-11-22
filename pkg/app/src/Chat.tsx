@@ -74,7 +74,7 @@ import { openModelPicker } from "./lib/model-picker";
 import { open as openBoardCard, home as boardHome } from "./lib/todo";
 import { useDevMode } from "./lib/dev-mode";
 import { Bring } from "./bring";
-import { NONE as UNCHOSEN, WAIT, carried as skillsCarried, choose, personas, within, type Chosen } from "./chosen";
+import { EXPLICIT_CHOSEN, EXPLICIT_SURE, NONE as UNCHOSEN, WAIT, carried as skillsCarried, choose, parseSkillCommand, personas, within, type ChooseOptions, type Chosen } from "./chosen";
 import { InfoHint } from "./lib/info-hint";
 import { ENSO } from "./lib/ai";
 import { openThread, empty as emptyOpen, useOpen } from "./open";
@@ -2750,13 +2750,13 @@ function Thread({
   // goes: one answer a wording, the last few kept. The skills already preloaded are never chosen again.
   const kai = useRef(new Map<string, Promise<Chosen>>());
   const [lastChosen, setLastChosen] = useState<string[]>([]);
-  const chosenFor = (text: string, skip: readonly string[]): Promise<Chosen> => {
+  const chosenFor = (text: string, skip: readonly string[], options?: ChooseOptions): Promise<Chosen> => {
     const leave = [...skip, ...carry.gear.gear.skills];
-    const key = `${leave.join(",")}\n${text.trim()}`;
+    const key = `${options?.explicit ? "1" : "0"}:${leave.join(",")}\n${text.trim()}`;
     const kept = kai.current.get(key);
     if (kept) return kept;
     // Only what the `+` shelf offers this person may be chosen for them (chosen.ts `choosable`).
-    const p = choose(target, text, leave, skillsCarried(chat.messages), undefined, carry.skills.rows.map((r) => r.id));
+    const p = choose(target, text, leave, skillsCarried(chat.messages), undefined, carry.skills.rows.map((r) => r.id), options);
     kai.current.set(key, p);
     if (kai.current.size > 8) kai.current.delete(kai.current.keys().next().value!);
     return p;
@@ -2770,9 +2770,12 @@ function Thread({
   }, [draft, choosing]);
 
   const submit = (ask: string = draft) => {
-    const text = ask.trim();
-    if (preparing || (!text && !files.length)) return;
+    const rawText = ask.trim();
+    if (preparing || (!rawText && !files.length)) return;
     setWalletRecovery(null);
+    const skillAsk = parseSkillCommand(rawText);
+    const text = skillAsk ?? rawText;
+    const wantChoose = choosing || (!anonymous && Boolean(skillAsk));
     if (text) lastSubmittedPromptRef.current = text;
     const isPrOrReview = reviewing(text);
     // A build nobody described gets an ask-first note, not the build note:
@@ -2790,7 +2793,7 @@ function Thread({
     ]
       .filter(Boolean)
       .join("\n\n");
-    if (!choosing && !carry.preparing) return deliver(text, ponyNote);
+    if (!wantChoose && !carry.preparing) return deliver(text, ponyNote);
     setDraft("");
     setPrepWrong(null);
     void (async () => {
@@ -2798,9 +2801,13 @@ function Thread({
       const slow = carry.preparing ? null : setTimeout(() => setPreparing(t("Choosing skills")), 200);
       if (carry.preparing) setPreparing(t("Preparing"));
       try {
-        const picked = choosing && text ? await within(chosenFor(text, isPrOrReview ? ["code-review"] : []), WAIT, UNCHOSEN) : UNCHOSEN;
+        const chooseOpts: ChooseOptions | undefined = skillAsk
+          ? { minProbability: EXPLICIT_SURE, maxSkills: EXPLICIT_CHOSEN, explicit: true }
+          : undefined;
+        const waitMs = skillAsk ? WAIT * 2 : WAIT;
+        const picked = wantChoose && text ? await within(chosenFor(text, isPrOrReview ? ["code-review"] : [], chooseOpts), waitMs, UNCHOSEN) : UNCHOSEN;
         if (slow) clearTimeout(slow);
-        if (choosing) setLastChosen([...(isPrOrReview ? ["code-review"] : []), ...picked.names]);
+        if (wantChoose) setLastChosen([...(isPrOrReview ? ["code-review"] : []), ...picked.names]);
         const notes = [picked.text, ponyNote].filter(Boolean).join("\n\n");
         if (!carry.preparing) return deliver(text, notes);
         // The files held for this message, as bytes, for a plugin that reads them (PDF).

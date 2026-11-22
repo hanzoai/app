@@ -45,7 +45,8 @@ describe('the apps in beta', () => {
     expect(opens('crm', {}, true)).toBe(true)
   })
 
-  it('opens a granted app where it lives, over https or an in-app route', () => {
+  it('opens a granted app where it lives, over https or an in-app route, and names eSign clearly', () => {
     for (const b of BETAS) if (b.href) expect(b.href).toMatch(/^(https:\/\/|\/)/)
+    expect(BETAS.find((b) => b.id === 'sign')).toMatchObject({ name: 'eSign', href: 'https://esign.hanzo.ai' })
   })
 })

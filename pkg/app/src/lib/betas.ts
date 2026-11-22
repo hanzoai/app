@@ -71,7 +71,7 @@ export const BETAS: readonly Beta[] = [
   { id: 'finance', name: 'Finance', line: phrase('One ledger for your money operations'), group: 'Business', href: 'https://finance.hanzo.ai' },
   { id: 'treasury', name: 'Treasury & Ledger', line: phrase('Reserves, payouts and a double-entry journal'), group: 'Business' },
   { id: 'dataroom', name: 'Data Room', line: phrase('Share documents and see who opened them'), group: 'Business', href: 'https://dataroom.hanzo.ai' },
-  { id: 'sign', name: 'Sign', line: phrase('Send a PDF, get it signed, keep the record'), group: 'Business', href: 'https://esign.hanzo.ai' },
+  { id: 'sign', name: 'eSign', line: phrase('Send a PDF, get it signed, keep the record'), group: 'Business', href: 'https://esign.hanzo.ai' },
   { id: 'company', name: 'Company', line: phrase('Formation, documents and filings'), group: 'Business', href: `${PLATFORM}/company` },
   { id: 'cms', name: 'CMS', line: phrase('Pages, posts, media and navigation'), group: 'Business', href: 'https://cms.hanzo.ai/admin', embed: 'frame' },
   { id: 'helpdesk', name: 'Help Center', line: phrase('Tickets, teams and SLAs'), group: 'Business', href: 'https://hanzo.help' },

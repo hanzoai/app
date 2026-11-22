@@ -63,6 +63,27 @@ export function carried(turns: readonly { role: string; content?: unknown }[]): 
  */
 export const choosable = (name: string, known: readonly string[] = []): boolean => !name.includes('_') && (!known.length || known.includes(name))
 
+/** Threshold and cap when a user explicitly asks Kai to analyze and apply skills via `/skill <query>`. */
+export const EXPLICIT_SURE = 0.55
+export const EXPLICIT_CHOSEN = 3
+
+/** Parse an explicit `/skill <query>` (or `/skills <query>`) command from a composer message. */
+export function parseSkillCommand(text: string): string | null {
+  const m = text.trim().match(/^\/skills?(?:\s+([\s\S]+))?$/i)
+  if (!m) return null
+  const rest = (m[1] ?? '').trim()
+  return rest.length > 0 ? rest : null
+}
+
+export interface ChooseOptions {
+  /** Override minimum Kai confidence (default: SURE = 0.8; explicit `/skill` uses EXPLICIT_SURE = 0.55). */
+  minProbability?: number
+  /** Override max skills attached to one turn (default: CHOSEN = 2; explicit `/skill` uses EXPLICIT_CHOSEN = 3). */
+  maxSkills?: number
+  /** Skip the minimum prompt length guard (used for explicit `/skill <short>` invocations). */
+  explicit?: boolean
+}
+
 /**
  * What Kai chooses for `prompt`: up to `CHOSEN` skills it is `SURE` of that a
  * person could have picked themselves (`choosable`), leaving out the ones `skip`
@@ -77,15 +98,18 @@ export async function choose(
   had: readonly string[] = [],
   signal?: AbortSignal,
   known: readonly string[] = [],
+  options?: ChooseOptions,
 ): Promise<Chosen> {
   const words = prompt.trim()
-  if (words.length < SHORT) return NONE
+  if (!words || (!options?.explicit && words.length < SHORT)) return NONE
+  const minProb = options?.minProbability ?? SURE
+  const limit = options?.maxSkills ?? CHOSEN
   try {
     const found = await detect(t, words, { maxSkills: ASKED, maxTools: 1, signal })
     const names = found
-      .filter((d) => d.skill && d.probability >= SURE && !skip.includes(d.name) && choosable(d.name, known))
+      .filter((d) => d.skill && d.probability >= minProb && !skip.includes(d.name) && choosable(d.name, known))
       .map((d) => d.name)
-      .slice(0, CHOSEN)
+      .slice(0, limit)
     if (!names.length) return NONE
     const fresh = names.filter((n) => !had.includes(n))
     const again = names.filter((n) => had.includes(n)).map((n) => `Use the "${n}" skill where it applies, as earlier in this conversation.`)
