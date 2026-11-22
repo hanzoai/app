@@ -10,6 +10,8 @@
 import type { ComponentType } from 'react'
 import type { DevRuntime } from '@hanzo/dev-core'
 import type { BillingPlan } from './lib/plans'
+import type { Key } from './help'
+import type { Turn } from './lib/local'
 
 /** The addresses a host serves from, which plain modules read. */
 export interface Addresses {
@@ -61,6 +63,25 @@ export interface Addresses {
    * a linked machine or a cloud cell (devRuntime.ts); null is none. A host with no local Dev omits it.
    */
   runtime?: () => Promise<DevRuntime | null>
+  /**
+   * The keys the host answers itself (Hanzo Desktop's ⌘N), listed with the app's in the shortcuts
+   * dialog and the palette. A key that does what an app key does (same `does`) is another way to do
+   * it: one row, every spelling.
+   */
+  keys?: readonly Key[]
+  /**
+   * Where a signed-out turn is answered when the host has an engine of its own (Hanzo Desktop's, on
+   * this computer): `chat` gets the whole conversation, the last turn the new question, and returns
+   * the answer. A refusal to answer is a thrown error. The host owns the lane, so the free lane's
+   * turn limit and sign-in gate do not apply. Unset, a signed-out turn goes to the public gateway.
+   */
+  local?: { chat: (turn: { messages: Turn[]; signal: AbortSignal }) => Promise<string> }
+  /**
+   * One Settings section of the host's own (Hanzo Desktop's "This computer"), listed under
+   * Preferences and drawn as `Page` in the pane. `id` is its own, never an app section's; `label`
+   * is authored English, drawn through `t`.
+   */
+  section?: { id: string; label: string; Page: ComponentType }
   /** The plan catalogue as the host's build last read it: the first paint. */
   plans?: BillingPlan[]
   /**

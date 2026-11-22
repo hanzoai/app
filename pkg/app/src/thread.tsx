@@ -1382,53 +1382,6 @@ export function ThreadRow({
   )
 }
 
-/**
- * The ⋯ of the conversation a pane holds, in its header: the trigger of the
- * menu its row opens, drawn inside a `ConversationMenu` of that one
- * conversation, so the header and the row offer one menu.
- */
-export function ThreadMore({ t: thread }: { t: Thread }) {
-  const { t } = useI18n()
-  const menus = useContext(Rows)
-  if (!menus) throw new Error('ThreadMore is drawn inside a ConversationMenu, which holds its menu.')
-  const [focused, setFocused] = useState(false)
-  const [hovered, setHovered] = useState(false)
-  const isOpen = menus.open === thread.id
-  // gui types these handlers by React Native's event; on the web they carry the DOM's.
-  const aim = (e: unknown) => menus.aim(thread, (e as MouseEvent<HTMLElement>).currentTarget)
-  return (
-    <DropdownMenuTrigger asChild>
-      <XStack
-        render="button"
-        aria-label={t('Conversation options')}
-        {...({ title: t('More') } as object)}
-        data-slot="conversation-options"
-        width={32}
-        height={32}
-        rounded="$3"
-        items="center"
-        justify="center"
-        cursor="pointer"
-        bg={isOpen ? '$hover' : 'transparent'}
-        opacity={isOpen || focused || hovered ? 1 : 0.72}
-        transition="quickest"
-        hoverStyle={{ bg: '$hover', opacity: 1 }}
-        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)', opacity: 1 }}
-        $max-sm={{ minW: 44, minH: 44 }}
-        // Before gui's own press handler, which opens the menu and stops there.
-        onPointerDownCapture={aim}
-        onKeyDownCapture={aim}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-      >
-        <MoreHorizontal size={16} aria-hidden />
-      </XStack>
-    </DropdownMenuTrigger>
-  )
-}
-
 /** A conversation's title, written again: one line, never empty. */
 function Rename({
   noun,

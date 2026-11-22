@@ -84,7 +84,7 @@ import { Share } from "./Share";
 import { useBuildSpend, useSpend } from "./Confirm";
 import { ended, why, type Failed } from "./lib/unanswered";
 import { questionOf, type Turn } from "./lib/asked";
-import { ConversationMenu, Delete, ThreadMore, useThreadActions, useThreadList, type Thread } from "./thread";
+import { ConversationMenu, Delete, useThreadActions, useThreadList, type Thread } from "./thread";
 import { Schedule } from "./Schedule";
 import { holdItem, keepFile, useAttach, useKeep } from "./keep";
 import { useKept } from "./kept";
@@ -133,7 +133,8 @@ import { requestUpgrade, Upgrade, useFree, type Ask } from './Upgrade';
 import { enter, LOGIN, signUp } from './lib/destination';
 import { first } from './lib/first';
 import { BAD } from "./lib/mix";
-import { brand, site } from './where'
+import { conversation as continued } from './lib/local'
+import { brand, site, where } from './where'
 import { useWindowed } from './windowed'
 import { BAND, HEAD, inPane, INSET, TOUCH_HEAD } from './ground'
 import { shared, useChatPreferences } from './lib/chatPreferences'
@@ -178,6 +179,8 @@ const MAX_ANON_TURNS = 3;
 const NO_ANSWER = phrase("No answer came back. Sign in to keep going.");
 /** What it says when the connection dropped, or the wait ran out, before an answer came: nothing to sign in for. */
 const DROPPED = phrase("The connection dropped before an answer came. Try again.");
+/** What it says when a host's own engine threw, refused or said nothing: not a dropped connection. */
+const LOCAL_FAILED = phrase("Your local model did not answer. Try again.");
 /** What it says when the reader pressed Stop before the answer came. */
 const STOPPED = phrase("You stopped this answer.");
 
@@ -1985,7 +1988,10 @@ function Thread({
       sessionStorage.setItem("hanzo.anon.thread_title", shortTitle);
       window.dispatchEvent(new CustomEvent("hanzo:anon-thread", { detail: { title: shortTitle } }));
     } catch {}
-    if (anonCountRef.current >= MAX_ANON_TURNS) {
+    // A host's own engine (`configure({ local })`) is not the free lane: no turn limit, no gate.
+    const local = where().local
+    const asked = local ? continued(turns.current, clean, new Set(["…", STOPPED, DROPPED, NO_ANSWER, LOCAL_FAILED])) : []
+    if (!local && anonCountRef.current >= MAX_ANON_TURNS) {
       const uId = `u-anon-gate-${Date.now()}`;
       apply.current((held) => [...held, { id: uId, role: "user", content: clean }]);
       setAnonGateOpen(true);
@@ -2006,19 +2012,24 @@ function Thread({
     anonStopped.current = false;
     const controller = new AbortController();
     anonRequest.current = controller;
-    const timer = window.setTimeout(() => controller.abort(), 60000);
+    // The gateway is given a minute; a host's own engine (a slow on-device model) is not cut off.
+    const timer = local ? 0 : window.setTimeout(() => controller.abort(), 60000);
     try {
-      const res = await fetch("https://api.hanzo.ai/v1/chat/public", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "enso", messages: [{ role: "user", content: clean }] }),
-        signal: controller.signal,
-      });
-      if (res.ok) {
-        const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-        const raw = data?.choices?.[0]?.message?.content?.trim();
-        if (raw) {
-          replyText = raw.replace(/\n*NEXT:\s*\S+\s*$/i, "").trim();
+      if (local) {
+        replyText = (await local.chat({ messages: asked, signal: controller.signal })).trim();
+      } else {
+        const res = await fetch("https://api.hanzo.ai/v1/chat/public", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: "enso", messages: [{ role: "user", content: clean }] }),
+          signal: controller.signal,
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+          const raw = data?.choices?.[0]?.message?.content?.trim();
+          if (raw) {
+            replyText = raw.replace(/\n*NEXT:\s*\S+\s*$/i, "").trim();
+          }
         }
       }
     } catch {
@@ -2034,10 +2045,10 @@ function Thread({
     if (!replyText) {
       // No answer came back: say so, never a made-up reply. A refusal asks for a sign-in; a dropped connection is retried.
       apply.current((held) =>
-        held.map((m) => (m.id === aId ? { ...m, content: dropped ? DROPPED : NO_ANSWER } : m)),
+        held.map((m) => (m.id === aId ? { ...m, content: local ? LOCAL_FAILED : dropped ? DROPPED : NO_ANSWER } : m)),
       );
       setAnonBusy(false);
-      if (!dropped) setAnonGateOpen(true);
+      if (!dropped && !local) setAnonGateOpen(true);
       return;
     }
     const wordsList = replyText.split(" ");
@@ -2061,7 +2072,7 @@ function Thread({
       step();
     });
     setAnonBusy(false);
-    if (turnNum >= MAX_ANON_TURNS) {
+    if (!local && turnNum >= MAX_ANON_TURNS) {
       window.setTimeout(() => setAnonGateOpen(true), 450);
     }
   }, []);

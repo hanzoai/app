@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { said } from './chord'
-import { asked, keyOf, KEYS, legal, pages } from './help'
+import { asked, KEYS, legal, pages, rows } from './help'
 import { configure, where } from './where'
 
 const before = { ...where() }
-afterEach(() => configure(before))
+afterEach(() => configure({ ...before, keys: undefined }))
 
 const hrefs = () => [...pages(), ...legal()].map((p) => p.href)
 
@@ -52,6 +52,24 @@ describe('the keyboard shortcuts', () => {
     expect(KEYS.find((k) => k.does === 'Rename chat')?.mac).toBe(said('rename', true))
   })
 
+  test("a host's keys join the list: another way to do an action is the same row, a new action its own", () => {
+    expect(rows()).toHaveLength(KEYS.length)
+    configure({
+      keys: [
+        { does: 'New chat', mac: '⌘N', pc: 'Ctrl+N', group: 'Navigation' },
+        { does: 'Voice input', mac: '⌘⇧M', pc: 'Ctrl+Shift+M', group: 'Chat' },
+      ],
+    })
+    const all = rows()
+    expect(all).toHaveLength(KEYS.length + 1)
+    expect(all.find((r) => r.does === 'New chat')?.chords).toEqual([
+      { mac: '⌘⇧O', pc: 'Ctrl+Shift+O' },
+      { mac: '⌘N', pc: 'Ctrl+N' },
+    ])
+    expect(all.find((r) => r.does === 'Voice input')).toMatchObject({ group: 'Chat', chords: [{ mac: '⌘⇧M', pc: 'Ctrl+Shift+M' }] })
+    expect(rows().filter((r) => r.does === 'Search chats')).toHaveLength(1)
+  })
+
   test('⌘/ and Ctrl+/ open them, once a press', () => {
     const key = { key: '/', ctrlKey: false, metaKey: false, altKey: false }
     expect(asked({ ...key, ctrlKey: true })).toBe(true)
@@ -60,13 +78,5 @@ describe('the keyboard shortcuts', () => {
     expect(asked({ ...key, ctrlKey: true, altKey: true })).toBe(false)
     expect(asked({ ...key, ctrlKey: true, repeat: true })).toBe(false)
     expect(asked({ ...key, key: 'k', ctrlKey: true })).toBe(false)
-  })
-})
-
-describe("each row's identity", () => {
-  test('is unique, even when a host adds a second row with the same words (Hanzo Desktop: ⌘N beside ⌘⇧O)', () => {
-    const rows = [...KEYS, { does: 'New chat', mac: '⌘N', pc: 'Ctrl+N', group: 'Navigation' as const }]
-    expect(rows.filter((k) => k.does === 'New chat')).toHaveLength(2)
-    expect(new Set(rows.map(keyOf)).size).toBe(rows.length)
   })
 })

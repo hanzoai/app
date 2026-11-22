@@ -65,6 +65,30 @@ interface MenuState {
 const SAFE_BOTTOM = 'calc(12px + env(safe-area-inset-bottom, 0px))' as `var(--${string})`
 const FOCUS_RING = { outlineWidth: 2, outlineStyle: 'solid', outlineColor: '$outlineColor' } as const
 
+/** Select multiple (and, over the sidebar, Select all) act on a Recents list: offered only while one is drawn (Tabs, Studio, Flow and Betas draw none). */
+const selecting = (listed: boolean, key: string, t: (s: string) => string, all?: { key: string; shortcut: string }) =>
+  !listed
+    ? []
+    : [
+        {
+          key,
+          label: t('Select multiple…'),
+          icon: <CheckSquare size={15} aria-hidden />,
+          run: () => window.dispatchEvent(new CustomEvent('hanzo:recents-select')),
+        },
+        ...(all
+          ? [
+              {
+                key: all.key,
+                label: t('Select all'),
+                icon: <CheckSquare size={15} aria-hidden />,
+                shortcut: all.shortcut,
+                run: () => window.dispatchEvent(new CustomEvent('hanzo:recents-select', { detail: { mode: 'all' } })),
+              },
+            ]
+          : []),
+      ]
+
 const isMac = (): boolean =>
   typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent)
 
@@ -200,6 +224,8 @@ export function AppContextMenu({
       if (e.defaultPrevented || e.shiftKey) return
       const target = e.target as Element | null
       if (!target || typeof target.closest !== 'function') return
+      // Select multiple acts on a Recents list; offer it only while one is drawn (Tabs, Studio, Flow and Betas draw none).
+      const listed = Boolean(document.querySelector('[data-slot="recents"]'))
       const windowRoot = target.closest('[data-slot="window"]')
       if (!windowRoot) return
 
@@ -314,12 +340,7 @@ export function AppContextMenu({
           }
           entries.push(
             { key: 'sep-place', line: true },
-            {
-              key: 'place-select',
-              label: t('Select multiple…'),
-              icon: <CheckSquare size={15} aria-hidden />,
-              run: () => window.dispatchEvent(new CustomEvent('hanzo:recents-select')),
-            },
+            ...selecting(listed, 'place-select', t),
             {
               key: 'place-search',
               label: t('Search & commands…'),
@@ -405,12 +426,7 @@ export function AppContextMenu({
                 icon: <SquarePen size={15} aria-hidden />,
                 run: onNewChat,
               },
-              {
-                key: 'rail-chat-select',
-                label: t('Select multiple…'),
-                icon: <CheckSquare size={15} aria-hidden />,
-                run: () => window.dispatchEvent(new CustomEvent('hanzo:recents-select')),
-              },
+              ...selecting(listed, 'rail-chat-select', t),
             )
           }
           entries.push(
@@ -435,19 +451,7 @@ export function AppContextMenu({
             icon: <SquarePen size={15} aria-hidden />,
             run: () => (mode === 'dev' ? go(app('')) : onNewChat()),
           },
-          {
-            key: 'sidebar-select',
-            label: t('Select multiple…'),
-            icon: <CheckSquare size={15} aria-hidden />,
-            run: () => window.dispatchEvent(new CustomEvent('hanzo:recents-select')),
-          },
-          {
-            key: 'sidebar-select-all',
-            label: t('Select all'),
-            icon: <CheckSquare size={15} aria-hidden />,
-            shortcut: apple ? '⌘A' : 'Ctrl+A',
-            run: () => window.dispatchEvent(new CustomEvent('hanzo:recents-select', { detail: { mode: 'all' } })),
-          },
+          ...selecting(listed, 'sidebar-select', t, { key: 'sidebar-select-all', shortcut: apple ? '⌘A' : 'Ctrl+A' }),
           {
             key: 'sidebar-search',
             label: t('Search & commands…'),

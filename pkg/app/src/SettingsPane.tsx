@@ -40,7 +40,7 @@ import { usePref } from './pref'
 import { Experimental } from './experimental'
 import { DeveloperMode } from './developer'
 import { site } from './where'
-import { named, ROWS } from './Settings'
+import { named, pageOf, rows } from './Settings'
 
 /** A choice among a few: a hairline edge and a corner. The fill and the edge's
  *  ink are the call site's, because they say which one is chosen. */
@@ -55,7 +55,7 @@ const CHOICE = { rounded: 8, borderWidth: 1, borderStyle: 'solid', cursor: 'poin
  */
 export function SettingsPane({ id }: { id: string }) {
   const { t } = useI18n()
-  const row = ROWS.find((r) => r.id === id)
+  const row = rows().find((r) => r.id === id)
 
   return (
     <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden">
@@ -72,6 +72,8 @@ export function SettingsPane({ id }: { id: string }) {
 /** One pane. `note` arrives translated. */
 function Pane({ id, note }: { id: string; note?: string }) {
   const { t } = useI18n()
+  const Mine = pageOf(id)
+  if (Mine) return <Mine />
   if (id === 'apps' || id === 'channels') return <Catalog tab={id} />
   if (id === 'general')
     return (

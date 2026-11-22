@@ -84,7 +84,7 @@ import { rememberSettingsReturn, useDevMode } from './lib/dev-mode'
 import { InfoHint } from './lib/info-hint'
 import { leave } from './dev'
 import { reportProblem } from './Report'
-import { keyOf, KEYS, legal, out, pages, type Key, type KeyGroup } from './help'
+import { legal, out, pages, rows, type KeyGroup, type Row } from './help'
 import { showSettings } from './open'
 import { MARK } from './ground'
 import { site, where } from './where'
@@ -1126,13 +1126,8 @@ const SHORTCUT_GROUPS: readonly KeyGroup[] = ['Navigation', 'Workspace', 'Chat',
 export function Shortcuts({ open, onOpenChange, apple }: { open: boolean; onOpenChange: (open: boolean) => void; apple: boolean }) {
   const { t } = useI18n()
   const sections = useMemo(() => {
-    const byGroup = new Map<string, Key[]>()
-    for (const k of KEYS) {
-      const g = k.group ?? 'Navigation'
-      const list = byGroup.get(g)
-      if (list) list.push(k)
-      else byGroup.set(g, [k])
-    }
+    const byGroup = new Map<string, Row[]>()
+    for (const k of rows()) byGroup.set(k.group, [...(byGroup.get(k.group) ?? []), k])
     return SHORTCUT_GROUPS.map((g) => ({ group: g, items: byGroup.get(g) ?? [] })).filter((s) => s.items.length > 0)
   }, [])
 
@@ -1164,10 +1159,10 @@ export function Shortcuts({ open, onOpenChange, apple }: { open: boolean; onOpen
               </SizableText>
               <YStack rounded="$4" borderWidth={1} borderColor="$edge" bg="$panel" overflow="hidden">
                 {section.items.map((k, idx) => {
-                  const caps = splitShortcut(apple ? k.mac : k.pc)
+                  const chords = k.chords.map((c) => splitShortcut(apple ? c.mac : c.pc))
                   return (
                     <XStack
-                      key={keyOf(k)}
+                      key={k.does}
                       items="center"
                       justify="space-between"
                       gap="$3"
@@ -1182,11 +1177,15 @@ export function Shortcuts({ open, onOpenChange, apple }: { open: boolean; onOpen
                       </SizableText>
                       <XStack items="center" gap="$1" shrink={0} data-i18n-ltr="">
                         <bdi dir="ltr">
-                          <XStack items="center" gap="$1">
-                            {caps.map((cap, ci) => (
-                              <Kbd key={`${k.does}-${ci}`} variant="cap">
-                                {cap}
-                              </Kbd>
+                          <XStack items="center" gap="$2">
+                            {chords.map((caps, chi) => (
+                              <XStack key={`${k.does}-${chi}`} items="center" gap="$1">
+                                {caps.map((cap, ci) => (
+                                  <Kbd key={ci} variant="cap">
+                                    {cap}
+                                  </Kbd>
+                                ))}
+                              </XStack>
                             ))}
                           </XStack>
                         </bdi>

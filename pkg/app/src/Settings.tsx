@@ -24,13 +24,14 @@
 // The panes that are not yet built say so in one sentence rather than pretending
 // to a screen. An honest empty pane is a smaller lie than an invented one.
 
+import type { ComponentType } from 'react'
 import { phrase, type Say } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { app, dev } from './lib/host'
 import { ArrowLeft, ArrowUpRight } from 'lucide-react'
 import { Text } from '@hanzo/ui'
 import { SidebarItem, SidebarSection } from '@hanzo/ui/chat'
-import { site } from './where'
+import { site, where } from './where'
 
 
 export type Row = {
@@ -131,11 +132,23 @@ const GROUPS: Group[] = [
   },
 ]
 
+/** The groups: the app's, with the host's section (`configure({ section })`) last under Preferences. */
+const groups = (): Group[] => {
+  const mine = where().section
+  return mine ? GROUPS.map((g) => (g.label === phrase('Preferences') ? { ...g, rows: [...g.rows, { id: mine.id, label: mine.label }] } : g)) : GROUPS
+}
+
+/** The screen of the host's own section when `id` is it. */
+export const pageOf = (id: string): ComponentType | undefined => {
+  const mine = where().section
+  return mine && mine.id === id ? mine.Page : undefined
+}
+
 /** Every row, flat — what the pane looks a chosen id up in. */
-export const ROWS: Row[] = GROUPS.flatMap((g) => g.rows)
+export const rows = (): Row[] => groups().flatMap((g) => g.rows)
 
 /** The row Settings opens on when nothing has asked for another. */
-export const FIRST = ROWS[0].id
+export const FIRST = GROUPS[0].rows[0].id
 
 /**
  * The rail's second level: every settings row, grouped.
@@ -165,21 +178,22 @@ export function SettingsList({
   const { t } = useI18n();
   const q = filter.trim().toLowerCase()
   // A row is found by the name the reader sees, or by its English one.
-  const groups = q
-    ? GROUPS.map((g) => ({ ...g, rows: g.rows.filter((r) => [named(r, t), r.label].some((l) => l.toLowerCase().includes(q))) })).filter(
+  const shown = groups()
+  const listed = q
+    ? shown.map((g) => ({ ...g, rows: g.rows.filter((r) => [named(r, t), r.label].some((l) => l.toLowerCase().includes(q))) })).filter(
         (g) => g.rows.length > 0,
       )
-    : GROUPS
+    : shown
 
   return (
     <>
       <SidebarItem icon={<ArrowLeft size={15} aria-hidden data-i18n-mirror />} onPress={onBack}>{t("Workspace")}</SidebarItem>
-      {q && groups.length === 0 ? (
+      {q && listed.length === 0 ? (
         <Text px="$3" py="$2" fontSize="$2" color="$quiet">
           {t('No matches for “{query}”.', { query: filter.trim() })}
         </Text>
       ) : null}
-      {groups.map((g) => (
+      {listed.map((g) => (
         <SidebarSection key={g.label} label={t(g.label)}>
           {g.rows.map((r) => (
             <SidebarItem

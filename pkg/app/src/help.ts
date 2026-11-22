@@ -4,7 +4,7 @@
 
 import { phrase } from '@hanzo/i18n'
 import { said } from './chord'
-import { site } from './where'
+import { site, where } from './where'
 
 /** One Help row that leaves for a page. Its label is authored English, drawn through `t`. */
 export interface Page {
@@ -72,11 +72,23 @@ export const KEYS: Key[] = [
   { does: phrase('Forward'), mac: '⌘]', pc: 'Alt+→', group: 'Window' },
 ]
 
-/**
- * A row's identity, for the lists that draw KEYS: its words AND its keys. Two rows may share
- * words (Hanzo Desktop adds ⌘N beside ⌘⇧O, both "New chat"), so words alone repeat a React key.
- */
-export const keyOf = (k: Key): string => `${k.does}\u0000${k.mac}\u0000${k.pc}`
+/** One action and each way to do it. */
+export interface Row {
+  does: string
+  group: KeyGroup
+  chords: Array<{ mac: string; pc: string }>
+}
+
+/** What the shortcuts dialog and the palette list: KEYS, then the host's (`configure({ keys })`), one row per action. */
+export function rows(): Row[] {
+  const by = new Map<string, Row>()
+  for (const k of [...KEYS, ...(where().keys ?? [])]) {
+    const row = by.get(k.does)
+    if (row) row.chords.push({ mac: k.mac, pc: k.pc })
+    else by.set(k.does, { does: k.does, group: k.group ?? 'Navigation', chords: [{ mac: k.mac, pc: k.pc }] })
+  }
+  return [...by.values()]
+}
 
 /** The part of a keydown `asked` reads. */
 export interface Press {
