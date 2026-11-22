@@ -40,7 +40,7 @@ catalogs:
       specifier: 0.1.24
       version: 0.1.24
     '@hanzo/tabs':
-      specifier: github:hanzo-inc/tabs
+      specifier: github:hanzo-inc/tabs#00a6c09de87ebf627a7210061d6ef27f4c4f4132
       version: 0.1.20
     '@hanzo/ui':
       specifier: 8.33.6
@@ -847,7 +847,7 @@ packages:
       react: '>=19.2.8'
 
   '@hanzo/tabs@https://codeload.github.com/hanzo-inc/tabs/tar.gz/00a6c09de87ebf627a7210061d6ef27f4c4f4132':
-    resolution: {gitHosted: true, tarball: https://codeload.github.com/hanzo-inc/tabs/tar.gz/00a6c09de87ebf627a7210061d6ef27f4c4f4132}
+    resolution: {gitHosted: true, integrity: sha512-1ob8yTl1VuwrSfzyaMBheZQw6JORWlS90tkdSUrm4grcWdI71mExTZtFrl9JtzwVCy5+zGcq+3DRqrlXv8sg/Q==, tarball: https://codeload.github.com/hanzo-inc/tabs/tar.gz/00a6c09de87ebf627a7210061d6ef27f4c4f4132}
     version: 0.1.20
     peerDependencies:
       '@hanzo/gui': 8.3.5
