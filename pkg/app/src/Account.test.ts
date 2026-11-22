@@ -137,28 +137,15 @@ beforeEach(() => {
   standing.value = { kind: 'free', label: { name: 'Free', tag: '' }, limits: null, allowance: null, balance: null }
 })
 
-describe('profile trigger and HoverCard', () => {
-  test('clicking the profile button remembers the return route and opens /settings/account in 1 click', () => {
-    renderAccount(false, false)
-    clicks.get('me')?.()
-    expect(remembered).toHaveBeenCalledTimes(1)
-    expect(settings).toHaveBeenCalledWith('account')
-  })
-
-  test('HoverCard shows user identity, membership tier pill, live Meter stats, Developer mode toggle, Upgrade plan, Open settings, and Log out', () => {
+describe('unified single Account menu (click & right-click, no nested HoverCard)', () => {
+  test('renders one unified compact menu with tier pill and Developer mode switch and no nested hover card', () => {
     const { html } = renderAccount(false, false)
-    expect(html).toContain('data-slot="me-hover-card"')
+    expect(html).toContain('data-slot="me-menu"')
+    expect(html).not.toContain('data-slot="me-hover-card"')
     expect(html).toContain('data-slot="me-tier-pill"')
     // The badge lives in the menu, never on the bottom-left trigger beside the name.
     expect(html.split('data-slot="me-tier-pill"').length - 1).toBe(1)
-    expect(html).toContain('data-slot="meter"')
     expect(html).toContain('data-slot="me-dev-mode"')
-    expect(html).toContain('data-slot="me-hover-upgrade"')
-    expect(html).toContain('data-slot="me-hover-settings"')
-    expect(html).toContain('data-slot="me-hover-logout"')
-
-    clicks.get('me-hover-upgrade')?.()
-    expect(left).toHaveBeenCalledWith('here')
   })
 
   test('the rail trigger uses a 40x40 rounded-12 square matching the rail marks and inner pane corner', () => {

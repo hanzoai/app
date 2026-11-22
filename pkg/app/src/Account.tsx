@@ -497,17 +497,20 @@ export function Account({
   return (
     <>
       {offer}
-      <HoverCard
-        open={hoverOpen}
+      <DropdownMenu
+        open={menuOpen}
         onOpenChange={(next) => {
-          if (!next && menuOpen) return
-          setHoverOpen(next)
-          if (!next) setWorkspacesOpen(false)
+          setMenuOpen(next)
+          if (next) return
+          setAccount(false)
+          setOrgsOpen(false)
+          setLang(false)
+          setHelp(false)
         }}
-        openDelay={120}
-        closeDelay={180}
+        placement={narrow && !above ? (rtl ? 'left-end' : 'right-end') : 'top-start'}
+        offset={8}
       >
-        <HoverCardTrigger asChild>
+        <DropdownMenuTrigger asChild>
           <XStack
             ref={(el: unknown) => {
               row.current = el instanceof HTMLElement ? el : null
@@ -525,120 +528,55 @@ export function Account({
             rounded={narrow ? 12 : '$3'}
             borderWidth={narrow && above ? 1 : 0}
             borderColor={narrow && above ? STRONG : undefined}
-            bg={narrow && above ? '$panel' : narrow && hoverOpen ? '$hover' : 'transparent'}
+            bg={narrow && above ? '$panel' : menuOpen ? '$hover' : 'transparent'}
             items="center"
             justify={narrow ? 'center' : 'flex-start'}
             hoverStyle={{ bg: '$hover' }}
             pressStyle={{ bg: '$raised' }}
             focusVisibleStyle={FOCUS_RING}
             cursor="pointer"
-            onClick={() => goSettings('account')}
+            onContextMenu={(e: { preventDefault?: () => void }) => {
+              e.preventDefault?.()
+              setMenuOpen(true)
+            }}
           >
             <Face host={host} size={narrow ? (above ? 32 : 26) : 28} />
             {narrow ? null : (
-              <>
-                <YStack flex={1} minW={0}>
-                  <Text fontFamily="$body" fontSize="$2" fontWeight="500" color="$ink" numberOfLines={1} text="start">
-                    {who}
-                  </Text>
-                </YStack>
-              </>
+              <YStack flex={1} minW={0}>
+                <Text fontFamily="$body" fontSize="$2" fontWeight="500" color="$ink" numberOfLines={1} text="start">
+                  {who}
+                </Text>
+              </YStack>
             )}
           </XStack>
-        </HoverCardTrigger>
+        </DropdownMenuTrigger>
 
-        <HoverCardContent
-          data-slot="me-hover-card"
-          side={narrow && !above ? (rtl ? 'left' : 'right') : 'top'}
-          align={narrow && !above ? 'end' : 'start'}
-          sideOffset={8}
+        <DropdownMenuContent
+          data-slot="me-menu"
+          minW={244}
+          maxW="calc(100vw - 24px)"
           bg="var(--popover)"
           borderWidth={1}
           borderColor={STRONG}
-          rounded="$5"
-          p="$4"
-          width={284}
-          maxW="calc(100vw - 24px)"
-          z="var(--z-popover)"
-          boxShadow="var(--shadow-floating)"
+          aria-labelledby={undefined}
+          aria-label={t('Account')}
+          onCloseAutoFocus={back}
         >
-          <YStack gap="$3" width="100%">
-            {/* 1. Identity + Membership Tier Pill + Full Menu overflow */}
-            <XStack items="flex-start" justify="space-between" gap="$2">
-              <XStack items="center" gap="$2.5" flex={1} minW={0}>
-                <Face host={host} size={34} />
-                <YStack flex={1} minW={0} gap={2}>
-                  <XStack items="center" gap="$1.5" minW={0}>
-                    <Text fontFamily="$body" fontSize="$2" fontWeight="600" color="$ink" numberOfLines={1}>
-                      {who}
-                    </Text>
-                    {tierPill}
-                  </XStack>
-                  {host.person.email ? (
-                    <Text fontFamily="$body" fontSize="$1" color="$aside" numberOfLines={1}>
-                      {host.person.email}
-                    </Text>
-                  ) : null}
-                </YStack>
-              </XStack>
-
-              <DropdownMenu
-                open={menuOpen}
-                onOpenChange={(next) => {
-                  setMenuOpen(next)
-                  if (next) return
-                  setAccount(false)
-                  setOrgsOpen(false)
-                  setLang(false)
-                  setHelp(false)
-                }}
-                placement={rtl ? 'bottom-start' : 'bottom-end'}
-                offset={6}
-              >
-                <DropdownMenuTrigger asChild>
-                  <XStack
-                    render={<button type="button" />}
-                    data-slot="me-more"
-                    aria-label={t('More account options')}
-                    width={28}
-                    height={28}
-                    $max-sm={{ width: 44, height: 44 }}
-                    rounded="$2"
-                    items="center"
-                    justify="center"
-                    cursor="pointer"
-                    borderWidth={1}
-                    borderColor={menuOpen ? STRONG : 'transparent'}
-                    bg={menuOpen ? '$hover' : 'transparent'}
-                    hoverStyle={{ bg: '$hover', borderColor: STRONG }}
-                    focusVisibleStyle={FOCUS_RING}
-                  >
-                    <MoreHorizontal size={15} color={SOFT} aria-hidden />
-                  </XStack>
-                </DropdownMenuTrigger>
-
-                <DropdownMenuContent
-                  minW={250}
-                  maxW="calc(100vw - 24px)"
-                  bg="var(--popover)"
-                  borderWidth={1}
-                  borderColor={STRONG}
-                  aria-labelledby={undefined}
-                  aria-label={t('Account')}
-                  onCloseAutoFocus={back}
-                >
-                  <DropdownMenuSub open={account} onOpenChange={setAccount}>
-                    <DropdownMenuSubTrigger minH={44} gap="$2.5" data-slot="me-account">
-                      <Face host={host} size={26} />
-                      <YStack flex={1} minW={0}>
-                        <SizableText size="$2" fontWeight="600" color="$ink" numberOfLines={1}>
-                          {who}
-                        </SizableText>
-                        <SizableText size="$1" color="$soft" numberOfLines={1}>
-                          {host.person.email || working}
-                        </SizableText>
-                      </YStack>
-                    </DropdownMenuSubTrigger>
+          <DropdownMenuSub open={account} onOpenChange={setAccount}>
+            <DropdownMenuSubTrigger minH={42} gap="$2.5" data-slot="me-account">
+              <Face host={host} size={26} />
+              <YStack flex={1} minW={0}>
+                <XStack items="center" gap="$1.5" minW={0}>
+                  <SizableText size="$2" fontWeight="600" color="$ink" numberOfLines={1}>
+                    {who}
+                  </SizableText>
+                  {planName ? tierPill : null}
+                </XStack>
+                <SizableText size="$1" color="$soft" numberOfLines={1}>
+                  {host.person.email || working}
+                </SizableText>
+              </YStack>
+            </DropdownMenuSubTrigger>
                     {account ? (
                       <DropdownMenuSubContent
                         minW={230}
@@ -739,6 +677,18 @@ export function Account({
                   <DropdownMenuItem onSelect={triggerUpgrade}>
                     <Line icon={<Sparkles size={16} aria-hidden />}>{t(plans)}</Line>
                   </DropdownMenuItem>
+                  <XStack data-slot="me-dev-row" items="center" justify="space-between" gap="$2" px="$2.5" py="$1.5" minH={32}>
+                    <Text fontFamily="$body" fontSize="$2" color="$ink" numberOfLines={1}>
+                      {t('Developer mode')}
+                    </Text>
+                    <Switch
+                      size="sm"
+                      checked={devMode}
+                      onCheckedChange={setDevMode}
+                      aria-label={t('Developer mode')}
+                      data-slot="me-dev-mode"
+                    />
+                  </XStack>
                   <DropdownMenuSeparator />
 
                   <DropdownMenuSub
@@ -881,227 +831,8 @@ export function Account({
                       </Line>
                     </DropdownMenuItem>
                   ) : null}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </XStack>
-
-            {/* 2. Key Stats: live session/weekly usage & credit balance */}
-            <YStack
-              data-slot="me-stats"
-              role="button"
-              tabIndex={0}
-              aria-label={t('Usage')}
-              rounded="$3"
-              bg="$panel"
-              borderWidth={1}
-              borderColor={STRONG}
-              cursor="pointer"
-              hoverStyle={{ bg: '$hover' }}
-              focusVisibleStyle={FOCUS_RING}
-              onPress={() => goSettings('usage')}
-              onKeyDown={(e: { key?: string; preventDefault?: () => void }) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault?.()
-                  goSettings('usage')
-                }
-              }}
-            >
-              <Meter
-                read={liveRead}
-                onPlans={triggerUpgrade}
-                onBilling={() => goSettings('billing')}
-              />
-            </YStack>
-
-            {/* 3. Developer mode inline toggle */}
-            <XStack
-              data-slot="me-dev-row"
-              items="center"
-              justify="space-between"
-              gap="$2"
-              minH={40}
-              $max-sm={{ minH: 44 }}
-              px="$2.5"
-              py="$2"
-              rounded="$3"
-              bg="$panel"
-              borderWidth={1}
-              borderColor="$edge"
-            >
-              <XStack items="center" gap="$1.5" minW={0} flex={1}>
-                <Text fontFamily="$body" fontSize="$2" fontWeight="500" color="$ink" numberOfLines={1}>
-                  {t('Developer mode')}
-                </Text>
-                <InfoHint text={t('Shows the process: the terminal, the commands Hanzo runs and each step. Off, Hanzo shows the result.')} />
-              </XStack>
-              <Switch
-                size="sm"
-                checked={devMode}
-                onCheckedChange={setDevMode}
-                aria-label={t('Developer mode')}
-                data-slot="me-dev-mode"
-              />
-            </XStack>
-
-            <XStack height={1} bg="$edge" width="100%" />
-
-            {/* 4. Subtle footer actions */}
-            <YStack gap="$0.5">
-              {isFree ? (
-                <XStack
-                  render={<button type="button" />}
-                  data-slot="me-hover-upgrade"
-                  onClick={triggerUpgrade}
-                  items="center"
-                  gap="$2"
-                  minH={36}
-                  $max-sm={{ minH: 44 }}
-                  px="$2.5"
-                  py="$1.5"
-                  rounded="$3"
-                  cursor="pointer"
-                  bg="$raised"
-                  borderWidth={1}
-                  borderColor={STRONG}
-                  hoverStyle={{ bg: '$hover' }}
-                  focusVisibleStyle={FOCUS_RING}
-                >
-                  <Sparkles size={14} color={INK} aria-hidden />
-                  <Text
-                    fontFamily="$body"
-                    fontSize="$2"
-                    fontWeight="600"
-                    color="$ink"
-                    flex={1}
-                    text="start"
-                  >
-                    {t('Upgrade plan')}
-                  </Text>
-                </XStack>
-              ) : null}
-
-              <XStack
-                render={<button type="button" />}
-                data-slot="me-hover-settings"
-                onClick={() => goSettings('account')}
-                items="center"
-                gap="$2"
-                minH={34}
-                $max-sm={{ minH: 44 }}
-                px="$2"
-                py="$1.5"
-                rounded="$3"
-                cursor="pointer"
-                bg="transparent"
-                hoverStyle={{ bg: '$hover' }}
-                focusVisibleStyle={FOCUS_RING}
-              >
-                <Settings size={14} color={INK} aria-hidden />
-                <Text fontFamily="$body" fontSize="$2" color="$ink" flex={1} text="start">
-                  {t('Open settings')}
-                </Text>
-                <Text fontFamily="$mono" fontSize="$1" color="$aside">
-                  <bdi dir="ltr">{apple ? '⌘,' : 'Ctrl+,'}</bdi>
-                </Text>
-              </XStack>
-
-              {all.length > 1 ? (
-                <YStack gap="$0.5">
-                  <XStack
-                    render={<button type="button" />}
-                    data-slot="me-hover-workspaces"
-                    aria-expanded={workspacesOpen}
-                    onClick={() => setWorkspacesOpen((v) => !v)}
-                    items="center"
-                    gap="$2"
-                    minH={34}
-                    $max-sm={{ minH: 44 }}
-                    px="$2"
-                    py="$1.5"
-                    rounded="$3"
-                    cursor="pointer"
-                    bg="transparent"
-                    hoverStyle={{ bg: '$hover' }}
-                    focusVisibleStyle={FOCUS_RING}
-                  >
-                    <Building2 size={14} color={INK} aria-hidden />
-                    <Text fontFamily="$body" fontSize="$2" color="$ink" flex={1} text="start" numberOfLines={1}>
-                      {t('Switch workspace')}
-                    </Text>
-                    {workspacesOpen ? (
-                      <ChevronDown size={13} color={SOFT} aria-hidden />
-                    ) : (
-                      <ChevronRight size={13} color={SOFT} aria-hidden />
-                    )}
-                  </XStack>
-                  {workspacesOpen ? (
-                    <YStack pl="$4" gap="$0.5">
-                      {all.map((o) => (
-                        <XStack
-                          key={o.name}
-                          render={<button type="button" />}
-                          onClick={() => {
-                            if (o.name !== currentOrg) {
-                              setHoverOpen(false)
-                              onOrg(o.name)
-                            }
-                          }}
-                          items="center"
-                          gap="$2"
-                          minH={32}
-                          $max-sm={{ minH: 44 }}
-                          px="$2"
-                          py="$1"
-                          rounded="$2"
-                          cursor="pointer"
-                          bg={o.name === currentOrg ? '$hover' : 'transparent'}
-                          hoverStyle={{ bg: '$hover' }}
-                          focusVisibleStyle={FOCUS_RING}
-                        >
-                          <Mark org={o} />
-                          <Text fontFamily="$body" fontSize="$1" color="$ink" flex={1} text="start" numberOfLines={1}>
-                            {o.personal ? t('Personal') : o.display}
-                          </Text>
-                          {o.name === currentOrg ? <Check size={12} color={INK} aria-hidden /> : null}
-                        </XStack>
-                      ))}
-                    </YStack>
-                  ) : null}
-                </YStack>
-              ) : null}
-
-              {host.signOut ? (
-                <XStack
-                  render={<button type="button" />}
-                  data-slot="me-hover-logout"
-                  disabled={signingOut}
-                  aria-disabled={signingOut || undefined}
-                  onClick={() => {
-                    setPressed('hover')
-                    host.signOut?.()
-                  }}
-                  items="center"
-                  gap="$2"
-                  minH={34}
-                  $max-sm={{ minH: 44 }}
-                  px="$2"
-                  py="$1.5"
-                  rounded="$3"
-                  cursor="pointer"
-                  bg="transparent"
-                  hoverStyle={{ bg: '$hover' }}
-                  focusVisibleStyle={FOCUS_RING}
-                >
-                  <LogOut size={14} color={SOFT} aria-hidden data-i18n-mirror />
-                  <Text fontFamily="$body" fontSize="$2" color="$aside" flex={1} text="start">
-                    {leaving('hover') ? t('Signing out…') : t('Log out')}
-                  </Text>
-                </XStack>
-              ) : null}
-            </YStack>
-          </YStack>
-        </HoverCardContent>
-      </HoverCard>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <Create open={creating} onOpenChange={setCreating} />
       <Shortcuts open={keys} onOpenChange={setKeys} apple={apple} />
     </>
