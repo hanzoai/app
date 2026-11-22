@@ -7,10 +7,11 @@ vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s }) }
 vi.mock('@hanzo/ui', () => ({ Button: 'button', Text: 'span', XStack: 'div', YStack: 'div' }))
 vi.mock('./core', () => ({}))
 vi.mock('./lib/api', () => ({ api: () => 'https://api.test' }))
-vi.mock('./lib/session', () => ({ bearer: () => 't', org: () => 'hanzo' }))
+let session = true
+vi.mock('./lib/session', () => ({ bearer: () => 't', org: () => 'hanzo', hasSession: () => session }))
 vi.mock('./lib/host', () => ({ app: (p: string) => `/dev/${p}`, talk: (id?: string) => `/chat/${id ?? ''}` }))
 
-import { DevInterior, DevList, environmentsOf, Scope } from './DevPane'
+import { DevInterior, DevList, environmentsOf, guestChat, Scope } from './DevPane'
 
 const host = { go: () => {}, path: '/dev' } as never
 const mac = (id: string) => ({ kind: 'machine', id, label: id, zap: `https://${id}.test`, token: async () => 't' }) as never
@@ -24,6 +25,23 @@ describe('Dev and Chat interior', () => {
   })
   test('the thread list nests under Dev only once a Mac is in use; before that the shell lists its own', () => {
     expect(draw(dev(null), createElement(DevList, { host, path: '/dev' }))).toBe('')
+  })
+})
+
+describe('guestChat', () => {
+  test('a guest at Chat gets the Chat surface, not the Dev core: the core sends a turn on the account, and a guest has none', () => {
+    session = false
+    expect(guestChat('chat')).toBe(true)
+  })
+  test('a signed-in reader keeps the Dev core at Chat', () => {
+    session = true
+    expect(guestChat('chat')).toBe(false)
+  })
+  test('Dev keeps the core for everyone, guest or not', () => {
+    session = false
+    expect(guestChat('dev')).toBe(false)
+    session = true
+    expect(guestChat('dev')).toBe(false)
   })
 })
 

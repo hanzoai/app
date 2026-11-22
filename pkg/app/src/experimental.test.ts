@@ -8,6 +8,8 @@ const state = vi.hoisted(() => ({
   iam: { isAuthenticated: true },
   held: { on: false, blocked: false, public: [] as string[] },
   opt: vi.fn(),
+  block: vi.fn(),
+  role: 'member' as string | null,
 }))
 
 // The drawing libraries are not under test: each element draws its children and its
@@ -22,7 +24,8 @@ vi.mock('@hanzo/ui', () => ({
     createElement('button', { role: 'switch', 'aria-checked': String(checked), 'aria-label': label, disabled, onClick: () => onCheckedChange(!checked) }),
 }))
 vi.mock('@hanzo/iam/react', () => ({ useIam: () => state.iam }))
-vi.mock('./lib/optin', () => ({ optin: async () => state.held, opt: (on: boolean) => state.opt(on) }))
+vi.mock('./lib/optin', () => ({ optin: async () => state.held, opt: (on: boolean) => state.opt(on), block: (blocked: boolean) => state.block(blocked) }))
+vi.mock('./lib/session', () => ({ org: () => 'hanzo', role: () => state.role }))
 
 async function draws() {
   const { Experimental } = await import('./experimental')
@@ -35,11 +38,14 @@ async function draws() {
 }
 
 const flip = (at: HTMLElement) => at.querySelector<HTMLButtonElement>('[role="switch"]')
+const flipOrg = (at: HTMLElement) => at.querySelector<HTMLButtonElement>('[aria-label="Allow experimental features for everyone in this organization"]')
 
 afterEach(() => {
   state.iam = { isAuthenticated: true }
   state.held = { on: false, blocked: false, public: [] }
   state.opt.mockReset()
+  state.block.mockReset()
+  state.role = 'member'
 })
 
 describe('the experimental opt-in switch', () => {
@@ -80,6 +86,33 @@ describe('the experimental opt-in switch', () => {
     state.iam = { isAuthenticated: false }
     const { at, done } = await draws()
     expect(at.innerHTML).toBe('')
+    await done()
+  })
+
+  test('a member never sees the organization switch', async () => {
+    const { at, done } = await draws()
+    expect(at.querySelector('[data-slot="optin-org"]')).toBeNull()
+    expect(at.querySelectorAll('[role="switch"]')).toHaveLength(1)
+    await done()
+  })
+
+  test('an org admin sees the organization switch, and turning it off blocks everyone', async () => {
+    state.role = 'admin'
+    state.block.mockResolvedValue({ blocked: true })
+    const { at, done } = await draws()
+    const s = flipOrg(at)!
+    expect(s.getAttribute('aria-checked')).toBe('true')
+    await act(async () => s.click())
+    expect(state.block).toHaveBeenCalledWith(true)
+    expect(flipOrg(at)!.getAttribute('aria-checked')).toBe('false')
+    expect(at.querySelector('[data-slot="optin-blocked"]')?.textContent).toBe('Turned off by your team or organization.')
+    await done()
+  })
+
+  test('an org owner sees the organization switch too', async () => {
+    state.role = 'owner'
+    const { at, done } = await draws()
+    expect(at.querySelector('[data-slot="optin-org"]')).not.toBeNull()
     await done()
   })
 })

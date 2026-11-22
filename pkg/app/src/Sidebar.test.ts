@@ -236,7 +236,10 @@ describe('a phone’s menu', () => {
     expect(at(html, 'Hanzo')).toBeLessThan(at(html, 'aria-label="Search"'))
     expect(at(html, 'New chat')).toBeLessThan(at(html, 'data-slot="rail-pinned"'))
     expect(at(html, 'data-slot="rail-pinned"')).toBeLessThan(at(html, 'data-slot="recents"'))
-    expect(at(html, 'data-slot="recents"')).toBeLessThan(at(html, 'data-slot="drawer-foot"'))
+    expect(at(html, 'data-slot="recents"')).toBeLessThan(at(html, 'data-slot="sidebar-account"'))
+    expect(at(html, 'data-slot="sidebar-account"')).toBeLessThan(at(html, 'data-slot="drawer-foot"'))
+    // The account stands at the drawer's foot too: a phone has no desktop sidebar to hold it.
+    expect(html).toContain('data-slot="me"')
   })
 })
 
