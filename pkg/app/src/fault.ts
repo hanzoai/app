@@ -208,6 +208,9 @@ export interface Filed {
   again: boolean
 }
 
+/** Official Hanzo Discord community invite for direct user support. */
+export const DISCORD_HELP_URL = 'https://discord.com/invite/XthHQQj'
+
 /** The repository a report files to: the one Dev is open on, else the surface's product repo. */
 export const repo = (): string => where().report?.repo ?? 'hanzoai/app'
 
@@ -278,20 +281,76 @@ interface Row {
   identifier?: string
   title: string
   description?: string
+  body?: string
   status?: string
+  state?: string
 }
 
+const REPORTED_KEY = 'hanzo:reported:v1'
+const REPORTED_TTL_MS = 24 * 60 * 60 * 1000
+
+interface ReportedEntry {
+  identifier: string
+  at: number
+}
+
+function readReported(): Record<string, ReportedEntry> {
+  try {
+    const raw = typeof window !== 'undefined' ? window.sessionStorage?.getItem(REPORTED_KEY) : null
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Record<string, ReportedEntry>
+    const now = Date.now()
+    const clean: Record<string, ReportedEntry> = {}
+    for (const [k, v] of Object.entries(parsed)) {
+      if (v && typeof v.identifier === 'string' && typeof v.at === 'number' && now - v.at < REPORTED_TTL_MS) {
+        clean[k] = v
+      }
+    }
+    return clean
+  } catch {
+    return {}
+  }
+}
+
+function rememberReported(keys: string[], identifier: string): void {
+  try {
+    if (typeof window === 'undefined' || !window.sessionStorage) return
+    const map = readReported()
+    const entry: ReportedEntry = { identifier, at: Date.now() }
+    for (const k of keys) {
+      if (k) map[k] = entry
+    }
+    window.sessionStorage.setItem(REPORTED_KEY, JSON.stringify(map))
+  } catch {
+    /* sessionStorage may be unavailable */
+  }
+}
+
+const normTitle = (s: string): string => shape(s).toLowerCase()
+
+const isOpenRow = (r: Row): boolean => {
+  const st = (r.status ?? '').toLowerCase()
+  const state = (r.state ?? '').toLowerCase()
+  return st !== 'done' && st !== 'canceled' && st !== 'cancelled' && st !== 'closed' && state !== 'closed'
+}
+
+let inFlight: Promise<Filed> | null = null
+
 /**
- * Files the report: a +1 on the open issue with this fingerprint, else a new
- * issue. The screenshot goes to S3 first and is named in the body.
+ * Files the report: deduplicates against this session and against open issues
+ * on the board (by fingerprint marker, normalized title shape, and issue detail
+ * body since board summaries omit `description`), adding a single +1 instead of
+ * opening duplicate issues.
  */
 export async function send(f: Filing): Promise<Filed> {
+  if (inFlight) return inFlight
   sending = true
-  try {
-    return await file(f)
-  } finally {
+  const work = file(f).finally(() => {
     sending = false
-  }
+    inFlight = null
+  })
+  inFlight = work
+  return work
 }
 
 async function callSeated(path: string, init: RequestInit = {}): Promise<Response> {
@@ -326,10 +385,55 @@ async function resolveBoard(preferred: string): Promise<{ board: string; rows: R
   return { board, rows }
 }
 
+async function findExistingIssue(board: string, rows: Row[], fp: string, wantedTitle: string, caughtMessage: string): Promise<Row | undefined> {
+  const openRows = rows.filter(isOpenRow)
+  const fpMarker = mark(fp)
+
+  // 1. Direct fingerprint match when board rows include descriptions/bodies.
+  const byMarker = openRows.find((r) => (r.description ?? r.body ?? '').includes(fpMarker))
+  if (byMarker) return byMarker
+
+  // 2. Normalized title-shape match (catches identical HTTP 5xx / runtime errors
+  //    even when the board list endpoint omits `description` for summary rows).
+  const wantShape = normTitle(wantedTitle)
+  const msgShape = normTitle(caughtMessage)
+  const byTitle = openRows.find((r) => {
+    const t = normTitle(r.title || '')
+    return Boolean(t) && (t === wantShape || (Boolean(msgShape) && t === msgShape))
+  })
+  if (byTitle) return byTitle
+
+  // 3. Fallback: inspect up to 5 most recent open rows whose description was omitted.
+  const withoutDesc = openRows.filter((r) => !r.description && !r.body).slice(0, 5)
+  for (const cand of withoutDesc) {
+    try {
+      const res = await callSeated(`/v1/task/projects/${board}/issues/${cand.number}`)
+      if (!res.ok) continue
+      const detail = (await res.json()) as Row
+      if ((detail.description ?? detail.body ?? '').includes(fpMarker)) return cand
+    } catch {
+      /* ignore detail probe failure */
+    }
+  }
+  return undefined
+}
+
 async function file(f: Filing): Promise<Filed> {
+  const wantedTitle = scrub(f.title.trim()) || f.caught.message.slice(0, 100)
+  const dedupKeys = [mark(f.caught.fingerprint), `title:${normTitle(wantedTitle)}`]
+
+  // If this browser session already reported this exact issue and the user added
+  // no new written note, don't re-post or spam duplicate +1 comments.
+  const prevMap = readReported()
+  const prev = dedupKeys.map((k) => prevMap[k]).find(Boolean)
+  if (prev && !f.description.trim()) {
+    return { identifier: prev.identifier, again: true }
+  }
+
   const preferred = repo().split('/').pop() ?? repo()
   const { board, rows } = await resolveBoard(preferred)
-  const twin = rows.find((r) => r.status !== 'done' && r.status !== 'canceled' && r.description?.includes(mark(f.caught.fingerprint)))
+  const twin = await findExistingIssue(board, rows, f.caught.fingerprint, wantedTitle, f.caught.message)
+
   let shot: string | undefined
   if (f.shot) {
     try {
@@ -340,16 +444,24 @@ async function file(f: Filing): Promise<Filed> {
     }
   }
   if (twin) {
+    const identifier = twin.identifier ?? `${board}#${twin.number}`
+    // If already +1'd by this session and user added no extra note, return immediately.
+    if (prev?.identifier === identifier && !f.description.trim()) {
+      return { identifier, again: true }
+    }
     const note = `+1 from ${f.caught.version} on \`${f.caught.route}\` at ${f.caught.at}${f.description.trim() ? `\n\n${scrub(f.description.trim())}` : ''}${shot ? `\n\n![screenshot](${shot})` : ''}`
     const r = await callSeated(`/v1/task/projects/${board}/issues/${twin.number}`, { method: 'PATCH', body: JSON.stringify({ comment: note }) })
     if (!r.ok) throw new Error(`Could not add to the issue (${r.status}).`)
-    return { identifier: twin.identifier ?? `${board}#${twin.number}`, again: true }
+    rememberReported(dedupKeys, identifier)
+    return { identifier, again: true }
   }
   const r = await callSeated(`/v1/task/projects/${board}/issues`, {
     method: 'POST',
-    body: JSON.stringify({ title: scrub(f.title.trim()) || f.caught.message.slice(0, 100), description: body(f, shot), status: 'backlog' }),
+    body: JSON.stringify({ title: wantedTitle, description: body(f, shot), status: 'backlog' }),
   })
   if (!r.ok) throw new Error(`Could not file the report (${r.status}).`)
   const made = (await r.json()) as Row
-  return { identifier: made.identifier ?? `${board}#${made.number}`, again: false }
+  const identifier = made.identifier ?? `${board}#${made.number}`
+  rememberReported(dedupKeys, identifier)
+  return { identifier, again: false }
 }
