@@ -88,7 +88,7 @@ import { usePref } from './pref'
 import { HEAD, MARK, TOUCH_HEAD } from './ground'
 import { railKeys } from './keys'
 import { out } from './help'
-import { apex, app, design, flow, hosted, RESEARCH, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
+import { apex, app, design, flow, hosted, SCIENCE, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
 import { site } from './where'
 
 export { MARK }
@@ -167,7 +167,13 @@ const CORE_NAV_SET = new Set<string>(DEFAULT_NAV)
 
 /** The reader's pins, each once, in their order. */
 export function cleanPinnedNav(list: readonly unknown[]): string[] {
-  return [...new Set(list.filter((id): id is string => typeof id === 'string' && id.length > 0))]
+  return [
+    ...new Set(
+      list
+        .filter((id): id is string => typeof id === 'string' && id.length > 0)
+        .map((id) => (id === 'research' ? 'science' : id)),
+    ),
+  ]
 }
 
 /**
@@ -285,7 +291,7 @@ export function useNavEntries({
   const here = mode === 'dev' ? raised(at) : null
   const to = (p: string) => () => go(app(p))
   const team = mode !== 'design'
-  const rawGranted = BETAS.filter((b) => b.href && b.embed === undefined && b.id !== 'flow' && opened(b.id))
+  const rawGranted = BETAS.filter((b) => b.href && b.embed === undefined && b.id !== 'flow' && b.id !== 'science' && opened(b.id))
   const rawApps = HOSTED_APPS.filter((a) => opened(a.id))
   const reach = (address: string) => (address.startsWith('/') ? go(address) : out(address))
   const pinnedSet = new Set(pinnedIds)
@@ -389,13 +395,13 @@ export function useNavEntries({
             onPress: () => go('/beta'),
           } satisfies NavEntry,
           {
-            id: 'research',
-            slot: 'rail-research',
-            label: t('Research'),
-            href: RESEARCH,
+            id: 'science',
+            slot: 'rail-science',
+            label: t('Science'),
+            href: SCIENCE,
             on: mode === 'research',
             icon: <Atom size={17} aria-hidden />,
-            onPress: () => go(RESEARCH),
+            onPress: () => go(SCIENCE),
           } satisfies NavEntry,
           ...apps.map(
             (a): NavEntry => ({

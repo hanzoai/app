@@ -91,7 +91,7 @@ export const BETAS: readonly Beta[] = [
   { id: 'notebook', name: 'Notebook', line: phrase('Shared live Python, R and SQL notebooks connected to Hanzo Science agents'), group: 'Data', href: '/science?view=notebook' },
   { id: 'workspace', name: 'Google Workspace', line: phrase('Drive, Docs, Sheets, Gmail and Calendar for the assistant, read and write'), group: 'Data' },
 
-  { id: 'science', name: 'Science', line: phrase('AI research workbench for multi-agent literature review, auditable figures and live notebooks'), group: 'Agents', href: '/science?workbench=1' },
+  { id: 'science', name: 'Science', line: phrase('Research, discovery, experimentation and autonomous evolution'), group: 'Agents', href: '/science' },
   { id: 'flow', name: 'Flow', line: phrase('Visual node-graph canvas for agents, RAG pipelines and workflows'), group: 'Agents', href: '/flow' },
   { id: 'operative', name: 'Operative', line: phrase('A desktop in a container, driven by a model'), group: 'Agents' },
   { id: 'tasks', name: 'Tasks', line: phrase('Durable execution for long-running work'), group: 'Agents', href: `${PLATFORM}/tasks` },

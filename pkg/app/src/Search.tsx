@@ -32,6 +32,7 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'rea
 import { isolate, english, type Say } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import {
+  Atom,
   Award,
   Bell,
   Blocks,
@@ -104,7 +105,7 @@ import { openModelPicker } from './lib/model-picker'
 import { useSignOut, useSigningOut } from './lib/signout'
 import { choose } from './lib/session'
 import { getDevMode, rememberSettingsReturn, setDevMode, useDevMode } from './lib/dev-mode'
-import { app, design, flow, hosted, paged, settings, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
+import { app, design, flow, hosted, paged, science, settings, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
 import { BETAS } from './lib/betas'
 import { useBetas } from './Betas'
 import { tidy } from './lib/title'
@@ -201,6 +202,7 @@ export function places(host: Host | undefined, go: (address: string) => void, t:
       ? [
           { id: 'design', label: 'Design', icon: <MARKS.design.icon {...ICON} />, run: () => go(design('')) },
           { id: 'tabs', label: 'Tabs', icon: <MARKS.tabs.icon {...ICON} />, run: () => go(TERMINALS) },
+          { id: 'science', label: t('Science'), icon: <Atom {...ICON} />, keywords: ['research', 'studies', 'autonomy', 'experiments', 'benchmarks'], run: () => go(science()) },
           ...(host ? [{ id: 'team', label: 'Team', icon: <Users {...ICON} />, keywords: ['workspace'], run: () => out(WORKSPACE) }] : []),
           ...(host ? rows(nav(host, builder, t).map((g) => ({ links: g.links.filter((l) => l.id !== NEW) })), '', 'dev') : []),
         ]
@@ -225,6 +227,10 @@ export function places(host: Host | undefined, go: (address: string) => void, t:
           ...rows(tabs(host, builder, t), t('Customize'), 'customize'),
           ...rows(library(host, builder, t).slice(1), t('Library'), 'library'),
           ...rows(made(host, (p) => go(design(p))), 'Design', 'design').filter((a) => a.id !== `design-${NEW}`),
+          { id: 'science-studies', label: t('Studies'), where: t('Science'), icon: <BookOpen {...ICON} />, keywords: ['science', 'studies', 'benchmarks', 'runs', 'experiments', 'compare'], run: () => go(science('studies')) },
+          { id: 'science-autonomy', label: t('Autonomy'), where: t('Science'), icon: <Sparkles {...ICON} />, keywords: ['science', 'autonomy', 'hypothesis', 'opportunities', 'preregister'], run: () => go(science('autonomy')) },
+          { id: 'science-machines', label: t('Research machines'), where: t('Science'), icon: <Server {...ICON} />, keywords: ['science', 'machines', 'gpu', 'dgx', 'evo', 'hanzod', 'fleet'], run: () => go(science('machines')) },
+          { id: 'science-schedules', label: t('Research schedules'), where: t('Science'), icon: <CalendarClock {...ICON} />, keywords: ['science', 'schedules', 'cron', 'autonomous', 'tasks'], run: () => go(science('schedules')) },
         ]
       : host && anon
         ? [...rows(library(host, builder, t).slice(1), t('Library'), 'library')]
