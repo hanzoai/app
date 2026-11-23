@@ -20,6 +20,7 @@ import { useWindowed } from '../windowed'
 import {
   activeProject,
   buildResearchSummary,
+  canProbeLocalHanzod,
   listActiveCloudLeases,
   listBenchmarks,
   listExperiments,
@@ -138,6 +139,20 @@ export function Science({
   const checkHanzodOnly = useCallback(
     async (signal?: AbortSignal): Promise<HanzodWorkerState | null> => {
       const origin = resolveLocalHanzodOrigin()
+      if (!canProbeLocalHanzod(isDesktop)) {
+        setHanzod((prev) => ({
+          origin,
+          mode: 'web-cloud',
+          version: prev.version,
+          sandbox: prev.sandbox,
+          hanzo_vm_available: prev.hanzo_vm_available,
+          worker: null,
+          reconnectAttempts: 0,
+          lastConnectedAt: prev.lastConnectedAt,
+          lastError: null,
+        }))
+        return null
+      }
       const probe = await probeHanzodState(origin, signal)
       if (probe.connected) {
         everConnectedRef.current = true

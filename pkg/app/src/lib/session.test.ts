@@ -198,3 +198,28 @@ describe('an organization the token does not name yet opens on the reload', () =
     expect(reload).toHaveBeenCalledOnce()
   })
 })
+
+describe('IAM client_credentials program tokens (type: application)', () => {
+  const jwt = (c: object) => `e30.${Buffer.from(JSON.stringify(c)).toString('base64url')}.s`
+
+  test('opens its own non-admin org when type is application, while refusing admin and unverified human owner fallback', () => {
+    const exp = Math.floor(Date.now() / 1000) + 600
+    const progStore = memory({
+      hanzo_iam_access_token: jwt({ sub: 'admin/hanzo-grid', owner: 'hanzo', tokenType: 'access-token', type: 'application', exp }),
+    })
+    vi.stubGlobal('window', { localStorage: progStore, location: { hostname: 'hanzo.app', origin: 'https://hanzo.app', protocol: 'https:' } })
+    expect(orgs()).toEqual(['hanzo'])
+
+    const adminProgStore = memory({
+      hanzo_iam_access_token: jwt({ sub: 'admin/kms-sync', owner: 'admin', tokenType: 'access-token', type: 'application', exp }),
+    })
+    vi.stubGlobal('window', { localStorage: adminProgStore, location: { hostname: 'hanzo.app', origin: 'https://hanzo.app', protocol: 'https:' } })
+    expect(orgs()).toEqual([])
+
+    const humanMissingOrgsStore = memory({
+      hanzo_iam_access_token: jwt({ sub: 'alice', owner: 'hanzo', tokenType: 'access-token', exp }),
+    })
+    vi.stubGlobal('window', { localStorage: humanMissingOrgsStore, location: { hostname: 'hanzo.app', origin: 'https://hanzo.app', protocol: 'https:' } })
+    expect(orgs()).toEqual([])
+  })
+})
