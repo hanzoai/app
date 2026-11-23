@@ -8,6 +8,7 @@ import { phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { ArrowUpRight, Check, ExternalLink, Lock, Sparkles } from 'lucide-react'
 import { shared, useChatPreferences } from './lib/chatPreferences'
+import { CloudControlPane } from './CloudControl'
 import { EFFORTS } from '@hanzo/ui/chat/pure'
 import {
   Box,
@@ -93,6 +94,7 @@ function Pane({ id, note }: { id: string; note?: string }) {
   if (id === 'models') return <Served />
   if (id === 'agent') return <AgentSettings />
   if (id === 'capabilities') return <Capabilities />
+  if (id === 'cloud-control') return <CloudControlPane />
   if (id === 'memory') return <MemorySettings />
 
   return (

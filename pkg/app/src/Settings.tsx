@@ -68,6 +68,7 @@ const GROUPS: Group[] = [
       { id: 'usage', label: phrase('Usage') },
       { id: 'sources', label: phrase('Linked sources') },
       { id: 'capabilities', label: phrase('Capabilities'), note: phrase('What a model may reach for on your behalf.') },
+      { id: 'cloud-control', label: phrase('Cloud control') },
       { id: 'privacy', label: phrase('Privacy'), href: site('/legal/privacy') },
       { id: 'dev', label: 'Hanzo Dev', product: true, href: dev() },
       { id: 'browser', label: 'Hanzo Browser', product: true, href: site('/extension') },

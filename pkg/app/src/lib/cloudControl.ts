@@ -30,6 +30,14 @@ export function emergencyStopOn(): boolean {
 export async function saveEmergencyStop(on: boolean): Promise<void> {
   const auth = scope()
   if (auth.Authorization) {
+    // Write to this browser at once so the guard refuses even before the
+    // account write lands (or if it never does).
+    try {
+      if (on) window.localStorage.setItem(KEY, '1')
+      else window.localStorage.removeItem(KEY)
+    } catch {
+      /* no store */
+    }
     await fetch(`${api()}/v1/pref`, {
       method: 'PATCH',
       keepalive: true,
@@ -39,12 +47,13 @@ export async function saveEmergencyStop(on: boolean): Promise<void> {
       /* the store below is the fallback; a signed-in reader whose network is
          down still gets stopped here */
     })
-  }
-  try {
-    if (on) window.localStorage.setItem(KEY, '1')
-    else window.localStorage.removeItem(KEY)
-  } catch {
-    /* no store: the guard reads nothing and refuses nothing */
+  } else {
+    try {
+      if (on) window.localStorage.setItem(KEY, '1')
+      else window.localStorage.removeItem(KEY)
+    } catch {
+      /* no store: the guard reads nothing and refuses nothing */
+    }
   }
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('hanzo:cloud:emergency-stop', { detail: { on } }))

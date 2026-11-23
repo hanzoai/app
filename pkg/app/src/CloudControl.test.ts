@@ -1,48 +1,18 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { createElement } from 'react'
+import { describe, expect, test, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s }) }))
 vi.mock('@hanzo/ui', () => ({
-  Button: ({ children, onClick, disabled }: any) => {
-    const el = document.createElement('button')
-    el.setAttribute('data-slot', 'cloud-button')
-    if (disabled) el.setAttribute('disabled', 'true')
-    el.textContent = String(children)
-    if (onClick) el.addEventListener('click', onClick)
-    return el
-  },
-  Switch: ({ checked, onCheckedChange, 'aria-label': label }: any) => {
-    const el = document.createElement('input')
-    el.type = 'checkbox'
-    el.checked = checked === true
-    el.setAttribute('aria-label', label || '')
-    el.addEventListener('change', () => onCheckedChange(!checked))
-    return el
-  },
-  Text: ({ children }: any) => {
-    const el = document.createElement('p')
-    el.textContent = String(children ?? '')
-    return el
-  },
-  Box: ({ children, render }: any) => {
-    const Tag = render || 'div'
-    const el = document.createElement(Tag)
-    el.textContent = String(children ?? '')
-    return el
-  },
-  XStack: ({ children }: any) => {
-    const el = document.createElement('div')
-    el.textContent = String(children ?? '')
-    return el
-  },
-  YStack: ({ children }: any) => {
-    const el = document.createElement('div')
-    el.textContent = String(children ?? '')
-    return el
-  },
-  Separator: () => document.createElement('hr'),
-  Input: () => document.createElement('input'),
+  Button: ({ children, onClick, disabled }: any) => createElement('button', { 'data-slot': 'cloud-button', disabled, onClick }, children),
+  Switch: ({ checked, onCheckedChange, 'aria-label': label }: any) => createElement('input', { type: 'checkbox', checked: checked === true, 'aria-label': label || '', onChange: () => onCheckedChange && onCheckedChange(!checked) }),
+  Text: ({ children }: any) => createElement('p', null, children),
+  Box: ({ children, render }: any) => createElement(render || 'div', null, children),
+  XStack: ({ children }: any) => createElement('div', null, children),
+  YStack: ({ children }: any) => createElement('div', null, children),
+  Separator: () => createElement('hr'),
+  Input: () => createElement('input'),
 }))
 vi.mock('@hanzo/iam/react', () => ({ useIam: () => ({ isAuthenticated: true }) }))
 vi.mock('./lib/session', () => ({
@@ -54,8 +24,7 @@ vi.mock('./lib/session', () => ({
 vi.mock('./pref', () => ({
   usePref: (key: string, initial: any) => {
     const store: Record<string, any> = {}
-    const [value, setValue] = [store[key] ?? initial, (v: any) => { store[key] = v }]
-    return [value, setValue, true]
+    return [store[key] ?? initial, (v: any) => { store[key] = v }, true]
   },
 }))
 
@@ -63,7 +32,7 @@ import { CloudControlPane, emergencyStopOn, refuseOutbound, saveEmergencyStop } 
 
 describe('cloud control pane (Settings → Cloud control)', () => {
   test('renders without crashing — ShieldAlert, PhoneCall and UserCheck resolve', () => {
-    const html = renderToStaticMarkup(CloudControlPane())
+    const html = renderToStaticMarkup(createElement(CloudControlPane))
     expect(html).toContain('Cloud control')
     expect(html).toContain('Emergency stop')
     expect(html).toContain('Outbound calls')
@@ -80,11 +49,11 @@ describe('cloud control pane (Settings → Cloud control)', () => {
   })
 
   test('with emergency stop on, outbound calls, texts and AI are refused', () => {
-    saveEmergencyStop(true)
+    void saveEmergencyStop(true)
     expect(refuseOutbound('call')).toBe(true)
     expect(refuseOutbound('text')).toBe(true)
     expect(refuseOutbound('ai')).toBe(true)
-    saveEmergencyStop(false)
+    void saveEmergencyStop(false)
     expect(refuseOutbound('call')).toBe(false)
     expect(refuseOutbound('text')).toBe(false)
     expect(refuseOutbound('ai')).toBe(false)

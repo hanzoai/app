@@ -23,6 +23,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useHydrated } from './hydrated'
 import { api } from './api'
+import { refuseOutbound } from './cloudControl'
 import { useIam } from '@hanzo/iam/react'
 import { ORG, bearer, hasSession, org } from './session'
 import { createAiClient, type AiClient } from '@hanzo/ai'
@@ -107,7 +108,13 @@ export function useAi(): Ai {
   const client = useMemo(() => {
     // Every request reports which model answered (`observed`), and a completion
     // that offers the web tools has its lookups run inside it (`researched`).
-    const wire = observed(researched((input, init) => fetch(input, init)))
+    const wire = observed(researched((input, init) => {
+      // EMERGENCY STOP: while it is on, outbound AI is refused — nothing leaves.
+      if (refuseOutbound('ai')) {
+        throw Object.assign(new Error('Emergency stop is on. Outbound AI is refused.'), { status: 409 })
+      }
+      return fetch(input, init)
+    }))
     // TWO STATES, ONE ISSUER. Signed in is the visitor's own IAM session; signed
     // out is the org's IAM-minted publishable key. There is no third credential
     // and no locally-invented one — a token this app made up is a token the
