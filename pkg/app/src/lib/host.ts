@@ -157,6 +157,9 @@ const CHAT_THREAD_SLUG = /^\/?chat\/(t-[^/]+)$/
 /** Misrouted chat thread URL under /dev/projects/chat/t-…: never a Dev repo slug. */
 const MISROUTED_CHAT = /^\/dev\/projects\/chat\/(t-[^/]+)$/
 
+/** A bare chat thread ID (e.g. `t-…`). Thread IDs always start with `t-`. */
+const BARE_THREAD_ID = /^t-[^/]+$/
+
 /**
  * The app's address for a builder address (`route` in @hanzo/build): Dev's
  * path, '' New at /dev, and what is not an address New too. A section of the
@@ -173,6 +176,8 @@ export function app(at: string): string {
   if (clean === CHAT || clean.startsWith(`${CHAT}/`)) return clean
   const thread = CHAT_THREAD_SLUG.exec(clean)
   if (thread) return `${CHAT}/${thread[1]}`
+  // A bare thread ID like `t-...` is a chat thread, not a Dev project slug.
+  if (BARE_THREAD_ID.test(clean)) return `${CHAT}/${clean}`
   const r = route(at)
   const to = href(r)
   if (to === '/artifacts' || to.startsWith('/artifacts/')) return `${LIBRARY}${to.slice('/artifacts'.length)}`
@@ -280,7 +285,7 @@ const REPO = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}\/[A-Za-z0-9][A-Za-z0-9._-]{0,63}$
  * address.
  */
 export const dev = (ref?: string | null): string =>
-  site(app(ref && !CHAT_THREAD_SLUG.test(ref) && (SESSION.test(ref) || REPO.test(ref) || SLUG.test(ref)) ? ref : ''))
+  site(app(ref && !CHAT_THREAD_SLUG.test(ref) && !BARE_THREAD_ID.test(ref) && (SESSION.test(ref) || REPO.test(ref) || SLUG.test(ref)) ? ref : ''))
 
 /**
  * Move the app to an address of this page: a history entry, or in place of this

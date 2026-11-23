@@ -209,3 +209,26 @@ describe('Chat is the root of the app host', () => {
     }
   })
 })
+
+describe('chat thread creation (hanzo-inc/app issue 528)', () => {
+  const chatId = 't-mwsfr4dak3eyk3x0'
+  
+  test('app() with a chat thread ID returns the chat path, never a Dev project', () => {
+    // The app function should never wrap a chat thread under /dev/projects/
+    expect(app(chatId)).toBe(`/chat/${chatId}`)
+    expect(app(`/chat/${chatId}`)).toBe(`/chat/${chatId}`)
+  })
+  
+  test('talk() with a chat thread ID returns the correct chat path', () => {
+    expect(talk(chatId)).toBe(`/chat/${chatId}`)
+    // talk() encodes its input, so passing a full path double-encodes - that's expected behavior
+    expect(talk(`/chat/${chatId}`)).toBe(`/chat/%2Fchat%2F${chatId}`)
+  })
+  
+  test('dev() with a chat thread ID returns /dev (not a project path)', () => {
+    // The dev door should reject a chat thread as a valid ref
+    expect(dev(chatId)).toBe('/dev')
+    // dev() rejects chat threads and falls back to /dev
+    expect(dev(`/chat/${chatId}`)).toBe('/dev')
+  })
+})
