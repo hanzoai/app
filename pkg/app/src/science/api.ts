@@ -60,6 +60,28 @@ export function resolveLocalHanzodOrigin(): string {
   return DEFAULT_HANZOD_ORIGIN
 }
 
+/**
+ * Only probe local `hanzod` (`http://127.0.0.1:3690`) in Desktop / loopback / explicitly
+ * configured local environments. On hosted HTTPS Web (`https://hanzo.app`), Science uses
+ * the Cloud API directly without violating the page's `connect-src` CSP.
+ */
+export function canProbeLocalHanzod(isDesktop = false): boolean {
+  if (isDesktop) return true
+  if (typeof window === 'undefined') return false
+  const win = window as unknown as {
+    __hanzoLocalHost?: { origin?: string }
+    __HANZO_SPA_CONFIG__?: { hanzodHost?: string }
+    __TAURI_INTERNALS__?: unknown
+  }
+  if (win.__TAURI_INTERNALS__) return true
+  const candidate = win.__hanzoLocalHost?.origin || win.__HANZO_SPA_CONFIG__?.hanzodHost
+  if (typeof candidate === 'string' && candidate.trim()) return true
+  const proto = window.location?.protocol ?? ''
+  const host = (window.location?.hostname ?? '').toLowerCase()
+  if (proto === 'tauri:' || proto === 'file:') return true
+  return host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === 'tauri.localhost'
+}
+
 export function activeProject(): string {
   const tok = bearer()
   if (!tok) return 'default'

@@ -319,13 +319,17 @@ function claims(): Record<string, unknown> | null {
  */
 export const DIRECTORIES: readonly string[] = ['hanzo-id', 'lux-id', 'zoo-id', 'pars-id']
 
-/** Every org the token's `orgs` names, home first, each once. */
+/** Every org the token's `orgs` names, home first, each once (or `owner` for an IAM `type: "application"` program credential). */
 function listed(token: string | null): string[] {
-  const set = claimsOf(token)?.orgs
+  const c = claimsOf(token)
+  const set = c?.orgs
   const out: string[] = []
   for (const ref of Array.isArray(set) ? set : []) {
     const o = (ref as { org?: unknown } | null)?.org
     if (typeof o === 'string' && o && !out.includes(o)) out.push(o)
+  }
+  if (out.length === 0 && c?.type === 'application' && typeof c.owner === 'string' && c.owner) {
+    out.push(c.owner)
   }
   return out
 }
@@ -358,6 +362,16 @@ function opened(token: string | null): string[] {
     if (typeof o !== 'string' || !o || out.includes(o) || DIRECTORIES.includes(o)) continue
     const runs = typeof m?.role === 'string' && ['owner', 'admin'].includes(m.role.trim().toLowerCase())
     if (o === 'admin' ? sudo : PLATFORM.includes(o) ? sudo || runs : true) out.push(o)
+  }
+  if (
+    out.length === 0 &&
+    c?.type === 'application' &&
+    typeof c.owner === 'string' &&
+    c.owner &&
+    c.owner !== 'admin' &&
+    !DIRECTORIES.includes(c.owner)
+  ) {
+    out.push(c.owner)
   }
   return out
 }
