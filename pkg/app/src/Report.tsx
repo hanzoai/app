@@ -261,17 +261,15 @@ export function Report({ children }: { children: ReactNode }) {
           data-slot="report-sheet"
           width={520}
           maxW="calc(100vw - 24px)"
-          maxH="min(88dvh, 680px)"
+          maxH="90dvh"
           bg="var(--popover)"
           borderWidth={1}
           borderColor="var(--border-strong)"
           rounded="$6"
           gap="$3"
           overflow="hidden"
-          display="flex"
-          flexDirection="column"
         >
-          <DialogTitle shrink={0}>{t('Report a problem')}</DialogTitle>
+          <DialogTitle>{t('Report a problem')}</DialogTitle>
           {state === 'done' && filed ? (
             <YStack gap="$3">
               <Text data-slot="report-done">{filed.again ? t('Already reported as {id}. Thank you.', { id: filed.identifier }) : t('Report received ({id}). Thank you.', { id: filed.identifier })}</Text>
@@ -283,11 +281,10 @@ export function Report({ children }: { children: ReactNode }) {
               </XStack>
             </YStack>
           ) : caught ? (
-            <>
+            <YStack gap="$3">
               <YStack
                 gap="$3"
-                flex={1}
-                minH={0}
+                maxH="min(58dvh, 440px)"
                 overflowY="auto"
                 overflowX="hidden"
                 $platform-web={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
@@ -358,7 +355,7 @@ export function Report({ children }: { children: ReactNode }) {
                   <Button size="sm" data-slot="report-send" disabled={state === 'sending'} onPress={go}>{state === 'sending' ? t('Sending…') : t('Send')}</Button>
                 </XStack>
               </XStack>
-            </>
+            </YStack>
           ) : null}
         </DialogContent>
       </Dialog>
