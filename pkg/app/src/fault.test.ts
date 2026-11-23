@@ -62,20 +62,38 @@ describe('the crash screen', () => {
   })
 })
 
-describe('send resilience', () => {
-  test('decodes base64 screenshots in memory, survives S3 failure, and auto-seats on 403', async () => {
+describe('send to central collector', () => {
+  const mkStorage = () => {
+    const map = new Map<string, string>()
+    return {
+      get length() { return map.size },
+      key: (i: number) => [...map.keys()][i] ?? null,
+      clear: () => map.clear(),
+      getItem: (k: string) => map.get(k) ?? null,
+      setItem: (k: string, v: string) => void map.set(k, v),
+      removeItem: (k: string) => void map.delete(k),
+    }
+  }
+
+  test('routes signed-in reports to /v1/event (never private Tasks board) and survives S3 failure', async () => {
     const { configure } = await import('./where')
     const { send } = await import('./fault')
     const origFetch = globalThis.fetch
     const hadWindow = 'window' in globalThis
     const origWindow = (globalThis as { window?: unknown }).window
-    if (!hadWindow) (globalThis as { window?: unknown }).window = { location: { href: 'tauri://localhost/design', hostname: 'localhost', protocol: 'tauri:', origin: 'tauri://localhost' } }
-    const calls: string[] = []
-    let seated = false
+    const ss = mkStorage()
+    const ls = mkStorage()
+    ;(globalThis as { window?: unknown }).window = {
+      location: { href: 'https://hanzo.app/design', hostname: 'hanzo.app', protocol: 'https:', origin: 'https://hanzo.app' },
+      sessionStorage: ss,
+      localStorage: ls,
+    }
+    const calls: Array<{ method: string; url: string; headers: Record<string, string>; body: string }> = []
     configure({
       api: 'https://api.example.test',
+      key: 'pk-test-publishable-key',
       session: {
-        length: 0,
+        length: 1,
         key: () => null,
         clear: () => {},
         getItem: (k: string) => (k.includes('access_token') ? 'tok_test' : null),
@@ -86,23 +104,11 @@ describe('send resilience', () => {
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
       const method = (init?.method ?? 'GET').toUpperCase()
-      calls.push(`${method} ${url}`)
+      calls.push({ method, url, headers: (init?.headers ?? {}) as Record<string, string>, body: String(init?.body ?? '') })
       if (url.startsWith('data:')) throw new Error('CSP must never fetch data: URLs')
-      if (url.endsWith('/v1/git/workspace')) {
-        seated = true
-        return new Response(JSON.stringify({ ok: true }), { status: 200 })
-      }
-      if (url.includes('/v1/task/projects/app/issues') && method === 'GET') {
-        if (!seated) return new Response('unseated', { status: 403 })
-        return new Response(JSON.stringify([]), { status: 200 })
-      }
-      if (url.includes('/v1/s3/buckets')) {
-        return new Response('s3 unavailable', { status: 503 })
-      }
-      if (url.includes('/v1/task/projects/app/issues') && method === 'POST') {
-        return new Response(JSON.stringify({ number: 42, identifier: 'APP#42', title: 't' }), { status: 201 })
-      }
-      return new Response('not found', { status: 404 })
+      if (url.includes('/v1/s3/buckets')) return new Response('s3 unavailable', { status: 503 })
+      if (url.includes('/v1/event') && method === 'POST') return new Response(JSON.stringify({ accepted: 1, dropped: 0 }), { status: 200 })
+      return new Response('unexpected', { status: 404 })
     }) as typeof fetch
     try {
       const c = catches('http', 'POST /v1/chat/completions answered 503', '/design')!
@@ -112,9 +118,23 @@ describe('send resilience', () => {
         description: 'failed during design',
         shot: 'data:image/png;base64,iVBORw0KGgo=',
       })
-      expect(res).toEqual({ identifier: 'APP#42', again: false })
-      expect(calls).toContain('GET https://api.example.test/v1/git/workspace')
-      expect(calls.some((x) => x.startsWith('POST https://api.example.test/v1/task/projects/app/issues'))).toBe(true)
+      expect(res.identifier).toMatch(/^FB-[0-9A-F]{8}$/)
+      expect(res.again).toBe(false)
+      expect(calls.some((x) => x.url.includes('/v1/task/'))).toBe(false)
+      const fbCall = calls.find((x) => x.url === 'https://api.example.test/v1/event' && x.body.includes('"user_feedback"'))
+      expect(fbCall).toBeTruthy()
+      expect(fbCall!.headers.Authorization).toBe('Bearer tok_test')
+      const payload = JSON.parse(fbCall!.body)
+      expect(payload.batch[0]).toMatchObject({
+        type: 'error',
+        event: 'user_feedback',
+        product: 'app',
+        site: 'hanzo.app',
+        path: '/design',
+        error: { type: 'UserFeedback', message: 'POST /v1/chat/completions answered 503', handled: true },
+      })
+      expect(payload.batch[0].properties.description).toBe('failed during design')
+      expect(payload.batch[0].properties.signed_in).toBe(true)
     } finally {
       globalThis.fetch = origFetch
       if (!hadWindow) delete (globalThis as { window?: unknown }).window
@@ -122,21 +142,28 @@ describe('send resilience', () => {
     }
   })
 
-  test('deduplicates against open board summary rows lacking description (no duplicate POST)', async () => {
+  test('routes unsigned user reports to /v1/event?ingest_key=pk-... and returns confirmation', async () => {
     const { configure } = await import('./where')
     const { send } = await import('./fault')
     const origFetch = globalThis.fetch
     const hadWindow = 'window' in globalThis
     const origWindow = (globalThis as { window?: unknown }).window
-    if (!hadWindow) (globalThis as { window?: unknown }).window = { location: { href: 'https://hanzo.app/dev', hostname: 'hanzo.app', protocol: 'https:', origin: 'https://hanzo.app' } }
-    const calls: string[] = []
+    const ss = mkStorage()
+    const ls = mkStorage()
+    ;(globalThis as { window?: unknown }).window = {
+      location: { href: 'https://hanzo.app/chat', hostname: 'hanzo.app', protocol: 'https:', origin: 'https://hanzo.app' },
+      sessionStorage: ss,
+      localStorage: ls,
+    }
+    const calls: Array<{ method: string; url: string; body: string }> = []
     configure({
       api: 'https://api.example.test',
+      key: 'pk-anon-test-key',
       session: {
         length: 0,
         key: () => null,
         clear: () => {},
-        getItem: (k: string) => (k.includes('access_token') ? 'tok_test' : null),
+        getItem: () => null,
         setItem: () => {},
         removeItem: () => {},
       },
@@ -144,30 +171,36 @@ describe('send resilience', () => {
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
       const method = (init?.method ?? 'GET').toUpperCase()
-      calls.push(`${method} ${url}`)
-      if (url.endsWith('/v1/task/projects/app/issues') && method === 'GET') {
-        // Board summary omits description — must still match existing open issue by title shape!
-        return new Response(
-          JSON.stringify([{ number: 99, identifier: 'app#99', title: 'POST /v1/responses answered 503', status: 'backlog' }]),
-          { status: 200 },
-        )
-      }
-      if (url.endsWith('/v1/task/projects/app/issues/99') && method === 'PATCH') {
-        return new Response(JSON.stringify({ number: 99, identifier: 'app#99' }), { status: 200 })
+      calls.push({ method, url, body: String(init?.body ?? '') })
+      if (url.includes('/v1/event?ingest_key=pk-anon-test-key') && method === 'POST') {
+        return new Response(JSON.stringify({ accepted: 1, dropped: 0 }), { status: 200 })
       }
       return new Response('unexpected', { status: 500 })
     }) as typeof fetch
     try {
-      const c = catches('http', 'POST /v1/responses answered 503', '/dev/projects/chat/t-999')!
+      const c = catches('error', new Error('unsigned modal test failure'), '/chat')!
       const res = await send({
         caught: c,
-        title: 'POST /v1/responses answered 503',
+        title: 'Chat broke while signed out',
+        description: 'clicked send and nothing happened',
+        shot: null,
+      })
+      expect(res.identifier).toMatch(/^FB-[0-9A-F]{8}$/)
+      expect(res.again).toBe(false)
+      // Second identical send with no new note deduplicates cleanly
+      const second = await send({
+        caught: c,
+        title: 'Chat broke while signed out',
         description: '',
         shot: null,
       })
-      expect(res).toEqual({ identifier: 'app#99', again: true })
-      expect(calls.some((x) => x.startsWith('POST '))).toBe(false)
-      expect(calls.some((x) => x.startsWith('PATCH https://api.example.test/v1/task/projects/app/issues/99'))).toBe(true)
+      expect(second).toEqual({ identifier: res.identifier, again: true })
+      const feedbackPosts = calls.filter((x) => x.body.includes('"user_feedback"'))
+      expect(feedbackPosts).toHaveLength(1)
+      expect(feedbackPosts[0]!.url).toBe('https://api.example.test/v1/event?ingest_key=pk-anon-test-key')
+      // Uncaught error was also reported automatically
+      const uncaughtPosts = calls.filter((x) => x.body.includes('"handled":false'))
+      expect(uncaughtPosts).toHaveLength(1)
     } finally {
       globalThis.fetch = origFetch
       if (!hadWindow) delete (globalThis as { window?: unknown }).window

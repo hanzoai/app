@@ -13,11 +13,11 @@
 import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Button, Dialog, DialogContent, DialogTitle, Input, SizableText, Text, Textarea, View, XStack, YStack } from '@hanzo/ui'
 import { useI18n } from '@hanzo/i18n/react'
-import { body, catches, details, DISCORD_HELP_URL, hear, listen, repo, screenOf, send, type Caught, type Filed } from './fault'
+import { body, catches, details, DISCORD_HELP_URL, hear, listen, screenOf, send, type Caught, type Filed } from './fault'
 import { useHost } from './host'
 import { talk } from './lib/host'
 import { shoot } from './shot'
-import { bearer, superAdmin } from './lib/session'
+import { superAdmin } from './lib/session'
 
 async function copyText(text: string): Promise<boolean> {
   try {
@@ -166,7 +166,6 @@ export function Report({ children }: { children: ReactNode }) {
     const q = new URLSearchParams(window.location.search).get('report-test')
     if (q && superAdmin()) setProbe(q)
     return hear((c) => {
-      if (!bearer()) return
       // The picture is taken as the break happens, not after the sheet has changed the page.
       void shoot().then(setShot)
       setCaught(c)
@@ -262,7 +261,7 @@ export function Report({ children }: { children: ReactNode }) {
           <DialogTitle>{t('Report a problem')}</DialogTitle>
           {state === 'done' && filed ? (
             <YStack gap="$3">
-              <Text data-slot="report-done">{filed.again ? t('Added to {id}, already open. Thank you.', { id: filed.identifier }) : t('Filed as {id}. Thank you.', { id: filed.identifier })}</Text>
+              <Text data-slot="report-done">{filed.again ? t('Already reported as {id}. Thank you.', { id: filed.identifier }) : t('Report received ({id}). Thank you.', { id: filed.identifier })}</Text>
               <XStack gap="$2" justify="space-between" items="center" flexWrap="wrap">
                 <Button variant="ghost" size="sm" onPress={() => window.open(DISCORD_HELP_URL, '_blank', 'noopener,noreferrer')}>
                   {t('Get help on Discord')}
@@ -283,7 +282,7 @@ export function Report({ children }: { children: ReactNode }) {
                 </YStack>
               ) : null}
               <SizableText size="$1" color="$quiet">
-                {t('Nothing is sent until you press Send. Sent to {repo}: the error, the page path, the app version, your browser, the last console lines with tokens, keys, cookies and emails removed, and the screenshot if kept.', { repo: repo() })}
+                {t('Sent to Hanzo when you press Send: the report title, your note, the page path, the app version, your browser, and the last console lines with tokens, keys, cookies and emails removed.')}
               </SizableText>
               <View render={<details />}>
                 <Text render="summary" fontSize="$1" cursor="pointer">{t('See exactly what will be sent')}</Text>
