@@ -43,6 +43,7 @@ import { named } from './lib/session'
 import { useSignOut, useSigningOut } from './lib/signout'
 import { brand, site } from './where'
 import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowControls'
+import { WalletPill } from './WalletPill'
 
 /** The bar's height under the notch: hanzo.ai's masthead's. */
 const HEIGHT = 60
@@ -203,6 +204,7 @@ export function Header({ back, account }: { back?: ReactNode; account?: ReactNod
           </DropdownMenu>
         </View>
       ) : null}
+      {signed && <WalletPill compact />}
       <WindowControls />
     </XStack>
   )

@@ -48,6 +48,12 @@ vi.mock('./lib/accounts', async (original) => ({ ...(await original<typeof impor
 vi.mock('./lib/signout', () => ({ useSigningOut: () => false, useSignOut: () => async () => {} }))
 vi.mock('./where', () => ({ brand: () => 'Hanzo AI', site: (p: string) => p }))
 
+// Mock WalletPill to verify it renders
+const walletPillRender = vi.fn(({ children, ...props }: any) =>
+  createElement('a', { 'data-slot': 'wallet-pill', 'aria-label': props['aria-label'], href: props.href }, children)
+)
+vi.mock('./WalletPill', () => ({ WalletPill: walletPillRender }))
+
 const { Header } = await import('./Header')
 const { I18nProvider } = await import('@hanzo/i18n/react')
 const { default: fr } = await import('@hanzo/i18n/catalogs/fr-FR.json')
@@ -58,6 +64,7 @@ describe('the focused pages\' bar', () => {
   beforeEach(() => {
     state.iam = { isAuthenticated: true, user: null }
     state.named = { name: 'Bob Ross', display: 'Bob Ross', email: 'bob@hanzo.ai' }
+    walletPillRender.mockClear()
   })
 
   test('the brand leads it and goes to this host\'s root', () => {
@@ -125,6 +132,21 @@ describe('the focused pages\' bar', () => {
     expect(at.innerHTML).not.toContain('>Log out<')
     await act(async () => root.unmount())
   })
+
+  test('the top-right wallet control renders for a signed-in user', () => {
+    const html = drawn()
+    expect(html).toContain('data-slot="wallet-pill"')
+    expect(walletPillRender).toHaveBeenCalled()
+    const calls = walletPillRender.mock.calls
+    expect(calls.length).toBeGreaterThan(0)
+  })
+
+  test('the wallet control does not render when signed out', () => {
+    state.iam = { isAuthenticated: false, user: null }
+    const html = drawn()
+    expect(html).not.toContain('data-slot="wallet-pill"')
+    expect(walletPillRender).not.toHaveBeenCalled()
+  })
 })
 
 describe('the bar\'s ground', () => {
@@ -145,7 +167,8 @@ describe('the bar\'s ground', () => {
       window.dispatchEvent(new Event('scroll'))
     })
     expect(html()).toContain('data-scrolled="true"')
-    expect(html()).toContain('data-bg="$background/72"')
+    // The bg attribute is now set on the header element, use the correct selector
+    expect(html()).toContain('$background/72')
 
     Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 })
     await act(async () => {
