@@ -1,19 +1,17 @@
 // A thing that broke, caught, scrubbed and filed. No React, so a spec reads it as it is.
 //
-// WHAT LEAVES THE DEVICE IS DECIDED BY A PERSON, NOT BY THIS FILE. `listen()`
-// only remembers: the last error and the last lines the console said, scrubbed
-// the moment they are written so a raw token is never held. Nothing is sent
-// until `send()` is called, and the sheet that calls it shows the person every
-// field first.
+// Uncaught errors (window errors, unhandled rejections, React render errors, and /v1
+// 5xx responses) are scrubbed immediately and reported fail-soft to Hanzo's central
+// collector (`POST /v1/event`) with source, release, URL, and org context (from the
+// signed-in IAM bearer, or the host's publishable ingest key when signed out).
 //
-// ONE DESTINATION: the task app's own issues (`/v1/task/projects/<repo>/issues`
-// on the gateway), authenticated by the person's IAM bearer like every other
-// call. A screenshot is one presigned PUT to Hanzo S3 and is attached to the
-// issue by its address. A repeat of the same break is the same fingerprint, and
-// gets a "+1" on the issue already open instead of a second one.
+// User-submitted "Report a problem" feedback goes to the SAME central collector
+// (`POST /v1/event`, `event: 'user_feedback'`) for BOTH signed-in and unsigned users,
+// never hidden in a user's private Tasks board, with a clear confirmation reference.
 
+import { keyForPage, ORG_KEY } from '@hanzo/event'
 import { api } from './lib/api'
-import { bearer, scope } from './lib/session'
+import { bearer, org, scope, subject } from './lib/session'
 import { VERSION } from './version.gen'
 import { where } from './where'
 
@@ -149,6 +147,7 @@ export function catches(kind: Kind, error: unknown, route?: string): Caught | nu
     agent: typeof navigator === 'undefined' ? '' : navigator.userAgent,
     lines: lines(),
   }
+  void reportCaught(c)
   subscribers.forEach((fn) => fn(c))
   return c
 }
@@ -182,8 +181,8 @@ export function listen(): void {
     if (res.status >= 500) {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
       const path = pathOf(url)
-      // The report's own calls must never report themselves.
-      if (path.startsWith('/v1/') && !sending) {
+      // The report's own calls and telemetry ingest must never report themselves.
+      if (path.startsWith('/v1/') && path !== '/v1/event' && !sending) {
         const method = (init?.method ?? (typeof input === 'object' && 'method' in input ? input.method : 'GET')).toUpperCase()
         catches('http', `${method} ${path} answered ${res.status}`)
       }
@@ -235,11 +234,158 @@ export function body(f: Filing, shot?: string): string {
 }
 
 const call = async (path: string, init: RequestInit = {}): Promise<Response> => {
-  if (!bearer()) throw new Error('Sign in to send a report.')
+  if (!bearer()) throw new Error('Sign in to upload a screenshot.')
   return fetch(`${api()}${path}`, {
     ...init,
     headers: { 'Content-Type': 'application/json', ...scope(), ...init.headers },
   })
+}
+
+const ANON_KEY = 'hanzo:fault:anon'
+
+function anonId(): string {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const existing = window.localStorage.getItem(ANON_KEY)
+      if (existing) return existing
+      const fresh = `anon_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
+      window.localStorage.setItem(ANON_KEY, fresh)
+      return fresh
+    }
+  } catch {
+    /* ignore storage errors */
+  }
+  return `anon_${Date.now().toString(36)}`
+}
+
+/** Resolve the emitting surface name for central error/feedback attribution. */
+export function sourceOf(): string {
+  if (where().team) return 'team'
+  if (typeof window !== 'undefined') {
+    const proto = window.location?.protocol ?? ''
+    const host = (window.location?.hostname ?? '').toLowerCase()
+    if (proto === 'tauri:' || host === 'tauri.localhost') return 'desktop'
+    if (host === 'hanzo.team' || host.endsWith('.hanzo.team')) return 'team'
+  }
+  return 'app'
+}
+
+function siteOf(): string {
+  if (typeof window === 'undefined') return 'app'
+  const host = (window.location?.hostname ?? '').trim()
+  if (!host || host === 'tauri.localhost') return sourceOf() === 'desktop' ? 'desktop.hanzo.app' : 'hanzo.app'
+  return host
+}
+
+function pageUrlOf(route: string): string {
+  if (typeof window === 'undefined') return route
+  const origin = window.location?.origin
+  if (origin && origin !== 'null') return `${origin}${route.startsWith('/') ? route : `/${route}`}`
+  return route
+}
+
+/** Publishable ingest key for anonymous / fallback central error & feedback collection. */
+export function publishableKey(): string {
+  const configured = where().key?.trim()
+  if (configured && configured.startsWith('pk-')) return configured
+  try {
+    const byPage = keyForPage()
+    if (byPage) return byPage
+  } catch {
+    /* non-browser or unmapped host */
+  }
+  return ORG_KEY.hanzo
+}
+
+const kindErrorType = (kind: Kind): string => {
+  switch (kind) {
+    case 'render':
+      return 'RenderError'
+    case 'rejection':
+      return 'UnhandledRejection'
+    case 'http':
+      return 'HttpError'
+    default:
+      return 'Error'
+  }
+}
+
+/**
+ * Post one canonical event batch to Hanzo's central `/v1/event` collector.
+ * Signed-in callers authenticate with their IAM bearer (stamping their real org
+ * server-side); unsigned callers (or expired-token fallback) use the write-only
+ * publishable key (`?ingest_key=pk-...`) as a CORS-simple request.
+ */
+async function postEvent(event: Record<string, unknown>, keepalive = false): Promise<Response> {
+  const base = api().replace(/\/+$/, '')
+  const bodyText = JSON.stringify({ batch: [event] })
+  const token = bearer()
+  if (token) {
+    const res = await fetch(`${base}/v1/event`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: bodyText,
+      keepalive,
+    })
+    if (res.ok || (res.status !== 401 && res.status !== 403)) return res
+  }
+  const key = publishableKey()
+  return fetch(`${base}/v1/event?ingest_key=${encodeURIComponent(key)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: bodyText,
+    keepalive,
+  })
+}
+
+/** Best-effort automatic delivery of a caught uncaught error/rejection to `/v1/event`. */
+async function reportCaught(c: Caught): Promise<void> {
+  if (typeof window === 'undefined' || typeof fetch !== 'function') return
+  const wasSending = sending
+  sending = true
+  try {
+    const sub = subject()
+    const activeOrg = org()
+    const product = sourceOf()
+    const release = c.version || VERSION
+    await postEvent(
+      {
+        messageId: `err-${c.fingerprint}-${Date.now().toString(36)}`,
+        type: 'error',
+        timestamp: c.at,
+        distinctId: sub ?? anonId(),
+        ...(sub ? { personId: sub } : {}),
+        product,
+        release,
+        environment: 'production',
+        site: siteOf(),
+        url: pageUrlOf(c.route),
+        path: c.route,
+        level: 'error',
+        library: '@hanzo/app',
+        libraryVersion: release,
+        error: {
+          type: kindErrorType(c.kind),
+          message: c.message,
+          ...(c.stack ? { stack: c.stack } : {}),
+          handled: false,
+        },
+        properties: {
+          kind: c.kind,
+          source: product,
+          repo: repo(),
+          fingerprint: c.fingerprint,
+          signed_in: Boolean(bearer()),
+          ...(activeOrg ? { org: activeOrg } : {}),
+        },
+      },
+      true,
+    )
+  } catch {
+    /* fail-soft: background telemetry must never mask the app error */
+  } finally {
+    sending = wasSending
+  }
 }
 
 const BUCKET = 'reports'
@@ -274,16 +420,6 @@ async function store(data: string, fp: string): Promise<string> {
   const up = await fetch(url, { method: 'PUT', body: png, headers: { 'Content-Type': 'image/png' } })
   if (!up.ok) throw new Error(`screenshot upload ${up.status}`)
   return `${api()}/v1/s3/buckets/${BUCKET}/objects/${key}`
-}
-
-interface Row {
-  number: number
-  identifier?: string
-  title: string
-  description?: string
-  body?: string
-  status?: string
-  state?: string
 }
 
 const REPORTED_KEY = 'hanzo:reported:v1'
@@ -328,19 +464,12 @@ function rememberReported(keys: string[], identifier: string): void {
 
 const normTitle = (s: string): string => shape(s).toLowerCase()
 
-const isOpenRow = (r: Row): boolean => {
-  const st = (r.status ?? '').toLowerCase()
-  const state = (r.state ?? '').toLowerCase()
-  return st !== 'done' && st !== 'canceled' && st !== 'cancelled' && st !== 'closed' && state !== 'closed'
-}
-
 let inFlight: Promise<Filed> | null = null
 
 /**
- * Files the report: deduplicates against this session and against open issues
- * on the board (by fingerprint marker, normalized title shape, and issue detail
- * body since board summaries omit `description`), adding a single +1 instead of
- * opening duplicate issues.
+ * Sends user-submitted problem reports and feedback directly to Hanzo's central
+ * `/v1/event` collector so every report arrives with source, release, URL, and
+ * user/org context — working for BOTH signed-in and unsigned users.
  */
 export async function send(f: Filing): Promise<Filed> {
   if (inFlight) return inFlight
@@ -353,89 +482,21 @@ export async function send(f: Filing): Promise<Filed> {
   return work
 }
 
-async function callSeated(path: string, init: RequestInit = {}): Promise<Response> {
-  const res = await call(path, init)
-  if (res.status !== 403) return res
-  // Match lib/todo.ts: opening /v1/git/workspace idempotently seats the principal/org on the forge.
-  await call('/v1/git/workspace').catch(() => undefined)
-  return call(path, init)
-}
-
-async function resolveBoard(preferred: string): Promise<{ board: string; rows: Row[] }> {
-  let board = encodeURIComponent(preferred)
-  let found = await callSeated(`/v1/task/projects/${board}/issues`)
-  if (found.status === 404) {
-    const listed = await callSeated('/v1/task/projects').catch(() => null)
-    if (listed?.ok) {
-      const payload = (await listed.json().catch(() => null)) as
-        | Array<{ key?: string; id?: string; slug?: string }>
-        | { projects?: Array<{ key?: string; id?: string; slug?: string }>; data?: Array<{ key?: string; id?: string; slug?: string }> }
-        | null
-      const items = Array.isArray(payload) ? payload : (payload?.projects ?? payload?.data ?? [])
-      const firstKey = items.map((p) => p.key ?? p.slug ?? p.id).find((k): k is string => Boolean(k && k !== preferred))
-      if (firstKey) {
-        board = encodeURIComponent(firstKey)
-        found = await callSeated(`/v1/task/projects/${board}/issues`)
-      }
-    }
-  }
-  if (!found.ok) throw new Error(`Could not reach the tracker (${found.status}).`)
-  const open = (await found.json()) as Row[] | { data?: Row[]; issues?: Row[] }
-  const rows = Array.isArray(open) ? open : (open.data ?? open.issues ?? [])
-  return { board, rows }
-}
-
-async function findExistingIssue(board: string, rows: Row[], fp: string, wantedTitle: string, caughtMessage: string): Promise<Row | undefined> {
-  const openRows = rows.filter(isOpenRow)
-  const fpMarker = mark(fp)
-
-  // 1. Direct fingerprint match when board rows include descriptions/bodies.
-  const byMarker = openRows.find((r) => (r.description ?? r.body ?? '').includes(fpMarker))
-  if (byMarker) return byMarker
-
-  // 2. Normalized title-shape match (catches identical HTTP 5xx / runtime errors
-  //    even when the board list endpoint omits `description` for summary rows).
-  const wantShape = normTitle(wantedTitle)
-  const msgShape = normTitle(caughtMessage)
-  const byTitle = openRows.find((r) => {
-    const t = normTitle(r.title || '')
-    return Boolean(t) && (t === wantShape || (Boolean(msgShape) && t === msgShape))
-  })
-  if (byTitle) return byTitle
-
-  // 3. Fallback: inspect up to 5 most recent open rows whose description was omitted.
-  const withoutDesc = openRows.filter((r) => !r.description && !r.body).slice(0, 5)
-  for (const cand of withoutDesc) {
-    try {
-      const res = await callSeated(`/v1/task/projects/${board}/issues/${cand.number}`)
-      if (!res.ok) continue
-      const detail = (await res.json()) as Row
-      if ((detail.description ?? detail.body ?? '').includes(fpMarker)) return cand
-    } catch {
-      /* ignore detail probe failure */
-    }
-  }
-  return undefined
-}
-
 async function file(f: Filing): Promise<Filed> {
   const wantedTitle = scrub(f.title.trim()) || f.caught.message.slice(0, 100)
+  const noteText = scrub(f.description.trim())
   const dedupKeys = [mark(f.caught.fingerprint), `title:${normTitle(wantedTitle)}`]
 
   // If this browser session already reported this exact issue and the user added
-  // no new written note, don't re-post or spam duplicate +1 comments.
+  // no new written note, don't duplicate submissions.
   const prevMap = readReported()
   const prev = dedupKeys.map((k) => prevMap[k]).find(Boolean)
-  if (prev && !f.description.trim()) {
+  if (prev && !noteText) {
     return { identifier: prev.identifier, again: true }
   }
 
-  const preferred = repo().split('/').pop() ?? repo()
-  const { board, rows } = await resolveBoard(preferred)
-  const twin = await findExistingIssue(board, rows, f.caught.fingerprint, wantedTitle, f.caught.message)
-
   let shot: string | undefined
-  if (f.shot) {
+  if (f.shot && bearer()) {
     try {
       shot = await store(f.shot, f.caught.fingerprint)
     } catch (e) {
@@ -443,25 +504,57 @@ async function file(f: Filing): Promise<Filed> {
       console.warn('report screenshot skipped:', e instanceof Error ? e.message : String(e))
     }
   }
-  if (twin) {
-    const identifier = twin.identifier ?? `${board}#${twin.number}`
-    // If already +1'd by this session and user added no extra note, return immediately.
-    if (prev?.identifier === identifier && !f.description.trim()) {
-      return { identifier, again: true }
-    }
-    const note = `+1 from ${f.caught.version} on \`${f.caught.route}\` at ${f.caught.at}${f.description.trim() ? `\n\n${scrub(f.description.trim())}` : ''}${shot ? `\n\n![screenshot](${shot})` : ''}`
-    const r = await callSeated(`/v1/task/projects/${board}/issues/${twin.number}`, { method: 'PATCH', body: JSON.stringify({ comment: note }) })
-    if (!r.ok) throw new Error(`Could not add to the issue (${r.status}).`)
-    rememberReported(dedupKeys, identifier)
-    return { identifier, again: true }
-  }
-  const r = await callSeated(`/v1/task/projects/${board}/issues`, {
-    method: 'POST',
-    body: JSON.stringify({ title: wantedTitle, description: body(f, shot), status: 'backlog' }),
+
+  const ref = `FB-${f.caught.fingerprint.slice(0, 8).toUpperCase()}`
+  const sub = subject()
+  const activeOrg = org()
+  const product = sourceOf()
+  const release = f.caught.version || VERSION
+
+  const res = await postEvent({
+    messageId: `${ref.toLowerCase()}-${Date.now().toString(36)}`,
+    type: 'error',
+    event: 'user_feedback',
+    timestamp: new Date().toISOString(),
+    distinctId: sub ?? anonId(),
+    ...(sub ? { personId: sub } : {}),
+    product,
+    release,
+    environment: 'production',
+    site: siteOf(),
+    url: pageUrlOf(f.caught.route),
+    path: f.caught.route,
+    level: 'error',
+    library: '@hanzo/app',
+    libraryVersion: release,
+    error: {
+      type: 'UserFeedback',
+      message: wantedTitle,
+      ...(f.caught.stack ? { stack: f.caught.stack } : {}),
+      handled: true,
+    },
+    properties: {
+      feedback: true,
+      report_id: ref,
+      kind: f.caught.kind,
+      source: product,
+      repo: repo(),
+      title: wantedTitle,
+      description: noteText,
+      route: f.caught.route,
+      version: release,
+      fingerprint: f.caught.fingerprint,
+      agent: scrub(f.caught.agent),
+      console_lines: f.caught.lines.slice(-20).join('\n'),
+      ...(shot ? { screenshot_url: shot } : {}),
+      signed_in: Boolean(bearer()),
+      ...(activeOrg ? { org: activeOrg } : {}),
+    },
   })
-  if (!r.ok) throw new Error(`Could not file the report (${r.status}).`)
-  const made = (await r.json()) as Row
-  const identifier = made.identifier ?? `${board}#${made.number}`
-  rememberReported(dedupKeys, identifier)
-  return { identifier, again: false }
+
+  if (!res.ok) {
+    throw new Error(`Could not send report (${res.status}).`)
+  }
+  rememberReported(dedupKeys, ref)
+  return { identifier: ref, again: Boolean(prev) }
 }
