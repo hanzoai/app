@@ -21,7 +21,7 @@ import { api } from './lib/api'
 import { bearer, hasSession } from './lib/session'
 import { machines } from './devRuntime'
 import type { Host } from '@hanzo/build'
-import { app, talk } from './lib/host'
+import { app, go, talk } from './lib/host'
 import { org as currentOrg } from './lib/session'
 
 const Core = lazy(() => import('./core').then((m) => ({ default: m.DevWorkspace })))
@@ -184,25 +184,28 @@ export const useScope = () => useContext(Scope)
 
 const REF = /^\/dev\/thread\/(.+)$/
 const refOf = (path: string): string | null => REF.exec(path)?.[1] ?? null
+const MISROUTED_CHAT = /^\/dev\/projects\/chat\/(t-[^/]+)\/?$/
 
 /** The thread list nested under Dev in the sidebar; the shell's own Recents until a Mac is in use. */
-export function DevList({ host, path }: { host: Host; path: string }) {
+export function DevList({ host: _host, path, onGo }: { host: Host; path: string; onGo?: (address: string, replace?: boolean) => void }) {
   const dev = useScope()
   if (!dev?.runtime) return null
+  const nav = onGo ?? ((address: string, replace?: boolean) => go(address, replace))
   return (
     <Suspense fallback={null}>
-      <List tools active={refOf(path)} onOpen={(ref) => host.go(app(ref ? `thread/${ref}` : ''))} />
+      <List tools active={refOf(path)} onOpen={(ref) => nav(ref ? `/dev/thread/${encodeURIComponent(ref)}` : app(''))} />
     </Suspense>
   )
 }
 
 /** The account's conversations under Chat in the sidebar: the Dev core's list of them (the cloud holds them, so the history survives). */
-export function ChatList({ host, path }: { host: Host; path: string }) {
+export function ChatList({ host: _host, path, onGo }: { host: Host; path: string; onGo?: (address: string, replace?: boolean) => void }) {
   const id = /^\/chat\/([^/]+)/.exec(path)?.[1]
+  const nav = onGo ?? ((address: string, replace?: boolean) => go(address, replace))
   return (
     <YStack data-slot="recents" data-mode="chat" flex={1} minH={0} overflow="scroll">
       <Suspense fallback={null}>
-        <Chats cloud={cloud()} active={id ? decodeURIComponent(id) : null} onOpen={(ref) => host.go(talk(ref ?? undefined))} />
+        <Chats cloud={cloud()} active={id ? decodeURIComponent(id) : null} onOpen={(ref) => nav(talk(ref ?? undefined))} />
       </Suspense>
     </YStack>
   )
@@ -293,13 +296,43 @@ function useAutoScrollChat(conversation: string | null) {
   }, [])
 }
 
-export function DevInterior({ host, path, mode = 'dev', conversation = null }: { host: Host; path: string; mode?: 'dev' | 'chat'; conversation?: string | null }) {
+export function DevInterior({
+  host,
+  path,
+  mode = 'dev',
+  conversation = null,
+  onGo,
+}: {
+  host: Host
+  path: string
+  mode?: 'dev' | 'chat'
+  conversation?: string | null
+  onGo?: (address: string, replace?: boolean) => void
+}) {
   const dev = useScope()
   const chatWrapRef = useAutoScrollChat(conversation)
-  const project = path.startsWith('/dev/projects/')
+  const nav = useCallback(
+    (address: string, replace = false) => {
+      if (onGo) onGo(address, replace)
+      else go(address, replace)
+    },
+    [onGo],
+  )
+  const misroutedChat = MISROUTED_CHAT.exec(path)?.[1] ?? null
+  const project = mode === 'dev' && !misroutedChat && path.startsWith('/dev/projects/')
   useEffect(() => {
-    if (project) host.go(app(''), { replace: true })
-  }, [project, host])
+    if (misroutedChat) {
+      let decoded = misroutedChat
+      try {
+        decoded = decodeURIComponent(misroutedChat)
+      } catch {
+        /* keep raw id */
+      }
+      nav(talk(decoded), true)
+    } else if (project) {
+      host.go('', { replace: true })
+    }
+  }, [misroutedChat, project, host, nav])
   if (!dev) return null
   if (guestChat(mode)) {
     // No session, so no account for the core's turn to bill to: the Chat
@@ -316,7 +349,7 @@ export function DevInterior({ host, path, mode = 'dev', conversation = null }: {
     const dock = (ctx: { runtime: DevRuntime; thread: string | null }) => <Dock {...ctx} />
     return (
       <Suspense fallback={null}>
-        <Core thread={thread} onNavigate={(ref) => host.go(app(ref ? `thread/${ref}` : ''))} dock={dock} />
+        <Core thread={thread} onNavigate={(ref) => nav(ref ? `/dev/thread/${encodeURIComponent(ref)}` : app(''))} dock={dock} />
       </Suspense>
     )
   }
@@ -331,7 +364,7 @@ export function DevInterior({ host, path, mode = 'dev', conversation = null }: {
           onEnvironment={dev.choose}
           onHandoff={dev.handoff}
           conversation={conversation}
-          onConversation={(id) => host.go(talk(id ?? undefined))}
+          onConversation={(id) => nav(talk(id ?? undefined))}
         />
       </Suspense>
     </YStack>

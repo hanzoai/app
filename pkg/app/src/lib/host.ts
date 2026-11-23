@@ -142,6 +142,12 @@ export const paged = (section: string): boolean => Object.hasOwn(PAGES, section)
 /** The Settings page a section names; one with no page of its own opens General, /settings. */
 export const settings = (section?: string | null): string => (section && paged(section) ? PAGES[section] : SETTINGS)
 
+/** A chat thread path accidentally passed without /dev (e.g. `chat/t-…` or `/chat/t-…`). */
+const CHAT_THREAD_SLUG = /^\/?chat\/(t-[^/]+)$/
+
+/** Misrouted chat thread URL under /dev/projects/chat/t-…: never a Dev repo slug. */
+const MISROUTED_CHAT = /^\/dev\/projects\/chat\/(t-[^/]+)$/
+
 /**
  * The app's address for a builder address (`route` in @hanzo/build): Dev's
  * path, '' New at /dev, and what is not an address New too. A section of the
@@ -149,8 +155,15 @@ export const settings = (section?: string | null): string => (section && paged(s
  * never a path under /dev. Machines and Environments, which the builder files
  * under Settings and writes as places of their own (/machines, /environments),
  * stay Dev's.
+ *
+ * A chat address (`/chat`, `/chat/<id>`, or `chat/t-<id>`) is never wrapped
+ * under `/dev/projects/…` as a repository slug.
  */
 export function app(at: string): string {
+  const clean = at.replace(/\/+$/, '') || (at.startsWith('/') ? '/' : '')
+  if (clean === CHAT || clean.startsWith(`${CHAT}/`)) return clean
+  const thread = CHAT_THREAD_SLUG.exec(clean)
+  if (thread) return `${CHAT}/${thread[1]}`
   const r = route(at)
   const to = href(r)
   if (to === '/artifacts' || to.startsWith('/artifacts/')) return `${LIBRARY}${to.slice('/artifacts'.length)}`
@@ -175,6 +188,14 @@ const SHARED = 'shared'
 export function place(pathname: string): Place | null {
   const p = pathname.replace(/\/+$/, '') || '/'
   if (p === CHAT || (p === '/' && rooted())) return { mode: 'chat', thread: null }
+  const misrouted = MISROUTED_CHAT.exec(p)
+  if (misrouted) {
+    try {
+      return { mode: 'chat', thread: decodeURIComponent(misrouted[1]) }
+    } catch {
+      return { mode: 'chat', thread: null }
+    }
+  }
   if (p === DEV || p.startsWith(`${DEV}/`)) return { mode: 'dev', at: path(parse(p.slice(DEV.length))) }
   if (p === STUDIO || p.startsWith(`${STUDIO}/`)) return place(`${DESIGN}${p.slice(STUDIO.length)}`)
   // Design kept a Library of its own; the app's one Library lists the same things, every kind, so its old address opens that.
@@ -238,7 +259,8 @@ const REPO = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}\/[A-Za-z0-9][A-Za-z0-9._-]{0,63}$
  * anything else opens /dev itself, so no caller can make this name another
  * address.
  */
-export const dev = (ref?: string | null): string => site(app(ref && (SESSION.test(ref) || REPO.test(ref) || SLUG.test(ref)) ? ref : ''))
+export const dev = (ref?: string | null): string =>
+  site(app(ref && !CHAT_THREAD_SLUG.test(ref) && (SESSION.test(ref) || REPO.test(ref) || SLUG.test(ref)) ? ref : ''))
 
 /**
  * Move the app to an address of this page: a history entry, or in place of this
