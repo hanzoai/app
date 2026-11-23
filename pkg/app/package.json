@@ -1,6 +1,6 @@
 {
   "name": "@hanzo/app",
-  "version": "0.3.176",
+  "version": "0.3.177",
   "description": "Hanzo's app: the shell and its apps (Home, Chat, Inbox, Contacts, Meet, Calendar, Drive, Board, Work, Bots), once, for every Hanzo surface.",
   "type": "module",
   "main": "./dist/index.js",
@@ -26,6 +26,11 @@
       "types": "./dist/bots/*.d.ts",
       "import": "./dist/bots/*.js",
       "default": "./dist/bots/*.js"
+    },
+    "./science/*": {
+      "types": "./dist/science/*.d.ts",
+      "import": "./dist/science/*.js",
+      "default": "./dist/science/*.js"
     },
     "./assets/*": "./assets/*"
   },

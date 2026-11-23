@@ -159,7 +159,7 @@ export const wordmark = (mode: 'chat' | 'dev' | 'design' | 'flow' | 'tabs' | 're
         : mode === 'tabs'
           ? 'Tabs'
           : mode === 'research'
-            ? 'Research'
+            ? 'Science'
             : mode === 'beta'
               ? 'Betas'
               : mode === 'chat'

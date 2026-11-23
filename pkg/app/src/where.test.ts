@@ -22,6 +22,7 @@ describe('brand', () => {
     expect(wordmark('design')).toBe('Design')
     expect(wordmark('flow')).toBe('Flow')
     expect(wordmark('tabs')).toBe('Tabs')
+    expect(wordmark('research')).toBe('Science')
     expect(wordmark('beta')).toBe('Betas')
     configure({ brand: 'Hanzo Team' })
     expect(brand()).toBe('Hanzo Team')

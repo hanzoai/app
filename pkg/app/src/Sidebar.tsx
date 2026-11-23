@@ -62,7 +62,7 @@ import { ago, PINNED, UNTITLED_RUN, type Recent } from './recent'
 import { empty } from './open'
 import { useSpan } from './span'
 import { useDevMode } from './lib/dev-mode'
-import { app, design, flow, hosted, talk, TERMINALS, type Place } from './lib/host'
+import { app, design, flow, hosted, science, talk, TERMINALS, type Place } from './lib/host'
 import { enter, LOGIN, signUp } from './lib/destination'
 import { HOSTED_APPS } from './lib/hosted'
 import { pick } from './lib/session'
@@ -128,6 +128,13 @@ const SUB_HEAD = { width: 28, height: 28, rounded: '$3', $touchable: { width: TO
 function resolvePlaceHref(id: string, mode: Place['mode']): string | null {
   if (mode === 'flow') {
     return id === 'canvas' ? flow('') : flow(id)
+  }
+  if (mode === 'research') {
+    if (id === NEW) return science('autonomy')
+    if (id === 'overview' || id === 'studies' || id === 'autonomy' || id === 'machines' || id === 'schedules') {
+      return science(id)
+    }
+    return null
   }
   switch (id) {
     case NEW:
@@ -1003,6 +1010,7 @@ export function Sidebar({
     else if (mode === 'dev') dev('')
     else if (mode === 'design') made ? made.go('') : go(design(''))
     else if (mode === 'flow') made ? made.go('') : go(flow(''))
+    else if (mode === 'research') go(science('autonomy'))
     else create()
   }
 
@@ -1039,7 +1047,7 @@ export function Sidebar({
               : mode === 'tabs'
                 ? t('Tabs')
                 : mode === 'research'
-                  ? t('Research')
+                  ? t('Science')
                   : mode === 'beta'
                   ? t('Betas')
                   : mode === 'hosted'
@@ -1054,7 +1062,7 @@ export function Sidebar({
       const links = own(host, dev, t).flatMap((g) => g.links).filter((l) => l.id !== NEW)
       return links.length ? [{ id: 'dev-places', label: '', links }] : []
     }
-    if ((mode === 'design' || mode === 'flow') && places) {
+    if ((mode === 'design' || mode === 'flow' || mode === 'research') && places) {
       return places
         .map((g) => ({ ...g, links: g.links.filter((l) => l.id !== NEW) }))
         .filter((g) => g.links.length > 0)
@@ -1081,6 +1089,10 @@ export function Sidebar({
     if (entryId === 'flow' && mode === 'flow' && places) {
       const links = places.flatMap((g) => g.links).filter((l) => l.id !== NEW)
       return links.length ? [{ id: 'flow-sub', label: '', links }] : []
+    }
+    if (entryId === 'science' && mode === 'research' && places) {
+      const links = places.flatMap((g) => g.links).filter((l) => l.id !== NEW)
+      return links.length ? [{ id: 'science-sub', label: '', links }] : []
     }
     if (entryId === 'tabs' && mode === 'tabs') {
       return tabsGroups.filter((g) => g.links.length > 0)
@@ -1200,9 +1212,9 @@ export function Sidebar({
   // A guest's New is always a chat: Chat is the one place a guest's work goes.
   const primaryNewLabel = anon
     ? t('New chat')
-    : mode === 'dev' ? t('New run') : mode === 'design' ? t('New design') : mode === 'flow' ? t('New flow') : mode === 'tabs' ? t('New terminal') : t('New chat')
+    : mode === 'dev' ? t('New run') : mode === 'design' ? t('New design') : mode === 'flow' ? t('New flow') : mode === 'tabs' ? t('New terminal') : mode === 'research' ? t('New hypothesis') : t('New chat')
 
-  const showPrimaryNew = !at && (drawer || (mode !== 'beta' && mode !== 'research' && mode !== 'hosted'))
+  const showPrimaryNew = !at && (drawer || (mode !== 'beta' && mode !== 'hosted'))
   const showRecents = !(mode === 'dev' && runtime) && !(mode === 'hosted' || mode === 'beta' || mode === 'research' || mode === 'tabs' || mode === 'flow' || anon || at)
 
   return (

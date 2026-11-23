@@ -97,7 +97,9 @@ import { FIRST, isSettingsPath, settingsPathFor, settingsRowOf, SettingsList, ty
 import { Ask, useBetas } from './Betas'
 import { BETAS } from './lib/betas'
 import { useMaking } from './Confirm'
-import { app, CHAT, design, flow, go, hosted, place, RESEARCH, settings, talk, TERMINALS, visit, type Place } from './lib/host'
+import { app, CHAT, design, flow, go, hosted, place, SCIENCE, settings, talk, TERMINALS, visit, type Place } from './lib/host'
+import { scienceNav } from './science/nav'
+import { parseScienceTab } from './science/types'
 import { Bar } from './Bar'
 import { Report } from './Report'
 import { FOOT, HEIGHT, TOP, useView } from './view'
@@ -116,8 +118,8 @@ const FlowStudio = lazy(() =>
 )
 /** Tabs, the same way: the terminals on the reader's machines (Terminals.tsx). */
 const Terminals = lazy(() => import('./Terminals'))
-/** Research: Hanzo Dō hypotheses, sandboxed runs, evolution frontier, and verified XP (Research.tsx). */
-const Research = lazy(() => import('./Research'))
+/** Science: native Hanzo Science research, studies, autonomy, machines, and schedules (`/science`). */
+const Science = lazy(() => import('./science/Science'))
 /** The apps in beta that draw inside the app (lib/hosted), fetched when one is opened at /apps/<id>. */
 const Hosted = lazy(() => import('./Hosted').then((m) => ({ default: m.HostedPane })))
 /** Betas, fetched when opening /beta in the app. */
@@ -128,7 +130,7 @@ const SettingsPane = lazy(() => import('./SettingsPane').then((m) => ({ default:
 const HOME: Place = { mode: 'chat', thread: null }
 
 /** What a window's bar names the page by; Chat names itself in the sidebar. */
-const TITLES: Record<string, string> = { dev: 'Dev', design: 'Design', flow: 'Flow', tabs: 'Tabs', research: 'Research' }
+const TITLES: Record<string, string> = { dev: 'Dev', design: 'Design', flow: 'Flow', tabs: 'Tabs', research: 'Science' }
 
 /**
  * The window's bar, for a host that is a window of its own: `inset` px kept
@@ -397,13 +399,23 @@ function Window({ bar, betas }: Hosted) {
   // Another organization: picked, and the app opened in it at the mode's New.
   const org = (o: string) => {
     pick(o)
-    window.location.assign(mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'flow' ? flow('') : mode === 'tabs' ? TERMINALS : mode === 'research' ? RESEARCH : inside ? hosted(inside) : talk())
+    window.location.assign(mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'flow' ? flow('') : mode === 'tabs' ? TERMINALS : mode === 'research' ? SCIENCE : inside ? hosted(inside) : talk())
   }
-  const sidebar = mode === 'beta' || mode === 'research' || mode === 'hosted' ? [] : mode === 'design' ? places(maker, (p) => maker.go(p)) : mode === 'flow' ? flowNav(maker, (p) => maker.go(p)) : mode === 'dev' && raised(where) === 'customize'
-    ? tabs(host, (p) => host.go(p), t).map((group) => ({ ...group, links: [...group.links, {
-      id: 'learning', label: t('Learning'), active: learning, icon: <RefreshCw size={16} aria-hidden />,
-      onPress: () => { shut(); setLearning(true) },
-    }] })) : undefined
+  const sidebar =
+    mode === 'beta' || mode === 'hosted'
+      ? []
+      : mode === 'research'
+        ? scienceNav(parseScienceTab(here), move, t)
+        : mode === 'design'
+          ? places(maker, (p) => maker.go(p))
+          : mode === 'flow'
+            ? flowNav(maker, (p) => maker.go(p))
+            : mode === 'dev' && raised(where) === 'customize'
+              ? tabs(host, (p) => host.go(p), t).map((group) => ({ ...group, links: [...group.links, {
+                id: 'learning', label: t('Learning'), active: learning, icon: <RefreshCw size={16} aria-hidden />,
+                onPress: () => { shut(); setLearning(true) },
+              }] }))
+              : undefined
   const seek = () => {
     shut()
     setFinding(true)
@@ -676,7 +688,7 @@ function Window({ bar, betas }: Hosted) {
                 ) : mode === 'research' ? (
                   <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
                     <Suspense fallback={null}>
-                      <Research />
+                      <Science onNavigate={move} />
                     </Suspense>
                   </YStack>
                 ) : mode === 'design' ? (

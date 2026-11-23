@@ -101,21 +101,25 @@ describe('Go to', () => {
 
   test('the products lead, then Dev’s places from its registry, New run left to the action', () => {
     const { top } = places(host, vi.fn())
-    expect(top.slice(0, 7).map((r) => r.label)).toEqual(['Chat', 'Dev', 'Design', 'Tabs', 'Team', 'Projects', 'Machines'])
+    expect(top.slice(0, 8).map((r) => r.label)).toEqual(['Chat', 'Dev', 'Design', 'Tabs', 'Science', 'Team', 'Projects', 'Machines'])
     expect(top.some((r) => r.label === 'New run')).toBe(false)
   })
 
-  test('a place two registries hold is listed once; Design’s places are Design’s', () => {
+  test('a place two registries hold is listed once; Design’s and Science’s places open their routes', () => {
     const go = vi.fn()
     const { top, deep } = places(host, go)
     expect([...top, ...deep].filter((r) => r.label === 'Machines')).toHaveLength(1)
     take(deep, 'design-explore')
     expect(go).toHaveBeenCalledWith('/design/explore')
+    take(top, 'science')
+    expect(go).toHaveBeenCalledWith('/science')
+    take(deep, 'science-studies')
+    expect(go).toHaveBeenCalledWith('/science/studies')
   })
 
   test('without a host the products and the site’s pages are still there', () => {
     const { top, deep } = places(undefined, vi.fn())
-    expect(top.map((r) => r.id)).toEqual(['chat', 'dev', 'design', 'tabs', 'settings', 'referral', 'beta', 'help-help'])
+    expect(top.map((r) => r.id)).toEqual(['chat', 'dev', 'design', 'tabs', 'science', 'settings', 'referral', 'beta', 'help-help'])
     expect(deep.every((r) => r.where === 'Help')).toBe(true)
   })
 })
