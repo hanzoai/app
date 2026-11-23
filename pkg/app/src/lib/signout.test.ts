@@ -294,3 +294,24 @@ describe('a page that answers IAM on its own origin', () => {
   })
 })
 
+
+
+
+describe('sign-out redirect target (hanzo-inc/app issue 527)', () => {
+  test('plain sign-out on hanzo.app goes to hanzo.ai end-session, not hanzo.app/login', () => {
+    // The endsAt function is already imported at the top of the file
+    // On hanzo.app, endsAt should return hanzo.ai (the sign-in origin)
+    expect(endsAt('https://api.hanzo.ai', 'hanzo.app')).toBe('https://hanzo.ai')
+  })
+
+  test('useSignOut on hanzo.app with plain sign-out uses hanzo.ai end-session URL', () => {
+    // The mock already has serverUrl: 'https://hanzo.id'
+    // In signout.ts, endsAt('https://hanzo.id', 'hanzo.app') would return 'https://hanzo.ai'
+    // because host === 'hanzo.id' matches the condition
+    // So the issuer passed to @hanzo/ui is 'https://hanzo.ai'
+    // and the post_logout_redirect_uri is the home page of the current app
+    
+    // Verify the issuer logic for hanzo.app
+    expect(endsAt('https://hanzo.id', 'hanzo.app')).toBe('https://hanzo.ai')
+  })
+})

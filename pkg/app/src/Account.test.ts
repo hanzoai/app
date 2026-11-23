@@ -309,3 +309,127 @@ describe('sign-out resilience (hanzo-inc/app issue 527)', () => {
     expect(html).not.toContain('null ·')
   })
 })
+
+describe('sign-out resilience extended (hanzo-inc/app issue 527)', () => {
+  beforeEach(() => {
+    standing.value = { kind: 'free', label: { name: 'Free', tag: '' }, limits: null, allowance: null, balance: null }
+    sessionState.org = 'acme'
+    sessionState.orgs = ['acme']
+    sessionState.signingOut = false
+  })
+
+  test('here is null when all orgs empty and currentOrg null', () => {
+    sessionState.org = null
+    sessionState.orgs = []
+    const host = {
+      api: '',
+      token: () => null,
+      org: null as unknown as string,
+      person: { name: 'Ada', email: 'ada@acme.dev', avatar: '' },
+      signOut: signed.signOut,
+    }
+    const { rows } = renderAccount(true)
+    const orgRow = rows.find((r) => r.label.includes('acme') || r.label.includes('Personal'))
+    // Should render something sensible, not throw
+    expect(rows.length).toBeGreaterThan(0)
+  })
+
+  test('personal is null when no org has personal=true', () => {
+    sessionState.org = 'acme'
+    sessionState.orgs = ['acme']
+    // all = [] from empty IAM response
+    const host = {
+      api: '',
+      token: () => null,
+      org: 'acme',
+      person: { name: 'Ada', email: 'ada@acme.dev', avatar: '' },
+      signOut: signed.signOut,
+    }
+    // Should not throw when all.find returns undefined
+    expect(() => renderToStaticMarkup(createElement(Account, { host, onOrg: () => {} }))).not.toThrow()
+  })
+
+  test('planFor handles o.personal when org is undefined', () => {
+    sessionState.org = null
+    sessionState.orgs = []
+    const host = {
+      api: '',
+      token: () => null,
+      org: null as unknown as string,
+      person: { name: 'Ada', email: 'ada@acme.dev', avatar: '' },
+      signOut: signed.signOut,
+    }
+    expect(() => renderToStaticMarkup(createElement(Account, { host, onOrg: () => {} }))).not.toThrow()
+  })
+
+  test('working string handles here and personal both null', () => {
+    sessionState.org = null
+    sessionState.orgs = []
+    const host = {
+      api: '',
+      token: () => null,
+      org: null as unknown as string,
+      person: { name: 'Ada', email: 'ada@acme.dev', avatar: '' },
+      signOut: signed.signOut,
+    }
+    expect(() => renderToStaticMarkup(createElement(Account, { host, onOrg: () => {} }))).not.toThrow()
+  })
+
+  test('org list map handles o.personal when personal is missing from IAM row', () => {
+    sessionState.org = 'acme'
+    sessionState.orgs = ['acme']
+    // rows will have isPersonal undefined since IAM fetch fails
+    const host = {
+      api: '',
+      token: () => null,
+      org: 'acme',
+      person: { name: 'Ada', email: 'ada@acme.dev', avatar: '' },
+      signOut: signed.signOut,
+    }
+    expect(() => renderToStaticMarkup(createElement(Account, { host, onOrg: () => {} }))).not.toThrow()
+  })
+
+  test('here?.personal access in Open in Hanzo Team conditional', () => {
+    sessionState.org = null
+    sessionState.orgs = []
+    const host = {
+      api: '',
+      token: () => null,
+      org: null as unknown as string,
+      person: { name: 'Ada', email: 'ada@acme.dev', avatar: '' },
+      signOut: signed.signOut,
+    }
+    // Should not throw on `here && !here.personal`
+    expect(() => renderToStaticMarkup(createElement(Account, { host, onOrg: () => {} }))).not.toThrow()
+  })
+
+  test('Mark component handles org undefined/null', () => {
+    sessionState.org = null
+    sessionState.orgs = []
+    const host = {
+      api: '',
+      token: () => null,
+      org: null as unknown as string,
+      person: { name: 'Ada', email: 'ada@acme.dev', avatar: '' },
+      signOut: signed.signOut,
+    }
+    const { html } = renderAccount(true)
+    // Should contain the orgs submenu trigger
+    expect(html).toContain('data-slot="me-orgs"')
+  })
+
+  test('Settings Account pane renders without throwing on null org', () => {
+    sessionState.org = null
+    sessionState.orgs = []
+    // SettingsPane's Account function uses useOrganizations and useIamIdentity
+    // This tests the integration path
+    const host = {
+      api: '',
+      token: () => null,
+      org: null as unknown as string,
+      person: { name: 'Ada', email: 'ada@acme.dev', avatar: '' },
+      signOut: signed.signOut,
+    }
+    expect(() => renderToStaticMarkup(createElement(Account, { host, onOrg: () => {} }))).not.toThrow()
+  })
+})

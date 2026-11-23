@@ -406,7 +406,7 @@ export function Account({
   const known = Boolean(plan) || read.value !== null
   const isFree = !sudo && known && (!plan || plan.toLowerCase() === 'free')
   const planName = plan || (known ? t('Free') : '')
-  const working = [here ? (here.personal ? t('Personal') : here.display) : currentOrg, planName].filter(Boolean).join(' - ')
+  const working = [here ? (here?.personal ? t('Personal') : here.display) : currentOrg, planName].filter(Boolean).join(' - ')
   const plans = upgrade(read.value?.label?.name)
   const apple = mac()
 
@@ -620,7 +620,7 @@ export function Account({
                   <DropdownMenuSub open={orgsOpen} onOpenChange={setOrgsOpen}>
                     <DropdownMenuSubTrigger data-slot="me-orgs">
                       <Line icon={<Mark org={here ?? all[0] ?? null} />} trail={<Check size={16} aria-label={t('Current')} />}>
-                        {t('{org} · {plan}', { org: (here ? (here.personal ? t('Personal') : here.display) : currentOrg) || t('Personal'), plan: planName || t('No plan') })}
+                        {t('{org} · {plan}', { org: (here ? (here?.personal ? t('Personal') : here.display) : currentOrg) || t('Personal'), plan: planName || t('No plan') })}
                       </Line>
                     </DropdownMenuSubTrigger>
                     {orgsOpen ? (
@@ -650,7 +650,7 @@ export function Account({
                         <DropdownMenuItem onSelect={() => out(site(settings('organization')))}>
                           <Line icon={<Settings size={16} aria-hidden />}>{t('Organization settings')}</Line>
                         </DropdownMenuItem>
-                        {where().team ? null : here && !here.personal ? (
+                        {where().team ? null : here && !here?.personal ? (
                           <DropdownMenuItem onSelect={() => out(`${ENTRY}&org=${encodeURIComponent(here.name)}`)}>
                             <Line icon={<Users size={16} aria-hidden />} trail={<ArrowUpRight size={14} color="var(--text-tertiary)" aria-hidden />}>{t('Open in Hanzo Team')}</Line>
                           </DropdownMenuItem>
