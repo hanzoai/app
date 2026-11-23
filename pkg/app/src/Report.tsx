@@ -257,8 +257,21 @@ export function Report({ children }: { children: ReactNode }) {
         </XStack>
       ) : null}
       <Dialog open={open} onOpenChange={close}>
-        <DialogContent data-slot="report-sheet" width={520} maxW="calc(100vw - 24px)" maxH="88dvh" bg="var(--popover)" borderWidth={1} borderColor="var(--border-strong)" rounded="$6" gap="$3" overflow="hidden">
-          <DialogTitle>{t('Report a problem')}</DialogTitle>
+        <DialogContent
+          data-slot="report-sheet"
+          width={520}
+          maxW="calc(100vw - 24px)"
+          maxH="min(88dvh, 680px)"
+          bg="var(--popover)"
+          borderWidth={1}
+          borderColor="var(--border-strong)"
+          rounded="$6"
+          gap="$3"
+          overflow="hidden"
+          display="flex"
+          flexDirection="column"
+        >
+          <DialogTitle shrink={0}>{t('Report a problem')}</DialogTitle>
           {state === 'done' && filed ? (
             <YStack gap="$3">
               <Text data-slot="report-done">{filed.again ? t('Already reported as {id}. Thank you.', { id: filed.identifier }) : t('Report received ({id}). Thank you.', { id: filed.identifier })}</Text>
@@ -270,42 +283,82 @@ export function Report({ children }: { children: ReactNode }) {
               </XStack>
             </YStack>
           ) : caught ? (
-            <YStack gap="$3" overflowY="auto" minH={0}>
-              <Input aria-label={t('Title')} value={title} onChangeText={setTitle} />
-              <Textarea aria-label={t('What happened?')} placeholder={t('What were you doing? (optional)')} value={note} onChangeText={setNote} rows={3} />
-              {shot ? (
-                <YStack gap="$2">
-                  {keep ? <View data-slot="report-shot" render={<img alt={t('Screenshot of the page')} src={shot} />} width="100%" rounded="$3" borderWidth={1} borderColor="var(--border)" /> : null}
-                  <Button size="sm" variant="ghost" self="flex-start" onPress={() => setKeep(!keep)}>
-                    {keep ? t('Remove screenshot') : t('Include screenshot')}
-                  </Button>
-                </YStack>
-              ) : null}
-              <SizableText size="$1" color="$quiet">
-                {t('Sent to Hanzo when you press Send: the report title, your note, the page path, the app version, your browser, and the last console lines with tokens, keys, cookies and emails removed.')}
-              </SizableText>
-              <View render={<details />}>
-                <Text render="summary" fontSize="$1" cursor="pointer">{t('See exactly what will be sent')}</Text>
-                <Text render="pre" fontSize="$1" whiteSpace="pre-wrap" maxH={180} overflowY="auto">{body({ caught, title, description: note, shot: keep ? shot : null }, keep && shot ? '(screenshot)' : undefined)}</Text>
-              </View>
-              {state === 'failed' ? (
-                <SizableText size="$2" color="$red10" role="alert">
-                  {failedReason ? `${t('Could not send.')} ${failedReason}` : t('Could not send. Check your connection and try again.')}
+            <>
+              <YStack
+                gap="$3"
+                flex={1}
+                minH={0}
+                overflowY="auto"
+                overflowX="hidden"
+                $platform-web={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
+                <Input aria-label={t('Title')} value={title} onChangeText={setTitle} />
+                <Textarea aria-label={t('What happened?')} placeholder={t('What were you doing? (optional)')} value={note} onChangeText={setNote} rows={3} />
+                {shot ? (
+                  <YStack gap="$2">
+                    {keep ? (
+                      <View
+                        data-slot="report-shot"
+                        render={<img alt={t('Screenshot of the page')} src={shot} />}
+                        width="100%"
+                        maxH={168}
+                        objectFit="contain"
+                        bg="$background"
+                        rounded="$3"
+                        borderWidth={1}
+                        borderColor="var(--border)"
+                      />
+                    ) : null}
+                    <Button size="sm" variant="ghost" self="flex-start" onPress={() => setKeep(!keep)}>
+                      {keep ? t('Remove screenshot') : t('Include screenshot')}
+                    </Button>
+                  </YStack>
+                ) : null}
+                <SizableText size="$1" color="$quiet">
+                  {t('Sent to Hanzo when you press Send: the report title, your note, the page path, the app version, your browser, and the last console lines with tokens, keys, cookies and emails removed.')}
                 </SizableText>
-              ) : null}
-              <XStack gap="$2" justify="space-between" items="center" flexWrap="wrap">
+                <View render={<details />}>
+                  <Text render="summary" fontSize="$1" cursor="pointer">{t('See exactly what will be sent')}</Text>
+                  <Text
+                    render="pre"
+                    fontSize="$1"
+                    whiteSpace="pre-wrap"
+                    maxH={140}
+                    overflowY="auto"
+                    $platform-web={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  >
+                    {body({ caught, title, description: note, shot: keep ? shot : null }, keep && shot ? '(screenshot)' : undefined)}
+                  </Text>
+                </View>
+                {state === 'failed' ? (
+                  <SizableText size="$2" color="$red10" role="alert">
+                    {failedReason ? `${t('Could not send.')} ${failedReason}` : t('Could not send. Check your connection and try again.')}
+                  </SizableText>
+                ) : null}
+              </YStack>
+              <XStack
+                data-slot="report-actions"
+                shrink={0}
+                pt="$2.5"
+                borderTopWidth={1}
+                borderColor="var(--border)"
+                gap="$2"
+                justify="space-between"
+                items="center"
+                flexWrap="wrap"
+              >
                 <Button variant="ghost" size="sm" onPress={() => window.open(DISCORD_HELP_URL, '_blank', 'noopener,noreferrer')}>
                   {t('Get help on Discord')}
                 </Button>
-                <XStack gap="$2" items="center">
-                  <Button data-slot="report-copy" variant="ghost" onPress={copyPayload}>
+                <XStack gap="$2" items="center" flexWrap="wrap">
+                  <Button data-slot="report-copy" size="sm" variant="ghost" onPress={copyPayload}>
                     {copied ? t('✓ Copied details') : t('Copy details')}
                   </Button>
-                  <Button variant="ghost" onPress={() => close(false)}>{t('Cancel')}</Button>
-                  <Button data-slot="report-send" disabled={state === 'sending'} onPress={go}>{state === 'sending' ? t('Sending…') : t('Send')}</Button>
+                  <Button size="sm" variant="ghost" onPress={() => close(false)}>{t('Cancel')}</Button>
+                  <Button size="sm" data-slot="report-send" disabled={state === 'sending'} onPress={go}>{state === 'sending' ? t('Sending…') : t('Send')}</Button>
                 </XStack>
               </XStack>
-            </YStack>
+            </>
           ) : null}
         </DialogContent>
       </Dialog>

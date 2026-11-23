@@ -116,8 +116,9 @@ function checkout(plan: SubscriptionPlan): string {
 /** Whether the current Chat navigation is an anonymous preview session. */
 function isAnonChat(): boolean {
   if (typeof window === 'undefined' || hasSession()) return false
-  if (window.location.pathname !== CHAT && window.location.pathname !== chat()) return false
   const win = window as unknown as { __hanzoAnonChat?: boolean }
+  if (Boolean(win.__hanzoAnonChat)) return true
+  if (window.location.pathname !== CHAT && window.location.pathname !== chat()) return false
   const q = new URLSearchParams(window.location.search)
   if (
     q.get('skip') === 'login' ||

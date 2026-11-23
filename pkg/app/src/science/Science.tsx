@@ -15,7 +15,7 @@ import {
 export { scienceNav } from './nav'
 import { useHost } from '../host'
 import { go } from '../lib/host'
-import { org as currentOrg } from '../lib/session'
+import { bearer, org as currentOrg } from '../lib/session'
 import { useWindowed } from '../windowed'
 import {
   activeProject,
@@ -349,14 +349,15 @@ export function Science({
       minH={0}
       overflowY="auto"
       overflowX="hidden"
-      p="$4"
+      p="$3.5"
       $md={{ p: '$6' }}
       gap="$4"
+      $platform-web={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
     >
       {/* Product Header & Active Transport Hierarchy */}
       <YStack gap="$2.5">
         <XStack items="flex-start" justify="space-between" flexWrap="wrap" gap="$3">
-          <XStack items="center" gap="$3">
+          <XStack items="center" gap="$3" flex={1} minW={0}>
             <XStack
               width={40}
               height={40}
@@ -370,7 +371,7 @@ export function Science({
             >
               <Atom size={20} aria-hidden />
             </XStack>
-            <YStack gap={2}>
+            <YStack gap={2} flex={1} minW={0}>
               <Text fontSize="$6" fontWeight="600" color="$ink" data-slot="science-title">
                 Hanzo Science
               </Text>
@@ -451,6 +452,42 @@ export function Science({
         </XStack>
       </YStack>
 
+      {/* Guest / Signed-Out Cloud Notice */}
+      {!bearer() ? (
+        <XStack
+          data-slot="science-signin-banner"
+          p="$3"
+          rounded="$3"
+          borderWidth={1}
+          borderColor="$edge"
+          bg="$raised"
+          items="center"
+          justify="space-between"
+          flexWrap="wrap"
+          gap="$2.5"
+        >
+          <YStack flex={1} minW={200} gap={2}>
+            <Text fontSize="$2" fontWeight="600" color="$ink">
+              {t('Viewing local Science workspace without a Cloud session')}
+            </Text>
+            <Text fontSize="$1" color="$quiet">
+              {t('Local hanzod hardware & runs appear below. Sign in to load your organization’s Cloud studies, qualified discoveries, fleet leases, and schedules.')}
+            </Text>
+          </YStack>
+          <Button
+            size="sm"
+            data-slot="science-signin-cta"
+            onPress={() => {
+              const target = `/login?next=${encodeURIComponent(currentPathname)}`
+              if (onNavigate) onNavigate(target)
+              else go(target)
+            }}
+          >
+            {t('Sign in')}
+          </Button>
+        </XStack>
+      ) : null}
+
       {/* Desktop hanzod Reconnect Banner (zero session or view state loss) */}
       {hanzod.mode === 'reconnecting' ? (
         <XStack
@@ -465,9 +502,11 @@ export function Science({
           flexWrap="wrap"
           gap="$2"
         >
-          <XStack items="center" gap="$2">
-            <ShieldAlert size={15} aria-hidden />
-            <Text fontSize="$2" color="$ink">
+          <XStack items="flex-start" gap="$2" flex={1} minW={200}>
+            <XStack pt={2} shrink={0}>
+              <ShieldAlert size={15} aria-hidden />
+            </XStack>
+            <Text fontSize="$2" color="$ink" flex={1} minW={0}>
               {t('Reconnecting to local hanzod')} ({hanzod.origin}, attempt #{Math.max(1, hanzod.reconnectAttempts)}) —{' '}
               {t('Cloud /v1/research and hanzoai/tasks remain live and your session state is preserved.')}
             </Text>
@@ -475,6 +514,7 @@ export function Science({
           <Button
             size="sm"
             variant="outline"
+            shrink={0}
             data-slot="hanzod-reconnect-now"
             onPress={() => void checkHanzodOnly().then((w) => (w ? refreshAll(true) : undefined))}
           >

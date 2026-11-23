@@ -69,22 +69,25 @@ export function OverviewTab({
       borderColor="$edge"
       bg="transparent"
       gap="$1.5"
-      minW={170}
+      flexBasis={150}
+      minW={140}
+      maxW="100%"
       flex={1}
       items="flex-start"
       cursor={onClick ? 'pointer' : undefined}
       hoverStyle={onClick ? { bg: '$hover' } : undefined}
+      $platform-web={{ textAlign: 'left' }}
     >
       <XStack width="100%" items="center" justify="space-between" gap="$2">
-        <Text fontSize="$1" fontWeight="500" color="$quiet">
+        <Text fontSize="$1" fontWeight="500" color="$quiet" shrink={1}>
           {label}
         </Text>
-        <XStack opacity={0.75}>{icon}</XStack>
+        <XStack opacity={0.75} shrink={0}>{icon}</XStack>
       </XStack>
       <Text fontSize="$6" fontWeight="600" color="$ink" fontFamily="$mono">
         {value}
       </Text>
-      <Text fontSize="$1" color="$quiet" numberOfLines={2}>
+      <Text fontSize="$1" color="$quiet" numberOfLines={2} width="100%">
         {sub}
       </Text>
     </YStack>
@@ -184,15 +187,17 @@ export function OverviewTab({
         <YStack
           data-slot="overview-discoveries"
           flex={1}
-          minW={300}
+          flexBasis={280}
+          minW={0}
+          maxW="100%"
           p="$4"
           rounded="$4"
           borderWidth={1}
           borderColor="$edge"
           gap="$3"
         >
-          <XStack items="center" justify="space-between">
-            <YStack gap={2}>
+          <XStack items="flex-start" justify="space-between" gap="$2">
+            <YStack flex={1} minW={0} gap={2}>
               <Text fontSize="$3" fontWeight="600" color="$ink">
                 {t('Latest Qualified Discoveries & Screening Leads')}
               </Text>
@@ -200,7 +205,7 @@ export function OverviewTab({
                 {t('Strictly separates benchmark-qualified wins from unqualified development lifts')}
               </Text>
             </YStack>
-            <Button size="sm" variant="ghost" onPress={() => onNavigateTab('studies')}>
+            <Button size="sm" variant="ghost" shrink={0} onPress={() => onNavigateTab('studies')}>
               {t('All')}
               <ArrowRight size={13} aria-hidden />
             </Button>
@@ -259,15 +264,17 @@ export function OverviewTab({
         <YStack
           data-slot="overview-refutations"
           flex={1}
-          minW={300}
+          flexBasis={280}
+          minW={0}
+          maxW="100%"
           p="$4"
           rounded="$4"
           borderWidth={1}
           borderColor="$edge"
           gap="$3"
         >
-          <XStack items="center" justify="space-between">
-            <YStack gap={2}>
+          <XStack items="flex-start" justify="space-between" gap="$2">
+            <YStack flex={1} minW={0} gap={2}>
               <Text fontSize="$3" fontWeight="600" color="$ink">
                 {t("Preserved Refutations · Don't Re-Chase")}
               </Text>
@@ -275,7 +282,7 @@ export function OverviewTab({
                 {t('Negative findings retained as institutional scientific memory')}
               </Text>
             </YStack>
-            <XStack px="$2" py={2} rounded="$2" bg="$hover">
+            <XStack px="$2" py={2} rounded="$2" bg="$hover" shrink={0}>
               <Text fontSize="$1" fontWeight="600" color="$quiet" fontFamily="$mono">
                 {summary.refutedCount}
               </Text>
