@@ -104,6 +104,19 @@ describe('the app host', () => {
     expect(moved).toEqual(['/dev/projects'])
   })
 
+  test('navigating to a chat thread via host.go from /, /chat, or /dev/projects/... lands on /chat/<id>, never /dev/projects/chat/<id>', () => {
+    const thread = 't-mwsfr4dak3eyk3x0'
+    for (const url of ['https://hanzo.app/', 'https://hanzo.app/chat', 'https://hanzo.app/dev/projects/acme/web']) {
+      moved.length = 0
+      routed.length = 0
+      const { assign } = at(url)
+      host().go(`/chat/${thread}`)
+      expect(assign, url).not.toHaveBeenCalled()
+      expect(routed, url).toEqual([])
+      expect(moved, url).toEqual([`/chat/${thread}`])
+    }
+  })
+
   test('names Settings by its page', () => {
     expect(host().links?.settings).toBe('/settings')
   })

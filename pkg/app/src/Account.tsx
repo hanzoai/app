@@ -240,7 +240,7 @@ function Line({ icon, children, sub, trail }: { icon?: ReactNode; children: stri
 }
 
 /** An organization's mark in the list: its initials on a rounded square. */
-const Mark = ({ org }: { org: Org }) => (
+const Mark = ({ org }: { org?: Org | null }) => (
   <XStack
     width={18}
     height={18}
@@ -252,7 +252,7 @@ const Mark = ({ org }: { org: Org }) => (
     borderColor="$edge"
     shrink={0}
   >
-    {org.personal ? (
+    {org?.personal ? (
       <SizableText size="$1" fontWeight="600" color="$ink">
         {initials(org.display).charAt(0)}
       </SizableText>
@@ -400,7 +400,7 @@ export function Account({
   // The platform SuperAdmin (owner == "admin") is never offered a plan: the badge names the role.
   const sudo = superAdmin()
   const plan = sudo ? t('Admin') : spoken(read.value?.label ?? null) || currentTierPlan
-  const planFor = (o: Org) => (o.name === currentOrg ? plan : o.personal ? other : '')
+  const planFor = (o: Org) => (o.name === currentOrg ? plan : o?.personal ? other : '')
   const who = host.person?.name || host.person?.email || ''
   // A plan not yet read is not Free: Free is what billing answered, and no answer shows no plan and no offer.
   const known = Boolean(plan) || read.value !== null
@@ -619,8 +619,8 @@ export function Account({
 
                   <DropdownMenuSub open={orgsOpen} onOpenChange={setOrgsOpen}>
                     <DropdownMenuSubTrigger data-slot="me-orgs">
-                      <Line icon={<Mark org={here ?? all[0]} />} trail={<Check size={16} aria-label={t('Current')} />}>
-                        {t('{org} · {plan}', { org: (here ? (here.personal ? t('Personal') : here.display) : currentOrg), plan: planName || t('No plan') })}
+                      <Line icon={<Mark org={here ?? all[0] ?? null} />} trail={<Check size={16} aria-label={t('Current')} />}>
+                        {t('{org} · {plan}', { org: (here ? (here.personal ? t('Personal') : here.display) : currentOrg) || t('Personal'), plan: planName || t('No plan') })}
                       </Line>
                     </DropdownMenuSubTrigger>
                     {orgsOpen ? (
@@ -808,7 +808,7 @@ export function Account({
                       disabled={signingOut}
                       onSelect={() => {
                         setPressed('one')
-                        void signedIn.leave(signedIn.current!)
+                        if (signedIn.current) void signedIn.leave(signedIn.current)
                       }}
                     >
                       <Line icon={<LogOut size={16} aria-hidden data-i18n-mirror />}>

@@ -1185,7 +1185,7 @@ export function Sidebar({
             ))}
           </YStack>
         ) : null}
-        {item.id === 'dev' && mode === 'dev' && !at ? <DevList host={host} path={host.path ?? ''} /> : null}
+        {item.id === 'dev' && mode === 'dev' && !at ? <DevList host={host} path={host.path ?? ''} onGo={go} /> : null}
       </YStack>
     )
   }
@@ -1423,7 +1423,7 @@ export function Sidebar({
                   </YStack>
                 )
               })}
-              {!drawer && !at && mode === 'dev' ? <DevList host={host} path={host.path ?? ''} /> : null}
+              {!drawer && !at && mode === 'dev' ? <DevList host={host} path={host.path ?? ''} onGo={go} /> : null}
             </YStack>
           ) : null}
 
@@ -1515,7 +1515,7 @@ export function Sidebar({
           ) : mode === 'design' ? (
             made ? <Recents host={made} mode="design" thread={null} onOpen={open} onNew={create} /> : <YStack flex={1} minH={0} />
           ) : (
-            mode === 'chat' ? <ChatList host={host} path={host.path ?? ''} /> : <Recents host={host} mode={mode === 'dev' ? 'dev' : 'chat'} thread={thread} onOpen={open} onNew={create} />
+            mode === 'chat' ? <ChatList host={host} path={thread ? talk(thread) : (host.path ?? '')} onGo={go} /> : <Recents host={host} mode={mode === 'dev' ? 'dev' : 'chat'} thread={thread} onOpen={open} onNew={create} />
           )}
 
           {/* More: one small row under Recents that pops a menu, so the sidebar never changes height. */}

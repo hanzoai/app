@@ -86,7 +86,17 @@ vi.mock('@hanzo/build', async () => {
   const { label, said } = await import('@hanzo/build/plan')
   return { label, Meter: () => createElement('div', { 'data-slot': 'meter' }), said, useStanding: () => ({ value: standing.value, error: null, loading: false, reload: () => {} }) }
 })
-vi.mock('./lib/session', () => ({ choose: () => {}, org: () => 'acme', orgs: () => ['acme'], pick: () => {}, renew: () => {}, reopen: () => {}, scope: () => ({}), superAdmin: () => false }))
+const sessionState = vi.hoisted(() => ({ org: 'acme' as string | null, orgs: ['acme'] as string[], signingOut: false }))
+vi.mock('./lib/session', () => ({
+  choose: () => {},
+  org: () => sessionState.org,
+  orgs: () => sessionState.orgs,
+  pick: () => {},
+  renew: () => {},
+  reopen: () => {},
+  scope: () => ({}),
+  superAdmin: () => false,
+}))
 vi.mock('./lib/org', () => ({ createOrg: async () => '', say: String }))
 const spend = vi.hoisted(() => ({ kinds: [] as string[], forget: vi.fn() }))
 vi.mock('./lib/spend', () => ({ trusts: () => spend.kinds.length > 0, forget: spend.forget }))
@@ -101,7 +111,7 @@ const signed = vi.hoisted(() => ({
   leave: vi.fn(async () => true),
   signOut: vi.fn(),
 }))
-vi.mock('./lib/signout', () => ({ useSigningOut: () => false }))
+vi.mock('./lib/signout', () => ({ useSigningOut: () => sessionState.signingOut }))
 vi.mock('./lib/accounts', () => ({
   label: (a: { displayName: string; name: string; email: string }) => ({ title: a.displayName || a.name, line: a.email }),
   useAccounts: () => ({
@@ -132,6 +142,9 @@ afterEach(() => {
   left.mockClear()
   remembered.mockClear()
   standing.value = { kind: 'free', label: { name: 'Free', tag: '' }, limits: null, allowance: null, balance: null }
+  sessionState.org = 'acme'
+  sessionState.orgs = ['acme']
+  sessionState.signingOut = false
 })
 beforeEach(() => {
   standing.value = { kind: 'free', label: { name: 'Free', tag: '' }, limits: null, allowance: null, balance: null }
@@ -274,5 +287,25 @@ describe('Ask me again before spending', () => {
     press('Ask me again before spending')
     expect(spend.forget).toHaveBeenCalledTimes(1)
     spend.kinds = []
+  })
+})
+
+describe('sign-out resilience (hanzo-inc/app issue 527)', () => {
+  test('never throws reading personal when orgs/org/tier state clears during sign-out', () => {
+    sessionState.org = null
+    sessionState.orgs = []
+    sessionState.signingOut = true
+    standing.value = null
+    const host = {
+      api: '',
+      token: () => null,
+      org: null as unknown as string,
+      person: { name: 'Ada', email: 'ada@acme.dev', avatar: '' },
+      signOut: signed.signOut,
+    }
+    expect(() => renderToStaticMarkup(createElement(Account, { host, onOrg: () => {}, defaultAccountOpen: true }))).not.toThrow()
+    const html = renderToStaticMarkup(createElement(Account, { host: { ...host, org: undefined as unknown as string }, onOrg: () => {} }))
+    expect(html).toContain('data-slot="me-orgs"')
+    expect(html).not.toContain('null ·')
   })
 })

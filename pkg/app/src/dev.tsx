@@ -41,7 +41,7 @@ import { bearer, named, org, orgs, pick } from './lib/session'
 import { enter } from './lib/destination'
 import { api } from './lib/api'
 import { CAST, personas } from './agents'
-import { app, place, settings, visit } from './lib/host'
+import { app, CHAT, place, settings, visit } from './lib/host'
 import { link } from './lib/tags'
 import { payUrl, topUp } from './lib/pay'
 import { desktopLocal } from './lib/local-fs'
@@ -136,7 +136,12 @@ export function useDevHost(confirm?: Host['confirm']): Host {
       person: signedIn ? { name, email, avatar } : null,
       admin: administers(bearer(), scoped),
       path: here,
-      go: (to, how) => (isPlans(to) ? leave('here') : visit(router, app(to), how?.replace)),
+      go: (to, how) =>
+        to === CHAT || to.startsWith(`${CHAT}/`)
+          ? visit(router, to, how?.replace)
+          : isPlans(to)
+            ? leave('here')
+            : visit(router, app(to), how?.replace),
       topUp: signedIn ? topUp : undefined,
       links: LINKS,
       // The sidebar lists Settings' sections and Customize's tabs (Sidebar.tsx), and Customize › Agents offers the cast.

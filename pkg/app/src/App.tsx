@@ -97,7 +97,7 @@ import { FIRST, isSettingsPath, settingsPathFor, settingsRowOf, SettingsList, ty
 import { Ask, useBetas } from './Betas'
 import { BETAS } from './lib/betas'
 import { useMaking } from './Confirm'
-import { app, design, flow, go, hosted, place, RESEARCH, settings, talk, TERMINALS, visit, type Place } from './lib/host'
+import { app, CHAT, design, flow, go, hosted, place, RESEARCH, settings, talk, TERMINALS, visit, type Place } from './lib/host'
 import { Bar } from './Bar'
 import { Report } from './Report'
 import { FOOT, HEIGHT, TOP, useView } from './view'
@@ -209,7 +209,10 @@ function Window({ bar, betas }: Hosted) {
   const host = useMemo<typeof dev>(
     () => ({
       ...dev,
-      go: (to, how) => (place(app(to)) ? depart : exit)((replace) => dev.go(to, replace ? { ...how, replace } : how)),
+      go: (to, how) => {
+        const dest = to === CHAT || to.startsWith(`${CHAT}/`) ? to : app(to)
+        ;(place(dest) ? depart : exit)((replace) => dev.go(to, replace ? { ...how, replace } : how))
+      },
     }),
     [dev, depart, exit],
   )
@@ -259,6 +262,13 @@ function Window({ bar, betas }: Hosted) {
     if (plans) leave('app')
   }, [plans])
 
+  // Recover any stale/misrouted `/dev/projects/chat/t-…` URL back to `/chat/t-…`.
+  useEffect(() => {
+    if (mode === 'chat' && asked && here.startsWith('/dev/projects/chat/')) {
+      go(talk(asked), true)
+    }
+  }, [mode, asked, here])
+
   // An address names Chat's conversation, a conversation just begun writes its
   // id back, and one emptied (New chat, wherever it was pressed) leaves for /chat.
   useEffect(() => {
@@ -303,7 +313,7 @@ function Window({ bar, betas }: Hosted) {
    * the app; any other page of the site (Settings) is the router's, and leaves it.
    */
   const move = useCallback(
-    (address: string) => {
+    (address: string, replace = false) => {
       const clean = address.split(/[?#]/)[0]
       if (!host.token?.() && clean.startsWith('/settings')) {
         shut()
@@ -317,7 +327,7 @@ function Window({ bar, betas }: Hosted) {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('hanzo:anon-settings', { detail: { open: false } }))
       }
-      ;(place(clean) ? depart : exit)((replace) => visit(router, address, replace))
+      ;(place(clean) ? depart : exit)((r) => visit(router, address, replace || r))
     },
     [depart, exit, router, host, shut],
   )
@@ -655,7 +665,7 @@ function Window({ bar, betas }: Hosted) {
                   </YStack>
                 ) : mode === 'chat' ? (
                   <Split framed>
-                    <DevInterior host={host} path={here} mode="chat" conversation={asked} />
+                    <DevInterior host={host} path={here} mode="chat" conversation={asked} onGo={move} />
                   </Split>
                 ) : mode === 'tabs' ? (
                   <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
@@ -747,7 +757,7 @@ function Window({ bar, betas }: Hosted) {
                         </XStack>
                       </XStack>
                     ) : null}
-                    {plans ? null : <DevInterior host={host} path={here} />}
+                    {plans ? null : <DevInterior host={host} path={here} onGo={move} />}
                   </YStack>
                 )}
               </XStack>

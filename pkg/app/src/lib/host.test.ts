@@ -47,6 +47,20 @@ describe('the app is two roots of paths', () => {
     expect(place('/dev/codebase'), 'the retired Codebase is New').toEqual({ mode: 'dev', at: '' })
   })
 
+  test('chat thread paths are never misrouted as Dev project slugs (hanzo-inc/app issue 528)', () => {
+    const chatId = 't-mwsfr4dak3eyk3x0'
+    expect(place(`/dev/projects/chat/${chatId}`)).toEqual({ mode: 'chat', thread: chatId })
+    expect(place(`/dev/projects/chat/${chatId}/`)).toEqual({ mode: 'chat', thread: chatId })
+    expect(page(`/dev/projects/chat/${chatId}`)).toBe('/chat/:id')
+    expect(app(`/chat/${chatId}`)).toBe(`/chat/${chatId}`)
+    expect(app(`chat/${chatId}`)).toBe(`/chat/${chatId}`)
+    expect(app('/chat')).toBe('/chat')
+    expect(dev(`chat/${chatId}`)).toBe('/dev')
+    // Real Dev projects under /dev/projects/ remain unaffected.
+    expect(place('/dev/projects/hanzo/circle')).toEqual({ mode: 'dev', at: 'hanzo/circle' })
+    expect(place('/dev/projects/my-site')).toEqual({ mode: 'dev', at: 'my-site' })
+  })
+
   test('Settings is one tree at /settings, the host\'s own pages, and no builder section is written under /dev', () => {
     expect(settings()).toBe(SETTINGS)
     expect(settings('general')).toBe('/settings')
