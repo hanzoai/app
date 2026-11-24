@@ -3,33 +3,39 @@
 import { useI18n } from '@hanzo/i18n/react'
 import { XStack, YStack } from '@hanzo/gui'
 import { Button, Input, Switch, Text, Textarea } from '@hanzo/ui'
-import { CalendarClock, Link2, Trash2, Unlink } from 'lucide-react'
 import {
+  CalendarClock,
+  Link2,
+  PanelRightClose,
+  PanelRightOpen,
+  Trash2,
+  Unlink,
+} from 'lucide-react'
+import {
+  componentSpecFor,
   CRON_PRESETS,
   describeCron,
+  EMBEDDING_MODELS,
   FLOW_MODELS,
+  isModelExecutionNode,
+  isStickyNoteNode,
   type FlowDefinition,
   type FlowEdge,
   type FlowNode,
   type FlowNodeConfig,
-  type FlowNodeSubtype,
 } from './types'
 
-const ACTION_SUBTYPES: readonly { id: FlowNodeSubtype; label: string }[] = [
-  { id: 'http_request', label: 'HTTP' },
-  { id: 'webhook_send', label: 'Webhook' },
-  { id: 'email', label: 'Email' },
-  { id: 'sms', label: 'SMS' },
-  { id: 'crm_update', label: 'CRM' },
-]
-
-const TRIGGER_SUBTYPES: readonly { id: FlowNodeSubtype; label: string }[] = [
-  { id: 'manual', label: 'Manual' },
-  { id: 'webhook', label: 'Webhook' },
-  { id: 'event', label: 'Event' },
+const HTTP_METHODS: readonly ('GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE')[] = [
+  'GET',
+  'POST',
+  'PUT',
+  'PATCH',
+  'DELETE',
 ]
 
 export function FlowInspector({
+  collapsed,
+  onToggleCollapse,
   flow,
   selectedNode,
   onUpdateFlow,
@@ -38,15 +44,49 @@ export function FlowInspector({
   onConnectNodes,
   onDeleteEdge,
 }: {
+  collapsed: boolean
+  onToggleCollapse: () => void
   flow: FlowDefinition
   selectedNode: FlowNode | null
   onUpdateFlow: (patch: Partial<FlowDefinition>) => void
   onUpdateNode: (nodeId: string, patch: Partial<FlowNode>, configPatch?: Partial<FlowNodeConfig>) => void
   onDeleteNode: (nodeId: string) => void
-  onConnectNodes: (sourceId: string, targetId: string) => void
+  onConnectNodes: (sourceId: string, targetId: string, sourceHandle?: string, targetHandle?: string) => void
   onDeleteEdge: (edgeId: string) => void
 }) {
   const { t } = useI18n()
+
+  if (collapsed) {
+    return (
+      <YStack
+        data-slot="flow-inspector-collapsed"
+        width={42}
+        shrink={0}
+        borderInlineStartWidth={1}
+        borderColor="$edge"
+        bg="var(--card)"
+        py="$2.5"
+        items="center"
+        gap="$2"
+      >
+        <XStack
+          render="button"
+          aria-label={t('Expand inspector')}
+          data-slot="flow-inspector-expand"
+          onClick={onToggleCollapse}
+          width={28}
+          height={28}
+          rounded="$2"
+          items="center"
+          justify="center"
+          cursor="pointer"
+          hoverStyle={{ bg: '$hover' }}
+        >
+          <PanelRightOpen size={15} aria-hidden />
+        </XStack>
+      </YStack>
+    )
+  }
 
   if (!selectedNode) {
     const schedule = flow.schedule ?? { enabled: false, cron: '0 8 * * 1-5', timezone: 'UTC' }
@@ -54,25 +94,42 @@ export function FlowInspector({
     return (
       <YStack
         data-slot="flow-inspector"
-        width={304}
+        width={308}
         shrink={0}
         borderInlineStartWidth={1}
         borderColor="$edge"
-        bg="$background"
+        bg="var(--card)"
         p="$3.5"
         gap="$3.5"
         overflowY="auto"
         overflowX="hidden"
         $max-lg={{ width: '100%', borderInlineStartWidth: 0, borderTopWidth: 1, maxH: 320 }}
       >
-        <YStack gap="$1">
-          <Text fontSize="$3" fontWeight="600" color="$ink">
-            {t('Flow settings')}
-          </Text>
-          <Text fontSize="$1" color="$quiet">
-            {t('Select any step on the canvas to edit its prompt, model, or connections.')}
-          </Text>
-        </YStack>
+        <XStack items="center" justify="space-between" gap="$2">
+          <YStack gap="$0.5" flex={1} minW={0}>
+            <Text fontSize="$3" fontWeight="600" color="$ink">
+              {t('Flow settings')}
+            </Text>
+            <Text fontSize="$1" color="$quiet">
+              {t('Select any component on the canvas to configure it.')}
+            </Text>
+          </YStack>
+          <XStack
+            render="button"
+            aria-label={t('Collapse inspector')}
+            data-slot="flow-inspector-collapse"
+            onClick={onToggleCollapse}
+            width={24}
+            height={24}
+            rounded="$2"
+            items="center"
+            justify="center"
+            cursor="pointer"
+            hoverStyle={{ bg: '$hover' }}
+          >
+            <PanelRightClose size={14} aria-hidden />
+          </XStack>
+        </XStack>
 
         <YStack gap="$1.5">
           <Text fontSize="$1" fontWeight="500" color="$soft">
@@ -94,7 +151,7 @@ export function FlowInspector({
             data-slot="flow-description-input"
             value={flow.description}
             onChangeText={(description) => onUpdateFlow({ description })}
-            placeholder={t('What does this automation do?')}
+            placeholder={t('What does this workflow do?')}
             rows={3}
           />
         </YStack>
@@ -156,21 +213,29 @@ export function FlowInspector({
     )
   }
 
+  const spec = componentSpecFor(selectedNode)
+  const isNote = isStickyNoteNode(selectedNode)
+  const isModelNode = isModelExecutionNode(selectedNode)
   const outgoing = flow.edges.filter((e) => e.source === selectedNode.id)
   const connectableTargets = flow.nodes.filter(
-    (n) => n.id !== selectedNode.id && !outgoing.some((e) => e.target === n.id),
+    (n) =>
+      n.id !== selectedNode.id &&
+      !isStickyNoteNode(n) &&
+      !outgoing.some((e) => e.target === n.id),
   )
   const cronDesc =
-    selectedNode.kind === 'schedule' ? describeCron(selectedNode.config.cron || '0 8 * * 1-5') : null
+    selectedNode.kind === 'schedule' || selectedNode.subtype === 'cron_schedule'
+      ? describeCron(selectedNode.config.cron || '0 8 * * 1-5')
+      : null
 
   return (
     <YStack
       data-slot="flow-inspector"
-      width={304}
+      width={308}
       shrink={0}
       borderInlineStartWidth={1}
       borderColor="$edge"
-      bg="$background"
+      bg="var(--card)"
       p="$3.5"
       gap="$3.5"
       overflowY="auto"
@@ -180,27 +245,44 @@ export function FlowInspector({
       <XStack items="center" justify="space-between" gap="$2">
         <YStack minW={0} flex={1}>
           <Text fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1}>
-            {t('Step inspector')}
+            {spec.label}
           </Text>
           <Text fontSize="$1" color="$quiet" fontFamily="$mono">
-            {selectedNode.kind} · {selectedNode.id}
+            {spec.category} · {selectedNode.id}
           </Text>
         </YStack>
-        {flow.nodes.length > 1 ? (
-          <Button
-            size="sm"
-            variant="ghost"
-            data-slot="inspector-delete-node"
-            onPress={() => onDeleteNode(selectedNode.id)}
+        <XStack items="center" gap="$1">
+          {flow.nodes.length > 1 ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              data-slot="inspector-delete-node"
+              onPress={() => onDeleteNode(selectedNode.id)}
+            >
+              <Trash2 size={14} aria-hidden />
+            </Button>
+          ) : null}
+          <XStack
+            render="button"
+            aria-label={t('Collapse inspector')}
+            data-slot="flow-inspector-collapse"
+            onClick={onToggleCollapse}
+            width={24}
+            height={24}
+            rounded="$2"
+            items="center"
+            justify="center"
+            cursor="pointer"
+            hoverStyle={{ bg: '$hover' }}
           >
-            <Trash2 size={14} aria-hidden />
-          </Button>
-        ) : null}
+            <PanelRightClose size={14} aria-hidden />
+          </XStack>
+        </XStack>
       </XStack>
 
       <YStack gap="$1.5">
         <Text fontSize="$1" fontWeight="500" color="$soft">
-          {t('Step title')}
+          {t('Title')}
         </Text>
         <Input
           data-slot="inspector-node-title"
@@ -209,46 +291,38 @@ export function FlowInspector({
         />
       </YStack>
 
-      {selectedNode.kind === 'trigger' ? (
-        <>
-          <YStack gap="$1.5">
-            <Text fontSize="$1" fontWeight="500" color="$soft">
-              {t('Trigger type')}
-            </Text>
-            <XStack gap="$1" flexWrap="wrap">
-              {TRIGGER_SUBTYPES.map((sub) => (
-                <XStack
-                  key={sub.id}
-                  render="button"
-                  onClick={() => onUpdateNode(selectedNode.id, { subtype: sub.id })}
-                  px="$2"
-                  py="$1"
-                  rounded="$2"
-                  bg={selectedNode.subtype === sub.id ? '$raised' : '$hover'}
-                  cursor="pointer"
-                >
-                  <Text fontSize="$1" color="$ink">
-                    {sub.label}
-                  </Text>
-                </XStack>
-              ))}
-            </XStack>
-          </YStack>
-          <YStack gap="$1.5">
-            <Text fontSize="$1" fontWeight="500" color="$soft">
-              {t('Test payload')}
-            </Text>
-            <Textarea
-              data-slot="inspector-sample-input"
-              value={selectedNode.config.sampleInput ?? ''}
-              onChangeText={(sampleInput) => onUpdateNode(selectedNode.id, {}, { sampleInput })}
-              rows={4}
-            />
-          </YStack>
-        </>
+      {/* Sticky Note body */}
+      {isNote ? (
+        <YStack gap="$1.5">
+          <Text fontSize="$1" fontWeight="500" color="$soft">
+            {t('Note content')}
+          </Text>
+          <Textarea
+            data-slot="inspector-note-body"
+            value={selectedNode.config.noteBody ?? ''}
+            onChangeText={(noteBody) => onUpdateNode(selectedNode.id, {}, { noteBody })}
+            rows={8}
+          />
+        </YStack>
       ) : null}
 
-      {selectedNode.kind === 'schedule' ? (
+      {/* Trigger / Input nodes */}
+      {selectedNode.kind === 'trigger' ? (
+        <YStack gap="$1.5">
+          <Text fontSize="$1" fontWeight="500" color="$soft">
+            {t('Sample input')}
+          </Text>
+          <Textarea
+            data-slot="inspector-sample-input"
+            value={selectedNode.config.sampleInput ?? ''}
+            onChangeText={(sampleInput) => onUpdateNode(selectedNode.id, {}, { sampleInput })}
+            rows={4}
+          />
+        </YStack>
+      ) : null}
+
+      {/* Cron Schedule */}
+      {selectedNode.kind === 'schedule' || selectedNode.subtype === 'cron_schedule' ? (
         <>
           <YStack gap="$1.5">
             <Text fontSize="$1" fontWeight="500" color="$soft">
@@ -314,7 +388,8 @@ export function FlowInspector({
         </>
       ) : null}
 
-      {selectedNode.kind === 'agent' ? (
+      {/* Enso / Zen Model & Agent nodes — authenticated automatically via Hanzo IAM */}
+      {isModelNode ? (
         <>
           <YStack gap="$1.5">
             <Text fontSize="$1" fontWeight="500" color="$soft">
@@ -364,10 +439,193 @@ export function FlowInspector({
               rows={4}
             />
           </YStack>
+          {selectedNode.subtype === 'structured_output' ? (
+            <YStack gap="$1.5">
+              <Text fontSize="$1" fontWeight="500" color="$soft">
+                {t('JSON output schema')}
+              </Text>
+              <Textarea
+                value={selectedNode.config.schema ?? ''}
+                onChangeText={(schema) => onUpdateNode(selectedNode.id, {}, { schema })}
+                rows={3}
+              />
+            </YStack>
+          ) : null}
         </>
       ) : null}
 
-      {selectedNode.kind === 'condition' ? (
+      {/* Prompt Template */}
+      {selectedNode.subtype === 'prompt_template' ? (
+        <YStack gap="$1.5">
+          <Text fontSize="$1" fontWeight="500" color="$soft">
+            {t('Template (use {{input}})')}
+          </Text>
+          <Textarea
+            data-slot="inspector-prompt"
+            value={selectedNode.config.prompt ?? '{{input}}'}
+            onChangeText={(prompt) => onUpdateNode(selectedNode.id, {}, { prompt })}
+            rows={5}
+          />
+        </YStack>
+      ) : null}
+
+      {/* Embeddings */}
+      {selectedNode.subtype === 'embeddings' ? (
+        <YStack gap="$1.5">
+          <Text fontSize="$1" fontWeight="500" color="$soft">
+            {t('Embedding model')}
+          </Text>
+          <XStack gap="$1" flexWrap="wrap">
+            {EMBEDDING_MODELS.map((m) => (
+              <XStack
+                key={m.id}
+                render="button"
+                onClick={() => onUpdateNode(selectedNode.id, {}, { model: m.id })}
+                px="$2"
+                py="$1"
+                rounded="$2"
+                borderWidth={1}
+                borderColor={(selectedNode.config.model || 'zen-embedding-3') === m.id ? 'var(--border-selected)' : '$edge'}
+                bg={(selectedNode.config.model || 'zen-embedding-3') === m.id ? '$raised' : 'transparent'}
+                cursor="pointer"
+              >
+                <Text fontSize="$1" fontFamily="$mono" color="$ink">
+                  {m.id}
+                </Text>
+              </XStack>
+            ))}
+          </XStack>
+        </YStack>
+      ) : null}
+
+      {/* API Request / URL Fetch */}
+      {selectedNode.subtype === 'api_request' || selectedNode.subtype === 'http_request' ? (
+        <>
+          <YStack gap="$1.5">
+            <Text fontSize="$1" fontWeight="500" color="$soft">
+              {t('HTTP method')}
+            </Text>
+            <XStack gap="$1" flexWrap="wrap">
+              {HTTP_METHODS.map((method) => (
+                <XStack
+                  key={method}
+                  render="button"
+                  onClick={() => onUpdateNode(selectedNode.id, {}, { method })}
+                  px="$2"
+                  py="$1"
+                  rounded="$2"
+                  bg={(selectedNode.config.method || 'GET') === method ? '$raised' : '$hover'}
+                  cursor="pointer"
+                >
+                  <Text fontSize="$1" fontFamily="$mono" color="$ink">
+                    {method}
+                  </Text>
+                </XStack>
+              ))}
+            </XStack>
+          </YStack>
+          <YStack gap="$1.5">
+            <Text fontSize="$1" fontWeight="500" color="$soft">
+              {t('Endpoint URL (supports {{query}} and {{input}})')}
+            </Text>
+            <Input
+              data-slot="inspector-api-url"
+              value={selectedNode.config.url ?? ''}
+              onChangeText={(url) => onUpdateNode(selectedNode.id, {}, { url })}
+              placeholder="https://pokeapi.co/api/v2/pokemon/{{query}}"
+            />
+          </YStack>
+          <XStack items="center" justify="space-between">
+            <Text fontSize="$1" color="$soft">
+              {t('Tool mode (feed Agent Tools port)')}
+            </Text>
+            <Switch
+              checked={Boolean(selectedNode.config.toolMode)}
+              onCheckedChange={(toolMode) => onUpdateNode(selectedNode.id, {}, { toolMode: Boolean(toolMode) })}
+            />
+          </XStack>
+        </>
+      ) : null}
+
+      {selectedNode.subtype === 'url_fetch' ? (
+        <YStack gap="$1.5">
+          <Text fontSize="$1" fontWeight="500" color="$soft">
+            {t('Target URL')}
+          </Text>
+          <Input
+            value={selectedNode.config.url ?? ''}
+            onChangeText={(url) => onUpdateNode(selectedNode.id, {}, { url })}
+            placeholder="https://hanzo.ai/docs"
+          />
+        </YStack>
+      ) : null}
+
+      {selectedNode.subtype === 'web_search' || selectedNode.subtype === 'sql_query' ? (
+        <YStack gap="$1.5">
+          <Text fontSize="$1" fontWeight="500" color="$soft">
+            {selectedNode.subtype === 'sql_query' ? t('SQL query') : t('Search query')}
+          </Text>
+          <Textarea
+            value={selectedNode.config.query ?? '{{input}}'}
+            onChangeText={(query) => onUpdateNode(selectedNode.id, {}, { query })}
+            rows={3}
+          />
+        </YStack>
+      ) : null}
+
+      {selectedNode.subtype === 'file_loader' ? (
+        <>
+          <YStack gap="$1.5">
+            <Text fontSize="$1" fontWeight="500" color="$soft">
+              {t('File name / path')}
+            </Text>
+            <Input
+              value={selectedNode.config.filePath ?? ''}
+              onChangeText={(filePath) => onUpdateNode(selectedNode.id, {}, { filePath })}
+            />
+          </YStack>
+          <YStack gap="$1.5">
+            <Text fontSize="$1" fontWeight="500" color="$soft">
+              {t('Document contents')}
+            </Text>
+            <Textarea
+              value={selectedNode.config.sampleInput ?? ''}
+              onChangeText={(sampleInput) => onUpdateNode(selectedNode.id, {}, { sampleInput })}
+              rows={5}
+            />
+          </YStack>
+        </>
+      ) : null}
+
+      {selectedNode.subtype === 'knowledge_ingestion' ||
+      selectedNode.subtype === 'knowledge_retrieval' ||
+      selectedNode.subtype === 'vector_store' ||
+      selectedNode.subtype === 'hanzo_base' ? (
+        <YStack gap="$1.5">
+          <Text fontSize="$1" fontWeight="500" color="$soft">
+            {t('Collection / Knowledge base')}
+          </Text>
+          <Input
+            value={selectedNode.config.collection ?? 'workspace-kb'}
+            onChangeText={(collection) => onUpdateNode(selectedNode.id, {}, { collection })}
+          />
+        </YStack>
+      ) : null}
+
+      {selectedNode.subtype === 'sandbox_code' ? (
+        <YStack gap="$1.5">
+          <Text fontSize="$1" fontWeight="500" color="$soft">
+            {t('Script expression')}
+          </Text>
+          <Textarea
+            value={selectedNode.config.code ?? 'return input.trim()'}
+            onChangeText={(code) => onUpdateNode(selectedNode.id, {}, { code })}
+            rows={4}
+          />
+        </YStack>
+      ) : null}
+
+      {selectedNode.kind === 'condition' || selectedNode.subtype === 'guardrail' ? (
         <YStack gap="$1.5">
           <Text fontSize="$1" fontWeight="500" color="$soft">
             {t('Condition expression')}
@@ -384,172 +642,178 @@ export function FlowInspector({
         </YStack>
       ) : null}
 
-      {selectedNode.kind === 'action' ? (
+      {selectedNode.subtype === 'hanzo_kms_secret' ? (
+        <YStack gap="$1.5">
+          <Text fontSize="$1" fontWeight="500" color="$soft">
+            {t('KMS secret path (reference only)')}
+          </Text>
+          <Input
+            value={selectedNode.config.secretPath ?? '/prod/flow/WEBHOOK_SIGNING_KEY'}
+            onChangeText={(secretPath) => onUpdateNode(selectedNode.id, {}, { secretPath })}
+          />
+        </YStack>
+      ) : null}
+
+      {selectedNode.subtype === 'hanzo_mail' || selectedNode.subtype === 'email' ? (
         <>
           <YStack gap="$1.5">
             <Text fontSize="$1" fontWeight="500" color="$soft">
-              {t('Action channel')}
+              {t('Recipient email')}
             </Text>
-            <XStack gap="$1" flexWrap="wrap">
-              {ACTION_SUBTYPES.map((sub) => (
-                <XStack
-                  key={sub.id}
-                  render="button"
-                  onClick={() => onUpdateNode(selectedNode.id, { subtype: sub.id })}
-                  px="$2"
-                  py="$1"
-                  rounded="$2"
-                  bg={selectedNode.subtype === sub.id ? '$raised' : '$hover'}
-                  cursor="pointer"
-                >
-                  <Text fontSize="$1" color="$ink">
-                    {sub.label}
-                  </Text>
-                </XStack>
-              ))}
-            </XStack>
+            <Input
+              value={selectedNode.config.to ?? ''}
+              onChangeText={(to) => onUpdateNode(selectedNode.id, {}, { to })}
+              placeholder="team@hanzo.ai"
+            />
           </YStack>
-
-          {selectedNode.subtype === 'email' || selectedNode.subtype === 'sms' ? (
-            <>
-              <YStack gap="$1.5">
-                <Text fontSize="$1" fontWeight="500" color="$soft">
-                  {selectedNode.subtype === 'email' ? t('Recipient email') : t('Phone number')}
-                </Text>
-                <Input
-                  value={selectedNode.config.to ?? ''}
-                  onChangeText={(to) => onUpdateNode(selectedNode.id, {}, { to })}
-                  placeholder={selectedNode.subtype === 'email' ? 'ops@company.com' : '+15550109900'}
-                />
-              </YStack>
-              {selectedNode.subtype === 'email' ? (
-                <YStack gap="$1.5">
-                  <Text fontSize="$1" fontWeight="500" color="$soft">
-                    {t('Subject')}
-                  </Text>
-                  <Input
-                    value={selectedNode.config.subject ?? ''}
-                    onChangeText={(subject) => onUpdateNode(selectedNode.id, {}, { subject })}
-                    placeholder={t('Automated update')}
-                  />
-                </YStack>
-              ) : null}
-            </>
-          ) : selectedNode.subtype === 'crm_update' ? (
-            <XStack gap="$2">
-              <YStack flex={1} gap="$1">
-                <Text fontSize="$1" fontWeight="500" color="$soft">
-                  {t('Entity')}
-                </Text>
-                <Input
-                  value={selectedNode.config.crmEntity ?? 'contact'}
-                  onChangeText={(crmEntity) => onUpdateNode(selectedNode.id, {}, { crmEntity })}
-                />
-              </YStack>
-              <YStack flex={1} gap="$1">
-                <Text fontSize="$1" fontWeight="500" color="$soft">
-                  {t('Operation')}
-                </Text>
-                <Input
-                  value={selectedNode.config.crmAction ?? 'upsert_note'}
-                  onChangeText={(crmAction) => onUpdateNode(selectedNode.id, {}, { crmAction })}
-                />
-              </YStack>
-            </XStack>
-          ) : (
-            <YStack gap="$1.5">
-              <Text fontSize="$1" fontWeight="500" color="$soft">
-                {t('Endpoint URL')}
-              </Text>
-              <Input
-                value={selectedNode.config.url ?? ''}
-                onChangeText={(url) => onUpdateNode(selectedNode.id, {}, { url })}
-                placeholder="https://api.hanzo.ai/v1/workflow/hooks/..."
-              />
-            </YStack>
-          )}
-
           <YStack gap="$1.5">
             <Text fontSize="$1" fontWeight="500" color="$soft">
-              {t('Payload / message template')}
+              {t('Subject')}
             </Text>
-            <Textarea
-              value={selectedNode.config.message ?? '{{input}}'}
-              onChangeText={(message) => onUpdateNode(selectedNode.id, {}, { message })}
-              rows={3}
+            <Input
+              value={selectedNode.config.subject ?? ''}
+              onChangeText={(subject) => onUpdateNode(selectedNode.id, {}, { subject })}
             />
           </YStack>
         </>
       ) : null}
 
-      {/* Outgoing connections */}
-      <YStack gap="$2" pt="$2" borderTopWidth={1} borderColor="$edge">
-        <XStack items="center" gap="$1.5">
-          <Link2 size={13} aria-hidden />
-          <Text fontSize="$2" fontWeight="500" color="$ink">
-            {t('Outgoing connections')}
+      {selectedNode.subtype === 'hanzo_post' ? (
+        <YStack gap="$1.5">
+          <Text fontSize="$1" fontWeight="500" color="$soft">
+            {t('Channel')}
           </Text>
-        </XStack>
-        {outgoing.length === 0 ? (
-          <Text fontSize="$1" color="$quiet">
-            {t('Not connected to any downstream step.')}
-          </Text>
-        ) : (
-          <YStack gap="$1">
-            {outgoing.map((edge: FlowEdge) => {
-              const target = flow.nodes.find((n) => n.id === edge.target)
-              return (
-                <XStack
-                  key={edge.id}
-                  items="center"
-                  justify="space-between"
-                  px="$2"
-                  py="$1.5"
-                  rounded="$2"
-                  bg="$hover"
-                >
-                  <Text fontSize="$1" color="$ink" numberOfLines={1} flex={1}>
-                    → {target?.title ?? edge.target}
-                  </Text>
-                  <XStack
-                    render="button"
-                    aria-label={t('Disconnect')}
-                    onClick={() => onDeleteEdge(edge.id)}
-                    p="$1"
-                    rounded="$2"
-                    cursor="pointer"
-                    hoverStyle={{ bg: '$raised' }}
-                  >
-                    <Unlink size={12} aria-hidden />
-                  </XStack>
-                </XStack>
-              )
-            })}
+          <Input
+            value={selectedNode.config.channel ?? '#updates'}
+            onChangeText={(channel) => onUpdateNode(selectedNode.id, {}, { channel })}
+          />
+        </YStack>
+      ) : null}
+
+      {selectedNode.subtype === 'crm_update' ? (
+        <XStack gap="$2">
+          <YStack flex={1} gap="$1">
+            <Text fontSize="$1" fontWeight="500" color="$soft">
+              {t('Entity')}
+            </Text>
+            <Input
+              value={selectedNode.config.crmEntity ?? 'contact'}
+              onChangeText={(crmEntity) => onUpdateNode(selectedNode.id, {}, { crmEntity })}
+            />
           </YStack>
-        )}
-        {connectableTargets.length > 0 ? (
-          <XStack gap="$1" flexWrap="wrap">
-            {connectableTargets.map((target) => (
-              <XStack
-                key={target.id}
-                render="button"
-                onClick={() => onConnectNodes(selectedNode.id, target.id)}
-                px="$2"
-                py="$1"
-                rounded="$2"
-                borderWidth={1}
-                borderColor="$edge"
-                cursor="pointer"
-                hoverStyle={{ bg: '$hover' }}
-              >
-                <Text fontSize="$1" color="$soft">
-                  + {target.title}
-                </Text>
-              </XStack>
-            ))}
+          <YStack flex={1} gap="$1">
+            <Text fontSize="$1" fontWeight="500" color="$soft">
+              {t('Action')}
+            </Text>
+            <Input
+              value={selectedNode.config.crmAction ?? 'upsert_note'}
+              onChangeText={(crmAction) => onUpdateNode(selectedNode.id, {}, { crmAction })}
+            />
+          </YStack>
+        </XStack>
+      ) : null}
+
+      {selectedNode.subtype === 'variable_store' ? (
+        <XStack gap="$2">
+          <YStack flex={1} gap="$1">
+            <Text fontSize="$1" fontWeight="500" color="$soft">
+              {t('Key')}
+            </Text>
+            <Input
+              value={selectedNode.config.variableKey ?? 'context'}
+              onChangeText={(variableKey) => onUpdateNode(selectedNode.id, {}, { variableKey })}
+            />
+          </YStack>
+          <YStack flex={1} gap="$1">
+            <Text fontSize="$1" fontWeight="500" color="$soft">
+              {t('Value')}
+            </Text>
+            <Input
+              value={selectedNode.config.variableValue ?? '{{input}}'}
+              onChangeText={(variableValue) => onUpdateNode(selectedNode.id, {}, { variableValue })}
+            />
+          </YStack>
+        </XStack>
+      ) : null}
+
+      {/* Outgoing connections (hidden for sticky notes) */}
+      {!isNote ? (
+        <YStack gap="$2" pt="$2" borderTopWidth={1} borderColor="$edge">
+          <XStack items="center" gap="$1.5">
+            <Link2 size={13} aria-hidden />
+            <Text fontSize="$2" fontWeight="500" color="$ink">
+              {t('Outgoing connections')}
+            </Text>
           </XStack>
-        ) : null}
-      </YStack>
+          {outgoing.length === 0 ? (
+            <Text fontSize="$1" color="$quiet">
+              {t('Not connected to any downstream step.')}
+            </Text>
+          ) : (
+            <YStack gap="$1">
+              {outgoing.map((edge: FlowEdge) => {
+                const target = flow.nodes.find((n) => n.id === edge.target)
+                return (
+                  <XStack
+                    key={edge.id}
+                    items="center"
+                    justify="space-between"
+                    px="$2"
+                    py="$1.5"
+                    rounded="$2"
+                    bg="$hover"
+                  >
+                    <Text fontSize="$1" color="$ink" numberOfLines={1} flex={1}>
+                      → {target?.title ?? edge.target}
+                      {edge.label ? ` (${edge.label})` : ''}
+                    </Text>
+                    <XStack
+                      render="button"
+                      aria-label={t('Disconnect')}
+                      onClick={() => onDeleteEdge(edge.id)}
+                      p="$1"
+                      rounded="$2"
+                      cursor="pointer"
+                      hoverStyle={{ bg: '$raised' }}
+                    >
+                      <Unlink size={12} aria-hidden />
+                    </XStack>
+                  </XStack>
+                )
+              })}
+            </YStack>
+          )}
+          {connectableTargets.length > 0 && spec.outputs.length > 0 ? (
+            <XStack gap="$1" flexWrap="wrap">
+              {connectableTargets.map((target) => (
+                <XStack
+                  key={target.id}
+                  render="button"
+                  onClick={() =>
+                    onConnectNodes(
+                      selectedNode.id,
+                      target.id,
+                      spec.outputs[0]?.id ?? 'output',
+                      componentSpecFor(target).inputs[0]?.id ?? 'input',
+                    )
+                  }
+                  px="$2"
+                  py="$1"
+                  rounded="$2"
+                  borderWidth={1}
+                  borderColor="$edge"
+                  cursor="pointer"
+                  hoverStyle={{ bg: '$hover' }}
+                >
+                  <Text fontSize="$1" color="$soft">
+                    + {target.title}
+                  </Text>
+                </XStack>
+              ))}
+            </XStack>
+          ) : null}
+        </YStack>
+      ) : null}
     </YStack>
   )
 }
