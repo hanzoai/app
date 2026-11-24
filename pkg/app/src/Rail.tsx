@@ -215,12 +215,21 @@ export function toggledPinnedNav(list: readonly string[], id: string): string[] 
 }
 
 /** `list` with `sourceId` dragged to `targetId`'s exact slot inside the unified rail list. */
-export function reorderedPinnedNav(list: readonly string[], sourceId: string, targetId: string): string[] {
+export function reorderedPinnedNav(
+  list: readonly string[],
+  sourceId: string,
+  targetId: string,
+  position?: 'before' | 'after',
+): string[] {
   const full = unifiedNavOrder(list)
   if (!sourceId || sourceId === targetId) return full
+  const from = full.indexOf(sourceId)
+  const to = full.indexOf(targetId)
+  if (to < 0) return [...full.filter((id) => id !== sourceId), sourceId]
   const without = full.filter((id) => id !== sourceId)
-  const at = without.indexOf(targetId)
-  without.splice(at < 0 ? without.length : at, 0, sourceId)
+  const targetIndex = without.indexOf(targetId)
+  const insertAfter = position ? position === 'after' : from >= 0 && from < to
+  without.splice(insertAfter ? targetIndex + 1 : targetIndex, 0, sourceId)
   return without
 }
 
@@ -247,7 +256,7 @@ export function shiftedPinnedNav(list: readonly string[], id: string, delta: -1 
 export function usePinnedNav(): [
   string[],
   (id: string) => void,
-  (sourceId: string, targetId: string) => void,
+  (sourceId: string, targetId: string, position?: 'before' | 'after') => void,
   (id: string, delta: -1 | 1, visible?: readonly string[]) => void,
 ] {
   const { orgId, defaults: orgDefaults } = useOrgNavDefaults()
@@ -263,7 +272,7 @@ export function usePinnedNav(): [
   return [
     pinned,
     (id) => keep(toggledPinnedNav(pinned, id)),
-    (src, target) => keep(reorderedPinnedNav(pinned, src, target)),
+    (src, target, position) => keep(reorderedPinnedNav(pinned, src, target, position)),
     (id, delta, visible) => keep(shiftedPinnedNav(pinned, id, delta, visible)),
   ]
 }
@@ -671,6 +680,7 @@ export function Rail({
   const [betas, setBetas] = useState(false)
   const [dragId, setDragId] = useState<string | null>(null)
   const [dropId, setDropId] = useState<string | null>(null)
+  const [dropEdge, setDropEdge] = useState<'before' | 'after'>('before')
   const nav = useNavEntries({
     host,
     mode,
@@ -737,18 +747,18 @@ export function Rail({
         >
           {visibleMarks.map((item) => {
             const isDragging = dragId === item.id
-            // Every rail item is both draggable and droppable so the reader can freely reorder the entire rail.
+            // Every rail item (including the top item) is treated identically: draggable and droppable above or below.
             const droppable = !anon
             const isDropTarget = droppable && dropId === item.id && dragId !== null && dragId !== item.id
+            const isDropBefore = isDropTarget && dropEdge === 'before'
+            const isDropAfter = isDropTarget && dropEdge === 'after'
             return (
               <YStack
                 key={item.id}
+                position="relative"
                 width="100%"
                 items="center"
                 opacity={isDragging ? 0.4 : 1}
-                borderTopWidth={isDropTarget ? 2 : 0}
-                borderColor="var(--foreground)"
-                pt={isDropTarget ? 2 : 0}
                 $platform-web={{ cursor: !anon ? (isDragging ? 'grabbing' : 'grab') : 'pointer' }}
                 {...({
                   draggable: !anon,
@@ -761,7 +771,10 @@ export function Rail({
                     if (!droppable || !dragId || dragId === item.id) return
                     e.preventDefault()
                     if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+                    const rect = (e.currentTarget as HTMLElement | null)?.getBoundingClientRect()
+                    const edge: 'before' | 'after' = rect && e.clientY >= rect.top + rect.height / 2 ? 'after' : 'before'
                     if (dropId !== item.id) setDropId(item.id)
+                    if (dropEdge !== edge) setDropEdge(edge)
                   },
                   onDragLeave: () => {
                     if (dropId === item.id) setDropId(null)
@@ -770,7 +783,7 @@ export function Rail({
                     if (!droppable) return
                     e.preventDefault()
                     const src = dragId || e.dataTransfer?.getData('text/plain')
-                    if (src && src !== item.id) pins[2](src, item.id)
+                    if (src && src !== item.id) pins[2](src, item.id, dropEdge)
                     setDragId(null)
                     setDropId(null)
                   },
@@ -780,6 +793,19 @@ export function Rail({
                   },
                 } as object)}
               >
+                {isDropBefore ? (
+                  <XStack
+                    data-slot="rail-drop-indicator"
+                    position="absolute"
+                    t={-3}
+                    l={10}
+                    r={10}
+                    height={2}
+                    rounded={9999}
+                    bg="var(--border-selected)"
+                    pointerEvents="none"
+                  />
+                ) : null}
                 <Mark
                   label={item.label}
                   on={item.on}
@@ -791,6 +817,19 @@ export function Rail({
                 >
                   {item.icon}
                 </Mark>
+                {isDropAfter ? (
+                  <XStack
+                    data-slot="rail-drop-indicator"
+                    position="absolute"
+                    b={-3}
+                    l={10}
+                    r={10}
+                    height={2}
+                    rounded={9999}
+                    bg="var(--border-selected)"
+                    pointerEvents="none"
+                  />
+                ) : null}
               </YStack>
             )
           })}

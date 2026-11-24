@@ -150,8 +150,11 @@ describe('persistent 52px icons-only rail with monochrome chrome', () => {
     // Pinning one extra app appends it to the normal list instead of hoisting it above Chat.
     expect(unifiedNavOrder(withCrm)).toEqual(['chat', 'dev', 'design', 'flow', 'library', 'tabs', 'app-crm'])
     expect(toggledPinnedNav(withCrm, 'app-crm')).toEqual([])
-    // Dragging ANY app onto ANY other app reorders the entire unified rail freely.
+    // Dragging ANY app onto ANY other app reorders the entire unified rail freely, including moving the top item down.
     expect(reorderedPinnedNav(withCrm, 'app-crm', 'chat')).toEqual(['app-crm', 'chat', 'dev', 'design', 'flow', 'library', 'tabs'])
+    expect(reorderedPinnedNav([], 'chat', 'dev')).toEqual(['dev', 'chat', 'design', 'flow', 'library', 'tabs'])
+    expect(reorderedPinnedNav([], 'chat', 'tabs', 'after')).toEqual(['dev', 'design', 'flow', 'library', 'tabs', 'chat'])
+    expect(reorderedPinnedNav([], 'tabs', 'chat', 'before')).toEqual(['tabs', 'chat', 'dev', 'design', 'flow', 'library'])
     expect(reorderedPinnedNav([], 'flow', 'chat')).toEqual(['flow', 'chat', 'dev', 'design', 'library', 'tabs'])
     expect(reorderedPinnedNav(['flow', 'chat', 'dev', 'design', 'library', 'tabs'], 'tabs', 'dev')).toEqual(['flow', 'chat', 'tabs', 'dev', 'design', 'library'])
     expect(shiftedPinnedNav([], 'dev', -1)).toEqual(['dev', 'chat', 'design', 'flow', 'library', 'tabs'])

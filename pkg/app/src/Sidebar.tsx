@@ -269,7 +269,7 @@ function NavMenuRow({
       items="center"
       minW={0}
       borderTopWidth={dropTarget ? 2 : 0}
-      borderTopColor={dropTarget ? 'var(--foreground)' : 'transparent'}
+      borderTopColor={dropTarget ? 'var(--border-selected)' : 'transparent'}
       opacity={dragging ? 0.45 : 1}
       {...(draggable
         ? ({
@@ -1266,7 +1266,7 @@ export function Sidebar({
               <SidebarIconButton label={t('Back')} data-slot="place-back" data-tauri-drag-region="false" onPress={onBack} {...SUB_HEAD}>
                 <ArrowLeft size={16} aria-hidden data-i18n-mirror />
               </SidebarIconButton>
-              <Text flex={1} minW={0} fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1} data-slot="place-name">
+              <Text flex={1} minW={0} fontSize={17} lineHeight={22} fontWeight="600" letterSpacing={-0.25} color="$ink" numberOfLines={1} data-slot="place-name">
                 {t(TITLE[at])}
               </Text>
               {drawer || anon ? null : <Activity host={host} />}
@@ -1299,7 +1299,7 @@ export function Sidebar({
               onDoubleClick={toggleWindowMaximize}
             >
               <XStack flex={1} minW={0} items="center" gap={4}>
-                <Text fontSize="$4" fontWeight="600" color="$ink" numberOfLines={1}>
+                <Text data-slot="app-head-title" fontSize={18} lineHeight={22} fontWeight="600" letterSpacing={-0.3} color="$ink" numberOfLines={1}>
                   {modeTitle}
                 </Text>
               </XStack>
@@ -1465,7 +1465,7 @@ export function Sidebar({
                 gap={1}
                 width="100%"
                 borderBottomWidth={dropId === '__pinned_end__' ? 2 : 0}
-                borderBottomColor={dropId === '__pinned_end__' ? 'var(--foreground)' : 'transparent'}
+                borderBottomColor={dropId === '__pinned_end__' ? 'var(--border-selected)' : 'transparent'}
                 {...(!anon
                   ? ({
                       onDragOver: (e: DragEvent) => {

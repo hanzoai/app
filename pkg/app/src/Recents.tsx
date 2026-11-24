@@ -373,11 +373,20 @@ function Runs({ host, view, keep, onOpen }: { host: Host; view: View; keep: (v: 
 }
 
 /** Reorder an id list by dragging `sourceId` onto `targetId`. */
-export function reorderRecentsIds(ids: readonly string[], sourceId: string, targetId: string): string[] {
+export function reorderRecentsIds(
+  ids: readonly string[],
+  sourceId: string,
+  targetId: string,
+  position?: 'before' | 'after',
+): string[] {
   if (!sourceId || !targetId || sourceId === targetId) return [...ids]
+  const from = ids.indexOf(sourceId)
+  const to = ids.indexOf(targetId)
+  if (to < 0) return [...ids.filter((id) => id !== sourceId), sourceId]
   const next = ids.filter((id) => id !== sourceId)
   const at = next.indexOf(targetId)
-  next.splice(at < 0 ? next.length : at, 0, sourceId)
+  const insertAfter = position ? position === 'after' : from >= 0 && from < to
+  next.splice(insertAfter ? at + 1 : at, 0, sourceId)
   return next
 }
 

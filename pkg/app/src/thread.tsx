@@ -1225,7 +1225,7 @@ export function ThreadRow({
       rounded="$4"
       opacity={dragging ? 0.45 : 1}
       borderTopWidth={dropTarget ? 2 : 0}
-      borderColor="var(--foreground)"
+      borderTopColor={dropTarget ? 'var(--border-selected)' : 'transparent'}
       bg={isSelected ? '$hover' : undefined}
       $platform-web={{
         userSelect: 'none',
