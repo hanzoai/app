@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { learningAnalyze, learningCompare, learningCreate, learningRead } from './learning'
+import { LEARNING_PATHS, learningCompare, learningCreate, learningExperimentVersions, learningRead } from './learning'
 
 vi.mock('./api', () => ({ api: () => 'https://api.test' }))
 vi.mock('./session', () => ({ scope: () => ({ Authorization: 'Bearer test-session', 'X-Org-Id': 'acme' }) }))
@@ -7,22 +7,69 @@ vi.mock('./session', () => ({ scope: () => ({ Authorization: 'Bearer test-sessio
 afterEach(() => vi.unstubAllGlobals())
 
 describe('native learning transport', () => {
-  test('analyzes outcomes without promoting a rollout and compares measured pairs without starting a model', async () => {
-    const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ n_common: 0 }) })
+  test('reads retained experiment versions from /v1/research and compares measured pairs without starting a model', async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          versions: [
+            { seq: 2, id: 'kernel-perf:exp-1', revision: 'amendment-1', status: 'complete', canonical: true, metric: 'bw_gbps', value: 182.5, git_sha: 'abcdef1234' },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ n_common: 0 }) })
     vi.stubGlobal('fetch', fetcher)
-    await learningAnalyze('trial-one')
+    const versions = await learningExperimentVersions('kernel-perf:exp-1')
     const compared = await learningCompare('gpqa_diamond', 'system-a', 'system-b')
-    expect(fetcher.mock.calls[0][0]).toBe('https://api.test/v1/experiment/trial-one/analyze')
-    expect(fetcher.mock.calls[0][1].method).toBe('POST')
+    expect(fetcher.mock.calls[0][0]).toBe('https://api.test/v1/research/experiments/versions?id=kernel-perf%3Aexp-1')
+    expect(versions).toHaveLength(1)
+    expect(versions[0]).toMatchObject({ id: 'kernel-perf:exp-1', revision: 'amendment-1', canonical: true, metric: 'bw_gbps', value: 182.5 })
     expect(fetcher.mock.calls[1][0]).toBe('https://api.test/v1/benchmark/compare?benchmark=gpqa_diamond&a=system-a&b=system-b')
     expect(compared.n_common).toBe(0)
-    expect(fetcher.mock.calls.every(([url]) => !url.includes('/decide') && !url.includes('/runs'))).toBe(true)
+    expect(fetcher.mock.calls.every(([url]) => !url.includes('/v1/experiment/') && !url.includes('/decide'))).toBe(true)
   })
-  test('reads the three canonical cloud surfaces with the current scope', async () => {
-    const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: [] }) })
+  test('reads the canonical /v1/research ledger surfaces (never feature-flag /v1/experiment) with the current scope', async () => {
+    expect(LEARNING_PATHS.experiments).toBe('/v1/research/experiments')
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: [] }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: [
+            {
+              id: 'kernel-perf:sdpa:gb10/run-1',
+              project: 'hanzo-ml',
+              kind: 'kernel-perf',
+              subject: 'torch-sdpa-decode-gb10',
+              metric: 'bw_ratio',
+              value: 0.958,
+              status: 'complete',
+              git_sha: '63b377a',
+              meta: JSON.stringify({ verdict: 'refuted', study: 'm1-gb10-splitkv-32k' }),
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: [] }) })
     vi.stubGlobal('fetch', fetcher)
-    await learningRead('studies'); await learningRead('experiments'); await learningRead('benchmarks')
-    expect(fetcher.mock.calls.map(([url]) => url)).toEqual(['https://api.test/v1/research/studies', 'https://api.test/v1/experiment', 'https://api.test/v1/benchmark/catalog'])
+    await learningRead('studies')
+    const experiments = await learningRead('experiments')
+    await learningRead('benchmarks')
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+      'https://api.test/v1/research/studies',
+      'https://api.test/v1/research/experiments',
+      'https://api.test/v1/benchmark/catalog',
+    ])
+    expect(experiments).toHaveLength(1)
+    expect(experiments[0]).toMatchObject({
+      id: 'kernel-perf:sdpa:gb10/run-1',
+      project: 'hanzo-ml',
+      kind: 'kernel-perf',
+      subject: 'torch-sdpa-decode-gb10',
+      metric: 'bw_ratio',
+      value: 0.958,
+      meta: { verdict: 'refuted', study: 'm1-gb10-splitkv-32k' },
+    })
     for (const [, init] of fetcher.mock.calls) expect(init.headers['X-Org-Id']).toBe('acme')
   })
 

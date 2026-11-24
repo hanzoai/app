@@ -97,7 +97,7 @@ import { FIRST, isSettingsPath, settingsPathFor, settingsRowOf, SettingsList, ty
 import { Ask, useBetas } from './Betas'
 import { BETAS } from './lib/betas'
 import { useMaking } from './Confirm'
-import { app, CHAT, design, flow, go, hosted, place, SCIENCE, settings, talk, TERMINALS, visit, type Place } from './lib/host'
+import { app, CHAT, design, flow, go, hosted, place, SCIENCE, science, settings, talk, TERMINALS, visit, type Place } from './lib/host'
 import { scienceNav } from './science/nav'
 import { parseScienceTab } from './science/types'
 import { Bar } from './Bar'
@@ -811,7 +811,7 @@ function Window({ bar, betas }: Hosted) {
           )}
           {finding ? <Search go={move} onClose={found} mode={mode} host={host} /> : null}
           {listing ? <Shortcuts onClose={() => setListing(false)} /> : null}
-          {learning ? <Learning open onClose={() => setLearning(false)} /> : null}
+          {learning ? <Learning open onClose={() => setLearning(false)} onOpenScience={() => { setLearning(false); move(science('studies')) }} /> : null}
           <Upgrade />
           {making.dialog}
           <AppContextMenu

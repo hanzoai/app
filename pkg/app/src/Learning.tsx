@@ -23,12 +23,12 @@ import { Box, Button, Dialog, DialogContent, DialogTitle, Input, Skeleton, Text,
 import { say } from './failure'
 import { org } from './lib/session'
 import {
-  learningAnalyze,
   learningCompare,
   learningCreate,
+  learningExperimentVersions,
   learningRead,
-  type LearningAnalysis,
   type LearningComparison,
+  type LearningExperimentVersion,
   type LearningPart,
   type LearningProposal,
   type LearningRows,
@@ -127,7 +127,15 @@ function StatusPill({ label, active = false }: { label: string; active?: boolean
 }
 
 /** The user's actual evidence and findings. Closed dialogs make no API requests. */
-export function Learning({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function Learning({
+  open,
+  onClose,
+  onOpenScience,
+}: {
+  open: boolean
+  onClose: () => void
+  onOpenScience?: () => void
+}) {
   const { t } = useI18n()
   const { accessToken } = useIam()
   const tabId = useId()
@@ -147,8 +155,13 @@ export function Learning({ open, onClose }: { open: boolean; onClose: () => void
   const [problem, setProblem] = useState<unknown>(null)
   const draftId = useRef('')
   const [measuring, setMeasuring] = useState(false)
-  const [analyzingId, setAnalyzingId] = useState('')
-  const [measured, setMeasured] = useState<{ identity: string; analysis?: LearningAnalysis; comparison?: LearningComparison; error?: unknown }>({ identity: '' })
+  const [inspectingId, setInspectingId] = useState('')
+  const [measured, setMeasured] = useState<{
+    identity: string
+    versions?: { id: string; rows: LearningExperimentVersion[] }
+    comparison?: LearningComparison
+    error?: unknown
+  }>({ identity: '' })
   const [pair, setPair] = useState({ benchmark: '', a: '', b: '' })
   const results = measured.identity === identity ? measured : null
   const [proposal, setProposal] = useState<LearningProposal>({
@@ -199,17 +212,18 @@ export function Learning({ open, onClose }: { open: boolean; onClose: () => void
     }
   }
 
-  const analyze = async (id: string) => {
+  const inspectVersions = async (id: string) => {
     setMeasuring(true)
-    setAnalyzingId(id)
+    setInspectingId(id)
     setMeasured({ identity })
     try {
-      setMeasured({ identity, analysis: await learningAnalyze(id) })
+      const rows = await learningExperimentVersions(id)
+      setMeasured({ identity, versions: { id, rows } })
     } catch (error) {
       setMeasured({ identity, error })
     } finally {
       setMeasuring(false)
-      setAnalyzingId('')
+      setInspectingId('')
     }
   }
 
@@ -718,24 +732,31 @@ export function Learning({ open, onClose }: { open: boolean; onClose: () => void
                   </YStack>
                 ) : tab === 'experiments' ? (
                   <YStack gap="$3.5">
-                    <Text fontSize="$2" color="$soft">
-                      {t('Controlled experiments assign variants and measure their outcomes. Choosing a winner changes a live rollout and requires an authorized review.')}
-                    </Text>
+                    <XStack items="center" justify="space-between" gap="$3" flexWrap="wrap">
+                      <Text fontSize="$2" color="$soft" flex={1} minW={200}>
+                        {t('Recorded experiments from the research ledger (/v1/research/experiments), with versioned lineage and provenance.')}
+                      </Text>
+                      {onOpenScience ? (
+                        <Button size="sm" variant="outline" borderColor={STRONG} shrink={0} onPress={onOpenScience}>
+                          {t('Open Hanzo Science')}
+                        </Button>
+                      ) : null}
+                    </XStack>
 
                     {results?.error ? <ErrorCallout message={say(results.error, t('this experiment'), 'read', t)} /> : null}
 
-                    {results?.analysis ? (
+                    {results?.versions ? (
                       <YStack gap="$3" p="$4" rounded="$4" borderWidth={1} borderColor={STRONG} bg="$panel">
                         <XStack items="center" justify="space-between" gap="$2">
                           <XStack items="center" gap="$2" flexWrap="wrap" flex={1} minW={0}>
-                            <Text fontSize="$3" fontWeight="600" color="$ink">
-                              {t('Outcome analysis')}
+                            <Text fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1}>
+                              {t('Retained versions: {id}', { id: results.versions.id })}
                             </Text>
-                            {results.analysis.winner ? <StatusPill label={t('Leading: {winner}', { winner: results.analysis.winner })} active /> : null}
+                            <StatusPill label={t('{n} retained', { n: results.versions.rows.length })} active={results.versions.rows.length > 0} />
                           </XStack>
                           <Box
                             render={<button type="button" />}
-                            aria-label={t('Dismiss analysis')}
+                            aria-label={t('Dismiss version history')}
                             onClick={() => setMeasured({ identity })}
                             width={32}
                             height={32}
@@ -752,67 +773,99 @@ export function Learning({ open, onClose }: { open: boolean; onClose: () => void
                             <X size={15} color={SOFT} aria-hidden />
                           </Box>
                         </XStack>
-                        <YStack gap="$2.5">
-                          {results.analysis.results?.map((row) => {
-                            const pct = Math.max(0, Math.min(100, Number.isFinite(row.rate) ? row.rate * 100 : row.exposed > 0 ? (row.converted / row.exposed) * 100 : 0))
-                            return (
-                              <YStack key={row.variant} gap="$1.5" p="$3" rounded="$3" borderWidth={1} borderColor="$edge" bg="$background">
+                        {results.versions.rows.length === 0 ? (
+                          <Text fontSize="$2" color="$soft">
+                            {t('No retained version entries were returned for this experiment.')}
+                          </Text>
+                        ) : (
+                          <YStack gap="$2">
+                            {results.versions.rows.map((ver, idx) => (
+                              <YStack key={`${ver.id}-${ver.seq ?? idx}`} gap="$1" p="$3" rounded="$3" borderWidth={1} borderColor="$edge" bg="$background">
                                 <XStack items="center" justify="space-between" gap="$2" flexWrap="wrap">
                                   <Text fontSize="$2" fontWeight="500" color="$ink">
-                                    {row.variant}
+                                    {ver.revision}{ver.seq != null ? ` · #${ver.seq}` : ''}
                                   </Text>
                                   <XStack items="center" gap="$2">
-                                    {row.significant ? <StatusPill label={t('Significant')} active /> : null}
-                                    <Text fontSize="$2" fontWeight="600" color="$ink" fontVariant={['tabular-nums']}>
-                                      {`${pct.toFixed(1)}%`}
-                                    </Text>
+                                    {ver.canonical ? <StatusPill label={t('Canonical')} active /> : null}
+                                    <StatusPill label={ver.status} />
                                   </XStack>
                                 </XStack>
-                                <YStack height={6} rounded={999} bg="$hover" overflow="hidden">
-                                  <YStack height={6} width={`${pct}%`} rounded={999} bg="$ink" />
-                                </YStack>
-                                <Text fontSize="$1" color="$soft" fontVariant={['tabular-nums']}>
-                                  {t('{converted} of {exposed} converted', { converted: row.converted, exposed: row.exposed })}
-                                </Text>
+                                <XStack items="center" gap="$2.5" flexWrap="wrap">
+                                  {ver.metric && typeof ver.value === 'number' ? (
+                                    <Text fontSize="$1" color="$ink" fontVariant={['tabular-nums']}>
+                                      {`${ver.metric}: ${Number.isInteger(ver.value) ? ver.value : ver.value.toFixed(4)}`}
+                                    </Text>
+                                  ) : null}
+                                  {ver.git_sha ? (
+                                    <Text fontSize="$1" color="$soft">
+                                      {ver.git_sha.slice(0, 8)}
+                                    </Text>
+                                  ) : null}
+                                </XStack>
                               </YStack>
-                            )
-                          })}
-                        </YStack>
+                            ))}
+                          </YStack>
+                        )}
                       </YStack>
                     ) : null}
 
                     {state('experiments', t('Loading experiments'))}
-                    {visibleExperiments?.map((row) => (
-                      <XStack
-                        key={row.id}
-                        items="center"
-                        justify="space-between"
-                        gap="$3"
-                        p="$3.5"
-                        rounded="$4"
-                        borderWidth={1}
-                        borderColor="$edge"
-                        bg="$panel"
-                        $max-sm={{ flexDirection: 'column', items: 'stretch' }}
-                      >
-                        <YStack flex={1} minW={0} gap="$1" $max-sm={{ flexBasis: 'auto', grow: 0, minW: 0, width: '100%' }}>
-                          <Text fontSize="$3" fontWeight="500" color="$ink">
-                            {row.name || row.id}
-                          </Text>
-                          <XStack items="center" gap="$2" flexWrap="wrap">
-                            <StatusPill label={row.status} active={Boolean(row.winner)} />
-                            {row.winner ? (
-                              <Text fontSize="$1" color="$soft">
-                                {t('Winner: {winner}', { winner: row.winner })}
+                    {visibleExperiments?.map((row) => {
+                      const verdict = typeof row.meta?.verdict === 'string' && row.meta.verdict.trim() ? row.meta.verdict.trim() : ''
+                      const badge = verdict || row.status || 'complete'
+                      const qualified = /^(proven|qualified|pass|passed|win)$/i.test(badge)
+                      return (
+                        <XStack
+                          key={row.id}
+                          items="center"
+                          justify="space-between"
+                          gap="$3"
+                          p="$3.5"
+                          rounded="$4"
+                          borderWidth={1}
+                          borderColor="$edge"
+                          bg="$panel"
+                          $max-sm={{ flexDirection: 'column', items: 'stretch' }}
+                        >
+                          <YStack flex={1} minW={0} gap="$1" $max-sm={{ flexBasis: 'auto', grow: 0, minW: 0, width: '100%' }}>
+                            <Text fontSize="$3" fontWeight="500" color="$ink" numberOfLines={1}>
+                              {row.subject || row.id}
+                            </Text>
+                            {row.subject && row.subject !== row.id ? (
+                              <Text fontSize="$1" color="$soft" numberOfLines={1}>
+                                {row.id}
                               </Text>
                             ) : null}
-                          </XStack>
-                        </YStack>
-                        <Button size="sm" variant="outline" borderColor={STRONG} shrink={0} disabled={measuring} onPress={() => void analyze(row.id)}>
-                          {measuring && analyzingId === row.id ? t('Analyzing…') : t('Analyze outcomes')}
-                        </Button>
-                      </XStack>
-                    ))}
+                            <XStack items="center" gap="$2" flexWrap="wrap">
+                              <StatusPill label={badge} active={qualified} />
+                              {row.kind ? (
+                                <Text fontSize="$1" color="$soft">
+                                  {row.kind}
+                                </Text>
+                              ) : null}
+                              {row.metric && typeof row.value === 'number' ? (
+                                <Text fontSize="$1" color="$ink" fontVariant={['tabular-nums']}>
+                                  {`${row.metric}: ${Number.isInteger(row.value) ? row.value : row.value.toFixed(4)}`}
+                                </Text>
+                              ) : null}
+                              {row.project ? (
+                                <Text fontSize="$1" color="$soft">
+                                  {row.project}
+                                </Text>
+                              ) : null}
+                              {row.git_sha ? (
+                                <Text fontSize="$1" color="$soft">
+                                  {row.git_sha.slice(0, 8)}
+                                </Text>
+                              ) : null}
+                            </XStack>
+                          </YStack>
+                          <Button size="sm" variant="outline" borderColor={STRONG} shrink={0} disabled={measuring} onPress={() => void inspectVersions(row.id)}>
+                            {measuring && inspectingId === row.id ? t('Loading…') : t('Version history')}
+                          </Button>
+                        </XStack>
+                      )
+                    })}
                     {experimentsRows && experimentsRows.length > INITIAL_VISIBLE ? (
                       <XStack>
                         <Button size="sm" variant="outline" borderColor={STRONG} onPress={() => setShowAllExperiments((v) => !v)}>
@@ -821,7 +874,7 @@ export function Learning({ open, onClose }: { open: boolean; onClose: () => void
                       </XStack>
                     ) : null}
                     {experimentsRows?.length === 0 ? (
-                      <EmptyCard title={t('No controlled experiments yet')} detail={t('Experiments appear here once a rollout test is configured for your workspace.')} />
+                      <EmptyCard title={t('No research experiments yet')} detail={t('Experiments recorded to /v1/research/experiments appear here once runs are logged for your workspace.')} />
                     ) : null}
                   </YStack>
                 ) : (
