@@ -2,34 +2,61 @@ export { FlowPane, default } from './FlowPane'
 export { flowNav } from './nav'
 export { FlowCanvas } from './FlowCanvas'
 export { FlowInspector } from './FlowInspector'
-export { FLOW_TEMPLATES, instantiateTemplate, createBlankFlow, seedInitialFlows, type FlowTemplate } from './templates'
+export { FlowPalette, FLOW_DRAG_MIME } from './FlowPalette'
+export { FlowPlayground } from './FlowPlayground'
+export { HanzoMark, iconForCategory, iconForSubtype } from './icons'
 export {
+  FLOW_TEMPLATE_CATEGORIES,
+  FLOW_TEMPLATES,
+  instantiateTemplate,
+  createBlankFlow,
+  seedInitialFlows,
+  type FlowTemplate,
+  type FlowTemplateCategory,
+} from './templates'
+export {
+  createDefaultPlaygroundSession,
+  evaluateCondition,
   executeFlow,
+  extractQuerySlug,
   persistFlow,
   readLocalFlows,
   readLocalRuns,
+  readPlaygroundSessions,
   removeRemoteFlow,
   syncLoadFlows,
   writeLocalFlows,
   writeLocalRuns,
+  writePlaygroundSessions,
 } from './api'
 export {
   CRON_PRESETS,
+  EMBEDDING_MODELS,
+  FLOW_COMPONENT_CATALOG,
   FLOW_MODELS,
+  FLOW_NODE_CATEGORIES,
   FLOW_STUDIO_URL,
+  componentSpecFor,
   createFlowId,
   createNodeId,
   describeCron,
   flowPath,
+  isModelExecutionNode,
+  isStickyNoteNode,
   makeDefaultNode,
+  makeNodeFromComponent,
   parseFlowRoute,
   topologicalSort,
+  type FlowComponentSpec,
   type FlowDefinition,
   type FlowEdge,
   type FlowNode,
+  type FlowNodeCategory,
   type FlowNodeConfig,
   type FlowNodeKind,
   type FlowNodeSubtype,
+  type FlowPortId,
+  type FlowPortSpec,
   type FlowPosition,
   type FlowRouteState,
   type FlowRunRecord,
@@ -38,4 +65,6 @@ export {
   type FlowStepResult,
   type FlowStepStatus,
   type FlowView,
+  type PlaygroundMessage,
+  type PlaygroundSession,
 } from './types'

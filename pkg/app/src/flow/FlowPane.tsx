@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useI18n } from '@hanzo/i18n/react'
 import { XStack, YStack } from '@hanzo/gui'
-import { Button, Switch, Text } from '@hanzo/ui'
+import { Button, Input, Switch, Text } from '@hanzo/ui'
 import {
   CalendarClock,
   CheckCircle2,
@@ -11,10 +11,11 @@ import {
   History,
   LayoutTemplate,
   Loader2,
+  MessageSquare,
   Play,
   Plus,
   Save,
-  Trash2,
+  Search,
   Workflow,
   X,
   XCircle,
@@ -35,18 +36,29 @@ import {
 } from './api'
 import { FlowCanvas } from './FlowCanvas'
 import { FlowInspector } from './FlowInspector'
-import { createBlankFlow, FLOW_TEMPLATES, instantiateTemplate, type FlowTemplate } from './templates'
+import { FlowPalette } from './FlowPalette'
+import { FlowPlayground } from './FlowPlayground'
+import {
+  createBlankFlow,
+  FLOW_TEMPLATE_CATEGORIES,
+  FLOW_TEMPLATES,
+  instantiateTemplate,
+  type FlowTemplate,
+  type FlowTemplateCategory,
+} from './templates'
 import {
   describeCron,
   FLOW_STUDIO_URL,
   flowPath,
-  makeDefaultNode,
+  isStickyNoteNode,
+  makeNodeFromComponent,
   parseFlowRoute,
   topologicalSort,
   type FlowDefinition,
   type FlowNode,
   type FlowNodeConfig,
-  type FlowNodeKind,
+  type FlowNodeSubtype,
+  type FlowPosition,
   type FlowRunRecord,
   type FlowStepResult,
   type FlowView,
@@ -86,7 +98,12 @@ export function FlowPane({
   const [running, setRunning] = useState(false)
   const [liveSteps, setLiveSteps] = useState<FlowStepResult[]>([])
   const [showRunDrawer, setShowRunDrawer] = useState(false)
+  const [showPlayground, setShowPlayground] = useState(false)
+  const [paletteCollapsed, setPaletteCollapsed] = useState(false)
+  const [inspectorCollapsed, setInspectorCollapsed] = useState(false)
   const [activeRunSummary, setActiveRunSummary] = useState<string | null>(null)
+  const [templateQuery, setTemplateQuery] = useState('')
+  const [templateCategory, setTemplateCategory] = useState<'All' | FlowTemplateCategory>('All')
   const runAbortRef = useRef<AbortController | null>(null)
 
   // Keep org-isolated storage when switching orgs.
@@ -97,9 +114,10 @@ export function FlowPane({
     setRuns(readLocalRuns(activeOrg))
     setActiveFlowId(nextFlows[0]?.id ?? '')
     setSelectedNodeId(null)
+    setShowPlayground(false)
   }
 
-  // Merge remote /v1/workflow definitions when authenticated.
+  // Merge remote /v1/workflow definitions when authenticated via Hanzo IAM.
   useEffect(() => {
     const ctrl = new AbortController()
     void syncLoadFlows(activeOrg, ctrl.signal).then((res) => {
@@ -176,18 +194,20 @@ export function FlowPane({
     setFlows(next)
     setActiveFlowId(fresh.id)
     setSelectedNodeId(fresh.nodes[1]?.id ?? fresh.nodes[0]?.id ?? null)
+    setShowPlayground(false)
     writeLocalFlows(next, activeOrg)
     void persistFlow(fresh, next, activeOrg).then(setSyncState)
     navigate(flowPath(fresh.id))
   }, [flows, activeOrg, navigate])
 
   const handleUseTemplate = useCallback(
-    (template: FlowTemplate) => {
+    (template: FlowTemplate, openPlaygroundAfter = false) => {
       const created = instantiateTemplate(template)
       const next = [created, ...flows]
       setFlows(next)
       setActiveFlowId(created.id)
-      setSelectedNodeId(created.nodes[1]?.id ?? created.nodes[0]?.id ?? null)
+      setSelectedNodeId(created.nodes.find((n) => !isStickyNoteNode(n))?.id ?? null)
+      setShowPlayground(openPlaygroundAfter)
       writeLocalFlows(next, activeOrg)
       void persistFlow(created, next, activeOrg).then(setSyncState)
       navigate(flowPath(created.id))
@@ -222,17 +242,28 @@ export function FlowPane({
     [commitFlow],
   )
 
-  const handleAddNode = useCallback(
-    (kind: FlowNodeKind) => {
+  const handleAddComponent = useCallback(
+    (subtype: FlowNodeSubtype, position?: FlowPosition) => {
       if (!activeFlow) return
-      const created = makeDefaultNode(kind, activeFlow.nodes.length)
-      const previous = activeFlow.nodes.at(-1)
+      const created = makeNodeFromComponent(subtype, activeFlow.nodes.length, position)
+      const previous = [...activeFlow.nodes].reverse().find((n) => !isStickyNoteNode(n))
+      const connectPrev = Boolean(!position && previous && !isStickyNoteNode(created))
       commitFlow((f) => ({
         ...f,
         nodes: [...f.nodes, created],
-        edges: previous
-          ? [...f.edges, { id: `e_${Date.now().toString(36)}`, source: previous.id, target: created.id }]
-          : f.edges,
+        edges:
+          connectPrev && previous
+            ? [
+                ...f.edges,
+                {
+                  id: `e_${Date.now().toString(36)}`,
+                  source: previous.id,
+                  target: created.id,
+                  sourceHandle: 'output',
+                  targetHandle: 'input',
+                },
+              ]
+            : f.edges,
       }))
       setSelectedNodeId(created.id)
     },
@@ -266,13 +297,41 @@ export function FlowPane({
   )
 
   const handleConnectNodes = useCallback(
-    (source: string, target: string) => {
+    (source: string, target: string, sourceHandle?: string, targetHandle?: string) => {
       if (source === target) return
       commitFlow((f) => {
-        if (f.edges.some((e) => e.source === source && e.target === target)) return f
+        if (
+          f.edges.some(
+            (e) =>
+              e.source === source &&
+              e.target === target &&
+              (e.sourceHandle || 'output') === (sourceHandle || 'output') &&
+              (e.targetHandle || 'input') === (targetHandle || 'input'),
+          )
+        ) {
+          return f
+        }
+        const label =
+          sourceHandle === 'tools' || targetHandle === 'tools'
+            ? 'Tools'
+            : sourceHandle === 'true'
+              ? 'True'
+              : sourceHandle === 'false'
+                ? 'False'
+                : undefined
         return {
           ...f,
-          edges: [...f.edges, { id: `e_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`, source, target }],
+          edges: [
+            ...f.edges,
+            {
+              id: `e_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`,
+              source,
+              target,
+              sourceHandle: sourceHandle || 'output',
+              targetHandle: targetHandle || 'input',
+              label,
+            },
+          ],
         }
       })
     },
@@ -291,12 +350,20 @@ export function FlowPane({
 
   const handleAutoLayout = useCallback(() => {
     commitFlow((f) => {
-      const sorted = topologicalSort(f.nodes, f.edges)
+      const notes = f.nodes.filter((n) => isStickyNoteNode(n))
+      const runnable = topologicalSort(
+        f.nodes.filter((n) => !isStickyNoteNode(n)),
+        f.edges,
+      )
       const positions = new Map<string, { x: number; y: number }>()
-      sorted.forEach((n, idx) => {
+      notes.forEach((n, idx) => {
+        positions.set(n.id, { x: 48 + idx * 304, y: 32 })
+      })
+      const baseY = notes.length > 0 ? 240 : 96
+      runnable.forEach((n, idx) => {
         positions.set(n.id, {
-          x: 40 + (idx % 4) * 296,
-          y: 96 + Math.floor(idx / 4) * 184,
+          x: 48 + (idx % 4) * 304,
+          y: baseY + Math.floor(idx / 4) * 208,
         })
       })
       return {
@@ -305,6 +372,17 @@ export function FlowPane({
       }
     })
   }, [commitFlow])
+
+  const recordRun = useCallback(
+    (record: FlowRunRecord) => {
+      setRuns((prev) => {
+        const next = [record, ...prev].slice(0, 50)
+        writeLocalRuns(next, activeOrg)
+        return next
+      })
+    },
+    [activeOrg],
+  )
 
   const handleRunFlow = useCallback(
     async (targetFlow?: FlowDefinition, trigger: 'manual' | 'schedule' = 'manual') => {
@@ -323,17 +401,13 @@ export function FlowPane({
           signal: ctrl.signal,
           onStepUpdate: (steps) => setLiveSteps(steps),
         })
-        setRuns((prev) => {
-          const next = [record, ...prev].slice(0, 50)
-          writeLocalRuns(next, activeOrg)
-          return next
-        })
+        recordRun(record)
         setActiveRunSummary(record.summary ?? null)
       } finally {
         setRunning(false)
       }
     },
-    [activeFlow, running, activeOrg],
+    [activeFlow, running, recordRun],
   )
 
   const toggleSchedule = useCallback(
@@ -366,6 +440,16 @@ export function FlowPane({
     [flows],
   )
 
+  const filteredTemplates = useMemo(() => {
+    const q = templateQuery.trim().toLowerCase()
+    return FLOW_TEMPLATES.filter((tpl) => {
+      if (templateCategory !== 'All' && tpl.category !== templateCategory) return false
+      if (!q) return true
+      const hay = `${tpl.name} ${tpl.description} ${tpl.category} ${tpl.nodes.map((n) => n.title).join(' ')}`.toLowerCase()
+      return hay.includes(q)
+    })
+  }, [templateQuery, templateCategory])
+
   const viewTabs: readonly { id: FlowView; label: string; routeSub: string; Icon: typeof Workflow }[] = [
     { id: 'canvas', label: t('Builder'), routeSub: '', Icon: Workflow },
     { id: 'scheduled', label: t('Scheduled'), routeSub: 'scheduled', Icon: CalendarClock },
@@ -374,18 +458,19 @@ export function FlowPane({
   ]
 
   return (
-    <YStack data-slot="flow-pane" flex={1} minW={0} minH={0} bg="$background">
-      {/* Top workspace toolbar */}
+    <YStack data-slot="flow-pane" flex={1} minW={0} minH={0} bg="$background" position="relative">
+      {/* Top Studio toolbar */}
       <XStack
         data-slot="flow-toolbar"
         px="$4"
-        py="$2.5"
+        py="$2"
         gap="$3"
         items="center"
         justify="space-between"
         flexWrap="wrap"
         borderBottomWidth={1}
         borderColor="$edge"
+        bg="var(--card)"
         shrink={0}
       >
         <XStack items="center" gap="$3" flexWrap="wrap" minW={0}>
@@ -406,7 +491,10 @@ export function FlowPane({
                   role="tab"
                   aria-selected={active}
                   data-slot={`flow-tab-${id}`}
-                  onClick={() => navigate(flowPath(routeSub))}
+                  onClick={() => {
+                    setShowPlayground(false)
+                    navigate(flowPath(routeSub))
+                  }}
                   px="$2.5"
                   py="$1.5"
                   rounded="$3"
@@ -442,13 +530,22 @@ export function FlowPane({
               </Button>
               <Button
                 size="sm"
-                variant="primary"
+                variant="outline"
                 data-slot="flow-test-run"
                 disabled={running}
                 onPress={() => void handleRunFlow()}
               >
                 {running ? <Loader2 size={13} aria-hidden /> : <Play size={13} aria-hidden />}
                 {running ? t('Running…') : t('Test run')}
+              </Button>
+              <Button
+                size="sm"
+                variant="primary"
+                data-slot="flow-playground-open"
+                onPress={() => setShowPlayground(true)}
+              >
+                <MessageSquare size={13} aria-hidden />
+                {t('Playground')}
               </Button>
             </>
           ) : null}
@@ -476,103 +573,25 @@ export function FlowPane({
 
       {/* Main view body */}
       {route.view === 'canvas' && activeFlow ? (
-        <YStack flex={1} minW={0} minH={0}>
+        <YStack flex={1} minW={0} minH={0} position="relative">
           <XStack flex={1} minW={0} minH={0} $max-lg={{ flexDirection: 'column' }}>
-            {/* Compact flows switcher rail inside the pane */}
-            <YStack
-              data-slot="flow-list"
-              width={212}
-              shrink={0}
-              borderInlineEndWidth={1}
-              borderColor="$edge"
-              p="$2.5"
-              gap="$2"
-              overflowY="auto"
-              overflowX="hidden"
-              $max-lg={{ width: '100%', borderInlineEndWidth: 0, borderBottomWidth: 1, maxH: 132 }}
-            >
-              <XStack items="center" justify="space-between" px="$1">
-                <Text fontSize="$1" fontWeight="500" color="$quiet">
-                  {t('Active flows')} ({flows.length})
-                </Text>
-                <XStack
-                  render="button"
-                  aria-label={t('New flow')}
-                  data-slot="flow-list-new"
-                  onClick={handleCreateFlow}
-                  width={24}
-                  height={24}
-                  rounded="$2"
-                  items="center"
-                  justify="center"
-                  cursor="pointer"
-                  hoverStyle={{ bg: '$hover' }}
-                >
-                  <Plus size={14} aria-hidden />
-                </XStack>
-              </XStack>
+            {/* Collapsible left Component Palette + Flows switcher */}
+            <FlowPalette
+              collapsed={paletteCollapsed}
+              onToggleCollapse={() => setPaletteCollapsed((v) => !v)}
+              flows={flows}
+              activeFlowId={activeFlow.id}
+              onSelectFlow={(flowId) => {
+                setActiveFlowId(flowId)
+                setSelectedNodeId(null)
+                navigate(flowPath(flowId))
+              }}
+              onCreateFlow={handleCreateFlow}
+              onDeleteFlow={handleDeleteFlow}
+              onAddComponent={(subtype) => handleAddComponent(subtype)}
+            />
 
-              <YStack gap="$1">
-                {flows.map((item) => {
-                  const isCurrent = item.id === activeFlow.id
-                  return (
-                    <XStack
-                      key={item.id}
-                      data-slot={`flow-row-${item.id}`}
-                      items="center"
-                      justify="space-between"
-                      gap="$1.5"
-                      px="$2"
-                      py="$1.5"
-                      rounded="$3"
-                      bg={isCurrent ? '$raised' : 'transparent'}
-                      hoverStyle={{ bg: isCurrent ? '$raised' : '$hover' }}
-                    >
-                      <YStack
-                        render="button"
-                        flex={1}
-                        minW={0}
-                        items="flex-start"
-                        bg="transparent"
-                        cursor="pointer"
-                        onClick={() => {
-                          setActiveFlowId(item.id)
-                          setSelectedNodeId(null)
-                          navigate(flowPath(item.id))
-                        }}
-                      >
-                        <Text fontSize="$2" fontWeight={isCurrent ? '600' : '400'} color="$ink" numberOfLines={1}>
-                          {item.name}
-                        </Text>
-                        <Text fontSize="$1" color="$quiet" numberOfLines={1}>
-                          {item.nodes.length} {t('steps')}
-                          {item.schedule?.enabled ? ` · ${t('Scheduled')}` : ''}
-                        </Text>
-                      </YStack>
-                      {flows.length > 1 ? (
-                        <XStack
-                          render="button"
-                          aria-label={t('Delete flow')}
-                          onClick={() => handleDeleteFlow(item.id)}
-                          width={22}
-                          height={22}
-                          rounded="$2"
-                          items="center"
-                          justify="center"
-                          opacity={0.6}
-                          cursor="pointer"
-                          hoverStyle={{ opacity: 1, bg: '$hover' }}
-                        >
-                          <Trash2 size={12} aria-hidden />
-                        </XStack>
-                      ) : null}
-                    </XStack>
-                  )
-                })}
-              </YStack>
-            </YStack>
-
-            {/* Visual drag & connect graph canvas */}
+            {/* OLED dot-matrix interactive graph canvas */}
             <FlowCanvas
               nodes={activeFlow.nodes}
               edges={activeFlow.edges}
@@ -580,15 +599,17 @@ export function FlowPane({
               stepResults={stepResultMap}
               onSelectNode={setSelectedNodeId}
               onMoveNode={handleMoveNode}
-              onAddNode={handleAddNode}
+              onDropComponent={(subtype, pos) => handleAddComponent(subtype, pos)}
               onConnectNodes={handleConnectNodes}
               onDeleteEdge={handleDeleteEdge}
               onDeleteNode={handleDeleteNode}
               onAutoLayout={handleAutoLayout}
             />
 
-            {/* Step / flow property inspector */}
+            {/* Collapsible right property inspector */}
             <FlowInspector
+              collapsed={inspectorCollapsed}
+              onToggleCollapse={() => setInspectorCollapsed((v) => !v)}
               flow={activeFlow}
               selectedNode={selectedNode}
               onUpdateFlow={(patch) => commitFlow((f) => ({ ...f, ...patch }))}
@@ -687,6 +708,17 @@ export function FlowPane({
               </YStack>
             </YStack>
           ) : null}
+
+          {/* Full Playground Drawer/View with standard @hanzo/ui/chat Composer */}
+          {showPlayground ? (
+            <FlowPlayground
+              flow={activeFlow}
+              orgId={activeOrg}
+              onClose={() => setShowPlayground(false)}
+              onLiveStepsChange={setLiveSteps}
+              onRunRecorded={recordRun}
+            />
+          ) : null}
         </YStack>
       ) : route.view === 'scheduled' ? (
         <YStack data-slot="flow-scheduled-view" flex={1} minH={0} overflowY="auto" p="$5" gap="$4">
@@ -711,7 +743,7 @@ export function FlowPane({
                 {t('No scheduled flows yet')}
               </Text>
               <Text fontSize="$2" color="$quiet">
-                {t('Enable a schedule in the Flow inspector or start from the Scheduled Research Brief template.')}
+                {t('Enable a schedule in the Flow inspector or start from the Scheduled Intelligence Brief template.')}
               </Text>
             </YStack>
           ) : (
@@ -792,7 +824,7 @@ export function FlowPane({
               {t('Run history')}
             </Text>
             <Text fontSize="$2" color="$quiet">
-              {t('Recent test runs and scheduled executions across your flows.')}
+              {t('Recent Playground sessions, test runs, and scheduled executions across your flows.')}
             </Text>
           </YStack>
 
@@ -802,7 +834,7 @@ export function FlowPane({
                 {t('No runs recorded yet')}
               </Text>
               <Text fontSize="$2" color="$quiet">
-                {t('Open any flow in the Builder and press Test run to execute it live with Enso.')}
+                {t('Open any flow in the Builder and press Playground or Test run to execute it live with Enso.')}
               </Text>
             </YStack>
           ) : (
@@ -861,31 +893,86 @@ export function FlowPane({
         </YStack>
       ) : (
         <YStack data-slot="flow-templates-view" flex={1} minH={0} overflowY="auto" p="$5" gap="$4">
-          <YStack gap="$1">
-            <Text fontSize="$5" fontWeight="600" color="$ink">
-              {t('Starter templates')}
-            </Text>
-            <Text fontSize="$2" color="$quiet">
-              {t('Launch an agentic workflow in one click and customize every step on the canvas.')}
-            </Text>
-          </YStack>
+          <XStack items="center" justify="space-between" flexWrap="wrap" gap="$3">
+            <YStack gap="$1">
+              <Text fontSize="$5" fontWeight="600" color="$ink">
+                {t('Starter templates')} ({FLOW_TEMPLATES.length})
+              </Text>
+              <Text fontSize="$2" color="$quiet">
+                {t('Pre-wired to Hanzo Enso with zero external key setup. Launch any template in one click.')}
+              </Text>
+            </YStack>
+
+            <XStack
+              items="center"
+              gap="$1.5"
+              px="$2.5"
+              rounded="$3"
+              borderWidth={1}
+              borderColor="$edge"
+              bg="var(--card)"
+              width={260}
+              maxW="100%"
+            >
+              <Search size={14} color="var(--muted-foreground)" aria-hidden />
+              <Input
+                data-slot="flow-template-search"
+                value={templateQuery}
+                onChangeText={setTemplateQuery}
+                placeholder={t('Search templates…')}
+                borderWidth={0}
+                bg="transparent"
+                flex={1}
+                minW={0}
+                size="sm"
+              />
+            </XStack>
+          </XStack>
+
+          {/* Category filter pills */}
+          <XStack gap="$1.5" flexWrap="wrap" data-slot="flow-template-categories">
+            {(['All', ...FLOW_TEMPLATE_CATEGORIES] as const).map((cat) => {
+              const active = templateCategory === cat
+              return (
+                <XStack
+                  key={cat}
+                  render="button"
+                  data-slot={`template-cat-${cat.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+                  onClick={() => setTemplateCategory(cat)}
+                  px="$3"
+                  py="$1.5"
+                  rounded="$10"
+                  borderWidth={1}
+                  borderColor={active ? 'var(--border-selected)' : '$edge'}
+                  bg={active ? '$raised' : 'var(--card)'}
+                  cursor="pointer"
+                  hoverStyle={{ borderColor: 'var(--border-strong)' }}
+                >
+                  <Text fontSize="$1" fontWeight={active ? '600' : '500'} color={active ? '$ink' : '$soft'}>
+                    {t(cat)}
+                  </Text>
+                </XStack>
+              )
+            })}
+          </XStack>
 
           <XStack gap="$3.5" flexWrap="wrap" items="stretch">
-            {FLOW_TEMPLATES.map((tpl) => (
+            {filteredTemplates.map((tpl) => (
               <YStack
                 key={tpl.id}
                 data-slot={`flow-template-${tpl.id}`}
                 flex={1}
-                flexBasis={280}
-                minW={260}
+                flexBasis={300}
+                minW={270}
                 maxW="100%"
                 p="$4"
                 rounded="$4"
                 borderWidth={1}
                 borderColor="$edge"
-                bg="var(--card)"
+                bg="var(--surface-card)"
                 justify="space-between"
                 gap="$3"
+                hoverStyle={{ borderColor: 'var(--border-strong)', bg: 'var(--surface-card-emphasis)' }}
               >
                 <YStack gap="$2">
                   <XStack items="center" justify="space-between" gap="$2">
@@ -900,19 +987,30 @@ export function FlowPane({
                     {tpl.description}
                   </Text>
                   <XStack gap="$1" flexWrap="wrap" pt="$1">
-                    {tpl.nodes.map((n) => (
-                      <Text key={n.id} fontSize="$1" color="$quiet" fontFamily="$mono" px="$1.5" py={2} rounded="$2" bg="$background">
-                        {n.title}
-                      </Text>
-                    ))}
+                    {tpl.nodes
+                      .filter((n) => !isStickyNoteNode(n))
+                      .map((n) => (
+                        <Text key={n.id} fontSize="$1" color="$quiet" fontFamily="$mono" px="$1.5" py={2} rounded="$2" bg="$background">
+                          {n.title}
+                        </Text>
+                      ))}
                   </XStack>
                 </YStack>
-                <XStack justify="flex-end">
+                <XStack justify="flex-end" gap="$2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    data-slot={`try-template-${tpl.id}`}
+                    onPress={() => handleUseTemplate(tpl, true)}
+                  >
+                    <MessageSquare size={12} aria-hidden />
+                    {t('Playground')}
+                  </Button>
                   <Button
                     size="sm"
                     variant="primary"
                     data-slot={`use-template-${tpl.id}`}
-                    onPress={() => handleUseTemplate(tpl)}
+                    onPress={() => handleUseTemplate(tpl, false)}
                   >
                     {t('Use template')}
                   </Button>
