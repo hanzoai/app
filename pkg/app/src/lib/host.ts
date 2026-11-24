@@ -219,6 +219,7 @@ export function place(pathname: string): Place | null {
         ? p.slice(RESEARCH.length + 1)
         : ''
     const sub = rest.split('/')[0]?.toLowerCase() ?? ''
+    if (sub === 'experiments') return { mode: 'research', tab: 'studies' }
     if (sub === 'studies' || sub === 'autonomy' || sub === 'machines' || sub === 'schedules' || sub === 'overview') {
       return sub === 'overview' ? { mode: 'research' } : { mode: 'research', tab: sub }
     }

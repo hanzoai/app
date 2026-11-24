@@ -22,12 +22,14 @@ export function parseScienceTab(pathname: string, search = ''): ScienceTab {
       ? clean.slice('/research/'.length)
       : ''
   const seg = rest.split('/')[0]?.trim().toLowerCase() ?? ''
+  if (seg === 'experiments') return 'studies'
   if (seg === 'studies' || seg === 'autonomy' || seg === 'machines' || seg === 'schedules' || seg === 'overview') {
     return seg
   }
   if (search) {
     const qs = search.startsWith('?') ? search.slice(1) : search
     const tabParam = new URLSearchParams(qs).get('tab')?.trim().toLowerCase()
+    if (tabParam === 'experiments') return 'studies'
     if (
       tabParam === 'studies' ||
       tabParam === 'autonomy' ||

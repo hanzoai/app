@@ -19,10 +19,48 @@ export interface LearningReview {
   }
 }
 
+export interface LearningExperimentMeta {
+  verdict?: string
+  hypothesis?: string
+  study?: string
+  backend?: string
+  gpu?: string
+  [key: string]: unknown
+}
+
+export interface LearningExperiment {
+  id: string
+  project?: string
+  kind?: string
+  subject?: string
+  task?: string
+  metric?: string
+  value?: number
+  status?: string
+  revision?: string
+  canonical?: boolean
+  git_sha?: string
+  ts?: number
+  meta?: LearningExperimentMeta
+}
+
+export interface LearningExperimentVersion {
+  seq?: number
+  id: string
+  revision: string
+  status: string
+  canonical: boolean
+  metric?: string
+  value?: number
+  git_sha?: string
+  ts?: number
+  content_hash?: string
+}
+
 export interface LearningRows {
   studies: LearningStudy[]
   reviews: LearningReview[]
-  experiments: { id: string; name: string; status: string; winner?: string }[]
+  experiments: LearningExperiment[]
   benchmarks: { id: string; name: string; direction: string }[]
 }
 
@@ -30,8 +68,21 @@ export type LearningPart = keyof LearningRows
 export const LEARNING_PATHS: Record<LearningPart, string> = {
   studies: '/v1/research/studies',
   reviews: '/v1/research/actions',
-  experiments: '/v1/experiment',
+  experiments: '/v1/research/experiments',
   benchmarks: '/v1/benchmark/catalog',
+}
+
+function parseMeta(raw: unknown): LearningExperimentMeta | undefined {
+  if (!raw) return undefined
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw)
+      return parsed && typeof parsed === 'object' ? (parsed as LearningExperimentMeta) : undefined
+    } catch {
+      return undefined
+    }
+  }
+  return typeof raw === 'object' ? (raw as LearningExperimentMeta) : undefined
 }
 
 /** Every read uses the same IAM/org headers as the rest of the workspace. */
@@ -41,7 +92,27 @@ export async function learningRead<K extends LearningPart>(part: K, signal?: Abo
   if (!r.ok) throw Object.assign(new Error(`${r.status}`), { status: r.status })
   const body = await r.json() as { data?: unknown }
   if (!Array.isArray(body.data)) throw new Error('Learning response is missing its data array')
-  return (part === 'reviews' ? body.data.filter((row: LearningReview) => row.action?.rule === 'research.improvement.v1') : body.data) as LearningRows[K]
+  if (part === 'reviews') {
+    return body.data.filter((row: LearningReview) => row.action?.rule === 'research.improvement.v1') as LearningRows[K]
+  }
+  if (part === 'experiments') {
+    return body.data.map((raw: Record<string, unknown>) => ({
+      id: String(raw.id ?? ''),
+      project: typeof raw.project === 'string' ? raw.project : undefined,
+      kind: typeof raw.kind === 'string' ? raw.kind : undefined,
+      subject: typeof raw.subject === 'string' ? raw.subject : undefined,
+      task: typeof raw.task === 'string' ? raw.task : undefined,
+      metric: typeof raw.metric === 'string' ? raw.metric : undefined,
+      value: typeof raw.value === 'number' ? raw.value : undefined,
+      status: typeof raw.status === 'string' ? raw.status : 'complete',
+      revision: typeof raw.revision === 'string' ? raw.revision : undefined,
+      canonical: raw.canonical !== false,
+      git_sha: typeof raw.git_sha === 'string' ? raw.git_sha : undefined,
+      ts: typeof raw.ts === 'number' ? raw.ts : undefined,
+      meta: parseMeta(raw.meta),
+    })) as LearningRows[K]
+  }
+  return body.data as LearningRows[K]
 }
 
 export interface LearningProposal {
@@ -81,11 +152,6 @@ export async function learningCreate(proposal: LearningProposal, id: string): Pr
   }
 }
 
-export interface LearningAnalysis {
-  winner: string
-  results: { variant: string; exposed: number; converted: number; rate: number; significant: boolean }[]
-}
-
 export interface LearningComparison {
   a: string
   b: string
@@ -95,13 +161,29 @@ export interface LearningComparison {
   mcnemar_p: number
 }
 
-/** Analyze measured outcomes; this never calls the live-rollout decide route. */
-export async function learningAnalyze(id: string): Promise<LearningAnalysis> {
-  const r = await fetch(`${api()}/v1/experiment/${encodeURIComponent(id)}/analyze`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', ...scope() }, body: '{}',
-  })
+/** Read retained experiment lineage from the /v1/research ledger. */
+export async function learningExperimentVersions(id: string): Promise<LearningExperimentVersion[]> {
+  const query = new URLSearchParams({ id })
+  const r = await fetch(`${api()}/v1/research/experiments/versions?${query}`, { headers: scope() })
+  if (r.status === 404) return []
   if (!r.ok) throw Object.assign(new Error(`${r.status}`), { status: r.status })
-  return await r.json() as LearningAnalysis
+  const body = await r.json() as { versions?: unknown; data?: unknown }
+  const rawList = Array.isArray(body.versions) ? body.versions : Array.isArray(body.data) ? body.data : []
+  return rawList.map((raw) => {
+    const row = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+    return {
+      seq: typeof row.seq === 'number' ? row.seq : undefined,
+      id: String(row.id ?? id),
+      revision: typeof row.revision === 'string' ? row.revision : 'original',
+      status: typeof row.status === 'string' ? row.status : 'complete',
+      canonical: row.canonical !== false,
+      metric: typeof row.metric === 'string' ? row.metric : undefined,
+      value: typeof row.value === 'number' ? row.value : undefined,
+      git_sha: typeof row.git_sha === 'string' ? row.git_sha : undefined,
+      ts: typeof row.ts === 'number' ? row.ts : undefined,
+      content_hash: typeof row.content_hash === 'string' ? row.content_hash : undefined,
+    }
+  })
 }
 
 /** Pair actual completed items. Zero common items is displayed as no evidence. */

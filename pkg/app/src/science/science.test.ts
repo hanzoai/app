@@ -74,6 +74,8 @@ describe('Hanzo Science routes, epistemic rigor, and full transport', () => {
 
     expect(place('/science')).toEqual({ mode: 'research' })
     expect(place('/science/studies')).toEqual({ mode: 'research', tab: 'studies' })
+    expect(place('/science/experiments')).toEqual({ mode: 'research', tab: 'studies' })
+    expect(place('/research/experiments')).toEqual({ mode: 'research', tab: 'studies' })
     expect(place('/science/autonomy')).toEqual({ mode: 'research', tab: 'autonomy' })
     expect(place('/science/machines')).toEqual({ mode: 'research', tab: 'machines' })
     expect(place('/science/schedules')).toEqual({ mode: 'research', tab: 'schedules' })
@@ -81,6 +83,8 @@ describe('Hanzo Science routes, epistemic rigor, and full transport', () => {
 
     expect(parseScienceTab('/science')).toBe('overview')
     expect(parseScienceTab('/science/studies')).toBe('studies')
+    expect(parseScienceTab('/science/experiments')).toBe('studies')
+    expect(parseScienceTab('/science', '?tab=experiments')).toBe('studies')
     expect(parseScienceTab('/science/autonomy')).toBe('autonomy')
     expect(parseScienceTab('/science/machines')).toBe('machines')
     expect(parseScienceTab('/science/schedules')).toBe('schedules')
