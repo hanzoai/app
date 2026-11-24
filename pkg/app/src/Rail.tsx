@@ -54,6 +54,7 @@ import {
   Server,
   Settings,
   Share2,
+  Shield,
   ShieldAlert,
   ShieldCheck,
   ShoppingCart,
@@ -91,7 +92,7 @@ export { orgNavKey, readOrgNavDefaults, resolveNavSeed, saveOrgNavDefaults, useO
 import { HEAD, MARK, TOUCH_HEAD } from './ground'
 import { railKeys } from './keys'
 import { out } from './help'
-import { apex, app, design, flow, hosted, SCIENCE, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
+import { apex, app, CYBER, design, flow, hosted, SCIENCE, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
 import { site } from './where'
 
 export { MARK }
@@ -138,6 +139,7 @@ const BETA_ICONS: Record<string, ComponentType<{ size?: number; 'aria-hidden'?: 
   sentinel: Eye,
   authz: Lock,
   hsm: Cpu,
+  cyber: Shield,
   studio: Clapperboard,
   koma: Film,
   iro: Palette,
@@ -343,7 +345,8 @@ export function useNavEntries({
   const here = mode === 'dev' ? raised(at) : null
   const to = (p: string) => () => go(app(p))
   const team = mode !== 'design'
-  const rawGranted = BETAS.filter((b) => b.href && b.embed === undefined && b.id !== 'flow' && b.id !== 'science' && opened(b.id))
+  const rawGranted = BETAS.filter((b) => b.href && b.embed === undefined && b.id !== 'flow' && b.id !== 'science' && b.id !== 'cyber' && opened(b.id))
+  const cyberEnabled = !anon && opened('cyber')
   const rawApps = HOSTED_APPS.filter((a) => opened(a.id))
   const reach = (address: string) => (address.startsWith('/') ? go(address) : out(address))
   const pinnedSet = new Set(pinnedIds)
@@ -451,6 +454,19 @@ export function useNavEntries({
             icon: <Atom size={17} aria-hidden />,
             onPress: () => go(SCIENCE),
           } satisfies NavEntry,
+          ...(cyberEnabled
+            ? [
+                {
+                  id: 'cyber',
+                  slot: 'rail-cyber',
+                  label: t('Cyber'),
+                  href: CYBER,
+                  on: mode === 'cyber',
+                  icon: <Shield size={17} aria-hidden />,
+                  onPress: () => go(CYBER),
+                } satisfies NavEntry,
+              ]
+            : []),
           ...apps.map(
             (a): NavEntry => ({
               id: `app-${a.id}`,
@@ -517,7 +533,12 @@ export function useNavEntries({
 
   // Anonymous visitors see the public trio (Chat, Dev, Library), and pin nothing.
   // Signed-in readers see ONE unified, freely reorderable rail list (no split "Pinned" section above everything).
-  const orderedIds = anon ? [] : unifiedNavOrder(pinnedIds)
+  const orderedIds = anon
+    ? []
+    : (() => {
+        const base = unifiedNavOrder(pinnedIds)
+        return cyberEnabled && !base.includes('cyber') ? [...base, 'cyber'] : base
+      })()
   const primaryEntries: NavEntry[] = anon
     ? allEntries
     : orderedIds.map((id) => combinedById.get(id)).filter((item): item is NavEntry => Boolean(item))

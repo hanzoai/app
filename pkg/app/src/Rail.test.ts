@@ -224,3 +224,14 @@ describe('hosted apps never auto-inject into Pinned', () => {
     expect(html).not.toContain('data-slot="rail-app-crm"')
   })
 })
+
+describe('Cyber alpha flag in the rail', () => {
+  test('surfaces Cyber directly in the rail only when beta.cyber is open', () => {
+    state.opened = new Set()
+    expect(draw5()).not.toContain('data-slot="rail-cyber"')
+
+    state.opened = new Set(['cyber'])
+    const html = draw5()
+    expect(html).toContain('data-slot="rail-cyber"')
+  })
+})

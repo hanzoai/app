@@ -94,7 +94,9 @@ import { Upgrade, useFree } from './Upgrade'
 import { payUrl } from './lib/pay'
 import { FIRST, isSettingsPath, settingsPathFor, settingsRowOf, SettingsList, type Row as SettingsRow } from './Settings'
 import { useMaking } from './Confirm'
-import { app, CHAT, design, flow, go, hosted, place, SCIENCE, science, settings, talk, TERMINALS, visit, type Place } from './lib/host'
+import { app, CHAT, CYBER, cyber, design, flow, go, hosted, place, SCIENCE, science, settings, talk, TERMINALS, visit, type Place } from './lib/host'
+import { cyberNav } from './cyber/nav'
+import { parseCyberTab } from './cyber/types'
 import { flowNav } from './flow/nav'
 import { parseFlowRoute } from './flow/types'
 import { scienceNav } from './science/nav'
@@ -114,6 +116,8 @@ const FlowPane = lazy(() => import('./flow/FlowPane'))
 const Terminals = lazy(() => import('./Terminals'))
 /** Science: native Hanzo Science research, studies, autonomy, machines, and schedules (`/science`). */
 const Science = lazy(() => import('./science/Science'))
+/** Cyber: native Hanzo Cyber autonomous security operations console (`/cyber`, alpha-flagged). */
+const CyberPane = lazy(() => import('./cyber/CyberPane'))
 /** The apps in beta that draw inside the app (lib/hosted), fetched when one is opened at /apps/<id>. */
 const Hosted = lazy(() => import('./Hosted').then((m) => ({ default: m.HostedPane })))
 /** Betas, fetched when opening /beta in the app. */
@@ -124,7 +128,7 @@ const SettingsPane = lazy(() => import('./SettingsPane').then((m) => ({ default:
 const HOME: Place = { mode: 'chat', thread: null }
 
 /** What a window's bar names the page by; Chat names itself in the sidebar. */
-const TITLES: Record<string, string> = { dev: 'Dev', design: 'Design', flow: 'Flow', tabs: 'Tabs', research: 'Science' }
+const TITLES: Record<string, string> = { dev: 'Dev', design: 'Design', flow: 'Flow', tabs: 'Tabs', research: 'Science', cyber: 'Cyber' }
 
 /**
  * The window's bar, for a host that is a window of its own: `inset` px kept
@@ -155,7 +159,7 @@ export interface Hosted {
 
 
 /** Where each mode was last, so the rail goes back to it. */
-const last: Record<string, string> = { chat: '', dev: '', design: '', flow: '', tabs: '', research: '' }
+const last: Record<string, string> = { chat: '', dev: '', design: '', flow: '', tabs: '', research: '', cyber: '' }
 
 export function App({ bar, betas }: Hosted = {}) {
   return (
@@ -396,14 +400,16 @@ function Window({ bar, betas }: Hosted) {
   // Another organization: picked, and the app opened in it at the mode's New.
   const org = (o: string) => {
     pick(o)
-    window.location.assign(mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'flow' ? flow('') : mode === 'tabs' ? TERMINALS : mode === 'research' ? SCIENCE : inside ? hosted(inside) : talk())
+    window.location.assign(mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'flow' ? flow('') : mode === 'tabs' ? TERMINALS : mode === 'research' ? SCIENCE : mode === 'cyber' ? CYBER : inside ? hosted(inside) : talk())
   }
   const sidebar =
     mode === 'beta' || mode === 'hosted'
       ? []
       : mode === 'research'
         ? scienceNav(parseScienceTab(here), move, t)
-        : mode === 'design'
+        : mode === 'cyber'
+          ? cyberNav(parseCyberTab(here), move, t)
+          : mode === 'design'
           ? places(maker, (p) => maker.go(p))
           : mode === 'flow'
             ? flowNav(parseFlowRoute(here).view, move, t)
@@ -701,6 +707,12 @@ function Window({ bar, betas }: Hosted) {
                   <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
                     <Suspense fallback={null}>
                       <Science onNavigate={move} />
+                    </Suspense>
+                  </YStack>
+                ) : mode === 'cyber' ? (
+                  <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                    <Suspense fallback={null}>
+                      <CyberPane path={here} onNavigate={move} />
                     </Suspense>
                   </YStack>
                 ) : mode === 'design' ? (
