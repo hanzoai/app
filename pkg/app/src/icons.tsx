@@ -1,13 +1,14 @@
 import {
   AppWindow,
   CalendarClock,
+  Clapperboard,
+  Code2,
   Library,
   MessageSquare,
   Palette,
   Plus,
   SlidersHorizontal,
   SquarePen,
-  SquareTerminal,
   type LucideIcon,
   type LucideProps,
 } from 'lucide-react'
@@ -24,10 +25,11 @@ const pair = (icon: LucideIcon, make: LucideIcon) => ({ icon: mark(icon), make: 
 
 export const MARKS = {
   chat: pair(MessageSquare, SquarePen),
-  dev: pair(SquareTerminal, SquarePen),
+  dev: pair(Code2, SquarePen),
   design: pair(Palette, Palette),
   library: pair(Library, Plus),
   tabs: pair(AppWindow, Plus),
+  studio: pair(Clapperboard, Clapperboard),
   scheduled: pair(CalendarClock, CalendarClock),
   customize: pair(SlidersHorizontal, SlidersHorizontal),
 }

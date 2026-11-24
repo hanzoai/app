@@ -1,4 +1,4 @@
-// The runtime behind Dev for this person: one interface, `DevRuntime` (@hanzo/dev-core),
+// The runtime behind Dev for this person: one interface, `DevRuntime` (@hanzo/dev),
 // resolved in order.
 //
 //   local    the host's own Dev (where().runtime): Hanzo Desktop's computer.
@@ -13,7 +13,7 @@
 // Both are reached over ZAP (WebTransport) with the person's Hanzo IAM bearer.
 
 import { useEffect, useState } from 'react'
-import type { DevRuntime } from '@hanzo/dev-core'
+import type { DevRuntime } from '@hanzo/dev'
 import { api } from './lib/api'
 import { bearer } from './lib/session'
 import { where } from './where'

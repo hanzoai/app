@@ -9,7 +9,7 @@
  */
 import type { ComponentProps, ComponentType } from 'react'
 import type { Workspace } from '@hanzo/tabs'
-import type { DevRuntime } from '@hanzo/dev-core'
+import type { DevRuntime } from '@hanzo/dev'
 import type { BillingPlan } from './lib/plans'
 import type { Key } from './help'
 import type { Turn } from './lib/local'

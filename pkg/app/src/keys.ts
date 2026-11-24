@@ -4,10 +4,10 @@ import { useEffect, useRef } from 'react'
 import { useI18n } from '@hanzo/i18n/react'
 import { inDialog, typing, type Press } from './chord'
 
-/** The one keymap (Dev's table and resolver, @hanzo/dev-core/keymap), fetched once, on first use. */
-type Keymap = typeof import('@hanzo/dev-core/keymap')
+/** The one keymap (Dev's table and resolver, @hanzo/dev/keymap), fetched once, on first use. */
+type Keymap = typeof import('@hanzo/dev/keymap')
 let keymap: Keymap | null = null
-const loading = (): Promise<Keymap> => import('@hanzo/dev-core/keymap').then((m) => (keymap = m))
+const loading = (): Promise<Keymap> => import('@hanzo/dev/keymap').then((m) => (keymap = m))
 
 /** What the workspace's global keys do, said by the surface that draws the workspace. */
 export interface Keys {

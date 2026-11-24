@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
-// The workspace's global keys are one keymap (Dev's table, @hanzo/dev-core/keymap), handled once
+// The workspace's global keys are one keymap (Dev's table, @hanzo/dev/keymap), handled once
 // (keys.ts) for the app and for every Shell view.
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
 vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s }) }))
 
 const { handle, useGlobalKeys, cyclePanel, railKeys } = await import('./keys')
-const km = await import('@hanzo/dev-core/keymap')
+const km = await import('@hanzo/dev/keymap')
 
 const say = (s: string) => s
 const press = (init: KeyboardEventInit & { key: string }, target: EventTarget = document.body) => {

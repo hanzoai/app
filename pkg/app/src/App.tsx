@@ -1,7 +1,7 @@
 'use client'
 
 // The web app as the whole window, in three modes: Chat, a conversation with
-// the product's AI; Dev, @hanzo/dev-core's thread view and its thread list (one Dev, no Builder);
+// the product's AI; Dev, @hanzo/dev's thread view and its thread list (and Cloud Dev Builder);
 // and Design, @hanzo/studio's `<Studio>` the same way, its places (`nav`) in the
 // sidebar where Dev's stand for Dev.
 //
@@ -362,11 +362,11 @@ function Window({ bar, betas }: Hosted) {
     forward: () => router.forward(),
     section: (n) => sections[n - 1]?.(),
     focusComposer: () => {
-      if (mode === 'dev') void import('@hanzo/dev-core').then((m) => m.focusComposer())
+      if (mode === 'dev') void import('@hanzo/dev').then((m) => m.focusComposer())
       else document.querySelector<HTMLElement>('#main-content textarea, #main-content [contenteditable="true"]')?.focus()
     },
     focusList: () => {
-      if (mode === 'dev') void import('@hanzo/dev-core').then((m) => m.focusThreadList() || focusSidebar())
+      if (mode === 'dev') void import('@hanzo/dev').then((m) => m.focusThreadList() || focusSidebar())
       else focusSidebar()
     },
     panel: (step) => cyclePanel(step),

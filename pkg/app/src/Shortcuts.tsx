@@ -1,20 +1,20 @@
 'use client'
 
 // Every shortcut, listed: ⌘/ or ? opens it, Esc closes it. The rows are the one keymap's
-// (@hanzo/dev-core/keymap), so a rebinding shows here as it is.
+// (@hanzo/dev/keymap), so a rebinding shows here as it is.
 
 import { useEffect, useState } from 'react'
 import { useI18n } from '@hanzo/i18n/react'
 import { Dialog, DialogContent, DialogTitle, Text, XStack, YStack } from '@hanzo/ui'
 
-type Keymap = typeof import('@hanzo/dev-core/keymap')
+type Keymap = typeof import('@hanzo/dev/keymap')
 
 export function Shortcuts({ onClose }: { onClose: () => void }) {
   const { t } = useI18n()
   const [km, setKm] = useState<Keymap | null>(null)
   useEffect(() => {
     let live = true
-    void import('@hanzo/dev-core/keymap').then((m) => live && setKm(m))
+    void import('@hanzo/dev/keymap').then((m) => live && setKm(m))
     return () => {
       live = false
     }

@@ -15,12 +15,12 @@
 import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Button, Text, XStack, YStack } from '@hanzo/ui'
 import { frameUrl, type Door } from '@hanzo/tabs'
-import type { DevEnvironment, DevRuntime } from '@hanzo/dev-core'
+import type { DevEnvironment, DevRuntime } from '@hanzo/dev'
 import { useI18n } from '@hanzo/i18n/react'
 import { api } from './lib/api'
 import { bearer, hasSession } from './lib/session'
 import { machines } from './devRuntime'
-import type { Host } from '@hanzo/build'
+import { Builder, route, type Host } from '@hanzo/build'
 import { app, go, talk } from './lib/host'
 import { org as currentOrg } from './lib/session'
 
@@ -184,7 +184,18 @@ export const useScope = () => useContext(Scope)
 
 const REF = /^\/dev\/thread\/(.+)$/
 const refOf = (path: string): string | null => REF.exec(path)?.[1] ?? null
-const MISROUTED_CHAT = /^\/dev\/projects\/chat\/(t-[^/]+)\/?$/
+const MISROUTED_CHAT = /^\/dev\/(?:projects\/)?chat\/(t-[^/]+)\/?$/
+const CHAT_BUILDER_PATH = /^\/?(?:projects\/)?chat\/t-[^/]+\/?$/
+
+/**
+ * Whether `devPath` targets a @hanzo/build screen (Projects, Issues, Templates, Library/Artifacts,
+ * Scheduled tasks, Customize, Sync, MCP, Project/Repo detail, or legacy run). Never treats a chat
+ * thread (`chat/t-...`) as a Dev project/repository slug.
+ */
+export function isBuilderSubRoute(devPath: string | undefined | null): boolean {
+  if (!devPath || CHAT_BUILDER_PATH.test(devPath)) return false
+  return route(devPath).kind !== 'new'
+}
 
 /** The thread list nested under Dev in the sidebar; the shell's own Recents until a Mac is in use. */
 export function DevList({ host: _host, path, onGo }: { host: Host; path: string; onGo?: (address: string, replace?: boolean) => void }) {
@@ -319,7 +330,6 @@ export function DevInterior({
     [onGo],
   )
   const misroutedChat = MISROUTED_CHAT.exec(path)?.[1] ?? null
-  const project = mode === 'dev' && !misroutedChat && path.startsWith('/dev/projects/')
   useEffect(() => {
     if (misroutedChat) {
       let decoded = misroutedChat
@@ -329,10 +339,8 @@ export function DevInterior({
         /* keep raw id */
       }
       nav(talk(decoded), true)
-    } else if (project) {
-      host.go('', { replace: true })
     }
-  }, [misroutedChat, project, host, nav])
+  }, [misroutedChat, nav])
   if (!dev) return null
   if (guestChat(mode)) {
     // No session, so no account for the core's turn to bill to: the Chat
@@ -342,6 +350,17 @@ export function DevInterior({
       <Suspense fallback={null}>
         <Chat />
       </Suspense>
+    )
+  }
+  // Render @hanzo/build's Builder screens for Dev (Cloud workspace, Projects, Issues,
+  // Templates, Library/Artifacts, Scheduled tasks, Customize, Project detail) whenever no local
+  // runtime is connected or on any Builder sub-route, so clicking Dev or Library in the rail
+  // opens the real workspace instead of falling through to the active Chat thread.
+  if (!misroutedChat && mode === 'dev' && (!dev.runtime || isBuilderSubRoute(host?.path))) {
+    return (
+      <YStack flex={1} minW={0} minH={0} height="100%" overflow="hidden">
+        <Builder host={host} rail={false} />
+      </YStack>
     )
   }
   const thread = mode === 'dev' ? refOf(path) : null

@@ -14,6 +14,16 @@ const captured = vi.hoisted(() => ({
 vi.mock('@hanzo/tabs', () => ({ frameUrl: async () => '' }))
 vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s }) }))
 vi.mock('@hanzo/ui', () => ({ Button: 'button', Text: 'span', XStack: 'div', YStack: 'div' }))
+vi.mock('@hanzo/build', () => ({
+  Builder: ({ host }: { host?: { path?: string } }) =>
+    createElement('div', { 'data-slot': 'mock-builder', 'data-path': host?.path ?? '' }),
+  route: (p: string) => {
+    const clean = (p || '').replace(/^\/+|\/+$/g, '')
+    if (!clean) return { kind: 'new' }
+    if (clean === '-/artifacts') return { kind: 'artifacts' }
+    return { kind: 'project', slug: clean }
+  },
+}))
 vi.mock('./core', () => ({
   DevHome: (props: { onConversation?: (id: string | null) => void }) => {
     captured.onConversation = props.onConversation ?? null
@@ -41,7 +51,7 @@ vi.mock('./lib/host', () => ({
   },
 }))
 
-import { ChatList, DevInterior, DevList, environmentsOf, guestChat, Scope } from './DevPane'
+import { ChatList, DevInterior, DevList, environmentsOf, guestChat, isBuilderSubRoute, Scope } from './DevPane'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -65,6 +75,13 @@ describe('Dev and Chat interior', () => {
   })
   test('the thread list nests under Dev only once a Mac is in use; before that the shell lists its own', () => {
     expect(draw(dev(null), createElement(DevList, { host, path: '/dev' }))).toBe('')
+  })
+  test('Dev without a local runtime and Library/Builder sub-routes render @hanzo/build Builder', () => {
+    expect(draw(dev(null), createElement(DevInterior, { host: { go: () => {}, path: '' } as never, path: '/dev', mode: 'dev' }))).toContain('data-slot="mock-builder"')
+    expect(draw(dev(mac('m1')), createElement(DevInterior, { host: { go: () => {}, path: '-/artifacts' } as never, path: '/dev/artifacts', mode: 'dev' }))).toContain('data-slot="mock-builder"')
+    expect(isBuilderSubRoute('-/artifacts')).toBe(true)
+    expect(isBuilderSubRoute('')).toBe(false)
+    expect(isBuilderSubRoute('chat/t-123')).toBe(false)
   })
 })
 
