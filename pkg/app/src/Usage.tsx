@@ -619,7 +619,7 @@ export function RailUsageButton() {
     ? 'var(--state-error)'
     : isNear
       ? 'var(--chrome-dot-yellow)'
-      : 'rgba(255, 255, 255, 0.24)'
+      : STRONG
   const glyphColor = isCapped
     ? 'var(--state-error)'
     : isNear
@@ -656,7 +656,7 @@ export function RailUsageButton() {
           justify="center"
           shrink={0}
           cursor="pointer"
-          bg={open ? '$raised' : 'rgba(255, 255, 255, 0.04)'}
+          bg={open ? '$raised' : '$panel'}
           borderWidth={1.5}
           borderColor={ringBorder}
           opacity={isCapped || isNear || open ? 1 : 0.78}
@@ -670,15 +670,14 @@ export function RailUsageButton() {
             viewBox="0 0 16 16"
             fill="none"
             aria-hidden="true"
-            style={{ color: glyphColor }}
           >
             <path
               d="M8 4.2v4.3"
-              stroke="currentColor"
+              stroke={glyphColor}
               strokeWidth="1.75"
               strokeLinecap="round"
             />
-            <circle cx="8" cy="11.4" r="1" fill="currentColor" />
+            <circle cx="8" cy="11.4" r="1" fill={glyphColor} />
           </svg>
         </XStack>
       </PopoverTrigger>
