@@ -5,6 +5,7 @@ import { useI18n } from '@hanzo/i18n/react'
 import { XStack, YStack } from '@hanzo/gui'
 import { Button, Input, Switch, Text } from '@hanzo/ui'
 import {
+  BookOpen,
   CalendarClock,
   CheckCircle2,
   ExternalLink,
@@ -16,6 +17,7 @@ import {
   Plus,
   Save,
   Search,
+  Server,
   Workflow,
   X,
   XCircle,
@@ -36,6 +38,8 @@ import {
 } from './api'
 import { FlowCanvas } from './FlowCanvas'
 import { FlowInspector } from './FlowInspector'
+import { FlowKnowledgePanel } from './FlowKnowledgePanel'
+import { FlowMcpDrawer } from './FlowMcpDrawer'
 import { FlowPalette } from './FlowPalette'
 import { FlowPlayground } from './FlowPlayground'
 import {
@@ -99,6 +103,7 @@ export function FlowPane({
   const [liveSteps, setLiveSteps] = useState<FlowStepResult[]>([])
   const [showRunDrawer, setShowRunDrawer] = useState(false)
   const [showPlayground, setShowPlayground] = useState(false)
+  const [showMcpDrawer, setShowMcpDrawer] = useState(false)
   const [paletteCollapsed, setPaletteCollapsed] = useState(false)
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false)
   const [activeRunSummary, setActiveRunSummary] = useState<string | null>(null)
@@ -452,6 +457,7 @@ export function FlowPane({
 
   const viewTabs: readonly { id: FlowView; label: string; routeSub: string; Icon: typeof Workflow }[] = [
     { id: 'canvas', label: t('Builder'), routeSub: '', Icon: Workflow },
+    { id: 'knowledge', label: t('Knowledge'), routeSub: 'knowledge', Icon: BookOpen },
     { id: 'scheduled', label: t('Scheduled'), routeSub: 'scheduled', Icon: CalendarClock },
     { id: 'runs', label: t('Runs'), routeSub: 'runs', Icon: History },
     { id: 'templates', label: t('Templates'), routeSub: 'templates', Icon: LayoutTemplate },
@@ -493,6 +499,7 @@ export function FlowPane({
                   data-slot={`flow-tab-${id}`}
                   onClick={() => {
                     setShowPlayground(false)
+                    setShowMcpDrawer(false)
                     navigate(flowPath(routeSub))
                   }}
                   px="$2.5"
@@ -515,6 +522,23 @@ export function FlowPane({
         </XStack>
 
         <XStack items="center" gap="$2" flexWrap="wrap">
+          <XStack
+            data-slot="flow-cloud-status"
+            items="center"
+            gap="$1.5"
+            px="$2.5"
+            py="$1"
+            rounded="$10"
+            bg="var(--surface-card)"
+            borderWidth={1}
+            borderColor="$edge"
+          >
+            <YStack width={7} height={7} rounded={999} bg="var(--state-online)" />
+            <Text fontSize="$1" color="$soft" fontFamily="$mono" numberOfLines={1}>
+              Hanzo Enso (api.hanzo.ai/v1) · LLMs + zen-embedding-3 Active via Hanzo IAM
+            </Text>
+          </XStack>
+
           {route.view === 'canvas' && activeFlow ? (
             <>
               <Text fontSize="$1" color="$quiet" data-slot="flow-sync-status">
@@ -531,6 +555,15 @@ export function FlowPane({
               <Button
                 size="sm"
                 variant="outline"
+                data-slot="flow-mcp-open"
+                onPress={() => setShowMcpDrawer((v) => !v)}
+              >
+                <Server size={13} aria-hidden />
+                {t('MCP Server')}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
                 data-slot="flow-test-run"
                 disabled={running}
                 onPress={() => void handleRunFlow()}
@@ -542,7 +575,10 @@ export function FlowPane({
                 size="sm"
                 variant="primary"
                 data-slot="flow-playground-open"
-                onPress={() => setShowPlayground(true)}
+                onPress={() => {
+                  setShowMcpDrawer(false)
+                  setShowPlayground(true)
+                }}
               >
                 <MessageSquare size={13} aria-hidden />
                 {t('Playground')}
@@ -709,6 +745,15 @@ export function FlowPane({
             </YStack>
           ) : null}
 
+          {/* Canonical Streamable HTTP MCP Server Drawer */}
+          {showMcpDrawer ? (
+            <FlowMcpDrawer
+              flow={activeFlow}
+              orgId={activeOrg}
+              onClose={() => setShowMcpDrawer(false)}
+            />
+          ) : null}
+
           {/* Full Playground Drawer/View with standard @hanzo/ui/chat Composer */}
           {showPlayground ? (
             <FlowPlayground
@@ -720,6 +765,8 @@ export function FlowPane({
             />
           ) : null}
         </YStack>
+      ) : route.view === 'knowledge' ? (
+        <FlowKnowledgePanel orgId={activeOrg} />
       ) : route.view === 'scheduled' ? (
         <YStack data-slot="flow-scheduled-view" flex={1} minH={0} overflowY="auto" p="$5" gap="$4">
           <XStack items="center" justify="space-between" flexWrap="wrap" gap="$2">

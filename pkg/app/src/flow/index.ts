@@ -2,6 +2,8 @@ export { FlowPane, default } from './FlowPane'
 export { flowNav } from './nav'
 export { FlowCanvas } from './FlowCanvas'
 export { FlowInspector } from './FlowInspector'
+export { FlowKnowledgePanel } from './FlowKnowledgePanel'
+export { FlowMcpDrawer } from './FlowMcpDrawer'
 export { FlowPalette, FLOW_DRAG_MIME } from './FlowPalette'
 export { FlowPlayground } from './FlowPlayground'
 export { HanzoMark, iconForCategory, iconForSubtype } from './icons'
@@ -15,19 +17,49 @@ export {
   type FlowTemplateCategory,
 } from './templates'
 export {
+  buildFlowMcpConfig,
+  clearSessionVectors,
+  cosineSimilarity,
+  crawlUrl,
   createDefaultPlaygroundSession,
+  createEmbeddings,
+  deleteKnowledgeFile,
   evaluateCondition,
   executeFlow,
   extractQuerySlug,
+  flowHeaders,
+  getKnowledgeGraph,
+  importKnowledgeDocument,
+  listKnowledgeFiles,
   persistFlow,
   readLocalFlows,
   readLocalRuns,
   readPlaygroundSessions,
   removeRemoteFlow,
+  retrieveKnowledgeFiles,
+  searchKnowledge,
+  searchKnowledgeFiles,
+  searchSessionVectors,
   syncLoadFlows,
+  upsertSessionVectors,
   writeLocalFlows,
   writeLocalRuns,
   writePlaygroundSessions,
+  type CrawlDocumentResult,
+  type EmbeddingResult,
+  type FlowMcpServerConfig,
+  type FlowSyncResult,
+  type KnowledgeCitedPassage,
+  type KnowledgeFile,
+  type KnowledgeFileSearchResponse,
+  type KnowledgeGraph,
+  type KnowledgeGraphEdge,
+  type KnowledgeGraphNode,
+  type KnowledgeHit,
+  type KnowledgeImportResult,
+  type KnowledgeRetrieveResponse,
+  type KnowledgeSearchResponse,
+  type SessionVectorEntry,
 } from './api'
 export {
   CRON_PRESETS,
@@ -40,13 +72,19 @@ export {
   createFlowId,
   createNodeId,
   describeCron,
+  flowMcpSlug,
   flowPath,
+  isEmbeddingNode,
+  isKnowledgeIngestionNode,
+  isKnowledgeRetrievalNode,
   isModelExecutionNode,
   isStickyNoteNode,
   makeDefaultNode,
   makeNodeFromComponent,
+  normalizeEmbeddingModel,
   parseFlowRoute,
   topologicalSort,
+  type EmbeddingModelId,
   type FlowComponentSpec,
   type FlowDefinition,
   type FlowEdge,

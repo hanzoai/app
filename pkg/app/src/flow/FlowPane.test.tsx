@@ -63,15 +63,20 @@ vi.mock('../host', () => ({
 
 const { FlowPane } = await import('./FlowPane')
 const { FlowPlayground } = await import('./FlowPlayground')
+const { FlowMcpDrawer } = await import('./FlowMcpDrawer')
 const { FLOW_TEMPLATES, instantiateTemplate } = await import('./templates')
 const { flowNav } = await import('./nav')
 const { FLOW_STUDIO_URL } = await import('./types')
 
-describe('FlowPane, FlowPlayground, and flowNav', () => {
-  test('renders full Builder with Component Palette, OLED Dot Grid, Minimap, Sticky Note, Inspector, and Playground trigger', () => {
+describe('FlowPane, FlowPlayground, FlowKnowledgePanel, FlowMcpDrawer, and flowNav', () => {
+  test('renders full Builder with Hanzo Cloud status pill, MCP Server button, Component Palette, OLED Dot Grid, Minimap, Sticky Note, Inspector, and Playground trigger', () => {
     localStorage.clear()
     const html = renderToStaticMarkup(createElement(FlowPane, { path: '/flow' }))
     expect(html).toContain('data-slot="flow-pane"')
+    expect(html).toContain('data-slot="flow-cloud-status"')
+    expect(html).toContain('Hanzo Enso (api.hanzo.ai/v1) · LLMs + zen-embedding-3 Active via Hanzo IAM')
+    expect(html).toContain('data-slot="flow-tab-knowledge"')
+    expect(html).toContain('data-slot="flow-mcp-open"')
     expect(html).toContain('data-slot="flow-palette-sidebar"')
     expect(html).toContain('data-slot="flow-canvas"')
     expect(html).toContain('data-slot="flow-dot-grid"')
@@ -86,6 +91,46 @@ describe('FlowPane, FlowPlayground, and flowNav', () => {
     expect(html).toContain('Pokédex Agent')
     expect(html).not.toContain('enso-hybrid')
     expect(html).not.toContain('HANZO_API_KEY')
+    expect(html).not.toContain('lf-')
+    expect(html).not.toContain('No models enabled')
+  })
+
+  test('renders native Hanzo Cloud Knowledge tab with zen-embedding-3, live semantic search, import form, and zero No models enabled', () => {
+    const html = renderToStaticMarkup(createElement(FlowPane, { path: '/flow/knowledge' }))
+    expect(html).toContain('data-slot="flow-knowledge-view"')
+    expect(html).toContain('data-slot="knowledge-provider-pill"')
+    expect(html).toContain('Hanzo Enso — zen-embedding-3')
+    expect(html).toContain('POST /v1/embeddings')
+    expect(html).toContain('POST /v1/knowledge/search')
+    expect(html).toContain('POST /v1/knowledge/import')
+    expect(html).toContain('GET /v1/knowledge/files')
+    expect(html).toContain('GET /v1/knowledge/graph')
+    expect(html).toContain('data-slot="knowledge-embed-model-zen-embedding-3"')
+    expect(html).toContain('data-slot="knowledge-embed-model-zen-embedding"')
+    expect(html).not.toContain('No models enabled')
+    expect(html).not.toContain('text-embedding-3-small')
+    expect(html).not.toContain('HANZO_API_KEY')
+    expect(html).not.toContain('lf-')
+  })
+
+  test('renders FlowMcpDrawer with canonical hanzo-<flow_slug> Streamable HTTP config and Hanzo IAM Bearer auth', () => {
+    const flow = instantiateTemplate(FLOW_TEMPLATES[0]!)
+    const html = renderToStaticMarkup(
+      createElement(FlowMcpDrawer, {
+        flow,
+        orgId: 'hanzo',
+        onClose: () => {},
+      }),
+    )
+    expect(html).toContain('data-slot="flow-mcp-drawer"')
+    expect(html).toContain('hanzo-pokedex-agent')
+    expect(html).toContain('/v1/flow/workflows/')
+    expect(html).toContain('https://flow.hanzo.ai/v1/mcp/pokedex-agent')
+    expect(html).toContain('Streamable HTTP')
+    expect(html).toContain('Hanzo IAM Bearer')
+    expect(html).not.toContain('lf-')
+    expect(html).not.toContain('HANZO_API_KEY')
+    expect(html).not.toContain('/api/')
   })
 
   test('renders FlowPlayground with Sessions rail, standard @hanzo/ui/chat Composer, and canonical Enso model selector pill', () => {
@@ -132,13 +177,13 @@ describe('FlowPane, FlowPlayground, and flowNav', () => {
     expect(templates).not.toContain('Langflow')
   })
 
-  test('flowNav returns contextual sidebar links for all Flow views', () => {
+  test('flowNav returns contextual sidebar links for all Flow views including Knowledge', () => {
     const moved: string[] = []
-    const groups = flowNav('scheduled', (to) => moved.push(to))
+    const groups = flowNav('knowledge', (to) => moved.push(to))
     expect(groups).toHaveLength(1)
     const ids = groups[0]!.links.map((l) => l.id)
-    expect(ids).toEqual(['new', 'flows', 'scheduled', 'runs', 'templates'])
-    expect(groups[0]!.links.find((l) => l.id === 'scheduled')?.active).toBe(true)
+    expect(ids).toEqual(['new', 'flows', 'knowledge', 'scheduled', 'runs', 'templates'])
+    expect(groups[0]!.links.find((l) => l.id === 'knowledge')?.active).toBe(true)
     groups[0]!.links.find((l) => l.id === 'templates')?.onPress?.()
     expect(moved).toEqual(['/flow/templates'])
   })

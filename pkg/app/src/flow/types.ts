@@ -3,7 +3,7 @@
  * schedule/cron utilities, topological ordering, and Playground session types.
  */
 
-export type FlowView = 'canvas' | 'scheduled' | 'runs' | 'templates'
+export type FlowView = 'canvas' | 'knowledge' | 'scheduled' | 'runs' | 'templates'
 
 export type FlowNodeCategory =
   | 'Input & Output'
@@ -95,7 +95,11 @@ export type FlowNodeSubtype =
   | 'hanzo_post'
   | 'hanzo_mail'
   | 'crm_update'
-  // Legacy aliases retained for stored flow compatibility
+  // Legacy & shorthand aliases retained for stored flow compatibility
+  | 'embedding'
+  | 'knowledge_ingest'
+  | 'knowledge_search'
+  | 'retriever'
   | 'manual'
   | 'schedule'
   | 'event'
@@ -321,10 +325,32 @@ export const FLOW_MODELS: readonly { id: string; label: string }[] = [
   { id: 'zen6-max', label: 'Zen 6 Max' },
 ]
 
-export const EMBEDDING_MODELS: readonly { id: string; label: string }[] = [
+export const EMBEDDING_MODELS: readonly { id: 'zen-embedding-3' | 'zen-embedding'; label: string }[] = [
   { id: 'zen-embedding-3', label: 'Zen Embedding 3' },
   { id: 'zen-embedding', label: 'Zen Embedding' },
 ]
+
+export type EmbeddingModelId = (typeof EMBEDDING_MODELS)[number]['id']
+
+/** Normalizes any embedding model identifier to a live Hanzo Cloud embedding model (defaults to `zen-embedding-3`). */
+export function normalizeEmbeddingModel(model?: string | null): EmbeddingModelId {
+  const clean = (model ?? '').trim().toLowerCase()
+  if (clean === 'zen-embedding') return 'zen-embedding'
+  return 'zen-embedding-3'
+}
+
+/** Canonical slug for MCP server registration (`hanzo-<slug>`). */
+export function flowMcpSlug(name: string, fallbackId?: string): string {
+  const raw = (name || fallbackId || 'flow')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48)
+    .replace(/-+$/, '')
+  return raw || 'flow'
+}
 
 export const CRON_PRESETS: readonly { label: string; cron: string }[] = [
   { label: 'Every 15 min', cron: '*/15 * * * *' },
@@ -563,7 +589,7 @@ export const FLOW_COMPONENT_CATALOG: readonly FlowComponentSpec[] = [
     kind: 'llm',
     category: 'LLM Operations',
     label: 'Embeddings',
-    description: 'Generates dense semantic vectors via Zen Embeddings',
+    description: 'Generates live semantic float vectors via POST /v1/embeddings (zen-embedding-3)',
     inputs: P_IN,
     outputs: P_OUT,
     defaultConfig: { model: 'zen-embedding-3' },
@@ -618,17 +644,17 @@ export const FLOW_COMPONENT_CATALOG: readonly FlowComponentSpec[] = [
     kind: 'knowledge',
     category: 'Files & Knowledge',
     label: 'Knowledge Ingestion',
-    description: 'Indexes chunked documents and embeddings into a Hanzo Knowledge Base',
+    description: 'Indexes documents into Hanzo Cloud Knowledge via POST /v1/knowledge/import',
     inputs: P_IN,
     outputs: P_OUT,
-    defaultConfig: { collection: 'workspace-kb' },
+    defaultConfig: { collection: 'workspace-kb', model: 'zen-embedding-3' },
   },
   {
     subtype: 'knowledge_retrieval',
     kind: 'knowledge',
     category: 'Files & Knowledge',
     label: 'Knowledge Retrieval',
-    description: 'Retrieves relevant chunks from your Hanzo Knowledge Base',
+    description: 'Hybrid semantic + full-text search via POST /v1/knowledge/search and files/retrieve',
     inputs: P_IN,
     outputs: P_OUT_TOOLS,
     defaultConfig: { collection: 'workspace-kb', topK: 5 },
@@ -648,10 +674,10 @@ export const FLOW_COMPONENT_CATALOG: readonly FlowComponentSpec[] = [
     kind: 'knowledge',
     category: 'Files & Knowledge',
     label: 'Vector Store',
-    description: 'Stores and queries high-dimensional embeddings for similarity search',
+    description: 'Queries Hanzo Cloud Knowledge + cosine similarity vectors via zen-embedding-3',
     inputs: P_IN,
     outputs: P_OUT_TOOLS,
-    defaultConfig: { collection: 'hanzo-vectors', topK: 6 },
+    defaultConfig: { collection: 'hanzo-vectors', model: 'zen-embedding-3', topK: 6 },
   },
 
   // ── Processing (4) ─────────────────────────────────────────────────────
@@ -836,6 +862,10 @@ const CATALOG_BY_SUBTYPE = new Map<FlowNodeSubtype, FlowComponentSpec>(
 )
 
 const LEGACY_SUBTYPE_MAP: Partial<Record<FlowNodeSubtype, FlowNodeSubtype>> = {
+  embedding: 'embeddings',
+  knowledge_ingest: 'knowledge_ingestion',
+  knowledge_search: 'knowledge_retrieval',
+  retriever: 'knowledge_retrieval',
   manual: 'chat_input',
   event: 'webhook',
   schedule: 'cron_schedule',
@@ -883,6 +913,23 @@ export function isModelExecutionNode(node: Pick<FlowNode, 'kind' | 'subtype'>): 
   )
 }
 
+export function isEmbeddingNode(node: Pick<FlowNode, 'subtype'>): boolean {
+  return node.subtype === 'embeddings' || node.subtype === 'embedding'
+}
+
+export function isKnowledgeIngestionNode(node: Pick<FlowNode, 'subtype'>): boolean {
+  return node.subtype === 'knowledge_ingestion' || node.subtype === 'knowledge_ingest'
+}
+
+export function isKnowledgeRetrievalNode(node: Pick<FlowNode, 'subtype'>): boolean {
+  return (
+    node.subtype === 'knowledge_retrieval' ||
+    node.subtype === 'knowledge_search' ||
+    node.subtype === 'retriever' ||
+    node.subtype === 'vector_store'
+  )
+}
+
 export function flowPath(sub?: string): string {
   const clean = (sub ?? '').replace(/^\/+|\/+$/g, '')
   return !clean || clean === 'canvas' || clean === 'flows' ? '/flow' : `/flow/${clean}`
@@ -901,6 +948,9 @@ export function parseFlowRoute(pathname: string): FlowRouteState {
   }
   if (seg === 'new') {
     return { view: 'canvas', flowId: null, createNew: true }
+  }
+  if (seg === 'knowledge' || seg === 'kb') {
+    return { view: 'knowledge', flowId: null, createNew: false }
   }
   if (seg === 'scheduled' || seg === 'schedules') {
     return { view: 'scheduled', flowId: null, createNew: false }

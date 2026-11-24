@@ -2,9 +2,16 @@ import { api } from '../lib/api'
 import { bearer, org as currentOrg } from '../lib/session'
 import { seedInitialFlows } from './templates'
 import {
+  FLOW_STUDIO_URL,
+  flowMcpSlug,
+  isEmbeddingNode,
+  isKnowledgeIngestionNode,
+  isKnowledgeRetrievalNode,
   isModelExecutionNode,
   isStickyNoteNode,
+  normalizeEmbeddingModel,
   topologicalSort,
+  type EmbeddingModelId,
   type FlowDefinition,
   type FlowNode,
   type FlowRunRecord,
@@ -16,6 +23,7 @@ const STORAGE_FLOWS_PREFIX = 'hanzo.flow.definitions.v2.'
 const STORAGE_RUNS_PREFIX = 'hanzo.flow.runs.v1.'
 const STORAGE_PLAYGROUND_PREFIX = 'hanzo.flow.playground.v1.'
 const MAX_STORED_RUNS = 50
+const MAX_SESSION_VECTORS = 256
 
 function scopeKey(orgId?: string | null): string {
   const id = (orgId ?? currentOrg() ?? 'personal').trim().toLowerCase()
@@ -30,6 +38,20 @@ export function flowHeaders(json = true): Record<string, string> {
   if (orgId) headers['X-Org-Id'] = orgId
   if (json) headers['Content-Type'] = 'application/json'
   return headers
+}
+
+function formatCloudError(surface: string, status: number, errText: string): Error {
+  if (status === 401) {
+    return new Error(`Sign in via Hanzo IAM to use ${surface} (HTTP 401).`)
+  }
+  if (status === 402) {
+    return new Error(`Insufficient balance — top up credits to continue using ${surface} (HTTP 402).`)
+  }
+  if (status === 403) {
+    return new Error(`Hanzo IAM denied access to ${surface} for this org (HTTP 403).`)
+  }
+  const detail = errText.trim().slice(0, 180)
+  return new Error(`${surface} returned HTTP ${status}${detail ? `: ${detail}` : ''}`)
 }
 
 export function readLocalFlows(orgId?: string | null): FlowDefinition[] {
@@ -134,7 +156,7 @@ export interface FlowSyncResult {
 
 /**
  * Loads workflows from localStorage immediately and merges remote `/v1/workflow`
- * definitions when authenticated. Never throws on missing remote backend.
+ * definitions when authenticated via Hanzo IAM. Never throws on missing remote backend.
  */
 export async function syncLoadFlows(orgId?: string | null, signal?: AbortSignal): Promise<FlowSyncResult> {
   const local = readLocalFlows(orgId)
@@ -210,6 +232,614 @@ export async function removeRemoteFlow(flowId: string): Promise<void> {
     })
   } catch {
     // best-effort cleanup
+  }
+}
+
+// ── Native Hanzo Cloud Embeddings (`POST /v1/embeddings`) ───────────────────
+
+export interface EmbeddingResult {
+  model: EmbeddingModelId
+  vectors: number[][]
+  dimensions: number
+  promptTokens: number
+  totalTokens: number
+}
+
+/**
+ * Calls `POST ${api()}/v1/embeddings` live via Hanzo IAM Bearer auth.
+ * Defaults to `zen-embedding-3` and supports `zen-embedding`.
+ */
+export async function createEmbeddings(
+  input: string | readonly string[],
+  model?: string | null,
+  signal?: AbortSignal,
+): Promise<EmbeddingResult> {
+  const resolvedModel = normalizeEmbeddingModel(model)
+  const inputs = Array.isArray(input)
+    ? input.map((s) => String(s).trim()).filter(Boolean)
+    : [String(input).trim()].filter(Boolean)
+  if (inputs.length === 0) {
+    throw new Error('Embeddings node received empty input text.')
+  }
+
+  const res = await fetch(`${api()}/v1/embeddings`, {
+    method: 'POST',
+    headers: flowHeaders(true),
+    body: JSON.stringify({
+      model: resolvedModel,
+      input: inputs.length === 1 ? inputs[0] : inputs,
+    }),
+    signal,
+  })
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '')
+    throw formatCloudError('Hanzo Embeddings (/v1/embeddings)', res.status, errText)
+  }
+
+  const data = (await res.json()) as {
+    model?: string
+    data?: Array<{ index?: number; embedding?: number[] }>
+    usage?: { prompt_tokens?: number; total_tokens?: number }
+    error?: { message?: string }
+  }
+  if (data.error?.message) throw new Error(data.error.message)
+
+  const sorted = [...(data.data ?? [])].sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+  const vectors = sorted
+    .map((item) => item.embedding)
+    .filter((vec): vec is number[] => Array.isArray(vec) && vec.length > 0)
+
+  if (vectors.length === 0) {
+    throw new Error('Hanzo Embeddings returned no float vectors.')
+  }
+
+  const dimensions = vectors[0]!.length
+  const promptTokens = data.usage?.prompt_tokens ?? 0
+  const totalTokens = data.usage?.total_tokens ?? promptTokens
+
+  return {
+    model: normalizeEmbeddingModel(data.model ?? resolvedModel),
+    vectors,
+    dimensions,
+    promptTokens,
+    totalTokens,
+  }
+}
+
+/** Exact cosine similarity between two equal-length embedding vectors in [-1, 1]. */
+export function cosineSimilarity(a: readonly number[], b: readonly number[]): number {
+  const len = Math.min(a.length, b.length)
+  if (len === 0) return 0
+  let dot = 0
+  let normA = 0
+  let normB = 0
+  for (let i = 0; i < len; i++) {
+    const x = a[i]!
+    const y = b[i]!
+    dot += x * y
+    normA += x * x
+    normB += y * y
+  }
+  if (normA === 0 || normB === 0) return 0
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB))
+}
+
+export interface SessionVectorEntry {
+  id: string
+  collection: string
+  title: string
+  text: string
+  model: EmbeddingModelId
+  vector: number[]
+  createdAt: string
+}
+
+const sessionVectorStore = new Map<string, SessionVectorEntry[]>()
+
+export function upsertSessionVectors(
+  collection: string,
+  entries: ReadonlyArray<Omit<SessionVectorEntry, 'collection' | 'createdAt'>>,
+): number {
+  const key = (collection || 'workspace-kb').trim().toLowerCase()
+  const existing = sessionVectorStore.get(key) ?? []
+  const now = new Date().toISOString()
+  const next = [...existing]
+  for (const item of entries) {
+    const idx = next.findIndex((e) => e.id === item.id)
+    const full: SessionVectorEntry = { ...item, collection: key, createdAt: now }
+    if (idx >= 0) next[idx] = full
+    else next.push(full)
+  }
+  sessionVectorStore.set(key, next.slice(-MAX_SESSION_VECTORS))
+  return entries.length
+}
+
+export function searchSessionVectors(
+  collection: string,
+  queryVector: readonly number[],
+  topK = 5,
+): Array<SessionVectorEntry & { score: number }> {
+  const key = (collection || 'workspace-kb').trim().toLowerCase()
+  const bucket = sessionVectorStore.get(key) ?? []
+  const pool =
+    bucket.length > 0
+      ? bucket
+      : [...sessionVectorStore.values()].flat()
+  return pool
+    .filter((entry) => entry.vector.length === queryVector.length)
+    .map((entry) => ({ ...entry, score: cosineSimilarity(queryVector, entry.vector) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, Math.max(1, topK))
+}
+
+export function clearSessionVectors(collection?: string): void {
+  if (!collection) {
+    sessionVectorStore.clear()
+    return
+  }
+  sessionVectorStore.delete(collection.trim().toLowerCase())
+}
+
+// ── Native Hanzo Cloud Knowledge Base (`/v1/knowledge/*` & `/v1/crawl`) ─────
+
+export interface KnowledgeFile {
+  id: string
+  name: string
+  bucket: string
+  key: string
+  type?: string
+  size?: number
+  status: string
+  stage?: string
+  chars?: number
+  sections?: number
+  passages?: number
+  embedded?: number
+  project?: string
+  error?: string
+  note?: string
+  created?: number
+  updated?: number
+}
+
+export interface KnowledgeHit {
+  doctype: string
+  name: string
+  title?: string
+  score: number
+  project?: string
+  provider?: string
+  url?: string
+}
+
+export interface KnowledgeSearchResponse {
+  hits: KnowledgeHit[]
+  degraded?: boolean
+}
+
+export interface KnowledgeCitedPassage {
+  cite: string
+  text: string
+  score: number
+  via?: string
+  why?: string
+  part?: number
+  file?: { id: string; name: string; bucket?: string; key?: string; type?: string }
+  section?: { id: number; title: string; path: string }
+}
+
+export interface KnowledgeRetrieveResponse {
+  passages: KnowledgeCitedPassage[]
+  sections?: Array<{
+    file?: { id: string; name: string }
+    section?: { id: number; title: string; path: string }
+    summary?: string
+  }>
+  picked?: string
+  degraded?: boolean
+}
+
+export interface KnowledgeFileSearchResponse {
+  passages: KnowledgeCitedPassage[]
+  degraded?: boolean
+}
+
+export interface KnowledgeGraphNode {
+  id: string
+  name: string
+  title: string
+  type: string
+  project?: string
+}
+
+export interface KnowledgeGraphEdge {
+  from: string
+  to: string
+  kind: string
+}
+
+export interface KnowledgeGraph {
+  nodes: KnowledgeGraphNode[]
+  edges: KnowledgeGraphEdge[]
+  degraded?: boolean
+}
+
+export interface KnowledgeImportResult {
+  format: string
+  imported: number
+  pages: string[]
+  title: string
+  project?: string
+  sourceUrl?: string
+  chars: number
+}
+
+export interface CrawlDocumentResult {
+  url: string
+  title: string
+  markdown: string
+}
+
+/** Fetches a single URL via Hanzo Cloud `POST /v1/crawl` and returns clean Markdown. */
+export async function crawlUrl(url: string, signal?: AbortSignal): Promise<CrawlDocumentResult> {
+  const target = url.trim()
+  if (!/^https?:\/\//i.test(target)) {
+    throw new Error('URL must start with http:// or https://')
+  }
+  const res = await fetch(`${api()}/v1/crawl`, {
+    method: 'POST',
+    headers: flowHeaders(true),
+    body: JSON.stringify({ url: target }),
+    signal,
+  })
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '')
+    throw formatCloudError('Hanzo Crawl (/v1/crawl)', res.status, errText)
+  }
+  const body = (await res.json()) as {
+    success?: boolean
+    error?: string
+    data?: { url?: string; title?: string; markdown?: string }
+  }
+  if (body.success === false || !body.data?.markdown) {
+    throw new Error(body.error || `Could not extract readable content from ${target}`)
+  }
+  return {
+    url: body.data.url || target,
+    title: body.data.title || target,
+    markdown: body.data.markdown,
+  }
+}
+
+/** Lists workspace files indexed in Hanzo Cloud Knowledge (`GET /v1/knowledge/files`). */
+export async function listKnowledgeFiles(options: {
+  bucket?: string
+  limit?: number
+  signal?: AbortSignal
+} = {}): Promise<KnowledgeFile[]> {
+  const params = new URLSearchParams()
+  if (options.bucket?.trim()) params.set('bucket', options.bucket.trim())
+  if (options.limit) params.set('limit', String(options.limit))
+  const qs = params.toString()
+  const res = await fetch(`${api()}/v1/knowledge/files${qs ? `?${qs}` : ''}`, {
+    method: 'GET',
+    headers: flowHeaders(false),
+    signal: options.signal,
+  })
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '')
+    throw formatCloudError('Hanzo Knowledge Files (/v1/knowledge/files)', res.status, errText)
+  }
+  const body = (await res.json().catch(() => ({}))) as { files?: KnowledgeFile[] }
+  return Array.isArray(body.files) ? body.files : []
+}
+
+/** Removes a file from the Hanzo Cloud Knowledge index (`DELETE /v1/knowledge/files/:id`). */
+export async function deleteKnowledgeFile(fileId: string, signal?: AbortSignal): Promise<void> {
+  const res = await fetch(`${api()}/v1/knowledge/files/${encodeURIComponent(fileId)}`, {
+    method: 'DELETE',
+    headers: flowHeaders(false),
+    signal,
+  })
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '')
+    throw formatCloudError('Hanzo Knowledge Forget (/v1/knowledge/files)', res.status, errText)
+  }
+}
+
+/** Loads the org's knowledge graph (`GET /v1/knowledge/graph`). */
+export async function getKnowledgeGraph(options: {
+  project?: string
+  signal?: AbortSignal
+} = {}): Promise<KnowledgeGraph> {
+  const params = new URLSearchParams()
+  if (options.project?.trim()) params.set('project', options.project.trim())
+  const qs = params.toString()
+  const res = await fetch(`${api()}/v1/knowledge/graph${qs ? `?${qs}` : ''}`, {
+    method: 'GET',
+    headers: flowHeaders(false),
+    signal: options.signal,
+  })
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '')
+    throw formatCloudError('Hanzo Knowledge Graph (/v1/knowledge/graph)', res.status, errText)
+  }
+  const body = (await res.json().catch(() => ({}))) as Partial<KnowledgeGraph>
+  return {
+    nodes: Array.isArray(body.nodes) ? body.nodes : [],
+    edges: Array.isArray(body.edges) ? body.edges : [],
+    degraded: body.degraded,
+  }
+}
+
+/**
+ * Ingests text, markdown, or a URL into Hanzo Cloud Knowledge via `POST /v1/knowledge/import?format=roam`.
+ * Automatically installs the `kb` framework module once if the org has not initialized it yet.
+ */
+export async function importKnowledgeDocument(
+  input: {
+    title?: string
+    content?: string
+    url?: string
+    project?: string
+  },
+  signal?: AbortSignal,
+): Promise<KnowledgeImportResult> {
+  let resolvedTitle = (input.title ?? '').trim()
+  let resolvedContent = (input.content ?? '').trim()
+  let sourceUrl: string | undefined
+
+  if (input.url?.trim()) {
+    const crawled = await crawlUrl(input.url.trim(), signal)
+    sourceUrl = crawled.url
+    if (!resolvedTitle) resolvedTitle = crawled.title
+    resolvedContent = resolvedContent
+      ? `${resolvedContent}\n\nSource: ${crawled.url}\n\n${crawled.markdown}`
+      : `Source: ${crawled.url}\n\n${crawled.markdown}`
+  }
+
+  if (!resolvedContent) {
+    throw new Error('Provide text content or a URL to import into Hanzo Knowledge.')
+  }
+  if (!resolvedTitle) {
+    resolvedTitle = resolvedContent.split('\n')[0]?.slice(0, 72).trim() || 'Flow Document'
+  }
+
+  const lines = resolvedContent
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+  const roamPayload = [
+    {
+      title: resolvedTitle,
+      children: lines.length > 0 ? lines.map((line) => ({ string: line })) : [{ string: resolvedContent }],
+    },
+  ]
+
+  const params = new URLSearchParams({ format: 'roam' })
+  const project = (input.project ?? '').trim()
+  if (project) params.set('project', project)
+  const endpoint = `${api()}/v1/knowledge/import?${params.toString()}`
+
+  const postImport = () =>
+    fetch(endpoint, {
+      method: 'POST',
+      headers: flowHeaders(true),
+      body: JSON.stringify(roamPayload),
+      signal,
+    })
+
+  let res = await postImport()
+  if (res.status === 400) {
+    const errText = await res.text().catch(() => '')
+    if (/modules\/kb\/install|install the kb module/i.test(errText)) {
+      const installRes = await fetch(`${api()}/v1/framework/modules/kb/install`, {
+        method: 'POST',
+        headers: flowHeaders(true),
+        body: JSON.stringify({}),
+        signal,
+      })
+      if (installRes.ok) {
+        res = await postImport()
+      } else {
+        const installErr = await installRes.text().catch(() => '')
+        throw formatCloudError('Hanzo Knowledge Module Install (/v1/framework/modules/kb/install)', installRes.status, installErr)
+      }
+    } else {
+      throw formatCloudError('Hanzo Knowledge Import (/v1/knowledge/import)', res.status, errText)
+    }
+  }
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '')
+    throw formatCloudError('Hanzo Knowledge Import (/v1/knowledge/import)', res.status, errText)
+  }
+
+  const body = (await res.json().catch(() => ({}))) as {
+    format?: string
+    imported?: number
+    pages?: string[]
+  }
+  return {
+    format: body.format || 'roam',
+    imported: body.imported ?? (Array.isArray(body.pages) ? body.pages.length : 1),
+    pages: Array.isArray(body.pages) ? body.pages : [],
+    title: resolvedTitle,
+    project: project || undefined,
+    sourceUrl,
+    chars: resolvedContent.length,
+  }
+}
+
+/** Hybrid semantic + lexical search over the org's knowledge (`POST /v1/knowledge/search`). */
+export async function searchKnowledge(
+  input: {
+    query: string
+    limit?: number
+    project?: string
+    doctypes?: string[]
+  },
+  signal?: AbortSignal,
+): Promise<KnowledgeSearchResponse> {
+  const query = input.query.trim()
+  if (!query) throw new Error('Knowledge search query is required.')
+  const body: Record<string, unknown> = { query }
+  if (input.limit) body.limit = Math.min(50, Math.max(1, input.limit))
+  if (input.project?.trim()) body.project = input.project.trim()
+  if (input.doctypes && input.doctypes.length > 0) body.doctypes = input.doctypes
+
+  const res = await fetch(`${api()}/v1/knowledge/search`, {
+    method: 'POST',
+    headers: flowHeaders(true),
+    body: JSON.stringify(body),
+    signal,
+  })
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '')
+    throw formatCloudError('Hanzo Knowledge Search (/v1/knowledge/search)', res.status, errText)
+  }
+  const out = (await res.json().catch(() => ({}))) as Partial<KnowledgeSearchResponse>
+  return {
+    hits: Array.isArray(out.hits) ? out.hits : [],
+    degraded: out.degraded,
+  }
+}
+
+/** ToC-first grounded passage retrieval across workspace files (`POST /v1/knowledge/files/retrieve`). */
+export async function retrieveKnowledgeFiles(
+  input: {
+    query: string
+    files?: string[]
+    limit?: number
+    project?: string
+  },
+  signal?: AbortSignal,
+): Promise<KnowledgeRetrieveResponse> {
+  const query = input.query.trim()
+  if (!query) throw new Error('Knowledge retrieve query is required.')
+  const body: Record<string, unknown> = { query }
+  if (input.files && input.files.length > 0) body.files = input.files
+  if (input.limit) body.limit = Math.min(24, Math.max(1, input.limit))
+  if (input.project?.trim()) body.project = input.project.trim()
+
+  const res = await fetch(`${api()}/v1/knowledge/files/retrieve`, {
+    method: 'POST',
+    headers: flowHeaders(true),
+    body: JSON.stringify(body),
+    signal,
+  })
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '')
+    throw formatCloudError('Hanzo Knowledge Retrieve (/v1/knowledge/files/retrieve)', res.status, errText)
+  }
+  const out = (await res.json().catch(() => ({}))) as Partial<KnowledgeRetrieveResponse>
+  return {
+    passages: Array.isArray(out.passages) ? out.passages : [],
+    sections: Array.isArray(out.sections) ? out.sections : [],
+    picked: out.picked,
+    degraded: out.degraded,
+  }
+}
+
+/** Direct passage search across workspace files (`POST /v1/knowledge/files/search`). */
+export async function searchKnowledgeFiles(
+  input: {
+    query: string
+    files?: string[]
+    limit?: number
+    project?: string
+  },
+  signal?: AbortSignal,
+): Promise<KnowledgeFileSearchResponse> {
+  const query = input.query.trim()
+  if (!query) throw new Error('Knowledge file search query is required.')
+  const body: Record<string, unknown> = { query }
+  if (input.files && input.files.length > 0) body.files = input.files
+  if (input.limit) body.limit = Math.min(50, Math.max(1, input.limit))
+  if (input.project?.trim()) body.project = input.project.trim()
+
+  const res = await fetch(`${api()}/v1/knowledge/files/search`, {
+    method: 'POST',
+    headers: flowHeaders(true),
+    body: JSON.stringify(body),
+    signal,
+  })
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '')
+    throw formatCloudError('Hanzo Knowledge File Search (/v1/knowledge/files/search)', res.status, errText)
+  }
+  const out = (await res.json().catch(() => ({}))) as Partial<KnowledgeFileSearchResponse>
+  return {
+    passages: Array.isArray(out.passages) ? out.passages : [],
+    degraded: out.degraded,
+  }
+}
+
+// ── Canonical Flow MCP Server Config (Streamable HTTP + Hanzo IAM Bearer) ───
+
+export interface FlowMcpServerConfig {
+  serverName: string
+  slug: string
+  transport: 'http'
+  endpointUrl: string
+  studioMcpUrl: string
+  cloudMcpUrl: string
+  runUrl: string
+  orgId: string
+  clientJson: string
+  curlExample: string
+}
+
+/**
+ * Generates canonical Streamable HTTP MCP configuration for a Flow using
+ * `hanzo-<flow_slug>` naming and Hanzo IAM Bearer authentication.
+ */
+export function buildFlowMcpConfig(flow: FlowDefinition, orgId?: string | null): FlowMcpServerConfig {
+  const slug = flowMcpSlug(flow.name, flow.id)
+  const serverName = `hanzo-${slug}`
+  const apiBase = api()
+  const org = scopeKey(orgId)
+  const endpointUrl = `${apiBase}/v1/flow/workflows/${encodeURIComponent(flow.id)}/mcp`
+  const studioMcpUrl = `${FLOW_STUDIO_URL}/v1/mcp/${slug}`
+  const cloudMcpUrl = `${apiBase}/v1/mcp`
+  const runUrl = `${apiBase}/v1/flow/runs`
+
+  const configObj = {
+    mcpServers: {
+      [serverName]: {
+        type: 'http',
+        url: endpointUrl,
+        headers: {
+          Authorization: 'Bearer <hanzo-iam-token>',
+          'X-Org-Id': org,
+        },
+      },
+    },
+  }
+
+  const sampleInput =
+    flow.nodes.find((n) => n.config.sampleInput)?.config.sampleInput ?? `Run ${flow.name}`
+
+  const curlExample = [
+    `curl -sS -X POST "${runUrl}" \\`,
+    `  -H "Authorization: Bearer <hanzo-iam-token>" \\`,
+    `  -H "X-Org-Id: ${org}" \\`,
+    `  -H "Content-Type: application/json" \\`,
+    `  -d '${JSON.stringify({ workflow: flow.id, input: sampleInput })}'`,
+  ].join('\n')
+
+  return {
+    serverName,
+    slug,
+    transport: 'http',
+    endpointUrl,
+    studioMcpUrl,
+    cloudMcpUrl,
+    runUrl,
+    orgId: org,
+    clientJson: JSON.stringify(configObj, null, 2),
+    curlExample,
   }
 }
 
@@ -500,6 +1130,46 @@ async function runEnsoModelNode(
   return trimmed
 }
 
+interface NodeEmbeddingArtifact {
+  texts: string[]
+  vectors: number[][]
+  model: EmbeddingModelId
+  dimensions: number
+  totalTokens: number
+}
+
+function formatVectorPreview(vec: readonly number[]): string {
+  const sample = vec
+    .slice(0, 4)
+    .map((n) => Number(n).toFixed(4))
+    .join(', ')
+  return `[${sample}${vec.length > 4 ? ', …' : ''}]`
+}
+
+function rerankBlocks(raw: string, query: string, topK: number): string {
+  const blocks = raw
+    .split(/\n{2,}/)
+    .map((b) => b.trim())
+    .filter(Boolean)
+  if (blocks.length <= topK) return raw
+  const terms = query
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length > 2)
+  const scored = blocks.map((block, index) => {
+    const scoreMatch = /score[:=\s]+(-?\d+(?:\.\d+)?)/i.exec(block)
+    const explicitScore = scoreMatch ? Number(scoreMatch[1]) : 0
+    const lower = block.toLowerCase()
+    const termHits = terms.reduce((acc, term) => acc + (lower.includes(term) ? 1 : 0), 0)
+    return { block, index, rank: explicitScore * 10 + termHits }
+  })
+  return scored
+    .sort((a, b) => b.rank - a.rank || a.index - b.index)
+    .slice(0, Math.max(1, topK))
+    .map((item) => item.block)
+    .join('\n\n')
+}
+
 export interface ExecuteFlowOptions {
   trigger?: 'manual' | 'schedule' | 'webhook' | 'playground'
   sampleInput?: string
@@ -512,10 +1182,12 @@ export interface ExecuteFlowOptions {
 
 /**
  * Executes a workflow graph topologically (skipping Sticky Note documentation cards).
- * - Data Source `api_request` nodes invoke live HTTP requests and feed downstream inputs or Agent `Tools` ports.
- * - Enso / Zen model & agent nodes invoke `POST ${api()}/v1/chat/completions` live (with SSE streaming when `onToken` is provided).
+ * - Data Source `api_request` and `url_fetch` nodes execute live HTTP / `/v1/crawl` calls.
+ * - `embeddings` nodes invoke `POST ${api()}/v1/embeddings` live with `zen-embedding-3` / `zen-embedding`.
+ * - `knowledge_ingestion`, `knowledge_retrieval`, and `vector_store` nodes execute live against
+ *   `${api()}/v1/knowledge/*` + real cosine similarity vector scoring via Hanzo IAM.
+ * - Enso / Zen model & agent nodes invoke `POST ${api()}/v1/chat/completions` live with SSE streaming.
  * - Condition / Guardrail / Switch nodes evaluate expressions and route True/False edges accurately.
- * - Side-effect outbound actions (mail/post/CRM) emit validated preview receipts in Test Run & Playground mode.
  */
 export async function executeFlow(
   flow: FlowDefinition,
@@ -536,11 +1208,14 @@ export async function executeFlow(
   options.onStepUpdate?.([...steps])
 
   const outputs = new Map<string, string>()
+  const sourceTexts = new Map<string, string>()
+  const embeddingsByNode = new Map<string, NodeEmbeddingArtifact>()
   const conditionBranch = new Map<string, 'true' | 'false'>()
   const vars = new Map<string, string>()
   let failed = false
   let haltedByCondition = false
   let lastOutput = options.sampleInput ?? ''
+  let lastQuery = options.sampleInput ?? ''
   let finalOutput = ''
 
   const incomingEdgesOf = (nodeId: string) => flow.edges.filter((e) => e.target === nodeId)
@@ -548,7 +1223,6 @@ export async function executeFlow(
   const isBlockedByBranch = (nodeId: string): boolean => {
     const incoming = incomingEdgesOf(nodeId)
     if (incoming.length === 0) return false
-    // If all incoming edges come from condition nodes whose chosen branch does not match, skip this node.
     const branchEdges = incoming.filter((e) => conditionBranch.has(e.source))
     if (branchEdges.length === 0) return false
     const anyAllowed = branchEdges.some((e) => {
@@ -574,6 +1248,22 @@ export async function executeFlow(
     return onlyTools ? '' : lastOutput
   }
 
+  const upstreamSemanticTextOf = (nodeId: string): string => {
+    const incoming = incomingEdgesOf(nodeId)
+    const parts = incoming
+      .map((e) => sourceTexts.get(e.source) ?? outputs.get(e.source))
+      .filter((v): v is string => typeof v === 'string' && v.length > 0)
+    return parts.length > 0 ? parts.join('\n\n') : lastOutput
+  }
+
+  const upstreamEmbeddingOf = (nodeId: string): NodeEmbeddingArtifact | undefined => {
+    for (const edge of incomingEdgesOf(nodeId)) {
+      const found = embeddingsByNode.get(edge.source)
+      if (found) return found
+    }
+    return undefined
+  }
+
   for (let i = 0; i < ordered.length; i++) {
     const node = ordered[i]!
     const step = steps[i]!
@@ -596,22 +1286,166 @@ export async function executeFlow(
             ? `[Schedule ${node.config.cron || '0 8 * * *'} ${node.config.timezone || 'UTC'}] ${payload}`
             : payload
         outputs.set(node.id, output)
+        sourceTexts.set(node.id, payload)
         lastOutput = output
+        lastQuery = payload
         step.output = output
         step.status = 'success'
       } else if (node.subtype === 'api_request' || node.subtype === 'http_request') {
         const input = upstreamOf(node.id)
         const responseText = await runApiRequestNode(node, input, vars, options.signal)
         outputs.set(node.id, responseText)
+        sourceTexts.set(node.id, responseText)
         if (!node.config.toolMode) lastOutput = responseText
         step.output = responseText
+        step.status = 'success'
+      } else if (node.subtype === 'url_fetch') {
+        const input = upstreamOf(node.id)
+        const targetUrl = interpolate(node.config.url || input || 'https://hanzo.ai/docs', input, vars)
+        const crawled = await crawlUrl(targetUrl, options.signal)
+        const docText = `# ${crawled.title}\nSource: ${crawled.url}\n\n${crawled.markdown}`
+        outputs.set(node.id, docText)
+        sourceTexts.set(node.id, docText)
+        if (!node.config.toolMode) lastOutput = docText
+        step.output = `Fetched ${crawled.url} (${crawled.markdown.length} chars markdown)`
         step.status = 'success'
       } else if (node.subtype === 'prompt_template') {
         const input = upstreamOf(node.id)
         const rendered = interpolate(node.config.prompt || '{{input}}', input, vars)
         outputs.set(node.id, rendered)
+        sourceTexts.set(node.id, rendered)
         lastOutput = rendered
         step.output = rendered
+        step.status = 'success'
+      } else if (isEmbeddingNode(node)) {
+        const rawText = upstreamSemanticTextOf(node.id)
+        const chunks = rawText
+          .split(/\n{2,}/)
+          .map((c) => c.trim())
+          .filter(Boolean)
+          .slice(0, 16)
+        const inputs = chunks.length > 0 ? chunks : [rawText.trim()]
+        const result = await createEmbeddings(inputs, node.config.model, options.signal)
+        embeddingsByNode.set(node.id, {
+          texts: inputs,
+          vectors: result.vectors,
+          model: result.model,
+          dimensions: result.dimensions,
+          totalTokens: result.totalTokens,
+        })
+        const summary = `${result.model} · ${result.vectors.length} vector${result.vectors.length === 1 ? '' : 's'} · ${result.dimensions}d · ${result.totalTokens} tokens · ${formatVectorPreview(result.vectors[0]!)}`
+        outputs.set(node.id, rawText)
+        sourceTexts.set(node.id, rawText)
+        lastOutput = rawText
+        step.output = summary
+        step.status = 'success'
+      } else if (isKnowledgeIngestionNode(node)) {
+        const textToIngest = upstreamSemanticTextOf(node.id)
+        const project = (node.config.collection || '').trim()
+        const upstreamEmbed = upstreamEmbeddingOf(node.id)
+        const docTitle = (node.config.filePath || '').trim() || `${flow.name} — ${node.title}`
+        const imported = await importKnowledgeDocument(
+          {
+            title: docTitle,
+            content: textToIngest,
+            project: project || undefined,
+          },
+          options.signal,
+        )
+        if (upstreamEmbed && upstreamEmbed.vectors.length > 0) {
+          upsertSessionVectors(
+            project || 'workspace-kb',
+            upstreamEmbed.vectors.map((vec, idx) => ({
+              id: `${imported.pages[0] ?? flow.id}#${idx}`,
+              title: `${docTitle}${upstreamEmbed.vectors.length > 1 ? ` #${idx + 1}` : ''}`,
+              text: upstreamEmbed.texts[idx] ?? textToIngest,
+              model: upstreamEmbed.model,
+              vector: vec,
+            })),
+          )
+        }
+        const receipt = `Indexed ${imported.imported} page(s) into Hanzo Knowledge${project ? ` (${project})` : ''}: ${imported.pages.join(', ') || imported.title} (${imported.chars} chars)`
+        outputs.set(node.id, receipt)
+        sourceTexts.set(node.id, textToIngest)
+        lastOutput = receipt
+        finalOutput = receipt
+        step.output = receipt
+        step.status = 'success'
+      } else if (isKnowledgeRetrievalNode(node)) {
+        const query = interpolate(node.config.query || '{{input}}', upstreamSemanticTextOf(node.id), vars).trim()
+        const topK = Math.min(24, Math.max(1, node.config.topK ?? 5))
+        const project = (node.config.collection || '').trim()
+        const upstreamEmbed = upstreamEmbeddingOf(node.id)
+
+        const [kbRes, filesRes] = await Promise.allSettled([
+          searchKnowledge({ query, limit: topK, project: project || undefined }, options.signal),
+          retrieveKnowledgeFiles({ query, limit: topK, project: project || undefined }, options.signal),
+        ])
+
+        // If project-scoped search found nothing, also search org-wide knowledge cleanly.
+        let kbHits = kbRes.status === 'fulfilled' ? kbRes.value.hits : []
+        let filePassages = filesRes.status === 'fulfilled' ? filesRes.value.passages : []
+        if (project && kbHits.length === 0 && filePassages.length === 0 && (kbRes.status === 'fulfilled' || filesRes.status === 'fulfilled')) {
+          const [wideKb, wideFiles] = await Promise.allSettled([
+            searchKnowledge({ query, limit: topK }, options.signal),
+            retrieveKnowledgeFiles({ query, limit: topK }, options.signal),
+          ])
+          if (wideKb.status === 'fulfilled') kbHits = wideKb.value.hits
+          if (wideFiles.status === 'fulfilled') filePassages = wideFiles.value.passages
+        }
+
+        // Compute real cosine similarity against any vectors embedded in this session.
+        let vectorMatches: Array<SessionVectorEntry & { score: number }> = []
+        if (upstreamEmbed?.vectors[0]) {
+          vectorMatches = searchSessionVectors(project || 'workspace-kb', upstreamEmbed.vectors[0], topK)
+        } else if (node.subtype === 'vector_store' && sessionVectorStore.size > 0) {
+          const queryEmb = await createEmbeddings(query, node.config.model, options.signal)
+          vectorMatches = searchSessionVectors(project || 'workspace-kb', queryEmb.vectors[0]!, topK)
+        }
+
+        if (kbRes.status === 'rejected' && filesRes.status === 'rejected' && vectorMatches.length === 0) {
+          throw kbRes.reason instanceof Error ? kbRes.reason : new Error(String(kbRes.reason))
+        }
+
+        const sections: string[] = []
+        for (const match of vectorMatches) {
+          sections.push(
+            `[Vector match · ${match.model} · score ${match.score.toFixed(3)}] ${match.title}\n${match.text.slice(0, 600)}`,
+          )
+        }
+        for (const passage of filePassages.slice(0, topK)) {
+          sections.push(
+            `[File · ${passage.cite} · score ${passage.score.toFixed(3)}]\n${passage.text.slice(0, 600)}`,
+          )
+        }
+        for (const hit of kbHits.slice(0, topK)) {
+          const meta = [hit.doctype, hit.provider, hit.project].filter(Boolean).join(' · ')
+          sections.push(
+            `[Knowledge · ${meta} · score ${hit.score.toFixed(3)}] ${hit.title || hit.name}${hit.url ? ` (${hit.url})` : ''}`,
+          )
+        }
+
+        const formatted =
+          sections.length > 0
+            ? `Query: ${query}\n\n${sections.join('\n\n')}`
+            : `Query: ${query}\n\nNo matching passages indexed yet in Hanzo Cloud Knowledge${project ? ` (${project})` : ''}.`
+
+        outputs.set(node.id, formatted)
+        sourceTexts.set(node.id, query)
+        if (!node.config.toolMode) lastOutput = formatted
+        step.output =
+          sections.length > 0
+            ? `Retrieved ${sections.length} grounded match(es) (${filePassages.length} file passages, ${kbHits.length} knowledge hits${vectorMatches.length ? `, ${vectorMatches.length} vector matches` : ''})`
+            : `Searched Hanzo Cloud Knowledge${project ? ` (${project})` : ''} · 0 matches`
+        step.status = 'success'
+      } else if (node.subtype === 'reranker') {
+        const input = upstreamOf(node.id)
+        const topK = Math.max(1, node.config.topK ?? 5)
+        const ranked = rerankBlocks(input, lastQuery, topK)
+        outputs.set(node.id, ranked)
+        sourceTexts.set(node.id, ranked)
+        lastOutput = ranked
+        step.output = `Reranked top ${topK} passage(s) (${ranked.length} chars)`
         step.status = 'success'
       } else if (node.subtype === 'conversation_memory') {
         const input = upstreamOf(node.id)
@@ -634,7 +1468,6 @@ export async function executeFlow(
         conditionBranch.set(node.id, verdict.passed ? 'true' : 'false')
         step.output = verdict.reason
         step.status = 'success'
-        // If no explicit False edge exists on the graph, halt downstream when condition fails (preserves legacy behavior).
         const hasFalseBranch = flow.edges.some(
           (e) =>
             e.source === node.id &&
@@ -656,6 +1489,7 @@ export async function executeFlow(
             : undefined,
         })
         outputs.set(node.id, reply)
+        sourceTexts.set(node.id, reply)
         lastOutput = reply
         finalOutput = reply
         step.output = reply
@@ -671,18 +1505,23 @@ export async function executeFlow(
       } else if (node.subtype === 'file_loader') {
         const content = node.config.sampleInput?.trim() || `[Loaded file: ${node.config.filePath || 'document.md'}]`
         outputs.set(node.id, content)
+        sourceTexts.set(node.id, content)
         lastOutput = content
         step.output = content
         step.status = 'success'
       } else if (node.subtype === 'text_splitter') {
-        const input = upstreamOf(node.id)
+        const input = upstreamSemanticTextOf(node.id)
         const size = Math.max(100, node.config.chunkSize ?? 800)
+        const overlap = Math.min(Math.floor(size / 2), Math.max(0, node.config.chunkOverlap ?? 0))
+        const stepSize = Math.max(50, size - overlap)
         const chunks: string[] = []
-        for (let idx = 0; idx < input.length; idx += size) {
+        for (let idx = 0; idx < input.length; idx += stepSize) {
           chunks.push(input.slice(idx, idx + size))
+          if (idx + size >= input.length) break
         }
         const out = chunks.length > 0 ? chunks.join('\n\n') : input
         outputs.set(node.id, out)
+        sourceTexts.set(node.id, out)
         lastOutput = out
         step.output = `Split into ${Math.max(1, chunks.length)} chunk(s) (${size} chars)`
         step.status = 'success'
@@ -711,6 +1550,7 @@ export async function executeFlow(
             : interpolate(node.config.pattern || '{{input}}', upstreamOf(node.id), vars)
         const resText = joined || lastOutput
         outputs.set(node.id, resText)
+        sourceTexts.set(node.id, resText)
         lastOutput = resText
         step.output = resText
         step.status = 'success'
@@ -742,14 +1582,8 @@ export async function executeFlow(
         step.status = 'success'
       } else if (
         node.subtype === 'web_search' ||
-        node.subtype === 'url_fetch' ||
         node.subtype === 'sql_query' ||
         node.subtype === 'hanzo_base' ||
-        node.subtype === 'embeddings' ||
-        node.subtype === 'reranker' ||
-        node.subtype === 'knowledge_ingestion' ||
-        node.subtype === 'knowledge_retrieval' ||
-        node.subtype === 'vector_store' ||
         node.subtype === 'sandbox_code' ||
         node.subtype === 'loop_batch' ||
         node.subtype === 'hanzo_kms_secret' ||
@@ -757,27 +1591,16 @@ export async function executeFlow(
       ) {
         const input = upstreamOf(node.id)
         const summary =
-          node.subtype === 'embeddings'
-            ? `[${node.config.model || 'zen-embedding-3'}] Embedded ${input.length} chars`
-            : node.subtype === 'reranker'
-              ? `[Reranker Top-${node.config.topK ?? 5}] ${input.slice(0, 400)}`
-              : node.subtype === 'web_search'
-                ? `[Web Search · top ${node.config.topK ?? 5}] Query: "${interpolate(node.config.query || '{{input}}', input, vars)}"`
-                : node.subtype === 'url_fetch'
-                  ? `[URL Fetch] Source: ${node.config.url || 'https://hanzo.ai'}`
-                  : node.subtype === 'knowledge_ingestion'
-                    ? `[Knowledge Base "${node.config.collection || 'workspace-kb'}"] Indexed ${input.length} chars`
-                    : node.subtype === 'knowledge_retrieval' || node.subtype === 'vector_store'
-                      ? `[Retrieved from "${node.config.collection || 'workspace-kb'}" · top ${node.config.topK ?? 5}] ${input.slice(0, 400)}`
-                      : node.subtype === 'hanzo_kms_secret'
-                        ? `[KMS Reference] ${node.config.secretPath || '/prod/flow/SECRET'} (resolved at deploy runtime)`
-                        : `[${node.title}] ${input.slice(0, 400)}`
+          node.subtype === 'web_search'
+            ? `[Web Search · top ${node.config.topK ?? 5}] Query: "${interpolate(node.config.query || '{{input}}', input, vars)}"`
+            : node.subtype === 'hanzo_kms_secret'
+              ? `[KMS Reference] ${node.config.secretPath || '/prod/flow/SECRET'} (resolved at deploy runtime)`
+              : `[${node.title}] ${input.slice(0, 400)}`
         outputs.set(node.id, summary)
         if (!node.config.toolMode) lastOutput = input || summary
         step.output = summary
         step.status = 'success'
       } else {
-        // Delivery / Hanzo channel actions (mail, post, webhook, CRM)
         const input = upstreamOf(node.id)
         const rendered = interpolate(node.config.message || node.config.body || '{{input}}', input, vars)
         const target =

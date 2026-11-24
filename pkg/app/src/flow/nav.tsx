@@ -1,5 +1,5 @@
 import type { RailLink } from '@hanzo/ui/chat'
-import { CalendarClock, History, LayoutTemplate, Plus, Workflow } from 'lucide-react'
+import { BookOpen, CalendarClock, History, LayoutTemplate, Plus, Workflow } from 'lucide-react'
 import { flowPath, type FlowView } from './types'
 
 const NEW_ID = 'new'
@@ -27,6 +27,13 @@ export function flowNav(
           active: activeView === 'canvas',
           icon: <Workflow size={16} aria-hidden />,
           onPress: () => move(flowPath('')),
+        },
+        {
+          id: 'knowledge',
+          label: t('Knowledge'),
+          active: activeView === 'knowledge',
+          icon: <BookOpen size={16} aria-hidden />,
+          onPress: () => move(flowPath('knowledge')),
         },
         {
           id: 'scheduled',
