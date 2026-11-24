@@ -5,7 +5,7 @@
 // pin button per row. The menu never lets Tab reach that button, so the footer row, "Pin to sidebar…", opens a page of
 // the same places as ordinary rows, which the arrow keys reach.
 import { Fragment, useState, type ReactElement, type ReactNode } from 'react'
-import { Check, Pin } from 'lucide-react'
+import { Building2, Check, Pin } from 'lucide-react'
 import { phrase } from '@hanzo/i18n'
 import { Text, XStack, YStack } from '@hanzo/gui'
 import {
@@ -54,7 +54,23 @@ export function moreGroups(entries: NavEntry[], t: T, query = ''): { key: Headin
   }).filter((g) => g.items.length > 0)
 }
 
-export function MoreMenu({ entries, onPin, t, trigger, ...rest }: { entries: NavEntry[]; onPin: (id: string) => void; t: T; trigger: ReactElement } & Pick<DropdownMenuProps, 'placement' | 'minWidth' | 'maxHeight'>): ReactNode {
+export function MoreMenu({
+  entries,
+  onPin,
+  orgName,
+  onSaveOrgDefault,
+  t,
+  trigger,
+  ...rest
+}: {
+  entries: NavEntry[]
+  onPin: (id: string) => void
+  orgName?: string | null
+  /** Org admins/owners can save the current sidebar app list & order as the default for new org members. */
+  onSaveOrgDefault?: () => Promise<boolean>
+  t: T
+  trigger: ReactElement
+} & Pick<DropdownMenuProps, 'placement' | 'minWidth' | 'maxHeight'>): ReactNode {
   const [query, setQuery] = useState('')
   const [pinQuery, setPinQuery] = useState('')
   const groups = moreGroups(entries, t, query)
@@ -143,19 +159,48 @@ export function MoreMenu({ entries, onPin, t, trigger, ...rest }: { entries: Nav
               ))
             )}
           </YStack>
-          {pinnable.length ? (
+          {pinnable.length || onSaveOrgDefault ? (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem data-item="pin-page" page="pin">
-                <XStack items="center" gap={10} flex={1}>
-                  <XStack width={20} height={20} items="center" justify="center" shrink={0}>
-                    <Pin size={15} aria-hidden />
+              {pinnable.length ? (
+                <DropdownMenuItem data-item="pin-page" page="pin">
+                  <XStack items="center" gap={10} flex={1}>
+                    <XStack width={20} height={20} items="center" justify="center" shrink={0}>
+                      <Pin size={15} aria-hidden />
+                    </XStack>
+                    <Text fontSize="$2" flex={1}>
+                      {t('Pin to sidebar…')}
+                    </Text>
                   </XStack>
-                  <Text fontSize="$2" flex={1}>
-                    {t('Pin to sidebar…')}
-                  </Text>
-                </XStack>
-              </DropdownMenuItem>
+                </DropdownMenuItem>
+              ) : null}
+              {onSaveOrgDefault ? (
+                <DropdownMenuItem
+                  data-item="save-org-nav-default"
+                  onSelect={() => {
+                    void onSaveOrgDefault().then((ok) => {
+                      if (ok) {
+                        toast.success(
+                          orgName
+                            ? t('Saved sidebar apps as default for {org}', { org: orgName })
+                            : t('Saved sidebar apps as organization default'),
+                        )
+                      } else {
+                        toast.error(t('Could not save organization default sidebar'))
+                      }
+                    })
+                  }}
+                >
+                  <XStack items="center" gap={10} flex={1}>
+                    <XStack width={20} height={20} items="center" justify="center" shrink={0}>
+                      <Building2 size={15} aria-hidden />
+                    </XStack>
+                    <Text fontSize="$2" flex={1}>
+                      {orgName ? t('Save as {org} default', { org: orgName }) : t('Save as org default')}
+                    </Text>
+                  </XStack>
+                </DropdownMenuItem>
+              ) : null}
             </>
           ) : null}
         </DropdownMenuPage>

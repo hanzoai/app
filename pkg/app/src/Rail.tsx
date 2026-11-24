@@ -85,7 +85,9 @@ import { HOSTED_APPS } from './lib/hosted'
 import { Account } from './Account'
 import { RailUsageButton } from './Usage'
 import { useDevMode } from './lib/dev-mode'
+import { orgNavKey, resolveNavSeed, saveOrgNavDefaults, useOrgNavDefaults } from './lib/org-nav'
 import { usePref } from './pref'
+export { orgNavKey, readOrgNavDefaults, resolveNavSeed, saveOrgNavDefaults, useOrgNavDefaults } from './lib/org-nav'
 import { HEAD, MARK, TOUCH_HEAD } from './ground'
 import { railKeys } from './keys'
 import { out } from './help'
@@ -238,15 +240,32 @@ export function shiftedPinnedNav(list: readonly string[], id: string, delta: -1 
 }
 
 /**
- * The reader's pins, a toggle for one, a reorder and a move, kept on the account. Pins stand at the top of the menu in
- * the reader's order; everything else keeps its default place (`DEFAULT_NAV`, then More). Until the reader pins under
- * this version, the pins an earlier one kept carry over (`carriedPinnedNav`).
+ * The reader's per-org sidebar customization, a toggle for one, a drag reorder and a keyboard move,
+ * kept on the account per organization (`hanzo.nav.pins:<org>`). New members of an org with no
+ * personal override start with the org's configured default apps (`GET /v1/settings/app-nav`).
  */
-export function usePinnedNav(): [string[], (id: string) => void, (sourceId: string, targetId: string) => void, (id: string, delta: -1 | 1, visible?: readonly string[]) => void] {
+export function usePinnedNav(): [
+  string[],
+  (id: string) => void,
+  (sourceId: string, targetId: string) => void,
+  (id: string, delta: -1 | 1, visible?: readonly string[]) => void,
+] {
+  const { orgId, defaults: orgDefaults } = useOrgNavDefaults()
   const [earlier] = usePref<string[] | null>(NAV_PINNED_KEY, null)
-  const [kept, keep] = usePref<string[] | null>(NAV_PINS_KEY, null)
-  const pinned = Array.isArray(kept) ? cleanPinnedNav(kept) : carriedPinnedNav(earlier)
-  return [pinned, (id) => keep(toggledPinnedNav(pinned, id)), (src, target) => keep(reorderedPinnedNav(pinned, src, target)), (id, delta, visible) => keep(shiftedPinnedNav(pinned, id, delta, visible))]
+  const [legacy] = usePref<string[] | null>(NAV_PINS_KEY, null)
+  const scopedKey = orgNavKey(NAV_PINS_KEY, orgId)
+  const [kept, keep] = usePref<string[] | null>(scopedKey, null)
+  const pinned = resolveNavSeed(
+    kept,
+    orgDefaults,
+    Array.isArray(legacy) ? legacy : carriedPinnedNav(earlier),
+  )
+  return [
+    pinned,
+    (id) => keep(toggledPinnedNav(pinned, id)),
+    (src, target) => keep(reorderedPinnedNav(pinned, src, target)),
+    (id, delta, visible) => keep(shiftedPinnedNav(pinned, id, delta, visible)),
+  ]
 }
 
 /** The places the rail holds beside the products, by the builder address each opens. */
@@ -782,6 +801,12 @@ export function Rail({
               maxHeight={320}
               entries={foldedEntries}
               onPin={nav.togglePin}
+              orgName={host.org}
+              onSaveOrgDefault={
+                host.admin && host.org
+                  ? () => saveOrgNavDefaults(primaryEntries.map((item) => item.id))
+                  : undefined
+              }
               t={t}
               trigger={
                 <XStack
