@@ -17,8 +17,12 @@ import {
   describeCron,
   EMBEDDING_MODELS,
   FLOW_MODELS,
+  isEmbeddingNode,
+  isKnowledgeIngestionNode,
+  isKnowledgeRetrievalNode,
   isModelExecutionNode,
   isStickyNoteNode,
+  normalizeEmbeddingModel,
   type FlowDefinition,
   type FlowEdge,
   type FlowNode,
@@ -469,32 +473,39 @@ export function FlowInspector({
         </YStack>
       ) : null}
 
-      {/* Embeddings */}
-      {selectedNode.subtype === 'embeddings' ? (
-        <YStack gap="$1.5">
+      {/* Embeddings (live POST /v1/embeddings via Hanzo IAM) */}
+      {isEmbeddingNode(selectedNode) ? (
+        <YStack gap="$2">
           <Text fontSize="$1" fontWeight="500" color="$soft">
             {t('Embedding model')}
           </Text>
-          <XStack gap="$1" flexWrap="wrap">
-            {EMBEDDING_MODELS.map((m) => (
-              <XStack
-                key={m.id}
-                render="button"
-                onClick={() => onUpdateNode(selectedNode.id, {}, { model: m.id })}
-                px="$2"
-                py="$1"
-                rounded="$2"
-                borderWidth={1}
-                borderColor={(selectedNode.config.model || 'zen-embedding-3') === m.id ? 'var(--border-selected)' : '$edge'}
-                bg={(selectedNode.config.model || 'zen-embedding-3') === m.id ? '$raised' : 'transparent'}
-                cursor="pointer"
-              >
-                <Text fontSize="$1" fontFamily="$mono" color="$ink">
-                  {m.id}
-                </Text>
-              </XStack>
-            ))}
+          <XStack gap="$1" flexWrap="wrap" data-slot="inspector-embedding-picker">
+            {EMBEDDING_MODELS.map((m) => {
+              const activeModel = normalizeEmbeddingModel(selectedNode.config.model)
+              return (
+                <XStack
+                  key={m.id}
+                  render="button"
+                  data-embedding-model={m.id}
+                  onClick={() => onUpdateNode(selectedNode.id, {}, { model: m.id })}
+                  px="$2"
+                  py="$1"
+                  rounded="$2"
+                  borderWidth={1}
+                  borderColor={activeModel === m.id ? 'var(--border-selected)' : '$edge'}
+                  bg={activeModel === m.id ? '$raised' : 'transparent'}
+                  cursor="pointer"
+                >
+                  <Text fontSize="$1" fontFamily="$mono" color="$ink">
+                    {m.id}
+                  </Text>
+                </XStack>
+              )
+            })}
           </XStack>
+          <Text fontSize="$1" color="$quiet" fontFamily="$mono">
+            POST /v1/embeddings · Hanzo IAM (active)
+          </Text>
         </YStack>
       ) : null}
 
@@ -597,18 +608,72 @@ export function FlowInspector({
         </>
       ) : null}
 
-      {selectedNode.subtype === 'knowledge_ingestion' ||
-      selectedNode.subtype === 'knowledge_retrieval' ||
-      selectedNode.subtype === 'vector_store' ||
+      {isKnowledgeIngestionNode(selectedNode) ||
+      isKnowledgeRetrievalNode(selectedNode) ||
       selectedNode.subtype === 'hanzo_base' ? (
-        <YStack gap="$1.5">
-          <Text fontSize="$1" fontWeight="500" color="$soft">
-            {t('Collection / Knowledge base')}
+        <YStack gap="$2.5">
+          <YStack gap="$1.5">
+            <Text fontSize="$1" fontWeight="500" color="$soft">
+              {t('Collection / Knowledge base')}
+            </Text>
+            <Input
+              data-slot="inspector-kb-collection"
+              value={selectedNode.config.collection ?? 'workspace-kb'}
+              onChangeText={(collection) => onUpdateNode(selectedNode.id, {}, { collection })}
+            />
+          </YStack>
+          {isKnowledgeRetrievalNode(selectedNode) ? (
+            <YStack gap="$1.5">
+              <Text fontSize="$1" fontWeight="500" color="$soft">
+                {t('Top-K passages')}
+              </Text>
+              <Input
+                data-slot="inspector-kb-topk"
+                value={String(selectedNode.config.topK ?? 5)}
+                onChangeText={(raw) => {
+                  const n = Number.parseInt(raw, 10)
+                  if (!Number.isNaN(n) && n > 0) onUpdateNode(selectedNode.id, {}, { topK: Math.min(24, n) })
+                }}
+              />
+            </YStack>
+          ) : null}
+          {selectedNode.subtype === 'vector_store' || isKnowledgeIngestionNode(selectedNode) ? (
+            <YStack gap="$1.5">
+              <Text fontSize="$1" fontWeight="500" color="$soft">
+                {t('Embedding model')}
+              </Text>
+              <XStack gap="$1" flexWrap="wrap">
+                {EMBEDDING_MODELS.map((m) => {
+                  const activeModel = normalizeEmbeddingModel(selectedNode.config.model)
+                  return (
+                    <XStack
+                      key={m.id}
+                      render="button"
+                      onClick={() => onUpdateNode(selectedNode.id, {}, { model: m.id })}
+                      px="$2"
+                      py="$1"
+                      rounded="$2"
+                      borderWidth={1}
+                      borderColor={activeModel === m.id ? 'var(--border-selected)' : '$edge'}
+                      bg={activeModel === m.id ? '$raised' : 'transparent'}
+                      cursor="pointer"
+                    >
+                      <Text fontSize="$1" fontFamily="$mono" color="$ink">
+                        {m.id}
+                      </Text>
+                    </XStack>
+                  )
+                })}
+              </XStack>
+            </YStack>
+          ) : null}
+          <Text fontSize="$1" color="$quiet" fontFamily="$mono">
+            {isKnowledgeIngestionNode(selectedNode)
+              ? 'POST /v1/knowledge/import · Hanzo IAM'
+              : isKnowledgeRetrievalNode(selectedNode)
+                ? 'POST /v1/knowledge/search + files/retrieve · Hanzo IAM'
+                : 'Hanzo Base · Hanzo IAM'}
           </Text>
-          <Input
-            value={selectedNode.config.collection ?? 'workspace-kb'}
-            onChangeText={(collection) => onUpdateNode(selectedNode.id, {}, { collection })}
-          />
         </YStack>
       ) : null}
 

@@ -115,8 +115,12 @@ export function iconForSubtype(subtype: FlowNodeSubtype | Pick<FlowNode, 'subtyp
     case 'prompt_template':
       return Sparkles
     case 'embeddings':
+    case 'embedding':
     case 'knowledge_ingestion':
+    case 'knowledge_ingest':
     case 'knowledge_retrieval':
+    case 'knowledge_search':
+    case 'retriever':
       return Layers
     case 'reranker':
       return Filter

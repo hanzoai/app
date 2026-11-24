@@ -88,7 +88,20 @@ function nodeSubtitle(node: FlowNode): string {
   if (node.subtype === 'url_fetch') return node.config.url || 'URL fetch'
   if (node.subtype === 'web_search') return `Query: ${node.config.query || '{{input}}'}`
   if (node.subtype === 'sql_query') return node.config.query || 'SQL query'
-  if (node.subtype === 'embeddings') return `Model: ${node.config.model || 'zen-embedding-3'}`
+  if (node.subtype === 'embeddings' || node.subtype === 'embedding') {
+    return `${node.config.model === 'zen-embedding' ? 'zen-embedding' : 'zen-embedding-3'} · /v1/embeddings`
+  }
+  if (node.subtype === 'knowledge_ingestion' || node.subtype === 'knowledge_ingest') {
+    return `${node.config.collection || 'workspace-kb'} · /v1/knowledge/import`
+  }
+  if (
+    node.subtype === 'knowledge_retrieval' ||
+    node.subtype === 'knowledge_search' ||
+    node.subtype === 'retriever' ||
+    node.subtype === 'vector_store'
+  ) {
+    return `${node.config.collection || 'workspace-kb'} · top-${node.config.topK ?? 5} · /v1/knowledge/search`
+  }
   if (node.subtype === 'hanzo_kms_secret') return `KMS: ${node.config.secretPath || '/prod/flow/...'}`
   if (node.subtype === 'hanzo_mail' || node.subtype === 'email') return `Mail → ${node.config.to || 'recipient'}`
   if (node.subtype === 'hanzo_post') return `Post → ${node.config.channel || '#updates'}`

@@ -807,7 +807,7 @@ export const FLOW_TEMPLATES: readonly FlowTemplate[] = [
         subtype: 'chat_input',
         title: 'Mission Brief',
         position: { x: 48, y: 144 },
-        config: { sampleInput: 'Launch plan for an enterprise self-hosted AI developer platform.' },
+        config: { sampleInput: 'Launch plan for an enterprise sovereign AI developer platform.' },
       },
       {
         id: 'n2',
