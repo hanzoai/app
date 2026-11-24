@@ -501,6 +501,349 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
   )
 }
 
+/**
+ * Compact circular `(!)` usage indicator anchored in the bottom-left rail directly
+ * above the user avatar. Clicking or hovering opens a concise limits card showing
+ * 5-hour limit, weekly limit, credits, Add credits CTA, and Manage usage.
+ */
+export function RailUsageButton() {
+  const { t, format } = useI18n()
+  const [open, setOpen] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hoverOpenedAt = useRef(0)
+
+  const signedIn = hasSession()
+  const currentOrg = org()
+  const usage = useLimits(signedIn, currentOrg)
+  const { limits } = usage
+  const { tier } = useTier(signedIn && Boolean(currentOrg), currentOrg)
+
+  useEffect(() => {
+    return () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    setNow(Date.now())
+    const id = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(id)
+  }, [open])
+
+  if (!signedIn) return null
+
+  const clearCloseTimer = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current)
+      closeTimer.current = null
+    }
+  }
+
+  const handleMouseEnter = () => {
+    clearCloseTimer()
+    if (!open) {
+      hoverOpenedAt.current = Date.now()
+      setOpen(true)
+      usage.reload()
+    }
+  }
+
+  const handleMouseLeave = () => {
+    clearCloseTimer()
+    closeTimer.current = setTimeout(() => setOpen(false), HOVER_CLOSE_MS)
+  }
+
+  const classEntries = limits ? Object.values(limits.classes).filter(Boolean) : []
+  const windows = classEntries.flatMap((c) => (c?.window ? [c.window] : []))
+  const highestWindow = windows.length
+    ? windows.reduce((best, w) => (w.percent > best.percent ? w : best), windows[0]!)
+    : null
+  const highestWeeklyEntry = classEntries.reduce<(typeof classEntries)[number] | null>(
+    (best, c) => (!best || (c?.percent ?? 0) > (best?.percent ?? 0) ? c : best),
+    null,
+  )
+
+  const sessionUsed = Math.max(0, Math.min(100, Math.round(highestWindow?.percent ?? 0)))
+  const weeklyUsed = Math.max(0, Math.min(100, Math.round(highestWeeklyEntry?.percent ?? 0)))
+  const sessionLeft = Math.max(0, 100 - sessionUsed)
+  const weeklyLeft = Math.max(0, 100 - weeklyUsed)
+  const peakUsed = Math.max(sessionUsed, weeklyUsed)
+
+  const isCapped = limits?.state === 'limited' || peakUsed >= 100
+  const isNear = !isCapped && peakUsed >= 85
+  const hasBalanceZero =
+    typeof tier?.balance?.effectiveAvailable === 'number' &&
+    tier.balance.effectiveAvailable <= 0 &&
+    !tier.plan
+
+  // Only surface the `(!)` warning indicator in the rail when usage is near (>=85%) or exceeded.
+  if (!isCapped && !isNear && !hasBalanceZero) return null
+
+  const resetIso = highestWindow?.resets_at ?? highestWeeklyEntry?.resets_at
+  const resetParts = resetIso ? resets(resetIso, now, format) : null
+  const resetSentence = resetParts
+    ? resetParts.date && resetParts.time
+      ? t('Your rate limit resets {date} at {time}.', { date: resetParts.date, time: resetParts.time })
+      : resetParts.time
+        ? t('Your rate limit resets on {time}.', { time: resetParts.time })
+        : t('Your rate limit resets {date}.', { date: resetParts.date ?? '' })
+    : null
+
+  const planInfo = limits?.plan
+    ? label(limits.plan)
+    : tier?.plan
+      ? label(tier.plan)
+      : null
+  const planBadge = planInfo
+    ? `${planInfo.name}${planInfo.tag ? ` ${planInfo.tag}` : ''}`
+    : tier?.tier?.displayName || t('Free')
+
+  const hasCredits = typeof tier?.balance?.effectiveAvailable === 'number'
+  const creditsLabel = hasCredits
+    ? cents(tier!.balance.effectiveAvailable, tier!.balance.currency || 'usd')
+    : t('0 credits')
+
+  const headline = isCapped
+    ? t('You’re out of Hanzo usage')
+    : isNear
+      ? t('Running low on Hanzo usage')
+      : t('Hanzo usage · {plan}', { plan: planBadge })
+
+  const subtitle = isCapped
+    ? [resetSentence, t('Add credits or upgrade to keep working now.')].filter(Boolean).join(' ')
+    : resetSentence || t('Limits are shared across Chat, Dev, and Design.')
+
+  const ringBorder = isCapped
+    ? 'var(--state-error)'
+    : isNear
+      ? 'var(--chrome-dot-yellow)'
+      : 'rgba(255, 255, 255, 0.24)'
+  const glyphColor = isCapped
+    ? 'var(--state-error)'
+    : isNear
+      ? 'var(--chrome-dot-yellow)'
+      : 'var(--foreground)'
+
+  const toggle = (next: boolean) => {
+    clearCloseTimer()
+    setOpen(next)
+    if (next) usage.reload()
+  }
+
+  return (
+    <Popover open={open} onOpenChange={toggle} placement="right-end" offset={10} allowFlip stayInFrame>
+      <PopoverTrigger asChild disablePressTrigger>
+        <XStack
+          render={<button type="button" />}
+          data-slot="rail-usage"
+          data-state={isCapped ? 'capped' : isNear ? 'near' : 'ok'}
+          aria-label={headline}
+          onClick={() => {
+            if (open && Date.now() - hoverOpenedAt.current < 400) {
+              clearCloseTimer()
+              return
+            }
+            toggle(!open)
+          }}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          width={28}
+          height={28}
+          rounded={9999}
+          items="center"
+          justify="center"
+          shrink={0}
+          cursor="pointer"
+          bg={open ? '$raised' : 'rgba(255, 255, 255, 0.04)'}
+          borderWidth={1.5}
+          borderColor={ringBorder}
+          opacity={isCapped || isNear || open ? 1 : 0.78}
+          hoverStyle={{ bg: '$hover', opacity: 1 }}
+          pressStyle={{ bg: '$raised' }}
+          focusVisibleStyle={FOCUS_RING}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="none"
+            aria-hidden="true"
+            style={{ color: glyphColor }}
+          >
+            <path
+              d="M8 4.2v4.3"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+            />
+            <circle cx="8" cy="11.4" r="1" fill="currentColor" />
+          </svg>
+        </XStack>
+      </PopoverTrigger>
+      <PopoverContent
+        solid
+        bg="var(--popover)"
+        borderWidth={1}
+        borderColor={STRONG}
+        boxShadow="var(--shadow-floating)"
+        rounded={14}
+        p={16}
+        width={264}
+        maxW="calc(100vw - 24px)"
+        z="var(--z-popover)"
+        onMouseEnter={clearCloseTimer}
+        onMouseLeave={handleMouseLeave}
+        onKeyDown={(e: { key?: string; preventDefault?: () => void }) => {
+          if (e.key === 'Escape') {
+            e.preventDefault?.()
+            setOpen(false)
+          }
+        }}
+        aria-label={t('Usage summary')}
+        data-slot="rail-usage-popover"
+      >
+        <YStack gap={12} minW={0}>
+          <YStack gap={4}>
+            <Text fontFamily="$body" fontSize={13.5} fontWeight="600" color="$ink" lineHeight={18}>
+              {headline}
+            </Text>
+            <Text fontFamily="$body" fontSize={12} color="$aside" lineHeight={17}>
+              {subtitle}
+            </Text>
+          </YStack>
+
+          <XStack
+            render={<a href={payPage('/amount/card', typeof window !== 'undefined' ? window.location.href : undefined)} />}
+            data-slot="rail-usage-add-credits"
+            onClick={(e: { preventDefault?: () => void }) => {
+              e.preventDefault?.()
+              setOpen(false)
+              window.location.assign(payPage('/amount/card', window.location.href))
+            }}
+            width="100%"
+            height={34}
+            rounded={9999}
+            items="center"
+            justify="center"
+            bg="var(--primary)"
+            borderWidth={0}
+            cursor="pointer"
+            hoverStyle={{ opacity: 0.9 }}
+            pressStyle={{ opacity: 0.82 }}
+            focusVisibleStyle={FOCUS_RING}
+            $platform-web={{ textDecoration: 'none' }}
+          >
+            <Text fontFamily="$body" fontSize={12.5} fontWeight="600" color="var(--primary-foreground)">
+              {t('Add credits')}
+            </Text>
+          </XStack>
+
+          <YStack gap={8} pt={2}>
+            <XStack justify="space-between" items="center" gap={8}>
+              <Text fontFamily="$body" fontSize={12.5} color="$ink">
+                {t('5-hour limit')}
+              </Text>
+              <Text
+                fontFamily="$body"
+                fontSize={12.5}
+                color={sessionLeft === 0 ? 'var(--state-error)' : '$aside'}
+                fontVariant={['tabular-nums']}
+              >
+                {t('{percent}% left', { percent: sessionLeft })}
+              </Text>
+            </XStack>
+            <XStack justify="space-between" items="center" gap={8}>
+              <Text fontFamily="$body" fontSize={12.5} color="$ink">
+                {t('Weekly limit')}
+              </Text>
+              <Text
+                fontFamily="$body"
+                fontSize={12.5}
+                color={weeklyLeft === 0 ? 'var(--state-error)' : '$aside'}
+                fontVariant={['tabular-nums']}
+              >
+                {t('{percent}% left', { percent: weeklyLeft })}
+              </Text>
+            </XStack>
+            <XStack justify="space-between" items="center" gap={8}>
+              <Text fontFamily="$body" fontSize={12.5} color="$ink">
+                {t('Credits')}
+              </Text>
+              <Anchor
+                href={payPage('/amount/card', typeof window !== 'undefined' ? window.location.href : undefined)}
+                data-slot="rail-usage-credits-link"
+                onClick={(e: { preventDefault?: () => void }) => {
+                  e.preventDefault?.()
+                  setOpen(false)
+                  window.location.assign(payPage('/amount/card', window.location.href))
+                }}
+                fontFamily="$body"
+                fontSize={12.5}
+                color="$ink"
+                fontVariant={['tabular-nums']}
+                textDecorationLine="underline"
+                hoverStyle={{ opacity: 0.78 }}
+              >
+                {creditsLabel}
+              </Anchor>
+            </XStack>
+          </YStack>
+
+          <XStack
+            width="100%"
+            pt={10}
+            borderTopWidth={1}
+            borderColor="$edge"
+            items="center"
+            justify="space-between"
+            gap={8}
+          >
+            <XStack
+              render={<button type="button" />}
+              data-slot="rail-usage-manage"
+              onClick={() => {
+                setOpen(false)
+                rememberSettingsReturn()
+                showSettings('usage')
+              }}
+              items="center"
+              justify="flex-start"
+              bg="transparent"
+              borderWidth={0}
+              cursor="pointer"
+              hoverStyle={{ opacity: 0.8 }}
+              focusVisibleStyle={FOCUS_RING}
+            >
+              <Text fontFamily="$body" fontSize={12.5} fontWeight="500" color="$ink">
+                {t('Manage usage')}
+              </Text>
+            </XStack>
+            <Anchor
+              href={payPage('/amount/card', typeof window !== 'undefined' ? window.location.href : undefined)}
+              data-slot="rail-usage-topup-link"
+              onClick={(e: { preventDefault?: () => void }) => {
+                e.preventDefault?.()
+                setOpen(false)
+                window.location.assign(payPage('/amount/card', window.location.href))
+              }}
+              fontFamily="$body"
+              fontSize={12}
+              fontWeight="500"
+              color="$aside"
+              hoverStyle={{ color: '$ink' }}
+              textDecorationLine="none"
+            >
+              {t('Top up →')}
+            </Anchor>
+          </XStack>
+        </YStack>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 /** Every shared composer in the app gets the same account usage entry. */
 export function UsageProvider({ children }: { children: React.ReactNode }) {
   return <ComposerStatusProvider value={<UsageControl key={org()} />}>{children}</ComposerStatusProvider>

@@ -30,6 +30,7 @@ import {
   Image as ImageMark,
   Info,
   Link2,
+  ListFilter,
   LogIn,
   Monitor,
   MoreHorizontal,
@@ -120,10 +121,10 @@ const RECENT = 6
 /** What a place that takes the sidebar is called at its head. */
 const TITLE: Record<Raised, string> = { library: phrase('Library'), scheduled: phrase('Scheduled tasks'), customize: phrase('Customize') }
 
-/** A header mark: a 15px glyph in a 32px target, a thumb's 44 on a touch screen. */
-const HEAD = { width: 32, height: 32, rounded: '$3', $touchable: { width: TOUCH, height: TOUCH } } as const
-/** Compact sub-page header mark so longer titles like "Scheduled tasks" never clip at 256px. */
-const SUB_HEAD = { width: 28, height: 28, rounded: '$3', $touchable: { width: TOUCH, height: TOUCH } } as const
+/** A header mark: 28×28 target aligned directly beneath the title-bar Back/Forward arrows, 44 on touch. */
+const HEAD = { width: 28, height: 28, rounded: 8, $touchable: { width: TOUCH, height: TOUCH } } as const
+/** Sub-page header mark shares identical 28×28 geometry for strict column alignment under `< >`. */
+const SUB_HEAD = HEAD
 
 function resolvePlaceHref(id: string, mode: Place['mode']): string | null {
   if (mode === 'flow') {
@@ -825,7 +826,7 @@ function Activity({ host }: { host: Host }) {
           hoverStyle={{ bg: '$hover', opacity: 1 }}
           focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
         >
-          <Bell size={15} aria-hidden />
+          <ListFilter size={15} aria-hidden />
           {hasLive ? (
             <YStack
               position="absolute"
@@ -1246,14 +1247,14 @@ export function Sidebar({
           gap="$0"
           $platform-web={anon && !drawer ? { overflow: 'visible' } : undefined}
         >
-          {/* 1. Single Top Header Row */}
+          {/* 1. Single Top Header Row — vertically centered with first rail icon, filter/search aligned directly under < > */}
           {at ? (
             <XStack
               data-slot="app-head"
               items="center"
-              gap={2}
+              gap={4}
               paddingInlineStart={0}
-              paddingInlineEnd={0}
+              paddingInlineEnd={2}
               height={drawer ? BAND : LINE}
               $touchable={drawer ? undefined : { height: TOUCH_HEAD }}
               shrink={0}
@@ -1268,9 +1269,11 @@ export function Sidebar({
               <Text flex={1} minW={0} fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1} data-slot="place-name">
                 {t(TITLE[at])}
               </Text>
+              {drawer || anon ? null : <Activity host={host} />}
               {anon ? null : (
                 <SidebarIconButton
                   label={t('Search')}
+                  data-slot="sidebar-search"
                   data-tauri-drag-region="false"
                   onPress={onSeek}
                   aria-haspopup="dialog"
@@ -1284,7 +1287,7 @@ export function Sidebar({
             <XStack
               data-slot="app-head"
               items="center"
-              gap={2}
+              gap={4}
               paddingInlineStart={8}
               paddingInlineEnd={2}
               height={drawer ? BAND : LINE}
@@ -1301,9 +1304,10 @@ export function Sidebar({
                 </Text>
               </XStack>
               {drawer || anon ? null : <Activity host={host} />}
-              {anon ? null : (
+              {anon && drawer ? null : (
                 <SidebarIconButton
                   label={t('Search')}
+                  data-slot="sidebar-search"
                   data-tauri-drag-region="false"
                   onPress={onSeek}
                   aria-haspopup="dialog"

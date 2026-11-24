@@ -141,7 +141,11 @@ const TITLES: Record<string, string> = { dev: 'Dev', design: 'Design', flow: 'Fl
 export interface Titlebar {
   inset?: number
   drag?: Record<string, unknown>
+  /** Optional leading control before the sidebar toggle (e.g. stacked `_-` File/App menu on Windows/Linux). */
+  leading?: React.ReactNode
   controls?: React.ReactNode
+  /** Optional status slot stacked directly above Usage `(!)` and Account at the bottom of the left rail. */
+  railFooter?: React.ReactNode
 }
 
 /**
@@ -459,27 +463,35 @@ function Window({ bar, betas }: Hosted) {
             >
               <XStack
                 data-slot="title-bar-start"
+                data-sidebar-open={closed ? 'false' : 'true'}
                 height="100%"
                 items="center"
-                gap={2}
+                justify={closed ? 'flex-start' : 'space-between'}
+                gap={4}
                 pl={(bar.inset ?? 0) + 4}
-                pr={6}
+                pr={10}
                 shrink={0}
-                width={closed ? RAIL_FOLDED : ('calc(52px + var(--app-sidebar-span, 256px))' as never)}
+                width={closed ? 'auto' : ('calc(52px + var(--app-sidebar-span, 256px))' as never)}
+                $max-md={{ width: 'auto', justify: 'flex-start' }}
                 {...bar.drag}
               >
-                <XStack $md={{ display: 'none' }} data-tauri-drag-region="false">
-                  <Toggle open={drawer.state === 'open'} onPress={drawer.open} />
+                <XStack data-slot="title-bar-left-group" items="center" gap={4} data-tauri-drag-region="false">
+                  {bar.leading}
+                  <XStack $md={{ display: 'none' }} data-tauri-drag-region="false">
+                    <Toggle open={drawer.state === 'open'} onPress={drawer.open} />
+                  </XStack>
+                  <XStack $max-md={{ display: 'none' }} data-tauri-drag-region="false">
+                    <Toggle open={!closed} onPress={flip} />
+                  </XStack>
                 </XStack>
-                <XStack $max-md={{ display: 'none' }} data-tauri-drag-region="false">
-                  <Toggle open={!closed} onPress={flip} />
+                <XStack data-slot="title-bar-nav-group" items="center" gap={4} data-tauri-drag-region="false">
+                  <Mark label={t('Back')} data-slot="back" data-tauri-drag-region="false" onPress={() => router.back()}>
+                    <ChevronLeft size={16} strokeWidth={CHEVRON} aria-hidden data-i18n-mirror />
+                  </Mark>
+                  <Mark label={t('Forward')} data-slot="forward" data-tauri-drag-region="false" onPress={() => router.forward()}>
+                    <ChevronRight size={16} strokeWidth={CHEVRON} aria-hidden data-i18n-mirror />
+                  </Mark>
                 </XStack>
-                <Mark label={t('Back')} data-slot="back" data-tauri-drag-region="false" onPress={() => router.back()}>
-                  <ChevronLeft size={16} strokeWidth={CHEVRON} aria-hidden data-i18n-mirror />
-                </Mark>
-                <Mark label={t('Forward')} data-slot="forward" data-tauri-drag-region="false" onPress={() => router.forward()}>
-                  <ChevronRight size={16} strokeWidth={CHEVRON} aria-hidden data-i18n-mirror />
-                </Mark>
               </XStack>
               <XStack
                 data-slot="title-bar-main"
@@ -517,13 +529,17 @@ function Window({ bar, betas }: Hosted) {
             pb="var(--pane-gap)"
             pt="var(--pane-gap)"
             // A phone's frame is full-bleed on the floor, which follows the theme,
-            // so the top of the page the browser's bar tints from does too. Under a window's bar the
-            // panel still stands the gap from it.
-            $max-md={{ p: 0, gridTemplateColumns: 'minmax(0, 1fr)', ...(bar ? { pt: 'var(--pane-gap)' } : null) }}
+            // so the top of the page the browser's bar tints from does too. On narrow
+            // desktop windows, keep the 52px icon rail visible beside the active pane.
+            $max-md={{
+              p: 0,
+              gridTemplateColumns: bar ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)',
+              ...(bar ? { pt: 'var(--pane-gap)' } : null),
+            }}
           >
             {drawer.slide ? <Lift /> : null}
             {/* Persistent desktop icon rail: stays anchored in place while the contextual sidebar opens and closes beside it. */}
-            <YStack height="100%" position="relative" display="flex" $max-md={{ display: 'none' }}>
+            <YStack height="100%" position="relative" display="flex" $max-md={bar ? undefined : { display: 'none' }}>
               <Rail
                 pins={pins}
                 host={host}
@@ -538,6 +554,7 @@ function Window({ bar, betas }: Hosted) {
                 onTabs={toTabs}
                 go={move}
                 onOrg={org}
+                footer={bar?.railFooter}
               />
               {closed ? (
                 <YStack

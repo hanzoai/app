@@ -83,6 +83,7 @@ import { BetasDialog, useBetas } from './Betas'
 import { BETAS } from './lib/betas'
 import { HOSTED_APPS } from './lib/hosted'
 import { Account } from './Account'
+import { RailUsageButton } from './Usage'
 import { useDevMode } from './lib/dev-mode'
 import { usePref } from './pref'
 import { HEAD, MARK, TOUCH_HEAD } from './ground'
@@ -537,7 +538,7 @@ export function Mark({
       onClick={handleClick}
       width={MARK}
       height={MARK}
-      rounded={12}
+      rounded={10}
       items="center"
       justify="center"
       shrink={0}
@@ -593,6 +594,7 @@ export function Rail({
   go,
   onOrg,
   pins,
+  footer,
 }: {
   host: Host
   /** The pinned apps, held by the surface. */
@@ -619,6 +621,8 @@ export function Rail({
   go: (address: string) => void
   /** Work in another organization. */
   onOrg: (org: string) => void
+  /** Optional status slot stacked directly above Usage `(!)` and Account (e.g. desktop Download/Update button). */
+  footer?: ReactNode
 }) {
   const { t, dir } = useI18n()
   const [betas, setBetas] = useState(false)
@@ -764,7 +768,7 @@ export function Rail({
                   data-slot="rail-more"
                   width={MARK}
                   height={MARK}
-                  rounded={12}
+                  rounded={10}
                   items="center"
                   justify="center"
                   shrink={0}
@@ -785,7 +789,8 @@ export function Rail({
         </YStack>
 
         {anon ? (
-          <YStack gap={4} items="center" pb="$2">
+          <YStack data-slot="rail-footer" gap={8} items="center" pt="$1" pb={10}>
+            {footer}
             <Mark
               label={t('See plans and pricing')}
               data-slot="anon-pricing"
@@ -820,7 +825,9 @@ export function Rail({
             </Mark>
           </YStack>
         ) : (
-          <YStack width="100%" items="center" pt="$1" pb="$2">
+          <YStack data-slot="rail-footer" width="100%" items="center" gap={8} pt="$1" pb={10} shrink={0}>
+            {footer}
+            <RailUsageButton />
             <Account host={host} narrow onOrg={onOrg} />
           </YStack>
         )}
