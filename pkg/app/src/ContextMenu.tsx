@@ -35,6 +35,7 @@ import {
   Trash2,
   Volume2,
   WandSparkles,
+  Workflow,
 } from 'lucide-react'
 import type { Host } from '@hanzo/build'
 import { app, design, flow, settings, talk, TERMINALS, type Place } from './lib/host'
@@ -100,7 +101,7 @@ const fullUrl = (path: string): string => {
 const placePath = (id: string, mode: Place['mode']): string | null => {
   switch (id) {
     case 'new':
-      return mode === 'dev' ? app('') : mode === 'design' ? design('') : talk()
+      return mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'flow' ? flow('new') : talk()
     case 'projects':
       return app('-/projects')
     case 'issues':
@@ -676,6 +677,12 @@ export function AppContextMenu({
             label: 'Design',
             icon: <WandSparkles size={15} aria-hidden />,
             run: () => go(design('')),
+          },
+          {
+            key: 'stage-flow',
+            label: 'Flow',
+            icon: <Workflow size={15} aria-hidden />,
+            run: () => go(flow('')),
           },
           {
             key: 'stage-tabs',

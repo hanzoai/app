@@ -9,6 +9,7 @@ import {
   Plus,
   SlidersHorizontal,
   SquarePen,
+  Workflow,
   type LucideIcon,
   type LucideProps,
 } from 'lucide-react'
@@ -27,6 +28,7 @@ export const MARKS = {
   chat: pair(MessageSquare, SquarePen),
   dev: pair(Code2, SquarePen),
   design: pair(Palette, Palette),
+  flow: pair(Workflow, Plus),
   library: pair(Library, Plus),
   tabs: pair(AppWindow, Plus),
   studio: pair(Clapperboard, Clapperboard),

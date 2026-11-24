@@ -39,7 +39,7 @@ const { part, menu, menuItem, menuLabel, menuBack, menuSeparator, through, devSt
 const { MARKS } = vi.hoisted(() => {
   const mark = () => () => null
   const one = { icon: mark(), make: mark() }
-  return { MARKS: { chat: one, dev: one, design: one, tabs: one, library: one, scheduled: one, customize: one } }
+  return { MARKS: { chat: one, dev: one, design: one, flow: one, tabs: one, library: one, scheduled: one, customize: one } }
 })
 vi.mock('@hanzo/gui', () => ({ Text: part, XStack: part, YStack: part }))
 vi.mock('@hanzo/ui', () => ({
@@ -123,7 +123,7 @@ const host = hostAt()
 const noop = () => {}
 /** Nothing pinned: the menu as it stands for someone who never pinned. */
 const pins: Pins = [[], noop, noop, noop]
-const FIVE = ['chat', 'dev', 'design', 'library', 'tabs']
+const SIX = ['chat', 'dev', 'design', 'flow', 'library', 'tabs']
 
 const column = (mode: Place['mode'], path = '', held: Pins = pins) => renderToStaticMarkup(createElement(Sidebar, { pins: held, host: hostAt(path), mode, thread: null, go: noop, onShut: noop, onBack: noop }))
 const drawerColumn = (mode: Place['mode'], path = '', held: Pins = pins) =>
@@ -158,9 +158,9 @@ beforeEach(() => {
 })
 
 describe('the folded rail', () => {
-  test('Pinned items (Chat, Dev, Design, Library, Tabs), then More, and the account at the foot; Dev places stay in Dev sidebar', () => {
+  test('Pinned items (Chat, Dev, Design, Flow, Library, Tabs), then More, and the account at the foot; Dev places stay in Dev sidebar', () => {
     const html = rail('chat')
-    const order = ['Chat', 'Dev', 'Design', 'Library', 'Tabs', 'More'].map((n) => at(html, `aria-label="${n}"`))
+    const order = ['Chat', 'Dev', 'Design', 'Flow', 'Library', 'Tabs', 'More'].map((n) => at(html, `aria-label="${n}"`))
     expect(order).toEqual([...order].sort((a, b) => a - b))
     expect(at(html, 'data-slot="me"')).toBeGreaterThan(order.at(-1)!)
     for (const place of ['Templates', 'Projects', 'Issues', 'Machines', 'Environments']) {
@@ -168,7 +168,7 @@ describe('the folded rail', () => {
     }
   })
 
-  test('in anonymous mode (person === null), hides Design, Tabs, Scheduled tasks, Customize, and Betas on the rail', () => {
+  test('in anonymous mode (person === null), hides Design, Flow, Tabs, Scheduled tasks, Customize, and Betas on the rail', () => {
     const anonHost = { ...host, person: null } as unknown as Parameters<typeof Sidebar>[0]['host']
     const html = renderToStaticMarkup(
       createElement(Rail, { pins, host: anonHost, mode: 'chat', at: null, open: false, onChat: noop, onDev: noop, onDesign: noop, onTabs: noop, go: noop, onOrg: noop }),
@@ -176,7 +176,7 @@ describe('the folded rail', () => {
     for (const kept of ['Chat', 'Dev', 'Library']) {
       expect(html).toContain(`aria-label="${kept}"`)
     }
-    for (const hidden of ['Design', 'Studio', 'Tabs', 'Terminals', 'Scheduled tasks', 'Automations', 'Customize', 'Extensions', 'Betas', 'More', 'Build']) {
+    for (const hidden of ['Design', 'Flow', 'Studio', 'Tabs', 'Terminals', 'Scheduled tasks', 'Automations', 'Customize', 'Extensions', 'Betas', 'More', 'Build']) {
       expect(html).not.toContain(`aria-label="${hidden}"`)
     }
   })
@@ -298,8 +298,8 @@ describe('the contextual desktop sidebar (beside the stationary icon rail)', () 
       return [...html.matchAll(/data-item="move-(up|down)"/g)].map((m) => m[1])
     }
     const two: Pins = [['chat', 'dev'], noop, noop, noop]
-    // Five pinned apps: four can go up, four can go down, one of each end is missing.
-    expect(moves([FIVE, noop, noop, noop])).toEqual(['down', 'up', 'down', 'up', 'down', 'up', 'down', 'up'])
+    // Six pinned apps: five can go up, five can go down, one of each end is missing.
+    expect(moves([SIX, noop, noop, noop])).toEqual(['down', 'up', 'down', 'up', 'down', 'up', 'down', 'up', 'down', 'up'])
     expect(moves(two)).toEqual(['down', 'up'])
     // An app that is not pinned keeps its default place, so it has no moves.
     expect(moves(pins)).toEqual([])
@@ -307,9 +307,9 @@ describe('the contextual desktop sidebar (beside the stationary icon rail)', () 
 
   test('mobile drawer pinned apps stand first, under Pinned, and an unpinned one is back in its default place', () => {
     const order = (html: string) => [...html.matchAll(/data-slot="rail-([a-z-]+)"[^>]*aria-label=/g)].map((m) => m[1])
-    expect(order(drawerColumn('chat'))).toEqual(FIVE)
+    expect(order(drawerColumn('chat'))).toEqual(SIX)
     const pinned = drawerColumn('chat', '', [['scheduled', 'design'], noop, noop, noop])
-    expect(order(pinned)).toEqual(['scheduled', 'design', 'chat', 'dev', 'library', 'tabs'])
+    expect(order(pinned)).toEqual(['scheduled', 'design', 'chat', 'dev', 'flow', 'library', 'tabs'])
     expect(at(pinned, 'data-slot="nav-pins-head"')).toBeLessThan(at(pinned, 'data-slot="rail-scheduled"'))
     expect(at(pinned, 'data-slot="rail-design"')).toBeLessThan(at(pinned, 'data-slot="rail-chat"'))
     expect(pinned).toContain('aria-label="Unpin Design"')
@@ -349,27 +349,29 @@ describe('the contextual desktop sidebar (beside the stationary icon rail)', () 
     expect(drawerColumn('dev', '-/customize')).not.toContain('data-slot="place-more"')
   })
 
-  test('an app that lives in More draws its own row and sub-links in the drawer while the reader is in it (Flow), and its own places on desktop', () => {
-    devState.opened = new Set(['finance', 'flow'])
-    const places = [{ id: 'flow', label: '', links: [{ id: 'new', label: 'New flow', icon: null }, { id: 'gallery', label: 'Gallery', icon: null }] }]
-    const html = renderToStaticMarkup(createElement(Sidebar, { pins, host: hostAt(''), mode: 'flow', thread: null, go: noop, onShut: noop, onBack: noop, drawer: true, places }))
+  test('Flow draws its own row and contextual sub-links in the drawer and desktop sidebar, while More apps like Science draw when active', () => {
+    const flowPlaces = [{ id: 'flow', label: '', links: [{ id: 'new', label: 'New flow', icon: null }, { id: 'templates', label: 'Templates', icon: null }] }]
+    const html = renderToStaticMarkup(createElement(Sidebar, { pins, host: hostAt(''), mode: 'flow', thread: null, go: noop, onShut: noop, onBack: noop, drawer: true, places: flowPlaces }))
     expect(at(html, 'data-slot="rail-pinned"')).toBeLessThan(at(html, 'data-slot="rail-flow"'))
     expect(at(html, 'data-slot="rail-flow"')).toBeLessThan(at(html, 'data-slot="nav-sublinks"'))
-    expect(at(html, 'data-slot="nav-sublinks"')).toBeLessThan(at(html, 'Gallery'))
-    expect(at(html, 'Gallery')).toBeLessThan(at(html, 'data-slot="place-more"'))
-    // Not lit twice: the More row stays plain, the menu still lists Flow.
-    expect(html).not.toMatch(/data-slot="place-more"[^>]*aria-current/)
-    expect(html).toContain('data-item="flow"')
-    const desktopFlow = renderToStaticMarkup(createElement(Sidebar, { pins, host: hostAt(''), mode: 'flow', thread: null, go: noop, onShut: noop, onBack: noop, places }))
+    expect(at(html, 'data-slot="nav-sublinks"')).toBeLessThan(at(html, 'Templates'))
+    expect(at(html, 'Templates')).toBeLessThan(at(html, 'data-slot="place-more"'))
+    const desktopFlow = renderToStaticMarkup(createElement(Sidebar, { pins, host: hostAt(''), mode: 'flow', thread: null, go: noop, onShut: noop, onBack: noop, places: flowPlaces }))
     expect(at(desktopFlow, '>Flow<')).toBeLessThan(at(desktopFlow, 'New flow'))
-    expect(at(desktopFlow, 'New flow')).toBeLessThan(at(desktopFlow, 'Gallery'))
-    devState.opened = new Set(['finance'])
-    expect(drawerColumn('chat')).not.toContain('data-slot="rail-flow"')
+    expect(at(desktopFlow, 'New flow')).toBeLessThan(at(desktopFlow, 'Templates'))
+    expect(drawerColumn('chat')).toContain('data-slot="rail-flow"')
+
+    const sciencePlaces = [{ id: 'science', label: '', links: [{ id: 'new', label: 'New hypothesis', icon: null }, { id: 'studies', label: 'Studies', icon: null }] }]
+    const sciDrawer = renderToStaticMarkup(createElement(Sidebar, { pins, host: hostAt(''), mode: 'research', thread: null, go: noop, onShut: noop, onBack: noop, drawer: true, places: sciencePlaces }))
+    expect(at(sciDrawer, 'data-slot="rail-science"')).toBeLessThan(at(sciDrawer, 'data-slot="nav-sublinks"'))
+    expect(at(sciDrawer, 'Studies')).toBeLessThan(at(sciDrawer, 'data-slot="place-more"'))
+    expect(sciDrawer).not.toMatch(/data-slot="place-more"[^>]*aria-current/)
+    expect(sciDrawer).toContain('data-item="science"')
   })
 
-  test('the phone’s drawer lists the five apps and the grouped More, with Recents below', () => {
+  test('the phone’s drawer lists the six apps and the grouped More, with Recents below', () => {
     const html = renderToStaticMarkup(createElement(Sidebar, { pins, host: hostAt(''), mode: 'chat', thread: null, go: noop, onShut: noop, onBack: noop, drawer: true }))
-    const places = ['Chat', 'Dev', 'Design', 'Library', 'Tabs'].map((n) => at(html, `aria-label="${n}"`))
+    const places = ['Chat', 'Dev', 'Design', 'Flow', 'Library', 'Tabs'].map((n) => at(html, `aria-label="${n}"`))
     expect(places).toEqual([...places].sort((a, b) => a - b))
     expect(at(html, 'aria-label="Tabs"')).toBeLessThan(at(html, 'aria-label="More"'))
     expect(at(html, 'data-item="scheduled"')).toBeGreaterThan(at(html, 'aria-label="More"'))

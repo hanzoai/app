@@ -1,7 +1,7 @@
 const { MARKS } = vi.hoisted(() => {
   const mark = () => () => null
   const one = { icon: mark(), make: mark() }
-  return { MARKS: { chat: one, dev: one, design: one, tabs: one, library: one, scheduled: one, customize: one } }
+  return { MARKS: { chat: one, dev: one, design: one, flow: one, tabs: one, library: one, scheduled: one, customize: one } }
 })
 vi.mock('./Usage', () => ({ UsageProvider: ({ children }: { children: unknown }) => children }))
 import { createElement, Fragment, type ReactNode } from 'react'
@@ -101,13 +101,25 @@ vi.mock('./lib/host', () => ({
   talk: () => '/chat',
   visit: () => {},
   place: (p: string) =>
-    p === '/beta' ? { mode: 'beta' } : p === '/tabs' ? { mode: 'tabs' } : p === '/chat' ? { mode: 'chat', thread: null } : p === '/apps/crm' ? { mode: 'hosted', id: 'crm' } : null,
+    p === '/beta'
+      ? { mode: 'beta' }
+      : p === '/tabs'
+        ? { mode: 'tabs' }
+        : p === '/chat'
+          ? { mode: 'chat', thread: null }
+          : p === '/flow' || p.startsWith('/flow/')
+            ? { mode: 'flow', at: p.slice('/flow/'.length) }
+            : p === '/apps/crm'
+              ? { mode: 'hosted', id: 'crm' }
+              : null,
 }))
 vi.mock('./Bar', () => ({ Bar: stub('app-bar') }))
 vi.mock('./view', () => ({ FOOT: 0, HEIGHT: '100dvh', TOP: 0, useView: () => () => {} }))
 vi.mock('./WindowControls', () => ({ dragWindow: () => {}, toggleWindowMaximize: () => {}, WindowControls: () => null }))
 vi.mock('./Betas', () => ({ Ask: () => null, BetasPane: stub('betas-pane'), useBetas: () => ({ open: () => true }) }))
 vi.mock('./Hosted', () => ({ HostedPane: ({ id }: { id: string }) => createElement('div', { 'data-slot': 'hosted-pane', 'data-id': id }) }))
+vi.mock('./flow/FlowPane', () => ({ default: stub('flow-pane'), FlowPane: stub('flow-pane') }))
+vi.mock('./flow/nav', () => ({ flowNav: () => [{ id: 'flow', label: '', links: [] }] }))
 
 import { App } from './App'
 
@@ -197,6 +209,16 @@ describe('Betas and hosted apps keep the sidebar column', () => {
     const html = draw('/settings/organization/billing')
     expect(html).toContain('data-slot="settings-list" data-active="billing"')
     expect(html).toContain('data-slot="settings-pane" data-id="billing"')
+  })
+
+  test('Flow (/flow) renders FlowPane directly without beta gating and passes flowNav places to the sidebar', async () => {
+    draw('/flow')
+    await new Promise((r) => setTimeout(r, 0))
+    const html = draw('/flow')
+    expect(html).toContain('data-slot="rail"')
+    expect(html).toContain('data-slot="flow-pane"')
+    expect(html).toContain('data-slot="app-column" data-places="1"')
+    expect(html).not.toContain('data-slot="hosted-request"')
   })
 })
 

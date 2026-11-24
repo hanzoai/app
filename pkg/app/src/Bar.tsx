@@ -122,7 +122,10 @@ export function Bar({
       : mode === 'tabs'
         ? { label: t('New terminal'), onPress: () => dispatchTabsAction({ kind: 'shell' }) }
         : { label: made?.label ?? t('New'), onPress: made?.onPress }
-  const Make = mode === 'chat' || mode === 'dev' || mode === 'tabs' ? MARKS[mode].make : MARKS.chat.make
+  const Make =
+    mode === 'chat' || mode === 'dev' || mode === 'tabs' || mode === 'flow'
+      ? MARKS[mode].make
+      : MARKS.chat.make
   return (
     // The gap above the bar is the gap the pane keeps all round, under the device's inset; the bar's row is the
     // head band (BAND), the drawer's title row on the same line.

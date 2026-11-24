@@ -128,7 +128,7 @@ const SUB_HEAD = HEAD
 
 function resolvePlaceHref(id: string, mode: Place['mode']): string | null {
   if (mode === 'flow') {
-    return id === 'canvas' ? flow('') : flow(id)
+    return id === 'canvas' || id === 'flows' ? flow('') : flow(id)
   }
   if (mode === 'research') {
     if (id === NEW) return science('autonomy')
@@ -858,6 +858,7 @@ export function Sidebar({
   onChat,
   onDev,
   onDesign,
+  onFlow,
   onTabs,
   onOrg,
   inside = null,
@@ -885,6 +886,7 @@ export function Sidebar({
   onChat?: () => void
   onDev?: () => void
   onDesign?: () => void
+  onFlow?: () => void
   onTabs?: () => void
   onOrg?: (org: string) => void
   inside?: string | null
@@ -1010,7 +1012,7 @@ export function Sidebar({
     else if (mode === 'tabs') dispatchTabsAction({ kind: 'shell' })
     else if (mode === 'dev') dev('')
     else if (mode === 'design') made ? made.go('') : go(design(''))
-    else if (mode === 'flow') made ? made.go('') : go(flow(''))
+    else if (mode === 'flow') go(flow('new'))
     else if (mode === 'research') go(science('autonomy'))
     else create()
   }
@@ -1023,6 +1025,7 @@ export function Sidebar({
     onChat: onChat ?? (() => go(talk())),
     onDev: onDev ?? (() => go(app(''))),
     onDesign: onDesign ?? (() => go(design(''))),
+    onFlow: onFlow ?? (() => go(flow(''))),
     onTabs: onTabs ?? (() => go(TERMINALS)),
     go,
     pins,

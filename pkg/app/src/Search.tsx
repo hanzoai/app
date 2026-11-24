@@ -201,6 +201,7 @@ export function places(host: Host | undefined, go: (address: string) => void, t:
     ...(!anon
       ? [
           { id: 'design', label: 'Design', icon: <MARKS.design.icon {...ICON} />, run: () => go(design('')) },
+          { id: 'flow', label: 'Flow', icon: <MARKS.flow.icon {...ICON} />, keywords: ['flow', 'workflow', 'automation', 'schedule', 'pipeline', 'enso', 'agents'], run: () => go(flow('')) },
           { id: 'tabs', label: 'Tabs', icon: <MARKS.tabs.icon {...ICON} />, run: () => go(TERMINALS) },
           { id: 'science', label: t('Science'), icon: <Atom {...ICON} />, keywords: ['research', 'studies', 'autonomy', 'experiments', 'benchmarks'], run: () => go(science()) },
           ...(host ? [{ id: 'team', label: 'Team', icon: <Users {...ICON} />, keywords: ['workspace'], run: () => out(WORKSPACE) }] : []),
@@ -227,6 +228,9 @@ export function places(host: Host | undefined, go: (address: string) => void, t:
           ...rows(tabs(host, builder, t), t('Customize'), 'customize'),
           ...rows(library(host, builder, t).slice(1), t('Library'), 'library'),
           ...rows(made(host, (p) => go(design(p))), 'Design', 'design').filter((a) => a.id !== `design-${NEW}`),
+          { id: 'flow-scheduled', label: t('Scheduled flows'), where: 'Flow', icon: <CalendarClock {...ICON} />, keywords: ['flow', 'schedule', 'cron', 'automation'], run: () => go(flow('scheduled')) },
+          { id: 'flow-runs', label: t('Flow run history'), where: 'Flow', icon: <Workflow {...ICON} />, keywords: ['flow', 'runs', 'history', 'logs'], run: () => go(flow('runs')) },
+          { id: 'flow-templates', label: t('Flow templates'), where: 'Flow', icon: <Blocks {...ICON} />, keywords: ['flow', 'templates', 'agent', 'webhook', 'crm'], run: () => go(flow('templates')) },
           { id: 'science-studies', label: t('Studies'), where: t('Science'), icon: <BookOpen {...ICON} />, keywords: ['science', 'studies', 'benchmarks', 'runs', 'experiments', 'compare'], run: () => go(science('studies')) },
           { id: 'science-autonomy', label: t('Autonomy'), where: t('Science'), icon: <Sparkles {...ICON} />, keywords: ['science', 'autonomy', 'hypothesis', 'opportunities', 'preregister'], run: () => go(science('autonomy')) },
           { id: 'science-machines', label: t('Research machines'), where: t('Science'), icon: <Server {...ICON} />, keywords: ['science', 'machines', 'gpu', 'dgx', 'evo', 'hanzod', 'fleet'], run: () => go(science('machines')) },
