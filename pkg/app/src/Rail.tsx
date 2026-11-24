@@ -3,7 +3,7 @@
 // Persistent left navigation rail (52px icons-only, anchored in place while the
 // contextual sidebar beside it opens and closes):
 // - Shared `useNavEntries()` model keeps Hanzo's exact product names & order
-//   (`Chat`, `Dev`, `Design`, `Library`, `Scheduled tasks`,
+//   (`Chat`, `Dev`, `Design`, `Flow`, `Library`, `Scheduled tasks`,
 //   `Customize`, `Tabs`, `Betas`, and every hosted app or beta the reader may open;
 //   Developer mode hides none of them) across both the desktop Rail and mobile drawer.
 // - Strictly monochrome active chrome (`bg="$raised"`, `color="$ink"`).
@@ -160,7 +160,7 @@ export const NAV_PINNED_KEY = 'hanzo.nav.pinned'
 export const NAV_PINS_KEY = 'hanzo.nav.pins'
 
 /** The menu as it stands when nothing is pinned, in its order: each app's default place. */
-export const DEFAULT_NAV: readonly string[] = ['chat', 'dev', 'design', 'library', 'tabs']
+export const DEFAULT_NAV: readonly string[] = ['chat', 'dev', 'design', 'flow', 'library', 'tabs']
 /** The old name of `DEFAULT_NAV`, for importers that still read it. */
 export const DEFAULT_PINNED_NAV = DEFAULT_NAV
 
@@ -268,6 +268,7 @@ export function useNavEntries({
   onChat,
   onDev,
   onDesign,
+  onFlow,
   onTabs,
   go,
   pins,
@@ -280,6 +281,7 @@ export function useNavEntries({
   onChat: () => void
   onDev: () => void
   onDesign?: () => void
+  onFlow?: () => void
   onTabs: () => void
   go: (address: string) => void
 }) {
@@ -329,9 +331,18 @@ export function useNavEntries({
             slot: 'rail-design',
             label: 'Design',
             href: design(''),
-                  on: mode === 'design',
+            on: mode === 'design',
             icon: <MARKS.design.icon aria-hidden />,
             onPress: () => onDesign?.(),
+          } satisfies NavEntry,
+          {
+            id: 'flow',
+            slot: 'rail-flow',
+            label: 'Flow',
+            href: flow(''),
+            on: mode === 'flow',
+            icon: <MARKS.flow.icon aria-hidden />,
+            onPress: () => (onFlow ? onFlow() : go(flow(''))),
           } satisfies NavEntry,
         ]),
     {
@@ -364,19 +375,6 @@ export function useNavEntries({
             icon: <MARKS.customize.icon aria-hidden />,
             onPress: to(RAISED.customize),
           } satisfies NavEntry,
-          ...(opened('flow') || mode === 'flow'
-            ? [
-                {
-                  id: 'flow',
-                  slot: 'rail-flow',
-                  label: 'Flow',
-                  href: flow(''),
-                  on: mode === 'flow',
-                  icon: <Workflow size={17} aria-hidden />,
-                  onPress: () => go(flow('')),
-                } satisfies NavEntry,
-              ]
-            : []),
           {
             id: 'tabs',
             slot: 'rail-tabs',
@@ -590,6 +588,7 @@ export function Rail({
   onChat,
   onDev,
   onDesign,
+  onFlow,
   onTabs,
   go,
   onOrg,
@@ -612,10 +611,11 @@ export function Rail({
   compact?: boolean
   /** The hosted app (lib/hosted) the reader is in, if any. */
   inside?: string | null
-  /** To Chat, Dev and Design, each where the reader left it. */
+  /** To Chat, Dev, Design and Flow, each where the reader left it. */
   onChat: () => void
   onDev: () => void
   onDesign?: () => void
+  onFlow?: () => void
   onTabs: () => void
   /** Moves the app to an address of this page. */
   go: (address: string) => void
@@ -636,6 +636,7 @@ export function Rail({
     onChat,
     onDev,
     onDesign,
+    onFlow,
     onTabs,
     go,
     pins,

@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 import { SECTIONS } from '@hanzo/build/route'
-import { app, BETA, CHAT, DEV, design, dev, follow, page, paged, place, resume, SETTINGS, settings, talk, visit } from './host'
+import { app, BETA, CHAT, DEV, design, dev, flow, follow, page, paged, place, resume, SETTINGS, settings, talk, visit } from './host'
 import { configure } from '../where'
 
 const RUN = `sess_${'0123456789abcdef'.repeat(2)}`
@@ -174,6 +174,19 @@ describe('Design is the third root', () => {
   test("Design's own Library is gone: its old address opens the app's one Library", () => {
     expect(place('/design/library')).toEqual(place('/library'))
     expect(place('/studio/library')).toEqual(place('/library'))
+  })
+
+  test('Flow (/flow) and its subroutes resolve cleanly and write back', () => {
+    expect(place('/flow')).toEqual({ mode: 'flow', at: '' })
+    expect(place('/flow/')).toEqual({ mode: 'flow', at: '' })
+    expect(place('/flow/scheduled')).toEqual({ mode: 'flow', at: 'scheduled' })
+    expect(place('/flow/runs')).toEqual({ mode: 'flow', at: 'runs' })
+    expect(place('/flow/templates')).toEqual({ mode: 'flow', at: 'templates' })
+    expect(page('/flow')).toBe('/flow')
+    expect(page('/flow/scheduled')).toBe('/flow')
+    expect(flow('')).toBe('/flow')
+    expect(flow('scheduled')).toBe('/flow/scheduled')
+    expect(flow('/runs')).toBe('/flow/runs')
   })
 })
 

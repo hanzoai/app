@@ -21,10 +21,9 @@ describe('the apps in beta', () => {
     expect(zen?.href).toBeUndefined()
   })
 
-  it('keeps Flow behind its switch, and has no Studio beta: Studio is Design, which every reader has', () => {
+  it('has neither Studio nor Flow in BETAS: Design and Flow are primary apps open to every signed-in reader', () => {
     expect(BETAS.some((b) => b.id === 'studio')).toBe(false)
-    expect(opens('flow', {}, false)).toBe(false)
-    expect(opens('flow', { 'beta.flow': true }, false)).toBe(true)
+    expect(BETAS.some((b) => b.id === 'flow')).toBe(false)
   })
 
   it('holds Google Workspace as a private beta in Data, with no href', () => {

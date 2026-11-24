@@ -62,12 +62,11 @@
 
 import { useI18n } from '@hanzo/i18n/react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, RefreshCw, Sparkles, Workflow } from 'lucide-react'
+import { ChevronLeft, ChevronRight, RefreshCw, Sparkles } from 'lucide-react'
 import { AiProvider } from '@hanzo/ai/react'
 import { XStack, YStack } from '@hanzo/gui'
-import { Button, Text } from '@hanzo/ui'
+import { Text } from '@hanzo/ui'
 import { HostProvider, PrefsProvider, route, tabs, type Host } from '@hanzo/build'
-import * as studioPkg from '@hanzo/studio'
 import { nav as places } from '@hanzo/studio'
 import { useAi } from './lib/ai'
 import { UsageProvider } from './Usage'
@@ -94,10 +93,10 @@ import { readSettingsReturn, rememberSettingsReturn } from './lib/dev-mode'
 import { Upgrade, useFree } from './Upgrade'
 import { payUrl } from './lib/pay'
 import { FIRST, isSettingsPath, settingsPathFor, settingsRowOf, SettingsList, type Row as SettingsRow } from './Settings'
-import { Ask, useBetas } from './Betas'
-import { BETAS } from './lib/betas'
 import { useMaking } from './Confirm'
 import { app, CHAT, design, flow, go, hosted, place, SCIENCE, science, settings, talk, TERMINALS, visit, type Place } from './lib/host'
+import { flowNav } from './flow/nav'
+import { parseFlowRoute } from './flow/types'
 import { scienceNav } from './science/nav'
 import { parseScienceTab } from './science/types'
 import { Bar } from './Bar'
@@ -107,15 +106,10 @@ import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowContro
 import { AppContextMenu } from './ContextMenu'
 import { Windowed } from './windowed'
 
-const flowNav = (Reflect.get(studioPkg, 'flowNav') as typeof places | undefined) ?? places
-
 /** Design (@hanzo/studio's `Studio`), fetched the first time the reader stands in it. */
 const Studio = lazy(() => import('@hanzo/studio').then((m) => ({ default: m.Studio })))
-const FlowStudio = lazy(() =>
-  import('@hanzo/studio').then((m) => ({
-    default: (m as unknown as { FlowStudio?: React.ComponentType<{ host: Host }> }).FlowStudio ?? m.Studio,
-  })),
-)
+/** Flow: native Hanzo Flow visual agentic workflow builder & scheduler (`/flow`). */
+const FlowPane = lazy(() => import('./flow/FlowPane'))
 /** Tabs, the same way: the terminals on the reader's machines (Terminals.tsx). */
 const Terminals = lazy(() => import('./Terminals'))
 /** Science: native Hanzo Science research, studies, autonomy, machines, and schedules (`/science`). */
@@ -230,8 +224,6 @@ function Window({ bar, betas }: Hosted) {
   const settingsRow = inSettings ? settingsRowOf(here) : FIRST
   const at = place(here) ?? HOME
   const mode = at.mode
-  const { open: betaOpen } = useBetas()
-  const blockedBeta = mode === 'flow' && !betaOpen(mode)
   // Every mode carries its sidebar beside the rail (or its title when it has no places of its own).
   const alone = false
   // The hosted app the address names (lib/hosted), for the rail to light.
@@ -352,7 +344,7 @@ function Window({ bar, betas }: Hosted) {
   }, [wanted, move, host])
 
   // The app's keys: the one keymap's, handled once (keys.ts). A section is the nth of the rail.
-  const sections = [() => toChat(), () => toDev(), () => toDesign(), () => toTabs()]
+  const sections = [() => toChat(), () => toDev(), () => toDesign(), () => toFlow(), () => toTabs()]
   useGlobalKeys({
     desktop: Boolean(bar),
     find: () => setFinding((open) => !open),
@@ -399,6 +391,7 @@ function Window({ bar, betas }: Hosted) {
   const toChat = () => move(last.chat || talk())
   const toDev = () => move(mode === 'dev' && !inPlace ? app('') : last.dev || app(''))
   const toDesign = () => move(last.design || design(''))
+  const toFlow = () => move(last.flow || flow(''))
   const toTabs = () => move(TERMINALS)
   // Another organization: picked, and the app opened in it at the mode's New.
   const org = (o: string) => {
@@ -413,7 +406,7 @@ function Window({ bar, betas }: Hosted) {
         : mode === 'design'
           ? places(maker, (p) => maker.go(p))
           : mode === 'flow'
-            ? flowNav(maker, (p) => maker.go(p))
+            ? flowNav(parseFlowRoute(here).view, move, t)
             : mode === 'dev' && raised(where) === 'customize'
               ? tabs(host, (p) => host.go(p), t).map((group) => ({ ...group, links: [...group.links, {
                 id: 'learning', label: t('Learning'), active: learning, icon: <RefreshCw size={16} aria-hidden />,
@@ -551,6 +544,7 @@ function Window({ bar, betas }: Hosted) {
                 onChat={toChat}
                 onDev={toDev}
                 onDesign={toDesign}
+                onFlow={toFlow}
                 onTabs={toTabs}
                 go={move}
                 onOrg={org}
@@ -634,6 +628,7 @@ function Window({ bar, betas }: Hosted) {
                     onChat={toChat}
                     onDev={toDev}
                     onDesign={toDesign}
+                    onFlow={toFlow}
                     onTabs={toTabs}
                     onOrg={org}
                     places={sidebar}
@@ -718,34 +713,11 @@ function Window({ bar, betas }: Hosted) {
                   </YStack>
                 ) : mode === 'flow' ? (
                   <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
-                    {blockedBeta ? (
-                      <YStack data-slot="hosted-request" flex={1} minH={0} items="center" justify="center" p="$6">
-                        <YStack width="100%" maxW={440} gap="$4">
-                          <XStack items="center" gap="$3">
-                            <XStack width={44} height={44} rounded="$4" bg="$hover" items="center" justify="center" shrink={0}>
-                              <Workflow size={22} aria-hidden />
-                            </XStack>
-                            <YStack gap={2} minW={0}>
-                              <XStack items="center" gap="$2">
-                                <Text fontSize="$6" fontWeight="600" color="$ink">Flow</Text>
-                                <Text fontSize="$1" color="$quiet" px="$2" py={2} rounded="$2" bg="$hover">{t('Beta')}</Text>
-                              </XStack>
-                              <Text fontSize="$3" color="$quiet">{BETAS.find((b) => b.id === 'flow')?.line ?? 'Visual workflows and multi-agent pipelines.'}</Text>
-                            </YStack>
-                          </XStack>
-                          <XStack items="center" gap="$2" pt="$1">
-                            <Ask beta={BETAS.find((b) => b.id === 'flow')!} go={move} />
-                            <Button variant="ghost" size="sm" onPress={() => move('/beta')}>{t('All betas')}</Button>
-                          </XStack>
-                        </YStack>
-                      </YStack>
-                    ) : (
-                      <YStack flex={1} minH={0} height="100%">
-                        <Suspense fallback={null}>
-                          <FlowStudio host={maker} />
-                        </Suspense>
-                      </YStack>
-                    )}
+                    <YStack flex={1} minH={0} height="100%">
+                      <Suspense fallback={null}>
+                        <FlowPane host={host} path={here} onNavigate={move} />
+                      </Suspense>
+                    </YStack>
                   </YStack>
                 ) : at.mode === 'hosted' ? (
                   <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
@@ -815,6 +787,7 @@ function Window({ bar, betas }: Hosted) {
                       onChat={toChat}
                       onDev={toDev}
                       onDesign={toDesign}
+                      onFlow={toFlow}
                       onTabs={toTabs}
                       onOrg={org}
                       drawer

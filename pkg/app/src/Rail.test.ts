@@ -29,7 +29,7 @@ const through = ({ children }: { children?: ReactNode }) => createElement(Fragme
 const { MARKS } = vi.hoisted(() => {
   const mark = () => () => null
   const one = { icon: mark(), make: mark() }
-  return { MARKS: { chat: one, dev: one, design: one, tabs: one, library: one, scheduled: one, customize: one } }
+  return { MARKS: { chat: one, dev: one, design: one, flow: one, tabs: one, library: one, scheduled: one, customize: one } }
 })
 vi.mock('@hanzo/gui', () => ({ Text: draw, XStack: draw, YStack: draw }))
 vi.mock('@hanzo/build', () => ({ MARKS, route: () => ({ kind: 'home' }) }))
@@ -95,8 +95,8 @@ beforeEach(() => {
 })
 
 describe('persistent 52px icons-only rail with monochrome chrome', () => {
-  test('defaults primary apps to Chat, Dev, Design, Library, Tabs without captions or duplicate + button', () => {
-    expect(DEFAULT_PINNED_NAV).toEqual(['chat', 'dev', 'design', 'library', 'tabs'])
+  test('defaults primary apps to Chat, Dev, Design, Flow, Library, Tabs without captions or duplicate + button', () => {
+    expect(DEFAULT_PINNED_NAV).toEqual(['chat', 'dev', 'design', 'flow', 'library', 'tabs'])
     const html = draw5()
     expect(html).toContain('data-expanded="false"')
     expect(html).toContain('data-slot="sidebar-toggle"')
@@ -106,6 +106,7 @@ describe('persistent 52px icons-only rail with monochrome chrome', () => {
     expect(html).toContain('aria-label="Chat"')
     expect(html).toContain('aria-label="Dev"')
     expect(html).toContain('aria-label="Design"')
+    expect(html).toContain('aria-label="Flow"')
     expect(html).toContain('aria-label="Library"')
     expect(html).not.toContain('aria-label="Build"')
     expect(html).toContain('data-bg="$raised"')
@@ -118,11 +119,11 @@ describe('persistent 52px icons-only rail with monochrome chrome', () => {
     expect(openHtml).toContain('aria-label="Close sidebar"')
   })
 
-  test('keeps hosted apps, granted betas and Flow reachable in More without Developer mode (Developer mode hides nothing that was visible before)', async () => {
-        state.opened = new Set(['crm', 'commerce', 'finance', 'flow'])
+  test('keeps hosted apps and granted betas reachable in More without Developer mode (Developer mode hides nothing that was visible before)', async () => {
+    state.opened = new Set(['crm', 'commerce', 'finance'])
     const menuOf = () => [...draw5().matchAll(/data-item="((?!pin-)[^"]*)"/g)].map((m) => m[1]).join(',')
     const offMenu = menuOf()
-    expect(offMenu).toContain('scheduled,customize,flow,betas')
+    expect(offMenu).toContain('scheduled,customize,betas')
     expect(offMenu).toContain('app-crm,app-commerce')
     expect(offMenu).toContain('beta-finance')
     // Every place appears exactly once, under headings, and pinning is a button on the row, not a second row.
@@ -162,9 +163,9 @@ describe('persistent 52px icons-only rail with monochrome chrome', () => {
     const kept = ['chat', 'ghost', 'design']
     const seen = kept.filter((id) => id !== 'ghost')
     expect(shiftedPinnedNav(kept, 'design', -1, seen)).toEqual(['design', 'ghost', 'chat'])
-    // What an earlier version kept (the five apps, then the pins from More) carries over as just the pins from More.
-    expect(carriedPinnedNav(['chat', 'dev', 'design', 'library', 'tabs', 'app-crm', 'scheduled'])).toEqual(['app-crm', 'scheduled'])
-    expect(carriedPinnedNav(['dev', 'chat', 'design', 'library', 'tabs'])).toEqual([])
+    // What an earlier version kept (the default apps, then the pins from More) carries over as just the pins from More.
+    expect(carriedPinnedNav(['chat', 'dev', 'design', 'flow', 'library', 'tabs', 'app-crm', 'scheduled'])).toEqual(['app-crm', 'scheduled'])
+    expect(carriedPinnedNav(['dev', 'chat', 'design', 'flow', 'library', 'tabs'])).toEqual([])
     expect(carriedPinnedNav(null)).toEqual([])
     expect(carriedPinnedNav('chat')).toEqual([])
   })
@@ -172,20 +173,20 @@ describe('persistent 52px icons-only rail with monochrome chrome', () => {
   test('the rail stays strictly icon-only (no visible text captions under marks; full names live in aria-label and tooltip)', () => {
     const html = draw5()
     expect(html).not.toContain('data-slot="rail-caption"')
-    for (const label of ['Chat', 'Dev', 'Design', 'Library', 'Tabs', 'More']) {
+    for (const label of ['Chat', 'Dev', 'Design', 'Flow', 'Library', 'Tabs', 'More']) {
       expect(html).toContain(`aria-label="${label}"`)
     }
   })
 
   test('pins stand first on the folded rail, a line under them, and the default apps keep their order after (hanzo-inc/app issue 316)', () => {
     const order = (html: string) => [...html.matchAll(/data-nav-id="([^"]+)"/g)].map((m) => m[1])
-    expect(order(draw5())).toEqual(['chat', 'dev', 'design', 'library', 'tabs'])
+    expect(order(draw5())).toEqual(['chat', 'dev', 'design', 'flow', 'library', 'tabs'])
     expect(draw5()).not.toContain('data-slot="rail-pins-end"')
     const pinned = draw5({ pinned: ['scheduled', 'design'] })
-    expect(order(pinned)).toEqual(['scheduled', 'design', 'chat', 'dev', 'library', 'tabs'])
+    expect(order(pinned)).toEqual(['scheduled', 'design', 'chat', 'dev', 'flow', 'library', 'tabs'])
     expect(pinned).toContain('data-slot="rail-pins-end"')
-    // Unpinned, Scheduled tasks is back in More, and Design back between Dev and Library.
-    expect(order(draw5({ pinned: [] }))).toEqual(['chat', 'dev', 'design', 'library', 'tabs'])
+    // Unpinned, Scheduled tasks is back in More, and Design back between Dev and Flow.
+    expect(order(draw5({ pinned: [] }))).toEqual(['chat', 'dev', 'design', 'flow', 'library', 'tabs'])
   })
 })
 
