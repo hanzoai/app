@@ -63,7 +63,7 @@ import { ago, PINNED, UNTITLED_RUN, type Recent } from './recent'
 import { empty } from './open'
 import { useSpan } from './span'
 import { useDevMode } from './lib/dev-mode'
-import { app, design, flow, hosted, science, talk, TERMINALS, type Place } from './lib/host'
+import { app, cyber, CYBER_SUBROUTES, design, flow, hosted, science, talk, TERMINALS, type Place } from './lib/host'
 import { enter, LOGIN, signUp } from './lib/destination'
 import { HOSTED_APPS } from './lib/hosted'
 import { pick } from './lib/session'
@@ -135,6 +135,11 @@ function resolvePlaceHref(id: string, mode: Place['mode']): string | null {
     if (id === 'overview' || id === 'studies' || id === 'autonomy' || id === 'machines' || id === 'schedules') {
       return science(id)
     }
+    return null
+  }
+  if (mode === 'cyber') {
+    if (id === NEW) return cyber('overview')
+    if ((CYBER_SUBROUTES as readonly string[]).includes(id)) return cyber(id)
     return null
   }
   switch (id) {
@@ -1011,6 +1016,10 @@ export function Sidebar({
     else if (mode === 'design') made ? made.go('') : go(design(''))
     else if (mode === 'flow') go(flow('new'))
     else if (mode === 'research') go(science('autonomy'))
+    else if (mode === 'cyber') {
+      go(cyber('overview'))
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('hanzo:cyber-new-engagement'))
+    }
     else create()
   }
 
@@ -1049,7 +1058,9 @@ export function Sidebar({
                 ? t('Tabs')
                 : mode === 'research'
                   ? t('Science')
-                  : mode === 'beta'
+                  : mode === 'cyber'
+                    ? t('Cyber')
+                    : mode === 'beta'
                   ? t('Betas')
                   : mode === 'hosted'
                     ? (HOSTED_APPS.find((a) => a.id === inside)?.name ?? brand())
@@ -1063,7 +1074,7 @@ export function Sidebar({
       const links = own(host, dev, t).flatMap((g) => g.links).filter((l) => l.id !== NEW)
       return links.length ? [{ id: 'dev-places', label: '', links }] : []
     }
-    if ((mode === 'design' || mode === 'flow' || mode === 'research') && places) {
+    if ((mode === 'design' || mode === 'flow' || mode === 'research' || mode === 'cyber') && places) {
       return places
         .map((g) => ({ ...g, links: g.links.filter((l) => l.id !== NEW) }))
         .filter((g) => g.links.length > 0)
@@ -1094,6 +1105,10 @@ export function Sidebar({
     if (entryId === 'science' && mode === 'research' && places) {
       const links = places.flatMap((g) => g.links).filter((l) => l.id !== NEW)
       return links.length ? [{ id: 'science-sub', label: '', links }] : []
+    }
+    if (entryId === 'cyber' && mode === 'cyber' && places) {
+      const links = places.flatMap((g) => g.links).filter((l) => l.id !== NEW)
+      return links.length ? [{ id: 'cyber-sub', label: '', links }] : []
     }
     if (entryId === 'tabs' && mode === 'tabs') {
       return tabsGroups.filter((g) => g.links.length > 0)
@@ -1213,10 +1228,10 @@ export function Sidebar({
   // A guest's New is always a chat: Chat is the one place a guest's work goes.
   const primaryNewLabel = anon
     ? t('New chat')
-    : mode === 'dev' ? t('New run') : mode === 'design' ? t('New design') : mode === 'flow' ? t('New flow') : mode === 'tabs' ? t('New terminal') : mode === 'research' ? t('New hypothesis') : t('New chat')
+    : mode === 'dev' ? t('New run') : mode === 'design' ? t('New design') : mode === 'flow' ? t('New flow') : mode === 'tabs' ? t('New terminal') : mode === 'research' ? t('New hypothesis') : mode === 'cyber' ? t('New engagement') : t('New chat')
 
   const showPrimaryNew = !at && (drawer || (mode !== 'beta' && mode !== 'hosted'))
-  const showRecents = !(mode === 'dev' && runtime) && !(mode === 'hosted' || mode === 'beta' || mode === 'research' || mode === 'tabs' || mode === 'flow' || anon || at)
+  const showRecents = !(mode === 'dev' && runtime) && !(mode === 'hosted' || mode === 'beta' || mode === 'research' || mode === 'cyber' || mode === 'tabs' || mode === 'flow' || anon || at)
 
   return (
     <TooltipProvider delay={120}>

@@ -123,7 +123,7 @@ export function Bar({
         ? { label: t('New terminal'), onPress: () => dispatchTabsAction({ kind: 'shell' }) }
         : { label: made?.label ?? t('New'), onPress: made?.onPress }
   const Make =
-    mode === 'chat' || mode === 'dev' || mode === 'tabs' || mode === 'flow'
+    mode === 'chat' || mode === 'dev' || mode === 'tabs' || mode === 'flow' || mode === 'cyber'
       ? MARKS[mode].make
       : MARKS.chat.make
   return (

@@ -106,6 +106,7 @@ export const BETAS: readonly Beta[] = [
   { id: 'sentinel', name: 'Sentinel', line: phrase('Errors and slow requests, caught early'), group: 'Security', href: 'https://sentry.hanzo.ai' },
   { id: 'authz', name: 'Authz', line: phrase('Fine-grained authorization, Zanzibar style'), group: 'Security', href: `${PLATFORM}/authz` },
   { id: 'hsm', name: 'HSM', line: phrase('Hardware-backed keys across cloud KMSs'), group: 'Security', href: `${PLATFORM}/hsm` },
+  { id: 'cyber', name: 'Cyber', line: phrase('Autonomous cyber operations, verbatim proof verification, and Kai risk governance (Alpha)'), group: 'Security', href: '/cyber' },
 
   { id: 'koma', name: 'Koma', line: phrase('Cinematic video with character continuity and shot-level control'), group: 'Creative' },
   { id: 'iro', name: 'Iro', line: phrase('High-fidelity images, creative direction and consistent visual assets'), group: 'Creative' },

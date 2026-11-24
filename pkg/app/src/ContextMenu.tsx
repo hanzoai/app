@@ -140,6 +140,9 @@ const railPath = (slot: string): string | null => {
     case 'rail-flow':
     case 'place-flow':
       return flow('')
+    case 'rail-cyber':
+    case 'place-cyber':
+      return '/cyber'
     case 'rail-tabs':
     case 'place-tabs':
       return TERMINALS

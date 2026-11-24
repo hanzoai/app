@@ -90,6 +90,16 @@ export const TERMINALS = '/tabs'
 export const BETA = '/beta'
 export const RESEARCH = '/research'
 export const SCIENCE = '/science'
+export const CYBER = '/cyber'
+
+export const CYBER_SUBROUTES = ['overview', 'graph', 'findings', 'approvals', 'traffic', 'attack', 'coa', 'hardening'] as const
+export type CyberSubroute = (typeof CYBER_SUBROUTES)[number]
+
+/** Cyber at `/cyber` (`overview`) or `/cyber/<tab>`. */
+export const cyber = (at?: string): string => {
+  const clean = (at ?? '').replace(/^\/+|\/+$/g, '')
+  return !clean || clean === 'overview' ? CYBER : `${CYBER}/${clean}`
+}
 
 export const SCIENCE_SUBROUTES = ['overview', 'studies', 'autonomy', 'machines', 'schedules'] as const
 export type ScienceSubroute = (typeof SCIENCE_SUBROUTES)[number]
@@ -187,6 +197,7 @@ export type Place =
   | { mode: 'flow'; at: string }
   | { mode: 'tabs' }
   | { mode: 'research'; tab?: ScienceSubroute }
+  | { mode: 'cyber'; tab?: CyberSubroute }
   | { mode: 'beta' }
   | { mode: 'hosted'; id: string }
 
@@ -225,6 +236,14 @@ export function place(pathname: string): Place | null {
     }
     return { mode: 'research' }
   }
+  if (p === CYBER || p.startsWith(`${CYBER}/`)) {
+    const rest = p.startsWith(`${CYBER}/`) ? p.slice(CYBER.length + 1) : ''
+    const sub = rest.split('/')[0]?.toLowerCase() ?? ''
+    if ((CYBER_SUBROUTES as readonly string[]).includes(sub)) {
+      return sub === 'overview' ? { mode: 'cyber' } : { mode: 'cyber', tab: sub as CyberSubroute }
+    }
+    return { mode: 'cyber' }
+  }
   if (p === BETA) return { mode: 'beta' }
   if (p === LIBRARY || p.startsWith(`${LIBRARY}/`)) {
     const rest = p.slice(LIBRARY.length)
@@ -254,6 +273,7 @@ export function page(pathname: string): string {
   if (at.mode === 'chat') return at.thread ? `${CHAT}/:id` : CHAT
   if (at.mode === 'tabs') return TERMINALS
   if (at.mode === 'research') return at.tab ? `${SCIENCE}/${at.tab}` : RESEARCH
+  if (at.mode === 'cyber') return at.tab ? `${CYBER}/${at.tab}` : CYBER
   if (at.mode === 'design') return DESIGN
   if (at.mode === 'flow') return FLOW
   if (at.mode === 'beta') return BETA
