@@ -10,7 +10,7 @@
 // and Chat's Status shows the archived ones apart.
 
 import { useI18n } from '@hanzo/i18n/react'
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react'
 import { ScrollView, SizableText, XStack, YStack } from '@hanzo/gui'
 import { CheckSquare, ChevronDown, ChevronRight, GitPullRequest, ListFilter } from 'lucide-react'
 import type { Thread } from '@hanzo/ai'
@@ -372,6 +372,30 @@ function Runs({ host, view, keep, onOpen }: { host: Host; view: View; keep: (v: 
   )
 }
 
+/** Reorder an id list by dragging `sourceId` onto `targetId`. */
+export function reorderRecentsIds(ids: readonly string[], sourceId: string, targetId: string): string[] {
+  if (!sourceId || !targetId || sourceId === targetId) return [...ids]
+  const next = ids.filter((id) => id !== sourceId)
+  const at = next.indexOf(targetId)
+  next.splice(at < 0 ? next.length : at, 0, sourceId)
+  return next
+}
+
+/** Apply a saved manual drag order within a group while keeping brand-new items at the top. */
+export function applyRecentsOrder<T extends { id: string }>(rows: readonly T[], savedOrder: readonly string[]): T[] {
+  if (!savedOrder.length || rows.length < 2) return [...rows]
+  const rank = new Map<string, number>()
+  savedOrder.forEach((id, i) => rank.set(id, i))
+  const unranked: T[] = []
+  const ranked: T[] = []
+  for (const r of rows) {
+    if (rank.has(r.id)) ranked.push(r)
+    else unranked.push(r)
+  }
+  ranked.sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0))
+  return [...unranked, ...ranked]
+}
+
 function List({
   mode,
   rows,
@@ -413,7 +437,22 @@ function List({
   const { t } = useI18n()
   const label = useId()
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
-  const groups = arrange(rows, view)
+  const [savedOrder, setSavedOrder] = useKept<string[]>(`hanzo.recents.order.${mode}`, [])
+  const [dragRowId, setDragRowId] = useState<string | null>(null)
+  const [dropRowId, setDropRowId] = useState<string | null>(null)
+  const groups = useMemo(
+    () =>
+      arrange(rows, view).map((g) => ({
+        ...g,
+        rows: applyRecentsOrder(g.rows, savedOrder ?? []),
+      })),
+    [rows, view, savedOrder],
+  )
+  const visibleRowIds = useMemo(() => groups.flatMap((g) => g.rows.map((r) => r.id)), [groups])
+  const handleRowReorder = (src: string, target: string) => {
+    if (!src || !target || src === target) return
+    setSavedOrder(reorderRecentsIds(visibleRowIds, src, target))
+  }
   // A heading is authored (recent.ts's phrases), save a project's name in a list grouped by project.
   const head = (title: string) => (view.group === 'project' && title !== UNFILED && title !== PINNED ? title : t(title))
   // A row's title is the reader's; only the name a row without one is given is ours.
@@ -485,6 +524,33 @@ function List({
           t={one}
           active={open(r)}
           aside={rowAside}
+          dragging={dragRowId === r.id}
+          dropTarget={dropRowId === r.id && dragRowId !== null && dragRowId !== r.id}
+          onReorderDragStart={(e: DragEvent) => {
+            setDragRowId(r.id)
+            e.dataTransfer?.setData('text/plain', r.id)
+            if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
+          }}
+          onReorderDragOver={(e: DragEvent) => {
+            if (!dragRowId || dragRowId === r.id) return
+            e.preventDefault()
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+            if (dropRowId !== r.id) setDropRowId(r.id)
+          }}
+          onReorderDragLeave={() => {
+            if (dropRowId === r.id) setDropRowId(null)
+          }}
+          onReorderDrop={(e: DragEvent) => {
+            e.preventDefault()
+            const src = dragRowId || e.dataTransfer?.getData('text/plain')
+            if (src && src !== r.id) handleRowReorder(src, r.id)
+            setDragRowId(null)
+            setDropRowId(null)
+          }}
+          onReorderDragEnd={() => {
+            setDragRowId(null)
+            setDropRowId(null)
+          }}
         >
           {item}
         </ThreadRow>

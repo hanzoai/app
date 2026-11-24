@@ -37,6 +37,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type DragEvent,
   type MouseEvent,
   type ReactElement,
   type ReactNode,
@@ -44,7 +45,7 @@ import {
 import type { AiClient, Thread, ThreadChange } from '@hanzo/ai'
 export type { Thread }
 import { useAi } from '@hanzo/ai/react'
-import { Archive, ArchiveRestore, Check, CheckSquare, Clock, Copy, ExternalLink, FolderInput, Link2, MoreHorizontal, Pencil, Pin, PinOff, Share2, Trash2, X } from 'lucide-react'
+import { Archive, ArchiveRestore, Check, CheckSquare, Clock, Copy, ExternalLink, FolderInput, GripVertical, Link2, MoreHorizontal, Pencil, Pin, PinOff, Share2, Trash2, X } from 'lucide-react'
 import {
   Button,
   ContextMenu,
@@ -1157,6 +1158,13 @@ export function ThreadRow({
   active = false,
   aside,
   listed = true,
+  dragging = false,
+  dropTarget = false,
+  onReorderDragStart,
+  onReorderDragOver,
+  onReorderDragLeave,
+  onReorderDrop,
+  onReorderDragEnd,
   children,
 }: {
   t: Thread
@@ -1164,6 +1172,13 @@ export function ThreadRow({
   aside?: ReactNode
   /** A row of a list (`role="listitem"`); false where it stands among other rows. */
   listed?: boolean
+  dragging?: boolean
+  dropTarget?: boolean
+  onReorderDragStart?: (e: DragEvent) => void
+  onReorderDragOver?: (e: DragEvent) => void
+  onReorderDragLeave?: () => void
+  onReorderDrop?: (e: DragEvent) => void
+  onReorderDragEnd?: () => void
   children: ReactElement
 }) {
   const { t } = useI18n()
@@ -1180,8 +1195,10 @@ export function ThreadRow({
   const menuOrFocus = menus.open === thread.id || focused
   // gui types these handlers by React Native's event; on the web they carry the DOM's.
   const aim = (e: unknown) => menus.aim(thread, (e as MouseEvent<HTMLElement>).currentTarget)
-  // A new tab for the row itself, never for its ⋯.
-  const onDots = (target: EventTarget | null) => Boolean((target as Element | null)?.closest?.('[data-slot="thread-options"]'))
+  // A new tab / drag-select for the row itself, never for its ⋯ or drag-reorder grip.
+  const onDots = (target: EventTarget | null) =>
+    Boolean((target as Element | null)?.closest?.('[data-slot="thread-options"], [data-slot="thread-drag-handle"]'))
+  const canReorder = Boolean(onReorderDragStart && onReorderDrop && !menus.selecting)
   if (isRenaming) {
     return (
       <YStack
@@ -1206,6 +1223,9 @@ export function ThreadRow({
       position="relative"
       group
       rounded="$4"
+      opacity={dragging ? 0.45 : 1}
+      borderTopWidth={dropTarget ? 2 : 0}
+      borderColor="var(--foreground)"
       bg={isSelected ? '$hover' : undefined}
       $platform-web={{
         userSelect: 'none',
@@ -1216,6 +1236,13 @@ export function ThreadRow({
       data-selected={isSelected ? '' : undefined}
       data-pinned={thread.pinned ? '' : undefined}
       data-archived={thread.archived ? '' : undefined}
+      {...(canReorder
+        ? ({
+            onDragOver: onReorderDragOver,
+            onDragLeave: onReorderDragLeave,
+            onDrop: onReorderDrop,
+          } as object)
+        : null)}
       onPointerDownCapture={(down: unknown) => {
         const e = down as MouseEvent<HTMLElement> & { pointerType?: string }
         if (e.button !== 0 || onDots(e.target)) return
@@ -1295,6 +1322,34 @@ export function ThreadRow({
         away(thread.id, menus.hrefOf)
       }}
     >
+      {canReorder ? (
+        <XStack
+          data-slot="thread-drag-handle"
+          aria-label={t('Drag to reorder')}
+          {...({
+            title: t('Drag to reorder'),
+            draggable: true,
+            onDragStart: onReorderDragStart,
+            onDragEnd: onReorderDragEnd,
+            onMouseDown: (e: MouseEvent<HTMLElement>) => e.stopPropagation(),
+            onPointerDown: (e: MouseEvent<HTMLElement>) => e.stopPropagation(),
+          } as object)}
+          position="absolute"
+          insetInlineStart={1}
+          t={0}
+          b={0}
+          width={14}
+          items="center"
+          justify="center"
+          z="var(--z-raised)"
+          opacity={dragging ? 1 : 0}
+          $group-hover={{ opacity: 0.55 }}
+          hoverStyle={{ opacity: 1 }}
+          $platform-web={{ cursor: dragging ? 'grabbing' : 'grab' }}
+        >
+          <GripVertical size={11} color="var(--muted-foreground)" aria-hidden />
+        </XStack>
+      ) : null}
       {menus.selecting ? (
         <XStack
           position="absolute"

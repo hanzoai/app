@@ -185,18 +185,38 @@ export function carriedPinnedNav(list: unknown): string[] {
   return Array.isArray(list) ? cleanPinnedNav(list).filter((id) => !CORE_NAV_SET.has(id)) : []
 }
 
-/** `list` with `id` pinned (to the end of the pins, so at the top of the menu, under the ones pinned before it) or unpinned (back to its default place). */
+/**
+ * One unified ordered rail list: default apps stay in their normal order, and any extra apps
+ * pinned from More append to the normal list (never split above everything). Once the reader
+ * drags to reorder the rail, their exact full order is preserved across every device.
+ */
+export function unifiedNavOrder(list: readonly string[]): string[] {
+  const cleaned = cleanPinnedNav(list)
+  const coreCount = cleaned.filter((id) => CORE_NAV_SET.has(id)).length
+  if (coreCount >= 2) {
+    const missing = DEFAULT_NAV.filter((id) => !cleaned.includes(id))
+    return [...cleaned, ...missing]
+  }
+  const extras = cleaned.filter((id) => !CORE_NAV_SET.has(id))
+  return [...DEFAULT_NAV, ...extras]
+}
+
+/** `list` with `id` added to the end of the normal rail list (or removed back to More when unpinned). */
 export function toggledPinnedNav(list: readonly string[], id: string): string[] {
   const pins = cleanPinnedNav(list)
   if (!id) return pins
+  if (CORE_NAV_SET.has(id)) {
+    const full = unifiedNavOrder(pins)
+    return full.includes(id) ? full : [...full, id]
+  }
   return pins.includes(id) ? pins.filter((item) => item !== id) : [...pins, id]
 }
 
-/** `list` with `sourceId` moved to where `targetId` stands, pinning it on the way when it was not; `targetId` not pinned puts it last. */
+/** `list` with `sourceId` dragged to `targetId`'s exact slot inside the unified rail list. */
 export function reorderedPinnedNav(list: readonly string[], sourceId: string, targetId: string): string[] {
-  const pins = cleanPinnedNav(list)
-  if (!sourceId || sourceId === targetId) return pins
-  const without = pins.filter((id) => id !== sourceId)
+  const full = unifiedNavOrder(list)
+  if (!sourceId || sourceId === targetId) return full
+  const without = full.filter((id) => id !== sourceId)
   const at = without.indexOf(targetId)
   without.splice(at < 0 ? without.length : at, 0, sourceId)
   return without
@@ -205,10 +225,11 @@ export function reorderedPinnedNav(list: readonly string[], sourceId: string, ta
 /** What `usePinnedNav` answers, held once by the surface and handed to the Rail, the Sidebar and the context menu, so a pin made in one is in the others. */
 export type Pins = ReturnType<typeof usePinnedNav>
 
-/** `list` with `id` swapped with its neighbour one place up (-1) or down (1) among `visible`, the pins the reader sees (one may be hidden): the keyboard's way to the order a drag makes. */
-export function shiftedPinnedNav(list: readonly string[], id: string, delta: -1 | 1, visible: readonly string[] = list): string[] {
-  const next = cleanPinnedNav(list)
-  const other = visible[visible.indexOf(id) + delta]
+/** `list` with `id` swapped with its neighbour one place up (-1) or down (1) among `visible`: the keyboard's way to the order a drag makes. */
+export function shiftedPinnedNav(list: readonly string[], id: string, delta: -1 | 1, visible?: readonly string[]): string[] {
+  const next = unifiedNavOrder(list)
+  const seen = visible ?? next
+  const other = seen[seen.indexOf(id) + delta]
   const from = next.indexOf(id)
   const to = other === undefined ? -1 : next.indexOf(other)
   if (from < 0 || to < 0) return next
@@ -467,18 +488,20 @@ export function useNavEntries({
   const combinedById = new Map([...allEntries, ...externalEntries].map((item) => [item.id, item]))
 
   // Anonymous visitors see the public trio (Chat, Dev, Library), and pin nothing.
-  // The reader's pins lead, in their order; the default apps follow in theirs; the rest is More.
+  // Signed-in readers see ONE unified, freely reorderable rail list (no split "Pinned" section above everything).
+  const orderedIds = anon ? [] : unifiedNavOrder(pinnedIds)
+  const primaryEntries: NavEntry[] = anon
+    ? allEntries
+    : orderedIds.map((id) => combinedById.get(id)).filter((item): item is NavEntry => Boolean(item))
   const pinnedEntries: NavEntry[] = anon
     ? []
-    : pinnedIds.map((id) => combinedById.get(id)).filter((item): item is NavEntry => Boolean(item))
-  const pinnedShown = new Set(pinnedEntries.map((item) => item.id))
-  const defaultEntries: NavEntry[] = anon
-    ? allEntries
-    : DEFAULT_NAV.filter((id) => !pinnedShown.has(id))
+    : pinnedIds
+        .filter((id) => !CORE_NAV_SET.has(id))
         .map((id) => combinedById.get(id))
         .filter((item): item is NavEntry => Boolean(item))
+  const defaultEntries: NavEntry[] = primaryEntries
 
-  const shownInPrimary = new Set([...pinnedEntries, ...defaultEntries].map((item) => item.id))
+  const shownInPrimary = new Set(primaryEntries.map((item) => item.id))
   const moreEntries: NavEntry[] = anon
     ? []
     : [
@@ -498,6 +521,7 @@ export function useNavEntries({
     togglePin,
     allEntries,
     externalEntries,
+    primaryEntries,
     pinnedEntries,
     defaultEntries,
     moreEntries,
@@ -641,14 +665,14 @@ export function Rail({
     go,
     pins,
   })
-  const { anon, pinnedEntries, defaultEntries, allEntries, externalEntries, shownInPrimary, reach } = nav
+  const { anon, primaryEntries, allEntries, externalEntries, shownInPrimary, reach } = nav
 
   const betasDialog = <BetasDialog open={betas} onOpenChange={setBetas} go={reach} />
 
   const unpinnedActive = allEntries.filter((item) => !shownInPrimary.has(item.id) && item.on)
-  // The reader's pins first, then the default apps in their places, then an app from More while the reader is in it.
-  const visibleMarks = [...pinnedEntries, ...defaultEntries, ...unpinnedActive]
-  const pinnedSet = new Set(pinnedEntries.map((item) => item.id))
+  // One unified, drag-and-drop reorderable rail list (pinned extras sit in the normal list, never split above everything).
+  const visibleMarks = [...primaryEntries, ...unpinnedActive]
+  const extraPinnedSet = new Set(nav.pinnedIds.filter((id) => !CORE_NAV_SET.has(id)))
   const overflowBuiltIn = allEntries.filter((item) => !shownInPrimary.has(item.id) && !item.on)
   const overflowExternal = externalEntries.filter((item) => !shownInPrimary.has(item.id))
 
@@ -692,12 +716,11 @@ export function Rail({
           width="100%"
           $platform-web={{ scrollbarWidth: 'none' }}
         >
-          {visibleMarks.map((item, i) => {
+          {visibleMarks.map((item) => {
             const isDragging = dragId === item.id
-            // A pin is where a drag lands: dropped on one, the dragged app is pinned there (or moved there among the pins).
-            const droppable = pinnedSet.has(item.id)
+            // Every rail item is both draggable and droppable so the reader can freely reorder the entire rail.
+            const droppable = !anon
             const isDropTarget = droppable && dropId === item.id && dragId !== null && dragId !== item.id
-            const afterPins = i > 0 && i === pinnedEntries.length
             return (
               <YStack
                 key={item.id}
@@ -707,7 +730,7 @@ export function Rail({
                 borderTopWidth={isDropTarget ? 2 : 0}
                 borderColor="var(--foreground)"
                 pt={isDropTarget ? 2 : 0}
-                $platform-web={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+                $platform-web={{ cursor: !anon ? (isDragging ? 'grabbing' : 'grab') : 'pointer' }}
                 {...({
                   draggable: !anon,
                   onDragStart: (e: DragEvent) => {
@@ -738,7 +761,6 @@ export function Rail({
                   },
                 } as object)}
               >
-                {afterPins ? <YStack data-slot="rail-pins-end" width={20} height={1} bg="$edge" mb={4} aria-hidden /> : null}
                 <Mark
                   label={item.label}
                   on={item.on}
@@ -746,7 +768,7 @@ export function Rail({
                   onClick={item.onPress}
                   data-slot={item.slot}
                   data-nav-id={item.id}
-                  data-pinned={pinnedSet.has(item.id) ? '' : undefined}
+                  data-pinned={extraPinnedSet.has(item.id) ? '' : undefined}
                 >
                   {item.icon}
                 </Mark>

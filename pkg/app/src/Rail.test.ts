@@ -64,7 +64,7 @@ vi.mock('./help', () => ({ out: (href: string) => state.went.push(href) }))
 vi.mock('./Account', () => ({ Account: () => null }))
 vi.mock('./lib/dev-mode', () => ({ useDevMode: () => [state.devMode, () => {}] }))
 
-const { carriedPinnedNav, DEFAULT_NAV, DEFAULT_PINNED_NAV, Rail, reorderedPinnedNav, shiftedPinnedNav, toggledPinnedNav } = await import('./Rail')
+const { carriedPinnedNav, DEFAULT_NAV, DEFAULT_PINNED_NAV, Rail, reorderedPinnedNav, shiftedPinnedNav, toggledPinnedNav, unifiedNavOrder } = await import('./Rail')
 
 const host = {} as never
 const draw5 = (props: { mode?: 'chat' | 'hosted'; inside?: string | null; compact?: boolean; pinned?: string[]; open?: boolean } = {}) =>
@@ -143,27 +143,24 @@ describe('persistent 52px icons-only rail with monochrome chrome', () => {
     expect(menuOf()).toBe(offMenu)
   })
 
-  test('pin and reorder helpers keep their contract: pins are only what the reader pinned, any app can be pinned, unpinning returns it to its place', () => {
+  test('pin and reorder helpers keep one unified order: pinned extras append to the normal list and any rail item can be reordered freely', () => {
     expect(DEFAULT_PINNED_NAV).toBe(DEFAULT_NAV)
     const withCrm = toggledPinnedNav([], 'app-crm')
     expect(withCrm).toEqual(['app-crm'])
-    // A default app pins too (hanzo-inc/app issue 316), after the ones pinned before it.
-    const withDesign = toggledPinnedNav(withCrm, 'design')
-    expect(withDesign).toEqual(['app-crm', 'design'])
-    expect(toggledPinnedNav(withDesign, 'app-crm')).toEqual(['design'])
-    expect(toggledPinnedNav(['design'], 'design')).toEqual([])
-    // A drag onto a pin puts the dragged app there, pinning it when it was not.
-    expect(reorderedPinnedNav(withDesign, 'design', 'app-crm')).toEqual(['design', 'app-crm'])
-    expect(reorderedPinnedNav(withDesign, 'chat', 'design')).toEqual(['app-crm', 'chat', 'design'])
-    expect(reorderedPinnedNav(withDesign, 'chat', 'nowhere')).toEqual(['app-crm', 'design', 'chat'])
-    expect(shiftedPinnedNav(withDesign, 'design', -1)).toEqual(['design', 'app-crm'])
-    expect(shiftedPinnedNav(withDesign, 'app-crm', -1)).toEqual(withDesign)
-    expect(shiftedPinnedNav(withDesign, 'design', 1)).toEqual(withDesign)
-    // A pinned app the reader is not offered (a beta they have no access to) is stepped over, so a move is always seen.
-    const kept = ['chat', 'ghost', 'design']
+    // Pinning one extra app appends it to the normal list instead of hoisting it above Chat.
+    expect(unifiedNavOrder(withCrm)).toEqual(['chat', 'dev', 'design', 'flow', 'library', 'tabs', 'app-crm'])
+    expect(toggledPinnedNav(withCrm, 'app-crm')).toEqual([])
+    // Dragging ANY app onto ANY other app reorders the entire unified rail freely.
+    expect(reorderedPinnedNav(withCrm, 'app-crm', 'chat')).toEqual(['app-crm', 'chat', 'dev', 'design', 'flow', 'library', 'tabs'])
+    expect(reorderedPinnedNav([], 'flow', 'chat')).toEqual(['flow', 'chat', 'dev', 'design', 'library', 'tabs'])
+    expect(reorderedPinnedNav(['flow', 'chat', 'dev', 'design', 'library', 'tabs'], 'tabs', 'dev')).toEqual(['flow', 'chat', 'tabs', 'dev', 'design', 'library'])
+    expect(shiftedPinnedNav([], 'dev', -1)).toEqual(['dev', 'chat', 'design', 'flow', 'library', 'tabs'])
+    expect(shiftedPinnedNav([], 'chat', -1)).toEqual(['chat', 'dev', 'design', 'flow', 'library', 'tabs'])
+    // A hidden item is stepped over when shifting among visible items.
+    const kept = ['chat', 'dev', 'ghost', 'design', 'flow', 'library', 'tabs']
     const seen = kept.filter((id) => id !== 'ghost')
-    expect(shiftedPinnedNav(kept, 'design', -1, seen)).toEqual(['design', 'ghost', 'chat'])
-    // What an earlier version kept (the default apps, then the pins from More) carries over as just the pins from More.
+    expect(shiftedPinnedNav(kept, 'design', -1, seen)).toEqual(['chat', 'design', 'ghost', 'dev', 'flow', 'library', 'tabs'])
+    // Legacy carry-over keeps extra pins from More.
     expect(carriedPinnedNav(['chat', 'dev', 'design', 'flow', 'library', 'tabs', 'app-crm', 'scheduled'])).toEqual(['app-crm', 'scheduled'])
     expect(carriedPinnedNav(['dev', 'chat', 'design', 'flow', 'library', 'tabs'])).toEqual([])
     expect(carriedPinnedNav(null)).toEqual([])
@@ -178,14 +175,18 @@ describe('persistent 52px icons-only rail with monochrome chrome', () => {
     }
   })
 
-  test('pins stand first on the folded rail, a line under them, and the default apps keep their order after (hanzo-inc/app issue 316)', () => {
+  test('pinning an app adds it to the normal rail list without splitting pinned apps above everything, and custom drag order is preserved', () => {
     const order = (html: string) => [...html.matchAll(/data-nav-id="([^"]+)"/g)].map((m) => m[1])
     expect(order(draw5())).toEqual(['chat', 'dev', 'design', 'flow', 'library', 'tabs'])
     expect(draw5()).not.toContain('data-slot="rail-pins-end"')
-    const pinned = draw5({ pinned: ['scheduled', 'design'] })
-    expect(order(pinned)).toEqual(['scheduled', 'design', 'chat', 'dev', 'flow', 'library', 'tabs'])
-    expect(pinned).toContain('data-slot="rail-pins-end"')
-    // Unpinned, Scheduled tasks is back in More, and Design back between Dev and Flow.
+    const withOne = draw5({ pinned: ['scheduled'] })
+    expect(order(withOne)).toEqual(['chat', 'dev', 'design', 'flow', 'library', 'tabs', 'scheduled'])
+    expect(withOne).not.toContain('data-slot="rail-pins-end"')
+    // A custom full drag order (from dragging any icon onto any other) is honored verbatim.
+    const reordered = draw5({ pinned: ['scheduled', 'design', 'chat', 'dev', 'flow', 'library', 'tabs'] })
+    expect(order(reordered)).toEqual(['scheduled', 'design', 'chat', 'dev', 'flow', 'library', 'tabs'])
+    expect(reordered).not.toContain('data-slot="rail-pins-end"')
+    // Unpinned, Scheduled tasks returns to More.
     expect(order(draw5({ pinned: [] }))).toEqual(['chat', 'dev', 'design', 'flow', 'library', 'tabs'])
   })
 })

@@ -292,30 +292,24 @@ describe('the contextual desktop sidebar (beside the stationary icon rail)', () 
     expect(all).not.toContain('data-slot="place-more"')
   })
 
-  test('mobile drawer pinned apps can be moved up and down from their menu: first has no Move up, last no Move down', () => {
+  test('mobile drawer apps can be moved up and down in one unified list: first has no Move up, last no Move down', () => {
     const moves = (held: Pins) => {
       const html = drawerColumn('chat', '', held)
       return [...html.matchAll(/data-item="move-(up|down)"/g)].map((m) => m[1])
     }
-    const two: Pins = [['chat', 'dev'], noop, noop, noop]
-    // Six pinned apps: five can go up, five can go down, one of each end is missing.
+    // All six primary apps are freely reorderable: first has down only, middle four have up+down, last has up only.
+    expect(moves(pins)).toEqual(['down', 'up', 'down', 'up', 'down', 'up', 'down', 'up', 'down', 'up'])
     expect(moves([SIX, noop, noop, noop])).toEqual(['down', 'up', 'down', 'up', 'down', 'up', 'down', 'up', 'down', 'up'])
-    expect(moves(two)).toEqual(['down', 'up'])
-    // An app that is not pinned keeps its default place, so it has no moves.
-    expect(moves(pins)).toEqual([])
   })
 
-  test('mobile drawer pinned apps stand first, under Pinned, and an unpinned one is back in its default place', () => {
+  test('mobile drawer appends pinned extras to the unified nav list without splitting a Pinned section above everything', () => {
     const order = (html: string) => [...html.matchAll(/data-slot="rail-([a-z-]+)"[^>]*aria-label=/g)].map((m) => m[1])
     expect(order(drawerColumn('chat'))).toEqual(SIX)
-    const pinned = drawerColumn('chat', '', [['scheduled', 'design'], noop, noop, noop])
-    expect(order(pinned)).toEqual(['scheduled', 'design', 'chat', 'dev', 'flow', 'library', 'tabs'])
-    expect(at(pinned, 'data-slot="nav-pins-head"')).toBeLessThan(at(pinned, 'data-slot="rail-scheduled"'))
-    expect(at(pinned, 'data-slot="rail-design"')).toBeLessThan(at(pinned, 'data-slot="rail-chat"'))
-    expect(pinned).toContain('aria-label="Unpin Design"')
-    expect(pinned).toContain('aria-label="Pin Chat to top"')
+    const withScheduled = drawerColumn('chat', '', [['scheduled'], noop, noop, noop])
+    expect(order(withScheduled)).toEqual(['chat', 'dev', 'design', 'flow', 'library', 'tabs', 'scheduled'])
+    expect(withScheduled).not.toContain('data-slot="nav-pins-head"')
     // Scheduled tasks pinned is out of More; unpinned it is back in it.
-    expect(pinned).not.toContain('data-item="pin-scheduled"')
+    expect(withScheduled).not.toContain('data-item="pin-scheduled"')
     expect(drawerColumn('chat')).toContain('data-item="pin-scheduled"')
   })
 

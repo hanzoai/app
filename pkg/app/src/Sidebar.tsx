@@ -208,16 +208,13 @@ function NavMenuRow({
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const windowed = useWindowed()
-  const canPin = pinnable && item.pinnable !== false
+  const canPin = pinnable && item.pinnable !== false && !DEFAULT_NAV.includes(item.id)
   const handleTogglePin = () => {
     onTogglePin(item.id)
-    // Unpinned, an app goes back to its default place: one of the menu's own apps to its row, any other to More.
     toast.success(
       !pinned
-        ? t('Pinned {name} to top', { name: item.label })
-        : DEFAULT_NAV.includes(item.id)
-          ? t('Unpinned {name}', { name: item.label })
-          : t('Moved {name} back to More', { name: item.label }),
+        ? t('Added {name} to sidebar', { name: item.label })
+        : t('Moved {name} back to More', { name: item.label }),
     )
   }
 
@@ -226,7 +223,7 @@ function NavMenuRow({
       ? [
           {
             key: 'pin',
-            label: pinned ? t('Unpin from top') : t('Pin to top'),
+            label: pinned ? t('Remove from sidebar') : t('Pin to sidebar'),
             icon: pinned ? <PinOff size={15} aria-hidden /> : <Pin size={15} aria-hidden />,
             onSelect: handleTogglePin,
           },
@@ -1104,8 +1101,8 @@ export function Sidebar({
     return []
   }
 
-  // The pinned apps as the reader sees them: one that is not offered here is not a place to move to.
-  const seen = nav.pinnedEntries.map((e) => e.id)
+  // All primary apps in one unified reorderable list (no split Pinned header above Chat/Dev/Design).
+  const seen = nav.primaryEntries.map((e) => e.id)
   const renderNavEntryWithSublinks = (item: NavEntry, allowDrop: boolean) => {
     const subGroups = item.on ? subGroupsFor(item.id) : []
     const canDrag = !anon
@@ -1117,7 +1114,7 @@ export function Sidebar({
           pinnable={!anon}
           onTogglePin={togglePin}
           onMove={
-            canDrag && allowDrop && pinnedSet.has(item.id)
+            canDrag && allowDrop
               ? {
                   up: seen.indexOf(item.id) > 0 ? () => movePin(item.id, -1, seen) : undefined,
                   down: seen.indexOf(item.id) < seen.length - 1 ? () => movePin(item.id, 1, seen) : undefined,
@@ -1488,15 +1485,10 @@ export function Sidebar({
                     } as object)
                   : null)}
               >
-                {nav.pinnedEntries.length > 0 ? (
-                  <YStack data-slot="nav-pins" role="group" aria-labelledby={`${uid}-pins`} gap={1} width="100%" pb="$1.5">
-                    <Text id={`${uid}-pins`} data-slot="nav-pins-head" paddingInlineStart="$2.5" pb={2} fontSize="$1" fontWeight="500" color="$hint" numberOfLines={1}>
-                      {t(PINNED)}
-                    </Text>
-                    {nav.pinnedEntries.map((item) => renderNavEntryWithSublinks(item, true))}
-                  </YStack>
-                ) : null}
-                {rest.map((item) => renderNavEntryWithSublinks(item, false))}
+                {nav.primaryEntries.map((item) => renderNavEntryWithSublinks(item, !anon))}
+                {rest
+                  .filter((item) => !nav.shownInPrimary.has(item.id))
+                  .map((item) => renderNavEntryWithSublinks(item, !anon))}
               </YStack>
 
             </YStack>
