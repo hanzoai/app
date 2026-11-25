@@ -656,7 +656,7 @@ export function ComputerDialog({
 
                     <XStack
                       render="button"
-                      {...{ type: 'button' }}
+                      {...{ type: 'button', title: t('Paste clipboard to desktop') }}
                       aria-label={t('Paste clipboard to desktop')}
                       onClick={() => void pasteClipboardToDesktop()}
                       width={28}
@@ -677,7 +677,7 @@ export function ComputerDialog({
 
                     <XStack
                       render="button"
-                      {...{ type: 'button' }}
+                      {...{ type: 'button', title: t('Capture screenshot') }}
                       aria-label={t('Capture screenshot')}
                       onClick={() => void captureScreenshot()}
                       width={28}
@@ -698,7 +698,7 @@ export function ComputerDialog({
 
                     <XStack
                       render="button"
-                      {...{ type: 'button' }}
+                      {...{ type: 'button', title: t('Reconnect stream') }}
                       aria-label={t('Reconnect stream')}
                       onClick={() => {
                         setSnapDataUrl(null)
@@ -723,7 +723,7 @@ export function ComputerDialog({
                     {frameUrl ? (
                       <XStack
                         render="button"
-                        {...{ type: 'button' }}
+                        {...{ type: 'button', title: t('Open stream in new tab') }}
                         aria-label={t('Open stream in new tab')}
                         onClick={() => window.open(frameUrl, '_blank', 'noopener,noreferrer')}
                         width={28}
@@ -745,7 +745,7 @@ export function ComputerDialog({
 
                     <XStack
                       render="button"
-                      {...{ type: 'button' }}
+                      {...{ type: 'button', title: t('Park desktop') }}
                       aria-label={t('Park desktop')}
                       disabled={busy}
                       onClick={() => void handlePark()}
@@ -773,7 +773,7 @@ export function ComputerDialog({
 
                 <XStack
                   render="button"
-                  {...{ type: 'button' }}
+                  {...{ type: 'button', title: expanded ? t('Collapse window') : t('Expand window') }}
                   aria-label={expanded ? t('Collapse window') : t('Expand window')}
                   onClick={() => setExpanded((v) => !v)}
                   width={28}
@@ -798,6 +798,7 @@ export function ComputerDialog({
 
                 <XStack
                   {...ROUND}
+                  {...{ title: t('Close computer window') }}
                   width={30}
                   height={30}
                   borderColor={EDGE}

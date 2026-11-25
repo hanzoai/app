@@ -209,10 +209,10 @@ function Frame({ app }: { app: Hosted }) {
         <Text fontSize="$2" color="$color10" numberOfLines={1} flex={1} minW={0}>
           {app.host}
         </Text>
-        <Button size="sm" variant="ghost" rounded={999} aria-label={t('Reload')} onPress={reload} data-slot="hosted-reload">
+        <Button size="sm" variant="ghost" rounded={999} aria-label={t('Reload')} title={t('Reload')} onPress={reload} data-slot="hosted-reload">
           <RotateCw size={14} aria-hidden />
         </Button>
-        <Button size="sm" variant="ghost" rounded={999} aria-label={t('Open in a tab')} onPress={tab} data-slot="hosted-tab">
+        <Button size="sm" variant="ghost" rounded={999} aria-label={t('Open in a tab')} title={t('Open in a tab')} onPress={tab} data-slot="hosted-tab">
           <ExternalLink size={14} aria-hidden />
         </Button>
       </XStack>

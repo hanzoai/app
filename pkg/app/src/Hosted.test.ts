@@ -25,8 +25,8 @@ const draw = ({ render, children, 'data-slot': slot, 'data-app': app }: { render
     : createElement(typeof render === 'string' ? render : 'div', { 'data-slot': slot, 'data-app': app }, children)
 vi.mock('@hanzo/gui', () => ({ View: draw }))
 vi.mock('@hanzo/ui', () => ({
-  Button: ({ children, onPress, 'aria-label': label, 'data-slot': slot }: { children?: ReactNode; onPress?: () => void; 'aria-label'?: string; 'data-slot'?: string }) =>
-    createElement('button', { 'aria-label': label, 'data-slot': slot, onClick: onPress }, children),
+  Button: ({ children, onPress, 'aria-label': label, 'data-slot': slot, title }: { children?: ReactNode; onPress?: () => void; 'aria-label'?: string; 'data-slot'?: string; title?: string }) =>
+    createElement('button', { 'aria-label': label, 'data-slot': slot, title, onClick: onPress }, children),
   Spinner: () => createElement('span', { 'data-spinner': '' }),
   Text: draw,
   XStack: draw,
@@ -250,6 +250,16 @@ describe('the toolbar and the failure', () => {
     expect(failed.textContent).toContain('CRM did not open here.')
     await act(async () => void (failed.querySelector('button') as HTMLElement).click())
     expect(state.went).toEqual(['https://crm.hanzo.ai/'])
+  })
+
+  test('toolbar icon buttons expose hover titles matching their labels', async () => {
+    await show('crm')
+    const reloadBtn = host.querySelector('[data-slot="hosted-reload"]') as HTMLElement
+    const tabBtn = host.querySelector('[data-slot="hosted-tab"]') as HTMLElement
+    expect(reloadBtn.getAttribute('title')).toBe('Reload')
+    expect(reloadBtn.getAttribute('aria-label')).toBe('Reload')
+    expect(tabBtn.getAttribute('title')).toBe('Open in a tab')
+    expect(tabBtn.getAttribute('aria-label')).toBe('Open in a tab')
   })
 
   test('a frame that loads in time never says it failed', async () => {
