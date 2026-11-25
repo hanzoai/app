@@ -226,7 +226,7 @@ export function CourseWorkspace({
                   <XStack gap="$2" flexWrap="wrap">
                     {!enrolled ? (
                       <Button size="sm" variant="primary" data-slot="course-enroll-btn" onPress={onEnroll}>
-                        {course.isFree ? t('Start Free Course') : t('Enroll Self-Serve')}
+                        {course.isFree ? t('Start Free Course') : `${t('Enroll & Pay')} (${course.pricingTier})`}
                       </Button>
                     ) : (
                       <Button size="sm" variant="primary" data-slot="course-continue-lab" onPress={() => selectTab('experiments')}>

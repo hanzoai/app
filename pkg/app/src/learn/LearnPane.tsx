@@ -25,9 +25,22 @@ import {
   type AdventureGoalId,
   type CapstoneSubmission,
   type CourseProgress,
+  type CourseSpec,
   type LearnProgressStore,
   type StartupBuilderConfig,
 } from './types'
+
+const PAY_BASE = 'https://hanzo.ai/pay'
+
+/** Build the Hanzo Pay checkout URL for a paid Hanzo University course. */
+export function courseCheckoutUrl(course: Pick<CourseSpec, 'slug' | 'isFree'>, orgId?: string | null): string {
+  const params = new URLSearchParams({
+    product: course.slug,
+    returnUrl: learnPath(course.slug),
+  })
+  if (orgId) params.set('org', orgId)
+  return `${PAY_BASE}?${params.toString()}`
+}
 
 function toggleItem(list: readonly string[], id: string): string[] {
   return list.includes(id) ? list.filter((x) => x !== id) : [...list, id]
@@ -37,10 +50,12 @@ export function LearnPane({
   host,
   path,
   onNavigate,
+  onCheckout,
 }: {
   host?: Host
   path?: string
   onNavigate?: (to: string) => void
+  onCheckout?: (url: string) => void
 } = {}) {
   const { t } = useI18n()
   const hostCtx = useHost()
@@ -181,12 +196,18 @@ export function LearnPane({
           orgId={activeOrg}
           onNavigate={navigate}
           onSignIn={handleSignIn}
-          onEnroll={() =>
-            updateCourse(course.slug, (prev) => ({
-              ...prev,
-              enrolledAt: prev.enrolledAt ?? new Date().toISOString(),
-            }))
-          }
+          onEnroll={() => {
+            if (course.isFree) {
+              updateCourse(course.slug, (prev) => ({
+                ...prev,
+                enrolledAt: prev.enrolledAt ?? new Date().toISOString(),
+              }))
+              return
+            }
+            const url = courseCheckoutUrl(course, activeOrg)
+            if (onCheckout) onCheckout(url)
+            else if (typeof window !== 'undefined') window.location.assign(url)
+          }}
           onToggleLecture={(lectureId) =>
             updateCourse(course.slug, (prev) => ({
               ...prev,

@@ -41,6 +41,7 @@ export const SLACK_KEY = 'hanzo.onboarding.slack'
 export const STEP_KEY = 'hanzo.onboarding.step'
 export const OPEN_KEY = 'hanzo.onboarding.open'
 export const PLUGIN_KEY = 'hanzo.onboarding.plugin'
+export const SKIPPED_KEY = 'hanzo.onboarding.skipped'
 
 /** Where plugins and connectors live: Dev's Customize. */
 const PLUGINS = '-/customize/plugins'
@@ -129,6 +130,7 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
   const pathed = useHost().path !== null
   const [later, setLater, known] = usePref(LATER_KEY, false)
   const [step, setStep] = usePref(STEP_KEY, 1)
+  const [skipped, setSkipped] = usePref<number[]>(SKIPPED_KEY, [])
 
   const [githubDone, setGithubDone] = usePref(GITHUB_KEY, false)
   const [slackDone, setSlackDone] = usePref(SLACK_KEY, false)
@@ -273,6 +275,11 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
   const allDone = totalDone === 3
   const activeStep = step === 1 || step === 2 || step === 3 ? step : 1
 
+  const skippedList = Array.isArray(skipped) ? skipped : []
+  const clearSkipped = (n: 1 | 2 | 3) => {
+    if (skippedList.includes(n)) setSkipped(skippedList.filter((s) => s !== n))
+  }
+
   // Dismissed on another machine is dismissed here: the account answers before the card draws.
   if (!signed || !known || (later && !modalOpen)) return null
 
@@ -385,9 +392,17 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
     })
   }
 
+  const skipStep = (n: 1 | 2 | 3) => {
+    if (!skippedList.includes(n)) setSkipped([...skippedList, n])
+    if (n === 1) setStep(2)
+    else if (n === 2) setStep(3)
+    else setOpen(false)
+  }
+
   // 1. Connect GitHub
   const handleConnectGithub = () =>
     connectOAuthProvider('github', 'GitHub', () => {
+      clearSkipped(1)
       setGithubDone(true)
       setStep(slackDone ? 3 : 2)
       notifyConnected('GitHub')
@@ -433,6 +448,7 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
   // 2. Connect Slack
   const handleConnectSlack = () =>
     connectOAuthProvider('slack', 'Slack', () => {
+      clearSkipped(2)
       setSlackDone(true)
       setStep(3)
       notifyConnected('Slack')
@@ -712,7 +728,8 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                 ) : null}
                 <Box
                   render="button"
-                  onClick={() => setStep(2)}
+                  data-slot="setup-skip-1"
+                  onClick={() => skipStep(1)}
                   px="$2"
                   py="$1"
                   $max-sm={{ minH: 44 }}
@@ -767,7 +784,8 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                 </Box>
                 <Box
                   render="button"
-                  onClick={() => setStep(3)}
+                  data-slot="setup-skip-2"
+                  onClick={() => skipStep(2)}
                   px="$2"
                   py="$1"
                   $max-sm={{ minH: 44 }}
@@ -820,7 +838,8 @@ export function Setup({ go }: { go?: (address: string) => void } = {}) {
                 </Box>
                 <Box
                   render="button"
-                  onClick={dismissSetup}
+                  data-slot="setup-skip-3"
+                  onClick={() => (pluginDone ? dismissSetup() : skipStep(3))}
                   px="$2"
                   py="$1"
                   $max-sm={{ minH: 44 }}

@@ -28,6 +28,7 @@ import {
   isModelExecutionNode,
   isStickyNoteNode,
   makeNodeFromComponent,
+  nextCronRun,
   normalizeEmbeddingModel,
   parseFlowRoute,
   topologicalSort,
@@ -155,6 +156,42 @@ describe('Flow Studio schema, catalog, templates, and strict invariants', () => 
     expect(describeCron('0 8 * * 1-5')).toEqual({ valid: true, human: 'Weekdays at 08:00' })
     expect(describeCron('0 9 * * *')).toEqual({ valid: true, human: 'Daily at 09:00' })
     expect(describeCron('not a cron').valid).toBe(false)
+    expect(describeCron('60 * * * *').valid).toBe(false)
+  })
+
+  test('computes nextCronRun across standard cron expressions, ranges, lists, step ranges, and IANA timezones', () => {
+    const base = new Date('2026-03-06T12:07:30Z') // Friday
+    expect(nextCronRun('* * * * *', 'UTC', base)?.toISOString()).toBe('2026-03-06T12:08:00.000Z')
+    expect(nextCronRun('*/15 * * * *', 'UTC', base)?.toISOString()).toBe('2026-03-06T12:15:00.000Z')
+    expect(nextCronRun('10,40 * * * *', 'UTC', base)?.toISOString()).toBe('2026-03-06T12:10:00.000Z')
+    expect(nextCronRun('10-20/5 * * * *', 'UTC', new Date('2026-03-06T12:21:00Z'))?.toISOString()).toBe(
+      '2026-03-06T13:10:00.000Z',
+    )
+
+    // Weekday range 1-5 skips Saturday/Sunday to Monday
+    const sat = new Date('2026-03-07T10:00:00Z')
+    expect(nextCronRun('0 8 * * 1-5', 'UTC', sat)?.toISOString()).toBe('2026-03-09T08:00:00.000Z')
+
+    // Sunday as 7
+    expect(nextCronRun('0 12 * * 7', 'UTC', sat)?.toISOString()).toBe('2026-03-08T12:00:00.000Z')
+
+    // IANA timezone offset (America/New_York EST = UTC-5 before DST)
+    expect(nextCronRun('0 8 * * *', 'America/New_York', new Date('2026-03-06T12:00:00Z'))?.toISOString()).toBe(
+      '2026-03-06T13:00:00.000Z',
+    )
+
+    // DST spring-forward in America/New_York (2026-03-08 02:00 -> 03:00): 02:30 is skipped to 2026-03-09 02:30 EDT (06:30Z)
+    expect(nextCronRun('30 2 * * *', 'America/New_York', new Date('2026-03-08T06:00:00Z'))?.toISOString()).toBe(
+      '2026-03-09T06:30:00.000Z',
+    )
+
+    // Invalid expressions & invalid timezone return null cleanly
+    expect(nextCronRun('not a cron', 'UTC', base)).toBeNull()
+    expect(nextCronRun('60 * * * *', 'UTC', base)).toBeNull()
+    expect(nextCronRun('0 25 * * *', 'UTC', base)).toBeNull()
+    expect(nextCronRun('* * *', 'UTC', base)).toBeNull()
+    expect(nextCronRun('0 8 * * *', 'Invalid/Zone', base)).toBeNull()
+    expect(nextCronRun('0 8 * * *', 'UTC', new Date(Number.NaN))).toBeNull()
   })
 
   test('extracts clean PokéAPI query slugs from natural-language prompts', () => {
@@ -271,6 +308,10 @@ describe('Hanzo Cloud live Embeddings, Knowledge Base, and Vector RAG execution'
 
     expect(run.status).toBe('completed')
     expect(run.steps.every((s) => s.status === 'success')).toBe(true)
+    expect(run.steps[0]?.input).toBe('How does Hanzo IAM issue org-scoped bearer tokens?')
+    expect(run.steps[1]?.input).toBe('How does Hanzo IAM issue org-scoped bearer tokens?')
+    expect(run.steps[2]?.input).toBe('How does Hanzo IAM issue org-scoped bearer tokens?')
+    expect(run.steps[3]?.input).toContain('iam-spec.md')
     expect(run.steps[1]?.output).toContain('zen-embedding-3')
     expect(run.steps[1]?.output).toContain('4d')
     expect(run.steps[2]?.output).toContain('Retrieved 2 grounded match(es)')
@@ -466,6 +507,12 @@ describe('Flow execution, SSE streaming, live API Request tools, branching, and 
     expect(run.status).toBe('completed')
     expect(run.steps).toHaveLength(4)
     expect(run.steps.every((s) => s.status === 'success')).toBe(true)
+    expect(run.steps[0]?.input).toBe('Tell me about Pikachu')
+    expect(run.steps[1]?.input).toContain('GET https://pokeapi.co/api/v2/pokemon/pikachu')
+    expect(run.steps[2]?.input).toContain('Tell me about Pikachu')
+    expect(run.steps[2]?.input).toContain('[Connected tool data]')
+    expect(run.steps[2]?.input).toContain('"name": "pikachu"')
+    expect(run.steps[3]?.input).toBe('Pikachu (#25) is an Electric-type Pokémon.')
     expect(chunks).toEqual(['Pikachu (#25) ', 'is an Electric-type Pokémon.'])
     expect(run.finalOutput).toBe('Pikachu (#25) is an Electric-type Pokémon.')
   })
@@ -487,6 +534,7 @@ describe('Flow execution, SSE streaming, live API Request tools, branching, and 
     const byId = new Map(run.steps.map((s) => [s.nodeId, s]))
     expect(byId.get('n3')?.status).toBe('success')
     expect(byId.get('n4')?.status).toBe('skipped')
+    expect(byId.get('n4')?.input).toBeUndefined()
     expect(byId.get('n6')?.status).toBe('success')
   })
 
@@ -500,6 +548,7 @@ describe('Flow execution, SSE streaming, live API Request tools, branching, and 
     const run = await executeFlow(basic, { sampleInput: 'hello' })
     expect(run.status).toBe('failed')
     const failedStep = run.steps.find((s) => s.status === 'error')
+    expect(failedStep?.input).toContain('hello')
     expect(failedStep?.error).toContain('Sign in to run Enso models (HTTP 401)')
   })
 

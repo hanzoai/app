@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useI18n } from '@hanzo/i18n/react'
 import { XStack, YStack } from '@hanzo/gui'
-import { Button, Input, Switch, Text } from '@hanzo/ui'
+import { Box, Button, Input, Switch, Text } from '@hanzo/ui'
 import {
   BookOpen,
   CalendarClock,
@@ -49,6 +49,7 @@ import { FlowKnowledgePanel } from './FlowKnowledgePanel'
 import { FlowMcpDrawer } from './FlowMcpDrawer'
 import { FlowPalette } from './FlowPalette'
 import { FlowPlayground } from './FlowPlayground'
+import { FlowStepIo } from './FlowStepIo'
 import {
   createBlankFlow,
   describeTemplateMeta,
@@ -121,6 +122,8 @@ export function FlowPane({
   const [lastLiveRun, setLastLiveRun] = useState<FlowRunRecord | null>(null)
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null)
   const [copiedRunId, setCopiedRunId] = useState<string | null>(null)
+  const [expandedLiveSteps, setExpandedLiveSteps] = useState<Record<string, boolean>>({})
+  const [expandedRunSteps, setExpandedRunSteps] = useState<Record<string, boolean>>({})
   const [templateQuery, setTemplateQuery] = useState('')
   const [templateCategory, setTemplateCategory] = useState<'All' | FlowTemplateCategory>('All')
   const runAbortRef = useRef<AbortController | null>(null)
@@ -439,6 +442,7 @@ export function FlowPane({
       setActiveRunSummary(null)
       setLastLiveRun(null)
       setLiveSteps([])
+      setExpandedLiveSteps({})
       try {
         const record = await executeFlow(flowToRun, {
           trigger,
@@ -893,52 +897,81 @@ export function FlowPane({
               </XStack>
 
               <YStack gap="$1.5">
-                {liveSteps.map((step) => (
-                  <YStack
-                    key={step.nodeId}
-                    data-slot={`run-step-${step.nodeId}`}
-                    p="$2"
-                    rounded="$3"
-                    borderWidth={1}
-                    borderColor="$edge"
-                    bg="$background"
-                    gap="$1"
-                  >
-                    <XStack items="center" justify="space-between" gap="$2">
-                      <XStack items="center" gap="$1.5">
-                        {step.status === 'running' ? (
-                          <Loader2 size={13} aria-hidden />
-                        ) : step.status === 'success' ? (
-                          <CheckCircle2 size={13} color="var(--state-online)" aria-hidden />
-                        ) : step.status === 'waiting_approval' ? (
-                          <ShieldAlert size={13} color="var(--foreground)" aria-hidden />
-                        ) : step.status === 'error' || step.status === 'rejected' ? (
-                          <XCircle size={13} color="var(--state-error)" aria-hidden />
+                {liveSteps.map((step) => {
+                  const expanded = Boolean(expandedLiveSteps[step.nodeId])
+                  return (
+                    <YStack
+                      key={step.nodeId}
+                      data-slot={`run-step-${step.nodeId}`}
+                      p="$2"
+                      rounded="$3"
+                      borderWidth={1}
+                      borderColor="$edge"
+                      bg="$background"
+                      gap="$1"
+                    >
+                      <Box
+                        render={<button type="button" />}
+                        data-slot={`run-step-toggle-${step.nodeId}`}
+                        aria-expanded={expanded}
+                        onClick={() =>
+                          setExpandedLiveSteps((prev) => ({
+                            ...prev,
+                            [step.nodeId]: !prev[step.nodeId],
+                          }))
+                        }
+                        display="flex"
+                        width="100%"
+                        items="center"
+                        justify="space-between"
+                        gap="$2"
+                        bg="transparent"
+                        borderWidth={0}
+                        p={0}
+                        cursor="pointer"
+                      >
+                        <XStack items="center" gap="$1.5">
+                          {expanded ? (
+                            <ChevronDown size={13} color="var(--muted-foreground)" aria-hidden />
+                          ) : (
+                            <ChevronRight size={13} color="var(--muted-foreground)" aria-hidden />
+                          )}
+                          {step.status === 'running' ? (
+                            <Loader2 size={13} aria-hidden />
+                          ) : step.status === 'success' ? (
+                            <CheckCircle2 size={13} color="var(--state-online)" aria-hidden />
+                          ) : step.status === 'waiting_approval' ? (
+                            <ShieldAlert size={13} color="var(--foreground)" aria-hidden />
+                          ) : step.status === 'error' || step.status === 'rejected' ? (
+                            <XCircle size={13} color="var(--state-error)" aria-hidden />
+                          ) : null}
+                          <Text fontSize="$2" fontWeight="500" color="$ink">
+                            {step.nodeTitle}
+                          </Text>
+                          <Text fontSize="$1" color="$quiet" fontFamily="$mono">
+                            {step.status}
+                          </Text>
+                        </XStack>
+                        {step.durationMs ? (
+                          <Text fontSize="$1" color="$quiet" fontFamily="$mono">
+                            {step.durationMs}ms
+                          </Text>
                         ) : null}
-                        <Text fontSize="$2" fontWeight="500" color="$ink">
-                          {step.nodeTitle}
+                      </Box>
+                      {expanded ? (
+                        <FlowStepIo step={step} />
+                      ) : step.error ? (
+                        <Text fontSize="$1" color="var(--state-error)" fontFamily="$mono">
+                          {step.error}
                         </Text>
-                        <Text fontSize="$1" color="$quiet" fontFamily="$mono">
-                          {step.status}
-                        </Text>
-                      </XStack>
-                      {step.durationMs ? (
-                        <Text fontSize="$1" color="$quiet" fontFamily="$mono">
-                          {step.durationMs}ms
+                      ) : step.output ? (
+                        <Text fontSize="$1" color="$soft" numberOfLines={3}>
+                          {step.output}
                         </Text>
                       ) : null}
-                    </XStack>
-                    {step.error ? (
-                      <Text fontSize="$1" color="var(--state-error)" fontFamily="$mono">
-                        {step.error}
-                      </Text>
-                    ) : step.output ? (
-                      <Text fontSize="$1" color="$soft" numberOfLines={3}>
-                        {step.output}
-                      </Text>
-                    ) : null}
-                  </YStack>
-                ))}
+                    </YStack>
+                  )
+                })}
               </YStack>
             </YStack>
           ) : null}
@@ -1275,36 +1308,76 @@ export function FlowPane({
                     ) : null}
 
                     <YStack gap="$1">
-                      {run.steps.map((step) => (
-                        <YStack key={step.nodeId} px="$2" py="$1.5" rounded="$2" bg="$background" gap="$1">
-                          <XStack items="center" justify="space-between" gap="$2">
-                            <Text fontSize="$1" color="$ink" flex={1} numberOfLines={1}>
-                              {step.nodeTitle}
-                            </Text>
-                            <Text
-                              fontSize="$1"
-                              color={
-                                step.status === 'error' || step.status === 'rejected'
-                                  ? 'var(--state-error)'
-                                  : '$quiet'
+                      {run.steps.map((step) => {
+                        const stepKey = `${run.id}:${step.nodeId}`
+                        const stepExpanded = Boolean(expandedRunSteps[stepKey])
+                        return (
+                          <YStack
+                            key={step.nodeId}
+                            data-slot={`runs-step-${run.id}-${step.nodeId}`}
+                            px="$2"
+                            py="$1.5"
+                            rounded="$2"
+                            bg="$background"
+                            gap="$1"
+                          >
+                            <Box
+                              render={<button type="button" />}
+                              data-slot={`runs-step-toggle-${run.id}-${step.nodeId}`}
+                              aria-expanded={stepExpanded}
+                              onClick={() =>
+                                setExpandedRunSteps((prev) => ({
+                                  ...prev,
+                                  [stepKey]: !prev[stepKey],
+                                }))
                               }
-                              fontFamily="$mono"
+                              display="flex"
+                              width="100%"
+                              items="center"
+                              justify="space-between"
+                              gap="$2"
+                              bg="transparent"
+                              borderWidth={0}
+                              p={0}
+                              cursor="pointer"
                             >
-                              {step.status}
-                              {step.durationMs ? ` · ${step.durationMs}ms` : ''}
-                            </Text>
-                          </XStack>
-                          {step.error ? (
-                            <Text fontSize="$1" color="var(--state-error)" fontFamily="$mono">
-                              {step.error}
-                            </Text>
-                          ) : expanded && step.output ? (
-                            <Text fontSize="$1" color="$soft" $platform-web={{ whiteSpace: 'pre-wrap' }}>
-                              {step.output}
-                            </Text>
-                          ) : null}
-                        </YStack>
-                      ))}
+                              <XStack items="center" gap="$1.5" flex={1} minW={0}>
+                                {stepExpanded ? (
+                                  <ChevronDown size={12} color="var(--muted-foreground)" aria-hidden />
+                                ) : (
+                                  <ChevronRight size={12} color="var(--muted-foreground)" aria-hidden />
+                                )}
+                                <Text fontSize="$1" color="$ink" flex={1} numberOfLines={1} text="left">
+                                  {step.nodeTitle}
+                                </Text>
+                              </XStack>
+                              <Text
+                                fontSize="$1"
+                                color={
+                                  step.status === 'error' || step.status === 'rejected'
+                                    ? 'var(--state-error)'
+                                    : '$quiet'
+                                }
+                                fontFamily="$mono"
+                              >
+                                {step.status}
+                                {step.durationMs ? ` · ${step.durationMs}ms` : ''}
+                              </Text>
+                            </Box>
+                            {stepExpanded ? (
+                              <FlowStepIo step={step} />
+                            ) : step.error ? (
+                              <Text fontSize="$1" color="var(--state-error)" fontFamily="$mono">
+                                {step.error}
+                              </Text>
+                            ) : expanded && step.output ? (
+                              <Text fontSize="$1" color="$soft" $platform-web={{ whiteSpace: 'pre-wrap' }}>
+                                {step.output}
+                              </Text>
+                            ) : null}
+                          </YStack>
+                        )
+                      })}
                     </YStack>
                   </YStack>
                 )

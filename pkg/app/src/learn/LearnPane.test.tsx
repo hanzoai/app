@@ -1,7 +1,10 @@
 // @vitest-environment happy-dom
-import { createElement, type ReactNode } from 'react'
+import { act, createElement, type ReactNode } from 'react'
+import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
+
+;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const state = vi.hoisted(() => ({
   token: null as string | null,
@@ -27,7 +30,8 @@ const draw = ({ children, 'data-slot': slot, 'data-course-slug': slug, 'aria-lab
 vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s }) }))
 vi.mock('@hanzo/gui', () => ({ Text: draw, View: draw, XStack: draw, YStack: draw }))
 vi.mock('@hanzo/ui', () => ({
-  Button: ({ children, 'data-slot': slot }: Part) => createElement('button', { 'data-slot': slot }, children),
+  Button: ({ children, 'data-slot': slot, onClick, onPress }: Part) =>
+    createElement('button', { 'data-slot': slot, onClick: onPress ?? onClick }, children),
   Input: ({ value, 'data-slot': slot, placeholder }: Part) =>
     createElement('input', { 'data-slot': slot, defaultValue: value, placeholder }),
   Textarea: ({ value, 'data-slot': slot, placeholder }: Part) =>
@@ -51,7 +55,7 @@ vi.mock('../pref', () => ({
   usePref: <T,>(_key: string, initial: T) => [initial, () => {}, true] as const,
 }))
 
-const { LearnPane } = await import('./LearnPane')
+const { LearnPane, courseCheckoutUrl } = await import('./LearnPane')
 const { learnNav } = await import('./nav')
 
 beforeEach(() => {
@@ -151,5 +155,47 @@ describe('LearnPane rendering across signed-out preview, Course Workspace 7 tabs
     expect(groups[1]!.links.find((l) => l.id === 'course-kai-301')?.active).toBe(true)
     groups[0]!.links.find((l) => l.id === 'startup')?.onPress?.()
     expect(moved).toEqual(['/learn?view=startup'])
+  })
+
+  test('routes paid courses to Hanzo Pay checkout while keeping free courses instant-enroll', () => {
+    const url = courseCheckoutUrl({ slug: 'kai-training-decision-models', isFree: false }, 'hanzo')
+    expect(url).toBe(
+      'https://hanzo.ai/pay?product=kai-training-decision-models&returnUrl=%2Flearn%2Fkai-training-decision-models&org=hanzo',
+    )
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    const checkouts: string[] = []
+
+    act(() => {
+      root.render(
+        createElement(LearnPane, {
+          path: '/learn/kai-training-decision-models?tab=overview',
+          onCheckout: (to: string) => checkouts.push(to),
+        }),
+      )
+    })
+    const paidBtn = host.querySelector('[data-slot="course-enroll-btn"]') as HTMLButtonElement
+    expect(paidBtn.textContent).toContain('$299')
+    act(() => paidBtn.click())
+    expect(checkouts).toEqual([url])
+
+    act(() => {
+      root.render(
+        createElement(LearnPane, {
+          path: '/learn/continuous-improvement?tab=overview',
+          onCheckout: (to: string) => checkouts.push(to),
+        }),
+      )
+    })
+    const freeBtn = host.querySelector('[data-slot="course-enroll-btn"]') as HTMLButtonElement
+    expect(freeBtn.textContent).toBe('Start Free Course')
+    act(() => freeBtn.click())
+    expect(checkouts).toHaveLength(1)
+    expect(localStorage.length).toBeGreaterThan(0)
+
+    act(() => root.unmount())
+    host.remove()
   })
 })

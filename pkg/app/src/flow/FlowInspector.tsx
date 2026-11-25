@@ -2,7 +2,18 @@
 
 import { useI18n } from '@hanzo/i18n/react'
 import { XStack, YStack } from '@hanzo/gui'
-import { Button, Input, Switch, Text, Textarea } from '@hanzo/ui'
+import {
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Switch,
+  Text,
+  Textarea,
+} from '@hanzo/ui'
 import {
   CalendarClock,
   Link2,
@@ -17,11 +28,13 @@ import {
   describeCron,
   EMBEDDING_MODELS,
   FLOW_MODELS,
+  FLOW_TIMEZONES,
   isEmbeddingNode,
   isKnowledgeIngestionNode,
   isKnowledgeRetrievalNode,
   isModelExecutionNode,
   isStickyNoteNode,
+  nextCronRun,
   normalizeEmbeddingModel,
   type FlowDefinition,
   type FlowEdge,
@@ -36,6 +49,85 @@ const HTTP_METHODS: readonly ('GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE')[] = [
   'PATCH',
   'DELETE',
 ]
+
+function timezoneOptionsFor(currentTz?: string): string[] {
+  const list = [...FLOW_TIMEZONES]
+  try {
+    const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone
+    if (localTz && !list.includes(localTz)) list.push(localTz)
+  } catch {
+    // ignore environments without resolvedOptions().timeZone
+  }
+  const clean = (currentTz ?? '').trim()
+  if (clean && !list.includes(clean)) list.unshift(clean)
+  return list
+}
+
+function formatNextRunPreview(cron: string, timezone: string): string | null {
+  const tz = (timezone || 'UTC').trim() || 'UTC'
+  const next = nextCronRun(cron, tz)
+  if (!next) return null
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      timeZone: tz,
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(next)
+  } catch {
+    return next.toISOString()
+  }
+}
+
+function ScheduleTimezoneAndPreview({
+  cron,
+  timezone,
+  selectSlot,
+  previewSlot,
+  onChangeTimezone,
+}: {
+  cron: string
+  timezone: string
+  selectSlot: string
+  previewSlot: string
+  onChangeTimezone: (timezone: string) => void
+}) {
+  const { t } = useI18n()
+  const tz = (timezone || 'UTC').trim() || 'UTC'
+  const options = timezoneOptionsFor(tz)
+  const nextText = formatNextRunPreview(cron, tz)
+
+  return (
+    <YStack gap="$1.5">
+      <Text fontSize="$1" fontWeight="500" color="$soft">
+        {t('Timezone')}
+      </Text>
+      <Select value={tz} onValueChange={onChangeTimezone}>
+        <SelectTrigger data-slot={selectSlot} aria-label={t('Timezone')} width="100%">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((zone) => (
+            <SelectItem key={zone} value={zone}>
+              {zone}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Text
+        data-slot={previewSlot}
+        fontSize="$1"
+        color={nextText ? '$quiet' : 'var(--state-error)'}
+      >
+        {nextText
+          ? t('Next run: {when}', { when: nextText })
+          : t('Next run: invalid schedule')}
+      </Text>
+    </YStack>
+  )
+}
 
 export function FlowInspector({
   collapsed,
@@ -244,6 +336,17 @@ export function FlowInspector({
           <Text fontSize="$1" color={cronInfo.valid ? '$quiet' : 'var(--state-error)'}>
             {cronInfo.human} ({schedule.timezone || 'UTC'})
           </Text>
+          <ScheduleTimezoneAndPreview
+            cron={schedule.cron}
+            timezone={schedule.timezone || 'UTC'}
+            selectSlot="flow-schedule-timezone"
+            previewSlot="flow-schedule-next-run"
+            onChangeTimezone={(timezone) =>
+              onUpdateFlow({
+                schedule: { ...schedule, timezone },
+              })
+            }
+          />
           <XStack gap="$1" flexWrap="wrap">
             {CRON_PRESETS.map((preset) => (
               <XStack
@@ -390,12 +493,13 @@ export function FlowInspector({
               data-slot="inspector-cron"
               value={selectedNode.config.cron ?? '0 8 * * 1-5'}
               onChangeText={(cron) => {
+                const timezone = selectedNode.config.timezone || flow.schedule?.timezone || 'UTC'
                 onUpdateNode(selectedNode.id, {}, { cron })
                 onUpdateFlow({
                   schedule: {
                     enabled: flow.schedule?.enabled ?? true,
                     cron,
-                    timezone: selectedNode.config.timezone || flow.schedule?.timezone || 'UTC',
+                    timezone,
                   },
                 })
               }}
@@ -405,18 +509,36 @@ export function FlowInspector({
                 {cronDesc.human}
               </Text>
             ) : null}
+            <ScheduleTimezoneAndPreview
+              cron={selectedNode.config.cron ?? '0 8 * * 1-5'}
+              timezone={selectedNode.config.timezone || flow.schedule?.timezone || 'UTC'}
+              selectSlot="inspector-cron-timezone"
+              previewSlot="inspector-cron-next-run"
+              onChangeTimezone={(timezone) => {
+                const cron = selectedNode.config.cron ?? '0 8 * * 1-5'
+                onUpdateNode(selectedNode.id, {}, { timezone })
+                onUpdateFlow({
+                  schedule: {
+                    enabled: flow.schedule?.enabled ?? true,
+                    cron,
+                    timezone,
+                  },
+                })
+              }}
+            />
             <XStack gap="$1" flexWrap="wrap">
               {CRON_PRESETS.map((preset) => (
                 <XStack
                   key={preset.cron}
                   render="button"
                   onClick={() => {
+                    const timezone = selectedNode.config.timezone || flow.schedule?.timezone || 'UTC'
                     onUpdateNode(selectedNode.id, {}, { cron: preset.cron })
                     onUpdateFlow({
                       schedule: {
                         enabled: true,
                         cron: preset.cron,
-                        timezone: selectedNode.config.timezone || 'UTC',
+                        timezone,
                       },
                     })
                   }}

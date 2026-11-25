@@ -24,9 +24,11 @@ import type { McpListing, McpServer } from '@hanzo/ai'
 import { Box, Text, XStack, YStack } from '@hanzo/ui'
 import { useIam } from '@hanzo/iam/react'
 import { hasSession } from './lib/session'
+import { enter } from './lib/destination'
 import { useAi } from './lib/ai'
 import { brand } from './where'
 import { useDevMode } from './lib/dev-mode'
+import { StateCard } from './StateCard'
 
 /** A listing reachable over HTTP is one this app can connect on its own. */
 const reachable = (listing: McpListing): boolean =>
@@ -253,8 +255,33 @@ export function Market({ scope }: { scope: 'all' | 'installed' }) {
 
   const signedIn = isAuthenticated || hasSession()
   if (isLoading) return <Empty>&nbsp;</Empty>
-  if (!signedIn) return <Empty>{t('Sign in to browse agents you can add.')}</Empty>
-  if (failed) return <Empty>{say(failed, t('the marketplace'), 'read', t)}</Empty>
+  if (!signedIn) {
+    return (
+      <StateCard
+        kind="access"
+        title={t('Marketplace')}
+        detail={t('Sign in to browse agents you can add.')}
+        actionLabel={t('Sign in')}
+        onAction={() => enter()}
+        dataSlot="market-state"
+      />
+    )
+  }
+  if (failed) {
+    return (
+      <StateCard
+        kind="error"
+        title={t('Marketplace')}
+        detail={say(failed, t('the marketplace'), 'read', t)}
+        actionLabel={t('Try again')}
+        onAction={() => {
+          setFailed(null)
+          reload()
+        }}
+        dataSlot="market-state"
+      />
+    )
+  }
 
   return (
     <YStack flex={1} minH={0}>
@@ -311,15 +338,22 @@ export function Market({ scope }: { scope: 'all' | 'installed' }) {
       </YStack>
 
       {!listings ? (
-        <Empty>{t('Loading integrations…')}</Empty>
+        <StateCard kind="empty" title={t('Marketplace')} detail={t('Loading integrations…')} dataSlot="market-state" />
       ) : shown.length === 0 ? (
-        <Empty>
-          {scope === 'installed'
-            ? t('No integrations installed yet.')
-            : ask
-              ? t('No matching integrations found.')
-              : t('No integrations available right now.')}
-        </Empty>
+        <StateCard
+          kind="empty"
+          title={t('Marketplace')}
+          detail={
+            scope === 'installed'
+              ? t('No integrations installed yet.')
+              : ask
+                ? t('No matching integrations found.')
+                : t('No integrations available right now.')
+          }
+          actionLabel={ask ? t('Clear search') : undefined}
+          onAction={ask ? () => setAsk('') : undefined}
+          dataSlot="market-state"
+        />
       ) : (
         <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden" p="$5" gap="$3">
           <Text fontSize="$1" color="$soft">
