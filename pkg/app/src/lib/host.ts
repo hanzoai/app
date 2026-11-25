@@ -91,6 +91,13 @@ export const BETA = '/beta'
 export const RESEARCH = '/research'
 export const SCIENCE = '/science'
 export const CYBER = '/cyber'
+export const LEARN = '/learn'
+
+/** Learn (Hanzo University) at `/learn` or `/learn/<slug>`. */
+export const learn = (slug?: string): string => {
+  const clean = (slug ?? '').replace(/^\/+|\/+$/g, '')
+  return clean ? `${LEARN}/${clean}` : LEARN
+}
 
 export const CYBER_SUBROUTES = ['overview', 'graph', 'findings', 'approvals', 'traffic', 'attack', 'coa', 'hardening'] as const
 export type CyberSubroute = (typeof CYBER_SUBROUTES)[number]
@@ -198,6 +205,7 @@ export type Place =
   | { mode: 'tabs' }
   | { mode: 'research'; tab?: ScienceSubroute }
   | { mode: 'cyber'; tab?: CyberSubroute }
+  | { mode: 'learn'; slug: string | null }
   | { mode: 'beta' }
   | { mode: 'hosted'; id: string }
 
@@ -244,6 +252,16 @@ export function place(pathname: string): Place | null {
     }
     return { mode: 'cyber' }
   }
+  if (p === LEARN || p.startsWith(`${LEARN}/`)) {
+    const rest = p.startsWith(`${LEARN}/`) ? p.slice(LEARN.length + 1) : ''
+    const rawSlug = rest.split('/')[0] ?? ''
+    if (!rawSlug) return { mode: 'learn', slug: null }
+    try {
+      return { mode: 'learn', slug: decodeURIComponent(rawSlug).toLowerCase() }
+    } catch {
+      return { mode: 'learn', slug: rawSlug.toLowerCase() }
+    }
+  }
   if (p === BETA) return { mode: 'beta' }
   if (p === LIBRARY || p.startsWith(`${LIBRARY}/`)) {
     const rest = p.slice(LIBRARY.length)
@@ -274,6 +292,7 @@ export function page(pathname: string): string {
   if (at.mode === 'tabs') return TERMINALS
   if (at.mode === 'research') return at.tab ? `${SCIENCE}/${at.tab}` : RESEARCH
   if (at.mode === 'cyber') return at.tab ? `${CYBER}/${at.tab}` : CYBER
+  if (at.mode === 'learn') return at.slug ? `${LEARN}/:slug` : LEARN
   if (at.mode === 'design') return DESIGN
   if (at.mode === 'flow') return FLOW
   if (at.mode === 'beta') return BETA
@@ -362,7 +381,7 @@ export function remember(mode: Place['mode']): void {
 export function resume(): string {
   try {
     const kept = window.localStorage.getItem(MODE)
-    return kept === 'dev' ? DEV : kept === 'studio' || kept === 'design' ? DESIGN : kept === 'flow' ? FLOW : kept === 'tabs' ? TERMINALS : kept === 'research' || kept === 'science' ? SCIENCE : chat()
+    return kept === 'dev' ? DEV : kept === 'studio' || kept === 'design' ? DESIGN : kept === 'flow' ? FLOW : kept === 'learn' ? LEARN : kept === 'tabs' ? TERMINALS : kept === 'research' || kept === 'science' ? SCIENCE : chat()
   } catch {
     return chat()
   }

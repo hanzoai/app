@@ -1,6 +1,6 @@
 {
   "name": "@hanzo/app",
-  "version": "0.3.190",
+  "version": "0.3.191",
   "description": "Hanzo's app: the shell and its apps (Home, Chat, Inbox, Contacts, Meet, Calendar, Drive, Board, Work, Bots), once, for every Hanzo surface.",
   "type": "module",
   "main": "./dist/index.js",
@@ -41,6 +41,11 @@
       "types": "./dist/cyber/*.d.ts",
       "import": "./dist/cyber/*.js",
       "default": "./dist/cyber/*.js"
+    },
+    "./learn/*": {
+      "types": "./dist/learn/*.d.ts",
+      "import": "./dist/learn/*.js",
+      "default": "./dist/learn/*.js"
     },
     "./assets/*": "./assets/*"
   },

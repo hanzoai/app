@@ -123,7 +123,7 @@ const host = hostAt()
 const noop = () => {}
 /** Nothing pinned: the menu as it stands for someone who never pinned. */
 const pins: Pins = [[], noop, noop, noop]
-const SIX = ['chat', 'dev', 'design', 'flow', 'library', 'tabs']
+const SIX = ['chat', 'dev', 'design', 'flow', 'learn', 'library', 'tabs']
 
 const column = (mode: Place['mode'], path = '', held: Pins = pins) => renderToStaticMarkup(createElement(Sidebar, { pins: held, host: hostAt(path), mode, thread: null, go: noop, onShut: noop, onBack: noop }))
 const drawerColumn = (mode: Place['mode'], path = '', held: Pins = pins) =>
@@ -297,16 +297,16 @@ describe('the contextual desktop sidebar (beside the stationary icon rail)', () 
       const html = drawerColumn('chat', '', held)
       return [...html.matchAll(/data-item="move-(up|down)"/g)].map((m) => m[1])
     }
-    // All six primary apps are freely reorderable: first has down only, middle four have up+down, last has up only.
-    expect(moves(pins)).toEqual(['down', 'up', 'down', 'up', 'down', 'up', 'down', 'up', 'down', 'up'])
-    expect(moves([SIX, noop, noop, noop])).toEqual(['down', 'up', 'down', 'up', 'down', 'up', 'down', 'up', 'down', 'up'])
+    // All seven primary apps are freely reorderable: first has down only, middle five have up+down, last has up only.
+    expect(moves(pins)).toEqual(['down', 'up', 'down', 'up', 'down', 'up', 'down', 'up', 'down', 'up', 'down', 'up'])
+    expect(moves([SIX, noop, noop, noop])).toEqual(['down', 'up', 'down', 'up', 'down', 'up', 'down', 'up', 'down', 'up', 'down', 'up'])
   })
 
   test('mobile drawer appends pinned extras to the unified nav list without splitting a Pinned section above everything', () => {
     const order = (html: string) => [...html.matchAll(/data-slot="rail-([a-z-]+)"[^>]*aria-label=/g)].map((m) => m[1])
     expect(order(drawerColumn('chat'))).toEqual(SIX)
     const withScheduled = drawerColumn('chat', '', [['scheduled'], noop, noop, noop])
-    expect(order(withScheduled)).toEqual(['chat', 'dev', 'design', 'flow', 'library', 'tabs', 'scheduled'])
+    expect(order(withScheduled)).toEqual(['chat', 'dev', 'design', 'flow', 'learn', 'library', 'tabs', 'scheduled'])
     expect(withScheduled).not.toContain('data-slot="nav-pins-head"')
     // Scheduled tasks pinned is out of More; unpinned it is back in it.
     expect(withScheduled).not.toContain('data-item="pin-scheduled"')

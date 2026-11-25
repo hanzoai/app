@@ -63,7 +63,7 @@ import { ago, PINNED, UNTITLED_RUN, type Recent } from './recent'
 import { empty } from './open'
 import { useSpan } from './span'
 import { useDevMode } from './lib/dev-mode'
-import { app, cyber, CYBER_SUBROUTES, design, flow, hosted, science, talk, TERMINALS, type Place } from './lib/host'
+import { app, cyber, CYBER_SUBROUTES, design, flow, hosted, learn, science, talk, TERMINALS, type Place } from './lib/host'
 import { enter, LOGIN, signUp } from './lib/destination'
 import { HOSTED_APPS } from './lib/hosted'
 import { pick } from './lib/session'
@@ -140,6 +140,17 @@ function resolvePlaceHref(id: string, mode: Place['mode']): string | null {
   if (mode === 'cyber') {
     if (id === NEW) return cyber('overview')
     if ((CYBER_SUBROUTES as readonly string[]).includes(id)) return cyber(id)
+    return null
+  }
+  if (mode === 'learn') {
+    if (id === NEW || id === 'adventure') return `${learn()}?view=adventure`
+    if (id === 'launchpad') return learn()
+    if (id === 'startup') return `${learn()}?view=startup`
+    if (id === 'catalog') return `${learn()}?view=catalog`
+    if (id === 'course-auto-101') return learn('continuous-improvement')
+    if (id === 'course-kai-301') return `${learn('kai-training-decision-models')}?tab=experiments`
+    if (id === 'course-sci-101') return `${learn('science-discovery')}?tab=experiments`
+    if (id === 'course-ent-401') return `${learn('build-your-ai-company')}?tab=experiments`
     return null
   }
   switch (id) {
@@ -861,6 +872,7 @@ export function Sidebar({
   onDev,
   onDesign,
   onFlow,
+  onLearn,
   onTabs,
   onOrg,
   inside = null,
@@ -889,6 +901,7 @@ export function Sidebar({
   onDev?: () => void
   onDesign?: () => void
   onFlow?: () => void
+  onLearn?: () => void
   onTabs?: () => void
   onOrg?: (org: string) => void
   inside?: string | null
@@ -1010,7 +1023,8 @@ export function Sidebar({
   }
 
   const createPrimary = () => {
-    if (anon) create()
+    if (mode === 'learn') go(`${learn()}?view=adventure`)
+    else if (anon) create()
     else if (mode === 'tabs') dispatchTabsAction({ kind: 'shell' })
     else if (mode === 'dev') dev('')
     else if (mode === 'design') made ? made.go('') : go(design(''))
@@ -1032,6 +1046,7 @@ export function Sidebar({
     onDev: onDev ?? (() => go(app(''))),
     onDesign: onDesign ?? (() => go(design(''))),
     onFlow: onFlow ?? (() => go(flow(''))),
+    onLearn: onLearn ?? (() => go(learn())),
     onTabs: onTabs ?? (() => go(TERMINALS)),
     go,
     pins,
@@ -1054,7 +1069,9 @@ export function Sidebar({
             ? 'Design'
             : mode === 'flow'
               ? 'Flow'
-              : mode === 'tabs'
+              : mode === 'learn'
+                ? t('Learn')
+                : mode === 'tabs'
                 ? t('Tabs')
                 : mode === 'research'
                   ? t('Science')
@@ -1074,7 +1091,7 @@ export function Sidebar({
       const links = own(host, dev, t).flatMap((g) => g.links).filter((l) => l.id !== NEW)
       return links.length ? [{ id: 'dev-places', label: '', links }] : []
     }
-    if ((mode === 'design' || mode === 'flow' || mode === 'research' || mode === 'cyber') && places) {
+    if ((mode === 'design' || mode === 'flow' || mode === 'learn' || mode === 'research' || mode === 'cyber') && places) {
       return places
         .map((g) => ({ ...g, links: g.links.filter((l) => l.id !== NEW) }))
         .filter((g) => g.links.length > 0)
@@ -1101,6 +1118,10 @@ export function Sidebar({
     if (entryId === 'flow' && mode === 'flow' && places) {
       const links = places.flatMap((g) => g.links).filter((l) => l.id !== NEW)
       return links.length ? [{ id: 'flow-sub', label: '', links }] : []
+    }
+    if (entryId === 'learn' && mode === 'learn' && places) {
+      const links = places.flatMap((g) => g.links).filter((l) => l.id !== NEW)
+      return links.length ? [{ id: 'learn-sub', label: '', links }] : []
     }
     if (entryId === 'science' && mode === 'research' && places) {
       const links = places.flatMap((g) => g.links).filter((l) => l.id !== NEW)
@@ -1225,13 +1246,16 @@ export function Sidebar({
       if (typeof window !== 'undefined') window.location.reload()
     })
 
-  // A guest's New is always a chat: Chat is the one place a guest's work goes.
-  const primaryNewLabel = anon
-    ? t('New chat')
-    : mode === 'dev' ? t('New run') : mode === 'design' ? t('New design') : mode === 'flow' ? t('New flow') : mode === 'tabs' ? t('New terminal') : mode === 'research' ? t('New hypothesis') : mode === 'cyber' ? t('New engagement') : t('New chat')
+  // A guest's New is always a chat (except inside Learn, where it launches Choose your adventure).
+  const primaryNewLabel =
+    mode === 'learn'
+      ? t('Choose your adventure')
+      : anon
+        ? t('New chat')
+        : mode === 'dev' ? t('New run') : mode === 'design' ? t('New design') : mode === 'flow' ? t('New flow') : mode === 'tabs' ? t('New terminal') : mode === 'research' ? t('New hypothesis') : mode === 'cyber' ? t('New engagement') : t('New chat')
 
   const showPrimaryNew = !at && (drawer || (mode !== 'beta' && mode !== 'hosted'))
-  const showRecents = !(mode === 'dev' && runtime) && !(mode === 'hosted' || mode === 'beta' || mode === 'research' || mode === 'cyber' || mode === 'tabs' || mode === 'flow' || anon || at)
+  const showRecents = !(mode === 'dev' && runtime) && !(mode === 'hosted' || mode === 'beta' || mode === 'research' || mode === 'cyber' || mode === 'learn' || mode === 'tabs' || mode === 'flow' || anon || at)
 
   return (
     <TooltipProvider delay={120}>
