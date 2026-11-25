@@ -45,6 +45,17 @@ describe('catches', () => {
     expect(text).toContain(`<!-- fp:${c.fingerprint} -->`)
     expect(text).toContain('![screenshot](https://api.hanzo.ai/s.png)')
   })
+  test('ignores benign ResizeObserver loops, AbortError cancellations, and extension-intercepted fetch rejections', () => {
+    expect(catches('error', 'ResizeObserver loop completed with undelivered notifications.', '/')).toBeNull()
+    expect(catches('rejection', new DOMException('signal is aborted without reason', 'AbortError'), '/design')).toBeNull()
+    expect(catches('rejection', new Error('signal is aborted without reason'), '/design')).toBeNull()
+    const extErr = new TypeError('Failed to fetch')
+    extErr.stack = 'TypeError: Failed to fetch\n    at o (chrome-extension://abcdef/content.js:2:17856)\n    at window.fetch (https://hanzo.app/assets/main.js:14:4052)'
+    expect(catches('rejection', extErr, '/design')).toBeNull()
+    // Real application errors are still captured.
+    const realErr = new TypeError("Cannot read properties of null (reading 'navigate')")
+    expect(catches('rejection', realErr, '/chat/1')).not.toBeNull()
+  })
 })
 
 describe('the crash screen', () => {

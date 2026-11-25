@@ -130,6 +130,9 @@ export function details(message: string, path: string): string {
 const INGEST_PATH_RE = /^\/v1\/event(?:\/|$)|^\/events(?:\/|$)/i
 const INGEST_QUERY_RE = /[?&]ingest_?key=/i
 const INGEST_ERROR_RE = /\/v1\/event(?:\/|\?|$|\b)|[?&]ingest_?key=|\/events\?ingest_?key=/i
+const RESIZE_OBSERVER_NOISE_RE = /resizeobserver loop/i
+const ABORT_NOISE_RE = /signal is aborted|the user aborted a request/i
+const EXTENSION_FRAME_RE = /\b(?:chrome|moz|safari-web?)-extension:\/\//i
 
 /** True when `url` targets the telemetry/event ingest endpoint itself. */
 export function isEventIngestUrl(url: string): boolean {
@@ -142,6 +145,23 @@ export function isEventIngestUrl(url: string): boolean {
   }
 }
 
+/**
+ * True for non-actionable browser lifecycle or third-party extension noise:
+ *  - ResizeObserver loop notifications
+ *  - AbortError / `signal is aborted without reason` from navigation/unmount aborts
+ *  - Unhandled `Failed to fetch` whose first stack frame is inside a browser extension
+ */
+export function isBenignNoise(kind: Kind, rawMessage: string, rawStack: string, err?: unknown): boolean {
+  if (RESIZE_OBSERVER_NOISE_RE.test(rawMessage)) return true
+  if (typeof err === 'object' && err && (err as { name?: unknown }).name === 'AbortError') return true
+  if (ABORT_NOISE_RE.test(rawMessage)) return true
+  if (kind === 'rejection' && /^failed to fetch$/i.test(rawMessage.trim())) {
+    const topFrame = rawStack.split('\n').find((l) => /\bat\b|@/.test(l)) ?? ''
+    if (EXTENSION_FRAME_RE.test(topFrame)) return true
+  }
+  return false
+}
+
 /** Records a break, once per fingerprint a minute: a render loop is one report, not a thousand. */
 export function catches(kind: Kind, error: unknown, route?: string): Caught | null {
   const e = error as { message?: unknown; stack?: unknown } | string | null | undefined
@@ -149,6 +169,8 @@ export function catches(kind: Kind, error: unknown, route?: string): Caught | nu
   const rawStack = typeof e === 'object' && e && typeof e.stack === 'string' ? e.stack : ''
   // Never recursively capture errors originating from telemetry/event ingest itself.
   if (INGEST_ERROR_RE.test(rawMessage) || INGEST_ERROR_RE.test(rawStack)) return null
+  // Ignore benign browser layout warnings, navigation aborts, and extension-intercepted fetches.
+  if (isBenignNoise(kind, rawMessage, rawStack, error)) return null
   const message = scrub(rawMessage).slice(0, 500)
   const stack = scrub(rawStack).slice(0, 4000)
   const fp = fingerprint(kind, message, stack)
