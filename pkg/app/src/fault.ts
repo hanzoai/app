@@ -127,11 +127,30 @@ export function details(message: string, path: string): string {
   return [`Error: ${scrub(message).slice(0, 500)}`, `Screen: ${pathOf(path)}`, `Version: ${where().report?.version ?? VERSION}`].join('\n')
 }
 
+const INGEST_PATH_RE = /^\/v1\/event(?:\/|$)|^\/events(?:\/|$)/i
+const INGEST_QUERY_RE = /[?&]ingest_?key=/i
+const INGEST_ERROR_RE = /\/v1\/event(?:\/|\?|$|\b)|[?&]ingest_?key=|\/events\?ingest_?key=/i
+
+/** True when `url` targets the telemetry/event ingest endpoint itself. */
+export function isEventIngestUrl(url: string): boolean {
+  if (INGEST_QUERY_RE.test(url)) return true
+  try {
+    const parsed = new URL(url, 'http://x')
+    return INGEST_PATH_RE.test(parsed.pathname)
+  } catch {
+    return INGEST_PATH_RE.test(url.split(/[?#]/)[0] ?? '')
+  }
+}
+
 /** Records a break, once per fingerprint a minute: a render loop is one report, not a thousand. */
 export function catches(kind: Kind, error: unknown, route?: string): Caught | null {
   const e = error as { message?: unknown; stack?: unknown } | string | null | undefined
-  const message = scrub(typeof e === 'string' ? e : String(e?.message ?? e ?? 'Unknown error')).slice(0, 500)
-  const stack = scrub(typeof e === 'object' && e && typeof e.stack === 'string' ? e.stack : '').slice(0, 4000)
+  const rawMessage = typeof e === 'string' ? e : String(e?.message ?? e ?? 'Unknown error')
+  const rawStack = typeof e === 'object' && e && typeof e.stack === 'string' ? e.stack : ''
+  // Never recursively capture errors originating from telemetry/event ingest itself.
+  if (INGEST_ERROR_RE.test(rawMessage) || INGEST_ERROR_RE.test(rawStack)) return null
+  const message = scrub(rawMessage).slice(0, 500)
+  const stack = scrub(rawStack).slice(0, 4000)
   const fp = fingerprint(kind, message, stack)
   const now = Date.now()
   if (now - (seen.get(fp) ?? 0) < 60_000) return null
@@ -153,7 +172,7 @@ export function catches(kind: Kind, error: unknown, route?: string): Caught | nu
 }
 
 let live = false
-let sending = false
+let sendingCount = 0
 
 /**
  * Starts listening, once: window errors, unhandled rejections, 5xx from /v1,
@@ -182,7 +201,7 @@ export function listen(): void {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
       const path = pathOf(url)
       // The report's own calls and telemetry ingest must never report themselves.
-      if (path.startsWith('/v1/') && path !== '/v1/event' && !sending) {
+      if (path.startsWith('/v1/') && !isEventIngestUrl(url) && sendingCount === 0) {
         const method = (init?.method ?? (typeof input === 'object' && 'method' in input ? input.method : 'GET')).toUpperCase()
         catches('http', `${method} ${path} answered ${res.status}`)
       }
@@ -338,17 +357,80 @@ async function postEvent(event: Record<string, unknown>, keepalive = false): Pro
   })
 }
 
+const AUTO_WINDOW_MS = 60_000
+const MAX_AUTO_REPORTS_PER_WINDOW = 10
+const AUTO_AUTH_BACKOFF_MS = 5 * 60_000
+const AUTO_BASE_BACKOFF_MS = 15_000
+const AUTO_MAX_BACKOFF_MS = 5 * 60_000
+const AUTO_FAILURE_THRESHOLD = 2
+
+const autoReportTimes: number[] = []
+let autoBlockedUntil = 0
+let autoConsecutiveFailures = 0
+
+function parseRetryAfterMs(res: Response): number | null {
+  try {
+    const raw = res.headers?.get?.('retry-after')
+    if (!raw) return null
+    const seconds = Number(raw)
+    if (Number.isFinite(seconds) && seconds > 0) {
+      return Math.min(Math.max(seconds * 1000, 10_000), AUTO_MAX_BACKOFF_MS)
+    }
+  } catch {
+    /* ignore */
+  }
+  return null
+}
+
+function allowAutoReport(): boolean {
+  const now = Date.now()
+  if (now < autoBlockedUntil) return false
+  const cutoff = now - AUTO_WINDOW_MS
+  while (autoReportTimes.length > 0 && autoReportTimes[0]! < cutoff) {
+    autoReportTimes.shift()
+  }
+  if (autoReportTimes.length >= MAX_AUTO_REPORTS_PER_WINDOW) return false
+  autoReportTimes.push(now)
+  return true
+}
+
+function recordAutoReportOutcome(res?: Response): void {
+  if (res?.ok) {
+    autoConsecutiveFailures = 0
+    autoBlockedUntil = 0
+    return
+  }
+  autoConsecutiveFailures++
+  const now = Date.now()
+  if (res && (res.status === 401 || res.status === 403)) {
+    autoBlockedUntil = Math.max(autoBlockedUntil, now + AUTO_AUTH_BACKOFF_MS)
+    return
+  }
+  if (res && res.status === 429) {
+    const delay =
+      parseRetryAfterMs(res) ??
+      Math.min(AUTO_BASE_BACKOFF_MS * 2 ** (autoConsecutiveFailures - 1), AUTO_MAX_BACKOFF_MS)
+    autoBlockedUntil = Math.max(autoBlockedUntil, now + delay)
+    return
+  }
+  if (autoConsecutiveFailures >= AUTO_FAILURE_THRESHOLD) {
+    const exp = autoConsecutiveFailures - AUTO_FAILURE_THRESHOLD
+    const delay = Math.min(AUTO_BASE_BACKOFF_MS * 2 ** exp, AUTO_MAX_BACKOFF_MS)
+    autoBlockedUntil = Math.max(autoBlockedUntil, now + delay)
+  }
+}
+
 /** Best-effort automatic delivery of a caught uncaught error/rejection to `/v1/event`. */
 async function reportCaught(c: Caught): Promise<void> {
   if (typeof window === 'undefined' || typeof fetch !== 'function') return
-  const wasSending = sending
-  sending = true
+  if (!allowAutoReport()) return
+  sendingCount++
   try {
     const sub = subject()
     const activeOrg = org()
     const product = sourceOf()
     const release = c.version || VERSION
-    await postEvent(
+    const res = await postEvent(
       {
         messageId: `err-${c.fingerprint}-${Date.now().toString(36)}`,
         type: 'error',
@@ -381,10 +463,12 @@ async function reportCaught(c: Caught): Promise<void> {
       },
       true,
     )
+    recordAutoReportOutcome(res)
   } catch {
+    recordAutoReportOutcome()
     /* fail-soft: background telemetry must never mask the app error */
   } finally {
-    sending = wasSending
+    sendingCount = Math.max(0, sendingCount - 1)
   }
 }
 
@@ -473,9 +557,9 @@ let inFlight: Promise<Filed> | null = null
  */
 export async function send(f: Filing): Promise<Filed> {
   if (inFlight) return inFlight
-  sending = true
+  sendingCount++
   const work = file(f).finally(() => {
-    sending = false
+    sendingCount = Math.max(0, sendingCount - 1)
     inFlight = null
   })
   inFlight = work

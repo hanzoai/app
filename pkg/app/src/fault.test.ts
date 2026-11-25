@@ -207,4 +207,56 @@ describe('send to central collector', () => {
       else (globalThis as { window?: unknown }).window = origWindow
     }
   })
+
+  test('ignores errors from /v1/event ingest endpoints and opens circuit on non-2xx storms', async () => {
+    const { isEventIngestUrl, catches: freshCatches } = await import('./fault')
+    expect(isEventIngestUrl('https://api.hanzo.ai/v1/event?ingest_key=pk-abc')).toBe(true)
+    expect(isEventIngestUrl('https://api.hanzo.ai/v1/event/replay?ingest_key=pk-abc')).toBe(true)
+    expect(isEventIngestUrl('https://hanzo.app/events?ingestkey=pk-abc')).toBe(true)
+    expect(isEventIngestUrl('https://api.hanzo.ai/v1/chat/completions')).toBe(false)
+
+    // Errors referencing the ingest endpoint must never be captured or re-emitted.
+    expect(freshCatches('error', new Error('POST https://api.hanzo.ai/v1/event?ingest_key=pk-abc failed'))).toBeNull()
+    expect(freshCatches('http', 'POST /v1/event/replay answered 500')).toBeNull()
+    expect(freshCatches('rejection', 'Failed to fetch /events?ingestkey=pk-abc')).toBeNull()
+
+    const { configure } = await import('./where')
+    const origFetch = globalThis.fetch
+    const hadWindow = 'window' in globalThis
+    const origWindow = (globalThis as { window?: unknown }).window
+    ;(globalThis as { window?: unknown }).window = {
+      location: { href: 'https://hanzo.app/auth/callback', hostname: 'hanzo.app', protocol: 'https:', origin: 'https://hanzo.app' },
+      sessionStorage: mkStorage(),
+      localStorage: mkStorage(),
+    }
+    let ingestPosts = 0
+    configure({
+      api: 'https://api.example.test',
+      key: 'pk-storm-test',
+      session: {
+        length: 0,
+        key: () => null,
+        clear: () => {},
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {},
+      },
+    })
+    globalThis.fetch = (async () => {
+      ingestPosts++
+      return new Response('rate limited', { status: 429, headers: { 'retry-after': '60' } })
+    }) as typeof fetch
+    try {
+      for (let i = 0; i < 30; i++) {
+        freshCatches('error', new Error(`Distinct callback failure ${'q'.repeat(i + 1)}`), '/auth/callback')
+        await new Promise((r) => setTimeout(r, 0))
+      }
+      // First 429 opens the circuit immediately — never hundreds of requests.
+      expect(ingestPosts).toBe(1)
+    } finally {
+      globalThis.fetch = origFetch
+      if (!hadWindow) delete (globalThis as { window?: unknown }).window
+      else (globalThis as { window?: unknown }).window = origWindow
+    }
+  })
 })
