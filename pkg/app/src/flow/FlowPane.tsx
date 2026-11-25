@@ -7,16 +7,24 @@ import { Button, Input, Switch, Text } from '@hanzo/ui'
 import {
   BookOpen,
   CalendarClock,
+  Check,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Download,
   History,
   LayoutTemplate,
   Loader2,
   MessageSquare,
+  Pause,
   Play,
   Plus,
+  RotateCcw,
   Save,
   Search,
   Server,
+  ShieldAlert,
   Workflow,
   X,
   XCircle,
@@ -43,6 +51,7 @@ import { FlowPalette } from './FlowPalette'
 import { FlowPlayground } from './FlowPlayground'
 import {
   createBlankFlow,
+  describeTemplateMeta,
   FLOW_TEMPLATE_CATEGORIES,
   FLOW_TEMPLATES,
   instantiateTemplate,
@@ -109,9 +118,16 @@ export function FlowPane({
     () => typeof window !== 'undefined' && window.innerWidth < 1024,
   )
   const [activeRunSummary, setActiveRunSummary] = useState<string | null>(null)
+  const [lastLiveRun, setLastLiveRun] = useState<FlowRunRecord | null>(null)
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null)
+  const [copiedRunId, setCopiedRunId] = useState<string | null>(null)
   const [templateQuery, setTemplateQuery] = useState('')
   const [templateCategory, setTemplateCategory] = useState<'All' | FlowTemplateCategory>('All')
   const runAbortRef = useRef<AbortController | null>(null)
+
+  const attachRemoteId = useCallback((flowId: string, remoteId: string) => {
+    setFlows((prev) => prev.map((f) => (f.id === flowId ? { ...f, remoteId } : f)))
+  }, [])
 
   // Keep org-isolated storage when switching orgs.
   if (shownOrg !== activeOrg) {
@@ -122,6 +138,11 @@ export function FlowPane({
     setActiveFlowId(nextFlows[0]?.id ?? '')
     setSelectedNodeId(null)
     setShowPlayground(false)
+    setLastLiveRun(null)
+    setLiveSteps([])
+    setActiveRunSummary(null)
+    setExpandedRunId(null)
+    setCopiedRunId(null)
   }
 
   // Merge remote /v1/flow/workflows definitions when authenticated via Hanzo IAM.
@@ -147,7 +168,7 @@ export function FlowPane({
       setActiveFlowId(fresh.id)
       setSelectedNodeId(fresh.nodes[1]?.id ?? fresh.nodes[0]?.id ?? null)
       writeLocalFlows(next, activeOrg)
-      void persistFlow(fresh, next, activeOrg).then(setSyncState)
+      void persistFlow(fresh, next, activeOrg, (rid) => attachRemoteId(fresh.id, rid)).then(setSyncState)
       navigate(flowPath(fresh.id), true)
       return
     }
@@ -193,9 +214,19 @@ export function FlowPane({
   const handleSave = useCallback(async () => {
     if (!activeFlow) return
     setSyncState('saving')
-    const result = await persistFlow(activeFlow, flows, activeOrg)
+    const result = await persistFlow(activeFlow, flows, activeOrg, (rid) => attachRemoteId(activeFlow.id, rid))
     setSyncState(result)
-  }, [activeFlow, flows, activeOrg])
+  }, [activeFlow, flows, activeOrg, attachRemoteId])
+
+  const handleToggleFlowStatus = useCallback(() => {
+    if (!activeFlow) return
+    const nextStatus = activeFlow.status === 'active' ? 'paused' : 'active'
+    const updated: FlowDefinition = { ...activeFlow, status: nextStatus, updatedAt: new Date().toISOString() }
+    const next = flows.map((f) => (f.id === updated.id ? updated : f))
+    setFlows(next)
+    writeLocalFlows(next, activeOrg)
+    void persistFlow(updated, next, activeOrg, (rid) => attachRemoteId(updated.id, rid)).then(setSyncState)
+  }, [activeFlow, flows, activeOrg, attachRemoteId])
 
   const handleCreateFlow = useCallback(() => {
     const fresh = createBlankFlow(`Flow ${flows.length + 1}`)
@@ -205,9 +236,9 @@ export function FlowPane({
     setSelectedNodeId(fresh.nodes[1]?.id ?? fresh.nodes[0]?.id ?? null)
     setShowPlayground(false)
     writeLocalFlows(next, activeOrg)
-    void persistFlow(fresh, next, activeOrg).then(setSyncState)
+    void persistFlow(fresh, next, activeOrg, (rid) => attachRemoteId(fresh.id, rid)).then(setSyncState)
     navigate(flowPath(fresh.id))
-  }, [flows, activeOrg, navigate])
+  }, [flows, activeOrg, navigate, attachRemoteId])
 
   const handleUseTemplate = useCallback(
     (template: FlowTemplate, openPlaygroundAfter = false) => {
@@ -218,10 +249,10 @@ export function FlowPane({
       setSelectedNodeId(created.nodes.find((n) => !isStickyNoteNode(n))?.id ?? null)
       setShowPlayground(openPlaygroundAfter)
       writeLocalFlows(next, activeOrg)
-      void persistFlow(created, next, activeOrg).then(setSyncState)
+      void persistFlow(created, next, activeOrg, (rid) => attachRemoteId(created.id, rid)).then(setSyncState)
       navigate(flowPath(created.id))
     },
-    [flows, activeOrg, navigate],
+    [flows, activeOrg, navigate, attachRemoteId],
   )
 
   const handleDeleteFlow = useCallback(
@@ -384,9 +415,11 @@ export function FlowPane({
   }, [commitFlow])
 
   const recordRun = useCallback(
-    (record: FlowRunRecord) => {
+    (record: FlowRunRecord, replaceRunId?: string) => {
       setRuns((prev) => {
-        const next = [record, ...prev].slice(0, 50)
+        const next = replaceRunId
+          ? [record, ...prev.filter((r) => r.id !== replaceRunId)].slice(0, 50)
+          : [record, ...prev].slice(0, 50)
         writeLocalRuns(next, activeOrg)
         return next
       })
@@ -404,6 +437,7 @@ export function FlowPane({
       setRunning(true)
       setShowRunDrawer(true)
       setActiveRunSummary(null)
+      setLastLiveRun(null)
       setLiveSteps([])
       try {
         const record = await executeFlow(flowToRun, {
@@ -412,6 +446,7 @@ export function FlowPane({
           onStepUpdate: (steps) => setLiveSteps(steps),
         })
         recordRun(record)
+        setLastLiveRun(record)
         setActiveRunSummary(record.summary ?? null)
       } finally {
         setRunning(false)
@@ -419,6 +454,67 @@ export function FlowPane({
     },
     [activeFlow, running, recordRun],
   )
+
+  const handleResumeRun = useCallback(
+    async (
+      run: FlowRunRecord,
+      opts: { startFromNodeId: string; decision?: 'approved' | 'rejected' },
+    ) => {
+      const targetFlow = flows.find((f) => f.id === run.flowId)
+      if (!targetFlow || running) return
+      runAbortRef.current?.abort()
+      const ctrl = new AbortController()
+      runAbortRef.current = ctrl
+      setRunning(true)
+      setActiveRunSummary(null)
+      setLiveSteps(run.steps)
+      try {
+        const record = await executeFlow(targetFlow, {
+          trigger: run.trigger,
+          sampleInput: run.inputSample,
+          signal: ctrl.signal,
+          onStepUpdate: (steps) => setLiveSteps(steps),
+          resumeFrom: {
+            previousSteps: run.steps,
+            startFromNodeId: opts.startFromNodeId,
+          },
+          approvalDecisions: opts.decision ? { [opts.startFromNodeId]: opts.decision } : undefined,
+        })
+        // Replace resolved waiting_approval entries in-place so stale Approve/Reject buttons cannot fire twice.
+        recordRun(record, opts.decision ? run.id : undefined)
+        setLastLiveRun(record)
+        setActiveRunSummary(record.summary ?? null)
+        setExpandedRunId(record.id)
+      } finally {
+        setRunning(false)
+      }
+    },
+    [flows, running, recordRun],
+  )
+
+  const handleCopyOutput = useCallback((runId: string, text: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      void navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          setCopiedRunId(runId)
+          setTimeout(() => setCopiedRunId((cur) => (cur === runId ? null : cur)), 2000)
+        })
+        .catch(() => {})
+    }
+  }, [])
+
+  const handleDownloadOutput = useCallback((run: FlowRunRecord) => {
+    if (typeof window === 'undefined' || !run.finalOutput) return
+    const slug = run.flowName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'flow-run'
+    const blob = new Blob([run.finalOutput], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${slug}-${run.id}.md`
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }, [])
 
   const toggleSchedule = useCallback(
     (flowId: string, enabled: boolean) => {
@@ -438,11 +534,11 @@ export function FlowPane({
         )
         writeLocalFlows(next, activeOrg)
         const target = next.find((f) => f.id === flowId)
-        if (target) void persistFlow(target, next, activeOrg).then(setSyncState)
+        if (target) void persistFlow(target, next, activeOrg, (rid) => attachRemoteId(target.id, rid)).then(setSyncState)
         return next
       })
     },
-    [activeOrg],
+    [activeOrg, attachRemoteId],
   )
 
   const scheduledFlows = useMemo(
@@ -549,6 +645,49 @@ export function FlowPane({
 
           {route.view === 'canvas' && activeFlow ? (
             <>
+              <XStack
+                render="button"
+                {...{ type: 'button' }}
+                data-slot="flow-status-pill"
+                data-status={activeFlow.status}
+                aria-label={
+                  activeFlow.status === 'paused'
+                    ? t('Paused — resume flow')
+                    : activeFlow.status === 'draft'
+                      ? t('Draft — activate flow')
+                      : t('Active — pause flow')
+                }
+                onClick={handleToggleFlowStatus}
+                items="center"
+                gap="$1.5"
+                px="$2"
+                py="$1"
+                rounded="$10"
+                borderWidth={1}
+                borderColor={activeFlow.status === 'paused' ? 'var(--border-strong)' : '$edge'}
+                bg={activeFlow.status === 'paused' ? '$raised' : 'transparent'}
+                cursor="pointer"
+                hoverStyle={{ bg: '$hover' }}
+                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+              >
+                {activeFlow.status === 'paused' ? (
+                  <Pause size={11} aria-hidden />
+                ) : (
+                  <YStack
+                    width={6}
+                    height={6}
+                    rounded={999}
+                    bg={activeFlow.status === 'active' ? 'var(--state-online)' : '$quiet'}
+                  />
+                )}
+                <Text fontSize="$1" fontWeight="500" color="$ink">
+                  {activeFlow.status === 'paused'
+                    ? t('Paused')
+                    : activeFlow.status === 'draft'
+                      ? t('Draft')
+                      : t('Active')}
+                </Text>
+              </XStack>
               <Text fontSize="$1" color="$quiet" data-slot="flow-sync-status" $max-md={{ display: 'none' }}>
                 {syncState === 'saving'
                   ? t('Saving…')
@@ -637,7 +776,21 @@ export function FlowPane({
               onToggleCollapse={() => setInspectorCollapsed((v) => !v)}
               flow={activeFlow}
               selectedNode={selectedNode}
-              onUpdateFlow={(patch) => commitFlow((f) => ({ ...f, ...patch }))}
+              onUpdateFlow={(patch) => {
+                const updated: FlowDefinition = {
+                  ...activeFlow,
+                  ...patch,
+                  updatedAt: new Date().toISOString(),
+                }
+                const next = flows.map((f) => (f.id === updated.id ? updated : f))
+                setFlows(next)
+                writeLocalFlows(next, activeOrg)
+                if ('status' in patch) {
+                  void persistFlow(updated, next, activeOrg, (rid) => attachRemoteId(updated.id, rid)).then(setSyncState)
+                } else {
+                  setSyncState('local')
+                }
+              }}
               onUpdateNode={handleUpdateNode}
               onDeleteNode={handleDeleteNode}
               onConnectNodes={handleConnectNodes}
@@ -659,7 +812,7 @@ export function FlowPane({
               overflowY="auto"
             >
               <XStack items="center" justify="space-between" gap="$2">
-                <XStack items="center" gap="$2">
+                <XStack items="center" gap="$2" flexWrap="wrap">
                   <Text fontSize="$2" fontWeight="600" color="$ink">
                     {t('Test run output')}
                   </Text>
@@ -667,6 +820,60 @@ export function FlowPane({
                     <Text fontSize="$1" color="$quiet" fontFamily="$mono">
                       {activeRunSummary}
                     </Text>
+                  ) : null}
+                  {lastLiveRun?.status === 'waiting_approval' && lastLiveRun.pendingApprovalNodeId ? (
+                    <XStack items="center" gap="$1.5">
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        data-slot="live-run-approve"
+                        disabled={running}
+                        onPress={() =>
+                          void handleResumeRun(lastLiveRun, {
+                            startFromNodeId: lastLiveRun.pendingApprovalNodeId!,
+                            decision: 'approved',
+                          })
+                        }
+                      >
+                        <Check size={12} aria-hidden />
+                        {t('Approve & continue')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        data-slot="live-run-reject"
+                        disabled={running}
+                        onPress={() =>
+                          void handleResumeRun(lastLiveRun, {
+                            startFromNodeId: lastLiveRun.pendingApprovalNodeId!,
+                            decision: 'rejected',
+                          })
+                        }
+                      >
+                        <X size={12} aria-hidden />
+                        {t('Reject')}
+                      </Button>
+                    </XStack>
+                  ) : lastLiveRun?.status === 'failed' ? (
+                    (() => {
+                      const failedStep = lastLiveRun.steps.find((s) => s.status === 'error')
+                      return failedStep ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          data-slot="live-run-retry"
+                          disabled={running}
+                          onPress={() =>
+                            void handleResumeRun(lastLiveRun, {
+                              startFromNodeId: failedStep.nodeId,
+                            })
+                          }
+                        >
+                          <RotateCcw size={12} aria-hidden />
+                          {t('Retry failed step')}
+                        </Button>
+                      ) : null
+                    })()
                   ) : null}
                 </XStack>
                 <XStack
@@ -703,7 +910,9 @@ export function FlowPane({
                           <Loader2 size={13} aria-hidden />
                         ) : step.status === 'success' ? (
                           <CheckCircle2 size={13} color="var(--state-online)" aria-hidden />
-                        ) : step.status === 'error' ? (
+                        ) : step.status === 'waiting_approval' ? (
+                          <ShieldAlert size={13} color="var(--foreground)" aria-hidden />
+                        ) : step.status === 'error' || step.status === 'rejected' ? (
                           <XCircle size={13} color="var(--state-error)" aria-hidden />
                         ) : null}
                         <Text fontSize="$2" fontWeight="500" color="$ink">
@@ -806,13 +1015,18 @@ export function FlowPane({
                     gap="$3"
                   >
                     <YStack flex={1} minW={220} gap="$1">
-                      <XStack items="center" gap="$2">
+                      <XStack items="center" gap="$2" flexWrap="wrap">
                         <Text fontSize="$3" fontWeight="600" color="$ink">
                           {item.name}
                         </Text>
                         <Text fontSize="$1" color="$quiet" fontFamily="$mono" px="$2" py={2} rounded="$2" bg="$hover">
                           {cron}
                         </Text>
+                        {item.status === 'paused' ? (
+                          <Text fontSize="$1" color="$soft" px="$2" py={2} rounded="$2" bg="$raised">
+                            {t('Flow paused')}
+                          </Text>
+                        ) : null}
                       </XStack>
                       <Text fontSize="$2" color="$soft">
                         {info.human} · {item.schedule?.timezone || 'UTC'}
@@ -836,7 +1050,8 @@ export function FlowPane({
                       <Button
                         size="sm"
                         variant="primary"
-                        disabled={running}
+                        data-slot={`scheduled-run-${item.id}`}
+                        disabled={running || item.status === 'paused'}
                         onPress={() => {
                           setActiveFlowId(item.id)
                           navigate(flowPath(item.id))
@@ -844,7 +1059,7 @@ export function FlowPane({
                         }}
                       >
                         <Play size={13} aria-hidden />
-                        {t('Run now')}
+                        {item.status === 'paused' ? t('Paused') : t('Run now')}
                       </Button>
                     </XStack>
                   </XStack>
@@ -875,55 +1090,225 @@ export function FlowPane({
             </YStack>
           ) : (
             <YStack gap="$2.5">
-              {runs.map((run) => (
-                <YStack
-                  key={run.id}
-                  data-slot={`flow-run-${run.id}`}
-                  p="$3.5"
-                  rounded="$4"
-                  borderWidth={1}
-                  borderColor="$edge"
-                  bg="var(--card)"
-                  gap="$2"
-                >
-                  <XStack items="center" justify="space-between" flexWrap="wrap" gap="$2">
-                    <XStack items="center" gap="$2">
-                      {run.status === 'completed' ? (
-                        <CheckCircle2 size={15} color="var(--state-online)" aria-hidden />
-                      ) : (
-                        <XCircle size={15} color="var(--state-error)" aria-hidden />
-                      )}
-                      <Text fontSize="$3" fontWeight="600" color="$ink">
-                        {run.flowName}
-                      </Text>
-                      <Text fontSize="$1" color="$quiet" fontFamily="$mono">
-                        {run.trigger}
-                      </Text>
-                    </XStack>
-                    <Text fontSize="$1" color="$quiet" fontFamily="$mono">
-                      {run.durationMs ? `${run.durationMs}ms` : ''} · {new Date(run.startedAt).toLocaleString()}
-                    </Text>
-                  </XStack>
-                  {run.summary ? (
-                    <Text fontSize="$2" color="$soft">
-                      {run.summary}
-                    </Text>
-                  ) : null}
-                  <YStack gap="$1">
-                    {run.steps.map((step) => (
-                      <XStack key={step.nodeId} items="center" justify="space-between" gap="$2" px="$2" py="$1" rounded="$2" bg="$background">
-                        <Text fontSize="$1" color="$ink" flex={1} numberOfLines={1}>
-                          {step.nodeTitle}
+              {runs.map((run) => {
+                const expanded = expandedRunId === run.id
+                const failedStep = run.steps.find((s) => s.status === 'error')
+                const pendingNodeId =
+                  run.pendingApprovalNodeId ?? run.steps.find((s) => s.status === 'waiting_approval')?.nodeId
+                const hasFlow = flows.some((f) => f.id === run.flowId)
+                const allSkipped = run.steps.length > 0 && run.steps.every((s) => s.status === 'skipped')
+                return (
+                  <YStack
+                    key={run.id}
+                    data-slot={`flow-run-${run.id}`}
+                    p="$3.5"
+                    rounded="$4"
+                    borderWidth={1}
+                    borderColor={
+                      run.status === 'waiting_approval'
+                        ? 'var(--border-selected)'
+                        : run.status === 'failed'
+                          ? 'var(--state-error)'
+                          : '$edge'
+                    }
+                    bg="var(--card)"
+                    gap="$2"
+                  >
+                    <XStack items="center" justify="space-between" flexWrap="wrap" gap="$2">
+                      <XStack
+                        render="button"
+                        {...{ type: 'button' }}
+                        data-slot={`run-expand-${run.id}`}
+                        aria-expanded={expanded}
+                        onClick={() => setExpandedRunId(expanded ? null : run.id)}
+                        items="center"
+                        gap="$2"
+                        bg="transparent"
+                        borderWidth={0}
+                        p={0}
+                        cursor="pointer"
+                        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                      >
+                        {expanded ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
+                        {allSkipped ? (
+                          <Pause size={15} color="var(--muted-foreground)" aria-hidden />
+                        ) : run.status === 'completed' ? (
+                          <CheckCircle2 size={15} color="var(--state-online)" aria-hidden />
+                        ) : run.status === 'waiting_approval' ? (
+                          <ShieldAlert size={15} color="var(--foreground)" aria-hidden />
+                        ) : (
+                          <XCircle size={15} color="var(--state-error)" aria-hidden />
+                        )}
+                        <Text fontSize="$3" fontWeight="600" color="$ink">
+                          {run.flowName}
                         </Text>
-                        <Text fontSize="$1" color={step.status === 'error' ? 'var(--state-error)' : '$quiet'} fontFamily="$mono">
-                          {step.status}
-                          {step.durationMs ? ` · ${step.durationMs}ms` : ''}
+                        <Text fontSize="$1" color="$quiet" fontFamily="$mono">
+                          {run.trigger} · {allSkipped ? 'paused' : run.status}
                         </Text>
                       </XStack>
-                    ))}
+                      <XStack items="center" gap="$2" flexWrap="wrap">
+                        <Text fontSize="$1" color="$quiet" fontFamily="$mono">
+                          {run.durationMs ? `${run.durationMs}ms` : ''} · {new Date(run.startedAt).toLocaleString()}
+                        </Text>
+                        {run.finalOutput && run.status !== 'rejected' ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              data-slot={`run-copy-${run.id}`}
+                              onPress={() => handleCopyOutput(run.id, run.finalOutput!)}
+                            >
+                              {copiedRunId === run.id ? <Check size={12} aria-hidden /> : <Copy size={12} aria-hidden />}
+                              {copiedRunId === run.id ? t('Copied') : t('Copy')}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              data-slot={`run-download-${run.id}`}
+                              onPress={() => handleDownloadOutput(run)}
+                            >
+                              <Download size={12} aria-hidden />
+                              {t('Download')}
+                            </Button>
+                          </>
+                        ) : null}
+                      </XStack>
+                    </XStack>
+
+                    {run.summary ? (
+                      <Text fontSize="$2" color="$soft">
+                        {run.summary}
+                      </Text>
+                    ) : null}
+
+                    {/* Human Approval actions on paused runs */}
+                    {run.status === 'waiting_approval' && pendingNodeId && hasFlow ? (
+                      <XStack items="center" gap="$2" flexWrap="wrap" pt="$1">
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          data-slot={`run-approve-${run.id}`}
+                          disabled={running}
+                          onPress={() =>
+                            void handleResumeRun(run, {
+                              startFromNodeId: pendingNodeId,
+                              decision: 'approved',
+                            })
+                          }
+                        >
+                          <Check size={12} aria-hidden />
+                          {t('Approve & continue')}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          data-slot={`run-reject-${run.id}`}
+                          disabled={running}
+                          onPress={() =>
+                            void handleResumeRun(run, {
+                              startFromNodeId: pendingNodeId,
+                              decision: 'rejected',
+                            })
+                          }
+                        >
+                          <X size={12} aria-hidden />
+                          {t('Reject')}
+                        </Button>
+                      </XStack>
+                    ) : null}
+
+                    {/* Failed-run recovery actions: retry from failed step or inspect node */}
+                    {run.status === 'failed' && failedStep && hasFlow ? (
+                      <XStack items="center" gap="$2" flexWrap="wrap" pt="$1">
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          data-slot={`run-retry-${run.id}`}
+                          disabled={running}
+                          onPress={() =>
+                            void handleResumeRun(run, {
+                              startFromNodeId: failedStep.nodeId,
+                            })
+                          }
+                        >
+                          <RotateCcw size={12} aria-hidden />
+                          {t('Retry from failed step')}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          data-slot={`run-inspect-${run.id}`}
+                          onPress={() => {
+                            setActiveFlowId(run.flowId)
+                            setSelectedNodeId(failedStep.nodeId)
+                            navigate(flowPath(run.flowId))
+                          }}
+                        >
+                          {t('Inspect failed node')}
+                        </Button>
+                      </XStack>
+                    ) : null}
+
+                    {/* Deliverable output preview (suppressed on rejected runs) */}
+                    {run.finalOutput && run.status !== 'rejected' ? (
+                      <YStack
+                        data-slot={`run-deliverable-${run.id}`}
+                        p="$2.5"
+                        rounded="$3"
+                        borderWidth={1}
+                        borderColor="$edge"
+                        bg="$background"
+                        gap="$1"
+                      >
+                        <Text fontSize="$1" fontWeight="600" color="$soft">
+                          {run.status === 'waiting_approval' ? t('Pending review output') : t('Deliverable output')}
+                        </Text>
+                        <Text
+                          fontSize="$2"
+                          color="$ink"
+                          numberOfLines={expanded ? undefined : 3}
+                          $platform-web={{ whiteSpace: 'pre-wrap' }}
+                        >
+                          {run.finalOutput}
+                        </Text>
+                      </YStack>
+                    ) : null}
+
+                    <YStack gap="$1">
+                      {run.steps.map((step) => (
+                        <YStack key={step.nodeId} px="$2" py="$1.5" rounded="$2" bg="$background" gap="$1">
+                          <XStack items="center" justify="space-between" gap="$2">
+                            <Text fontSize="$1" color="$ink" flex={1} numberOfLines={1}>
+                              {step.nodeTitle}
+                            </Text>
+                            <Text
+                              fontSize="$1"
+                              color={
+                                step.status === 'error' || step.status === 'rejected'
+                                  ? 'var(--state-error)'
+                                  : '$quiet'
+                              }
+                              fontFamily="$mono"
+                            >
+                              {step.status}
+                              {step.durationMs ? ` · ${step.durationMs}ms` : ''}
+                            </Text>
+                          </XStack>
+                          {step.error ? (
+                            <Text fontSize="$1" color="var(--state-error)" fontFamily="$mono">
+                              {step.error}
+                            </Text>
+                          ) : expanded && step.output ? (
+                            <Text fontSize="$1" color="$soft" $platform-web={{ whiteSpace: 'pre-wrap' }}>
+                              {step.output}
+                            </Text>
+                          ) : null}
+                        </YStack>
+                      ))}
+                    </YStack>
                   </YStack>
-                </YStack>
-              ))}
+                )
+              })}
             </YStack>
           )}
         </YStack>
@@ -993,7 +1378,9 @@ export function FlowPane({
           </XStack>
 
           <XStack gap="$3.5" flexWrap="wrap" items="stretch">
-            {filteredTemplates.map((tpl) => (
+            {filteredTemplates.map((tpl) => {
+              const meta = describeTemplateMeta(tpl)
+              return (
               <YStack
                 key={tpl.id}
                 data-slot={`flow-template-${tpl.id}`}
@@ -1022,6 +1409,27 @@ export function FlowPane({
                   <Text fontSize="$2" color="$soft">
                     {tpl.description}
                   </Text>
+                  <YStack
+                    data-slot={`flow-template-meta-${tpl.id}`}
+                    gap="$1"
+                    p="$2"
+                    rounded="$2"
+                    bg="$background"
+                    borderWidth={1}
+                    borderColor="$edge"
+                  >
+                    <Text fontSize="$1" color="$soft">
+                      {t('Trigger')}: {t(meta.trigger)} · {t('Output')}: {t(meta.output)}
+                    </Text>
+                    <Text fontSize="$1" color="$quiet" numberOfLines={1}>
+                      {t('Input')}: {meta.inputs}
+                    </Text>
+                    {meta.connections.length > 0 ? (
+                      <Text fontSize="$1" color="$quiet">
+                        {t('Uses')}: {meta.connections.join(', ')}
+                      </Text>
+                    ) : null}
+                  </YStack>
                   <XStack gap="$1" flexWrap="wrap" pt="$1">
                     {tpl.nodes
                       .filter((n) => !isStickyNoteNode(n))
@@ -1052,7 +1460,8 @@ export function FlowPane({
                   </Button>
                 </XStack>
               </YStack>
-            ))}
+              )
+            })}
           </XStack>
         </YStack>
       )}

@@ -167,6 +167,8 @@ describe('FlowPane, FlowPlayground, FlowKnowledgePanel, FlowMcpDrawer, and flowN
     const templates = renderToStaticMarkup(createElement(FlowPane, { path: '/flow/templates' }))
     expect(templates).toContain('data-slot="flow-templates-view"')
     expect(templates).toContain('data-slot="flow-template-categories"')
+    expect(templates).toContain('data-slot="flow-template-meta-pokedex-agent"')
+    expect(templates).toContain('Chat / Playground')
     expect(templates).toContain('Pokédex Agent')
     expect(templates).toContain('Basic Prompting')
     expect(templates).toContain('Vector Store RAG')
@@ -174,6 +176,55 @@ describe('FlowPane, FlowPlayground, FlowKnowledgePanel, FlowMcpDrawer, and flowN
     expect(templates).toContain('CRM Speed-to-Lead Setter')
     expect(templates).not.toContain('enso-hybrid')
     expect(templates).not.toContain('Langflow')
+  })
+
+  test('renders deliverable output, failed-step retry, and human approval actions in /flow/runs', async () => {
+    const { readLocalFlows, writeLocalRuns } = await import('./api')
+    localStorage.clear()
+    const flows = readLocalFlows('personal')
+    const flow = flows[0]!
+    writeLocalRuns(
+      [
+        {
+          id: 'run_wait',
+          flowId: flow.id,
+          flowName: flow.name,
+          trigger: 'manual',
+          status: 'waiting_approval',
+          startedAt: '2026-11-25T05:00:00Z',
+          pendingApprovalNodeId: 'n2',
+          summary: 'Waiting for approval at Human Approval',
+          steps: [
+            { nodeId: 'n1', nodeTitle: 'Input', kind: 'trigger', status: 'success', output: 'Send memo' },
+            { nodeId: 'n2', nodeTitle: 'Human Approval', kind: 'control', status: 'waiting_approval', output: 'Approve?' },
+          ],
+        },
+        {
+          id: 'run_fail',
+          flowId: flow.id,
+          flowName: flow.name,
+          trigger: 'manual',
+          status: 'failed',
+          startedAt: '2026-11-25T04:00:00Z',
+          summary: 'Failed at Enso Agent',
+          finalOutput: 'Partial draft deliverable',
+          steps: [
+            { nodeId: 'n1', nodeTitle: 'Input', kind: 'trigger', status: 'success', output: 'Hello' },
+            { nodeId: 'n3', nodeTitle: 'Enso Agent', kind: 'agent', status: 'error', error: 'Gateway 503' },
+          ],
+        },
+      ],
+      'personal',
+    )
+    const html = renderToStaticMarkup(createElement(FlowPane, { path: '/flow/runs' }))
+    expect(html).toContain('data-slot="run-approve-run_wait"')
+    expect(html).toContain('data-slot="run-reject-run_wait"')
+    expect(html).toContain('data-slot="run-retry-run_fail"')
+    expect(html).toContain('data-slot="run-inspect-run_fail"')
+    expect(html).toContain('data-slot="run-deliverable-run_fail"')
+    expect(html).toContain('Partial draft deliverable')
+    expect(html).toContain('data-slot="run-copy-run_fail"')
+    expect(html).toContain('data-slot="run-download-run_fail"')
   })
 
   test('flowNav returns contextual sidebar links for all Flow views including Knowledge', () => {

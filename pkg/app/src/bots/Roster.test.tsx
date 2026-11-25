@@ -184,5 +184,55 @@ describe('Bots Roster sidebar', () => {
     // Subtle /flow Workflows entry is present below.
     expect(html).toContain('data-slot="bots-workflows-link"')
     expect(html).toContain('/flow')
+    // Attention strip stays hidden when no bots have failed or active runs.
+    expect(html).not.toContain('data-slot="bots-attention"')
+  })
+
+  test('renders real-data attention strip when bots have failed or active runs', () => {
+    const last = new Map<string, AgentRun>([
+      ['vi', { id: 'r1', agentName: 'vi', status: 'failed', input: 'check', createdAt: '2026-11-25T05:00:00Z' } as AgentRun],
+      ['dev', { id: 'r2', agentName: 'dev', status: 'running', input: 'build', createdAt: '2026-11-25T05:01:00Z' } as AgentRun],
+    ])
+    const html = renderToStaticMarkup(
+      createElement(Roster, {
+        bots,
+        groups: [],
+        last,
+        open: 'hanzo',
+        unread: null,
+        me: null,
+        width: 256,
+        onPick: () => {},
+        onMake: () => {},
+        onMakeGroup: () => {},
+        disabled: false,
+      }),
+    )
+    expect(html).toContain('data-slot="bots-attention"')
+    expect(html).toContain('NEEDS ATTENTION')
+    expect(html).toContain('1 failed · 1 running')
+    expect(html).toContain('data-slot="bots-attention-item"')
+
+    // Running-only shows ACTIVE NOW without failed wording.
+    const activeOnly = renderToStaticMarkup(
+      createElement(Roster, {
+        bots,
+        groups: [],
+        last: new Map<string, AgentRun>([
+          ['dev', { id: 'r2', agentName: 'dev', status: 'running', input: 'build', createdAt: '2026-11-25T05:01:00Z' } as AgentRun],
+        ]),
+        open: 'hanzo',
+        unread: null,
+        me: null,
+        width: 256,
+        onPick: () => {},
+        onMake: () => {},
+        onMakeGroup: () => {},
+        disabled: false,
+      }),
+    )
+    expect(activeOnly).toContain('ACTIVE NOW')
+    expect(activeOnly).toContain('1 running')
+    expect(activeOnly).not.toContain('NEEDS ATTENTION')
   })
 })

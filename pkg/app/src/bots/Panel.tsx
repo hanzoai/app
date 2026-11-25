@@ -43,6 +43,7 @@ import {
 import { useKept } from '../kept'
 import { api } from '../lib/api'
 import { useAi } from '../lib/ai'
+import { FLOW } from '../lib/host'
 import { say } from '../failure'
 import { Network, of } from '../network'
 import { called } from '../team'
@@ -784,28 +785,51 @@ export function Panel({
 
           {/* Automations (Scheduled & Event-Driven) */}
           <YStack gap={6} data-parity-key="bots.panel.automations">
-            <XStack items="center" justify="space-between" px={4}>
+            <XStack items="center" justify="space-between" flexWrap="wrap" px={4} gap={6}>
               <Text {...LABEL}>{t('Automations')}</Text>
-              <XStack
-                render={<button type="button" />}
-                onClick={() => setAutoModalOpen(true)}
-                items="center"
-                gap={3}
-                px={6}
-                py={2}
-                rounded={6}
-                bg="transparent"
-                borderWidth={0}
-                cursor="pointer"
-                transition="quickest"
-                hoverStyle={{ bg: PICKED }}
-                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
-                $max-sm={{ minH: 44, px: 10 }}
-              >
-                <Plus size={12} color={DIM} aria-hidden />
-                <Text fontSize={12} lineHeight={16} color={DIM}>
-                  {t('Add')}
-                </Text>
+              <XStack items="center" gap={4}>
+                <XStack
+                  render={<a href={FLOW} />}
+                  data-slot="bots-panel-open-flow"
+                  items="center"
+                  gap={3}
+                  px={6}
+                  py={2}
+                  rounded={6}
+                  bg="transparent"
+                  cursor="pointer"
+                  transition="quickest"
+                  hoverStyle={{ bg: PICKED }}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  $max-sm={{ minH: 44, px: 10 }}
+                  $platform-web={{ textDecoration: 'none' }}
+                >
+                  <Text fontSize={12} lineHeight={16} color={DIM}>
+                    {t('Open in Flow')}
+                  </Text>
+                  <ExternalLink size={11} color={DIM} aria-hidden />
+                </XStack>
+                <XStack
+                  render={<button type="button" />}
+                  onClick={() => setAutoModalOpen(true)}
+                  items="center"
+                  gap={3}
+                  px={6}
+                  py={2}
+                  rounded={6}
+                  bg="transparent"
+                  borderWidth={0}
+                  cursor="pointer"
+                  transition="quickest"
+                  hoverStyle={{ bg: PICKED }}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  $max-sm={{ minH: 44, px: 10 }}
+                >
+                  <Plus size={12} color={DIM} aria-hidden />
+                  <Text fontSize={12} lineHeight={16} color={DIM}>
+                    {t('Add')}
+                  </Text>
+                </XStack>
               </XStack>
             </XStack>
 

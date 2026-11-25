@@ -145,9 +145,19 @@ describe('pool', () => {
 })
 
 describe('names', () => {
-  test("a workspace's bucket is its org, made DNS-safe", () => {
+  test("a workspace's bucket is its org, made DNS-safe and at least 3 chars for S3", () => {
     expect(slug('Hanzo AI, Inc.')).toBe('hanzo-ai-inc')
     expect(slug('---')).toBe('workspace')
+    expect(slug('')).toBe('workspace')
+    expect(slug('日本語')).toBe('workspace')
+    expect(slug('abc')).toBe('abc')
+    expect(slug('a-b')).toBe('a-b')
+    expect(slug('--ai--')).toBe('ws-ai')
+    expect(slug('ai')).toBe('ws-ai')
+    expect(slug('x')).toBe('ws-x')
+    expect(slug('a'.repeat(39) + '-tail')).toBe('a'.repeat(39))
+    expect(slug('ai').length).toBeGreaterThanOrEqual(3)
+    expect(slug('x').length).toBeGreaterThanOrEqual(3)
   })
 
   test("a chat's file keeps a dropped folder's path, and cannot climb out of it", () => {

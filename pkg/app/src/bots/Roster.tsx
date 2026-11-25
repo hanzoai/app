@@ -145,6 +145,19 @@ export function Roster({
 
   const { pinned, unpinned } = useMemo(() => partitionPinned(shown, last, pinnedNames), [shown, last, pinnedNames])
 
+  // Real-data-only attention/activity summary from live `last` runs (never fabricated).
+  const attentionBots = useMemo(() => {
+    const failed: Agent[] = []
+    const active: Agent[] = []
+    for (const b of bots ?? []) {
+      const run = last.get(b.name)
+      const st = String(run?.status ?? '').toLowerCase()
+      if (st === 'failed' || st === 'error') failed.push(b)
+      else if (st === 'running' || st === 'queued' || st === 'in_progress') active.push(b)
+    }
+    return { failed, active }
+  }, [bots, last])
+
   const togglePin = useCallback(
     (name: string) => {
       const base = pinnedNames ?? defaultPinnedNames(bots ?? [])
@@ -372,6 +385,88 @@ export function Roster({
                 <Text {...WORD} fontWeight="600" color="var(--background)">
                   {t('New bot')}
                 </Text>
+              </XStack>
+            </YStack>
+          ) : null}
+
+          {!query.trim() && (attentionBots.failed.length > 0 || attentionBots.active.length > 0) ? (
+            <YStack
+              data-slot="bots-attention"
+              mx={10}
+              mb={8}
+              p={9}
+              rounded={10}
+              bg={RAISED}
+              borderWidth={1}
+              borderColor={LINE}
+              gap={6}
+            >
+              <XStack items="center" justify="space-between" gap={6}>
+                <Text fontSize={11} lineHeight={15} fontWeight="600" color={DIM}>
+                  {attentionBots.failed.length > 0 ? t('NEEDS ATTENTION') : t('ACTIVE NOW')}
+                </Text>
+                <Text fontSize={11} lineHeight={15} color={DIM}>
+                  {[
+                    attentionBots.failed.length > 0
+                      ? t('{n} failed', { n: attentionBots.failed.length })
+                      : null,
+                    attentionBots.active.length > 0
+                      ? t('{n} running', { n: attentionBots.active.length })
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Text>
+              </XStack>
+              <XStack gap={6} flexWrap="wrap">
+                {attentionBots.failed.map((b) => (
+                  <XStack
+                    key={`fail-${b.name}`}
+                    render={<button type="button" />}
+                    data-slot="bots-attention-item"
+                    data-status="failed"
+                    onClick={() => onPick(b.name)}
+                    items="center"
+                    gap={5}
+                    px={8}
+                    py={4}
+                    rounded={999}
+                    bg={FLOOR}
+                    borderWidth={1}
+                    borderColor="var(--state-error)"
+                    cursor="pointer"
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  >
+                    <YStack width={6} height={6} rounded={999} bg="var(--state-error)" aria-hidden />
+                    <Text fontSize={12} lineHeight={15} color={INK}>
+                      {called(b.name)}
+                    </Text>
+                  </XStack>
+                ))}
+                {attentionBots.active.map((b) => (
+                  <XStack
+                    key={`act-${b.name}`}
+                    render={<button type="button" />}
+                    data-slot="bots-attention-item"
+                    data-status="running"
+                    onClick={() => onPick(b.name)}
+                    items="center"
+                    gap={5}
+                    px={8}
+                    py={4}
+                    rounded={999}
+                    bg={FLOOR}
+                    borderWidth={1}
+                    borderColor={LINE}
+                    cursor="pointer"
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  >
+                    <YStack width={6} height={6} rounded={999} bg="var(--state-online)" aria-hidden />
+                    <Text fontSize={12} lineHeight={15} color={INK}>
+                      {called(b.name)}
+                    </Text>
+                  </XStack>
+                ))}
               </XStack>
             </YStack>
           ) : null}

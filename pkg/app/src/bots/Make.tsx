@@ -16,6 +16,47 @@ import { NAME, make, updateGroup, type BotGroup } from './api'
 import { PILL, WORD } from './kit'
 import { DIM, INK, LINE, PICKED, RAISED } from './ink'
 
+const BOT_ROLE_TEMPLATES: readonly {
+  id: string
+  label: string
+  name: string
+  weekly: string
+  instructions: string
+}[] = [
+  {
+    id: 'researcher',
+    label: 'Researcher',
+    name: 'research-bot',
+    weekly: '15',
+    instructions:
+      'Research topics using live web sources and workspace knowledge, then deliver concise cited briefs with key findings and next actions.',
+  },
+  {
+    id: 'ops',
+    label: 'Ops Triage',
+    name: 'ops-triage',
+    weekly: '20',
+    instructions:
+      'Monitor incidents, logs, and alerts; triage severity, summarize root cause, and draft actionable follow-ups for human approval.',
+  },
+  {
+    id: 'support',
+    label: 'Support Desk',
+    name: 'support-desk',
+    weekly: '15',
+    instructions:
+      'Answer customer questions accurately from workspace docs, flag billing or account escalations, and keep responses short and clear.',
+  },
+  {
+    id: 'writer',
+    label: 'Content Writer',
+    name: 'content-writer',
+    weekly: '10',
+    instructions:
+      'Turn notes, releases, and product updates into clear changelog entries, email digests, and launch drafts in our brand voice.',
+  },
+]
+
 const FIELD = {
   unstyled: true,
   width: '100%',
@@ -98,6 +139,43 @@ export function Make({
         <DialogTitle fontSize={18} lineHeight={24} fontWeight="500" color="$ink">
           {t('New bot')}
         </DialogTitle>
+        <YStack gap={6} data-slot="bots-make-templates">
+          <Text fontSize={12} lineHeight={16} color={DIM}>
+            {t('Quick-start role')}
+          </Text>
+          <XStack gap={6} flexWrap="wrap">
+            {BOT_ROLE_TEMPLATES.map((tpl) => {
+              const active = name.trim() === tpl.name && does.trim() === tpl.instructions
+              return (
+                <XStack
+                  key={tpl.id}
+                  render="button"
+                  {...{ type: 'button' }}
+                  data-slot={`bots-make-tpl-${tpl.id}`}
+                  aria-pressed={active}
+                  onClick={() => {
+                    setName(tpl.name)
+                    setDoes(tpl.instructions)
+                    setWeekly(tpl.weekly)
+                  }}
+                  height={28}
+                  px={10}
+                  rounded={999}
+                  items="center"
+                  bg={active ? PICKED : RAISED}
+                  borderWidth={1}
+                  borderColor={active ? INK : LINE}
+                  cursor="pointer"
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                >
+                  <Text fontSize={12} lineHeight={16} fontWeight={active ? '600' : '400'} color={INK}>
+                    {t(tpl.label)}
+                  </Text>
+                </XStack>
+              )
+            })}
+          </XStack>
+        </YStack>
         <YStack render="form" {...{ onSubmit: submit }} gap={12}>
           <Input
             {...FIELD}
