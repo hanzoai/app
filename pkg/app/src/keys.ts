@@ -7,7 +7,46 @@ import { inDialog, typing, type Press } from './chord'
 /** The one keymap (Dev's table and resolver, @hanzo/dev/keymap), fetched once, on first use. */
 type Keymap = typeof import('@hanzo/dev/keymap')
 let keymap: Keymap | null = null
-const loading = (): Promise<Keymap> => import('@hanzo/dev/keymap').then((m) => (keymap = m))
+let inflight: Promise<Keymap | null> | null = null
+
+/**
+ * Loads the lazy keymap chunk with a single retry on transient failure and
+ * never leaves an unhandled promise rejection if a deploy swaps chunk hashes
+ * or the visitor's connection drops mid-load.
+ */
+export function loadKeymap(
+  importer: () => Promise<Keymap> = () => import('@hanzo/dev/keymap'),
+  retryDelayMs = 300,
+): Promise<Keymap | null> {
+  if (keymap) return Promise.resolve(keymap)
+  if (inflight) return inflight
+  const attempt = async (): Promise<Keymap | null> => {
+    try {
+      keymap = await importer()
+      return keymap
+    } catch {
+      if (retryDelayMs > 0) {
+        await new Promise((r) => setTimeout(r, retryDelayMs))
+      }
+      try {
+        keymap = await importer()
+        return keymap
+      } catch {
+        return null
+      }
+    } finally {
+      inflight = null
+    }
+  }
+  inflight = attempt()
+  return inflight
+}
+
+/** Test-only reset for cached keymap state. */
+export function _resetKeymapForTest(): void {
+  keymap = null
+  inflight = null
+}
 
 /** What the workspace's global keys do, said by the surface that draws the workspace. */
 export interface Keys {
@@ -160,7 +199,7 @@ export function useGlobalKeys(on: Keys): void {
   latest.current = on
   useEffect(() => {
     let live = true
-    void loading()
+    void loadKeymap()
     const key = (e: KeyboardEvent) => void handle(e, latest.current, t)
     window.addEventListener('keydown', key)
     return () => {

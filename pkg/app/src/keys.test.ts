@@ -5,7 +5,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 
 vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s }) }))
 
-const { handle, useGlobalKeys, cyclePanel, railKeys } = await import('./keys')
+const { handle, useGlobalKeys, cyclePanel, railKeys, loadKeymap, _resetKeymapForTest } = await import('./keys')
 const km = await import('@hanzo/dev/keymap')
 
 const say = (s: string) => s
@@ -193,5 +193,26 @@ describe('the hook', () => {
     act(() => root.unmount())
     window.dispatchEvent(ctrl('b'))
     expect(second.sidebar).toHaveBeenCalledTimes(seen)
+  })
+
+  test('loadKeymap retries transient dynamic import failure and never rejects unhandled', async () => {
+    _resetKeymapForTest()
+    let calls = 0
+    const recovered = await loadKeymap(async () => {
+      calls++
+      if (calls === 1) throw new TypeError('error loading dynamically imported module: keymap-HWY54LNI.js')
+      return km
+    }, 0)
+    expect(calls).toBe(2)
+    expect(recovered).toBe(km)
+
+    _resetKeymapForTest()
+    let failCalls = 0
+    const failed = await loadKeymap(async () => {
+      failCalls++
+      throw new TypeError('error loading dynamically imported module: keymap-HWY54LNI.js')
+    }, 0)
+    expect(failCalls).toBe(2)
+    expect(failed).toBeNull()
   })
 })
