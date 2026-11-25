@@ -122,7 +122,7 @@ export function FlowPane({
     setShowPlayground(false)
   }
 
-  // Merge remote /v1/workflow definitions when authenticated via Hanzo IAM.
+  // Merge remote /v1/flow/workflows definitions when authenticated via Hanzo IAM.
   useEffect(() => {
     const ctrl = new AbortController()
     void syncLoadFlows(activeOrg, ctrl.signal).then((res) => {
@@ -222,6 +222,7 @@ export function FlowPane({
 
   const handleDeleteFlow = useCallback(
     (flowId: string) => {
+      const target = flows.find((f) => f.id === flowId)
       setFlows((prev) => {
         const remaining = prev.filter((f) => f.id !== flowId)
         const next = remaining.length > 0 ? remaining : [createBlankFlow()]
@@ -232,9 +233,9 @@ export function FlowPane({
         }
         return next
       })
-      void removeRemoteFlow(flowId)
+      void removeRemoteFlow(flowId, target?.remoteId)
     },
-    [activeFlowId, activeOrg],
+    [flows, activeFlowId, activeOrg],
   )
 
   const handleMoveNode = useCallback(

@@ -154,42 +154,129 @@ export interface FlowSyncResult {
   source: 'remote' | 'local'
 }
 
+const FLOW_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+interface RemoteFlowRecord {
+  id?: string
+  name?: string
+  description?: string
+  updated_at?: string
+  data?: {
+    hanzoStudio?: boolean
+    localId?: string
+    status?: FlowDefinition['status']
+    templateId?: string
+    schedule?: FlowDefinition['schedule']
+    createdAt?: string
+    nodes?: FlowNode[]
+    edges?: FlowDefinition['edges']
+  } | null
+}
+
+function toRemotePayload(flow: FlowDefinition) {
+  return {
+    name: flow.name,
+    description: flow.description,
+    data: {
+      hanzoStudio: true,
+      localId: flow.id,
+      status: flow.status,
+      templateId: flow.templateId,
+      schedule: flow.schedule,
+      createdAt: flow.createdAt,
+      nodes: flow.nodes,
+      edges: flow.edges,
+    },
+  }
+}
+
+function fromRemoteRecord(rec: RemoteFlowRecord): FlowDefinition | null {
+  if (!rec || typeof rec.id !== 'string' || typeof rec.name !== 'string') return null
+  const data = rec.data
+  if (!data || !Array.isArray(data.nodes)) return null
+  // Only adopt Hanzo Studio-shaped nodes (which carry `subtype` & `config`).
+  const studioNodes = data.nodes.filter(
+    (n): n is FlowNode => Boolean(n && typeof n.id === 'string' && typeof n.subtype === 'string'),
+  )
+  if (data.nodes.length > 0 && studioNodes.length === 0) return null
+  const updatedAt = rec.updated_at || new Date().toISOString()
+  return {
+    id: typeof data.localId === 'string' && data.localId ? data.localId : rec.id,
+    remoteId: rec.id,
+    name: rec.name,
+    description: typeof rec.description === 'string' ? rec.description : '',
+    status: data.status ?? 'active',
+    templateId: data.templateId,
+    nodes: studioNodes,
+    edges: Array.isArray(data.edges) ? data.edges : [],
+    schedule: data.schedule,
+    createdAt: data.createdAt || updatedAt,
+    updatedAt,
+  }
+}
+
+export interface FlowCloudStatus {
+  reachable: boolean
+  version?: string
+}
+
+/** Probes live `GET /v1/flow/status` on Hanzo Cloud (`api.hanzo.ai/v1`). */
+export async function getFlowCloudStatus(signal?: AbortSignal): Promise<FlowCloudStatus> {
+  if (!bearer()) return { reachable: false }
+  try {
+    const res = await fetch(`${api()}/v1/flow/status`, {
+      method: 'GET',
+      headers: flowHeaders(false),
+      signal,
+    })
+    if (!res.ok) return { reachable: false }
+    const body = (await res.json().catch(() => null)) as FlowCloudStatus | null
+    return { reachable: Boolean(body?.reachable), version: body?.version }
+  } catch {
+    return { reachable: false }
+  }
+}
+
 /**
- * Loads workflows from localStorage immediately and merges remote `/v1/workflow`
- * definitions when authenticated via Hanzo IAM. Never throws on missing remote backend.
+ * Loads workflows from localStorage immediately and merges remote
+ * `GET /v1/flow/workflows` definitions when authenticated via Hanzo IAM.
+ * Never throws on offline or unauthenticated sessions.
  */
 export async function syncLoadFlows(orgId?: string | null, signal?: AbortSignal): Promise<FlowSyncResult> {
   const local = readLocalFlows(orgId)
   if (!bearer()) return { flows: local, source: 'local' }
   try {
-    const res = await fetch(`${api()}/v1/workflow`, {
+    const res = await fetch(`${api()}/v1/flow/workflows?page=1&size=100`, {
       method: 'GET',
       headers: flowHeaders(false),
       signal,
     })
     if (!res.ok) return { flows: local, source: 'local' }
     const body = (await res.json().catch(() => null)) as
-      | FlowDefinition[]
-      | { workflows?: FlowDefinition[]; data?: FlowDefinition[] }
+      | RemoteFlowRecord[]
+      | { items?: RemoteFlowRecord[]; workflows?: RemoteFlowRecord[]; data?: RemoteFlowRecord[] }
       | null
-    const remoteList = Array.isArray(body)
+    const rawList = Array.isArray(body)
       ? body
-      : Array.isArray(body?.workflows)
-        ? body.workflows
-        : Array.isArray(body?.data)
-          ? body.data
-          : []
-    const validRemote = remoteList.filter(
-      (f): f is FlowDefinition =>
-        Boolean(f && typeof f.id === 'string' && typeof f.name === 'string' && Array.isArray(f.nodes)),
-    )
-    if (validRemote.length === 0) return { flows: local, source: 'local' }
+      : Array.isArray(body?.items)
+        ? body.items
+        : Array.isArray(body?.workflows)
+          ? body.workflows
+          : Array.isArray(body?.data)
+            ? body.data
+            : []
+    const validRemote = rawList
+      .map((rec) => fromRemoteRecord(rec))
+      .filter((f): f is FlowDefinition => f !== null)
+    if (validRemote.length === 0) return { flows: local, source: 'remote' }
     const byId = new Map<string, FlowDefinition>()
     for (const f of local) byId.set(f.id, f)
     for (const r of validRemote) {
       const existing = byId.get(r.id)
       if (!existing || (r.updatedAt && r.updatedAt > existing.updatedAt)) {
         byId.set(r.id, r)
+      } else if (existing && !existing.remoteId && r.remoteId) {
+        byId.set(r.id, { ...existing, remoteId: r.remoteId })
       }
     }
     const merged = [...byId.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
@@ -201,7 +288,9 @@ export async function syncLoadFlows(orgId?: string | null, signal?: AbortSignal)
 }
 
 /**
- * Saves one flow to localStorage and best-effort persists it to `/v1/workflow`.
+ * Saves one flow to localStorage and persists it live to `/v1/flow/workflows`
+ * (`PATCH /v1/flow/workflows/:id` when a server UUID exists, `POST /v1/flow/workflows`
+ * on first sync).
  */
 export async function persistFlow(
   flow: FlowDefinition,
@@ -210,23 +299,46 @@ export async function persistFlow(
 ): Promise<'synced' | 'local'> {
   writeLocalFlows(allFlows, orgId)
   if (!bearer()) return 'local'
+  const payload = JSON.stringify(toRemotePayload(flow))
+  const existingUuid =
+    (flow.remoteId && FLOW_UUID_RE.test(flow.remoteId) && flow.remoteId) ||
+    (FLOW_UUID_RE.test(flow.id) ? flow.id : null)
   try {
-    const res = await fetch(`${api()}/v1/workflow`, {
+    if (existingUuid) {
+      const patchRes = await fetch(`${api()}/v1/flow/workflows/${encodeURIComponent(existingUuid)}`, {
+        method: 'PATCH',
+        headers: flowHeaders(true),
+        body: payload,
+      })
+      if (patchRes.ok) return 'synced'
+      if (patchRes.status !== 404) return 'local'
+    }
+    const postRes = await fetch(`${api()}/v1/flow/workflows`, {
       method: 'POST',
       headers: flowHeaders(true),
-      body: JSON.stringify(flow),
+      body: payload,
     })
-    if (res.ok) return 'synced'
+    if (!postRes.ok) return 'local'
+    const created = (await postRes.json().catch(() => null)) as { id?: string } | null
+    if (created?.id && FLOW_UUID_RE.test(created.id)) {
+      const withRemoteId = allFlows.map((f) => (f.id === flow.id ? { ...f, remoteId: created.id } : f))
+      writeLocalFlows(withRemoteId, orgId)
+    }
+    return 'synced'
   } catch {
-    // offline or backend route not provisioned; localStorage copy is authoritative
+    // offline or transient upstream fault; localStorage copy stays intact
   }
   return 'local'
 }
 
-export async function removeRemoteFlow(flowId: string): Promise<void> {
+export async function removeRemoteFlow(flowId: string, remoteId?: string): Promise<void> {
   if (!bearer()) return
+  const targetUuid =
+    (remoteId && FLOW_UUID_RE.test(remoteId) && remoteId) ||
+    (FLOW_UUID_RE.test(flowId) ? flowId : null)
+  if (!targetUuid) return
   try {
-    await fetch(`${api()}/v1/workflow/${encodeURIComponent(flowId)}`, {
+    await fetch(`${api()}/v1/flow/workflows/${encodeURIComponent(targetUuid)}`, {
       method: 'DELETE',
       headers: flowHeaders(false),
     })

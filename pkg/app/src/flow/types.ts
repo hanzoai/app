@@ -233,6 +233,8 @@ export type FlowStatus = 'active' | 'draft' | 'paused'
 
 export interface FlowDefinition {
   id: string
+  /** Server UUID assigned by `/v1/flow/workflows` when synced to Hanzo Flow. */
+  remoteId?: string
   name: string
   description: string
   status: FlowStatus
