@@ -94,11 +94,13 @@ import { Upgrade, useFree } from './Upgrade'
 import { payUrl } from './lib/pay'
 import { FIRST, isSettingsPath, settingsPathFor, settingsRowOf, SettingsList, type Row as SettingsRow } from './Settings'
 import { useMaking } from './Confirm'
-import { app, CHAT, CYBER, cyber, design, flow, go, hosted, place, SCIENCE, science, settings, talk, TERMINALS, visit, type Place } from './lib/host'
+import { app, CHAT, CYBER, cyber, design, flow, go, hosted, LEARN, learn, place, SCIENCE, science, settings, talk, TERMINALS, visit, type Place } from './lib/host'
 import { cyberNav } from './cyber/nav'
 import { parseCyberTab } from './cyber/types'
 import { flowNav } from './flow/nav'
 import { parseFlowRoute } from './flow/types'
+import { learnNav } from './learn/nav'
+import { parseLearnRoute } from './learn/types'
 import { scienceNav } from './science/nav'
 import { parseScienceTab } from './science/types'
 import { Bar } from './Bar'
@@ -118,6 +120,8 @@ const Terminals = lazy(() => import('./Terminals'))
 const Science = lazy(() => import('./science/Science'))
 /** Cyber: native Hanzo Cyber autonomous security operations console (`/cyber`, alpha-flagged). */
 const CyberPane = lazy(() => import('./cyber/CyberPane'))
+/** Learn: native Hanzo University self-service learning & AI startup studio (`/learn`, `/learn/:slug`). */
+const LearnPane = lazy(() => import('./learn/LearnPane'))
 /** The apps in beta that draw inside the app (lib/hosted), fetched when one is opened at /apps/<id>. */
 const Hosted = lazy(() => import('./Hosted').then((m) => ({ default: m.HostedPane })))
 /** Betas, fetched when opening /beta in the app. */
@@ -128,7 +132,7 @@ const SettingsPane = lazy(() => import('./SettingsPane').then((m) => ({ default:
 const HOME: Place = { mode: 'chat', thread: null }
 
 /** What a window's bar names the page by; Chat names itself in the sidebar. */
-const TITLES: Record<string, string> = { dev: 'Dev', design: 'Design', flow: 'Flow', tabs: 'Tabs', research: 'Science', cyber: 'Cyber' }
+const TITLES: Record<string, string> = { dev: 'Dev', design: 'Design', flow: 'Flow', learn: 'Learn', tabs: 'Tabs', research: 'Science', cyber: 'Cyber' }
 
 /**
  * The window's bar, for a host that is a window of its own: `inset` px kept
@@ -159,7 +163,7 @@ export interface Hosted {
 
 
 /** Where each mode was last, so the rail goes back to it. */
-const last: Record<string, string> = { chat: '', dev: '', design: '', flow: '', tabs: '', research: '', cyber: '' }
+const last: Record<string, string> = { chat: '', dev: '', design: '', flow: '', learn: '', tabs: '', research: '', cyber: '' }
 
 export function App({ bar, betas }: Hosted = {}) {
   return (
@@ -396,11 +400,12 @@ function Window({ bar, betas }: Hosted) {
   const toDev = () => move(mode === 'dev' && !inPlace ? app('') : last.dev || app(''))
   const toDesign = () => move(last.design || design(''))
   const toFlow = () => move(last.flow || flow(''))
+  const toLearn = () => move(last.learn || learn())
   const toTabs = () => move(TERMINALS)
   // Another organization: picked, and the app opened in it at the mode's New.
   const org = (o: string) => {
     pick(o)
-    window.location.assign(mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'flow' ? flow('') : mode === 'tabs' ? TERMINALS : mode === 'research' ? SCIENCE : mode === 'cyber' ? CYBER : inside ? hosted(inside) : talk())
+    window.location.assign(mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'flow' ? flow('') : mode === 'learn' ? LEARN : mode === 'tabs' ? TERMINALS : mode === 'research' ? SCIENCE : mode === 'cyber' ? CYBER : inside ? hosted(inside) : talk())
   }
   const sidebar =
     mode === 'beta' || mode === 'hosted'
@@ -413,7 +418,9 @@ function Window({ bar, betas }: Hosted) {
           ? places(maker, (p) => maker.go(p))
           : mode === 'flow'
             ? flowNav(parseFlowRoute(here).view, move, t)
-            : mode === 'dev' && raised(where) === 'customize'
+            : mode === 'learn'
+              ? learnNav(parseLearnRoute(here, typeof window !== 'undefined' ? window.location.search : ''), move, t)
+              : mode === 'dev' && raised(where) === 'customize'
               ? tabs(host, (p) => host.go(p), t).map((group) => ({ ...group, links: [...group.links, {
                 id: 'learning', label: t('Learning'), active: learning, icon: <RefreshCw size={16} aria-hidden />,
                 onPress: () => { shut(); setLearning(true) },
@@ -551,6 +558,7 @@ function Window({ bar, betas }: Hosted) {
                 onDev={toDev}
                 onDesign={toDesign}
                 onFlow={toFlow}
+                onLearn={toLearn}
                 onTabs={toTabs}
                 go={move}
                 onOrg={org}
@@ -635,6 +643,7 @@ function Window({ bar, betas }: Hosted) {
                     onDev={toDev}
                     onDesign={toDesign}
                     onFlow={toFlow}
+                    onLearn={toLearn}
                     onTabs={toTabs}
                     onOrg={org}
                     places={sidebar}
@@ -731,6 +740,14 @@ function Window({ bar, betas }: Hosted) {
                       </Suspense>
                     </YStack>
                   </YStack>
+                ) : mode === 'learn' ? (
+                  <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                    <YStack flex={1} minH={0} height="100%">
+                      <Suspense fallback={null}>
+                        <LearnPane host={host} path={here} onNavigate={move} />
+                      </Suspense>
+                    </YStack>
+                  </YStack>
                 ) : at.mode === 'hosted' ? (
                   <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
                     <Suspense fallback={null}>
@@ -800,6 +817,7 @@ function Window({ bar, betas }: Hosted) {
                       onDev={toDev}
                       onDesign={toDesign}
                       onFlow={toFlow}
+                      onLearn={toLearn}
                       onTabs={toTabs}
                       onOrg={org}
                       drawer

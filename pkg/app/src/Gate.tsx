@@ -113,9 +113,17 @@ function checkout(plan: SubscriptionPlan): string {
   return checkoutUrl(plan.id, `${origin}${path}`)
 }
 
+/** Whether the current route is Hanzo University (`/learn` or `/learn/:slug`), which supports self-serve signed-out preview. */
+function isPublicLearnPath(): boolean {
+  if (typeof window === 'undefined') return false
+  const p = window.location.pathname.replace(/\/+$/, '') || '/'
+  return p === '/learn' || p.startsWith('/learn/')
+}
+
 /** Whether the current Chat navigation is an anonymous preview session. */
 function isAnonChat(): boolean {
   if (typeof window === 'undefined' || hasSession()) return false
+  if (isPublicLearnPath()) return true
   const win = window as unknown as { __hanzoAnonChat?: boolean }
   if (Boolean(win.__hanzoAnonChat)) return true
   if (window.location.pathname !== CHAT && window.location.pathname !== chat()) return false

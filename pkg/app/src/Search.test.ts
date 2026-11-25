@@ -101,11 +101,11 @@ describe('Go to', () => {
 
   test('the products lead, then Dev’s places from its registry, New run left to the action', () => {
     const { top } = places(host, vi.fn())
-    expect(top.slice(0, 9).map((r) => r.label)).toEqual(['Chat', 'Dev', 'Design', 'Flow', 'Tabs', 'Science', 'Team', 'Projects', 'Machines'])
+    expect(top.slice(0, 10).map((r) => r.label)).toEqual(['Chat', 'Dev', 'Design', 'Flow', 'Tabs', 'Science', 'Learn', 'Team', 'Projects', 'Machines'])
     expect(top.some((r) => r.label === 'New run')).toBe(false)
   })
 
-  test('a place two registries hold is listed once; Design’s, Flow’s and Science’s places open their routes', () => {
+  test('a place two registries hold is listed once; Design’s, Flow’s, Science’s and Learn’s places open their routes', () => {
     const go = vi.fn()
     const { top, deep } = places(host, go)
     expect([...top, ...deep].filter((r) => r.label === 'Machines')).toHaveLength(1)
@@ -119,11 +119,15 @@ describe('Go to', () => {
     expect(go).toHaveBeenCalledWith('/science')
     take(deep, 'science-studies')
     expect(go).toHaveBeenCalledWith('/science/studies')
+    take(top, 'learn')
+    expect(go).toHaveBeenCalledWith('/learn')
+    take(deep, 'learn-kai-301')
+    expect(go).toHaveBeenCalledWith('/learn/kai-training-decision-models?tab=experiments')
   })
 
   test('without a host the products and the site’s pages are still there', () => {
     const { top, deep } = places(undefined, vi.fn())
-    expect(top.map((r) => r.id)).toEqual(['chat', 'dev', 'design', 'flow', 'tabs', 'science', 'settings', 'referral', 'beta', 'help-help'])
+    expect(top.map((r) => r.id)).toEqual(['chat', 'dev', 'design', 'flow', 'tabs', 'science', 'learn', 'settings', 'referral', 'beta', 'help-help'])
     expect(deep.every((r) => r.where === 'Help')).toBe(true)
   })
 })

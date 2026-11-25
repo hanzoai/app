@@ -98,6 +98,8 @@ vi.mock('./lib/host', () => ({
   settings: () => '/settings',
   design: (at: string) => `/design/${at}`,
   flow: (at: string) => `/flow/${at}`,
+  LEARN: '/learn',
+  learn: (slug?: string) => (slug ? `/learn/${slug}` : '/learn'),
   talk: () => '/chat',
   visit: () => {},
   place: (p: string) =>
@@ -109,9 +111,11 @@ vi.mock('./lib/host', () => ({
           ? { mode: 'chat', thread: null }
           : p === '/flow' || p.startsWith('/flow/')
             ? { mode: 'flow', at: p.slice('/flow/'.length) }
-            : p === '/apps/crm'
-              ? { mode: 'hosted', id: 'crm' }
-              : null,
+            : p === '/learn' || p.startsWith('/learn/')
+              ? { mode: 'learn', slug: p.startsWith('/learn/') ? p.slice('/learn/'.length) : null }
+              : p === '/apps/crm'
+                ? { mode: 'hosted', id: 'crm' }
+                : null,
 }))
 vi.mock('./Bar', () => ({ Bar: stub('app-bar') }))
 vi.mock('./view', () => ({ FOOT: 0, HEIGHT: '100dvh', TOP: 0, useView: () => () => {} }))
@@ -120,6 +124,8 @@ vi.mock('./Betas', () => ({ Ask: () => null, BetasPane: stub('betas-pane'), useB
 vi.mock('./Hosted', () => ({ HostedPane: ({ id }: { id: string }) => createElement('div', { 'data-slot': 'hosted-pane', 'data-id': id }) }))
 vi.mock('./flow/FlowPane', () => ({ default: stub('flow-pane'), FlowPane: stub('flow-pane') }))
 vi.mock('./flow/nav', () => ({ flowNav: () => [{ id: 'flow', label: '', links: [] }] }))
+vi.mock('./learn/LearnPane', () => ({ default: stub('learn-pane'), LearnPane: stub('learn-pane') }))
+vi.mock('./learn/nav', () => ({ learnNav: () => [{ id: 'learn', label: '', links: [] }, { id: 'learn-featured', label: 'Featured labs', links: [] }] }))
 
 import { App } from './App'
 
@@ -219,6 +225,17 @@ describe('Betas and hosted apps keep the sidebar column', () => {
     expect(html).toContain('data-slot="flow-pane"')
     expect(html).toContain('data-slot="app-column" data-places="1"')
     expect(html).not.toContain('data-slot="hosted-request"')
+  })
+
+  test('Learn (/learn and /learn/:slug) renders LearnPane directly and passes learnNav places to the sidebar', async () => {
+    draw('/learn')
+    await new Promise((r) => setTimeout(r, 0))
+    const html = draw('/learn')
+    expect(html).toContain('data-slot="rail"')
+    expect(html).toContain('data-slot="learn-pane"')
+    expect(html).toContain('data-slot="app-column" data-places="2"')
+    const courseHtml = draw('/learn/kai-training-decision-models')
+    expect(courseHtml).toContain('data-slot="learn-pane"')
   })
 })
 

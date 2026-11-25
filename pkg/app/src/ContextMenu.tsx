@@ -38,7 +38,7 @@ import {
   Workflow,
 } from 'lucide-react'
 import type { Host } from '@hanzo/build'
-import { app, design, flow, settings, talk, TERMINALS, type Place } from './lib/host'
+import { app, design, flow, learn, settings, talk, TERMINALS, type Place } from './lib/host'
 import { rememberSettingsReturn } from './lib/dev-mode'
 import { useOpen } from './open'
 import { usePinnedNav, type Pins } from './Rail'
@@ -140,6 +140,9 @@ const railPath = (slot: string): string | null => {
     case 'rail-flow':
     case 'place-flow':
       return flow('')
+    case 'rail-learn':
+    case 'place-learn':
+      return learn()
     case 'rail-cyber':
     case 'place-cyber':
       return '/cyber'

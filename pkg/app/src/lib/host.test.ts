@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 import { SECTIONS } from '@hanzo/build/route'
-import { app, BETA, CHAT, DEV, design, dev, flow, follow, page, paged, place, resume, SETTINGS, settings, talk, visit } from './host'
+import { app, BETA, CHAT, DEV, design, dev, flow, follow, LEARN, learn, page, paged, place, resume, SETTINGS, settings, talk, visit } from './host'
 import { configure } from '../where'
 
 const RUN = `sess_${'0123456789abcdef'.repeat(2)}`
@@ -187,6 +187,19 @@ describe('Design is the third root', () => {
     expect(flow('')).toBe('/flow')
     expect(flow('scheduled')).toBe('/flow/scheduled')
     expect(flow('/runs')).toBe('/flow/runs')
+  })
+
+  test('Learn (/learn and /learn/:slug) routes resolve cleanly and write back', () => {
+    expect(LEARN).toBe('/learn')
+    expect(place('/learn')).toEqual({ mode: 'learn', slug: null })
+    expect(place('/learn/')).toEqual({ mode: 'learn', slug: null })
+    expect(place('/learn/kai-training-decision-models')).toEqual({ mode: 'learn', slug: 'kai-training-decision-models' })
+    expect(place('/learn/build-your-ai-company/')).toEqual({ mode: 'learn', slug: 'build-your-ai-company' })
+    expect(page('/learn')).toBe('/learn')
+    expect(page('/learn/kai-training-decision-models')).toBe('/learn/:slug')
+    expect(learn()).toBe('/learn')
+    expect(learn('continuous-improvement')).toBe('/learn/continuous-improvement')
+    expect(learn('/kai-training-decision-models/')).toBe('/learn/kai-training-decision-models')
   })
 })
 

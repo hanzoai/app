@@ -35,6 +35,7 @@ import {
   FolderLock,
   GitBranch,
   Globe,
+  GraduationCap,
   KeyRound,
   Landmark,
   LifeBuoy,
@@ -92,7 +93,7 @@ export { orgNavKey, readOrgNavDefaults, resolveNavSeed, saveOrgNavDefaults, useO
 import { HEAD, MARK, TOUCH_HEAD } from './ground'
 import { railKeys } from './keys'
 import { out } from './help'
-import { apex, app, CYBER, design, flow, hosted, SCIENCE, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
+import { apex, app, CYBER, design, flow, hosted, LEARN, learn, SCIENCE, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
 import { site } from './where'
 
 export { MARK }
@@ -164,7 +165,7 @@ export const NAV_PINNED_KEY = 'hanzo.nav.pinned'
 export const NAV_PINS_KEY = 'hanzo.nav.pins'
 
 /** The menu as it stands when nothing is pinned, in its order: each app's default place. */
-export const DEFAULT_NAV: readonly string[] = ['chat', 'dev', 'design', 'flow', 'library', 'tabs']
+export const DEFAULT_NAV: readonly string[] = ['chat', 'dev', 'design', 'flow', 'learn', 'library', 'tabs']
 /** The old name of `DEFAULT_NAV`, for importers that still read it. */
 export const DEFAULT_PINNED_NAV = DEFAULT_NAV
 
@@ -320,6 +321,7 @@ export function useNavEntries({
   onDev,
   onDesign,
   onFlow,
+  onLearn,
   onTabs,
   go,
   pins,
@@ -333,6 +335,7 @@ export function useNavEntries({
   onDev: () => void
   onDesign?: () => void
   onFlow?: () => void
+  onLearn?: () => void
   onTabs: () => void
   go: (address: string) => void
 }) {
@@ -397,6 +400,15 @@ export function useNavEntries({
             onPress: () => (onFlow ? onFlow() : go(flow(''))),
           } satisfies NavEntry,
         ]),
+    {
+      id: 'learn',
+      slot: 'rail-learn',
+      label: t('Learn'),
+      href: LEARN,
+      on: mode === 'learn',
+      icon: <GraduationCap size={17} aria-hidden />,
+      onPress: () => (onLearn ? onLearn() : go(learn())),
+    },
     {
       id: 'library',
       slot: 'rail-library',
@@ -662,6 +674,7 @@ export function Rail({
   onDev,
   onDesign,
   onFlow,
+  onLearn,
   onTabs,
   go,
   onOrg,
@@ -689,6 +702,7 @@ export function Rail({
   onDev: () => void
   onDesign?: () => void
   onFlow?: () => void
+  onLearn?: () => void
   onTabs: () => void
   /** Moves the app to an address of this page. */
   go: (address: string) => void
@@ -711,6 +725,7 @@ export function Rail({
     onDev,
     onDesign,
     onFlow,
+    onLearn,
     onTabs,
     go,
     pins,

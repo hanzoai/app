@@ -53,6 +53,7 @@ import {
   Gift,
   GitBranch,
   Globe,
+  GraduationCap,
   HardDrive,
   IdCard,
   KeyRound,
@@ -105,7 +106,7 @@ import { openModelPicker } from './lib/model-picker'
 import { useSignOut, useSigningOut } from './lib/signout'
 import { choose } from './lib/session'
 import { getDevMode, rememberSettingsReturn, setDevMode, useDevMode } from './lib/dev-mode'
-import { app, design, flow, hosted, paged, science, settings, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
+import { app, design, flow, hosted, learn, paged, science, settings, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
 import { BETAS } from './lib/betas'
 import { useBetas } from './Betas'
 import { tidy } from './lib/title'
@@ -204,6 +205,7 @@ export function places(host: Host | undefined, go: (address: string) => void, t:
           { id: 'flow', label: 'Flow', icon: <MARKS.flow.icon {...ICON} />, keywords: ['flow', 'workflow', 'automation', 'schedule', 'pipeline', 'enso', 'agents'], run: () => go(flow('')) },
           { id: 'tabs', label: 'Tabs', icon: <MARKS.tabs.icon {...ICON} />, run: () => go(TERMINALS) },
           { id: 'science', label: t('Science'), icon: <Atom {...ICON} />, keywords: ['research', 'studies', 'autonomy', 'experiments', 'benchmarks'], run: () => go(science()) },
+          { id: 'learn', label: t('Learn'), icon: <GraduationCap {...ICON} />, keywords: ['learn', 'university', 'courses', 'kai', 'zen', 'enso', 'startup', 'ent', 'adventure'], run: () => go(learn()) },
           ...(host ? [{ id: 'team', label: 'Team', icon: <Users {...ICON} />, keywords: ['workspace'], run: () => out(WORKSPACE) }] : []),
           ...(host ? rows(nav(host, builder, t).map((g) => ({ links: g.links.filter((l) => l.id !== NEW) })), '', 'dev') : []),
         ]
@@ -235,6 +237,9 @@ export function places(host: Host | undefined, go: (address: string) => void, t:
           { id: 'science-autonomy', label: t('Autonomy'), where: t('Science'), icon: <Sparkles {...ICON} />, keywords: ['science', 'autonomy', 'hypothesis', 'opportunities', 'preregister'], run: () => go(science('autonomy')) },
           { id: 'science-machines', label: t('Research machines'), where: t('Science'), icon: <Server {...ICON} />, keywords: ['science', 'machines', 'gpu', 'dgx', 'evo', 'hanzod', 'fleet'], run: () => go(science('machines')) },
           { id: 'science-schedules', label: t('Research schedules'), where: t('Science'), icon: <CalendarClock {...ICON} />, keywords: ['science', 'schedules', 'cron', 'autonomous', 'tasks'], run: () => go(science('schedules')) },
+          { id: 'learn-adventure', label: t('Choose your adventure'), where: t('Learn'), icon: <GraduationCap {...ICON} />, keywords: ['learn', 'university', 'wizard', 'track', 'adventure'], run: () => go(`${learn()}?view=adventure`) },
+          { id: 'learn-kai-301', label: 'KAI 301 · Teach Kai your business', where: t('Learn'), icon: <Cpu {...ICON} />, keywords: ['kai', '301', 'decisions', 'train', 'lab'], run: () => go(`${learn('kai-training-decision-models')}?tab=experiments`) },
+          { id: 'learn-ent-401', label: 'ENT 401 · Build Your AI Company', where: t('Learn'), icon: <Sparkles {...ICON} />, keywords: ['startup', 'ent', '401', 'saas', 'white-label', 'entrepreneurship'], run: () => go(`${learn('build-your-ai-company')}?tab=experiments`) },
         ]
       : host && anon
         ? [...rows(library(host, builder, t).slice(1), t('Library'), 'library')]
