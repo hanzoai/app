@@ -503,7 +503,7 @@ describe('Flow execution, SSE streaming, live API Request tools, branching, and 
     expect(failedStep?.error).toContain('Sign in to run Enso models (HTTP 401)')
   })
 
-  test('persists flows and Playground sessions per org in localStorage', async () => {
+  test('persists flows and Playground sessions per org in localStorage and syncs via live /v1/flow/workflows when authenticated', async () => {
     const flows = readLocalFlows('acme')
     expect(flows.length).toBeGreaterThanOrEqual(3)
     expect(flows[0]?.name).toBe('Pokédex Agent')
@@ -517,5 +517,71 @@ describe('Flow execution, SSE streaming, live API Request tools, branching, and 
     expect(sessions[0]?.name).toBe('Default Session')
     writePlaygroundSessions(flows[0]!.id, [{ ...sessions[0]!, name: 'Pikachu Research' }], 'acme')
     expect(readPlaygroundSessions(flows[0]!.id, 'acme')[0]?.name).toBe('Pikachu Research')
+
+    // When a Hanzo IAM bearer is present, syncLoadFlows and persistFlow hit /v1/flow/workflows (never /v1/workflow).
+    localStorage.setItem('hanzo_iam_access_token', 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ1MSJ9.sig')
+    const calls: Array<{ method: string; url: string }> = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        const method = init?.method ?? 'GET'
+        calls.push({ method, url })
+        if (method === 'GET' && url.includes('/v1/flow/workflows')) {
+          return new Response(
+            JSON.stringify({
+              items: [
+                {
+                  id: '11111111-1111-4111-8111-111111111111',
+                  name: 'Remote Enso Flow',
+                  description: 'Synced from flow.hanzo.ai',
+                  updated_at: '2026-11-25T00:00:00Z',
+                  data: {
+                    hanzoStudio: true,
+                    localId: 'remote-studio-1',
+                    status: 'active',
+                    nodes: [makeNodeFromComponent('chat_input', 0)],
+                    edges: [],
+                  },
+                },
+              ],
+              total: 1,
+              page: 1,
+              size: 100,
+              pages: 1,
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          )
+        }
+        if (method === 'POST' && url.endsWith('/v1/flow/workflows')) {
+          return new Response(
+            JSON.stringify({ id: '22222222-2222-4222-8222-222222222222', name: flows[0]!.name }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          )
+        }
+        if (method === 'PATCH' && url.includes('/v1/flow/workflows/22222222-2222-4222-8222-222222222222')) {
+          return new Response(
+            JSON.stringify({ id: '22222222-2222-4222-8222-222222222222', name: flows[0]!.name }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          )
+        }
+        return new Response('not found', { status: 404 })
+      }),
+    )
+
+    const synced = await syncLoadFlows('acme')
+    expect(synced.source).toBe('remote')
+    expect(synced.flows.some((f) => f.id === 'remote-studio-1' && f.remoteId === '11111111-1111-4111-8111-111111111111')).toBe(true)
+
+    const firstPersist = await persistFlow(flows[0]!, flows, 'acme')
+    expect(firstPersist).toBe('synced')
+    const afterFirst = readLocalFlows('acme')
+    const savedFlow = afterFirst.find((f) => f.id === flows[0]!.id)!
+    expect(savedFlow.remoteId).toBe('22222222-2222-4222-8222-222222222222')
+
+    const secondPersist = await persistFlow(savedFlow, afterFirst, 'acme')
+    expect(secondPersist).toBe('synced')
+    expect(calls.some((c) => c.method === 'POST' && c.url.endsWith('/v1/flow/workflows'))).toBe(true)
+    expect(calls.some((c) => c.method === 'PATCH' && c.url.includes('/v1/flow/workflows/22222222-2222-4222-8222-222222222222'))).toBe(true)
+    expect(calls.every((c) => !c.url.includes('/v1/workflow'))).toBe(true)
   })
 })
