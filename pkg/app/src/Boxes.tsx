@@ -30,7 +30,9 @@ import { Box, Text, XStack, YStack } from '@hanzo/ui'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@hanzo/ui'
 import { useIam } from '@hanzo/iam/react'
 import { hasSession } from './lib/session'
+import { enter } from './lib/destination'
 import { useAi } from './lib/ai'
+import { StateCard } from './StateCard'
 
 /**
  * The LIST price of an hour of each class, in micro-USD.
@@ -333,9 +335,36 @@ export function Boxes() {
 
   const signedIn = isAuthenticated || hasSession()
   if (isLoading) return <Empty>&nbsp;</Empty>
-  if (!signedIn) return <Empty>{t('Sign in to see the compute your org is holding.')}</Empty>
-  if (failed) return <Empty>{say(failed, t('this list'), 'read', t)}</Empty>
-  if (!boxes) return <Empty>{t('Reading your leases.')}</Empty>
+  if (!signedIn) {
+    return (
+      <StateCard
+        kind="access"
+        title={t('Sandboxes')}
+        detail={t('Sign in to see the compute your org is holding.')}
+        actionLabel={t('Sign in')}
+        onAction={() => enter()}
+        dataSlot="boxes-state"
+      />
+    )
+  }
+  if (failed) {
+    return (
+      <StateCard
+        kind="error"
+        title={t('Sandboxes')}
+        detail={say(failed, t('this list'), 'read', t)}
+        actionLabel={t('Try again')}
+        onAction={() => {
+          setFailed(null)
+          reload()
+        }}
+        dataSlot="boxes-state"
+      />
+    )
+  }
+  if (!boxes) {
+    return <StateCard kind="empty" title={t('Sandboxes')} detail={t('Reading your leases.')} dataSlot="boxes-state" />
+  }
 
   return (
     <YStack flex={1} minH={0}>
@@ -348,9 +377,12 @@ export function Boxes() {
       <Start onDone={reload} />
 
       {boxes.length === 0 ? (
-        <Empty>
-          {t('Nothing is running. A sandbox is leased when an agent needs somewhere to work, and billed for the hours it is held.')}
-        </Empty>
+        <StateCard
+          kind="empty"
+          title={t('Sandboxes')}
+          detail={t('Nothing is running. A sandbox is leased when an agent needs somewhere to work, and billed for the hours it is held.')}
+          dataSlot="boxes-state"
+        />
       ) : (
         <YStack flex={1} minH={0} overflowY="auto" overflowX="hidden" p="$4" gap="$3">
           {boxes.map((box) => (

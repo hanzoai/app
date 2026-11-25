@@ -33,6 +33,7 @@ import { useAgents, usePeople } from '@hanzo/ai/react'
 import { Box, Button, DropdownMenu, Skeleton, Text, toast, View, XStack, YStack, type DropdownMenuProps } from '@hanzo/ui'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@hanzo/ui'
 import { useIam, useOrganizations } from '@hanzo/iam/react'
+import { StateCard } from './StateCard'
 import {
   ArrowRightLeft,
   Calendar,
@@ -1688,75 +1689,83 @@ function Cards() {
           // One view at a time: the planner is the other reading of these cards.
           display={view === 'planner' ? "none" : "flex"}
         >
-          {refused ? (
-            <XStack
-              items="center"
-              gap="$2"
-              mx="$4"
-              mt="$3"
-              px="$3"
-              py="$2"
-              rounded="$3"
-              borderWidth={1}
-              borderColor="$borderColor"
-              bg="$hover"
-              shrink={0}
-            >
-              {/* THE SENTENCE GIVES AND THE BUTTON DOES NOT. `flex: 1` alone
-                  still floors a text box at its longest unbroken word, so a
-                  refusal that names a URL or an id pushes the control off a
-                  390px screen — where the reader can neither read the reason nor
-                  press the one thing that answers it. */}
-              <Text fontSize="$1" color="$soft" flex={1} minW={0}>
-                {t('{reason} Cards will appear here when it answers.', { reason: refused })}
-              </Text>
-              <Box
-                render="button"
-                onClick={() => bump((x) => x + 1)}
-                shrink={0}
-                px="$2"
-                py="$1"
-                rounded="$2"
-                borderWidth={1}
-                borderColor="var(--border-strong)"
-                hoverStyle={{ bg: '$hover' }}
-              >
-                <Text fontSize="$1" color="$ink">
-                  {t('Try again')}
-                </Text>
-              </Box>
-            </XStack>
-          ) : null}
+          {refused && (!cards || cards.length === 0) ? (
+            <StateCard
+              kind="error"
+              title={t('Board')}
+              detail={t('{reason} Cards will appear here when it answers.', { reason: refused })}
+              actionLabel={t('Try again')}
+              onAction={() => bump((x) => x + 1)}
+              dataSlot="board-state"
+            />
+          ) : (
+            <>
+              {refused ? (
+                <XStack
+                  items="center"
+                  gap="$2"
+                  mx="$4"
+                  mt="$3"
+                  px="$3"
+                  py="$2"
+                  rounded="$3"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  bg="$hover"
+                  shrink={0}
+                >
+                  <Text fontSize="$1" color="$soft" flex={1} minW={0}>
+                    {t('{reason} Cards will appear here when it answers.', { reason: refused })}
+                  </Text>
+                  <Box
+                    render="button"
+                    onClick={() => bump((x) => x + 1)}
+                    shrink={0}
+                    px="$2"
+                    py="$1"
+                    rounded="$2"
+                    borderWidth={1}
+                    borderColor="var(--border-strong)"
+                    hoverStyle={{ bg: '$hover' }}
+                  >
+                    <Text fontSize="$1" color="$ink">
+                      {t('Try again')}
+                    </Text>
+                  </Box>
+                </XStack>
+              ) : null}
 
-          <XStack
-            flex={1}
-            minW={0}
-            minH={0}
-            overflowX="auto"
-            overflowY="hidden"
-            p="$4"
-            gap="$3"
-            items="stretch"
-            $max-md={{ p: '$3' }}
-            $platform-web={{
-              WebkitOverflowScrolling: 'touch',
-              overscrollBehaviorX: 'contain',
-            }}
-          >
-            {visibleColumns.map((c) => (
-              <Column
-                key={c.id}
-                column={c}
-                cards={filed.get(c.id) ?? []}
-                people={roster}
-                onDrop={move}
-                onMoveCard={moveCard}
-                onOpen={setOpened}
-                onAdd={add}
-                loading={cards === null && !refused}
-              />
-            ))}
-          </XStack>
+              <XStack
+                flex={1}
+                minW={0}
+                minH={0}
+                overflowX="auto"
+                overflowY="hidden"
+                p="$4"
+                gap="$3"
+                items="stretch"
+                $max-md={{ p: '$3' }}
+                $platform-web={{
+                  WebkitOverflowScrolling: 'touch',
+                  overscrollBehaviorX: 'contain',
+                }}
+              >
+                {visibleColumns.map((c) => (
+                  <Column
+                    key={c.id}
+                    column={c}
+                    cards={filed.get(c.id) ?? []}
+                    people={roster}
+                    onDrop={move}
+                    onMoveCard={moveCard}
+                    onOpen={setOpened}
+                    onAdd={add}
+                    loading={cards === null && !refused}
+                  />
+                ))}
+              </XStack>
+            </>
+          )}
         </YStack>
       </XStack>
 

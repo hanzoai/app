@@ -131,6 +131,7 @@ import type { ModelCatalogEntry as Model } from "@hanzo/ui/models/catalog";
 import { payUrl, topUp } from './lib/pay';
 import { requestUpgrade, Upgrade, useFree, type Ask } from './Upgrade';
 import { enter, LOGIN, signUp } from './lib/destination';
+import { enterAnonSignIn } from './Gate';
 import { first } from './lib/first';
 import { BAD } from "./lib/mix";
 import { conversation as continued, askedOf, filesOf, partOf, type Part } from './lib/local'
@@ -1888,6 +1889,13 @@ function Thread({
   // passing value/onChange/onSend takes that ownership over rather than fighting
   // it.
   const [draft, setDraft] = useDraft(at);
+  const signInWithDraft = useCallback(
+    (target: string = LOGIN) => {
+      const active = draft.trim() || lastSubmittedPromptRef.current.trim();
+      enterAnonSignIn(target, active);
+    },
+    [draft],
+  );
   // FILES WITH THE NEXT MESSAGE, held by `pane.ts` for this conversation: the
   // paperclip, a drop anywhere on the pane, a paste into the field and the
   // column's `+` all go through its one `hold`, so the chips here and the rows
@@ -3011,7 +3019,8 @@ function Thread({
                       localStorage.removeItem("hanzo_iam_access_token");
                       localStorage.removeItem("hanzo_iam_refresh_token");
                     }
-                    enter(LOGIN);
+                    if (anonymous) signInWithDraft(LOGIN);
+                    else enter(LOGIN);
                   }}
                 >
                   {t("Sign in")}
@@ -3021,7 +3030,7 @@ function Thread({
                   {t("Upgrade")}
                 </Button>
               ) : how?.visitor ? (
-                <Button size="sm" variant="outline" onClick={() => enter()}>
+                <Button size="sm" variant="outline" onClick={() => (anonymous ? signInWithDraft(LOGIN) : enter())}>
                   {t("Sign in to keep going")}
                 </Button>
               ) : member ? (
@@ -3676,7 +3685,7 @@ function Thread({
                 px="$3"
                 data-slot="header-login"
                 onPress={() => {
-                  if (typeof window !== "undefined") enter(LOGIN);
+                  if (typeof window !== "undefined") signInWithDraft(LOGIN);
                 }}
               >
                 {t("Log in")}
@@ -3688,7 +3697,7 @@ function Thread({
                   px="$3"
                   data-slot="header-signup"
                   onPress={() => {
-                    if (typeof window !== "undefined") enter(signUp());
+                    if (typeof window !== "undefined") signInWithDraft(signUp());
                   }}
                 >
                   {t("Sign up for free")}
@@ -3701,7 +3710,7 @@ function Thread({
                   px="$3"
                   data-slot="header-signup-compact"
                   onPress={() => {
-                    if (typeof window !== "undefined") enter(signUp());
+                    if (typeof window !== "undefined") signInWithDraft(signUp());
                   }}
                 >
                   {t("Sign up")}
@@ -4269,10 +4278,10 @@ function Thread({
             {t("Sign in or create a free Hanzo account to save this conversation and continue chatting.")}
           </Text>
           <YStack gap="$2" pt="$1">
-            <Button variant="primary" size="lg" width="100%" onPress={() => enter(signUp())}>
+            <Button variant="primary" size="lg" width="100%" onPress={() => signInWithDraft(signUp())}>
               {t("Create free account")}
             </Button>
-            <Button variant="outline" size="default" width="100%" onPress={() => enter(LOGIN)}>
+            <Button variant="outline" size="default" width="100%" onPress={() => signInWithDraft(LOGIN)}>
               {t("Sign in")}
             </Button>
           </YStack>

@@ -13,7 +13,7 @@
 // THERE and the package needs no change to carry them. The four options above
 // it are this surface's, for the same reason: a home decides what it starts.
 
-import { dev, go, talk } from './lib/host'
+import { design, dev, flow, go, talk } from './lib/host'
 import { phrase } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
@@ -97,6 +97,8 @@ function HomeCard({
 const MODES = [
   { id: 'chat', label: phrase('Chat'), asks: phrase('Ask anything') },
   { id: 'dev', label: phrase('Dev'), asks: phrase('Describe what to build') },
+  { id: 'design', label: phrase('Design'), asks: phrase('Describe what to design') },
+  { id: 'automate', label: phrase('Automate'), asks: phrase('Describe the workflow to automate') },
   { id: 'news', label: phrase('News'), asks: phrase('What happened?') },
   { id: 'research', label: phrase('Research'), asks: phrase('What should we dig into?') },
 ] as const
@@ -160,6 +162,12 @@ export function Home({ ask }: HomeProps) {
     }
     if (mode === 'dev') {
       const target = dev()
+      const sep = target.includes('?') ? '&' : '?'
+      window.location.href = `${target}${sep}q=${encodeURIComponent(question)}`
+      return
+    }
+    if (mode === 'design' || mode === 'automate') {
+      const target = mode === 'design' ? design('') : flow('')
       const sep = target.includes('?') ? '&' : '?'
       window.location.href = `${target}${sep}q=${encodeURIComponent(question)}`
       return

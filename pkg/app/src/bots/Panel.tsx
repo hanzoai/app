@@ -79,7 +79,7 @@ import {
 import { CARD, CLIP, LABEL, PILL, ROUND, WORD } from './kit'
 import { DIM, FLOOR, GROUND, INK, LINE, PICKED, RAISED } from './ink'
 import { partsOf } from './said'
-import { cron as words } from './time'
+import { cron as words, instant, stamp } from './time'
 import { Confirm, useSpend } from '../Confirm'
 
 const VOICES = ['Liora', 'Aria', 'Sol', 'Koe', 'Nova', 'Echo'] as const
@@ -296,6 +296,56 @@ function describeAutomation(a: BotAutomation, t: (s: string, p?: Record<string, 
   if (s.kind === 'weekly') return t('Weekly ({day}) at {at}', { day: s.day || 'mon', at: s.at || '09:00' })
   if (s.kind === 'cron' && s.cron) return `Cron · ${s.cron}`
   return s.kind
+}
+
+export interface RunSummary {
+  id: string
+  status: 'ok' | 'error' | 'running'
+  statusLabel: string
+  summary: string
+  meta: string
+  failed: boolean
+}
+
+/** Latest runs sorted newest-first, capped at `limit`. */
+export function recentResults(runs: readonly AgentRun[], limit = 5): AgentRun[] {
+  return [...runs]
+    .sort((a, b) => (instant(b.createdAt) ?? 0) - (instant(a.createdAt) ?? 0))
+    .slice(0, limit)
+}
+
+/** Formats one run for the panel's Recent results list. */
+export function summarizeRun(
+  run: AgentRun,
+  now: number,
+  locale: string,
+  t: (s: string, p?: Record<string, unknown>) => string,
+): RunSummary {
+  const rawStatus = (run.status ?? '').toLowerCase()
+  const failed = rawStatus === 'error' || rawStatus === 'failed' || (!run.output && Boolean(run.error))
+  const running = !failed && (rawStatus === 'running' || rawStatus === 'pending' || rawStatus === 'queued')
+  const statusLabel = failed ? t('Failed') : running ? t('Running') : t('Done')
+  const rawText = failed
+    ? (run.error || run.output || run.input || t('Run failed'))
+    : (run.output || run.error || run.input || (running ? t('Running…') : t('Completed run')))
+  const summary = rawText.replace(/\s+/g, ' ').trim()
+  const at = instant(run.createdAt)
+  const timeText = at !== null ? stamp(at, now, locale, t) : ''
+  const dur =
+    typeof run.durationMs === 'number' && Number.isFinite(run.durationMs) && run.durationMs >= 0
+      ? run.durationMs >= 1000
+        ? `${(run.durationMs / 1000).toFixed(1)}s`
+        : `${Math.round(run.durationMs)}ms`
+      : ''
+  const meta = [statusLabel, timeText, dur].filter(Boolean).join(' · ')
+  return {
+    id: run.id,
+    status: failed ? 'error' : running ? 'running' : 'ok',
+    statusLabel,
+    summary,
+    meta,
+    failed,
+  }
 }
 
 const POLL = 5000
@@ -666,6 +716,11 @@ export function Panel({
 
   const selectedEventDef = EVENT_TRIGGERS.find((e) => e.id === autoEventId) ?? EVENT_TRIGGERS[0]
 
+  const recentRunSummaries = useMemo(() => {
+    const now = Date.now()
+    return recentResults(runs, 5).map((r) => summarizeRun(r, now, locale, t))
+  }, [runs, locale, t])
+
   const libraryItems = useMemo(() => {
     const items: Array<{ key: string; kind: 'doc' | 'image'; label: string; sub?: string; href?: string }> = []
     for (const r of runs) {
@@ -954,6 +1009,55 @@ export function Panel({
                 </XStack>
               ) : null}
             </YStack>
+          </YStack>
+
+          {/* Recent results (latest 5 runs) */}
+          <YStack gap={6} data-parity-key="bots.panel.results">
+            <Text {...LABEL} px={4}>
+              {t('Recent results')}
+            </Text>
+            {recentRunSummaries.length ? (
+              <YStack {...CARD}>
+                {recentRunSummaries.map((item, idx) => (
+                  <XStack
+                    key={item.id}
+                    data-slot="bots-result-row"
+                    data-run-id={item.id}
+                    data-status={item.status}
+                    minH={50}
+                    px={13}
+                    py={9}
+                    gap={10}
+                    items="center"
+                    borderBottomWidth={idx === recentRunSummaries.length - 1 ? 0 : 1}
+                    borderColor={LINE}
+                  >
+                    <YStack
+                      width={7}
+                      height={7}
+                      rounded={999}
+                      shrink={0}
+                      bg={item.failed ? 'var(--state-error)' : item.status === 'running' ? INK : 'var(--state-online)'}
+                      aria-hidden
+                    />
+                    <YStack flex={1} minW={0} gap={2}>
+                      <Text {...CLIP} fontSize={13} lineHeight={18} fontWeight="500" color={item.failed ? 'var(--state-error)' : INK}>
+                        {item.summary}
+                      </Text>
+                      <Text {...CLIP} fontSize={12} lineHeight={16} color={DIM}>
+                        {item.meta}
+                      </Text>
+                    </YStack>
+                  </XStack>
+                ))}
+              </YStack>
+            ) : (
+              <YStack {...CARD} data-slot="bots-results-empty" px={14} py={14} items="center">
+                <Text fontSize={13} lineHeight={18} color={DIM} text="center">
+                  {t('No recent runs yet. Results from chats and automations appear here.')}
+                </Text>
+              </YStack>
+            )}
           </YStack>
 
           {/* Unified Secrets, Logins & Autofill */}

@@ -57,6 +57,29 @@ const BOT_ROLE_TEMPLATES: readonly {
   },
 ]
 
+const MAX_BOT_NAME = 64
+
+/** Derives a valid `NAME`-matching slug from a bot's job description. */
+export function deriveBotName(description: string): string {
+  const slug = description
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, MAX_BOT_NAME)
+    .replace(/-+$/g, '')
+  return slug || 'bot'
+}
+
+/** Resolves the bot slug: manual `name` when provided, otherwise derived from `does`. */
+export function resolveBotName(name: string, does: string): string {
+  const manual = name.trim()
+  if (manual) return manual
+  const desc = does.trim()
+  return desc ? deriveBotName(desc) : ''
+}
+
 const FIELD = {
   unstyled: true,
   width: '100%',
@@ -91,7 +114,10 @@ export function Make({
   const [wrong, setWrong] = useState<string | null>(null)
 
   const dollars = Number(weekly)
-  const named = NAME.test(name.trim())
+  const trimmedName = name.trim()
+  const trimmedDoes = does.trim()
+  const resolvedName = resolveBotName(name, does)
+  const named = trimmedName ? NAME.test(trimmedName) : Boolean(trimmedDoes && NAME.test(resolvedName))
   const ok = named && Number.isInteger(dollars) && dollars > 0 && dollars <= 10_000 && !busy
 
   const selectedGroup = groups.find((g) => g.id === groupId || g.name === groupId) ?? null
@@ -102,11 +128,12 @@ export function Make({
     setBusy(true)
     setWrong(null)
     try {
+      const botName = resolveBotName(name, does)
       const created = await make(client, {
-        name: name.trim(),
+        name: botName,
         instructions:
-          does.trim() ||
-          `You are ${name.trim()}, a Layer ${layer} worker bot directed by Primary Bot hanzo. Use your desktop sandbox computer and connected tools to complete tasks accurately.`,
+          trimmedDoes ||
+          `You are ${botName}, a Layer ${layer} worker bot directed by Primary Bot hanzo. Use your desktop sandbox computer and connected tools to complete tasks accurately.`,
         model: ENSO,
         weekly: dollars,
         groupId: selectedGroup?.id || undefined,
@@ -182,12 +209,16 @@ export function Make({
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={t('Name')}
+            placeholder={t('Name (optional)')}
             aria-label={t('Bot name')}
           />
-          {name.trim() && !named ? (
+          {trimmedName && !named ? (
             <Text fontSize={13} lineHeight={18} color={DIM} px={4}>
               {t('Letters, digits, dot, dash and underscore; it starts with a letter or a digit.')}
+            </Text>
+          ) : !trimmedName && trimmedDoes ? (
+            <Text data-slot="bots-make-derived-name" fontSize={12} lineHeight={16} color={DIM} px={4}>
+              {t('Slug: {name}', { name: resolvedName })}
             </Text>
           ) : null}
           <Input

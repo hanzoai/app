@@ -46,6 +46,7 @@ import {
   type Conversation,
 } from './conversations'
 import { Directory } from './Directory'
+import { StateCard } from './StateCard'
 
 /** Unix SECONDS, which is what the platform sends. Milliseconds here read as 1970. */
 const when = (seconds: number, locale: string): string =>
@@ -160,18 +161,14 @@ function Connect() {
 function Empty({ children, offer }: { children: string; offer?: boolean }) {
   const { t } = useI18n()
   return (
-    <YStack flex={1} items="center" justify="center" p="$6" gap="$3">
-      {/* THE APP'S ONE HEADING. Every state of an app owes a reader exactly one
-          h1, and the empty states are the ones that shipped none — a crawler and
-          a screen reader both land here first. It names the app, not the state. */}
-      <Text render="h1" fontSize="$4" fontWeight="600" color="$ink">
-        {t('Inbox')}
-      </Text>
-      <Text fontSize="$3" color="$soft" text="center" maxW={420}>
-        {children}
-      </Text>
-      {offer ? <Connect /> : null}
-    </YStack>
+    <StateCard
+      kind="empty"
+      title={t('Inbox')}
+      headingLevel="h1"
+      detail={children}
+      action={offer ? <Connect /> : undefined}
+      dataSlot="inbox-state"
+    />
   )
 }
 

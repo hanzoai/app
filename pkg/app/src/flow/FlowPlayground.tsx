@@ -25,6 +25,7 @@ import {
   readPlaygroundSessions,
   writePlaygroundSessions,
 } from './api'
+import { FlowStepIo } from './FlowStepIo'
 import { HanzoMark } from './icons'
 import { FLOW_TEMPLATES } from './templates'
 import {
@@ -545,9 +546,12 @@ export function FlowPlayground({
                                 const open = expandedStepKey === key
                                 return (
                                   <XStack key={step.nodeId} items="center" gap="$1">
-                                    <XStack
-                                      render="button"
+                                    <Box
+                                      render={<button type="button" />}
+                                      data-slot={`playground-step-pill-${step.nodeId}`}
+                                      aria-expanded={open}
                                       onClick={() => setExpandedStepKey(open ? null : key)}
+                                      display="flex"
                                       items="center"
                                       gap="$1"
                                       px="$2"
@@ -580,7 +584,7 @@ export function FlowPlayground({
                                           {step.durationMs}ms
                                         </Text>
                                       ) : null}
-                                    </XStack>
+                                    </Box>
                                     {idx < msg.steps!.length - 1 ? (
                                       <Text fontSize="$1" color="$quiet">
                                         →
@@ -591,13 +595,14 @@ export function FlowPlayground({
                               })}
                             </XStack>
 
-                            {/* Expanded step output preview */}
+                            {/* Expanded step input and output preview */}
                             {msg.steps.map((step) => {
                               const key = `${msg.id}:${step.nodeId}`
                               if (expandedStepKey !== key) return null
                               return (
                                 <YStack
                                   key={`detail-${step.nodeId}`}
+                                  data-slot="playground-step-detail"
                                   p="$2.5"
                                   rounded="$3"
                                   bg="var(--card)"
@@ -608,14 +613,7 @@ export function FlowPlayground({
                                   <Text fontSize="$1" fontWeight="600" color="$ink">
                                     {step.nodeTitle} · {step.status}
                                   </Text>
-                                  <Text
-                                    fontSize="$1"
-                                    fontFamily="$mono"
-                                    color={step.error ? 'var(--state-error)' : '$soft'}
-                                    $platform-web={{ whiteSpace: 'pre-wrap' }}
-                                  >
-                                    {step.error || step.output || '(no output)'}
-                                  </Text>
+                                  <FlowStepIo step={step} />
                                 </YStack>
                               )
                             })}

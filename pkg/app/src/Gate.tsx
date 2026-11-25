@@ -113,6 +113,52 @@ function checkout(plan: SubscriptionPlan): string {
   return checkoutUrl(plan.id, `${origin}${path}`)
 }
 
+/** SessionStorage key preserving an anonymous or demo prompt across sign-in. */
+export const BUILD_PROMPT_KEY = 'hanzo.build.prompt'
+
+/** Ensures a sign-in target carries `?next=/chat` when no `next` parameter is already set. */
+export function chatSignInTarget(to: string = LOGIN): string {
+  const [base = '', hash = ''] = to.split('#')
+  const [path = '', query = ''] = base.split('?')
+  const params = new URLSearchParams(query)
+  if (!params.has('next')) params.set('next', CHAT)
+  const qs = params.toString()
+  const suffix = hash ? `#${hash}` : ''
+  return `${qs ? `${path}?${qs}` : path}${suffix}`
+}
+
+/** Whether an anonymous/demo chat session or draft is currently active. */
+export function hasDemoPrompt(): boolean {
+  if (typeof window === 'undefined') return false
+  const win = window as unknown as { __hanzoAnonChat?: boolean }
+  if (Boolean(win.__hanzoAnonChat)) return true
+  try {
+    return (
+      sessionStorage.getItem('hanzo.anon.try') === '1' ||
+      Boolean(sessionStorage.getItem(BUILD_PROMPT_KEY)?.trim()) ||
+      Boolean(sessionStorage.getItem('hz_prompt')?.trim())
+    )
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Persists an active anonymous/demo draft into `sessionStorage['hanzo.build.prompt']`
+ * and redirects to sign-in with `?next=/chat`.
+ */
+export function enterAnonSignIn(to: string = LOGIN, draft?: string): void {
+  const clean = (draft ?? '').trim()
+  if (typeof window !== 'undefined' && clean) {
+    try {
+      window.sessionStorage.setItem(BUILD_PROMPT_KEY, clean)
+    } catch {
+      /* storage unavailable — still proceed to sign-in */
+    }
+  }
+  enter(chatSignInTarget(to))
+}
+
 /** Whether the current route is Hanzo University (`/learn` or `/learn/:slug`), which supports self-serve signed-out preview. */
 function isPublicLearnPath(): boolean {
   if (typeof window === 'undefined') return false
@@ -141,7 +187,7 @@ function isAnonChat(): boolean {
   try {
     if (
       sessionStorage.getItem('hanzo.anon.try') === '1' ||
-      Boolean(sessionStorage.getItem('hanzo.build.prompt')?.trim()) ||
+      Boolean(sessionStorage.getItem(BUILD_PROMPT_KEY)?.trim()) ||
       Boolean(sessionStorage.getItem('hz_prompt')?.trim())
     ) {
       win.__hanzoAnonChat = true
@@ -494,7 +540,10 @@ function outage(wrong: unknown): boolean {
  */
 function SignIn({ to }: { to?: string }) {
   const { t } = useI18n()
-  useEffect(() => enter(to), [to])
+  useEffect(() => {
+    if (hasDemoPrompt()) enterAnonSignIn(to ?? LOGIN)
+    else enter(to)
+  }, [to])
   return (
     <Page label={t('Sign in')}>
       <Waiting title={t('Signing you in')} lede={t('One moment.')} />

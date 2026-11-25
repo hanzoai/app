@@ -262,6 +262,7 @@ export interface FlowStepResult {
   kind: FlowNodeKind
   subtype?: FlowNodeSubtype
   status: FlowStepStatus
+  input?: string
   output?: string
   error?: string
   durationMs?: number
@@ -380,6 +381,27 @@ export const CRON_PRESETS: readonly { label: string; cron: string }[] = [
   { label: 'Daily 08:00', cron: '0 8 * * *' },
   { label: 'Weekdays 09:00', cron: '0 9 * * 1-5' },
   { label: 'Weekly Mon 09:00', cron: '0 9 * * 1' },
+]
+
+export const FLOW_TIMEZONES: readonly string[] = [
+  'UTC',
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  'America/Toronto',
+  'America/Sao_Paulo',
+  'Europe/London',
+  'Europe/Dublin',
+  'Europe/Paris',
+  'Europe/Berlin',
+  'Asia/Dubai',
+  'Asia/Kolkata',
+  'Asia/Singapore',
+  'Asia/Shanghai',
+  'Asia/Tokyo',
+  'Australia/Sydney',
+  'Pacific/Auckland',
 ]
 
 const P_IN: readonly FlowPortSpec[] = [{ id: 'input', label: 'Input' }]
@@ -998,15 +1020,102 @@ export function parseFlowRoute(pathname: string): FlowRouteState {
   return { view: 'canvas', flowId: decodeURIComponent(first ?? ''), createNew: false }
 }
 
-const CRON_FIELD = /^(\*|\d+(-\d+)?(,\d+(-\d+)?)*)(\/\d+)?$/
+interface ParsedCron {
+  minutes: Set<number>
+  hours: Set<number>
+  daysOfMonth: Set<number>
+  months: Set<number>
+  daysOfWeek: Set<number>
+  domRestricted: boolean
+  dowRestricted: boolean
+}
+
+const WEEKDAY_MAP: Record<string, number> = {
+  Sun: 0,
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+}
+
+function parseCronField(
+  field: string,
+  min: number,
+  max: number,
+  normalizeSevenToZero = false,
+): Set<number> | null {
+  if (!field) return null
+  const values = new Set<number>()
+  for (const segment of field.split(',')) {
+    if (!segment) return null
+    const slashParts = segment.split('/')
+    if (slashParts.length > 2) return null
+    const [rangePart, stepPart] = slashParts as [string, string | undefined]
+    let step = 1
+    if (stepPart !== undefined) {
+      if (!/^\d+$/.test(stepPart)) return null
+      step = Number(stepPart)
+      if (step < 1) return null
+    }
+    let start: number
+    let end: number
+    if (rangePart === '*') {
+      start = min
+      end = max
+    } else if (rangePart.includes('-')) {
+      const dashParts = rangePart.split('-')
+      if (dashParts.length !== 2) return null
+      const [aStr, bStr] = dashParts as [string, string]
+      if (!/^\d+$/.test(aStr) || !/^\d+$/.test(bStr)) return null
+      start = Number(aStr)
+      end = Number(bStr)
+      if (start < min || end > max || start > end) return null
+    } else {
+      if (!/^\d+$/.test(rangePart)) return null
+      start = Number(rangePart)
+      if (start < min || start > max) return null
+      end = stepPart !== undefined ? max : start
+    }
+    for (let v = start; v <= end; v += step) {
+      values.add(normalizeSevenToZero && v === 7 ? 0 : v)
+    }
+  }
+  return values.size > 0 ? values : null
+}
+
+function parseCronFields(expr: string): { parts: [string, string, string, string, string]; parsed: ParsedCron } | null {
+  const parts = expr.trim().split(/\s+/)
+  if (parts.length !== 5) return null
+  const [minStr, hourStr, domStr, monStr, dowStr] = parts as [string, string, string, string, string]
+  const minutes = parseCronField(minStr, 0, 59)
+  const hours = parseCronField(hourStr, 0, 23)
+  const daysOfMonth = parseCronField(domStr, 1, 31)
+  const months = parseCronField(monStr, 1, 12)
+  const daysOfWeek = parseCronField(dowStr, 0, 7, true)
+  if (!minutes || !hours || !daysOfMonth || !months || !daysOfWeek) return null
+  return {
+    parts: [minStr, hourStr, domStr, monStr, dowStr],
+    parsed: {
+      minutes,
+      hours,
+      daysOfMonth,
+      months,
+      daysOfWeek,
+      domRestricted: domStr !== '*',
+      dowRestricted: dowStr !== '*',
+    },
+  }
+}
 
 export function describeCron(expr: string): { valid: boolean; human: string } {
   const trimmed = expr.trim()
-  const parts = trimmed.split(/\s+/)
-  if (parts.length !== 5 || parts.some((p) => !CRON_FIELD.test(p))) {
+  const result = parseCronFields(trimmed)
+  if (!result) {
     return { valid: false, human: 'Expected 5 cron fields (min hour day month weekday)' }
   }
-  const [min, hour, dom, mon, dow] = parts as [string, string, string, string, string]
+  const [min, hour, dom, mon, dow] = result.parts
   if (min.startsWith('*/') && hour === '*' && dom === '*' && mon === '*' && dow === '*') {
     return { valid: true, human: `Every ${min.slice(2)} minutes` }
   }
@@ -1035,6 +1144,88 @@ export function describeCron(expr: string): { valid: boolean; human: string } {
     if (days[dow]) return { valid: true, human: `${days[dow]} at ${time}` }
   }
   return { valid: true, human: `Cron: ${trimmed}` }
+}
+
+/**
+ * Computes the next scheduled Date strictly after `now` for a 5-field cron
+ * expression evaluated in the given IANA `timezone`, or `null` if invalid.
+ */
+export function nextCronRun(expr: string, timezone = 'UTC', now: Date = new Date()): Date | null {
+  if (typeof expr !== 'string' || !(now instanceof Date) || Number.isNaN(now.getTime())) {
+    return null
+  }
+  const res = parseCronFields(expr)
+  if (!res) return null
+  const { parsed } = res
+
+  const tz = (timezone || 'UTC').trim() || 'UTC'
+  let dtf: Intl.DateTimeFormat
+  try {
+    dtf = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      weekday: 'short',
+      hour: 'numeric',
+      minute: 'numeric',
+      hourCycle: 'h23',
+    })
+  } catch {
+    return null
+  }
+
+  const readZoned = (ms: number) => {
+    let month = 0
+    let day = 0
+    let weekday = 0
+    let hour = 0
+    let minute = 0
+    for (const part of dtf.formatToParts(new Date(ms))) {
+      if (part.type === 'month') month = Number(part.value)
+      else if (part.type === 'day') day = Number(part.value)
+      else if (part.type === 'weekday') weekday = WEEKDAY_MAP[part.value] ?? 0
+      else if (part.type === 'hour') {
+        const h = Number(part.value)
+        hour = h === 24 ? 0 : h
+      } else if (part.type === 'minute') minute = Number(part.value)
+    }
+    return { month, day, weekday, hour, minute }
+  }
+
+  let candidateMs = Math.floor(now.getTime() / 60_000) * 60_000 + 60_000
+  const maxMs = candidateMs + 4 * 366 * 86_400_000
+
+  while (candidateMs <= maxMs) {
+    const p = readZoned(candidateMs)
+    const monthOk = parsed.months.has(p.month)
+    const domOk = parsed.daysOfMonth.has(p.day)
+    const dowOk = parsed.daysOfWeek.has(p.weekday)
+    const dayOk =
+      parsed.domRestricted && parsed.dowRestricted ? domOk || dowOk : domOk && dowOk
+
+    if (!monthOk || !dayOk) {
+      const minsUntilMidnight = (23 - p.hour) * 60 + (60 - p.minute)
+      if (minsUntilMidnight > 90) candidateMs += (minsUntilMidnight - 90) * 60_000
+      else if (minsUntilMidnight > 15) candidateMs += 15 * 60_000
+      else candidateMs += 60_000
+      continue
+    }
+
+    if (!parsed.hours.has(p.hour)) {
+      candidateMs += p.minute < 58 ? (58 - p.minute) * 60_000 : 60_000
+      continue
+    }
+
+    if (!parsed.minutes.has(p.minute)) {
+      candidateMs += 60_000
+      continue
+    }
+
+    return new Date(candidateMs)
+  }
+
+  return null
 }
 
 /**

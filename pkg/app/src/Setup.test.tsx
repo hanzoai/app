@@ -368,3 +368,55 @@ describe('Setup is one row until it is opened', () => {
     expect(html).toContain('Expand onboarding popup')
   })
 })
+
+describe('Setup per-step skip and resume', () => {
+  beforeEach(() => {
+    store.clear()
+  })
+
+  test('skips step 1 -> step 2 -> step 3, collapses for later resume across refresh, and keeps explicit dismiss hidden', () => {
+    store.set('hanzo.onboarding.open', true)
+    store.set('hanzo.onboarding.step', 1)
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    const renderNow = () => {
+      act(() => {
+        root.render(createElement(Setup))
+      })
+    }
+
+    renderNow()
+    const skip1 = host.querySelector('[data-slot="setup-skip-1"]') as HTMLButtonElement
+    expect(skip1).toBeTruthy()
+    act(() => skip1.click())
+    expect(store.get('hanzo.onboarding.skipped')).toEqual([1])
+    expect(store.get('hanzo.onboarding.step')).toBe(2)
+
+    renderNow()
+    const skip2 = host.querySelector('[data-slot="setup-skip-2"]') as HTMLButtonElement
+    expect(skip2).toBeTruthy()
+    act(() => skip2.click())
+    expect(store.get('hanzo.onboarding.skipped')).toEqual([1, 2])
+    expect(store.get('hanzo.onboarding.step')).toBe(3)
+
+    renderNow()
+    const skip3 = host.querySelector('[data-slot="setup-skip-3"]') as HTMLButtonElement
+    expect(skip3).toBeTruthy()
+    act(() => skip3.click())
+    expect(store.get('hanzo.onboarding.skipped')).toEqual([1, 2, 3])
+    expect(store.get('hanzo.onboarding.open')).toBe(false)
+    expect(store.get('hanzo.onboarding.later')).not.toBe(true)
+
+    renderNow()
+    const toggle = host.querySelector('[data-slot="setup-toggle"]') as HTMLButtonElement
+    expect(toggle).toBeTruthy()
+    act(() => toggle.click())
+    expect(store.get('hanzo.onboarding.open')).toBe(true)
+
+    act(() => root.unmount())
+    host.remove()
+  })
+})

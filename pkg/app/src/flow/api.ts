@@ -1179,6 +1179,16 @@ interface EnsoCallOptions {
   onToken?: (delta: string, accumulated: string) => void
 }
 
+function resolveModelUserInput(
+  node: FlowNode,
+  upstreamOutput: string,
+  vars: ReadonlyMap<string, string>,
+  toolContext?: string,
+): string {
+  const userPrompt = interpolate(node.config.prompt || '{{input}}', upstreamOutput, vars)
+  return toolContext ? `${userPrompt}\n\n[Connected tool data]\n${toolContext}` : userPrompt
+}
+
 async function runEnsoModelNode(
   node: FlowNode,
   upstreamOutput: string,
@@ -1190,10 +1200,7 @@ async function runEnsoModelNode(
   if (node.subtype === 'structured_output' && node.config.schema) {
     systemPrompt += `\n\nReturn valid JSON conforming to this schema:\n${node.config.schema}`
   }
-  const userPrompt = interpolate(node.config.prompt || '{{input}}', upstreamOutput, vars)
-  const composedUser = opts.toolContext
-    ? `${userPrompt}\n\n[Connected tool data]\n${opts.toolContext}`
-    : userPrompt
+  const composedUser = resolveModelUserInput(node, upstreamOutput, vars, opts.toolContext)
 
   const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
     { role: 'system', content: systemPrompt },
@@ -1566,6 +1573,7 @@ export async function executeFlow(
         step.status = 'success'
       } else if (node.kind === 'trigger' || node.kind === 'schedule') {
         const payload = options.sampleInput?.trim() || node.config.sampleInput?.trim() || `Triggered ${flow.name}`
+        step.input = payload
         const output =
           node.kind === 'schedule'
             ? `[Schedule ${node.config.cron || '0 8 * * *'} ${node.config.timezone || 'UTC'}] ${payload}`
@@ -1578,6 +1586,10 @@ export async function executeFlow(
         step.status = 'success'
       } else if (node.subtype === 'api_request' || node.subtype === 'http_request') {
         const input = upstreamOf(node.id)
+        const rawUrl = (node.config.url || '').trim()
+        const resolvedUrl = rawUrl ? interpolate(rawUrl, input, vars) : ''
+        const method = node.config.method || 'GET'
+        step.input = resolvedUrl ? (input ? `${method} ${resolvedUrl}\n\n${input}` : `${method} ${resolvedUrl}`) : input
         const responseText = await runApiRequestNode(node, input, vars, options.signal)
         outputs.set(node.id, responseText)
         sourceTexts.set(node.id, responseText)
@@ -1587,6 +1599,7 @@ export async function executeFlow(
       } else if (node.subtype === 'url_fetch') {
         const input = upstreamOf(node.id)
         const targetUrl = interpolate(node.config.url || input || 'https://hanzo.ai/docs', input, vars)
+        step.input = targetUrl
         const crawled = await crawlUrl(targetUrl, options.signal)
         const docText = `# ${crawled.title}\nSource: ${crawled.url}\n\n${crawled.markdown}`
         outputs.set(node.id, docText)
@@ -1596,6 +1609,7 @@ export async function executeFlow(
         step.status = 'success'
       } else if (node.subtype === 'prompt_template') {
         const input = upstreamOf(node.id)
+        step.input = input
         const rendered = interpolate(node.config.prompt || '{{input}}', input, vars)
         outputs.set(node.id, rendered)
         sourceTexts.set(node.id, rendered)
@@ -1604,6 +1618,7 @@ export async function executeFlow(
         step.status = 'success'
       } else if (isEmbeddingNode(node)) {
         const rawText = upstreamSemanticTextOf(node.id)
+        step.input = rawText
         const chunks = rawText
           .split(/\n{2,}/)
           .map((c) => c.trim())
@@ -1626,6 +1641,7 @@ export async function executeFlow(
         step.status = 'success'
       } else if (isKnowledgeIngestionNode(node)) {
         const textToIngest = upstreamSemanticTextOf(node.id)
+        step.input = textToIngest
         const project = (node.config.collection || '').trim()
         const upstreamEmbed = upstreamEmbeddingOf(node.id)
         const docTitle = (node.config.filePath || '').trim() || `${flow.name} — ${node.title}`
@@ -1658,6 +1674,7 @@ export async function executeFlow(
         step.status = 'success'
       } else if (isKnowledgeRetrievalNode(node)) {
         const query = interpolate(node.config.query || '{{input}}', upstreamSemanticTextOf(node.id), vars).trim()
+        step.input = query
         const topK = Math.min(24, Math.max(1, node.config.topK ?? 5))
         const project = (node.config.collection || '').trim()
         const upstreamEmbed = upstreamEmbeddingOf(node.id)
@@ -1725,6 +1742,7 @@ export async function executeFlow(
         step.status = 'success'
       } else if (node.subtype === 'reranker') {
         const input = upstreamOf(node.id)
+        step.input = input
         const topK = Math.max(1, node.config.topK ?? 5)
         const ranked = rerankBlocks(input, lastQuery, topK)
         outputs.set(node.id, ranked)
@@ -1734,6 +1752,7 @@ export async function executeFlow(
         step.status = 'success'
       } else if (node.subtype === 'conversation_memory') {
         const input = upstreamOf(node.id)
+        step.input = input
         const historySummary =
           options.conversationHistory && options.conversationHistory.length > 0
             ? options.conversationHistory
@@ -1748,6 +1767,7 @@ export async function executeFlow(
         step.status = 'success'
       } else if (node.kind === 'condition' || node.subtype === 'guardrail') {
         const input = upstreamOf(node.id)
+        step.input = input
         const verdict = evaluateCondition(node.config.expression, input)
         outputs.set(node.id, input)
         conditionBranch.set(node.id, verdict.passed ? 'true' : 'false')
@@ -1764,6 +1784,7 @@ export async function executeFlow(
       } else if (isModelExecutionNode(node)) {
         const input = upstreamOf(node.id, false)
         const toolContext = upstreamOf(node.id, true)
+        step.input = resolveModelUserInput(node, input, vars, toolContext || undefined)
         const reply = await runEnsoModelNode(node, input, vars, {
           modelOverride: options.modelOverride,
           toolContext: toolContext || undefined,
@@ -1781,6 +1802,7 @@ export async function executeFlow(
         step.status = 'success'
       } else if (node.subtype === 'chat_output' || node.subtype === 'text_output' || node.subtype === 'http_response') {
         const input = upstreamOf(node.id)
+        step.input = input
         const rendered = interpolate(node.config.message || '{{input}}', input, vars)
         outputs.set(node.id, rendered)
         lastOutput = rendered
@@ -1789,6 +1811,7 @@ export async function executeFlow(
         step.status = 'success'
       } else if (node.subtype === 'file_loader') {
         const content = node.config.sampleInput?.trim() || `[Loaded file: ${node.config.filePath || 'document.md'}]`
+        step.input = node.config.filePath?.trim() || content
         outputs.set(node.id, content)
         sourceTexts.set(node.id, content)
         lastOutput = content
@@ -1796,6 +1819,7 @@ export async function executeFlow(
         step.status = 'success'
       } else if (node.subtype === 'text_splitter') {
         const input = upstreamSemanticTextOf(node.id)
+        step.input = input
         const size = Math.max(100, node.config.chunkSize ?? 800)
         const overlap = Math.min(Math.floor(size / 2), Math.max(0, node.config.chunkOverlap ?? 0))
         const stepSize = Math.max(50, size - overlap)
@@ -1812,6 +1836,7 @@ export async function executeFlow(
         step.status = 'success'
       } else if (node.subtype === 'json_transform') {
         const input = upstreamOf(node.id)
+        step.input = input
         let transformed = input
         try {
           const match = input.match(/\{[\s\S]*\}|\[[\s\S]*\]/)
@@ -1829,10 +1854,15 @@ export async function executeFlow(
         const incoming = incomingEdgesOf(node.id)
           .map((e) => outputs.get(e.source))
           .filter((v): v is string => Boolean(v))
+        const rawInput =
+          node.subtype === 'merge_combine'
+            ? incoming.join(node.config.delimiter ?? '\n\n---\n\n') || lastOutput
+            : upstreamOf(node.id)
+        step.input = rawInput
         const joined =
           node.subtype === 'merge_combine'
             ? incoming.join(node.config.delimiter ?? '\n\n---\n\n')
-            : interpolate(node.config.pattern || '{{input}}', upstreamOf(node.id), vars)
+            : interpolate(node.config.pattern || '{{input}}', rawInput, vars)
         const resText = joined || lastOutput
         outputs.set(node.id, resText)
         sourceTexts.set(node.id, resText)
@@ -1841,6 +1871,7 @@ export async function executeFlow(
         step.status = 'success'
       } else if (node.subtype === 'variable_store') {
         const input = upstreamOf(node.id)
+        step.input = input
         const key = (node.config.variableKey || 'context').trim()
         const val = interpolate(node.config.variableValue || '{{input}}', input, vars)
         vars.set(key, val)
@@ -1849,6 +1880,8 @@ export async function executeFlow(
         step.output = `Set {{${key}}} (${val.length} chars)`
         step.status = 'success'
       } else if (node.subtype === 'delay_wait') {
+        const input = upstreamOf(node.id)
+        step.input = input
         const ms = Math.min(2000, Math.max(0, node.config.delayMs ?? 200))
         await new Promise<void>((resolve, reject) => {
           const timer = setTimeout(resolve, ms)
@@ -1861,7 +1894,6 @@ export async function executeFlow(
             { once: true },
           )
         })
-        const input = upstreamOf(node.id)
         outputs.set(node.id, input)
         step.output = `Waited ${ms}ms`
         step.status = 'success'
@@ -1875,11 +1907,20 @@ export async function executeFlow(
         node.subtype === 'sub_flow'
       ) {
         const input = upstreamOf(node.id)
+        const resolvedQuery =
+          node.subtype === 'web_search'
+            ? interpolate(node.config.query || '{{input}}', input, vars)
+            : node.subtype === 'sql_query'
+              ? interpolate(node.config.query || '', input, vars) || input
+              : node.subtype === 'hanzo_kms_secret'
+                ? node.config.secretPath || '/prod/flow/SECRET'
+                : input
+        step.input = resolvedQuery
         const summary =
           node.subtype === 'web_search'
-            ? `[Web Search · top ${node.config.topK ?? 5}] Query: "${interpolate(node.config.query || '{{input}}', input, vars)}"`
+            ? `[Web Search · top ${node.config.topK ?? 5}] Query: "${resolvedQuery}"`
             : node.subtype === 'hanzo_kms_secret'
-              ? `[KMS Reference] ${node.config.secretPath || '/prod/flow/SECRET'} (resolved at deploy runtime)`
+              ? `[KMS Reference] ${resolvedQuery} (resolved at deploy runtime)`
               : `[${node.title}] ${input.slice(0, 400)}`
         outputs.set(node.id, summary)
         if (!node.config.toolMode) lastOutput = input || summary
@@ -1887,6 +1928,7 @@ export async function executeFlow(
         step.status = 'success'
       } else {
         const input = upstreamOf(node.id)
+        step.input = input
         const rendered = interpolate(node.config.message || node.config.body || '{{input}}', input, vars)
         const target =
           node.subtype === 'email' || node.subtype === 'hanzo_mail'

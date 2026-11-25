@@ -1,6 +1,10 @@
-import { cloneElement, createElement, isValidElement, type ReactElement, type ReactNode } from 'react'
+// @vitest-environment happy-dom
+import { act, cloneElement, createElement, isValidElement, type ReactElement, type ReactNode } from 'react'
+import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
+
+;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 // What the gate reads, set per test: the session, the tier and the kind of organization.
 const state = vi.hoisted(() => ({
@@ -14,6 +18,7 @@ const state = vi.hoisted(() => ({
   orgs: ['acme'],
   org: 'acme' as string | null,
   sudo: false,
+  entered: vi.fn<(to?: string) => void>(),
 }))
 
 // The drawing libraries are not under test and do not load outside a bundler.
@@ -39,7 +44,7 @@ vi.mock('@hanzogui/shell', () => ({ HanzoWordmark: () => null }))
 vi.mock('lucide-react', () => ({ Check: () => null, LogOut: () => null, Minus: () => null, Plus: () => null, X: () => null }))
 vi.mock('@hanzo/iam/react', () => ({ useIam: () => state.iam }))
 vi.mock('./waiting', () => ({ Waiting: () => null }))
-vi.mock('./lib/destination', () => ({ LOGIN: '/login', enter: () => {} }))
+vi.mock('./lib/destination', () => ({ LOGIN: '/login', enter: (to?: string) => state.entered(to) }))
 vi.mock('./lib/ai', () => ({ useAi: () => ({ client: null }) }))
 vi.mock('./lib/hostname', () => ({ useHostname: () => state.host }))
 vi.mock('./lib/hydrated', () => ({ useHydrated: () => true }))
@@ -65,7 +70,7 @@ vi.mock('./lib/session', () => ({
   superAdmin: () => state.sudo,
   support: async () => {},
 }))
-vi.mock('./lib/host', () => ({ dev: () => '/dev', team: (host: string) => host === 'hanzo.team' }))
+vi.mock('./lib/host', () => ({ CHAT: '/chat', dev: () => '/dev', team: (host: string) => host === 'hanzo.team' }))
 vi.mock('./lib/pay', () => ({ checkoutUrl: () => '', money: () => '' }))
 vi.mock('./lib/plans', () => ({ cartUrl: () => '', charge: () => 0, priced: () => ({}), usePlan: () => ({}), usePlans: () => [] }))
 vi.mock('./lib/invite', () => ({ createInvitation: async () => '', inviteLink: () => '', setOrganizationProfile: async () => {} }))
@@ -79,7 +84,7 @@ vi.mock('./Accounts', () => ({ Accounts: () => createElement('section', { 'aria-
 vi.mock('./host', () => ({ useHost: () => ({ router: { replace: () => {} } }) }))
 vi.mock('./where', () => ({ brand: () => 'Hanzo AI', site: (p: string) => p, where: () => state.where }))
 
-const { Gate } = await import('./Gate')
+const { Gate, BUILD_PROMPT_KEY, chatSignInTarget, enterAnonSignIn, hasDemoPrompt } = await import('./Gate')
 
 /** The gate's markup over a composer, the app it holds. */
 const drawn = () => renderToStaticMarkup(createElement(Gate, null, createElement('textarea', { 'aria-label': 'Ask anything' })))
@@ -218,6 +223,62 @@ describe('the organization gate', () => {
       expect(html).toContain('>All organizations<')
       expect(html).toContain('placeholder="Search every organization"')
       expect(html).not.toContain('New organization')
+    })
+  })
+
+  describe('anonymous build prompt sign-in redirect (UX 331)', () => {
+    beforeEach(() => {
+      state.entered.mockClear()
+      sessionStorage.clear()
+      delete (window as unknown as { __hanzoAnonChat?: boolean }).__hanzoAnonChat
+    })
+
+    test('chatSignInTarget appends next=/chat, preserves existing params and hash fragments', () => {
+      expect(chatSignInTarget()).toBe('/login?next=%2Fchat')
+      expect(chatSignInTarget('/login?plan=pro')).toBe('/login?plan=pro&next=%2Fchat')
+      expect(chatSignInTarget('/login?next=%2Fdev&plan=pro')).toBe('/login?next=%2Fdev&plan=pro')
+      expect(chatSignInTarget('/login?plan=pro#signup')).toBe('/login?plan=pro&next=%2Fchat#signup')
+    })
+
+    test('enterAnonSignIn stores non-empty trimmed draft and redirects via enter', () => {
+      enterAnonSignIn('/login', '  build a dashboard  ')
+      expect(sessionStorage.getItem(BUILD_PROMPT_KEY)).toBe('build a dashboard')
+      expect(state.entered).toHaveBeenCalledWith('/login?next=%2Fchat')
+
+      sessionStorage.clear()
+      state.entered.mockClear()
+      enterAnonSignIn('/signup?ref=demo', '   ')
+      expect(sessionStorage.getItem(BUILD_PROMPT_KEY)).toBeNull()
+      expect(state.entered).toHaveBeenCalledWith('/signup?ref=demo&next=%2Fchat')
+    })
+
+    test('hasDemoPrompt and mounted Gate SignIn route active demo prompts via chatSignInTarget', () => {
+      expect(hasDemoPrompt()).toBe(false)
+      sessionStorage.setItem(BUILD_PROMPT_KEY, '  hello  ')
+      expect(hasDemoPrompt()).toBe(true)
+
+      state.iam = { isAuthenticated: false, isLoading: false, accessToken: '' }
+      const host = document.createElement('div')
+      document.body.appendChild(host)
+      const root = createRoot(host)
+
+      act(() => {
+        root.render(createElement(Gate, null, createElement('div')))
+      })
+      expect(state.entered).toHaveBeenCalledWith('/login?next=%2Fchat')
+
+      act(() => root.unmount())
+      state.entered.mockClear()
+      sessionStorage.clear()
+
+      const root2 = createRoot(host)
+      act(() => {
+        root2.render(createElement(Gate, null, createElement('div')))
+      })
+      expect(state.entered).toHaveBeenCalledWith(undefined)
+
+      act(() => root2.unmount())
+      host.remove()
     })
   })
 })
