@@ -16,7 +16,7 @@ import {
   syncLoadFlows,
   writePlaygroundSessions,
 } from './api'
-import { FLOW_TEMPLATE_CATEGORIES, FLOW_TEMPLATES, instantiateTemplate } from './templates'
+import { describeTemplateMeta, FLOW_TEMPLATE_CATEGORIES, FLOW_TEMPLATES, instantiateTemplate } from './templates'
 import {
   describeCron,
   EMBEDDING_MODELS,
@@ -583,5 +583,287 @@ describe('Flow execution, SSE streaming, live API Request tools, branching, and 
     expect(calls.some((c) => c.method === 'POST' && c.url.endsWith('/v1/flow/workflows'))).toBe(true)
     expect(calls.some((c) => c.method === 'PATCH' && c.url.includes('/v1/flow/workflows/22222222-2222-4222-8222-222222222222'))).toBe(true)
     expect(calls.every((c) => !c.url.includes('/v1/workflow'))).toBe(true)
+  })
+
+  test('persistFlow notifies caller of newly assigned remoteId to prevent duplicate POSTs', async () => {
+    localStorage.setItem('hanzo_iam_access_token', 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ1MSJ9.sig')
+    const assigned: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({ id: '33333333-3333-4333-8333-333333333333', name: 'New Flow' }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      ),
+    )
+    const flows = readLocalFlows('acme')
+    const res = await persistFlow(flows[0]!, flows, 'acme', (rid) => assigned.push(rid))
+    expect(res).toBe('synced')
+    expect(assigned).toEqual(['33333333-3333-4333-8333-333333333333'])
+  })
+
+  test('persistFlow serializes concurrent first-time saves and preserves mid-flight local edits', async () => {
+    localStorage.setItem('hanzo_iam_access_token', 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ1MSJ9.sig')
+    const methods: string[] = []
+    let resolvePost!: (res: Response) => void
+    const postDeferred = new Promise<Response>((r) => {
+      resolvePost = r
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        const method = init?.method ?? 'GET'
+        methods.push(method)
+        if (method === 'POST') return postDeferred
+        return new Response(
+          JSON.stringify({ id: '44444444-4444-4444-8444-444444444444', name: 'Renamed Flow' }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        )
+      }),
+    )
+
+    const flows = readLocalFlows('acme')
+    const first = persistFlow(flows[0]!, flows, 'acme')
+    // Simulate a concurrent edit + save while POST is still in flight.
+    const edited = flows.map((f, idx) => (idx === 0 ? { ...f, name: 'Renamed Flow' } : f))
+    const second = persistFlow(edited[0]!, edited, 'acme')
+    resolvePost(
+      new Response(
+        JSON.stringify({ id: '44444444-4444-4444-8444-444444444444', name: flows[0]!.name }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    )
+    expect(await first).toBe('synced')
+    expect(await second).toBe('synced')
+    expect(methods).toEqual(['POST', 'PATCH'])
+    const stored = readLocalFlows('acme').find((f) => f.id === flows[0]!.id)!
+    expect(stored.name).toBe('Renamed Flow')
+    expect(stored.remoteId).toBe('44444444-4444-4444-8444-444444444444')
+  })
+
+  test('paused flows skip scheduled and webhook triggers, allow manual tests, and allow reviewer resumes', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ choices: [{ message: { content: 'Manual ok' } }] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const flow = { ...instantiateTemplate(FLOW_TEMPLATES.find((t) => t.id === 'basic-prompting')!), status: 'paused' as const }
+
+    const schedRun = await executeFlow(flow, { trigger: 'schedule' })
+    expect(schedRun.status).toBe('completed')
+    expect(schedRun.summary).toContain('paused')
+    expect(schedRun.steps.every((s) => s.status === 'skipped')).toBe(true)
+
+    const hookRun = await executeFlow(flow, { trigger: 'webhook' })
+    expect(hookRun.summary).toContain('paused')
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    const manualRun = await executeFlow(flow, { trigger: 'manual', sampleInput: 'Manual check' })
+    expect(manualRun.status).toBe('completed')
+    expect(manualRun.finalOutput).toBe('Manual ok')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  test('resumeFrom restores condition branches, variables, and raw payloads across upstream steps', async () => {
+    let calls = 0
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.includes('/v1/crawl')) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: { url: 'https://hanzo.ai/docs', title: 'Docs', markdown: 'REAL_MARKDOWN_BODY' },
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          )
+        }
+        calls += 1
+        if (calls === 1) return new Response('temporary 503', { status: 503 })
+        const body = JSON.parse(String(init?.body ?? '{}')) as { messages: Array<{ content: string }> }
+        const prompt = body.messages.at(-1)?.content ?? ''
+        expect(prompt).toContain('REAL_MARKDOWN_BODY')
+        expect(prompt).not.toContain('Fetched https://')
+        return new Response(
+          JSON.stringify({ choices: [{ message: { content: 'Synthesized from real markdown' } }] }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        )
+      }),
+    )
+
+    const crawlFlow: FlowDefinition = {
+      id: 'flow_resume_payload',
+      name: 'Resume Payload Flow',
+      description: 'Tests raw payload preservation on resumeFrom',
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      nodes: [
+        { id: 'n1', kind: 'data', subtype: 'url_fetch', title: 'Fetch', position: { x: 0, y: 0 }, config: { url: 'https://hanzo.ai/docs' } },
+        { id: 'n2', kind: 'utility', subtype: 'variable_store', title: 'Store', position: { x: 200, y: 0 }, config: { variableKey: 'doc', variableValue: '{{input}}' } },
+        { id: 'n3', kind: 'condition', subtype: 'if_condition', title: 'Check', position: { x: 400, y: 0 }, config: { expression: 'contains:REAL_MARKDOWN_BODY' } },
+        { id: 'n4', kind: 'agent', subtype: 'language_model', title: 'Agent', position: { x: 600, y: 0 }, config: { model: 'enso', prompt: 'Doc: {{doc}}' } },
+        { id: 'n5', kind: 'action', subtype: 'text_output', title: 'False branch', position: { x: 600, y: 200 }, config: { message: 'SKIPPED' } },
+      ],
+      edges: [
+        { id: 'e1', source: 'n1', target: 'n2' },
+        { id: 'e2', source: 'n2', target: 'n3' },
+        { id: 'e3', source: 'n3', target: 'n4', sourceHandle: 'true', label: 'True' },
+        { id: 'e4', source: 'n3', target: 'n5', sourceHandle: 'false', label: 'False' },
+      ],
+    }
+
+    const first = await executeFlow(crawlFlow)
+    expect(first.status).toBe('failed')
+    expect(first.steps.find((s) => s.nodeId === 'n4')?.status).toBe('error')
+
+    const resumed = await executeFlow(crawlFlow, {
+      resumeFrom: { previousSteps: first.steps, startFromNodeId: 'n4' },
+    })
+    expect(resumed.status).toBe('completed')
+    expect(resumed.finalOutput).toBe('Synthesized from real markdown')
+    expect(resumed.steps.find((s) => s.nodeId === 'n5')?.status).toBe('skipped')
+
+    const missing = await executeFlow(crawlFlow, {
+      resumeFrom: { previousSteps: first.steps, startFromNodeId: 'deleted_node' },
+    })
+    expect(missing.status).toBe('failed')
+    expect(missing.summary).toContain('Cannot resume')
+  })
+
+  test('human_approval routes rejection down a wired false branch when present and omits finalOutput when halted', async () => {
+    const branchedApproval: FlowDefinition = {
+      id: 'flow_approval_branch',
+      name: 'Branched Approval',
+      description: 'Routes rejections to false branch',
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      nodes: [
+        { id: 'n1', kind: 'trigger', subtype: 'text_input', title: 'Input', position: { x: 0, y: 0 }, config: { sampleInput: 'Deploy v2' } },
+        { id: 'n2', kind: 'control', subtype: 'human_approval', title: 'Approval', position: { x: 200, y: 0 }, config: { prompt: 'Approve deploy?' } },
+        { id: 'n3', kind: 'action', subtype: 'text_output', title: 'Approved Output', position: { x: 400, y: 0 }, config: { message: 'Approved: {{input}}' } },
+        { id: 'n4', kind: 'action', subtype: 'text_output', title: 'Rejected Output', position: { x: 400, y: 200 }, config: { message: 'Escalated rejection: {{input}}' } },
+      ],
+      edges: [
+        { id: 'e1', source: 'n1', target: 'n2' },
+        { id: 'e2', source: 'n2', target: 'n3', sourceHandle: 'true', label: 'True' },
+        { id: 'e3', source: 'n2', target: 'n4', sourceHandle: 'false', label: 'False' },
+      ],
+    }
+
+    const paused = await executeFlow(branchedApproval, { trigger: 'schedule' })
+    expect(paused.status).toBe('waiting_approval')
+
+    // Even if flow is paused during review, reviewer decision still resumes cleanly.
+    const rejectedBranch = await executeFlow(
+      { ...branchedApproval, status: 'paused' },
+      {
+        trigger: 'schedule',
+        resumeFrom: { previousSteps: paused.steps, startFromNodeId: 'n2' },
+        approvalDecisions: { n2: 'rejected' },
+      },
+    )
+    expect(rejectedBranch.status).toBe('completed')
+    expect(rejectedBranch.steps.find((s) => s.nodeId === 'n2')?.status).toBe('rejected')
+    expect(rejectedBranch.steps.find((s) => s.nodeId === 'n3')?.status).toBe('skipped')
+    expect(rejectedBranch.steps.find((s) => s.nodeId === 'n4')?.status).toBe('success')
+    expect(rejectedBranch.finalOutput).toBe('Escalated rejection: Deploy v2')
+  })
+
+  test('paused flows skip scheduled triggers without executing external calls', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const flow = { ...instantiateTemplate(FLOW_TEMPLATES.find((t) => t.id === 'basic-prompting')!), status: 'paused' as const }
+    const run = await executeFlow(flow, { trigger: 'schedule' })
+    expect(run.status).toBe('completed')
+    expect(run.summary).toContain('paused')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  test('resumeFrom retries from a failed step while reusing earlier succeeded outputs', async () => {
+    let calls = 0
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        calls += 1
+        if (calls === 1) return new Response('upstream failure', { status: 503 })
+        return new Response(
+          JSON.stringify({ choices: [{ message: { content: 'Recovered final answer' } }] }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        )
+      }),
+    )
+    const flow = instantiateTemplate(FLOW_TEMPLATES.find((t) => t.id === 'basic-prompting')!)
+    const first = await executeFlow(flow, { sampleInput: 'Test resume' })
+    expect(first.status).toBe('failed')
+    const failedStep = first.steps.find((s) => s.status === 'error')!
+    expect(failedStep.nodeId).toBe('n3')
+
+    const resumed = await executeFlow(flow, {
+      sampleInput: 'Test resume',
+      resumeFrom: { previousSteps: first.steps, startFromNodeId: failedStep.nodeId },
+    })
+    expect(resumed.status).toBe('completed')
+    expect(resumed.finalOutput).toBe('Recovered final answer')
+    expect(resumed.steps.every((s) => s.status === 'success')).toBe(true)
+  })
+
+  test('human_approval node pauses execution and resumes cleanly on approve or halts on reject', async () => {
+    const approvalFlow: FlowDefinition = {
+      id: 'flow_approval_test',
+      name: 'Approval Flow',
+      description: 'Tests human approval gate',
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      nodes: [
+        { id: 'n1', kind: 'trigger', subtype: 'text_input', title: 'Input', position: { x: 0, y: 0 }, config: { sampleInput: 'Send Q4 memo' } },
+        { id: 'n2', kind: 'control', subtype: 'human_approval', title: 'Human Approval', position: { x: 200, y: 0 }, config: { prompt: 'Approve sending Q4 memo?' } },
+        { id: 'n3', kind: 'action', subtype: 'text_output', title: 'Output', position: { x: 400, y: 0 }, config: { message: 'Sent: {{input}}' } },
+      ],
+      edges: [
+        { id: 'e1', source: 'n1', target: 'n2' },
+        { id: 'e2', source: 'n2', target: 'n3', sourceHandle: 'true', label: 'Approved' },
+      ],
+    }
+
+    const paused = await executeFlow(approvalFlow)
+    expect(paused.status).toBe('waiting_approval')
+    expect(paused.pendingApprovalNodeId).toBe('n2')
+    expect(paused.steps.find((s) => s.nodeId === 'n2')?.status).toBe('waiting_approval')
+    expect(paused.steps.find((s) => s.nodeId === 'n3')?.status).toBe('pending')
+
+    const approved = await executeFlow(approvalFlow, {
+      resumeFrom: { previousSteps: paused.steps, startFromNodeId: 'n2' },
+      approvalDecisions: { n2: 'approved' },
+    })
+    expect(approved.status).toBe('completed')
+    expect(approved.finalOutput).toBe('Sent: Send Q4 memo')
+
+    const rejected = await executeFlow(approvalFlow, {
+      resumeFrom: { previousSteps: paused.steps, startFromNodeId: 'n2' },
+      approvalDecisions: { n2: 'rejected' },
+    })
+    expect(rejected.status).toBe('rejected')
+    expect(rejected.steps.find((s) => s.nodeId === 'n3')?.status).toBe('skipped')
+  })
+
+  test('describeTemplateMeta derives real trigger, output, and connections from every starter template', () => {
+    for (const tpl of FLOW_TEMPLATES) {
+      const meta = describeTemplateMeta(tpl)
+      expect(meta.trigger.length).toBeGreaterThan(0)
+      expect(meta.output.length).toBeGreaterThan(0)
+      expect(meta.stepCount).toBeGreaterThan(0)
+    }
+    const pokedex = FLOW_TEMPLATES.find((t) => t.id === 'pokedex-agent')!
+    const pokedexMeta = describeTemplateMeta(pokedex)
+    expect(pokedexMeta.trigger).toBe('Chat / Playground')
+    expect(pokedexMeta.output).toBe('Chat reply')
+    expect(pokedexMeta.connections).toContain('Hanzo Enso')
+    expect(pokedexMeta.connections).toContain('HTTP API')
   })
 })

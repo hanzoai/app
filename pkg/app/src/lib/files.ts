@@ -66,14 +66,17 @@ export const settled = (f: WorkFile): boolean => f.status === 'ready' || f.statu
 export const askable = (f: WorkFile): boolean =>
   f.status === 'ready' || (f.status === 'indexing' && (f.stage === 'embed' || f.stage === 'graph') && (f.passages ?? 0) > 0)
 
-/** The name a bucket takes from its workspace: a DNS-safe slug, at most 40. */
-export const slug = (name: string): string =>
-  name
+/** The name a bucket takes from its workspace: a DNS-safe slug, 3 to 40 chars for S3. */
+export const slug = (name: string): string => {
+  const clean = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 40)
-    .replace(/-+$/, '') || 'workspace'
+    .replace(/-+$/, '')
+  if (!clean) return 'workspace'
+  return clean.length < 3 ? `ws-${clean}` : clean
+}
 
 const objects = (bucket: string) => `/v1/s3/buckets/${encodeURIComponent(bucket)}`
 

@@ -127,6 +127,7 @@ export function iconForSubtype(subtype: FlowNodeSubtype | Pick<FlowNode, 'subtyp
     case 'conversation_memory':
       return Network
     case 'guardrail':
+    case 'human_approval':
       return ShieldCheck
     case 'file_loader':
       return FolderOpen

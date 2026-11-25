@@ -173,6 +173,47 @@ export function FlowInspector({
           />
         </YStack>
 
+        <YStack gap="$1.5" data-slot="flow-status-toggle">
+          <Text fontSize="$1" fontWeight="500" color="$soft">
+            {t('Status')}
+          </Text>
+          <XStack gap="$1">
+            {(['active', 'paused', 'draft'] as const).map((status) => {
+              const current = flow.status === status
+              return (
+                <XStack
+                  key={status}
+                  render="button"
+                  {...{ type: 'button' }}
+                  data-slot={`flow-status-${status}`}
+                  aria-pressed={current}
+                  onClick={() => onUpdateFlow({ status })}
+                  flex={1}
+                  px="$2"
+                  py="$1.5"
+                  rounded="$2"
+                  borderWidth={1}
+                  borderColor={current ? 'var(--border-selected)' : '$edge'}
+                  bg={current ? '$raised' : 'transparent'}
+                  items="center"
+                  justify="center"
+                  cursor="pointer"
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                >
+                  <Text fontSize="$1" fontWeight={current ? '600' : '400'} color="$ink">
+                    {status === 'active' ? t('Active') : status === 'paused' ? t('Paused') : t('Draft')}
+                  </Text>
+                </XStack>
+              )
+            })}
+          </XStack>
+          {flow.status === 'paused' ? (
+            <Text fontSize="$1" color="$quiet">
+              {t('Scheduled and webhook triggers skip while this flow is paused.')}
+            </Text>
+          ) : null}
+        </YStack>
+
         <YStack gap="$2" pt="$2" borderTopWidth={1} borderColor="$edge">
           <XStack items="center" justify="space-between" gap="$2">
             <XStack items="center" gap="$1.5">
@@ -700,6 +741,23 @@ export function FlowInspector({
             onChangeText={(code) => onUpdateNode(selectedNode.id, {}, { code })}
             rows={4}
           />
+        </YStack>
+      ) : null}
+
+      {selectedNode.subtype === 'human_approval' ? (
+        <YStack gap="$1.5">
+          <Text fontSize="$1" fontWeight="500" color="$soft">
+            {t('Approval prompt')}
+          </Text>
+          <Textarea
+            data-slot="inspector-approval-prompt"
+            value={selectedNode.config.prompt ?? 'Review the upstream output and approve or reject continuing.'}
+            onChangeText={(prompt) => onUpdateNode(selectedNode.id, {}, { prompt })}
+            rows={3}
+          />
+          <Text fontSize="$1" color="$quiet">
+            {t('Pauses the run until a reviewer approves or rejects from Run history.')}
+          </Text>
         </YStack>
       ) : null}
 

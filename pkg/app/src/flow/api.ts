@@ -287,22 +287,46 @@ export async function syncLoadFlows(orgId?: string | null, signal?: AbortSignal)
   }
 }
 
+const pendingCreates = new Map<string, Promise<string | null>>()
+
 /**
  * Saves one flow to localStorage and persists it live to `/v1/flow/workflows`
  * (`PATCH /v1/flow/workflows/:id` when a server UUID exists, `POST /v1/flow/workflows`
- * on first sync).
+ * on first sync). Serializes concurrent first-time creates and merges `remoteId`
+ * onto fresh localStorage state so in-flight edits are never overwritten.
  */
 export async function persistFlow(
   flow: FlowDefinition,
   allFlows: readonly FlowDefinition[],
   orgId?: string | null,
+  onRemoteId?: (remoteId: string) => void,
 ): Promise<'synced' | 'local'> {
-  writeLocalFlows(allFlows, orgId)
+  // Preserve any remoteId already recorded in localStorage for this flow.
+  const latestBefore = readLocalFlows(orgId)
+  const storedRemoteId = latestBefore.find((f) => f.id === flow.id)?.remoteId
+  const effectiveFlow =
+    !flow.remoteId && storedRemoteId && FLOW_UUID_RE.test(storedRemoteId)
+      ? { ...flow, remoteId: storedRemoteId }
+      : flow
+  const mergedBefore = allFlows.map((f) => (f.id === effectiveFlow.id ? effectiveFlow : f))
+  writeLocalFlows(mergedBefore, orgId)
   if (!bearer()) return 'local'
-  const payload = JSON.stringify(toRemotePayload(flow))
-  const existingUuid =
-    (flow.remoteId && FLOW_UUID_RE.test(flow.remoteId) && flow.remoteId) ||
-    (FLOW_UUID_RE.test(flow.id) ? flow.id : null)
+
+  const createKey = `${scopeKey(orgId)}:${effectiveFlow.id}`
+  let existingUuid =
+    (effectiveFlow.remoteId && FLOW_UUID_RE.test(effectiveFlow.remoteId) && effectiveFlow.remoteId) ||
+    (FLOW_UUID_RE.test(effectiveFlow.id) ? effectiveFlow.id : null)
+
+  // If another save is already creating this flow on the server, wait for its UUID so we PATCH instead of duplicating POST.
+  if (!existingUuid && pendingCreates.has(createKey)) {
+    const awaited = await pendingCreates.get(createKey)
+    if (awaited && FLOW_UUID_RE.test(awaited)) {
+      existingUuid = awaited
+      onRemoteId?.(awaited)
+    }
+  }
+
+  const payload = JSON.stringify(toRemotePayload(effectiveFlow))
   try {
     if (existingUuid) {
       const patchRes = await fetch(`${api()}/v1/flow/workflows/${encodeURIComponent(existingUuid)}`, {
@@ -313,16 +337,35 @@ export async function persistFlow(
       if (patchRes.ok) return 'synced'
       if (patchRes.status !== 404) return 'local'
     }
-    const postRes = await fetch(`${api()}/v1/flow/workflows`, {
-      method: 'POST',
-      headers: flowHeaders(true),
-      body: payload,
-    })
-    if (!postRes.ok) return 'local'
-    const created = (await postRes.json().catch(() => null)) as { id?: string } | null
-    if (created?.id && FLOW_UUID_RE.test(created.id)) {
-      const withRemoteId = allFlows.map((f) => (f.id === flow.id ? { ...f, remoteId: created.id } : f))
+
+    const createPromise = (async (): Promise<string | null> => {
+      const postRes = await fetch(`${api()}/v1/flow/workflows`, {
+        method: 'POST',
+        headers: flowHeaders(true),
+        body: payload,
+      })
+      if (!postRes.ok) return null
+      const created = (await postRes.json().catch(() => null)) as { id?: string } | null
+      return created?.id && FLOW_UUID_RE.test(created.id) ? created.id : ''
+    })()
+
+    pendingCreates.set(createKey, createPromise)
+    let createdId: string | null = null
+    try {
+      createdId = await createPromise
+    } finally {
+      if (pendingCreates.get(createKey) === createPromise) {
+        pendingCreates.delete(createKey)
+      }
+    }
+
+    if (createdId === null) return 'local'
+    if (createdId) {
+      // Read fresh localStorage so edits made while POST was in flight are preserved.
+      const fresh = readLocalFlows(orgId)
+      const withRemoteId = fresh.map((f) => (f.id === effectiveFlow.id ? { ...f, remoteId: createdId } : f))
       writeLocalFlows(withRemoteId, orgId)
+      onRemoteId?.(createdId)
     }
     return 'synced'
   } catch {
@@ -1290,6 +1333,13 @@ export interface ExecuteFlowOptions {
   signal?: AbortSignal
   onStepUpdate?: (steps: FlowStepResult[]) => void
   onToken?: (delta: string, accumulated: string, nodeId: string) => void
+  /** Reuse succeeded upstream step outputs and resume execution from a specific node. */
+  resumeFrom?: {
+    previousSteps: readonly FlowStepResult[]
+    startFromNodeId: string
+  }
+  /** Reviewer decisions for `human_approval` gate nodes keyed by node ID. */
+  approvalDecisions?: Record<string, 'approved' | 'rejected'>
 }
 
 /**
@@ -1310,6 +1360,7 @@ export async function executeFlow(
   const runnableNodes = flow.nodes.filter((n) => !isStickyNoteNode(n))
   const ordered = topologicalSort(runnableNodes, flow.edges)
 
+  const trigger = options.trigger ?? 'manual'
   const steps: FlowStepResult[] = ordered.map((node) => ({
     nodeId: node.id,
     nodeTitle: node.title,
@@ -1317,6 +1368,49 @@ export async function executeFlow(
     subtype: node.subtype,
     status: 'pending',
   }))
+
+  // Paused flows never fire automated scheduled or webhook runs (explicit reviewer resumes still proceed).
+  if (!options.resumeFrom && flow.status === 'paused' && (trigger === 'schedule' || trigger === 'webhook')) {
+    for (const s of steps) s.status = 'skipped'
+    options.onStepUpdate?.([...steps])
+    const finishedMs = Date.now()
+    return {
+      id: `run_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+      flowId: flow.id,
+      flowName: flow.name,
+      trigger,
+      status: 'completed',
+      startedAt,
+      finishedAt: new Date(finishedMs).toISOString(),
+      durationMs: Math.max(1, finishedMs - startedMs),
+      steps,
+      summary: 'Skipped — flow is paused',
+      finalOutput: '',
+      inputSample: options.sampleInput,
+    }
+  }
+
+  const resumeIndex = options.resumeFrom
+    ? ordered.findIndex((n) => n.id === options.resumeFrom!.startFromNodeId)
+    : -1
+  if (options.resumeFrom && resumeIndex === -1) {
+    const finishedMs = Date.now()
+    return {
+      id: `run_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+      flowId: flow.id,
+      flowName: flow.name,
+      trigger,
+      status: 'failed',
+      startedAt,
+      finishedAt: new Date(finishedMs).toISOString(),
+      durationMs: Math.max(1, finishedMs - startedMs),
+      steps,
+      summary: 'Cannot resume — step no longer exists in flow',
+      finalOutput: '',
+      inputSample: options.sampleInput,
+    }
+  }
+
   options.onStepUpdate?.([...steps])
 
   const outputs = new Map<string, string>()
@@ -1325,10 +1419,16 @@ export async function executeFlow(
   const conditionBranch = new Map<string, 'true' | 'false'>()
   const vars = new Map<string, string>()
   let failed = false
+  let rejected = false
+  let pendingApprovalNodeId: string | undefined
   let haltedByCondition = false
   let lastOutput = options.sampleInput ?? ''
   let lastQuery = options.sampleInput ?? ''
   let finalOutput = ''
+
+  const prevStepsById = new Map<string, FlowStepResult>(
+    (options.resumeFrom?.previousSteps ?? []).map((s) => [s.nodeId, s]),
+  )
 
   const incomingEdgesOf = (nodeId: string) => flow.edges.filter((e) => e.target === nodeId)
 
@@ -1379,7 +1479,42 @@ export async function executeFlow(
   for (let i = 0; i < ordered.length; i++) {
     const node = ordered[i]!
     const step = steps[i]!
-    if (failed || haltedByCondition || isBlockedByBranch(node.id)) {
+
+    // Reuse previously succeeded (or branched-rejected) steps strictly before `resumeFrom.startFromNodeId`.
+    if (resumeIndex > 0 && i < resumeIndex) {
+      const prev = prevStepsById.get(node.id)
+      if (prev && (prev.status === 'success' || prev.status === 'rejected')) {
+        step.status = prev.status
+        step.output = prev.output
+        step.durationMs = prev.durationMs
+        step.startedAt = prev.startedAt
+        step.payload = prev.payload
+        step.sourceText = prev.sourceText
+        step.branch = prev.branch
+        step.varEntry = prev.varEntry
+        const restoredPayload = prev.payload ?? prev.output
+        const restoredSource = prev.sourceText ?? restoredPayload
+        if (typeof restoredPayload === 'string') {
+          outputs.set(node.id, restoredPayload)
+          if (!node.config.toolMode) lastOutput = restoredPayload
+        }
+        if (typeof restoredSource === 'string') {
+          sourceTexts.set(node.id, restoredSource)
+          if (node.kind === 'trigger' || node.kind === 'schedule') lastQuery = restoredSource
+        }
+        if (prev.branch) conditionBranch.set(node.id, prev.branch)
+        if (prev.varEntry) vars.set(prev.varEntry.key, prev.varEntry.value)
+        options.onStepUpdate?.([...steps])
+        continue
+      }
+      if (prev && prev.status === 'skipped') {
+        step.status = 'skipped'
+        options.onStepUpdate?.([...steps])
+        continue
+      }
+    }
+
+    if (failed || rejected || haltedByCondition || isBlockedByBranch(node.id)) {
       step.status = 'skipped'
       options.onStepUpdate?.([...steps])
       continue
@@ -1391,7 +1526,45 @@ export async function executeFlow(
     options.onStepUpdate?.([...steps])
 
     try {
-      if (node.kind === 'trigger' || node.kind === 'schedule') {
+      if (node.subtype === 'human_approval') {
+        const input = upstreamOf(node.id)
+        const decision = options.approvalDecisions?.[node.id]
+        if (!decision) {
+          step.status = 'waiting_approval'
+          step.output = node.config.prompt?.trim() || 'Waiting for human approval before continuing.'
+          step.payload = input
+          step.durationMs = Math.max(1, Date.now() - t0)
+          pendingApprovalNodeId = node.id
+          options.onStepUpdate?.([...steps])
+          break
+        }
+        const hasFalseBranch = flow.edges.some(
+          (e) =>
+            e.source === node.id &&
+            ['false', 'fail', 'else'].includes((e.sourceHandle || e.label || '').trim().toLowerCase()),
+        )
+        if (decision === 'rejected') {
+          outputs.set(node.id, input)
+          sourceTexts.set(node.id, input)
+          conditionBranch.set(node.id, 'false')
+          step.branch = 'false'
+          step.payload = input
+          step.status = 'rejected'
+          step.output = 'Rejected by reviewer'
+          step.durationMs = Math.max(1, Date.now() - t0)
+          if (!hasFalseBranch) rejected = true
+          options.onStepUpdate?.([...steps])
+          continue
+        }
+        outputs.set(node.id, input)
+        sourceTexts.set(node.id, input)
+        conditionBranch.set(node.id, 'true')
+        step.branch = 'true'
+        step.payload = input
+        lastOutput = input
+        step.output = 'Approved by reviewer'
+        step.status = 'success'
+      } else if (node.kind === 'trigger' || node.kind === 'schedule') {
         const payload = options.sampleInput?.trim() || node.config.sampleInput?.trim() || `Triggered ${flow.name}`
         const output =
           node.kind === 'schedule'
@@ -1732,7 +1905,19 @@ export async function executeFlow(
         step.output = output
         step.status = 'success'
       }
-      step.durationMs = Math.max(1, Date.now() - t0)
+        step.durationMs = Math.max(1, Date.now() - t0)
+        // Preserve exact runtime handoff data so `resumeFrom` replays identically.
+        const produced = outputs.get(node.id)
+        if (produced !== undefined && produced !== step.output) step.payload = produced
+        const sem = sourceTexts.get(node.id)
+        if (sem !== undefined && sem !== (step.payload ?? step.output)) step.sourceText = sem
+        const br = conditionBranch.get(node.id)
+        if (br) step.branch = br
+        if (node.subtype === 'variable_store') {
+          const vKey = (node.config.variableKey || 'context').trim()
+          const vVal = vars.get(vKey)
+          if (vVal !== undefined) step.varEntry = { key: vKey, value: vVal }
+        }
     } catch (err) {
       failed = true
       step.status = 'error'
@@ -1746,23 +1931,36 @@ export async function executeFlow(
   const finishedMs = Date.now()
   const finishedAt = new Date(finishedMs).toISOString()
   const completedCount = steps.filter((s) => s.status === 'success').length
+  const status: FlowRunRecord['status'] = failed
+    ? 'failed'
+    : rejected
+      ? 'rejected'
+      : pendingApprovalNodeId
+        ? 'waiting_approval'
+        : 'completed'
   const summary = failed
     ? `Failed at ${steps.find((s) => s.status === 'error')?.nodeTitle ?? 'step'}`
-    : haltedByCondition
-      ? `Stopped at condition (${completedCount}/${steps.length} steps)`
-      : `Completed ${completedCount}/${steps.length} steps`
+    : rejected
+      ? `Rejected at ${steps.find((s) => s.status === 'rejected')?.nodeTitle ?? 'approval'}`
+      : pendingApprovalNodeId
+        ? `Waiting for approval at ${steps.find((s) => s.nodeId === pendingApprovalNodeId)?.nodeTitle ?? 'approval'}`
+        : haltedByCondition
+          ? `Stopped at condition (${completedCount}/${steps.length} steps)`
+          : `Completed ${completedCount}/${steps.length} steps`
 
   return {
     id: `run_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
     flowId: flow.id,
     flowName: flow.name,
-    trigger: options.trigger ?? 'manual',
-    status: failed ? 'failed' : 'completed',
+    trigger,
+    status,
     startedAt,
     finishedAt,
     durationMs: Math.max(1, finishedMs - startedMs),
     steps,
     summary,
-    finalOutput: finalOutput || lastOutput,
+    finalOutput: status === 'rejected' ? '' : (finalOutput || lastOutput),
+    ...(pendingApprovalNodeId ? { pendingApprovalNodeId } : {}),
+    ...(options.sampleInput !== undefined ? { inputSample: options.sampleInput } : {}),
   }
 }

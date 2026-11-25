@@ -85,6 +85,7 @@ export type FlowNodeSubtype =
   | 'switch_router'
   | 'loop_batch'
   | 'delay_wait'
+  | 'human_approval'
   // Utilities
   | 'sticky_note'
   | 'http_response'
@@ -246,7 +247,14 @@ export interface FlowDefinition {
   updatedAt: string
 }
 
-export type FlowStepStatus = 'pending' | 'running' | 'success' | 'error' | 'skipped'
+export type FlowStepStatus =
+  | 'pending'
+  | 'running'
+  | 'success'
+  | 'error'
+  | 'skipped'
+  | 'waiting_approval'
+  | 'rejected'
 
 export interface FlowStepResult {
   nodeId: string
@@ -258,6 +266,14 @@ export interface FlowStepResult {
   error?: string
   durationMs?: number
   startedAt?: string
+  /** Raw downstream handoff payload when distinct from human-readable `output` summary. */
+  payload?: string
+  /** Semantic text carried forward for embeddings/knowledge steps on resume. */
+  sourceText?: string
+  /** Evaluated branch verdict for condition/guardrail/approval steps on resume. */
+  branch?: 'true' | 'false'
+  /** Variable assignment written by `variable_store` for replay on resume. */
+  varEntry?: { key: string; value: string }
 }
 
 export interface FlowRunRecord {
@@ -265,13 +281,17 @@ export interface FlowRunRecord {
   flowId: string
   flowName: string
   trigger: 'manual' | 'schedule' | 'webhook' | 'playground'
-  status: 'running' | 'completed' | 'failed'
+  status: 'running' | 'completed' | 'failed' | 'waiting_approval' | 'rejected'
   startedAt: string
   finishedAt?: string
   durationMs?: number
   steps: FlowStepResult[]
   summary?: string
   finalOutput?: string
+  /** Node ID paused at a Human Approval gate, when `status === 'waiting_approval'`. */
+  pendingApprovalNodeId?: string
+  /** Original run input preserved for retrying from a failed step or resuming approval. */
+  inputSample?: string
 }
 
 export interface PlaygroundMessage {
@@ -764,6 +784,18 @@ export const FLOW_COMPONENT_CATALOG: readonly FlowComponentSpec[] = [
     inputs: P_IN,
     outputs: P_OUT,
     defaultConfig: { delayMs: 250 },
+  },
+  {
+    subtype: 'human_approval',
+    kind: 'control',
+    category: 'Flow Control',
+    label: 'Human Approval',
+    description: 'Pauses execution until a reviewer approves or rejects continuing downstream',
+    inputs: P_IN,
+    outputs: P_TRUE_FALSE,
+    defaultConfig: {
+      prompt: 'Review the upstream output and approve or reject continuing.',
+    },
   },
 
   // ── Utilities (3) ──────────────────────────────────────────────────────

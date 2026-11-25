@@ -1,5 +1,11 @@
 import {
   createFlowId,
+  describeCron,
+  isEmbeddingNode,
+  isKnowledgeIngestionNode,
+  isKnowledgeRetrievalNode,
+  isModelExecutionNode,
+  isStickyNoteNode,
   type FlowDefinition,
   type FlowEdge,
   type FlowNode,
@@ -1760,6 +1766,81 @@ export const FLOW_TEMPLATES: readonly FlowTemplate[] = [
     ],
   },
 ]
+
+export interface FlowTemplateMeta {
+  trigger: string
+  inputs: string
+  connections: string[]
+  output: string
+  stepCount: number
+}
+
+/**
+ * Derives structured trigger, input, connection, and output metadata directly
+ * from a template's actual nodes so gallery cards show real requirements.
+ */
+export function describeTemplateMeta(template: FlowTemplate): FlowTemplateMeta {
+  const runnable = template.nodes.filter((n) => !isStickyNoteNode(n))
+  const schedNode = runnable.find((n) => n.kind === 'schedule' || n.subtype === 'cron_schedule')
+  const triggerNode = runnable.find((n) => n.kind === 'trigger')
+
+  let trigger = 'Manual'
+  if (template.schedule?.cron || schedNode?.config.cron) {
+    const info = describeCron(template.schedule?.cron || schedNode?.config.cron || '0 8 * * 1-5')
+    trigger = info.valid ? `Scheduled · ${info.human}` : 'Scheduled'
+  } else if (triggerNode?.subtype === 'webhook' || triggerNode?.subtype === 'event') {
+    trigger = 'Webhook'
+  } else if (triggerNode?.subtype === 'chat_input') {
+    trigger = 'Chat / Playground'
+  } else if (triggerNode?.subtype === 'text_input') {
+    trigger = 'Text input'
+  } else if (runnable.some((n) => n.subtype === 'url_fetch')) {
+    trigger = 'URL'
+  } else if (runnable.some((n) => n.subtype === 'file_loader')) {
+    trigger = 'Document'
+  }
+
+  const inputSource =
+    triggerNode?.config.sampleInput?.trim() ||
+    schedNode?.config.sampleInput?.trim() ||
+    runnable.find((n) => n.config.filePath)?.config.filePath ||
+    runnable.find((n) => n.subtype === 'url_fetch')?.config.url ||
+    'Prompt or payload'
+  const inputs = inputSource.length > 56 ? `${inputSource.slice(0, 55)}…` : inputSource
+
+  const connSet = new Set<string>()
+  for (const n of runnable) {
+    if (isModelExecutionNode(n)) connSet.add('Hanzo Enso')
+    if (isEmbeddingNode(n)) connSet.add('Zen Embeddings')
+    if (isKnowledgeIngestionNode(n) || isKnowledgeRetrievalNode(n)) connSet.add('Hanzo Knowledge')
+    if (n.subtype === 'api_request' || n.subtype === 'http_request') connSet.add('HTTP API')
+    if (n.subtype === 'web_search') connSet.add('Web Search')
+    if (n.subtype === 'url_fetch') connSet.add('URL Crawl')
+    if (n.subtype === 'hanzo_mail' || n.subtype === 'email') connSet.add('Hanzo Mail')
+    if (n.subtype === 'crm_update') connSet.add('Hanzo CRM')
+    if (n.subtype === 'hanzo_post') connSet.add('Hanzo Post')
+    if (n.subtype === 'hanzo_base') connSet.add('Hanzo Base')
+    if (n.subtype === 'hanzo_kms_secret') connSet.add('Hanzo KMS')
+    if (n.subtype === 'human_approval') connSet.add('Human Approval')
+  }
+
+  const lastAction = [...runnable].reverse().find((n) => n.kind === 'action') ?? runnable[runnable.length - 1]
+  let output = lastAction?.title || 'Result'
+  if (lastAction?.subtype === 'chat_output') output = 'Chat reply'
+  else if (lastAction?.subtype === 'text_output') output = 'Text deliverable'
+  else if (lastAction?.subtype === 'http_response') output = 'HTTP response'
+  else if (lastAction?.subtype === 'hanzo_mail' || lastAction?.subtype === 'email') output = 'Email digest'
+  else if (lastAction?.subtype === 'crm_update') output = 'CRM update'
+  else if (lastAction?.subtype === 'hanzo_post') output = 'Channel post'
+
+  return {
+    trigger,
+    inputs,
+    connections: [...connSet],
+    output,
+    stepCount: runnable.length,
+  }
+}
 
 export function instantiateTemplate(template: FlowTemplate, customName?: string): FlowDefinition {
   const now = new Date().toISOString()

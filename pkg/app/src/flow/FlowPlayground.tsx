@@ -157,9 +157,16 @@ export function FlowPlayground({
         streaming: true,
       }
 
-      const priorHistory = activeSession.messages
-        .filter((m) => !m.error && m.content.trim().length > 0)
-        .map((m) => ({ role: m.role, content: m.content }))
+      const priorHistory: { role: 'user' | 'assistant'; content: string }[] = []
+      for (let idx = 0; idx < activeSession.messages.length; idx++) {
+        const m = activeSession.messages[idx]!
+        if (m.error || !m.content.trim()) continue
+        if (m.role === 'user') {
+          const next = activeSession.messages[idx + 1]
+          if (next?.role === 'assistant' && next.error) continue
+        }
+        priorHistory.push({ role: m.role, content: m.content })
+      }
 
       commitSessions((prev) =>
         prev.map((s) =>
@@ -214,6 +221,19 @@ export function FlowPlayground({
             streaming: false,
             steps: record.steps,
             error: failedStep?.error || record.summary || 'Flow execution failed.',
+          })
+        } else if (record.status === 'waiting_approval') {
+          const gateStep = record.steps.find((st) => st.status === 'waiting_approval')
+          updateAssistant({
+            streaming: false,
+            steps: record.steps,
+            content: `${t('Paused for human approval')}: ${gateStep?.output || t('Open Run history to approve or reject continuing.')}`,
+          })
+        } else if (record.status === 'rejected') {
+          updateAssistant({
+            streaming: false,
+            steps: record.steps,
+            error: record.summary || t('Flow run was rejected at an approval gate.'),
           })
         } else {
           updateAssistant({
@@ -465,7 +485,7 @@ export function FlowPlayground({
                   </XStack>
                 </YStack>
               ) : (
-                activeSession.messages.map((msg) =>
+                activeSession.messages.map((msg, msgIndex) =>
                   msg.role === 'user' ? (
                     <XStack key={msg.id} justify="flex-end" data-slot="playground-user-msg">
                       <YStack
@@ -482,7 +502,12 @@ export function FlowPlayground({
                         </Text>
                       </YStack>
                     </XStack>
-                  ) : (
+                  ) : (() => {
+                    const priorUserPrompt = activeSession.messages
+                      .slice(0, msgIndex)
+                      .reverse()
+                      .find((m) => m.role === 'user' && m.content.trim().length > 0)?.content
+                    return (
                     <XStack key={msg.id} items="flex-start" gap="$3" data-slot="playground-assistant-msg">
                       <XStack
                         width={28}
@@ -610,13 +635,27 @@ export function FlowPlayground({
                             gap="$2"
                           >
                             <AlertCircle size={15} color="var(--state-error)" aria-hidden />
-                            <YStack flex={1} minW={0} gap="$1">
+                            <YStack flex={1} minW={0} gap="$1.5">
                               <Text fontSize="$2" fontWeight="600" color="var(--state-error-text)">
                                 {t('Flow run failed')}
                               </Text>
                               <Text fontSize="$2" color="$ink">
                                 {msg.error}
                               </Text>
+                              {priorUserPrompt ? (
+                                <XStack pt="$1">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    data-slot="playground-retry"
+                                    disabled={busy}
+                                    onPress={() => void runMessage(priorUserPrompt)}
+                                  >
+                                    <RotateCcw size={12} aria-hidden />
+                                    {t('Retry')}
+                                  </Button>
+                                </XStack>
+                              ) : null}
                             </YStack>
                           </XStack>
                         ) : null}
@@ -633,7 +672,8 @@ export function FlowPlayground({
                         ) : null}
                       </YStack>
                     </XStack>
-                  ),
+                    )
+                  })(),
                 )
               )}
             </YStack>
