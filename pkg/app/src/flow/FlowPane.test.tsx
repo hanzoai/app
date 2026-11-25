@@ -66,10 +66,9 @@ const { FlowPlayground } = await import('./FlowPlayground')
 const { FlowMcpDrawer } = await import('./FlowMcpDrawer')
 const { FLOW_TEMPLATES, instantiateTemplate } = await import('./templates')
 const { flowNav } = await import('./nav')
-const { FLOW_STUDIO_URL } = await import('./types')
 
 describe('FlowPane, FlowPlayground, FlowKnowledgePanel, FlowMcpDrawer, and flowNav', () => {
-  test('renders full Builder with Hanzo Cloud status pill, MCP Server button, Component Palette, OLED Dot Grid, Minimap, Sticky Note, Inspector, and Playground trigger', () => {
+  test('renders full Builder with Hanzo Cloud status pill, MCP Server button, Component Palette, OLED Dot Grid, Minimap, Sticky Note, Inspector, and Playground trigger without external Open Flow Studio link', () => {
     localStorage.clear()
     const html = renderToStaticMarkup(createElement(FlowPane, { path: '/flow' }))
     expect(html).toContain('data-slot="flow-pane"')
@@ -86,8 +85,8 @@ describe('FlowPane, FlowPlayground, FlowKnowledgePanel, FlowMcpDrawer, and flowN
     expect(html).toContain('data-slot="flow-inspector"')
     expect(html).toContain('data-slot="flow-test-run"')
     expect(html).toContain('data-slot="flow-playground-open"')
-    expect(html).toContain(`href="${FLOW_STUDIO_URL}"`)
-    expect(html).toContain('target="_blank"')
+    expect(html).not.toContain('data-slot="flow-studio-link"')
+    expect(html).not.toContain('Open Flow Studio')
     expect(html).toContain('Pokédex Agent')
     expect(html).not.toContain('enso-hybrid')
     expect(html).not.toContain('HANZO_API_KEY')

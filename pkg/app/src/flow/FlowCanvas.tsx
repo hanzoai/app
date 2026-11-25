@@ -858,7 +858,7 @@ export function FlowCanvas({
         })}
       </YStack>
 
-      {/* Subtle Minimap overlay (bottom-right) */}
+      {/* Subtle Minimap overlay (bottom-right, desktop/tablet) */}
       {showMinimap ? (
         <YStack
           data-slot="flow-minimap"
@@ -873,6 +873,7 @@ export function FlowCanvas({
           borderColor="var(--border-strong)"
           overflow="hidden"
           z="var(--z-raised)"
+          $max-md={{ display: 'none' }}
           onClick={(e: { stopPropagation: () => void }) => {
             e.stopPropagation()
             handleFitView()

@@ -82,14 +82,24 @@ export function FlowPalette({
         py="$2.5"
         items="center"
         gap="$2"
+        $max-lg={{
+          width: '100%',
+          flexDirection: 'row',
+          px: '$2.5',
+          py: '$1.5',
+          borderInlineEndWidth: 0,
+          borderBottomWidth: 1,
+        }}
       >
         <XStack
           render="button"
           aria-label={t('Expand component palette')}
           data-slot="flow-palette-expand"
           onClick={onToggleCollapse}
-          width={28}
+          minW={28}
           height={28}
+          px="$1.5"
+          gap="$1.5"
           rounded="$2"
           items="center"
           justify="center"
@@ -97,6 +107,9 @@ export function FlowPalette({
           hoverStyle={{ bg: '$hover' }}
         >
           <PanelLeftOpen size={15} aria-hidden />
+          <Text display="none" $max-lg={{ display: 'flex' }} fontSize="$2" color="$soft">
+            {t('Components')}
+          </Text>
         </XStack>
       </YStack>
     )

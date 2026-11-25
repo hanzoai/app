@@ -8,7 +8,6 @@ import {
   BookOpen,
   CalendarClock,
   CheckCircle2,
-  ExternalLink,
   History,
   LayoutTemplate,
   Loader2,
@@ -52,7 +51,6 @@ import {
 } from './templates'
 import {
   describeCron,
-  FLOW_STUDIO_URL,
   flowPath,
   isStickyNoteNode,
   makeNodeFromComponent,
@@ -104,8 +102,12 @@ export function FlowPane({
   const [showRunDrawer, setShowRunDrawer] = useState(false)
   const [showPlayground, setShowPlayground] = useState(false)
   const [showMcpDrawer, setShowMcpDrawer] = useState(false)
-  const [paletteCollapsed, setPaletteCollapsed] = useState(false)
-  const [inspectorCollapsed, setInspectorCollapsed] = useState(false)
+  const [paletteCollapsed, setPaletteCollapsed] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 1024,
+  )
+  const [inspectorCollapsed, setInspectorCollapsed] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 1024,
+  )
   const [activeRunSummary, setActiveRunSummary] = useState<string | null>(null)
   const [templateQuery, setTemplateQuery] = useState('')
   const [templateCategory, setTemplateCategory] = useState<'All' | FlowTemplateCategory>('All')
@@ -134,8 +136,10 @@ export function FlowPane({
     return () => ctrl.abort()
   }, [activeOrg])
 
-  // Follow `/flow/<id>` or `/flow/new` route navigation.
+  // Follow `/flow/<id>`, `/flow/new`, or sidebar view navigation (always dismiss drawers).
   useEffect(() => {
+    setShowPlayground(false)
+    setShowMcpDrawer(false)
     if (route.createNew) {
       const fresh = createBlankFlow(`Flow ${flows.length + 1}`)
       const next = [fresh, ...flows]
@@ -152,7 +156,7 @@ export function FlowPane({
       setSelectedNodeId(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route.createNew, route.flowId])
+  }, [route.view, route.createNew, route.flowId])
 
   useEffect(() => () => runAbortRef.current?.abort(), [])
 
@@ -479,8 +483,9 @@ export function FlowPane({
         borderColor="$edge"
         bg="var(--card)"
         shrink={0}
+        $max-md={{ px: '$2.5', py: '$2', gap: '$2' }}
       >
-        <XStack items="center" gap="$3" flexWrap="wrap" minW={0}>
+        <XStack items="center" gap="$3" flexWrap="wrap" minW={0} maxW="100%">
           <XStack items="center" gap="$2">
             <Workflow size={16} aria-hidden />
             <Text fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1}>
@@ -488,7 +493,7 @@ export function FlowPane({
             </Text>
           </XStack>
 
-          <XStack items="center" gap="$1" role="tablist" aria-label={t('Flow views')}>
+          <XStack items="center" gap="$1" role="tablist" aria-label={t('Flow views')} maxW="100%" overflowX="auto">
             {viewTabs.map(({ id, label, routeSub, Icon }) => {
               const active = route.view === id
               return (
@@ -508,6 +513,7 @@ export function FlowPane({
                   rounded="$3"
                   gap="$1.5"
                   items="center"
+                  shrink={0}
                   bg={active ? '$raised' : 'transparent'}
                   cursor="pointer"
                   hoverStyle={{ bg: active ? '$raised' : '$hover' }}
@@ -533,6 +539,7 @@ export function FlowPane({
             bg="var(--surface-card)"
             borderWidth={1}
             borderColor="$edge"
+            $max-lg={{ display: 'none' }}
           >
             <YStack width={7} height={7} rounded={999} bg="var(--state-online)" />
             <Text fontSize="$1" color="$soft" fontFamily="$mono" numberOfLines={1}>
@@ -542,7 +549,7 @@ export function FlowPane({
 
           {route.view === 'canvas' && activeFlow ? (
             <>
-              <Text fontSize="$1" color="$quiet" data-slot="flow-sync-status">
+              <Text fontSize="$1" color="$quiet" data-slot="flow-sync-status" $max-md={{ display: 'none' }}>
                 {syncState === 'saving'
                   ? t('Saving…')
                   : syncState === 'synced'
@@ -586,25 +593,6 @@ export function FlowPane({
               </Button>
             </>
           ) : null}
-
-          <XStack
-            render={<a href={FLOW_STUDIO_URL} target="_blank" rel="noopener noreferrer" />}
-            data-slot="flow-studio-link"
-            px="$2.5"
-            py="$1.5"
-            rounded="$3"
-            borderWidth={1}
-            borderColor="$edge"
-            items="center"
-            gap="$1.5"
-            cursor="pointer"
-            hoverStyle={{ bg: '$hover', borderColor: 'var(--border-strong)' }}
-          >
-            <Text fontSize="$2" fontWeight="500" color="$ink">
-              {t('Open Flow Studio')}
-            </Text>
-            <ExternalLink size={12} aria-hidden />
-          </XStack>
         </XStack>
       </XStack>
 
