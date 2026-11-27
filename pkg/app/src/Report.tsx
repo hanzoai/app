@@ -166,27 +166,35 @@ export function Report({ children }: { children: ReactNode }) {
     const q = new URLSearchParams(window.location.search).get('report-test')
     if (q && superAdmin()) setProbe(q)
     return hear((c) => {
-      // The picture is taken as the break happens, not after the sheet has changed the page.
-      void shoot().then(setShot)
+      // Record the caught fault immediately; defer heavy DOM/SVG screenshot capture until
+      // the person actually clicks "Report it" (`begin`) so background faults never block the main thread.
+      setShot(null)
       setCaught(c)
     })
   }, [])
 
-  const begin = useCallback((c: Caught) => {
+  const begin = useCallback((c: Caught, existingShot?: string | null) => {
     setCaught(c)
     setTitle(c.message.slice(0, 100))
     setNote('')
     setKeep(true)
     setState('idle')
     setFiled(null)
-    setOpen(true)
+    if (existingShot !== undefined) {
+      setShot(existingShot)
+      setOpen(true)
+      return
+    }
+    void shoot().then((s) => {
+      setShot(s)
+      setOpen(true)
+    })
   }, [])
 
   useEffect(() => {
     const by = () => {
       if (caught) return begin(caught)
       void shoot().then((s) => {
-        setShot(s)
         begin({
           kind: 'error',
           message: 'Reported by hand',
@@ -197,7 +205,7 @@ export function Report({ children }: { children: ReactNode }) {
           version: '',
           agent: navigator.userAgent,
           lines: [],
-        })
+        }, s)
       })
     }
     window.addEventListener(OPEN, by)

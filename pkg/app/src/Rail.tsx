@@ -611,7 +611,11 @@ export function Mark({
   children: ReactNode
   [attribute: `data-${string}` | `aria-${string}`]: unknown
 }) {
-  const handleClick = onClick ?? onPress
+  const [tipOpen, setTipOpen] = useState(false)
+  const handleClick = () => {
+    setTipOpen(false)
+    ;(onClick ?? onPress)?.()
+  }
   const button = (
     <XStack
       render="button"
@@ -619,6 +623,7 @@ export function Mark({
       {...(tooltip ? {} : ({ title: label } as object))}
       aria-current={on ? 'page' : undefined}
       onClick={handleClick}
+      onPointerDown={() => setTipOpen(false)}
       width={MARK}
       height={MARK}
       rounded={10}
@@ -641,7 +646,7 @@ export function Mark({
   if (!tooltip) return button
 
   return (
-    <Tooltip placement="right" offset={8}>
+    <Tooltip open={tipOpen} onOpenChange={setTipOpen} placement="right" offset={8}>
       <TooltipTrigger asChild>{button}</TooltipTrigger>
       <TooltipContent
         maxW={240}

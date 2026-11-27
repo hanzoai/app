@@ -15,7 +15,19 @@ const css = (): string => {
   let out = ''
   for (const sheet of Array.from(document.styleSheets)) {
     try {
-      for (const rule of Array.from(sheet.cssRules)) out += `${rule.cssText}\n`
+      const rules = sheet.cssRules
+      // Skip serializing multi-megabyte atomic utility stylesheets (>2500 rules) into SVG
+      // foreignObject, keeping only root custom property declarations so Chromium never freezes.
+      if (rules.length > 2500) {
+        for (let i = 0; i < rules.length; i++) {
+          const r = rules[i]
+          if (r instanceof CSSStyleRule && (r.selectorText === ':root' || r.selectorText === 'html' || r.selectorText === 'body' || r.selectorText.startsWith('html.'))) {
+            out += `${r.cssText}\n`
+          }
+        }
+        continue
+      }
+      for (const rule of Array.from(rules)) out += `${rule.cssText}\n`
     } catch {
       /* a stylesheet from another origin is not readable, and is left out */
     }
@@ -23,8 +35,18 @@ const css = (): string => {
   return out
 }
 
+let inFlightShot: Promise<string | null> | null = null
+
 /** A PNG data URL of what the window shows, or null where the browser cannot draw one. */
 export async function shoot(): Promise<string | null> {
+  if (inFlightShot) return inFlightShot
+  inFlightShot = shootOnce().finally(() => {
+    inFlightShot = null
+  })
+  return inFlightShot
+}
+
+async function shootOnce(): Promise<string | null> {
   const native = where().report?.capture ?? (window as { desktopBridge?: { captureWindow?: () => Promise<string | null> } }).desktopBridge?.captureWindow
   if (native) return native().catch(() => null)
   if (typeof document === 'undefined') return null
