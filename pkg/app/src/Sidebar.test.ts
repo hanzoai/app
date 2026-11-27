@@ -477,12 +477,14 @@ describe('the contextual desktop sidebar (beside the stationary icon rail)', () 
     for (const mode of ['dev', 'design', 'tabs'] as Place['mode'][]) expect(guest(mode), mode).not.toContain('data-slot="app-plugins"')
   })
 
-  test('signed out, every section has one compact Log in at the foot, never the old two-button card', () => {
+  test('signed out, every section has one compact Log in at the foot, and only the phone drawer repeats Settings (Rail owns it on desktop)', () => {
     for (const mode of ['chat', 'dev', 'design', 'tabs'] as Place['mode'][]) {
       const html = renderToStaticMarkup(createElement(Sidebar, { pins, host: { ...host, person: null } as never, mode, thread: null, go: noop, onShut: noop, onBack: noop }))
       for (const slot of ['column-login', 'column-signup', 'anon-tailored']) expect(html, mode).not.toContain(`data-slot="${slot}"`)
       expect(html.split('data-slot="anon-login"').length - 1, mode).toBe(1)
-      expect(html, mode).toContain('data-slot="anon-settings"')
+      expect(html, mode).not.toContain('data-slot="anon-settings"')
+      const drawerHtml = renderToStaticMarkup(createElement(Sidebar, { pins, host: { ...host, person: null } as never, mode, thread: null, go: noop, onShut: noop, onBack: noop, drawer: true }))
+      expect(drawerHtml, mode).toContain('data-slot="anon-settings"')
     }
   })
 

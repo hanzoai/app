@@ -1647,31 +1647,33 @@ export function Sidebar({
                   <LogIn size={15} aria-hidden />
                   <Text fontSize="$2" color="$ink">{t('Log in')}</Text>
                 </XStack>
-                <XStack
-                  render={<button type="button" />}
-                  data-slot="anon-settings"
-                  aria-label={t('Settings')}
-                  onClick={() => {
-                    if (typeof window !== 'undefined') {
-                      window.dispatchEvent(new CustomEvent('hanzo:anon-settings', { detail: { open: true } }))
-                    }
-                  }}
-                  items="center"
-                  gap="$1"
-                  px="$1.5"
-                  py="$1"
-                  minH={28}
-                  $touchable={{ minH: TOUCH }}
-                  $max-sm={{ minH: TOUCH }}
-                  rounded="$2"
-                  borderWidth={0}
-                  bg="transparent"
-                  cursor="pointer"
-                  hoverStyle={{ bg: '$hover' }}
-                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
-                >
-                  <Settings size={16} aria-hidden />
-                </XStack>
+                {drawer ? (
+                  <XStack
+                    render={<button type="button" />}
+                    data-slot="anon-settings"
+                    aria-label={t('Settings')}
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('hanzo:anon-settings', { detail: { open: true } }))
+                      }
+                    }}
+                    items="center"
+                    gap="$1"
+                    px="$1.5"
+                    py="$1"
+                    minH={28}
+                    $touchable={{ minH: TOUCH }}
+                    $max-sm={{ minH: TOUCH }}
+                    rounded="$2"
+                    borderWidth={0}
+                    bg="transparent"
+                    cursor="pointer"
+                    hoverStyle={{ bg: '$hover' }}
+                    focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  >
+                    <Settings size={16} aria-hidden />
+                  </XStack>
+                ) : null}
               </XStack>
             </YStack>
           ) : at || mode === 'beta' || mode === 'hosted' ? null : devMode ? (

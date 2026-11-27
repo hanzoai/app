@@ -7,6 +7,9 @@
 export const pane = (fill = 'var(--background)') =>
   ({
     backgroundColor: fill,
+    borderTopWidth: 0,
+    borderBottomWidth: 0,
+    borderInlineEndWidth: 0,
     borderInlineStartWidth: 1,
     borderStyle: 'solid',
     borderColor: 'var(--pane-edge)',

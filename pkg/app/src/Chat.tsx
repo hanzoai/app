@@ -3676,7 +3676,7 @@ function Thread({
 
         <XStack data-slot="conversation-controls" data-tauri-drag-region="false" items="center" gap={4} shrink={0}>
           {!anonymous ? <WalletPill compact /> : null}
-          {anonymous ? (
+          {anonymous && !windowed ? (
             <XStack items="center" gap="$2">
               <Button
                 size="xs"
