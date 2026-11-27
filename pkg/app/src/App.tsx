@@ -452,7 +452,7 @@ function Window({ bar, betas }: Hosted) {
           overflow="hidden"
           // Clipped, not hidden, on a phone: the drawer slides the pane past the window's edge, and a
           // hidden overflow is still a scroller that a `scrollIntoView` inside the pane would move.
-          $max-md={{ position: 'fixed', t: TOP, l: 0, r: 0, height: HEIGHT, ...({ overflow: 'clip' } as object) }}
+          $max-md={bar ? ({ overflow: 'clip' } as object) : { position: 'fixed', t: TOP, l: 0, r: 0, height: HEIGHT, ...({ overflow: 'clip' } as object) }}
         >
           <SkipLink />
           {bar ? (
@@ -484,7 +484,7 @@ function Window({ bar, betas }: Hosted) {
                 <XStack data-slot="title-bar-left-group" items="center" gap={4} data-tauri-drag-region="false">
                   {bar.leading}
                   <XStack $md={{ display: 'none' }} data-tauri-drag-region="false">
-                    <Toggle open={drawer.state === 'open'} onPress={drawer.open} />
+                    <Toggle open={drawer.state === 'open'} onPress={() => (drawer.state === 'open' ? drawer.close() : drawer.open())} />
                   </XStack>
                   <XStack $max-md={{ display: 'none' }} data-tauri-drag-region="false">
                     <Toggle open={!closed} onPress={flip} />

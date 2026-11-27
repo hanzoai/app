@@ -15,7 +15,7 @@
 export const STRIP = 64
 
 /** The menu's widest, px: a phone held sideways, or a small tablet, keeps the menu a menu. */
-export const REACH = 360
+export const REACH = 280
 
 /** How far the pane slides, as CSS: the window less the strip, up to `REACH`. `%` is the window's width wherever it is read. */
 export const OPEN = `min(100% - ${STRIP}px, ${REACH}px)`
