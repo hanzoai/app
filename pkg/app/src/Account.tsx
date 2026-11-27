@@ -540,7 +540,7 @@ export function Account({
               setMenuOpen(true)
             }}
           >
-            <Face host={host} size={narrow ? (above ? 32 : 26) : 28} />
+            <Face host={host} size={narrow ? (above ? 28 : 22) : 24} />
             {narrow ? null : (
               <YStack flex={1} minW={0}>
                 <Text fontFamily="$body" fontSize="$2" fontWeight="500" color="$ink" numberOfLines={1} text="start">

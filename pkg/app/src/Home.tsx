@@ -41,6 +41,7 @@ import { fromKey, teamKey, useChannels } from './channels'
 import { invite, apps, projects } from './lib/home'
 import { BAD } from './lib/mix'
 import { useDevMode } from './lib/dev-mode'
+import { usePromptPlus } from './lib/promptPlus'
 
 function HomeCard({
   kind,
@@ -140,6 +141,7 @@ export function Home({ ask }: HomeProps) {
   const [devMode] = useDevMode()
   const [mode, setMode] = useState<Mode>('chat')
   const [draft, setDraft] = useState('')
+  const { plus, carried, composeText, clearCarried, hasCarried } = usePromptPlus(setDraft)
   const [picked, setPicked] = useState<string[]>([])
   const [directory, setDirectory] = useState(false)
   const { channel, openChannel } = useOpen()
@@ -152,9 +154,10 @@ export function Home({ ask }: HomeProps) {
   if (at) return <Open at={at} channels={held} back={() => openChannel(null)} />
 
   const send = () => {
-    const question = draft.trim()
+    const question = composeText(draft)
     if (!question) return
     setDraft('')
+    clearCarried()
     const hints = grounded ? picked : []
     if (ask) {
       ask(question, mode, hints)
@@ -251,15 +254,14 @@ export function Home({ ask }: HomeProps) {
             data-slot="home-composer"
             width="100%"
             rounded={17}
-            borderWidth={1}
-            borderColor="var(--border-strong)"
-            bg="var(--surface-card)"
-            hoverStyle={{ borderColor: 'var(--border-focus)' }}
           >
             <Composer
               value={draft}
               onChange={setDraft}
               onSend={send}
+              ready={Boolean(draft.trim()) || hasCarried}
+              plus={plus}
+              carried={carried}
               placeholder={t(here.asks)}
               label={t(here.asks)}
               rows={2}

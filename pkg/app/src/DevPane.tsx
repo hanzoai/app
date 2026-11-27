@@ -21,7 +21,7 @@ import { api } from './lib/api'
 import { bearer, hasSession } from './lib/session'
 import { machines } from './devRuntime'
 import { Builder, route, type Host } from '@hanzo/build'
-import { app, go, talk } from './lib/host'
+import { app, go, talk, TERMINALS } from './lib/host'
 import { org as currentOrg } from './lib/session'
 
 const Core = lazy(() => import('./core').then((m) => ({ default: m.DevWorkspace })))
@@ -329,6 +329,21 @@ export function DevInterior({
     },
     [onGo],
   )
+  useEffect(() => {
+    const onNavigate = (e: Event) => {
+      const target = (e as CustomEvent<string>).detail
+      if (typeof target === 'string' && target.trim()) nav(target)
+    }
+    const onOpenBrowserTabs = (e: Event) => {
+      if (!e.defaultPrevented) nav(TERMINALS)
+    }
+    window.addEventListener('hanzo:navigate', onNavigate)
+    window.addEventListener('hanzo:open-browser-tabs', onOpenBrowserTabs)
+    return () => {
+      window.removeEventListener('hanzo:navigate', onNavigate)
+      window.removeEventListener('hanzo:open-browser-tabs', onOpenBrowserTabs)
+    }
+  }, [nav])
   const misroutedChat = MISROUTED_CHAT.exec(path)?.[1] ?? null
   useEffect(() => {
     if (misroutedChat) {

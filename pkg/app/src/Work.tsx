@@ -38,6 +38,7 @@ import type { Say } from '@hanzo/i18n'
 import { Composer } from '@hanzo/ui/chat'
 import { Start } from './Start'
 import { Bar } from './progress'
+import { usePromptPlus } from './lib/promptPlus'
 
 /** The server's four statuses, plus the honest fallback for anything else. */
 const STATUS = (s?: string): RunStatus =>
@@ -557,6 +558,7 @@ function Watch({ id }: { id: string }) {
   const { session } = useSession(id)
   const [live, setLive] = useState<SessionEvent[]>([])
   const [draft, setDraft] = useState('')
+  const { plus, carried, composeText, clearCarried, hasCarried } = usePromptPlus(setDraft)
   const [note, setNote] = useState<string | null>(null)
 
   // The live feed, narrowed to this run's tree. There is no per-session stream
@@ -632,9 +634,10 @@ function Watch({ id }: { id: string }) {
   )
 
   const send = useCallback(async () => {
-    const text = draft.trim()
+    const text = composeText(draft)
     if (!text) return
     setDraft('')
+    clearCarried()
     setNote(null)
     try {
       await ai.sessions.steer(id, 'message', { message: text })
@@ -642,7 +645,7 @@ function Watch({ id }: { id: string }) {
     } catch {
       setNote(t('Could not reach this run'))
     }
-  }, [ai, draft, id, t])
+  }, [ai, draft, composeText, clearCarried, id, t])
 
   return (
     <YStack flex={1} minH={0} minW={0} overflow="hidden" $xl={{ flexDirection: 'row' }}>
@@ -689,6 +692,9 @@ function Watch({ id }: { id: string }) {
             value={draft}
             onChange={setDraft}
             onSend={() => void send()}
+            ready={Boolean(draft.trim()) || hasCarried}
+            plus={plus}
+            carried={carried}
             placeholder={t('Steer this run…')}
             label={t('Steer this run')}
           />

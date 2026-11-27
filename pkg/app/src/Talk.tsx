@@ -34,6 +34,7 @@ import { Side } from './Shell'
 import { memberOf, useMe, useRoster, type Member } from './roster'
 import { useMessages, type Channel } from './channels'
 import { BAD } from './lib/mix'
+import { usePromptPlus } from './lib/promptPlus'
 
 /** The clock a transcript reads by: the time for today, the date before that. */
 function when(ms: number, locale: string): string {
@@ -65,6 +66,7 @@ export function Talk({ channel }: { channel: Channel }) {
   const me = useMe()
   const { aside, showAside } = useOpen()
   const [draft, setDraft] = useState('')
+  const { plus, carried, composeText, clearCarried, hasCarried } = usePromptPlus(setDraft)
   const [pending, setPending] = useState<{ key: number; text: string }[]>([])
   const [refused, setRefused] = useState<string | null>(null)
   const minted = useRef(0)
@@ -74,10 +76,11 @@ export function Talk({ channel }: { channel: Channel }) {
   const mine = me ? memberOf(members, me) : undefined
 
   const speak = async () => {
-    const text = draft.trim()
+    const text = composeText(draft)
     if (!text) return
     const key = ++minted.current
     setDraft('')
+    clearCarried()
     setRefused(null)
     setPending((held) => [...held, { key, text }])
     try {
@@ -156,6 +159,9 @@ export function Talk({ channel }: { channel: Channel }) {
           value={draft}
           onChange={setDraft}
           onSend={() => void speak()}
+          ready={Boolean(draft.trim()) || hasCarried}
+          plus={plus}
+          carried={carried}
           placeholder={t('Message {channel}', { channel: title })}
           label={t('Message {channel}', { channel: title })}
           hint={agents.length ? t('Mention an agent with @name and it answers.') : undefined}

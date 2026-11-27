@@ -33,6 +33,7 @@ import {
 import { deviceKey, useDeviceNames } from '@hanzo/build/names'
 import { formatDeviceLabel, useDevMode } from './lib/dev-mode'
 import { InfoHint } from './lib/info-hint'
+import { usePromptPlus } from './lib/promptPlus'
 
 const SOFT = '$soft'
 
@@ -67,6 +68,7 @@ export function Start() {
   const names = useDeviceNames()
   const { openSession } = useOpen()
   const [prompt, setPrompt] = useState('')
+  const { plus, carried, composeText, clearCarried, hasCarried } = usePromptPlus(setPrompt)
   const [repo, setRepo] = useState('')
   const [where, setWhere] = useState<string>(SANDBOX)
   const [targets, setTargets] = useState<Target[]>([])
@@ -106,7 +108,7 @@ export function Start() {
   }, [])
 
   const send = useCallback(async () => {
-    const task = prompt.trim()
+    const task = composeText(prompt)
     if (!task || busy) return
     setBusy(true)
     setErr(null)
@@ -118,6 +120,7 @@ export function Start() {
         setLocalMsg(t('Running in {path}…', { path: localPath }))
         const res = await runLocalDev(localPath, task)
         setPrompt('')
+        clearCarried()
         setLocalMsg(res.output?.slice(0, 300) || res.sessionId || t('Completed.'))
       } catch (e: unknown) {
         setErr(e instanceof Error ? e.message : t('Local run failed'))
@@ -135,13 +138,14 @@ export function Start() {
         targetId: where || undefined,
       })
       setPrompt('')
+      clearCarried()
       openSession(run.sessionId)
     } catch (e) {
       setErr(e instanceof CodingRefusal ? e.message : t('Could not start the run'))
     } finally {
       setBusy(false)
     }
-  }, [prompt, repo, tool, where, devMode, busy, openSession, t])
+  }, [prompt, composeText, clearCarried, repo, tool, where, devMode, busy, openSession, t])
 
   const isLocal = where.startsWith('local:')
 
@@ -152,6 +156,9 @@ export function Start() {
           value={prompt}
           onChange={setPrompt}
           onSend={() => void send()}
+          ready={Boolean(prompt.trim()) || hasCarried}
+          plus={plus}
+          carried={carried}
           busy={busy}
           placeholder={t('Describe what to build…')}
           label={t('Describe what to build')}

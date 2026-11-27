@@ -756,7 +756,7 @@ export function Rail({
         width={RAIL_FOLDED}
         flex={1}
         minH={0}
-        pt={4}
+        pt={6}
         pb={0}
         gap={4}
         shrink={0}

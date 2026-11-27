@@ -28,6 +28,7 @@ import {
 import { FlowStepIo } from './FlowStepIo'
 import { HanzoMark } from './icons'
 import { FLOW_TEMPLATES } from './templates'
+import { usePromptPlus } from '../lib/promptPlus'
 import {
   FLOW_MODELS,
   isModelExecutionNode,
@@ -57,6 +58,7 @@ export function FlowPlayground({
   )
   const [activeSessionId, setActiveSessionId] = useState<string>(() => sessions[0]?.id ?? '')
   const [draft, setDraft] = useState('')
+  const { plus, carried, composeText, clearCarried, hasCarried } = usePromptPlus(setDraft)
   const [busy, setBusy] = useState(false)
   const [selectedModel, setSelectedModel] = useState<string>(() => {
     const modelNode = flow.nodes.find((n) => isModelExecutionNode(n) && n.config.model)
@@ -258,8 +260,11 @@ export function FlowPlayground({
   )
 
   const handleSend = useCallback(() => {
-    void runMessage(draft)
-  }, [draft, runMessage])
+    const composed = composeText(draft)
+    if (!composed) return
+    clearCarried()
+    void runMessage(composed)
+  }, [draft, composeText, clearCarried, runMessage])
 
   const activeModelLabel = FLOW_MODELS.find((m) => m.id === selectedModel)?.label ?? selectedModel
 
@@ -491,12 +496,10 @@ export function FlowPlayground({
                     <XStack key={msg.id} justify="flex-end" data-slot="playground-user-msg">
                       <YStack
                         maxW="82%"
-                        px="$3.5"
-                        py="$2.5"
-                        rounded="$4"
+                        px="$4"
+                        py="$2"
+                        rounded={9999}
                         bg="var(--surface-card-emphasis)"
-                        borderWidth={1}
-                        borderColor="var(--border-strong)"
                       >
                         <Text fontSize="$3" color="$ink" $platform-web={{ whiteSpace: 'pre-wrap' }}>
                           {msg.content}
@@ -733,16 +736,15 @@ export function FlowPlayground({
                 data-slot="flow-playground-composer"
                 width="100%"
                 rounded={17}
-                borderWidth={1}
-                borderColor="var(--border-strong)"
-                bg="var(--surface-card)"
-                hoverStyle={{ borderColor: 'var(--border-focus)' }}
               >
                 <Composer
                   value={draft}
                   onChange={setDraft}
                   onSend={handleSend}
                   onStop={handleStop}
+                  ready={Boolean(draft.trim()) || hasCarried}
+                  plus={plus}
+                  carried={carried}
                   busy={busy}
                   placeholder={t('Message {flow}…', { flow: flow.name })}
                   label={t('Message {flow}', { flow: flow.name })}

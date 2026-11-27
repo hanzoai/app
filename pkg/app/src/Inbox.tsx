@@ -39,6 +39,7 @@ import { ArrowLeft, Plus, User } from 'lucide-react'
 import { useAi } from './lib/ai'
 import { useOpen } from './open'
 import { plainly } from './failure'
+import { usePromptPlus } from './lib/promptPlus'
 import { channelName, Network, of, speaker } from './network'
 import {
   conversationOf,
@@ -351,6 +352,7 @@ function Reading({
   const { t, locale } = useI18n()
   const { client } = useAi()
   const [draft, setDraft] = useState('')
+  const { plus, carried, composeText, clearCarried, hasCarried } = usePromptPlus(setDraft)
   const [sending, setSending] = useState(false)
   const [failed, setFailed] = useState<string | null>(null)
 
@@ -372,7 +374,7 @@ function Reading({
    * would put a message on screen that may not have gone.
    */
   const send = useCallback(async () => {
-    const text = draft.trim()
+    const text = composeText(draft)
     if (!client || !text || sending || !channel.channelId) return
     setSending(true)
     setFailed(null)
@@ -383,13 +385,14 @@ function Reading({
         body: { channel: { id: channel.channelId }, text },
       })
       setDraft('')
+      clearCarried()
       reload()
     } catch (e) {
       setFailed(plainly(e, t('this conversation'), t))
     } finally {
       setSending(false)
     }
-  }, [client, draft, sending, channel.transport, channel.channelId, reload, t])
+  }, [client, draft, composeText, clearCarried, sending, channel.transport, channel.channelId, reload, t])
 
   return (
     <YStack flex={1} minH={0} minW={0}>
@@ -467,6 +470,9 @@ function Reading({
               value={draft}
               onChange={setDraft}
               onSend={() => void send()}
+              ready={Boolean(draft.trim()) || hasCarried}
+              plus={plus}
+              carried={carried}
               busy={sending}
               placeholder={t('Reply on {network}', { network: of(channel.transport).name })}
               label={t('Reply on {network}', { network: of(channel.transport).name })}

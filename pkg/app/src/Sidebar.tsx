@@ -1281,7 +1281,7 @@ export function Sidebar({
           borderWidth={0}
           {...FILL}
           px={8}
-          pt={drawer ? 'var(--pane-gap)' : 4}
+          pt={drawer ? 'var(--pane-gap)' : 6}
           pb={drawer ? 0 : '$2'}
           gap="$0"
           $platform-web={anon && !drawer ? { overflow: 'visible' } : undefined}
