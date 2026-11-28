@@ -2,10 +2,10 @@ import { describe, expect, test } from 'vitest'
 import {
   ago, availability, choose, compact, dollars, heaviest, level, listed, money, ordered, percent, providers, resets, snapshotOf, snapshotsFor, tokens, total,
 } from './logic'
-import type { Account, Row, Source, Usage } from './types'
+import type { Account, Machine, Row, Usage } from './types'
 
 const row = (key: string, i = 0, o = 0, c = 0, usd = 0): Row => ({ key, inputTokens: i, outputTokens: o, cacheTokens: c, costUsd: usd })
-const src = (id: string, state: Source['state'], last?: string, name = id, kind: Source['kind'] = 'desktop'): Source => ({
+const src = (id: string, state: Machine['state'], last?: string, name = id, kind: Machine['kind'] = 'desktop'): Machine => ({
   id, kind, name, os: 'darwin', state, last_seen: last, linked_at: '2026-11-01T00:00:00Z', providers: [],
 })
 

@@ -1,17 +1,14 @@
-// `mountSources`: the sources view or the picker in any page, with no React in
-// the host. The Hanzo extension's popup and a plain page call it; a React host
-// (hanzo.app, Dev's web) renders `SourcesView` / `AccountPicker` itself.
-//
-// The host loads @hanzo/design's `styles.css` (the tokens); this mounts gui's
-// provider and its generated sheet once, so nothing else is needed.
+// `mountMachines`: the machines view or provider picker in any page, with no
+// React in the host. The Hanzo extension's popup and a plain page call it; a
+// React host (hanzo.app, Dev's web) renders `MachinesView` / `ProviderPicker`.
 
 import { createRoot, type Root } from 'react-dom/client'
 import { GuiProvider } from '@hanzo/gui'
 import { css, monochrome } from '@hanzo/ui/gui-config'
 import { createClient } from './client'
-import { AccountPicker } from './picker'
+import { ProviderPicker } from './picker'
 import type { Picked } from './accounts'
-import { SourcesView } from './view'
+import { MachinesView } from './view'
 import type { Choice, Surface } from './types'
 
 export interface MountOptions {
@@ -20,14 +17,14 @@ export interface MountOptions {
   token: string | null | (() => string | null)
   /** The gateway's origin, e.g. https://api.hanzo.ai. */
   apiBase: string
-  /** The source id of the device this surface runs on, when it is a linked one. */
+  /** The machine id of the device this surface runs on, when it is a linked one. */
   deviceId?: string
   org?: string | null | (() => string | null)
   /** An org admin: adds the People tab. */
   admin?: boolean
-  /** `picker` draws the account picker alone; `view` (default) the whole view. */
+  /** `picker` draws the provider picker alone; `view` (default) the whole view. */
   mode?: 'view' | 'picker'
-  /** Makes account rows choosable. Required for `picker`. */
+  /** Makes provider rows choosable. Required for `picker`. */
   onPick?: (pick: Picked) => void
   selected?: Choice | null
   /** Where a signed-out person goes; defaults to https://hanzo.ai/login. */
@@ -42,9 +39,9 @@ export interface Mounted {
   unmount(): void
 }
 
-const SHEET = 'hanzo-sources-gui'
+const SHEET = 'hanzo-machines-gui'
 
-export function mountSources(element: HTMLElement, options: MountOptions): Mounted {
+export function mountMachines(element: HTMLElement, options: MountOptions): Mounted {
   if (!document.getElementById(SHEET)) {
     const sheet = document.createElement('style')
     sheet.id = SHEET
@@ -59,9 +56,9 @@ export function mountSources(element: HTMLElement, options: MountOptions): Mount
     root.render(
       <GuiProvider config={monochrome} defaultTheme={opts.theme ?? 'light'} disableInjectCSS>
         {opts.mode === 'picker' ? (
-          <AccountPicker {...props} onPick={opts.onPick ?? (() => {})} />
+          <ProviderPicker {...props} onPick={opts.onPick ?? (() => {})} />
         ) : (
-          <SourcesView {...props} admin={opts.admin} onPick={opts.onPick} />
+          <MachinesView {...props} admin={opts.admin} onPick={opts.onPick} />
         )}
       </GuiProvider>,
     )

@@ -1,10 +1,10 @@
-// The page the browser tests draw: @hanzo/sources mounted the way a host with no
+// The page the browser tests draw: @hanzo/machines mounted the way a host with no
 // React mounts it (the extension popup does). Query: surface, device, mode
 // (view|picker), admin=1, theme=dark. The IAM token is whatever the test left in
 // localStorage; every pick lands in window.__picks.
 import '@hanzo/design/styles.css'
 import '@hanzo/design/roles.css'
-import { mountSources } from '../../src/mount'
+import { mountMachines } from '../../src/mount'
 import type { MountOptions } from '../../src/mount'
 
 const q = new URLSearchParams(location.search)
@@ -18,7 +18,7 @@ const picks: unknown[] = []
 
 const el = document.getElementById('root')!
 el.style.cssText = 'max-width:860px;padding:20px;margin:0 auto'
-mountSources(el, {
+mountMachines(el, {
   surface: (q.get('surface') ?? 'web') as MountOptions['surface'],
   deviceId: q.get('device') ?? undefined,
   mode: q.get('mode') === 'picker' ? 'picker' : 'view',

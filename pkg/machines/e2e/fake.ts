@@ -1,4 +1,4 @@
-// A fake /v1/sources for the browser tests: nothing reaches Hanzo.
+// A fake /v1/machines for the browser tests: nothing reaches Hanzo.
 import type { Page } from '@playwright/test'
 
 export const SHOTS = process.env.E2E_SHOTS ?? 'test-results/shots'
@@ -9,11 +9,11 @@ const ago = (ms: number) => new Date(Date.now() - ms).toISOString()
 const ahead = (ms: number) => new Date(Date.now() + ms).toISOString()
 const row = (key: string, inputTokens: number, outputTokens: number, cacheTokens: number, costUsd: number) => ({ key, inputTokens, outputTokens, cacheTokens, costUsd })
 
-export const SOURCES = [
-  { id: 'src_mac', kind: 'desktop', name: "Zed's MacBook Pro", os: 'darwin', arch: 'arm64', version: '1.8.4', state: 'online', last_seen: ago(20_000), linked_at: ago(9 * 86_400_000), providers: [] },
-  { id: 'src_studio', kind: 'desktop', name: 'Studio Mac', os: 'darwin', arch: 'arm64', version: '1.8.4', state: 'offline', last_seen: ago(3 * 3_600_000), linked_at: ago(12 * 86_400_000), providers: [] },
-  { id: 'src_chrome', kind: 'browser', name: 'Chrome on Studio', os: 'Chrome 142', version: '1.8.4', state: 'online', last_seen: ago(40_000), linked_at: ago(20 * 86_400_000), providers: [] },
-  { id: 'src_old', kind: 'desktop', name: 'Old Laptop', os: 'linux', version: '1.7.0', state: 'revoked', last_seen: ago(30 * 86_400_000), linked_at: ago(60 * 86_400_000), providers: [] },
+export const MACHINES = [
+  { id: 'src_mac', kind: 'desktop', origin: 'linked', name: "Zed's MacBook Pro", os: 'darwin', arch: 'arm64', version: '1.8.4', state: 'online', last_seen: ago(20_000), linked_at: ago(9 * 86_400_000), providers: [] },
+  { id: 'src_studio', kind: 'desktop', origin: 'linked', name: 'Studio Mac', os: 'darwin', arch: 'arm64', version: '1.8.4', state: 'offline', last_seen: ago(3 * 3_600_000), linked_at: ago(12 * 86_400_000), providers: [] },
+  { id: 'src_chrome', kind: 'browser', origin: 'linked', name: 'Chrome on Studio', os: 'Chrome 142', version: '1.8.4', state: 'online', last_seen: ago(40_000), linked_at: ago(20 * 86_400_000), providers: [] },
+  { id: 'src_old', kind: 'desktop', origin: 'linked', name: 'Old Laptop', os: 'linux', version: '1.7.0', state: 'revoked', last_seen: ago(30 * 86_400_000), linked_at: ago(60 * 86_400_000), providers: [] },
 ]
 
 export const ACCOUNTS = [
@@ -41,39 +41,39 @@ const SNAPSHOTS = [
 const USAGE: Record<string, unknown> = {
   provider: { rows: [row('claude', 1_200_000, 300_000, 4_000_000, 18.4), row('chatgpt', 40_000, 9_000, 0, 0.9)], snapshots: SNAPSHOTS },
   model: { rows: [row('claude-sonnet-4-5', 1_000_000, 250_000, 3_900_000, 15.1), row('gpt-5', 40_000, 9_000, 0, 0.9), row('claude-haiku-4-5', 200_000, 50_000, 100_000, 3.3)], snapshots: [] },
-  source: { rows: [row('src_mac', 1_200_000, 300_000, 4_000_000, 18.4), row('src_chrome', 40_000, 9_000, 0, 0.9)], snapshots: [] },
+  machine: { rows: [row('src_mac', 1_200_000, 300_000, 4_000_000, 18.4), row('src_chrome', 40_000, 9_000, 0, 0.9)], snapshots: [] },
   user: { rows: [row('alice', 900_000, 200_000, 2_000_000, 12.2), row('bob', 340_000, 109_000, 2_000_000, 7.1)], snapshots: [] },
 }
 
 export interface Fake {
   calls: { method: string; url: URL }[]
-  sources: unknown[]
+  machines: unknown[]
   accounts: unknown[]
   /** Every read answers 500 while set. */
   fail: boolean
 }
 
-export const fresh = (over: Partial<Fake> = {}): Fake => ({ calls: [], sources: SOURCES, accounts: ACCOUNTS, fail: false, ...over })
+export const fresh = (over: Partial<Fake> = {}): Fake => ({ calls: [], machines: MACHINES, accounts: ACCOUNTS, fail: false, ...over })
 
-/** Holds an IAM token in the page and answers /v1/sources* from `fake`. */
+/** Holds an IAM token in the page and answers /v1/machines* from `fake`. */
 export async function arrange(page: Page, fake: Fake, token = 'iam-token') {
   await page.addInitScript((t) => t && localStorage.setItem('token', t), token)
-  await page.route('**/v1/sources**', async (route) => {
+  await page.route('**/v1/machines**', async (route) => {
     const req = route.request()
     const url = new URL(req.url())
     fake.calls.push({ method: req.method(), url })
     if (fake.fail) return route.fulfill({ status: 500, body: 'no' })
     if (req.method() === 'DELETE') {
       const id = decodeURIComponent(url.pathname.split('/').pop()!)
-      fake.sources = fake.sources.map((s) => ((s as { id: string }).id === id ? { ...(s as object), state: 'revoked' } : s))
+      fake.machines = fake.machines.map((m) => ((m as { id: string }).id === id ? { ...(m as object), state: 'revoked' } : m))
       return route.fulfill({ status: 204 })
     }
-    if (url.pathname === '/v1/sources/usage') {
-      const populated = fake.sources.length > 0
+    if (url.pathname === '/v1/machines/usage') {
+      const populated = fake.machines.length > 0
       return route.fulfill({ json: populated ? USAGE[url.searchParams.get('by')!] : { rows: [], snapshots: [] } })
     }
-    if (url.pathname === '/v1/sources/accounts') return route.fulfill({ json: { accounts: fake.accounts } })
-    return route.fulfill({ json: { sources: fake.sources } })
+    if (url.pathname === '/v1/machines/accounts') return route.fulfill({ json: { accounts: fake.accounts } })
+    return route.fulfill({ json: { machines: fake.machines } })
   })
 }
 

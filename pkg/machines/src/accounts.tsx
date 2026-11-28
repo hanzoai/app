@@ -1,27 +1,27 @@
 'use client'
 
-// The account rows both the view and the picker draw: every login a device
-// detected and every key in KMS, each `on <device name>` with its plan, usage
+// The provider rows both the view and the picker draw: every login a machine
+// detected and every key in KMS, each `on <machine name>` with its plan, usage
 // windows, credits and state; the ones this surface cannot use are greyed and
 // say why on the row.
 
 import { useI18n } from '@hanzo/i18n/react'
 import { Badge, Button, Progress, Text, XStack, YStack } from '@hanzo/ui'
 import { ago, availability, choose, level, listed, money, named, percent, resets, snapshotOf } from './logic'
-import type { Account, Choice, Source, Surface, Usage } from './types'
+import type { Account, Choice, Machine, Surface, Usage } from './types'
 
 const EDGE = 'var(--border-strong)'
 
 export interface Picked {
-  /** The account chosen; null for the Hanzo cell. */
+  /** The provider account chosen; null for the Hanzo cell. */
   account: Account | null
-  /** `/v1/dev`'s execution for it; null for a login on this very device, which the host runs itself. */
+  /** `/v1/dev`'s execution for it; null for a login on this very machine, which the host runs itself. */
   choice: Choice | null
 }
 
 export function Accounts({
   accounts,
-  sources,
+  machines,
   usage,
   surface,
   deviceId,
@@ -30,7 +30,7 @@ export function Accounts({
   onPick,
 }: {
   accounts: Account[]
-  sources: Source[]
+  machines: Machine[]
   usage: Usage
   surface: Surface
   deviceId?: string
@@ -63,8 +63,8 @@ export function Accounts({
           <Button size="sm" variant="outline" onPress={() => onPick({ account: null, choice: { via: 'cell' } })}>{t('Use')}</Button>
         </XStack>
       ) : null}
-      {listed(accounts, sources, surface, deviceId).map((a) => (
-        <Row key={a.id} account={a} sources={sources} usage={usage} surface={surface} deviceId={deviceId} now={now} selected={selected} onPick={onPick} />
+      {listed(accounts, machines, surface, deviceId).map((a) => (
+        <Row key={a.id} account={a} machines={machines} usage={usage} surface={surface} deviceId={deviceId} now={now} selected={selected} onPick={onPick} />
       ))}
     </YStack>
   )
@@ -72,7 +72,7 @@ export function Accounts({
 
 function Row({
   account: a,
-  sources,
+  machines,
   usage,
   surface,
   deviceId,
@@ -81,7 +81,7 @@ function Row({
   onPick,
 }: {
   account: Account
-  sources: Source[]
+  machines: Machine[]
   usage: Usage
   surface: Surface
   deviceId?: string
@@ -90,12 +90,12 @@ function Row({
   onPick?: (pick: Picked) => void
 }) {
   const { t, locale } = useI18n()
-  const source = sources.find((s) => s.id === a.sourceId)
-  const can = availability(a, source, surface, deviceId, t)
+  const machine = machines.find((m) => m.id === a.sourceId)
+  const can = availability(a, machine, surface, deviceId, t)
   const snap = snapshotOf(usage, a)
-  const choice = choose(a, source, surface, deviceId)
-  const here = Boolean(deviceId && source?.id === deviceId && can.usable)
-  const on = a.kind === 'key' ? t('API key in Hanzo KMS') : t('on {device}', { device: a.sourceId ? named(sources, a.sourceId) : t('this device') })
+  const choice = choose(a, machine, surface, deviceId)
+  const here = Boolean(deviceId && machine?.id === deviceId && can.usable)
+  const on = a.kind === 'key' ? t('API key in Hanzo KMS') : t('on {device}', { device: a.sourceId ? named(machines, a.sourceId) : t('this device') })
   const chosen =
     selected && choice && selected.via === choice.via && (selected.via === 'key' ? selected.account === a.id : selected.via === 'desktop' && selected.source === (choice as { source: string }).source && selected.instance === (choice as { instance: string }).instance)
   const c = snap?.credits
@@ -123,7 +123,7 @@ function Row({
             {on}
             {a.state ? ` · ${a.state.replace(/_/g, ' ')}` : ''}
             {a.kind === 'key' && a.fingerprint ? ` · …${a.fingerprint.slice(-4)}` : ''}
-            {source && source.state !== 'online' && source.state !== 'revoked' && source.last_seen ? ` · ${t('last seen {when} ago', { when: ago(source.last_seen, now, t) })}` : ''}
+            {machine && machine.state !== 'online' && machine.state !== 'revoked' && machine.last_seen ? ` · ${t('last seen {when} ago', { when: ago(machine.last_seen, now, t) })}` : ''}
           </Text>
         </YStack>
         {onPick && can.usable ? (

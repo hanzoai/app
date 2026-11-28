@@ -1,9 +1,9 @@
 'use client'
 
-// The sources view (HIP-1350, "One view"): every desktop and browser a person
-// linked to Hanzo, every account each detected, and what they used. One
-// component for every surface; the host passes a client and says where it runs.
-// It holds no credential and reports nothing: metadata only, never prompts or code.
+// The machines & providers view: every machine and browser a person linked to
+// Hanzo, every AI provider each detected, and what they used. One component for
+// every surface; the host passes a client and says where it runs. It holds no
+// credential and reports nothing: metadata only, never prompts or code.
 
 import { useCallback, useEffect, useState } from 'react'
 import { useI18n } from '@hanzo/i18n/react'
@@ -29,7 +29,7 @@ import { Accounts, type Picked } from './accounts'
 import type { Client } from './client'
 import { useRead, type Loaded } from './data'
 import { ago, compact, dollars, heaviest, ordered, tokens, total } from './logic'
-import { RANGES, type Choice, type Range, type Row, type Source, type Surface } from './types'
+import { RANGES, type Choice, type Machine, type Range, type Row, type Surface } from './types'
 
 const EDGE = 'var(--border-strong)'
 
@@ -39,23 +39,23 @@ export const SIGN_IN = 'https://hanzo.ai/login'
 /** Where a web user downloads Hanzo Desktop to track local providers across machines. */
 export const DOWNLOAD_APP = 'https://hanzo.ai/download'
 
-export interface SourcesViewProps {
+export interface MachinesViewProps {
   client: Client
-  /** Where this view runs: decides which accounts are usable here. */
+  /** Where this view runs: decides which provider accounts are usable here. */
   surface: Surface
-  /** The source id of the device this surface runs on, when it is a linked one. */
+  /** The machine id of the device this surface runs on, when it is a linked one. */
   deviceId?: string
   /** An org admin: adds the People tab, per-user totals only. */
   admin?: boolean
-  /** Makes account rows choosable: the picker contract. */
+  /** Makes provider rows choosable: the picker contract. */
   onPick?: (pick: Picked) => void
-  /** The account in use, marked on its row. */
+  /** The provider in use, marked on its row. */
   selected?: Choice | null
   signIn?: string
   downloadApp?: string
 }
 
-export function SourcesView({ client, surface, deviceId, admin, onPick, selected, signIn = SIGN_IN, downloadApp = DOWNLOAD_APP }: SourcesViewProps) {
+export function MachinesView({ client, surface, deviceId, admin, onPick, selected, signIn = SIGN_IN, downloadApp = DOWNLOAD_APP }: MachinesViewProps) {
   const { t } = useI18n()
   const [range, setRange] = useState<Range>(7)
   const [bump, setBump] = useState(0)
@@ -65,10 +65,10 @@ export function SourcesView({ client, surface, deviceId, admin, onPick, selected
   if (!client.signedIn()) return <SignedOut href={signIn} />
 
   return (
-    <YStack gap="$5" data-slot="sources">
+    <YStack gap="$5" data-slot="machines">
       <YStack gap="$1.5">
         <Text fontSize="$3" color="$soft">{t('Every machine and browser you linked to Hanzo, and what each used.')}</Text>
-        <Text fontSize="$2" color="$aside" data-slot="sources-copy">
+        <Text fontSize="$2" color="$aside" data-slot="machines-copy">
           {t('Only metadata is reported: token counts, cost and plan limits. Never your prompts, replies or code. A subscription login stays on the device that holds it.')}
         </Text>
       </YStack>
@@ -103,7 +103,7 @@ export function SourcesView({ client, surface, deviceId, admin, onPick, selected
 export function SignedOut({ href }: { href: string }) {
   const { t } = useI18n()
   return (
-    <YStack gap="$2" data-slot="sources-signed-out">
+    <YStack gap="$2" data-slot="machines-signed-out">
       <Text fontSize="$3" color="$soft">{t('Sign in to see your linked machines.')}</Text>
       <XStack>
         <Button size="sm" variant="primary" render={<a href={href} />}>{t('Sign in')}</Button>
@@ -125,7 +125,7 @@ export function Loading() {
 function RangePicker({ range, onChange }: { range: Range; onChange: (r: Range) => void }) {
   const { t } = useI18n()
   return (
-    <Tabs value={String(range)} onValueChange={(v) => onChange(Number(v) === 30 ? 30 : 7)} data-slot="sources-range" aria-label={t('Range')}>
+    <Tabs value={String(range)} onValueChange={(v) => onChange(Number(v) === 30 ? 30 : 7)} data-slot="machines-range" aria-label={t('Range')}>
       <TabsList>
         {RANGES.map((d) => (
           <TabsTrigger key={d} value={String(d)}>{t('{n} days', { n: d })}</TabsTrigger>
@@ -139,7 +139,7 @@ export function Failed({ status, onRetry, signIn = SIGN_IN }: { status: number; 
   const { t } = useI18n()
   const denied = status === 401 || status === 403
   return (
-    <YStack gap="$2" role="alert" data-slot="sources-error">
+    <YStack gap="$2" role="alert" data-slot="machines-error">
       <Text fontSize="$3" color="var(--state-error)">
         {denied
           ? t('Sign in again to see your linked machines.')
@@ -177,9 +177,9 @@ function Ready({
   onRevoked: () => void
 }) {
   const { t } = useI18n()
-  if (read.sources.length === 0 && read.accounts.length === 0) {
+  if (read.machines.length === 0 && read.accounts.length === 0) {
     return (
-      <YStack gap="$3" borderWidth={1} borderColor={EDGE} rounded="$3" p="$4" data-slot="sources-empty">
+      <YStack gap="$3" borderWidth={1} borderColor={EDGE} rounded="$3" p="$4" data-slot="machines-empty">
         <YStack gap="$1.5">
           <Text fontSize="$4" fontWeight="600" color="$ink">{t('Nothing is linked yet')}</Text>
           <Text fontSize="$3" color="$soft">
@@ -187,39 +187,39 @@ function Ready({
           </Text>
         </YStack>
         <XStack gap="$2" flexWrap="wrap">
-          <Button size="sm" variant="primary" render={<a href={downloadApp} target="_blank" rel="noopener noreferrer" />} data-slot="sources-download">
+          <Button size="sm" variant="primary" render={<a href={downloadApp} target="_blank" rel="noopener noreferrer" />} data-slot="machines-download">
             {t('Download Hanzo Desktop')}
           </Button>
         </XStack>
       </YStack>
     )
   }
-  const by = (id: string) => read.source.rows.find((r) => r.key === id)
+  const by = (id: string) => read.machine.rows.find((r) => r.key === id)
   return (
     <YStack gap="$6">
       <Section
         title={t('Linked machines')}
-        slot="sources-list"
+        slot="machines-list"
         action={
           surface === 'web' ? (
-            <Button size="sm" variant="outline" render={<a href={downloadApp} target="_blank" rel="noopener noreferrer" />} data-slot="sources-download">
+            <Button size="sm" variant="outline" render={<a href={downloadApp} target="_blank" rel="noopener noreferrer" />} data-slot="machines-download">
               {t('Download Hanzo Desktop')}
             </Button>
           ) : undefined
         }
       >
-        {ordered(read.sources).map((s) => (
-          <SourceRow key={s.id} client={client} source={s} used={by(s.id)} now={read.at} onRevoked={onRevoked} />
+        {ordered(read.machines).map((m) => (
+          <MachineRow key={m.id} client={client} machine={m} used={by(m.id)} now={read.at} onRevoked={onRevoked} />
         ))}
       </Section>
-      <Section title={t('Providers')} slot="sources-accounts">
+      <Section title={t('Providers')} slot="machines-accounts">
         {read.accounts.length === 0 ? (
           <Text fontSize="$3" color="$soft">{t('No provider accounts reported.')}</Text>
         ) : null}
-        <Accounts accounts={read.accounts} sources={read.sources} usage={read.provider} surface={surface} deviceId={deviceId} now={read.at} selected={selected} onPick={onPick} />
+        <Accounts accounts={read.accounts} machines={read.machines} usage={read.provider} surface={surface} deviceId={deviceId} now={read.at} selected={selected} onPick={onPick} />
       </Section>
-      <Totals title={t('Usage by provider · last {n} days', { n: range })} slot="sources-providers" rows={read.provider.rows} />
-      <Totals title={t('Models · last {n} days', { n: range })} slot="sources-models" rows={read.model.rows} model />
+      <Totals title={t('Usage by provider · last {n} days', { n: range })} slot="machines-providers" rows={read.provider.rows} />
+      <Totals title={t('Models · last {n} days', { n: range })} slot="machines-models" rows={read.model.rows} model />
     </YStack>
   )
 }
@@ -236,7 +236,7 @@ export function Section({ title, slot, action, children }: { title: string; slot
   )
 }
 
-function Dot({ state }: { state: Source['state'] }) {
+function Dot({ state }: { state: Machine['state'] }) {
   const { t } = useI18n()
   const label = state === 'online' ? t('Online') : state === 'offline' ? t('Offline') : t('Revoked')
   return (
@@ -253,7 +253,15 @@ function Dot({ state }: { state: Source['state'] }) {
   )
 }
 
-function SourceRow({ client, source: s, used, now, onRevoked }: { client: Client; source: Source; used?: Row; now: Date; onRevoked: () => void }) {
+function kindLabel(kind: Machine['kind'], t: ReturnType<typeof useI18n>['t']): string {
+  if (kind === 'browser') return t('Browser')
+  if (kind === 'gpu') return t('GPU')
+  if (kind === 'cloud_compute') return t('Cloud VM')
+  if (kind === 'byo') return t('Fleet node')
+  return t('Machine')
+}
+
+function MachineRow({ client, machine: m, used, now, onRevoked }: { client: Client; machine: Machine; used?: Row; now: Date; onRevoked: () => void }) {
   const { t, locale } = useI18n()
   const [ask, setAsk] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -262,7 +270,7 @@ function SourceRow({ client, source: s, used, now, onRevoked }: { client: Client
     setBusy(true)
     setRefused(false)
     try {
-      await client.revoke(s.id)
+      await client.revoke(m.id)
       setAsk(false)
       onRevoked()
     } catch {
@@ -270,23 +278,24 @@ function SourceRow({ client, source: s, used, now, onRevoked }: { client: Client
     } finally {
       setBusy(false)
     }
-  }, [client, s.id, onRevoked])
+  }, [client, m.id, onRevoked])
 
-  const seen = s.state === 'online' ? t('online now') : s.last_seen ? t('last seen {when} ago', { when: ago(s.last_seen, now, t) }) : t('never seen')
+  const revocable = m.state !== 'revoked' && m.origin !== 'cloud' && m.origin !== 'byo'
+  const seen = m.state === 'online' ? t('online now') : m.last_seen ? t('last seen {when} ago', { when: ago(m.last_seen, now, t) }) : t('never seen')
   return (
-    <YStack gap="$2" borderWidth={1} borderColor={EDGE} rounded="$3" p="$3.5" data-slot="source" data-id={s.id} data-state={s.state}>
+    <YStack gap="$2" borderWidth={1} borderColor={EDGE} rounded="$3" p="$3.5" data-slot="machine" data-id={m.id} data-state={m.state}>
       <XStack gap="$2.5" items="center" justify="space-between" flexWrap="wrap">
         <XStack gap="$2.5" items="center" flex={1} minW={0}>
-          <Dot state={s.state} />
+          <Dot state={m.state} />
           <YStack flex={1} minW={0}>
-            <Text fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1}>{s.name}</Text>
+            <Text fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1}>{m.name}</Text>
             <Text fontSize="$2" color="$aside">
-              {[s.kind === 'browser' ? t('Browser') : t('Machine'), s.os, s.version].filter(Boolean).join(' · ')} · {seen}
+              {[kindLabel(m.kind, t), m.gpu, m.os, m.version].filter(Boolean).join(' · ')} · {seen}
             </Text>
           </YStack>
         </XStack>
-        {s.state !== 'revoked' ? (
-          <Button size="sm" variant="outline" aria-label={t('Revoke {name}', { name: s.name })} onPress={() => setAsk(true)}>
+        {revocable ? (
+          <Button size="sm" variant="outline" aria-label={t('Revoke {name}', { name: m.name })} onPress={() => setAsk(true)}>
             {t('Revoke')}
           </Button>
         ) : null}
@@ -300,7 +309,7 @@ function SourceRow({ client, source: s, used, now, onRevoked }: { client: Client
       <AlertDialog open={ask} onOpenChange={(o) => !busy && setAsk(o)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('Revoke {name}?', { name: s.name })}</AlertDialogTitle>
+            <AlertDialogTitle>{t('Revoke {name}?', { name: m.name })}</AlertDialogTitle>
             <AlertDialogDescription>
               {t('It stops reporting and its link to your account is cut. Its past usage stays in your totals. Link it again from the app to bring it back.')}
             </AlertDialogDescription>
@@ -324,7 +333,7 @@ function Totals({ title, slot, rows, model }: { title: string; slot: string; row
   if (rows.length === 0) {
     return model ? null : (
       <Section title={title} slot={slot}>
-        <Text fontSize="$3" color="$soft" data-slot="sources-no-usage">{t('No usage reported in this range.')}</Text>
+        <Text fontSize="$3" color="$soft" data-slot="machines-no-usage">{t('No usage reported in this range.')}</Text>
       </Section>
     )
   }
@@ -349,7 +358,7 @@ function Totals({ title, slot, rows, model }: { title: string; slot: string; row
   )
 }
 
-/** An org admin's per-person totals: counts and cost, never another person's sources or accounts. */
+/** An org admin's per-person totals: counts and cost, never another person's machines or providers. */
 function People({ client, range }: { client: Client; range: Range }) {
   const { t, locale } = useI18n()
   const [read, set] = useState<{ is: 'loading' } | { is: 'error'; status: number } | { is: 'ready'; rows: Row[] }>({ is: 'loading' })
@@ -369,7 +378,7 @@ function People({ client, range }: { client: Client; range: Range }) {
   if (read.is === 'loading') return <Loading />
   if (read.is === 'error') return <Failed status={read.status} onRetry={() => setBump((n) => n + 1)} />
   return (
-    <Section title={t('People · last {n} days', { n: range })} slot="sources-people">
+    <Section title={t('People · last {n} days', { n: range })} slot="machines-people">
       <Text fontSize="$2" color="$aside">{t('Totals only. An admin never sees another person’s machines, plans or labels.')}</Text>
       {read.rows.length === 0 ? (
         <Text fontSize="$3" color="$soft">{t('No usage reported in this range.')}</Text>

@@ -1,7 +1,5 @@
-// The sources view in a browser, mounted the way a host with no React mounts it,
-// against a fake api: populated and empty, desktop and phone width, light and
-// dark, the range, Revoke with its confirmation, an error that retries, signed
-// out, and the org admin's People tab.
+// The machines & providers view in a browser, mounted the way a host with no
+// React mounts it, against a fake api.
 import { expect, test } from '@playwright/test'
 import { arrange, DESKTOP, fresh, PHONE, SHOTS } from './fake'
 
@@ -9,17 +7,17 @@ for (const [label, size] of [['desktop', DESKTOP], ['phone', PHONE]] as const) {
   test.describe(label, () => {
     test.use({ viewport: size })
 
-    test('populated: sources, accounts on their devices, windows, credits, totals', async ({ page }) => {
+    test('populated: machines, providers on their devices, windows, credits, totals', async ({ page }) => {
       await arrange(page, fresh())
       await page.goto('/?pick=0')
 
-      const mac = page.locator('[data-slot="source"][data-id="src_mac"]')
+      const mac = page.locator('[data-slot="machine"][data-id="src_mac"]')
       await expect(mac).toContainText("Zed's MacBook Pro")
       await expect(mac.locator('[data-state="online"]').first()).toBeVisible()
       await expect(mac).toContainText('online now')
-      const chrome = page.locator('[data-slot="source"][data-id="src_chrome"]')
+      const chrome = page.locator('[data-slot="machine"][data-id="src_chrome"]')
       await expect(chrome).toContainText('Browser')
-      const studio = page.locator('[data-slot="source"][data-id="src_studio"]')
+      const studio = page.locator('[data-slot="machine"][data-id="src_studio"]')
       await expect(studio).toContainText('last seen 3h ago')
       await expect(studio.locator('[data-state="offline"]').first()).toBeVisible()
 
@@ -37,7 +35,7 @@ for (const [label, size] of [['desktop', DESKTOP], ['phone', PHONE]] as const) {
 
       await expect(page.locator('[data-slot="model"]')).toHaveCount(3)
       await expect(page.locator('[data-slot="model"]').first()).toContainText('claude-sonnet-4-5')
-      await expect(page.locator('[data-slot="sources-copy"]')).toContainText('Never your prompts, replies or code')
+      await expect(page.locator('[data-slot="machines-copy"]')).toContainText('Never your prompts, replies or code')
       await expect(page.getByRole('tab', { name: 'People' })).toHaveCount(0)
       await page.screenshot({ path: `${SHOTS}/view-populated-${label}-light.png`, fullPage: true })
     })
@@ -45,14 +43,14 @@ for (const [label, size] of [['desktop', DESKTOP], ['phone', PHONE]] as const) {
     test('populated in dark', async ({ page }) => {
       await arrange(page, fresh())
       await page.goto('/?theme=dark')
-      await expect(page.locator('[data-slot="source"]')).toHaveCount(4)
+      await expect(page.locator('[data-slot="machine"]')).toHaveCount(4)
       await page.screenshot({ path: `${SHOTS}/view-populated-${label}-dark.png`, fullPage: true })
     })
 
     test('empty: nothing linked says how to link', async ({ page }) => {
-      await arrange(page, fresh({ sources: [], accounts: [] }))
+      await arrange(page, fresh({ machines: [], accounts: [] }))
       await page.goto('/')
-      const empty = page.locator('[data-slot="sources-empty"]')
+      const empty = page.locator('[data-slot="machines-empty"]')
       await expect(empty).toContainText('Nothing is linked yet')
       await expect(empty).toContainText('Download Hanzo Desktop')
       await expect(empty.locator('a[href="https://hanzo.ai/download"]')).toBeVisible()
@@ -75,9 +73,9 @@ test('the range asks the cloud for 7 days, then 30', async ({ page }) => {
   await page.goto('/')
   await expect(page.locator('[data-slot="account"]').first()).toBeVisible()
   const span = (url: URL) => Math.round((Date.parse(url.searchParams.get('to')!) - Date.parse(url.searchParams.get('from')!)) / 86_400_000)
-  const usage = () => fake.calls.filter((c) => c.url.pathname === '/v1/sources/usage')
+  const usage = () => fake.calls.filter((c) => c.url.pathname === '/v1/machines/usage')
   expect(new Set(usage().map((c) => span(c.url)))).toEqual(new Set([7]))
-  expect(new Set(usage().map((c) => c.url.searchParams.get('by')))).toEqual(new Set(['provider', 'model', 'source']))
+  expect(new Set(usage().map((c) => c.url.searchParams.get('by')))).toEqual(new Set(['provider', 'model', 'machine']))
   await page.getByRole('tab', { name: '30 days' }).click()
   await expect(page.getByText('Usage by provider · last 30 days')).toBeVisible()
   expect(usage().some((c) => span(c.url) === 30)).toBe(true)
@@ -87,7 +85,7 @@ test('revoke asks first, and only a confirmed one reaches the cloud', async ({ p
   const fake = fresh()
   await arrange(page, fake)
   await page.goto('/')
-  const mac = page.locator('[data-slot="source"][data-id="src_mac"]')
+  const mac = page.locator('[data-slot="machine"][data-id="src_mac"]')
   await mac.getByRole('button', { name: "Revoke Zed's MacBook Pro" }).click()
   const dialog = page.getByRole('alertdialog')
   await expect(dialog).toContainText("Revoke Zed's MacBook Pro?")
@@ -99,7 +97,7 @@ test('revoke asks first, and only a confirmed one reaches the cloud', async ({ p
   await mac.getByRole('button', { name: "Revoke Zed's MacBook Pro" }).click()
   await page.getByRole('alertdialog').getByRole('button', { name: 'Revoke' }).click()
   await expect(mac).toHaveAttribute('data-state', 'revoked')
-  expect(fake.calls.filter((c) => c.method === 'DELETE').map((c) => c.url.pathname)).toEqual(['/v1/sources/src_mac'])
+  expect(fake.calls.filter((c) => c.method === 'DELETE').map((c) => c.url.pathname)).toEqual(['/v1/machines/src_mac'])
   await expect(mac.getByRole('button', { name: /^Revoke/ })).toHaveCount(0)
 })
 
@@ -107,14 +105,14 @@ test('an unreachable cloud says so and Try again reads again', async ({ page }) 
   const fake = fresh({ fail: true })
   await arrange(page, fake)
   await page.goto('/')
-  await expect(page.locator('[data-slot="sources-error"]')).toContainText('could not read your linked machines (500)')
+  await expect(page.locator('[data-slot="machines-error"]')).toContainText('could not read your linked machines (500)')
   await page.screenshot({ path: `${SHOTS}/view-error-desktop.png` })
   fake.fail = false
   await page.getByRole('button', { name: 'Try again' }).click()
-  await expect(page.locator('[data-slot="source"]')).toHaveCount(4)
+  await expect(page.locator('[data-slot="machine"]')).toHaveCount(4)
 })
 
-test('an org admin sees per-person totals and nothing about their sources', async ({ page }) => {
+test('an org admin sees per-person totals and nothing about their machines', async ({ page }) => {
   const fake = fresh()
   await arrange(page, fake)
   await page.goto('/?admin=1')
@@ -124,8 +122,8 @@ test('an org admin sees per-person totals and nothing about their sources', asyn
   await expect(people.first()).toContainText('alice')
   await expect(people.first()).toContainText('3.1M tokens')
   await expect(people.first()).toContainText('$12.20')
-  await expect(page.locator('[data-slot="sources-people"]')).toContainText('never sees another person')
-  await expect(page.locator('[data-slot="source"]')).toHaveCount(0)
+  await expect(page.locator('[data-slot="machines-people"]')).toContainText('never sees another person')
+  await expect(page.locator('[data-slot="machine"]')).toHaveCount(0)
   expect(fake.calls.some((c) => c.url.searchParams.get('by') === 'user')).toBe(true)
   await page.screenshot({ path: `${SHOTS}/view-people-desktop.png`, fullPage: true })
 })
