@@ -11,7 +11,7 @@
  */
 
 import type { HttpClient } from '@hanzo/ai'
-import type { Artifact } from '@hanzo/build'
+import type { Artifact } from '@hanzo/dev/builder'
 
 /** The HTTP half of an `@hanzo/ai` client: all this module needs. */
 export interface Api {

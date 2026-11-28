@@ -29,7 +29,7 @@ vi.mock('./icons', () => ({ CHEVRON: 2.25, MARKS }))
 vi.mock('@hanzo/ai/react', () => ({ AiProvider: through }))
 vi.mock('@hanzo/gui', () => ({ Text: part, XStack: part, YStack: part }))
 vi.mock('@hanzo/ui', () => ({ Button: part, Text: part, YStack: part }))
-vi.mock('@hanzo/build', () => ({ MARKS,
+vi.mock('@hanzo/dev/builder', () => ({ MARKS,
   Builder: stub('builder'),
   HostProvider: through,
   PrefsProvider: through,

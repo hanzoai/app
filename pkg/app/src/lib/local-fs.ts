@@ -15,7 +15,7 @@
  * Settings → Machines finds this computer's own machine, to share a folder of it with the web (hanzo-inc/app issue 310).
  * A browser page has no folder of its own, and gets none.
  */
-import type { Folder, Local } from '@hanzo/build'
+import type { Folder, Local } from '@hanzo/dev/builder'
 
 export interface LocalWorkspace {
   id: string

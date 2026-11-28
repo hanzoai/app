@@ -15,8 +15,8 @@ vi.mock('@hanzo/ui', () => ({ Dialog: () => null, DialogContent: () => null, Dia
   // The palette reads its native parts off the namespace; absent here, it falls back to CommandMenu.
   XStack: undefined, YStack: undefined, Text: undefined, Input: undefined, ScrollView: undefined, Kbd: undefined, Shortcut: undefined }))
 vi.mock('@hanzo/ui/product/CommandMenu', () => ({ CommandMenu: () => null }))
-vi.mock('@hanzo/build', async () => {
-  const { path } = await import('@hanzo/build/route')
+vi.mock('@hanzo/dev/builder', async () => {
+  const { path } = await import('@hanzo/dev/route')
   type Go = (p: string) => void
   const link = (go: Go, id: string, label: string, at: string) => ({ id, label, onPress: () => go(at) })
   type Section = Extract<Parameters<typeof path>[0], { kind: 'settings' }>['section']
@@ -54,10 +54,10 @@ vi.mock('./Betas', () => ({ useBetas: () => ({ open: () => false }) }))
 
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { path } from '@hanzo/build/route'
+import { path } from '@hanzo/dev/route'
 import { actions, Search, places, recorded } from './Search'
 import { app, settings, talk } from './lib/host'
-import type { Host } from '@hanzo/build'
+import type { Host } from '@hanzo/dev/builder'
 
 const host = { path: '', org: 'acme' } as unknown as Host
 const take = (rows: { id: string; run: () => void }[], id: string) => {

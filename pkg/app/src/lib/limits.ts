@@ -9,7 +9,7 @@
  * bearer is the subject and `X-Org-Id` the organization this browser works in.
  */
 
-import { ways } from '@hanzo/build/plan'
+import { ways } from '@hanzo/dev/plan'
 import { useLimits as useHeld, type UseLimits } from '@hanzo/ui/product/useLimits'
 import { paidPlan, type LimitAction, type LimitNotice, type Limits } from '@hanzo/ui/product/limits'
 import { english, format, type Format, type Say } from '@hanzo/i18n'

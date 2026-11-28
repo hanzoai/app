@@ -20,7 +20,7 @@ import { useI18n } from '@hanzo/i18n/react'
 import { api } from './lib/api'
 import { bearer, hasSession } from './lib/session'
 import { machines } from './devRuntime'
-import { Builder, route, type Host } from '@hanzo/build'
+import { Builder, route, type Host } from '@hanzo/dev/builder'
 import { app, go, talk, TERMINALS } from './lib/host'
 import { org as currentOrg } from './lib/session'
 

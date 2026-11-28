@@ -3,7 +3,7 @@ import { written } from './lastpage'
 
 // @hanzo/build's index does not load under node (the other tests mock it too):
 // its fence reader and `renders`, as reply.tsx writes them.
-vi.mock('@hanzo/build', () => {
+vi.mock('@hanzo/dev/builder', () => {
   const MIME: Record<string, string> = { html: 'text/html', htm: 'text/html', svg: 'image/svg+xml', css: 'text/css' }
   const suffix = (s: string) => (s.lastIndexOf('.') > 0 ? s.slice(s.lastIndexOf('.') + 1).toLowerCase() : '')
   return {

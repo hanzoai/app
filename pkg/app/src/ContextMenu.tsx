@@ -37,7 +37,7 @@ import {
   WandSparkles,
   Workflow,
 } from 'lucide-react'
-import type { Host } from '@hanzo/build'
+import type { Host } from '@hanzo/dev/builder'
 import { app, design, flow, learn, settings, talk, TERMINALS, type Place } from './lib/host'
 import { rememberSettingsReturn } from './lib/dev-mode'
 import { useOpen } from './open'

@@ -9,7 +9,7 @@
  * What the desktop refuses it says in plain words (an address on a private network, a site that will not answer), and
  * those words are what a person reads: they are passed up as the error's own message.
  */
-import type { Site } from '@hanzo/build'
+import type { Site } from '@hanzo/dev/builder'
 
 import { isTauri } from './local-fs'
 

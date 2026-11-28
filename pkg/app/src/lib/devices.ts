@@ -5,8 +5,8 @@
  * says it (`Alexs-MacBook-Pro.local` → "Alex's MacBook Pro"), the hardware and the hostname in the detail, and a name
  * the person gave it (`useDeviceNames`, kept on their account) winning over both.
  */
-import { formatDeviceLabel } from '@hanzo/build/dev-mode'
-import { deviceKey, shellKey, type Names } from '@hanzo/build/names'
+import { formatDeviceLabel } from '@hanzo/dev/dev-mode'
+import { deviceKey, shellKey, type Names } from '@hanzo/dev/names'
 
 type Say = (key: string, params?: Record<string, string | number>) => string
 

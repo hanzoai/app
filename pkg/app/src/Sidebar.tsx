@@ -42,8 +42,8 @@ import {
   Search,
   Settings,
 } from 'lucide-react'
-import { DOTS, Gutter, library, NEW, own, Rename, tabs, useLanguage, useScheduled, useSessions, type Host } from '@hanzo/build'
-import { rename, useDeviceNames, type Names } from '@hanzo/build/names'
+import { DOTS, Gutter, library, NEW, own, Rename, tabs, useLanguage, useScheduled, useSessions, type Host } from '@hanzo/dev/builder'
+import { rename, useDeviceNames, type Names } from '@hanzo/dev/names'
 import { showDevice, showShell, type Shown } from './lib/devices'
 
 type Theme = NonNullable<Host['theme']>

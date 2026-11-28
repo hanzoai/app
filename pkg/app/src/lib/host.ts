@@ -16,7 +16,7 @@
  */
 
 import ROUTES from './routes.json' with { type: 'json' }
-import { href, parse, path, route, SESSION, SLUG } from '@hanzo/build/route'
+import { href, parse, path, route, SESSION, SLUG } from '@hanzo/dev/route'
 import { site } from '../where'
 import { BETAS } from './betas'
 

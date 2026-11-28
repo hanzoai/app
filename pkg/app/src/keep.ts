@@ -15,7 +15,7 @@
 // takes (pane.ts `hold`).
 
 import { useEffect, useRef, useState } from 'react'
-import type { Artifact } from '@hanzo/build'
+import type { Artifact } from '@hanzo/dev/builder'
 import { base64, get, keyOf, made, save, type Api, type Item } from './lib/library'
 import { talk } from './lib/host'
 import { hold, type Via } from './pane'

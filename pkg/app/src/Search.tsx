@@ -90,7 +90,7 @@ import {
 import { useAi } from '@hanzo/ai/react'
 import { apply as applyAppearance, read as readAppearance, write as writeAppearance } from '@hanzo/appearance'
 import { MARKS } from './icons'
-import { library, nav, NEW, path as written, sections, tabs, useSessions, type Host } from '@hanzo/build'
+import { library, nav, NEW, path as written, sections, tabs, useSessions, type Host } from '@hanzo/dev/builder'
 import { nav as made } from '@hanzo/studio'
 import * as ui from '@hanzo/ui'
 import type { ShortcutKeys } from '@hanzo/ui'

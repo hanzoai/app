@@ -1,5 +1,5 @@
 import { describe, expect, test, vi, beforeEach } from 'vitest'
-import type { Act, Hint } from '@hanzo/build'
+import type { Act, Hint } from '@hanzo/dev/builder'
 import { handleHint } from './hint'
 
 const goMock = vi.fn()
@@ -9,7 +9,7 @@ vi.mock('./lib/host', () => ({
   app: (path: string) => `/dev/${path}`,
 }))
 
-vi.mock('@hanzo/build', () => ({
+vi.mock('@hanzo/dev/builder', () => ({
   app: (path: string) => `/dev/${path}`.replace(/\/+$/, ''),
   path: (p: { kind: string; id: string }) => `-/${p.kind}/${p.id}`,
   hand: vi.fn(),

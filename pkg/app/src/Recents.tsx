@@ -14,7 +14,7 @@ import { useEffect, useId, useMemo, useRef, useState, type DragEvent, type React
 import { ScrollView, SizableText, XStack, YStack } from '@hanzo/gui'
 import { CheckSquare, ChevronDown, ChevronRight, GitPullRequest, ListFilter } from 'lucide-react'
 import type { Thread } from '@hanzo/ai'
-import { DOTS, route, useRunMarks, useSessions, type Host } from '@hanzo/build'
+import { DOTS, route, useRunMarks, useSessions, type Host } from '@hanzo/dev/builder'
 import * as studio from '@hanzo/studio'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { SidebarItem, StatusDot } from '@hanzo/ui/chat'

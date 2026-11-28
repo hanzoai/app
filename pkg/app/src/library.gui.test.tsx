@@ -4,7 +4,7 @@
 import { createElement } from 'react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { mount, type Mounted } from '../vitest.real'
-import { HostProvider, Library } from '@hanzo/build'
+import { HostProvider, Library } from '@hanzo/dev/builder'
 import { read } from './lib/library'
 
 let at: Mounted

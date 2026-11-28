@@ -1,4 +1,4 @@
-import { EFFORTS as DEV } from '@hanzo/build/mind'
+import { EFFORTS as DEV } from '@hanzo/dev/mind'
 import { EFFORTS } from '@hanzo/ui/chat/pure'
 import { describe, expect, test, vi } from 'vitest'
 

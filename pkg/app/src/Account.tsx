@@ -45,7 +45,7 @@ import {
   Users,
   X,
 } from 'lucide-react'
-import { label, Meter, said as spoken, useStanding, type Host } from '@hanzo/build'
+import { label, Meter, said as spoken, useStanding, type Host } from '@hanzo/dev/builder'
 import { useOrganizations } from '@hanzo/iam/react'
 import {
   Button,

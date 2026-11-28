@@ -22,7 +22,7 @@ vi.mock('@hanzo/tabs', () => ({
     return createElement('div', { 'data-slot': 'workspace' })
   },
 }))
-vi.mock('@hanzo/build/names', () => ({ useDeviceNames: () => ({}) }))
+vi.mock('@hanzo/dev/names', () => ({ useDeviceNames: () => ({}) }))
 vi.mock('./lib/dev-mode', () => ({ useDevMode: () => [false] }))
 vi.mock('./lib/devices', () => ({ showDevice: () => ({ title: '', detail: '' }) }))
 vi.mock('./lib/info-hint', () => ({ InfoHint: () => null }))

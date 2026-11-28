@@ -6,7 +6,7 @@
 // them is kept here.
 
 import { useMemo } from 'react'
-import { administers } from '@hanzo/build'
+import { administers } from '@hanzo/dev/builder'
 import { createClient } from '@hanzo/sources'
 import { SourcesView } from '@hanzo/sources/view'
 import { api } from './lib/api'

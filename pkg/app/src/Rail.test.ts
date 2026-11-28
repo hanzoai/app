@@ -32,7 +32,7 @@ const { MARKS } = vi.hoisted(() => {
   return { MARKS: { chat: one, dev: one, design: one, flow: one, tabs: one, library: one, scheduled: one, customize: one } }
 })
 vi.mock('@hanzo/gui', () => ({ Text: draw, XStack: draw, YStack: draw }))
-vi.mock('@hanzo/build', () => ({ MARKS, route: () => ({ kind: 'home' }) }))
+vi.mock('@hanzo/dev/builder', () => ({ MARKS, route: () => ({ kind: 'home' }) }))
 vi.mock('@hanzo/ui', () => ({
   DropdownMenu: ({ trigger, items, children }: { trigger?: ReactNode; items?: { key?: string; label?: string }[]; children?: ReactNode }) =>
     createElement('div', { 'data-slot': 'menu', 'data-items': (items ?? []).map((i) => i.key ?? '-').join(',') }, trigger, children),

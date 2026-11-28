@@ -1,5 +1,5 @@
-import type { Act, Hint, Spend } from '@hanzo/build'
-import { book, hand, want, path as devPath } from '@hanzo/build'
+import type { Act, Hint, Spend } from '@hanzo/dev/builder'
+import { book, hand, want, path as devPath } from '@hanzo/dev/builder'
 import { app, go } from './lib/host'
 
 export interface HintActions {

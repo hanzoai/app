@@ -2,7 +2,7 @@
 // Pure: the composer's Agents shelf (crew.tsx `useAgentShelf`), the crew strip
 // and the New agent sheet read these, and the tests run them in Node.
 
-import type { Host } from '@hanzo/build'
+import type { Host } from '@hanzo/dev/builder'
 import { TEAM, after } from './team'
 
 export type { Link, Shelf, ShelfRow as Row } from '@hanzo/ui/chat'

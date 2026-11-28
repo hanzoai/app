@@ -76,7 +76,7 @@ vi.mock('@hanzo/iam/react', () => ({
   useIam: () => ({ user: { id: 'u1' }, isAuthenticated: true, isLoading: false }),
   useOrganizations: () => ({ currentOrg: { name: 'hanzo' }, currentOrgId: 'hanzo', organizations: [] }),
 }))
-vi.mock('@hanzo/build', () => ({
+vi.mock('@hanzo/dev/builder', () => ({
   Gutter: () => null,
   SideProvider: ({ children }: { children?: ReactNode }) => children,
   path: () => '/plans',

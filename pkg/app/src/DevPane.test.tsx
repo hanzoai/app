@@ -14,7 +14,7 @@ const captured = vi.hoisted(() => ({
 vi.mock('@hanzo/tabs', () => ({ frameUrl: async () => '' }))
 vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s }) }))
 vi.mock('@hanzo/ui', () => ({ Button: 'button', Text: 'span', XStack: 'div', YStack: 'div' }))
-vi.mock('@hanzo/build', () => ({
+vi.mock('@hanzo/dev/builder', () => ({
   Builder: ({ host }: { host?: { path?: string } }) =>
     createElement('div', { 'data-slot': 'mock-builder', 'data-path': host?.path ?? '' }),
   route: (p: string) => {

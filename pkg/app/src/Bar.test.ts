@@ -27,7 +27,7 @@ vi.mock('./icons', () => ({
     tabs: { icon: mark('tabs'), make: mark('tabs-make') },
   },
 }))
-vi.mock('@hanzo/build', () => ({
+vi.mock('@hanzo/dev/builder', () => ({
   NEW: 'new',
   nav: () => [{ id: 'work', label: 'Work', links: [{ id: 'new', label: 'New run', onPress: made }, { id: 'projects', label: 'Projects' }] }],
 }))
