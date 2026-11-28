@@ -8,8 +8,9 @@
 // No markup is made from the text: every leaf is a string React escapes, a
 // link carries only the href `destination` allows, and an image is its alt.
 
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { Anchor, Text, View, XStack, YStack } from '@hanzo/gui'
+import { A2UISurface, extractA2UIBlocks, parseA2UI, type A2UIActionEvent } from '@hanzo/ui/a2ui'
 import { Code } from '@hanzo/ui/chat'
 import { destination, read, type Token, type Tokens } from './lib/prose'
 
@@ -166,7 +167,70 @@ function Line({ tokens, tone }: { tokens: Token[] | undefined; tone: Tone }) {
   )
 }
 
-function List({ list, tone }: { list: Tokens.List; tone: Tone }) {
+interface A2UIRenderOptions {
+  onAction?: (event: A2UIActionEvent) => void
+  readOnly?: boolean
+}
+
+const A2UI_LANGS = new Set(['a2ui', 'json+a2ui', 'application/json+a2ui'])
+
+function isA2UILang(lang: string | undefined): boolean {
+  if (!lang) return false
+  const normalized = lang.trim().toLowerCase().split(/\s+/)[0] ?? ''
+  return A2UI_LANGS.has(normalized)
+}
+
+/** Matches a line that unambiguously begins a raw Google A2UI envelope JSON object. */
+const RAW_A2UI_ENVELOPE_RE =
+  /^\s*\{[^\n]*"(?:createSurface|updateComponents|updateDataModel|deleteSurface|surfaceUpdate|dataModelUpdate|beginRendering)"\s*:/m
+
+/**
+ * Renders a Google A2UI 1.0 surface inline inside a message.
+ * While streaming the opening tokens (before a root component has parsed),
+ * shows a calm, token-styled placeholder without throwing or flickering.
+ */
+function A2UIBlock({
+  code,
+  onAction,
+  readOnly,
+}: {
+  code: string
+  onAction?: (event: A2UIActionEvent) => void
+  readOnly?: boolean
+}) {
+  const surfaces = useMemo(() => parseA2UI(code), [code])
+  const ready = surfaces.some((s) => Boolean(s.rootId && s.components[s.rootId]))
+  if (!ready) {
+    return (
+      <YStack
+        data-slot="prose-a2ui-loading"
+        role="status"
+        aria-live="polite"
+        width="100%"
+        maxW="100%"
+        minW={0}
+        px="$3"
+        py="$2.5"
+        rounded="$3"
+        bg={GROUND}
+        borderWidth={1}
+        borderColor={EDGE}
+        gap="$1"
+      >
+        <Text fontSize={13} lineHeight={18} color={QUIET}>
+          Preparing interactive surface…
+        </Text>
+      </YStack>
+    )
+  }
+  return (
+    <YStack data-slot="prose-a2ui" width="100%" maxW="100%" minW={0}>
+      <A2UISurface payload={code} onAction={onAction} readOnly={readOnly} />
+    </YStack>
+  )
+}
+
+function List({ list, tone, a2ui }: { list: Tokens.List; tone: Tone; a2ui?: A2UIRenderOptions }) {
   const start = typeof list.start === 'number' ? list.start : 1
   return (
     <YStack render={list.ordered ? 'ol' : 'ul'} m={0} p={0} gap="$1" width="100%" maxW="100%" minW={0}>
@@ -176,7 +240,7 @@ function List({ list, tone }: { list: Tokens.List; tone: Tone }) {
             {item.task ? (item.checked ? '☑' : '☐') : list.ordered ? `${start + i}.` : '•'}
           </Text>
           <YStack flex={1} minW={0} maxW="100%" gap="$1">
-            {blocks(item.tokens, tone)}
+            {blocks(item.tokens, tone, a2ui)}
           </YStack>
         </XStack>
       ))}
@@ -225,11 +289,36 @@ function Table({ table, tone }: { table: Tokens.Table; tone: Tone }) {
 }
 
 /** A run of block tokens. A tight list item's words arrive as a `text` block. */
-function blocks(tokens: Token[] | undefined, tone: Tone): ReactNode[] {
+function blocks(tokens: Token[] | undefined, tone: Tone, a2ui?: A2UIRenderOptions): ReactNode[] {
   return (tokens ?? []).map((t, i) => {
     switch (t.type) {
-      case 'paragraph':
+      case 'paragraph': {
+        const raw = typeof t.raw === 'string' ? t.raw : ''
+        if (raw && RAW_A2UI_ENVELOPE_RE.test(raw)) {
+          const segments = extractA2UIBlocks(raw)
+          const hasSurface = segments.some(
+            (seg) =>
+              seg.type === 'a2ui' &&
+              seg.surfaces.some((s) => Boolean(s.rootId && s.components[s.rootId])),
+          )
+          if (hasSurface) {
+            return (
+              <YStack key={i} gap="$2" width="100%" maxW="100%" minW={0}>
+                {segments.map((seg, j) =>
+                  seg.type === 'a2ui' ? (
+                    <A2UIBlock key={j} code={seg.raw} onAction={a2ui?.onAction} readOnly={a2ui?.readOnly} />
+                  ) : (
+                    <YStack key={j} gap="$2" width="100%" maxW="100%" minW={0}>
+                      {blocks(read(seg.content), tone, a2ui)}
+                    </YStack>
+                  ),
+                )}
+              </YStack>
+            )
+          }
+        }
         return <Line key={i} tokens={t.tokens} tone={tone} />
+      }
       case 'text':
         return <Line key={i} tokens={'tokens' in t && t.tokens ? t.tokens : [t]} tone={tone} />
       case 'heading':
@@ -251,17 +340,21 @@ function blocks(tokens: Token[] | undefined, tone: Tone): ReactNode[] {
           </Text>
         )
       case 'list':
-        return <List key={i} list={t as Tokens.List} tone={tone} />
+        return <List key={i} list={t as Tokens.List} tone={tone} a2ui={a2ui} />
       case 'table':
         return <Table key={i} table={t as Tokens.Table} tone={tone} />
-      // A fenced block is @hanzo/ui's `Code`, the frame Dev's answers draw:
-      // its language, a copy control, and a body that scrolls SIDEWAYS on its
-      // own, because wrapping code changes what it says.
-      case 'code':
+      // A fenced block is @hanzo/ui's `Code`, except Google A2UI 1.0 fences
+      // (`a2ui`, `json+a2ui`, `application/json+a2ui`), which render natively as
+      // interactive surfaces inline inside the message.
+      case 'code': {
+        const lang = (t as Tokens.Code).lang
+        if (isA2UILang(lang)) {
+          return <A2UIBlock key={i} code={t.text} onAction={a2ui?.onAction} readOnly={a2ui?.readOnly} />
+        }
         return (
           <YStack key={i} data-slot="prose-code-scroll" width="100%" maxW="100%" minW={0} overflow="hidden">
             <Code
-              language={(t as Tokens.Code).lang || 'text'}
+              language={lang || 'text'}
               value={t.text}
               rounded={12}
               borderColor={EDGE}
@@ -271,10 +364,11 @@ function blocks(tokens: Token[] | undefined, tone: Tone): ReactNode[] {
             </Code>
           </YStack>
         )
+      }
       case 'blockquote':
         return (
           <YStack key={i} render="blockquote" m={0} pl="$3" gap="$2" width="100%" maxW="100%" minW={0} borderWidth={0} borderLeftWidth={2} borderStyle="solid" borderColor={EDGE}>
-            {blocks(t.tokens, QUIET)}
+            {blocks(t.tokens, QUIET, a2ui)}
           </YStack>
         )
       case 'hr':
@@ -287,13 +381,22 @@ function blocks(tokens: Token[] | undefined, tone: Tone): ReactNode[] {
   })
 }
 
+export interface ProseProps {
+  text: string
+  /** Dispatched when a user invokes an interactive Google A2UI 1.0 surface action. */
+  onA2UIAction?: (event: A2UIActionEvent) => void
+  /** Render embedded A2UI surfaces in read-only mode (e.g. shared transcripts or streaming turns). */
+  a2uiReadOnly?: boolean
+}
+
 /** One message's markdown, drawn. Empty in, nothing out — a streaming turn
  *  asks on every token and the first is nothing. */
-export function Prose({ text }: { text: string }) {
+export function Prose({ text, onA2UIAction, a2uiReadOnly }: ProseProps) {
   if (!text) return null
+  const a2ui: A2UIRenderOptions = { onAction: onA2UIAction, readOnly: a2uiReadOnly }
   return (
     <YStack data-slot="prose" gap="$2" width="100%" maxW="100%" minW={0}>
-      {blocks(read(text), INK)}
+      {blocks(read(text), INK, a2ui)}
     </YStack>
   )
 }

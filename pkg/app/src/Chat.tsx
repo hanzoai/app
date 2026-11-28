@@ -34,6 +34,7 @@ import { english, isolate, phrase, type Say } from "@hanzo/i18n";
 import { useI18n } from "@hanzo/i18n/react";
 import { billed, detail, familyOf, ours, planRequired, plainly, refused } from "./failure";
 import { Prose } from "./Prose";
+import { formatA2UIActionMessage, type A2UIActionEvent } from "@hanzo/ui/a2ui";
 import {
   useAgent,
   useAi,
@@ -1343,7 +1344,7 @@ function Carried({
   const { t } = useI18n();
   return (
     <YStack gap="$2" data-slot="turn-files">
-      {text ? <Prose text={text} /> : null}
+      {text ? <Prose text={text} a2uiReadOnly /> : null}
       {attached.length ? (
         <XStack gap="$1.5" flexWrap="wrap" role="list" aria-label={t("Files in this message")}>
           {attached.map((f) => (
@@ -3039,6 +3040,14 @@ function Thread({
     })();
   };
 
+  /** Dispatch a Google A2UI 1.0 interactive surface action as the user's next turn. */
+  const handleA2UIAction = (event: A2UIActionEvent) => {
+    if (chat.streaming || anonBusy || preparing) return;
+    const message = formatA2UIActionMessage(event).trim();
+    if (!message) return;
+    submit(message);
+  };
+
   const deliver = (text: string, extra: string) => {
     const holding = files.slice();
     // Signed out, files are only held on a host with its own engine (pane.ts `hold`): they are read here and go to it as parts.
@@ -4024,7 +4033,7 @@ function Thread({
               const parts = partsOf(turn.content);
               return (
                 <YStack gap="$1" data-turn-id={String(turn.id)} data-turn-role={turn.role}>
-                  <Parts parts={parts} prose={(text) => <Prose text={text} />} />
+                  <Parts parts={parts} prose={(text) => <Prose text={text} a2uiReadOnly />} />
                 </YStack>
               );
             }
@@ -4092,7 +4101,7 @@ function Thread({
               }
               return (
                 <YStack gap="$1" data-turn-id={String(turn.id)} data-turn-role={turn.role}>
-                  <Prose text={said} />
+                  <Prose text={said} a2uiReadOnly />
                 </YStack>
               );
             }
@@ -4165,7 +4174,7 @@ function Thread({
                           </Text>
                         </XStack>
                       ) : null}
-                      <Prose text={part.text} />
+                      <Prose text={part.text} onA2UIAction={handleA2UIAction} a2uiReadOnly={isStreamingThisTurn} />
                       {part.text && !isStreamingThisTurn ? (
                         <AssistantTurnActions
                           text={part.text}
@@ -4207,7 +4216,11 @@ function Thread({
                     citations={extractCitations([{ id: String(turn.id), role: "assistant", content: said }])}
                   />
                 ) : null}
-                <Prose text={said} />
+                <Prose
+                  text={said}
+                  onA2UIAction={turn.role === "assistant" ? handleA2UIAction : undefined}
+                  a2uiReadOnly={turn.role !== "assistant" || isStreamingThisTurn}
+                />
                 {/* A host's engine that would not answer: Settings is where its model is chosen (the one door). */}
                 {anonymous && turn.role === "assistant" && said.startsWith(LOCAL_FAILED) ? (
                   <XStack>

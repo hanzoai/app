@@ -223,7 +223,7 @@ function Body({ state, signedIn, onOpen }: { state: State; signedIn: boolean; on
               {turn.role === 'user' ? t('Asked') : turn.model ? t('Answered · {model}', { model: turn.model }) : t('Recorded by the person who shared this')}
             </Text>
             {turn.role === 'assistant' && turn.model ? (
-              <Prose text={turn.content} />
+              <Prose text={turn.content} a2uiReadOnly />
             ) : (
               <Text fontSize="$3" lineHeight="$4" color="$ink" whiteSpace="pre-wrap">
                 {turn.content}
