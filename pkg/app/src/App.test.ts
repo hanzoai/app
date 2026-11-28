@@ -12,11 +12,11 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 // names itself: what is under test is which parts Betas, Tabs and Chat draw,
 // not how each is drawn. A part that takes places says how many groups it got.
 const { part, stub, state, through } = vi.hoisted(() => {
-  type Part = { children?: ReactNode; 'data-slot'?: string; pt?: unknown; pb?: unknown; paddingInlineEnd?: unknown; display?: unknown }
+  type Part = { children?: ReactNode; 'data-slot'?: string; 'data-shell-top-right-inset'?: string; pt?: unknown; pb?: unknown; paddingInlineEnd?: unknown; display?: unknown }
   const through = ({ children }: { children?: ReactNode }) => createElement(Fragment, null, children)
   // The frame's padding is what these tests read, so it is written on the stand-in.
-  const part = ({ children, 'data-slot': slot, pt, pb, paddingInlineEnd, display }: Part) =>
-    createElement('div', { 'data-slot': slot, 'data-pt': pt as string | undefined, 'data-pb': pb as string | undefined, 'data-pe': paddingInlineEnd as string | undefined, 'data-display': display as string | undefined }, children)
+  const part = ({ children, 'data-slot': slot, 'data-shell-top-right-inset': topRightInset, pt, pb, paddingInlineEnd, display }: Part) =>
+    createElement('div', { 'data-slot': slot, 'data-shell-top-right-inset': topRightInset, 'data-pt': pt as string | undefined, 'data-pb': pb as string | undefined, 'data-pe': paddingInlineEnd as string | undefined, 'data-display': display as string | undefined }, children)
   const stub = (slot: string) => (props: { places?: unknown[]; children?: ReactNode }) =>
     createElement('div', { 'data-slot': slot, 'data-places': props.places === undefined ? 'none' : String(props.places.length) }, props.children)
   const state = { path: '/beta', drawer: 'shut' as 'shut' | 'open', leaveAt: '', pushed: [] as string[] }
@@ -127,11 +127,11 @@ vi.mock('./flow/nav', () => ({ flowNav: () => [{ id: 'flow', label: '', links: [
 vi.mock('./learn/LearnPane', () => ({ default: stub('learn-pane'), LearnPane: stub('learn-pane') }))
 vi.mock('./learn/nav', () => ({ learnNav: () => [{ id: 'learn', label: '', links: [] }, { id: 'learn-featured', label: 'Featured labs', links: [] }] }))
 
-import { App } from './App'
+import { App, formatTopRightInset, SHELL_TOP_RIGHT_INSET_CSS, SHELL_TOP_RIGHT_INSET_VAR } from './App'
 
-const draw = (path: string, betas?: ReactNode, bar?: { inset?: number }) => {
+const draw = (path: string, betas?: ReactNode, bar?: { inset?: number }, topRightInset?: number | string) => {
   state.path = path
-  return renderToStaticMarkup(createElement(App, { betas, bar }))
+  return renderToStaticMarkup(createElement(App, { betas, bar, topRightInset }))
 }
 
 beforeEach(() => {
@@ -261,5 +261,28 @@ describe('the pane keeps one gap all round', () => {
     expect(window).toContain('data-slot="title-bar"')
     expect(window).toContain('data-slot="back"')
     expect(window).toContain('data-slot="forward"')
+  })
+})
+
+describe('top-right floating shell chrome inset (--hanzo-shell-top-right-inset)', () => {
+  test('normalizes numeric and string insets and exposes the canonical CSS custom property', () => {
+    expect(SHELL_TOP_RIGHT_INSET_VAR).toBe('--hanzo-shell-top-right-inset')
+    expect(formatTopRightInset(124)).toBe('124px')
+    expect(formatTopRightInset(0)).toBe('0px')
+    expect(formatTopRightInset(-10)).toBe('0px')
+    expect(formatTopRightInset('112px')).toBe('112px')
+    expect(formatTopRightInset('  ')).toBeUndefined()
+    expect(formatTopRightInset(undefined)).toBeUndefined()
+  })
+
+  test('reserves inline-end padding on embedded workspace headers so shell pane toggles never overlap Share/Publish', () => {
+    expect(SHELL_TOP_RIGHT_INSET_CSS).toContain('[data-slot="window"] [data-slot="workspace-bar"]')
+    expect(SHELL_TOP_RIGHT_INSET_CSS).toContain('var(--hanzo-shell-top-right-inset, 0px)')
+    expect(SHELL_TOP_RIGHT_INSET_CSS).toContain('padding-inline-end:')
+
+    const withInset = draw('/chat', undefined, undefined, 124)
+    expect(withInset).toContain('data-shell-top-right-inset="124px"')
+    const withoutInset = draw('/chat')
+    expect(withoutInset).not.toContain('data-shell-top-right-inset=')
   })
 })
