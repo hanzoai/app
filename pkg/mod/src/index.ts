@@ -28,3 +28,17 @@ export {
   applyFontFamily,
   type CustomFontOptions,
 } from './font'
+
+export {
+  defineAppMod,
+  registerAppMod,
+  getRegisteredAppMods,
+  matchAppModRoute,
+  clearAppModRegistry,
+  fetchAuthenticatedV1,
+  ReferenceClusterStatusMod,
+  type AppModDefinition,
+  type AppModTopBarControl,
+  type AppModContext,
+  type AppModEndpointConfig,
+} from './app_mod'

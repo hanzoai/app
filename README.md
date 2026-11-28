@@ -4,9 +4,15 @@
 
 Hanzo's app SDK, one package per directory under `pkg/`:
 
-- `pkg/app` — **@hanzo/app**, the shell and the first-party apps every Hanzo
-  host draws (hanzo.ai, hanzo.team, Hanzo Desktop).
+- `pkg/app` — **@hanzo/app**, the shell and the first-party apps every Hanzo host draws (hanzo.ai, hanzo.team, Hanzo Desktop).
+- `pkg/mod` — **@hanzo/mod**, the contract and reference App Mod runtime mounted into the siderail and shell.
 
-`pnpm install`, then `pnpm typecheck`, `pnpm lint:design`, `pnpm test` and
-`pnpm build` run over every package. A package ships to npm when its
-`package.json` names a version npm does not serve (`.github/workflows/publish.yml`).
+### App Mod Verification & Testing
+
+Reference App Mod implementation (`ReferenceClusterStatusMod`) and registry contract are tested via:
+
+```bash
+node --test test/app_mod_smoke.test.mjs
+```
+
+`pnpm install`, then `pnpm typecheck`, `pnpm lint:design`, `pnpm test` and `pnpm build` run over every package. A package ships to npm when its `package.json` names a version npm does not serve (`.github/workflows/publish.yml`).
