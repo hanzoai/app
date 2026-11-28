@@ -1,6 +1,6 @@
 {
   "name": "@hanzo/app",
-  "version": "0.3.198",
+  "version": "0.3.199",
   "description": "Hanzo's app: the shell and its apps (Home, Chat, Inbox, Contacts, Meet, Calendar, Drive, Board, Work, Bots), once, for every Hanzo surface.",
   "type": "module",
   "main": "./dist/index.js",
@@ -73,7 +73,7 @@
     "@hanzo/dev": "^4.1.0",
     "@hanzo/glass": "workspace:*",
     "@hanzo/mod": "workspace:*",
-    "@hanzo/sources": "workspace:*",
+    "@hanzo/machines": "workspace:*",
     "@hanzo/personas": "catalog:",
     "marked": "catalog:",
     "simple-icons": "catalog:"

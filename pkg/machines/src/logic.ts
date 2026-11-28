@@ -1,6 +1,6 @@
-/** Aggregation, formatting and the availability rule (HIP-1350): pure, no React, no fetch. */
+/** Aggregation, formatting and the availability rule: pure, no React, no fetch. */
 import { english, type Say } from '@hanzo/i18n'
-import type { Account, Availability, Choice, Row, Snapshot, Source, Surface, Usage } from './types'
+import type { Account, Availability, Choice, Machine, Row, Snapshot, Surface, Usage } from './types'
 
 /** Input, output and cache tokens together. */
 export const tokens = (r: Pick<Row, 'inputTokens' | 'outputTokens' | 'cacheTokens'>): number =>
@@ -92,21 +92,21 @@ export function ago(at: string, now = new Date(), t: Say = english): string {
   return t('{n}y', { n: Math.floor(d / 365) })
 }
 
-/** Sources as a list reads them: online first, then by the latest heartbeat; revoked last. */
-export function ordered(sources: Source[]): Source[] {
-  const rank = (s: Source) => (s.state === 'online' ? 0 : s.state === 'offline' ? 1 : 2)
-  const seen = (s: Source) => (s.last_seen ? new Date(s.last_seen).getTime() || 0 : 0)
-  return [...sources].sort((a, b) => rank(a) - rank(b) || seen(b) - seen(a) || a.name.localeCompare(b.name))
+/** Machines as a list reads them: online first, then by the latest heartbeat; revoked last. */
+export function ordered(machines: Machine[]): Machine[] {
+  const rank = (m: Machine) => (m.state === 'online' ? 0 : m.state === 'offline' ? 1 : 2)
+  const seen = (m: Machine) => (m.last_seen ? new Date(m.last_seen).getTime() || 0 : 0)
+  return [...machines].sort((a, b) => rank(a) - rank(b) || seen(b) - seen(a) || a.name.localeCompare(b.name))
 }
 
-/** A provider's latest snapshots, one per source that reported it, freshest first. */
+/** A provider's latest snapshots, one per machine that reported it, freshest first. */
 export function snapshotsFor(usage: Usage, provider: string): Snapshot[] {
   return usage.snapshots
     .filter((s) => s.provider === provider)
     .sort((a, b) => b.fetchedAt.localeCompare(a.fetchedAt) || a.sourceId.localeCompare(b.sourceId))
 }
 
-/** The snapshot an account reads its windows and credits from: its own source's, for its own provider. */
+/** The snapshot a provider account reads its windows and credits from: its own machine's, for its own provider. */
 export const snapshotOf = (usage: Usage, a: Pick<Account, 'provider' | 'sourceId'>): Snapshot | undefined =>
   usage.snapshots.find((s) => s.provider === a.provider && s.sourceId === a.sourceId)
 
@@ -117,15 +117,15 @@ export function providers(usage: Usage): string[] {
   return seen
 }
 
-/** A source's name from its id, for a heading; the id when it was revoked and unlisted. */
-export const named = (sources: Source[], id: string): string => sources.find((s) => s.id === id)?.name ?? id
+/** A machine's name from its id, for a heading; the id when it was revoked and unlisted. */
+export const named = (machines: Machine[], id: string): string => machines.find((m) => m.id === id)?.name ?? id
 
 /**
- * Accounts as a picker lists them: those usable here first, then by provider and
+ * Provider accounts as a picker lists them: those usable here first, then by provider and
  * label, so a redraw never shuffles. Greyed accounts stay in view with their reason.
  */
-export function listed(accounts: Account[], sources: Source[], surface: Surface, deviceId?: string): Account[] {
-  const usable = (a: Account) => (availability(a, sources.find((s) => s.id === a.sourceId), surface, deviceId).usable ? 0 : 1)
+export function listed(accounts: Account[], machines: Machine[], surface: Surface, deviceId?: string): Account[] {
+  const usable = (a: Account) => (availability(a, machines.find((m) => m.id === a.sourceId), surface, deviceId).usable ? 0 : 1)
   return [...accounts].sort(
     (a, b) => usable(a) - usable(b) || a.provider.localeCompare(b.provider) || (a.label ?? a.instance ?? '').localeCompare(b.label ?? b.instance ?? '') || a.id.localeCompare(b.id),
   )
@@ -133,40 +133,38 @@ export function listed(accounts: Account[], sources: Source[], surface: Surface,
 
 /**
  * Whether `account` can run a session on `surface`, and why not: one pure
- * function of the account, its source, the surface and the account's classes
- * from cloud (HIP-1350, "One view, one picker, four surfaces"). `deviceId` is the
- * source id of the device the surface runs on, when it is a linked source.
- * The reasons are the table's one-line strings, `<device>` filled in.
+ * function of the provider account, its machine, the surface and the account's
+ * classes from cloud. `deviceId` is the machine id this surface runs on.
  */
-export function availability(account: Account, source: Source | undefined, surface: Surface, deviceId?: string, t: Say = english): Availability {
+export function availability(account: Account, machine: Machine | undefined, surface: Surface, deviceId?: string, t: Say = english): Availability {
   const classes = account.classes?.length ? account.classes : ['local']
-  const device = source?.name ?? t('this device')
+  const device = machine?.name ?? t('this device')
 
   if (account.kind === 'key') {
     if (surface === 'extension') return { usable: false, reason: t('Runs from Hanzo Dev or hanzo.app') }
     return { usable: true }
   }
 
-  if (!source || source.state === 'revoked') return { usable: false, reason: t('{device} was unlinked', { device }) }
-  if (source.kind === 'browser') return { usable: false, reason: t('Browser accounts are view-only') }
-  if (deviceId && source.id === deviceId) return { usable: true }
+  if (!machine || machine.state === 'revoked') return { usable: false, reason: t('{device} was unlinked', { device }) }
+  if (machine.kind === 'browser') return { usable: false, reason: t('Browser accounts are view-only') }
+  if (deviceId && machine.id === deviceId) return { usable: true }
 
   if (classes.includes('desktop')) {
     if (surface === 'extension') return { usable: false, reason: t('Runs from Hanzo Dev or hanzo.app') }
-    if (source.state !== 'online') return { usable: false, reason: t('{device} is offline', { device }) }
+    if (machine.state !== 'online') return { usable: false, reason: t('{device} is offline', { device }) }
     if (!account.shared) return { usable: false, reason: t('Turn on Share on {device}', { device }) }
     return { usable: true, reason: t('Run on {device}', { device }) }
   }
   return { usable: false, reason: t('Stays on {device}: its terms do not allow remote use', { device }) }
 }
 
-/** What choosing an account returns, or null when it is not usable here. */
-export function choose(account: Account, source: Source | undefined, surface: Surface, deviceId?: string): Choice | null {
-  if (!availability(account, source, surface, deviceId).usable) return null
+/** What choosing a provider account returns, or null when it is not usable here. */
+export function choose(account: Account, machine: Machine | undefined, surface: Surface, deviceId?: string): Choice | null {
+  if (!availability(account, machine, surface, deviceId).usable) return null
   if (account.kind === 'key') return { via: 'key', account: account.id }
-  // A login on this very device runs in the desktop app itself, not through a route.
-  if (deviceId && source?.id === deviceId) return null
-  return { via: 'desktop', source: source!.id, instance: account.instance ?? '' }
+  // A login on this very machine runs in the desktop app itself, not through a route.
+  if (deviceId && machine?.id === deviceId) return null
+  return { via: 'desktop', source: machine!.id, instance: account.instance ?? '' }
 }
 
 /** The default: a cloud cell on Hanzo's own models, which needs no account. */

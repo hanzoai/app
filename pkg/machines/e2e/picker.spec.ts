@@ -83,7 +83,7 @@ test.describe('picker on the desktop', () => {
 })
 
 test('a person with no accounts still has the Hanzo cell', async ({ page }) => {
-  await arrange(page, fresh({ sources: [], accounts: [] }))
+  await arrange(page, fresh({ machines: [], accounts: [] }))
   await page.goto('/?mode=picker&surface=web')
   await expect(row(page, 'cell')).toBeVisible()
   await expect(page.getByText('No provider accounts yet')).toBeVisible()

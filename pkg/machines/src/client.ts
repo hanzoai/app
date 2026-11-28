@@ -1,9 +1,9 @@
 /**
- * The cloud client: `GET /v1/sources`, `GET /v1/sources/usage`,
- * `GET|POST|DELETE /v1/sources/accounts`, `DELETE /v1/sources/{id}`. The host
+ * The cloud client: `GET /v1/machines`, `GET /v1/machines/usage`,
+ * `GET|POST|DELETE /v1/machines/accounts`, `DELETE /v1/machines/{id}`. The host
  * names the gateway and holds the IAM token; nothing here signs anyone in.
  */
-import type { Account, By, Range, Source, Usage } from './types'
+import type { Account, By, Machine, Range, Usage } from './types'
 
 export interface ClientOptions {
   /** The gateway's origin, e.g. https://api.hanzo.ai. */
@@ -16,7 +16,7 @@ export interface ClientOptions {
 }
 
 /** A read the cloud refused or could not answer. `status` is 0 for a network failure. */
-export class SourcesError extends Error {
+export class MachinesError extends Error {
   status: number
   constructor(message: string, status: number) {
     super(message)
@@ -47,9 +47,9 @@ export function createClient(opts: ClientOptions) {
       res = await get(`${base}${path}`, { ...init, headers })
     } catch (e) {
       if ((e as Error).name === 'AbortError') throw e
-      throw new SourcesError('Could not reach Hanzo.', 0)
+      throw new MachinesError('Could not reach Hanzo.', 0)
     }
-    if (!res.ok) throw new SourcesError(`Hanzo answered ${res.status}.`, res.status)
+    if (!res.ok) throw new MachinesError(`Hanzo answered ${res.status}.`, res.status)
     return res.status === 204 ? (undefined as T) : ((await res.json()) as T)
   }
 
@@ -57,26 +57,26 @@ export function createClient(opts: ClientOptions) {
     /** Whether a token is held: the view asks before it reads. */
     signedIn: (): boolean => Boolean(read(opts.token)),
 
-    /** The caller's own sources, newest heartbeat first. */
-    async sources(signal?: AbortSignal): Promise<Source[]> {
-      const body = await call<{ sources?: Source[] }>('/v1/sources', { signal })
-      return (body.sources ?? []).map((s) => ({ ...s, providers: s.providers ?? [] }))
+    /** The caller's machines (linked devices + cloud compute), newest heartbeat first. */
+    async machines(signal?: AbortSignal): Promise<Machine[]> {
+      const body = await call<{ machines?: Machine[]; sources?: Machine[] }>('/v1/machines', { signal })
+      return (body.machines ?? body.sources ?? []).map((m) => ({ ...m, providers: m.providers ?? [] }))
     },
 
-    /** Revoke: the cloud drops its routes and answers 410 to the next heartbeat. */
+    /** Revoke a linked machine: the cloud drops its routes and answers 410 to the next heartbeat. */
     async revoke(id: string): Promise<void> {
-      await call<void>(`/v1/sources/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      await call<void>(`/v1/machines/${encodeURIComponent(id)}`, { method: 'DELETE' })
     },
 
-    /** Every login the caller's sources detected and every key in KMS. A missing class list is `local`. */
+    /** Every provider login the caller's machines detected and every key in KMS. A missing class list is `local`. */
     async accounts(signal?: AbortSignal): Promise<Account[]> {
-      const body = await call<{ accounts?: Account[] }>('/v1/sources/accounts', { signal })
+      const body = await call<{ accounts?: Account[] }>('/v1/machines/accounts', { signal })
       return (body.accounts ?? []).map((a) => ({ ...a, classes: a.classes?.length ? a.classes : ['local'] }))
     },
 
     /** Seal a key into KMS. The value is sent once and never returned. */
     async addKey(key: { provider: string; label: string; value: string }): Promise<Account> {
-      return call<Account>('/v1/sources/accounts', {
+      return call<Account>('/v1/machines/accounts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...key, kind: 'key' }),
@@ -85,14 +85,14 @@ export function createClient(opts: ClientOptions) {
 
     /** Delete a key (its KMS secret first, then the row). */
     async removeAccount(id: string): Promise<void> {
-      await call<void>(`/v1/sources/accounts/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      await call<void>(`/v1/machines/accounts/${encodeURIComponent(id)}`, { method: 'DELETE' })
     },
 
-    /** Totals by `by`, and the latest snapshot per (source, provider). Counts that are not numbers read as 0. */
+    /** Totals by `by`, and the latest snapshot per (machine, provider). Counts that are not numbers read as 0. */
     async usage(by: By, range: Range, now = new Date(), signal?: AbortSignal): Promise<Usage> {
       const { from, to } = span(range, now)
       const q = new URLSearchParams({ by, from, to })
-      const body = await call<Partial<Usage>>(`/v1/sources/usage?${q}`, { signal })
+      const body = await call<Partial<Usage>>(`/v1/machines/usage?${q}`, { signal })
       return {
         rows: (body.rows ?? []).map((r) => ({
           key: String(r.key),

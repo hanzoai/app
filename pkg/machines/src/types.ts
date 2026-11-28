@@ -1,10 +1,10 @@
 /**
- * The shapes of `/v1/sources` (HIP-1350). Usage is Hanzo Dev's usage model
- * (`@hanzodev/usage` schema.ts) plus the registry's own fields.
+ * The shapes of `/v1/machines` and provider usage. Usage is Hanzo Dev's usage
+ * model (`@hanzodev/usage` schema.ts) plus the machine registry's own fields.
  */
 
-export type SourceKind = 'desktop' | 'browser'
-export type SourceState = 'online' | 'offline' | 'revoked'
+export type MachineKind = 'desktop' | 'browser' | 'cloud_compute' | 'gpu' | 'byo' | 'bot'
+export type MachineState = 'online' | 'offline' | 'revoked'
 export type AccountKind = 'login' | 'key'
 
 /** What a provider account may be used for. `local` is the fail-closed default. */
@@ -22,21 +22,24 @@ export interface ProviderState {
   shared?: boolean
 }
 
-export interface Source {
+export interface Machine {
   id: string
-  kind: SourceKind
+  kind: MachineKind
+  origin?: 'linked' | 'cloud' | 'byo'
   name: string
   os: string
   arch?: string
   version?: string
-  state: SourceState
+  state: MachineState
   last_seen?: string
   linked_at: string
   zap?: string
   providers: ProviderState[]
+  gpu?: string
+  region?: string
 }
 
-/** A login a desktop or browser detected, or a key held in Hanzo KMS: `GET /v1/sources/accounts`. */
+/** A login a machine detected, or a key held in Hanzo KMS: `GET /v1/machines/accounts`. */
 export interface Account {
   id: string
   provider: string
@@ -85,19 +88,19 @@ export interface Usage {
   snapshots: Snapshot[]
 }
 
-export type By = 'source' | 'provider' | 'model' | 'user'
+export type By = 'machine' | 'provider' | 'model' | 'user'
 
 /** The ranges the view offers, in days. */
 export const RANGES = [7, 30] as const
 export type Range = (typeof RANGES)[number]
 
-/** Whether an account can run a session here, and the one line that says why not (or how). */
+/** Whether a provider account can run a session here, and the one line that says why not (or how). */
 export interface Availability {
   usable: boolean
   reason?: string
 }
 
-/** What choosing an account returns: `/v1/dev`'s `execution` field (HIP-1350, Routing). */
+/** What choosing a provider account returns: `/v1/dev`'s `execution` field. */
 export type Choice =
   | { via: 'cell' }
   | { via: 'key'; account: string }
