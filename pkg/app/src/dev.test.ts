@@ -21,13 +21,26 @@ vi.mock('@hanzo/dev/builder', () => {
     p.startsWith('-/settings/') ? { kind: 'settings', section: p.slice(11) } : p.startsWith('-/') ? { kind: 'screen', screen: p.slice(2) } : { kind: 'new' }
   return { MARKS, administers: () => true, path, route }
 })
-vi.mock('@hanzo/iam/react', () => ({ useIam: () => ({ user: { name: 'Ada', email: 'ada@acme.dev' }, accessToken: 't' }) }))
+const { iamState, sessionState } = vi.hoisted(() => ({
+  iamState: {
+    user: { name: 'Ada', email: 'ada@acme.dev' } as { name?: string; email?: string } | null,
+    accessToken: 't' as string | null,
+    sdk: {
+      getAccessToken: vi.fn(() => 't' as string | null),
+      getRefreshToken: vi.fn(() => 'rt' as string | null),
+      getValidAccessToken: vi.fn(async () => 'valid-t' as string | null),
+      refreshAccessToken: vi.fn(async () => ({ accessToken: 'forced-t' })),
+    },
+  },
+  sessionState: { bearer: 't' as string | null },
+}))
+vi.mock('@hanzo/iam/react', () => ({ useIam: () => iamState }))
 vi.mock('./host', () => ({
   useHost: () => ({ router: { push: (to: string) => void routed.push(to), replace: (to: string) => void routed.push(to) }, path: '/chat' }),
   useLook: () => ({ pref: {}, set: () => {} }),
 }))
 vi.mock('./lib/signout', () => ({ useSigningOut: () => false, useSignOut: () => () => {} }))
-vi.mock('./lib/session', () => ({ bearer: () => 't', named: () => null, org: () => 'acme', orgs: () => ['acme'], pick: () => {} }))
+vi.mock('./lib/session', () => ({ bearer: () => sessionState.bearer, named: () => null, org: () => 'acme', orgs: () => ['acme'], pick: () => {} }))
 vi.mock('./lib/destination', () => ({ enter: () => {} }))
 vi.mock('./lib/api', () => ({ api: () => 'https://api.hanzo.ai' }))
 vi.mock('./open', () => ({ showSettings: () => {}, useOpen: () => ({ settings: null }) }))
@@ -50,6 +63,13 @@ afterEach(() => {
   vi.unstubAllGlobals()
   moved.length = 0
   routed.length = 0
+  iamState.accessToken = 't'
+  iamState.user = { name: 'Ada', email: 'ada@acme.dev' }
+  sessionState.bearer = 't'
+  iamState.sdk.getAccessToken.mockReset().mockReturnValue('t')
+  iamState.sdk.getRefreshToken.mockReset().mockReturnValue('rt')
+  iamState.sdk.getValidAccessToken.mockReset().mockResolvedValue('valid-t')
+  iamState.sdk.refreshAccessToken.mockReset().mockResolvedValue({ accessToken: 'forced-t' })
 })
 
 /** A browser at `href`, whose page loads and history entries are recorded. */
@@ -125,5 +145,24 @@ describe('the app host', () => {
     const confirm = vi.fn(async () => true)
     expect(host(confirm).confirm).toBe(confirm)
     expect(host().confirm).toBeUndefined()
+  })
+
+  test('falls back to IAM SDK / memory token when localStorage bearer() is empty', () => {
+    sessionState.bearer = null
+    iamState.sdk.getAccessToken.mockReturnValue('mem-tok')
+    expect(host().token()).toBe('mem-tok')
+    iamState.sdk.getAccessToken.mockReturnValue(null)
+    iamState.accessToken = 'state-tok'
+    expect(host().token()).toBe('state-tok')
+  })
+
+  test('wires refresh to IAM getValidAccessToken (proactive) and refreshAccessToken (forced on 401)', async () => {
+    const h = host() as Host & { refresh?: (force?: boolean) => Promise<string | null> }
+    expect(await h.refresh?.(false)).toBe('valid-t')
+    expect(iamState.sdk.getValidAccessToken).toHaveBeenCalledTimes(1)
+    expect(await h.refresh?.(true)).toBe('forced-t')
+    expect(iamState.sdk.refreshAccessToken).toHaveBeenCalledTimes(1)
+    iamState.sdk.getRefreshToken.mockReturnValue(null)
+    expect(await h.refresh?.(true)).toBeNull()
   })
 })
