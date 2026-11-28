@@ -3,13 +3,47 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
 const { part, row, convMenu, presses, state, devState, capturedActions, marked } = vi.hoisted(() => {
-  type Part = { children?: ReactNode; 'data-slot'?: string; 'aria-label'?: string; 'aria-expanded'?: boolean; active?: boolean }
+  type Part = {
+    children?: ReactNode
+    'data-slot'?: string
+    'data-density'?: number | string
+    'data-priority-mode'?: string
+    'aria-label'?: string
+    'aria-expanded'?: boolean
+    active?: boolean
+    onClick?: () => void
+  }
   const presses: (() => void)[] = []
-  const state = { threads: [] as { id: string; title: string; updatedAt: string; pinned?: boolean }[] }
-  const devState = { sessions: [] as { id: string; title: string; status: string; createdAt: string }[] }
+  const state = { threads: [] as { id: string; title: string; updatedAt: string; pinned?: boolean; lastMessage?: string }[] }
+  const devState = {
+    sessions: [] as {
+      id: string
+      title: string
+      status: string
+      createdAt: string
+      updatedAt?: string
+      repo?: string
+      branch?: string
+      pr?: string
+      lastEvent?: { preview?: string; kind?: string }
+    }[],
+  }
   const capturedActions: { remove?: (t: { id: string; title?: string }) => Promise<boolean>; rename?: (t: { id: string; title?: string }, next: string) => Promise<boolean> }[] = []
-  const part = ({ children, 'data-slot': slot, 'aria-label': label, 'aria-expanded': expanded }: Part) =>
-    createElement('div', { 'data-slot': slot, 'aria-label': label, 'aria-expanded': expanded }, children)
+  const part = ({ children, 'data-slot': slot, 'data-density': density, 'data-priority-mode': pm, 'aria-label': label, 'aria-expanded': expanded, active, onClick }: Part) => {
+    if (slot === 'sidebar-item' && onClick) presses.push(onClick)
+    return createElement(
+      'div',
+      {
+        'data-slot': slot,
+        'data-density': density !== undefined ? String(density) : undefined,
+        'data-priority-mode': pm,
+        'aria-label': label,
+        'aria-expanded': expanded,
+        'aria-current': active ? 'page' : undefined,
+      },
+      children,
+    )
+  }
   const convMenu = ({ children, canShare, noun, customActions }: { children?: ReactNode; canShare?: boolean; noun?: string; customActions?: typeof capturedActions[number] }) => {
     if (customActions) capturedActions.push(customActions)
     return createElement('div', { 'data-slot': 'conv-menu', 'data-share': String(Boolean(canShare)), 'data-noun': noun }, children)
@@ -25,7 +59,7 @@ const { part, row, convMenu, presses, state, devState, capturedActions, marked }
 
 vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s, dir: 'ltr' }) }))
 vi.mock('@hanzo/gui', () => ({ ScrollView: part, SizableText: part, XStack: part, YStack: part }))
-vi.mock('lucide-react', () => ({ CheckSquare: () => null, ChevronDown: () => null, ChevronRight: () => null, GitPullRequest: () => null, ListFilter: () => null }))
+vi.mock('lucide-react', () => ({ CheckSquare: () => null, ChevronDown: () => null, ChevronRight: () => null, Folder: () => null, GitBranch: () => null, GitPullRequest: () => null, ListFilter: () => null }))
 vi.mock('@hanzo/dev/builder', () => ({
   DOTS: { running: 'running', done: 'done', error: 'error' },
   route: () => ({ kind: 'new' }),
@@ -83,25 +117,95 @@ describe('Design’s Recents & collapsible Pinned section', () => {
     expect(html).toMatch(/aria-current="page">Logo</)
     // First Build: a row wears its age, and a dot only while it works or when it failed; the settled Logo has none.
     expect(html.match(/data-dot="[a-z]+"/g)).toEqual(['data-dot="running"', 'data-dot="error"'])
-    // Design conversations now have full ConversationMenu + Select multiple, with Chat-only Share disabled.
+    // Design conversations now have full ConversationMenu + Select multiple + unified organize/density/status controls, with Chat-only Share disabled.
     expect(html).toContain('data-slot="conv-menu" data-share="false" data-noun="design"')
     expect(html).toContain('select-multiple')
-    expect(html).not.toContain('data-item="status-')
+    expect(html).toContain('data-item="density-1"')
+    expect(html).toContain('data-item="density-2"')
+    expect(html).toContain('data-item="density-3"')
+    expect(html).toContain('data-item="status-all"')
+    expect(html).toContain('data-item="status-archived"')
     expect(html).not.toContain('No chats yet.')
     presses.at(-1)!()
     expect(went).toEqual(['c/d3'])
   })
 
-  test('renders a collapsible Pinned section above Recents when pinned threads exist', async () => {
+  test('lists Studio conversations separately with noun="studio" and unified controls', async () => {
+    studio(() => ({
+      rows: [
+        { id: 's1', title: 'Launch film', updated: now - 30_000, state: 'making', count: 1 },
+        { id: 's2', title: 'Hero clip', updated: now - 600_000, state: 'done', count: 3 },
+      ],
+      error: '',
+    }))
+    const went: string[] = []
+    const { Recents } = await import('./Recents')
+    const host = { path: 'c/s2', go: (p: string) => went.push(p) } as never
+    const html = renderToStaticMarkup(createElement(Recents, { host, mode: 'studio', thread: null, onOpen: () => {}, onNew: () => {} }))
+    expect(html).toContain('data-slot="conv-menu" data-share="false" data-noun="studio"')
+    expect(html).toContain('Launch film')
+    expect(html).toMatch(/aria-current="page">Hero clip</)
+    presses.at(-1)!()
+    expect(went).toEqual(['c/s2'])
+  })
+
+  test('renders ONE single ConversationMenu wrapping Pinned, collapsible Projects, and Recents', async () => {
     state.threads = [
       { id: 'c1', title: 'Pinned strategy', updatedAt: new Date(now - 60_000).toISOString(), pinned: true },
-      { id: 'c2', title: 'Daily notes', updatedAt: new Date(now - 120_000).toISOString(), pinned: false },
+      { id: 'c2', title: '[Platform] Sidebar spec', updatedAt: new Date(now - 120_000).toISOString(), pinned: false },
+      { id: 'c3', title: 'Daily notes', updatedAt: new Date(now - 180_000).toISOString(), pinned: false },
     ]
     const { Recents } = await import('./Recents')
     const html = renderToStaticMarkup(createElement(Recents, { host: {} as never, mode: 'chat', thread: null, onOpen: () => {}, onNew: () => {} }))
+    expect(html.match(/data-slot="conv-menu"/g)).toHaveLength(1)
     expect(html).toContain('data-slot="pinned-group-toggle"')
+    expect(html).toContain('data-slot="projects-group-toggle"')
+    expect(html).toContain('Platform')
     expect(html).toContain('data-slot="conv-menu" data-share="true" data-noun="chat"')
-    expect(html.indexOf('Pinned strategy')).toBeLessThan(html.indexOf('Daily notes'))
+    expect(html.indexOf('Pinned strategy')).toBeLessThan(html.indexOf('Platform'))
+    expect(html.indexOf('Platform')).toBeLessThan(html.indexOf('Daily notes'))
+  })
+
+  test('priorityMode switches in-place to Priority + day-by-day timeline with 3-line cards (title + 2 context lines) for Chat and Dev', async () => {
+    state.threads = [
+      { id: 'c1', title: 'Pinned architecture', updatedAt: new Date(now - 60_000).toISOString(), pinned: true, lastMessage: 'Unified sidebar across chat, dev, design, and studio.' },
+      { id: 'c2', title: 'Today chat', updatedAt: new Date(now - 120_000).toISOString(), lastMessage: 'Checked shift-click range selection.' },
+      { id: 'c3', title: 'Older archive note', updatedAt: new Date(now - 14 * 86_400_000).toISOString(), lastMessage: 'Historical notes from two weeks ago.' },
+    ]
+    const { Recents } = await import('./Recents')
+    const chatHtml = renderToStaticMarkup(createElement(Recents, { host: {} as never, mode: 'chat', thread: null, onOpen: () => {}, onNew: () => {}, priorityMode: true }))
+    expect(chatHtml).toContain('data-slot="priority-section"')
+    expect(chatHtml).toContain('Priority')
+    expect(chatHtml).toContain('Today')
+    expect(chatHtml).toContain('Older')
+    expect(chatHtml).toContain('data-density="3"')
+    expect(chatHtml).toContain('Unified sidebar across chat, dev, design, and studio.')
+
+    devState.sessions = [
+      {
+        id: 'sess_1',
+        title: 'Fix sidebar alignment',
+        status: 'running',
+        repo: 'hanzoai/app',
+        branch: 'fix/unified-ux',
+        pr: 'https://github.com/hanzoai/app/pull/143',
+        lastEvent: { preview: 'All unit tests passing' },
+        createdAt: new Date(now - 300_000).toISOString(),
+        updatedAt: new Date(now - 60_000).toISOString(),
+      },
+    ]
+    const devHost = { api: 'https://api.hanzo.ai', org: 'acme', token: () => 'tok', path: '', go: () => {} } as never
+    const devStdHtml = renderToStaticMarkup(createElement(Recents, { host: devHost, mode: 'dev', thread: null, onOpen: () => {}, onNew: () => {}, priorityMode: false }))
+    // Dev defaults to 2-line density showing repo + branch metadata
+    expect(devStdHtml).toContain('data-density="2"')
+    expect(devStdHtml).toContain('hanzoai/app')
+    expect(devStdHtml).toContain('fix/unified-ux')
+    expect(devStdHtml).toContain('data-slot="projects-group-toggle"')
+
+    const devPriorityHtml = renderToStaticMarkup(createElement(Recents, { host: devHost, mode: 'dev', thread: null, onOpen: () => {}, onNew: () => {}, priorityMode: true }))
+    expect(devPriorityHtml).toContain('Priority')
+    expect(devPriorityHtml).toContain('data-density="3"')
+    expect(devPriorityHtml).toContain('All unit tests passing')
   })
 
   test('says so when Studio has made nothing yet, and shows Studio’s own refusal', async () => {

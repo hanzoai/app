@@ -1,10 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
 import { format } from '@hanzo/i18n'
 import type { LimitNotice } from '@hanzo/ui/product/limits'
-import { chats, paused, resets, spends, uncapped } from './limits'
+import { chats, enrichLimits, paused, resets, resetUsageLimits, spends, uncapped } from './limits'
 
 // This browser works in one organization, which every pay address names.
-vi.mock('./session', async (real) => ({ ...(await real<typeof import('./session')>()), org: () => 'acme' }))
+vi.mock('./session', async (real) => ({
+  ...(await real<typeof import('./session')>()),
+  org: () => 'acme',
+  scope: () => ({ Authorization: 'Bearer tok_test', 'X-Org-Id': 'acme' }),
+}))
 
 const NOW = Date.parse('2026-10-07T12:00:00Z')
 const PAY = 'https://pay.hanzo.ai'
@@ -236,5 +240,65 @@ describe('chats: the models that write replies', () => {
   it('never lists speech models', () => {
     expect(chats({ id: 'zen-scribe', outputs: ['transcript'] })).toBe(false)
     expect(chats({ id: 'zen-voice-mini', outputs: ['audio'] })).toBe(false)
+  })
+})
+
+describe('enrichLimits & resetUsageLimits', () => {
+  it('preserves session, day, reset, and per-class unbounded fields from the raw /v1/ai/limits payload', () => {
+    const parsed = {
+      plan: 'enterprise',
+      state: 'ok' as const,
+      credits: { enabled: true, afterAllowance: true, balance: 1160000 },
+      classes: {
+        ours: { percent: 0, state: 'ok' as const, resets_at: null, paying: 'plan' as const },
+        premium: { percent: 100, state: 'limited' as const, resets_at: null, paying: 'credits' as const },
+      },
+    }
+    const raw = {
+      plan: 'enterprise',
+      session: { percent: 18, state: 'ok', resets_at: '2026-10-07T17:00:00Z' },
+      day: { percent: 42, state: 'ok', resets_at: '2026-10-08T00:00:00Z' },
+      reset: { available: true, used: 0, limit: 1, next_at: '2026-10-14T00:00:00Z' },
+      classes: {
+        ours: { percent: 0, state: 'ok', unbounded: true, paying: 'plan' },
+        premium: { percent: 100, state: 'limited', paying: 'credits' },
+      },
+    }
+    const enriched = enrichLimits(parsed as never, raw)!
+    expect(enriched.classes.ours?.unbounded).toBe(true)
+    expect(enriched.classes.premium?.unbounded).toBeUndefined()
+    expect(enriched.session).toEqual({ percent: 18, state: 'ok', resets_at: '2026-10-07T17:00:00Z' })
+    expect(enriched.day).toEqual({ percent: 42, state: 'ok', resets_at: '2026-10-08T00:00:00Z' })
+    expect(enriched.reset).toEqual({ available: true, used: 0, limit: 1, next_at: '2026-10-14T00:00:00Z' })
+  })
+
+  it('POSTs /v1/ai/limits/reset with X-Org-Id and throws server message on error', async () => {
+    const calls: { url: string; method?: string; headers?: Record<string, string> }[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        calls.push({ url, method: init?.method, headers: init?.headers as Record<string, string> })
+        return { ok: true, status: 200, json: async () => ({ reset: true }) }
+      }),
+    )
+    try {
+      await expect(resetUsageLimits()).resolves.toEqual({ reset: true })
+      expect(calls).toHaveLength(1)
+      expect(calls[0]!.url).toMatch(/\/v1\/ai\/limits\/reset$/)
+      expect(calls[0]!.method).toBe('POST')
+      expect(calls[0]!.headers?.['X-Org-Id']).toBe('acme')
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => ({
+          ok: false,
+          status: 429,
+          json: async () => ({ error: { message: 'Weekly free reset already used' } }),
+        })),
+      )
+      await expect(resetUsageLimits()).rejects.toThrow('Weekly free reset already used')
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

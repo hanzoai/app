@@ -1,7 +1,7 @@
 const { MARKS } = vi.hoisted(() => {
   const mark = () => () => null
   const one = { icon: mark(), make: mark() }
-  return { MARKS: { chat: one, dev: one, design: one, flow: one, tabs: one, library: one, scheduled: one, customize: one } }
+  return { MARKS: { chat: one, dev: one, design: one, studio: one, flow: one, tabs: one, library: one, scheduled: one, customize: one } }
 })
 vi.mock('./Usage', () => ({ UsageProvider: ({ children }: { children: unknown }) => children }))
 import { createElement, Fragment, type ReactNode } from 'react'
@@ -36,7 +36,12 @@ vi.mock('@hanzo/dev/builder', () => ({ MARKS,
   route: () => ({ kind: 'home' }),
   tabs: () => [],
 }))
-vi.mock('@hanzo/studio', () => ({ nav: () => [{ id: 'make', links: [] }], directorNav: () => [{ id: 'make', links: [] }], flowNav: () => [{ id: 'flow', links: [] }], Studio: stub('studio') }))
+vi.mock('@hanzo/studio', () => ({
+  nav: (_h: unknown, _go: unknown, mode?: string) => [{ id: mode === 'studio' ? 'studio-make' : 'design-make', links: [] }],
+  directorNav: () => [{ id: 'make', links: [] }],
+  flowNav: () => [{ id: 'flow', links: [] }],
+  Studio: ({ mode }: { mode?: string }) => createElement('div', { 'data-slot': 'studio', 'data-mode': mode ?? 'default' }),
+}))
 vi.mock('./lib/ai', () => ({ useAi: () => ({ client: null }) }))
 vi.mock('./Chat', () => ({ Chat: stub('chat') }))
 vi.mock('./Sidebar', () => ({ Sidebar: stub('app-column') }))
@@ -96,7 +101,8 @@ vi.mock('./lib/host', () => ({
   go: () => {},
   hosted: (id: string) => `/apps/${id}`,
   settings: () => '/settings',
-  design: (at: string) => `/design/${at}`,
+  design: (at: string) => (at ? `/design/${at}` : '/design'),
+  studio: (at: string) => (at ? `/studio/${at}` : '/studio'),
   flow: (at: string) => `/flow/${at}`,
   LEARN: '/learn',
   learn: (slug?: string) => (slug ? `/learn/${slug}` : '/learn'),
@@ -109,13 +115,17 @@ vi.mock('./lib/host', () => ({
         ? { mode: 'tabs' }
         : p === '/chat'
           ? { mode: 'chat', thread: null }
-          : p === '/flow' || p.startsWith('/flow/')
-            ? { mode: 'flow', at: p.slice('/flow/'.length) }
-            : p === '/learn' || p.startsWith('/learn/')
-              ? { mode: 'learn', slug: p.startsWith('/learn/') ? p.slice('/learn/'.length) : null }
-              : p === '/apps/crm'
-                ? { mode: 'hosted', id: 'crm' }
-                : null,
+          : p === '/design' || p.startsWith('/design/')
+            ? { mode: 'design', at: p.startsWith('/design/') ? p.slice('/design/'.length) : '' }
+            : p === '/studio' || p.startsWith('/studio/')
+              ? { mode: 'studio', at: p.startsWith('/studio/') ? p.slice('/studio/'.length) : '' }
+              : p === '/flow' || p.startsWith('/flow/')
+                ? { mode: 'flow', at: p.slice('/flow/'.length) }
+                : p === '/learn' || p.startsWith('/learn/')
+                  ? { mode: 'learn', slug: p.startsWith('/learn/') ? p.slice('/learn/'.length) : null }
+                  : p === '/apps/crm'
+                    ? { mode: 'hosted', id: 'crm' }
+                    : null,
 }))
 vi.mock('./Bar', () => ({ Bar: stub('app-bar') }))
 vi.mock('./view', () => ({ FOOT: 0, HEIGHT: '100dvh', TOP: 0, useView: () => () => {} }))
@@ -225,6 +235,18 @@ describe('Betas and hosted apps keep the sidebar column', () => {
     expect(html).toContain('data-slot="flow-pane"')
     expect(html).toContain('data-slot="app-column" data-places="1"')
     expect(html).not.toContain('data-slot="hosted-request"')
+  })
+
+  test('Design (/design) and Studio (/studio) mount distinct Studio instances with their own mode, while Flow (/flow) mounts FlowPane', async () => {
+    draw('/design')
+    draw('/studio')
+    await new Promise((r) => setTimeout(r, 0))
+    const designHtml = draw('/design')
+    expect(designHtml).toContain('data-slot="studio" data-mode="design"')
+    expect(designHtml).not.toContain('data-slot="flow-pane"')
+    const studioHtml = draw('/studio')
+    expect(studioHtml).toContain('data-slot="studio" data-mode="studio"')
+    expect(studioHtml).not.toContain('data-slot="flow-pane"')
   })
 
   test('Learn (/learn and /learn/:slug) renders LearnPane directly and passes learnNav places to the sidebar', async () => {

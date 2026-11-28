@@ -24,6 +24,8 @@ vi.mock('./icons', () => ({
   MARKS: {
     chat: { icon: mark('chat'), make: mark('chat-make') },
     dev: { icon: mark('dev'), make: mark('dev-make') },
+    design: { icon: mark('design'), make: mark('design-make') },
+    studio: { icon: mark('studio'), make: mark('studio-make') },
     tabs: { icon: mark('tabs'), make: mark('tabs-make') },
   },
 }))
@@ -104,8 +106,17 @@ describe('a phone’s bar', () => {
   test('New is Design’s own New row, named as the sidebar names it', () => {
     const html = top('design', [{ id: 'make', links: [{ id: 'new', label: 'New creation', icon: null, onPress: () => calls.push('creation') }] }])
     expect(html).toContain('aria-label="New creation"')
+    expect(html).toContain('data-mark="design-make"')
     pressed.get('bar-new')?.()
     expect(calls).toEqual(['creation'])
+  })
+
+  test('New is Studio’s own New row, with Studio’s mark', () => {
+    const html = top('studio', [{ id: 'make', links: [{ id: 'new', label: 'New creation', icon: null, onPress: () => calls.push('studio-creation') }] }])
+    expect(html).toContain('aria-label="New creation"')
+    expect(html).toContain('data-mark="studio-make"')
+    pressed.get('bar-new')?.()
+    expect(calls).toEqual(['studio-creation'])
   })
 
   test('Betas has nothing to make: no New, and the menu keeps the bar', () => {

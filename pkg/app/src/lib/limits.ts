@@ -9,19 +9,166 @@
  * bearer is the subject and `X-Org-Id` the organization this browser works in.
  */
 
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { ways } from '@hanzo/dev/plan'
 import { useLimits as useHeld, type UseLimits } from '@hanzo/ui/product/useLimits'
-import { paidPlan, type LimitAction, type LimitNotice, type Limits } from '@hanzo/ui/product/limits'
+import {
+  paidPlan,
+  type ClassLimit,
+  type LimitAction,
+  type LimitClass,
+  type LimitNotice,
+  type Limits,
+  type LimitState,
+  type LimitWindow,
+} from '@hanzo/ui/product/limits'
 import { english, format, type Format, type Say } from '@hanzo/i18n'
 import { api } from './api'
 import { payUrl } from './pay'
 import { org, scope } from './session'
+
+/** Free weekly usage reset allowance reported by `GET /v1/ai/limits`. */
+export interface LimitResetAllowance {
+  available: boolean
+  used?: number
+  limit?: number
+  next_at?: string | null
+  resets_at?: string | null
+  last_at?: string | null
+}
+
+/** Class limit extended with `unbounded` (e.g. `enterprise` / `unlimited` Hanzo models). */
+export interface ExtendedClassLimit extends ClassLimit {
+  unbounded?: boolean
+}
+
+/** Limits extended with top-level `session`, `day`, `reset`, and per-class `unbounded`. */
+export interface ExtendedLimits extends Limits {
+  classes: Partial<Record<LimitClass, ExtendedClassLimit>>
+  session?: LimitWindow | null
+  day?: LimitWindow | null
+  reset?: LimitResetAllowance | null
+}
+
+/** `UseLimits` carrying the extended fields parsed from the raw `/v1/ai/limits` body. */
+export interface UseExtendedLimits extends Omit<UseLimits, 'limits'> {
+  limits: ExtendedLimits | null
+}
+
+const LIMIT_STATES: readonly LimitState[] = ['ok', 'near', 'limited']
+
+function asRecord(v: unknown): Record<string, unknown> | null {
+  return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null
+}
+
+function asPercent(v: unknown): number | null {
+  return typeof v === 'number' && Number.isFinite(v) ? Math.min(100, Math.max(0, Math.round(v))) : null
+}
+
+function asState(v: unknown): LimitState | null {
+  return typeof v === 'string' && (LIMIT_STATES as readonly string[]).includes(v) ? (v as LimitState) : null
+}
+
+function asText(v: unknown): string | null {
+  return typeof v === 'string' ? v : null
+}
+
+function parseWindow(v: unknown): LimitWindow | null {
+  const o = asRecord(v)
+  const percent = asPercent(o?.percent)
+  if (percent === null) return null
+  return {
+    percent,
+    state: asState(o?.state) ?? (percent >= 80 ? 'near' : 'ok'),
+    resets_at: asText(o?.resets_at),
+  }
+}
+
+function parseReset(v: unknown): LimitResetAllowance | null {
+  const o = asRecord(v)
+  if (!o) return null
+  const available =
+    typeof o.available === 'boolean'
+      ? o.available
+      : typeof o.remaining === 'number'
+        ? o.remaining > 0
+        : typeof o.limit === 'number' && typeof o.used === 'number'
+          ? o.used < o.limit
+          : false
+  return {
+    available,
+    ...(typeof o.used === 'number' ? { used: o.used } : {}),
+    ...(typeof o.limit === 'number' ? { limit: o.limit } : {}),
+    ...(o.next_at !== undefined ? { next_at: asText(o.next_at) } : {}),
+    ...(o.resets_at !== undefined ? { resets_at: asText(o.resets_at) } : {}),
+    ...(o.last_at !== undefined ? { last_at: asText(o.last_at) } : {}),
+  }
+}
+
+/**
+ * Preserves top-level `session`, `day`, `reset`, and per-class `unbounded` fields from the raw
+ * `GET /v1/ai/limits` response alongside `@hanzo/ui`'s parsed `Limits`.
+ */
+export function enrichLimits(parsed: Limits | null, raw: unknown): ExtendedLimits | null {
+  if (!parsed) return null
+  const o = asRecord(raw)
+  const rawClasses = asRecord(o?.classes)
+  const classes: Partial<Record<LimitClass, ExtendedClassLimit>> = {}
+  for (const key of ['ours', 'premium', 'free'] as const) {
+    const base = parsed.classes[key]
+    const rawClass = asRecord(rawClasses?.[key])
+    const isUnbounded = rawClass?.unbounded === true || (key === 'ours' && parsed.plan === 'unlimited')
+    if (base) {
+      classes[key] = isUnbounded ? { ...base, unbounded: true } : { ...base }
+    } else if (isUnbounded) {
+      classes[key] = {
+        percent: 0,
+        state: 'ok',
+        resets_at: asText(rawClass?.resets_at),
+        paying: 'plan',
+        unbounded: true,
+      }
+    }
+  }
+  const session = parseWindow(o?.session)
+  const day = parseWindow(o?.day)
+  const reset = parseReset(o?.reset)
+  return {
+    ...parsed,
+    classes,
+    ...(session ? { session } : {}),
+    ...(day ? { day } : {}),
+    ...(reset ? { reset } : {}),
+  }
+}
 
 /** Reads the limits as whoever holds the bearer, in this browser's organization. */
 export async function readLimits(signal: AbortSignal): Promise<unknown> {
   const res = await fetch(`${api()}/v1/ai/limits`, { headers: scope(), signal })
   if (!res.ok) throw Object.assign(new Error(`Limits answered ${res.status}`), { status: res.status })
   return res.json()
+}
+
+/**
+ * Claims the organization's 1×/week free usage reset (`POST /v1/ai/limits/reset`).
+ * Throws with the server's message if unavailable or refused.
+ */
+export async function resetUsageLimits(): Promise<unknown> {
+  const res = await fetch(`${api()}/v1/ai/limits/reset`, {
+    method: 'POST',
+    headers: { ...scope(), 'Content-Type': 'application/json' },
+  })
+  if (res.ok) return res.json().catch(() => null)
+  const body = (await res.json().catch(() => null)) as { error?: { message?: unknown } | string; message?: unknown } | null
+  const said =
+    typeof body?.error === 'string'
+      ? body.error
+      : typeof body?.error?.message === 'string'
+        ? body.error.message
+        : typeof body?.message === 'string'
+          ? body.message
+          : ''
+  throw Object.assign(new Error(said || `Usage reset answered ${res.status}`), { status: res.status })
 }
 
 /**
@@ -46,8 +193,28 @@ export async function setCreditsAfterAllowance(on: boolean): Promise<void> {
  * fallback model id into the name the reader knows. Signed out reads nothing,
  * and still hears a refusal from a served call.
  */
-export const useLimits = (enabled = true, org: string | null = null, name?: (id: string) => string): UseLimits =>
-  useHeld(enabled ? readLimits : null, org, name)
+export function useLimits(enabled = true, orgId: string | null = null, name?: (id: string) => string): UseExtendedLimits {
+  const rawRef = useRef<{ org: string | null; body: unknown }>({ org: orgId, body: null })
+  useEffect(() => {
+    if (rawRef.current.org !== orgId) {
+      rawRef.current = { org: orgId, body: null }
+    }
+  }, [orgId])
+  const read = useCallback(
+    async (signal: AbortSignal) => {
+      const body = await readLimits(signal)
+      rawRef.current = { org: orgId, body }
+      return body
+    },
+    [orgId],
+  )
+  const held = useHeld(enabled ? read : null, orgId, name)
+  const enriched = useMemo(
+    () => enrichLimits(held.limits, rawRef.current.org === orgId ? rawRef.current.body : null),
+    [held.limits, orgId],
+  )
+  return useMemo(() => ({ ...held, limits: enriched }), [held, enriched])
+}
 
 /**
  * Whether a reader's dollar spend may be shown: their limits came back and name no

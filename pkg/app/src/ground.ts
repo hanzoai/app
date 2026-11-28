@@ -1,8 +1,9 @@
 /**
  * One theme, Dev's: a pure black ground and flat panes split by hairline dividers, no
  * floating card, no corner, no lens (@hanzo/design `--background` is the ground in both
- * schemes). A PANE is only a fill and a hairline on its start edge, where it meets the
- * sidebar or the pane beside it. The `--pane-*` tokens are @hanzo/design's (0.5.45), flat.
+ * schemes). A PANE is only a fill and a whisper-subtle hairline (`--edge`, never `--border`
+ * which third-party CSS can override to bright light zinc) on its start edge, where it
+ * meets the sidebar or the pane beside it.
  */
 export const pane = (fill = 'var(--background)') =>
   ({
@@ -12,8 +13,15 @@ export const pane = (fill = 'var(--background)') =>
     borderInlineEndWidth: 0,
     borderInlineStartWidth: 1,
     borderStyle: 'solid',
-    borderColor: 'var(--pane-edge)',
+    borderColor: 'var(--edge)',
   }) as const
+
+/**
+ * Shared top inset (px) for the desktop Rail and Sidebar so the top-left sidebar toggle,
+ * active mode title (`Dev`, `Chat`, ...), filter-triangle toggle, and search button share
+ * the exact same horizontal centerline (0px offset).
+ */
+export const TOP_INSET = 8
 
 /**
  * A phone's head row, px: its bar and the drawer's title row are this high and

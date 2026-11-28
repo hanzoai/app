@@ -71,8 +71,9 @@ const rooted = (): boolean => typeof window !== 'undefined' && apex(window.locat
 /** Chat's own address on this host: `/` on the app's, /chat on every other. */
 export const chat = (): string => (rooted() ? '/' : CHAT)
 /**
- * Design: making images, audio, video and documents, and editing them (@hanzo/studio), at /design.
- * /studio was the same screen under a second name; its addresses (hanzo.ai still serves them) open Design.
+ * Design: 2D visual design canvas & creation (@hanzo/studio `mode="design"`), at /design.
+ * Studio: multi-modal media / film / audio / 3D production studio (@hanzo/studio `mode="studio"`), at /studio.
+ * Flow: single canonical visual agentic workflow builder & scheduler, at /flow.
  */
 export const STUDIO = '/studio'
 export const DESIGN = '/design'
@@ -136,7 +137,9 @@ const inside = (id: string): boolean => BETAS.some((b) => b.id === id && b.embed
 
 /** Design at an address of its own (@hanzo/studio `route`): '' is New, /design. */
 export const design = (at: string): string => (at ? `${DESIGN}/${at.replace(/^\/+/, '')}` : DESIGN)
-/** Flow at an address of its own (@hanzo/studio `FlowStudio`): '' is New, /flow. */
+/** Studio at an address of its own (@hanzo/studio `route`): '' is New, /studio. */
+export const studio = (at: string): string => (at ? `${STUDIO}/${at.replace(/^\/+/, '')}` : STUDIO)
+/** Flow at an address of its own (`FlowPane`): '' is New, /flow. */
 export const flow = (at: string): string => (at ? `${FLOW}/${at.replace(/^\/+/, '')}` : FLOW)
 
 /** Chat on a conversation, or Chat itself for a new one (`chat`: `/` on the app's host). */
@@ -196,11 +199,12 @@ export function app(at: string): string {
   return r.kind === 'settings' && (to === SETTINGS || to.startsWith(`${SETTINGS}/`)) ? settings(r.section) : DEV + to
 }
 
-/** A place in the app: Chat on a conversation or none, or Dev at a builder address. */
+/** A place in the app: Chat on a conversation or none, Dev at a builder address, Design, Studio, Flow, etc. */
 export type Place =
   | { mode: 'chat'; thread: string | null }
   | { mode: 'dev'; at: string }
   | { mode: 'design'; at: string }
+  | { mode: 'studio'; at: string }
   | { mode: 'flow'; at: string }
   | { mode: 'tabs' }
   | { mode: 'research'; tab?: ScienceSubroute }
@@ -225,9 +229,9 @@ export function place(pathname: string): Place | null {
     }
   }
   if (p === DEV || p.startsWith(`${DEV}/`)) return { mode: 'dev', at: path(parse(p.slice(DEV.length))) }
-  if (p === STUDIO || p.startsWith(`${STUDIO}/`)) return place(`${DESIGN}${p.slice(STUDIO.length)}`)
-  // Design kept a Library of its own; the app's one Library lists the same things, every kind, so its old address opens that.
-  if (p === `${DESIGN}/library`) return { mode: 'dev', at: '-/artifacts' }
+  // Design and Studio old Library routes still open the app's one Library.
+  if (p === `${DESIGN}/library` || p === `${STUDIO}/library`) return { mode: 'dev', at: '-/artifacts' }
+  if (p === STUDIO || p.startsWith(`${STUDIO}/`)) return { mode: 'studio', at: p.slice(STUDIO.length + 1) }
   if (p === DESIGN || p.startsWith(`${DESIGN}/`)) return { mode: 'design', at: p.slice(DESIGN.length + 1) }
   if (p === FLOW || p.startsWith(`${FLOW}/`)) return { mode: 'flow', at: p.slice(FLOW.length + 1) }
   if (p === TERMINALS) return { mode: 'tabs' }
@@ -294,6 +298,7 @@ export function page(pathname: string): string {
   if (at.mode === 'cyber') return at.tab ? `${CYBER}/${at.tab}` : CYBER
   if (at.mode === 'learn') return at.slug ? `${LEARN}/:slug` : LEARN
   if (at.mode === 'design') return DESIGN
+  if (at.mode === 'studio') return STUDIO
   if (at.mode === 'flow') return FLOW
   if (at.mode === 'beta') return BETA
   if (at.mode === 'hosted') return `${HOSTED}/:id`
@@ -381,7 +386,7 @@ export function remember(mode: Place['mode']): void {
 export function resume(): string {
   try {
     const kept = window.localStorage.getItem(MODE)
-    return kept === 'dev' ? DEV : kept === 'studio' || kept === 'design' ? DESIGN : kept === 'flow' ? FLOW : kept === 'learn' ? LEARN : kept === 'tabs' ? TERMINALS : kept === 'research' || kept === 'science' ? SCIENCE : chat()
+    return kept === 'dev' ? DEV : kept === 'studio' ? STUDIO : kept === 'design' ? DESIGN : kept === 'flow' ? FLOW : kept === 'learn' ? LEARN : kept === 'tabs' ? TERMINALS : kept === 'research' || kept === 'science' ? SCIENCE : chat()
   } catch {
     return chat()
   }

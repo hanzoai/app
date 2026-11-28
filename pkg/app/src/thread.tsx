@@ -66,6 +66,9 @@ import {
   Input,
   SizableText,
   Text,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   XStack,
   YStack,
   toast,
@@ -221,7 +224,7 @@ const mac = (): boolean => typeof navigator !== 'undefined' && /Mac|iPhone|iPad|
 type Dialogue = 'rename' | 'delete' | 'deleteMany' | 'share' | 'organize'
 
 /** What a list holds, and the menu's words for it. */
-export type Noun = 'chat' | 'run' | 'design'
+export type Noun = 'chat' | 'run' | 'design' | 'studio'
 
 const FOREVER = phrase('“{title}” is deleted for good, with every link it was shared by. To keep it out of the list instead, archive it.')
 const MANY = phrase('These are deleted for good, with every link they were shared by. To keep them out of the list instead, archive them.')
@@ -266,6 +269,19 @@ const NOUNS = {
     gone: phrase('“{title}” is deleted for good. To keep it out of the list instead, archive it.'),
     goneMany: phrase('These are deleted for good. To keep them out of the list instead, archive them.'),
   },
+  studio: {
+    archived: phrase('Archived creation'),
+    archivedMany: phrase('Archived {n} creations'),
+    unarchived: phrase('Unarchived creation'),
+    unarchivedMany: phrase('Unarchived {n} creations'),
+    options: phrase('Studio options'),
+    rename: phrase('Rename creation'),
+    name: phrase('Creation title'),
+    remove: phrase('Delete creation?'),
+    removeMany: phrase('Delete {n} creations?'),
+    gone: phrase('“{title}” is deleted for good. To keep it out of the list instead, archive it.'),
+    goneMany: phrase('These are deleted for good. To keep them out of the list instead, archive them.'),
+  },
 } as const
 
 /** What a row needs of the list's menu. */
@@ -276,6 +292,8 @@ interface Menus {
   list: string
   /** The conversation the ⋯ that was just pressed belongs to, and the ⋯. */
   aim: (t: Thread, from: HTMLElement) => void
+  /** Synchronously aim a row before the context menu opens (right-click or long-press). */
+  pointThread: (t: Thread, rowEl: Element | null) => void
   /** The conversation whose menu is open, or null. */
   open: string | null
   /** The conversation currently being renamed inline, or null. */
@@ -286,9 +304,9 @@ interface Menus {
   cancelRename: () => void
   /** Currently multi-selected conversation IDs. */
   selected: Set<string>
-  /** Whether iOS-style selection mode is active. */
+  /** Whether multi-selection mode is active. */
   selecting: boolean
-  /** Enter or exit iOS-style selection mode. */
+  /** Enter or exit multi-selection mode. */
   setSelectMode: (v: boolean) => void
   /** Anchor conversation ID for Shift-click range selection. */
   anchorRef: { current: string | null }
@@ -296,7 +314,15 @@ interface Menus {
   dragStartRef: { current: string | null }
   /** Drag-select start Y coordinate. */
   dragStartYRef: { current: number }
-  /** Whether the current mouse gesture performed a drag selection. */
+  /** Drag-select start X coordinate (for touch scroll vs drag discrimination). */
+  dragStartXRef: { current: number }
+  /** Pointer type of the active drag candidate (`mouse` | `touch` | `pen`). */
+  dragPointerTypeRef: { current: string }
+  /** Whether a touch-drag sweep is actively engaged (either checkbox drag or post-long-press drag). */
+  touchDragActiveRef: { current: boolean }
+  /** Pending touch long-press timer that enters select + touch-drag mode. */
+  longPressTimerRef: { current: ReturnType<typeof setTimeout> | null }
+  /** Whether the current pointer gesture performed a drag selection. */
   didDragSelectRef: { current: boolean }
   /** Active conversation ID. */
   active: string | null
@@ -415,10 +441,24 @@ export function ConversationMenu({
   const [selectMode, setSelectMode] = useState(false)
   const [organizeGroup, setOrganizeGroup] = useState('')
   const anchorRef = useRef<string | null>(active)
+  const prevActiveRef = useRef<string | null>(active)
   const dragStartRef = useRef<string | null>(null)
   const dragStartYRef = useRef<number>(0)
+  const dragStartXRef = useRef<number>(0)
+  const dragPointerTypeRef = useRef<string>('mouse')
+  const touchDragActiveRef = useRef<boolean>(false)
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const didDragSelectRef = useRef<boolean>(false)
   const selecting = selectMode || selected.size > 0
+  const selectingRef = useRef(selecting)
+  selectingRef.current = selecting
+
+  useEffect(() => {
+    if (active !== prevActiveRef.current) {
+      prevActiveRef.current = active
+      if (!selectingRef.current) anchorRef.current = active
+    }
+  }, [active])
 
   const orderedIds = useCallback((): string[] => {
     if (typeof document === 'undefined') return [...threads.keys()]
@@ -469,34 +509,86 @@ export function ConversationMenu({
   }, [threads])
 
   useEffect(() => {
+    const clearLongPress = () => {
+      if (longPressTimerRef.current !== null) {
+        clearTimeout(longPressTimerRef.current)
+        longPressTimerRef.current = null
+      }
+    }
+    const rowAtPoint = (x: number, y: number): string | null => {
+      if (typeof document === 'undefined' || typeof document.elementFromPoint !== 'function') return null
+      const hit = document.elementFromPoint(x, y)?.closest?.('[data-thread]')
+      if (!hit || hit.getAttribute('data-menu-of') !== list) return null
+      return hit.getAttribute('data-thread') ?? null
+    }
     const onMove = (e: PointerEvent) => {
       const startId = dragStartRef.current
       if (!startId) return
-      if ((e.buttons & 1) !== 1) {
+      const isMouse = e.pointerType === 'mouse' || (!e.pointerType && dragPointerTypeRef.current === 'mouse')
+      if (isMouse && (e.buttons & 1) !== 1) {
         dragStartRef.current = null
         return
       }
+      const dx = Math.abs(e.clientX - dragStartXRef.current)
       const dy = Math.abs(e.clientY - dragStartYRef.current)
-      const hit = typeof document !== 'undefined' ? document.elementFromPoint(e.clientX, e.clientY)?.closest?.('[data-thread]') : null
-      const hitId = hit?.getAttribute('data-thread') ?? null
-      const inThisList = hit ? hit.getAttribute('data-menu-of') === list : false
-      if (dy > 6 || (hitId && inThisList && hitId !== startId)) {
+      if (!isMouse) {
+        // Before touch-drag engages, a finger move means the user is scrolling the sidebar naturally.
+        if (!touchDragActiveRef.current) {
+          if (dx > 8 || dy > 8) {
+            clearLongPress()
+            dragStartRef.current = null
+          }
+          return
+        }
+        const hitId = rowAtPoint(e.clientX, e.clientY)
+        if (hitId) {
+          didDragSelectRef.current = true
+          window.getSelection?.()?.removeAllRanges?.()
+          selectRange(startId, hitId, false)
+        }
+        return
+      }
+      const hitId = rowAtPoint(e.clientX, e.clientY)
+      // Desktop drag-select engages as soon as the pointer enters another row (or drags vertically in select mode).
+      if ((hitId && hitId !== startId) || (selectingRef.current && dy > 8)) {
         didDragSelectRef.current = true
         window.getSelection?.()?.removeAllRanges?.()
-        const targetId = hitId && inThisList ? hitId : startId
-        selectRange(startId, targetId, e.metaKey || e.ctrlKey)
+        selectRange(startId, hitId ?? startId, e.metaKey || e.ctrlKey)
+      }
+    }
+    const onTouchMove = (e: TouchEvent) => {
+      if (!touchDragActiveRef.current || !dragStartRef.current) return
+      const touch = e.touches[0]
+      if (!touch) return
+      // Prevent vertical scroll ONLY while actively sweeping a touch multi-selection.
+      if (e.cancelable) e.preventDefault()
+      const hitId = rowAtPoint(touch.clientX, touch.clientY)
+      if (hitId) {
+        didDragSelectRef.current = true
+        selectRange(dragStartRef.current, hitId, false)
       }
     }
     const onUp = () => {
+      clearLongPress()
       dragStartRef.current = null
+      touchDragActiveRef.current = false
     }
     window.addEventListener('pointermove', onMove, { passive: true })
+    window.addEventListener('touchmove', onTouchMove, { passive: false })
     window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
     window.addEventListener('mouseup', onUp)
+    window.addEventListener('touchend', onUp)
+    window.addEventListener('touchcancel', onUp)
     return () => {
+      clearLongPress()
       window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('touchmove', onTouchMove)
       window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
       window.removeEventListener('mouseup', onUp)
+      window.removeEventListener('touchend', onUp)
+      window.removeEventListener('touchcancel', onUp)
     }
   }, [list, selectRange])
 
@@ -680,17 +772,48 @@ export function ConversationMenu({
     setAimed(t.id)
   }, [])
 
-  const point = (e: { target: EventTarget | null }) => {
-    const row = (e.target as Element | null)?.closest?.('[data-thread]') ?? null
-    pointed.current = row ? (threads.get(row.getAttribute('data-thread') ?? '') ?? null) : null
-    if (pointed.current) {
-      from.current = own(row)
-      if (selected.size > 1 && !selected.has(pointed.current.id)) {
-        const pid = pointed.current.id
-        setSelected((prev) => new Set([...prev, pid]))
-      }
+  const selectedRef = useRef(selected)
+  selectedRef.current = selected
+
+  const pointThread = useCallback((thread: Thread, row: Element | null) => {
+    pointed.current = thread
+    from.current = own(row)
+    if (selectedRef.current.size > 1 && !selectedRef.current.has(thread.id)) {
+      const pid = thread.id
+      setSelected((prev) => new Set([...prev, pid]))
     }
-  }
+  }, [])
+
+  const point = useCallback(
+    (e: { target: EventTarget | null }) => {
+      const row = (e.target as Element | null)?.closest?.('[data-thread]') ?? null
+      const belongs = row && row.getAttribute('data-menu-of') === list
+      const found = belongs ? (threads.get(row.getAttribute('data-thread') ?? '') ?? null) : null
+      pointed.current = found
+      if (found) {
+        pointThread(found, row)
+      }
+    },
+    [list, threads, pointThread],
+  )
+
+  // Native capture-phase contextmenu listener guarantees `pointed.current` is populated
+  // synchronously BEFORE Radix/Tamagui ContextMenuTrigger's `handleOpen` runs.
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const onCapture = (e: globalThis.MouseEvent) => {
+      const row = (e.target as Element | null)?.closest?.('[data-thread]') ?? null
+      if (!row || row.getAttribute('data-menu-of') !== list) {
+        pointed.current = null
+        return
+      }
+      const found = threads.get(row.getAttribute('data-thread') ?? '') ?? null
+      if (found) pointThread(found, row)
+      else pointed.current = null
+    }
+    document.addEventListener('contextmenu', onCapture, true)
+    return () => document.removeEventListener('contextmenu', onCapture, true)
+  }, [list, threads, pointThread])
 
   // A menu shut by Escape, a choice or a press outside gives focus back where it
   // was opened from — unless what was chosen opened a dialog, which takes it.
@@ -729,6 +852,7 @@ export function ConversationMenu({
       noun,
       list,
       aim,
+      pointThread,
       open: menu ? aimed : null,
       renaming,
       commitRename,
@@ -739,6 +863,10 @@ export function ConversationMenu({
       anchorRef,
       dragStartRef,
       dragStartYRef,
+      dragStartXRef,
+      dragPointerTypeRef,
+      touchDragActiveRef,
+      longPressTimerRef,
       didDragSelectRef,
       active,
       selectRange,
@@ -746,7 +874,7 @@ export function ConversationMenu({
       clearSelect,
       hrefOf,
     }),
-    [noun, list, aim, menu, aimed, renaming, commitRename, cancelRename, selected, selecting, active, selectRange, toggleSelect, clearSelect, hrefOf],
+    [noun, list, aim, pointThread, menu, aimed, renaming, commitRename, cancelRename, selected, selecting, active, selectRange, toggleSelect, clearSelect, hrefOf],
   )
 
   // The menu is named by its conversation: gui would name it by its trigger, the
@@ -798,6 +926,17 @@ export function ConversationMenu({
           shortcut: 'Esc',
           run: () => clearSelect(),
         },
+        { key: 'batch-gone', line: true },
+        {
+          key: 'batch-delete',
+          label: t('Delete ({n})', { n: selectedThreads.length }),
+          icon: <Trash2 size={16} aria-hidden />,
+          destructive: true,
+          run: () => {
+            setMenu(null)
+            setDialogue('deleteMany')
+          },
+        },
       ]
     : subject
       ? [
@@ -816,6 +955,16 @@ export function ConversationMenu({
             shortcut: said('pin', apple),
             keys: named('pin'),
             run: () => void act.pin(subject),
+          },
+          {
+            key: 'select',
+            label: t('Select'),
+            icon: <CheckSquare size={16} aria-hidden />,
+            run: () => {
+              setMenu(null)
+              toggleSelect(subject.id)
+              anchorRef.current = subject.id
+            },
           },
           ...(canShare ? [{ key: 'share', label: t('Share…'), icon: <Share2 size={16} aria-hidden />, run: () => ask('share', subject) }] : []),
           ...(onSchedule ? [{ key: 'schedule', label: t('Schedule…'), icon: <Clock size={16} aria-hidden />, run: () => onSchedule(subject) }] : []),
@@ -891,152 +1040,220 @@ export function ConversationMenu({
         </DropdownMenuContent>
       </DropdownMenu>
       {(primary && selecting) || (!primary && selected.size > 0) ? (
-        <YStack
+        <XStack
           data-slot="batch-bar"
-          gap="$1.5"
-          p="$2"
-          mt="$2"
-          rounded="$4"
+          items="center"
+          justify="space-between"
+          gap="$1"
+          px="$1.5"
+          py="$1"
+          mt="$1.5"
+          rounded="$3"
           bg="$panel"
-          borderWidth={1}
-          borderColor="var(--border-strong)"
+          borderWidth={0}
+          flexWrap="wrap"
           // Pinned to the list's foot, over the rows (their marks sit at 2).
           position="sticky"
           b={0}
           z="var(--z-raised)"
           $platform-web={{
             backdropFilter: 'blur(16px)',
-            boxShadow: 'var(--shadow-lg)',
+            boxShadow: 'var(--shadow-floating)',
           }}
         >
-          <XStack items="center" justify="space-between" gap="$2" px="$1">
+          <XStack
+            render="button"
+            {...({ type: 'button', title: allSelected ? t('Deselect all') : t('Select all') } as object)}
+            data-slot="batch-select-all"
+            aria-label={allSelected ? t('Deselect all') : t('Select all')}
+            cursor="pointer"
+            height={28}
+            px="$1.5"
+            rounded="$2"
+            borderWidth={0}
+            bg="transparent"
+            items="center"
+            gap="$1"
+            shrink={0}
+            onClick={() => {
+              if (allSelected) setSelected(new Set())
+              else setSelected(new Set(orderedIds()))
+            }}
+            hoverStyle={{ bg: '$hover' }}
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+            $max-sm={{ minH: 40 }}
+          >
             <XStack
-              render="button"
-              {...({ type: 'button' } as object)}
-              cursor="pointer"
-              px="$1.5"
-              py="$0.5"
-              rounded="$2"
-              onClick={() => {
-                if (allSelected) setSelected(new Set())
-                else setSelected(new Set(orderedIds()))
-              }}
-              hoverStyle={{ bg: '$hover' }}
-              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
-              $max-sm={{ minH: 44, items: 'center' }}
+              width={14}
+              height={14}
+              rounded={999}
+              items="center"
+              justify="center"
+              borderWidth={1.5}
+              borderStyle="solid"
+              bg={allSelected ? 'var(--foreground)' : 'transparent'}
+              borderColor={allSelected ? 'var(--foreground)' : 'var(--muted-foreground)'}
+              aria-hidden
             >
-              <SizableText size="$1" fontWeight="500" color="$soft">
-                {allSelected ? t('Deselect all') : t('Select all')}
-              </SizableText>
+              {allSelected ? <Check size={9} strokeWidth={3} color="var(--background)" aria-hidden /> : null}
             </XStack>
-            <SizableText size="$1" fontWeight="600" color="$ink" numberOfLines={1}>
-              {t('{n} selected', { n: selectedThreads.length })}
+            <SizableText size="$1" fontWeight="600" color="$ink" fontVariant={['tabular-nums']} numberOfLines={1}>
+              {String(selectedThreads.length)}
             </SizableText>
-            <XStack
-              render="button"
-              {...({ type: 'button' } as object)}
-              aria-label={t('Clear selection')}
-              cursor="pointer"
-              px="$1.5"
-              py="$0.5"
-              rounded="$2"
-              onClick={clearSelect}
-              hoverStyle={{ bg: '$hover' }}
-              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
-              $max-sm={{ minH: 44, items: 'center' }}
-            >
-              <SizableText size="$1" fontWeight="600" color="$ink">
-                {t('Done')}
-              </SizableText>
-            </XStack>
           </XStack>
-          <XStack items="center" justify="space-between" gap="$1" pt="$0.5" flexWrap="wrap">
-            <XStack
-              render="button"
-              {...({ type: 'button' } as object)}
-              aria-label={t(allPinned ? 'Unpin selected' : 'Pin selected')}
-              disabled={!selectedThreads.length}
-              opacity={selectedThreads.length ? 1 : 0.4}
-              flex={1}
-              minW={52}
-              height={28}
-              px="$1.5"
-              rounded="$3"
-              items="center"
-              justify="center"
-              gap={4}
-              borderWidth={1}
-              borderColor="transparent"
-              cursor={selectedThreads.length ? 'pointer' : 'default'}
-              transition="quickest"
-              hoverStyle={selectedThreads.length ? { bg: '$hover', borderColor: 'var(--border-strong)' } : undefined}
-              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
-              $max-sm={{ minH: 44 }}
-              onClick={() => batchPin(selectedThreads)}
-            >
-              {allPinned ? <PinOff size={13} color="var(--foreground)" aria-hidden /> : <Pin size={13} color="var(--foreground)" aria-hidden />}
-              <SizableText size="$1" fontWeight="500" color="$ink">
-                {t(allPinned ? 'Unpin' : 'Pin')}
-              </SizableText>
-            </XStack>
-            <XStack
-              render="button"
-              {...({ type: 'button' } as object)}
-              aria-label={t(allArchived ? 'Unarchive selected' : 'Archive selected')}
-              disabled={!selectedThreads.length}
-              opacity={selectedThreads.length ? 1 : 0.4}
-              flex={1}
-              minW={56}
-              height={28}
-              px="$1.5"
-              rounded="$3"
-              items="center"
-              justify="center"
-              gap={4}
-              borderWidth={1}
-              borderColor="transparent"
-              cursor={selectedThreads.length ? 'pointer' : 'default'}
-              transition="quickest"
-              hoverStyle={selectedThreads.length ? { bg: '$hover', borderColor: 'var(--border-strong)' } : undefined}
-              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
-              $max-sm={{ minH: 44 }}
-              onClick={() => batchArchive(selectedThreads)}
-            >
-              {allArchived ? <ArchiveRestore size={13} color="var(--foreground)" aria-hidden /> : <Archive size={13} color="var(--foreground)" aria-hidden />}
-              <SizableText size="$1" fontWeight="500" color="$ink">
-                {t(allArchived ? 'Unarchive' : 'Archive')}
-              </SizableText>
-            </XStack>
-            <XStack
-              render="button"
-              {...({ type: 'button' } as object)}
-              aria-label={t('Organize selected')}
-              disabled={!selectedThreads.length}
-              opacity={selectedThreads.length ? 1 : 0.4}
-              flex={1}
-              minW={52}
-              height={28}
-              px="$1.5"
-              rounded="$3"
-              items="center"
-              justify="center"
-              gap={4}
-              borderWidth={1}
-              borderColor="transparent"
-              cursor={selectedThreads.length ? 'pointer' : 'default'}
-              transition="quickest"
-              hoverStyle={selectedThreads.length ? { bg: '$hover', borderColor: 'var(--border-strong)' } : undefined}
-              focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
-              $max-sm={{ minH: 44 }}
-              onClick={() => setDialogue('organize')}
-            >
-              <FolderInput size={13} color="var(--foreground)" aria-hidden />
-              <SizableText size="$1" fontWeight="500" color="$ink">
-                {t('Group')}
-              </SizableText>
-            </XStack>
+
+          <XStack items="center" justify="center" gap={2} shrink={0}>
+            <Tooltip placement="top" offset={6}>
+              <TooltipTrigger asChild>
+                <XStack
+                  render="button"
+                  {...({ type: 'button', title: t(allPinned ? 'Unpin' : 'Pin') } as object)}
+                  data-slot="batch-pin"
+                  aria-label={t(allPinned ? 'Unpin selected' : 'Pin selected')}
+                  disabled={!selectedThreads.length}
+                  opacity={selectedThreads.length ? 1 : 0.35}
+                  width={28}
+                  height={28}
+                  rounded="$2"
+                  items="center"
+                  justify="center"
+                  borderWidth={0}
+                  bg="transparent"
+                  cursor={selectedThreads.length ? 'pointer' : 'default'}
+                  transition="quickest"
+                  hoverStyle={selectedThreads.length ? { bg: '$hover' } : undefined}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  $max-sm={{ minW: 40, minH: 40 }}
+                  onClick={() => batchPin(selectedThreads)}
+                >
+                  {allPinned ? <PinOff size={14} color="var(--foreground)" aria-hidden /> : <Pin size={14} color="var(--foreground)" aria-hidden />}
+                </XStack>
+              </TooltipTrigger>
+              <TooltipContent px="$2" py="$1" rounded="$2" bg="var(--popover)" borderWidth={1} borderColor="$edge" z="var(--z-tooltip)">
+                <Text fontSize="$1" color="$ink">{t(allPinned ? 'Unpin' : 'Pin')}</Text>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip placement="top" offset={6}>
+              <TooltipTrigger asChild>
+                <XStack
+                  render="button"
+                  {...({ type: 'button', title: t(allArchived ? 'Unarchive' : 'Archive') } as object)}
+                  data-slot="batch-archive"
+                  aria-label={t(allArchived ? 'Unarchive selected' : 'Archive selected')}
+                  disabled={!selectedThreads.length}
+                  opacity={selectedThreads.length ? 1 : 0.35}
+                  width={28}
+                  height={28}
+                  rounded="$2"
+                  items="center"
+                  justify="center"
+                  borderWidth={0}
+                  bg="transparent"
+                  cursor={selectedThreads.length ? 'pointer' : 'default'}
+                  transition="quickest"
+                  hoverStyle={selectedThreads.length ? { bg: '$hover' } : undefined}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  $max-sm={{ minW: 40, minH: 40 }}
+                  onClick={() => batchArchive(selectedThreads)}
+                >
+                  {allArchived ? <ArchiveRestore size={14} color="var(--foreground)" aria-hidden /> : <Archive size={14} color="var(--foreground)" aria-hidden />}
+                </XStack>
+              </TooltipTrigger>
+              <TooltipContent px="$2" py="$1" rounded="$2" bg="var(--popover)" borderWidth={1} borderColor="$edge" z="var(--z-tooltip)">
+                <Text fontSize="$1" color="$ink">{t(allArchived ? 'Unarchive' : 'Archive')}</Text>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip placement="top" offset={6}>
+              <TooltipTrigger asChild>
+                <XStack
+                  render="button"
+                  {...({ type: 'button', title: t('Group') } as object)}
+                  data-slot="batch-organize"
+                  aria-label={t('Organize selected')}
+                  disabled={!selectedThreads.length}
+                  opacity={selectedThreads.length ? 1 : 0.35}
+                  width={28}
+                  height={28}
+                  rounded="$2"
+                  items="center"
+                  justify="center"
+                  borderWidth={0}
+                  bg="transparent"
+                  cursor={selectedThreads.length ? 'pointer' : 'default'}
+                  transition="quickest"
+                  hoverStyle={selectedThreads.length ? { bg: '$hover' } : undefined}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  $max-sm={{ minW: 40, minH: 40 }}
+                  onClick={() => setDialogue('organize')}
+                >
+                  <FolderInput size={14} color="var(--foreground)" aria-hidden />
+                </XStack>
+              </TooltipTrigger>
+              <TooltipContent px="$2" py="$1" rounded="$2" bg="var(--popover)" borderWidth={1} borderColor="$edge" z="var(--z-tooltip)">
+                <Text fontSize="$1" color="$ink">{t('Group')}</Text>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip placement="top" offset={6}>
+              <TooltipTrigger asChild>
+                <XStack
+                  render="button"
+                  {...({ type: 'button', title: t('Delete') } as object)}
+                  data-slot="batch-delete"
+                  aria-label={t('Delete selected')}
+                  disabled={!selectedThreads.length}
+                  opacity={selectedThreads.length ? 1 : 0.35}
+                  width={28}
+                  height={28}
+                  rounded="$2"
+                  items="center"
+                  justify="center"
+                  borderWidth={0}
+                  bg="transparent"
+                  cursor={selectedThreads.length ? 'pointer' : 'default'}
+                  transition="quickest"
+                  hoverStyle={selectedThreads.length ? { bg: '$hover' } : undefined}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  $max-sm={{ minW: 40, minH: 40 }}
+                  onClick={() => {
+                    if (selectedThreads.length) setDialogue('deleteMany')
+                  }}
+                >
+                  <Trash2 size={14} color={DANGER} aria-hidden />
+                </XStack>
+              </TooltipTrigger>
+              <TooltipContent px="$2" py="$1" rounded="$2" bg="var(--popover)" borderWidth={1} borderColor="$edge" z="var(--z-tooltip)">
+                <Text fontSize="$1" color="$ink">{t('Delete')}</Text>
+              </TooltipContent>
+            </Tooltip>
           </XStack>
-        </YStack>
+
+          <XStack
+            render="button"
+            {...({ type: 'button' } as object)}
+            data-slot="batch-done"
+            aria-label={t('Clear selection')}
+            cursor="pointer"
+            height={28}
+            px="$1.5"
+            rounded="$2"
+            borderWidth={0}
+            bg="transparent"
+            items="center"
+            justify="center"
+            shrink={0}
+            onClick={clearSelect}
+            hoverStyle={{ bg: '$hover' }}
+            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+            $max-sm={{ minH: 40 }}
+          >
+            <SizableText size="$1" fontWeight="600" color="$ink">
+              {t('Done')}
+            </SizableText>
+          </XStack>
+        </XStack>
       ) : null}
       <Rename
         noun={noun}
@@ -1243,17 +1460,68 @@ export function ThreadRow({
             onDrop: onReorderDrop,
           } as object)
         : null)}
+      {...({
+        onContextMenuCapture: (e: MouseEvent<HTMLElement>) => {
+          menus.pointThread(thread, e.currentTarget)
+        },
+        onContextMenu: (e: MouseEvent<HTMLElement>) => {
+          menus.pointThread(thread, e.currentTarget)
+        },
+      } as object)}
       onPointerDownCapture={(down: unknown) => {
         const e = down as MouseEvent<HTMLElement> & { pointerType?: string }
-        if (e.button !== 0 || onDots(e.target)) return
-        if (e.pointerType && e.pointerType !== 'mouse') return
-        menus.dragStartRef.current = thread.id
+        if (onDots(e.target)) return
+        const pType = e.pointerType || 'mouse'
+        if (pType === 'mouse' && e.button !== 0) return
+        // Shift+click is handled cleanly once in onClickCapture; never start a drag-select on Shift.
+        if (e.shiftKey) {
+          e.preventDefault()
+          window.getSelection?.()?.removeAllRanges?.()
+          menus.dragStartRef.current = null
+          menus.didDragSelectRef.current = false
+          return
+        }
+        if (e.metaKey || e.ctrlKey) {
+          menus.dragStartRef.current = null
+          menus.didDragSelectRef.current = false
+          return
+        }
+        menus.dragPointerTypeRef.current = pType
+        menus.dragStartXRef.current = e.clientX
         menus.dragStartYRef.current = e.clientY
         menus.didDragSelectRef.current = false
+        if (pType === 'touch') {
+          const onCheck = Boolean((e.target as Element | null)?.closest?.('[data-slot="thread-checkbox"]'))
+          if (menus.selecting && onCheck) {
+            menus.dragStartRef.current = thread.id
+            menus.touchDragActiveRef.current = true
+            return
+          }
+          // Long-press on touch enters select mode + allows immediate vertical touch-drag across rows;
+          // moving > 8px before 420ms cancels the timer so normal vertical scrolling is never broken.
+          menus.dragStartRef.current = thread.id
+          menus.touchDragActiveRef.current = false
+          if (menus.longPressTimerRef.current !== null) clearTimeout(menus.longPressTimerRef.current)
+          menus.longPressTimerRef.current = setTimeout(() => {
+            menus.longPressTimerRef.current = null
+            if (menus.dragStartRef.current !== thread.id) return
+            menus.touchDragActiveRef.current = true
+            menus.didDragSelectRef.current = true
+            menus.setSelectMode(true)
+            menus.selectRange(thread.id, thread.id, true)
+            menus.anchorRef.current = thread.id
+          }, 420)
+          return
+        }
+        menus.dragStartRef.current = thread.id
       }}
       onPointerUpCapture={(up: unknown) => {
         const e = up as MouseEvent<HTMLElement>
         if (onDots(e.target)) return
+        if (menus.longPressTimerRef.current !== null) {
+          clearTimeout(menus.longPressTimerRef.current)
+          menus.longPressTimerRef.current = null
+        }
         if (menus.didDragSelectRef.current || menus.selecting || e.shiftKey || e.metaKey || e.ctrlKey) {
           e.stopPropagation()
         }
@@ -1271,8 +1539,16 @@ export function ThreadRow({
         if (e.shiftKey) {
           e.preventDefault()
           e.stopPropagation()
+          window.getSelection?.()?.removeAllRanges?.()
           const anchor = menus.anchorRef.current || menus.active || thread.id
           menus.selectRange(anchor, thread.id, e.metaKey || e.ctrlKey)
+          return
+        }
+        if (e.metaKey || e.ctrlKey) {
+          e.preventDefault()
+          e.stopPropagation()
+          menus.toggleSelect(thread.id)
+          menus.anchorRef.current = thread.id
           return
         }
         if (menus.selecting) {
@@ -1280,12 +1556,6 @@ export function ThreadRow({
           e.stopPropagation()
           menus.toggleSelect(thread.id)
           menus.anchorRef.current = thread.id
-          return
-        }
-        if (e.metaKey || e.ctrlKey) {
-          e.preventDefault()
-          e.stopPropagation()
-          away(thread.id, menus.hrefOf)
           return
         }
         menus.anchorRef.current = thread.id
@@ -1297,19 +1567,23 @@ export function ThreadRow({
           return
         }
         if (e.button !== 0 || onDots(e.target)) return
-        menus.dragStartRef.current = thread.id
-        menus.dragStartYRef.current = e.clientY
-        menus.didDragSelectRef.current = false
         if (e.shiftKey) {
           e.preventDefault()
           window.getSelection?.()?.removeAllRanges?.()
-          const anchor = menus.anchorRef.current || menus.active || thread.id
-          menus.selectRange(anchor, thread.id, e.metaKey || e.ctrlKey)
+          return
+        }
+        if (e.metaKey || e.ctrlKey) return
+        if (!menus.dragStartRef.current) {
+          menus.dragPointerTypeRef.current = 'mouse'
+          menus.dragStartRef.current = thread.id
+          menus.dragStartXRef.current = e.clientX
+          menus.dragStartYRef.current = e.clientY
+          menus.didDragSelectRef.current = false
         }
       }}
       onMouseEnter={(enter: unknown) => {
         const e = enter as MouseEvent<HTMLElement>
-        if (!menus.dragStartRef.current || e.buttons !== 1) return
+        if (!menus.dragStartRef.current || menus.dragPointerTypeRef.current !== 'mouse' || (e.buttons & 1) !== 1) return
         if (menus.dragStartRef.current !== thread.id || menus.didDragSelectRef.current) {
           menus.didDragSelectRef.current = true
           window.getSelection?.()?.removeAllRanges?.()
@@ -1352,19 +1626,22 @@ export function ThreadRow({
       ) : null}
       {menus.selecting ? (
         <XStack
+          data-slot="thread-checkbox"
           position="absolute"
-          insetInlineStart={6}
+          insetInlineStart={4}
           t={0}
           b={0}
+          width={24}
           items="center"
           justify="center"
-          pointerEvents="none"
+          cursor="pointer"
           z="var(--z-raised)"
+          $platform-web={{ touchAction: 'none' }}
           aria-hidden
         >
           <XStack
-            width={18}
-            height={18}
+            width={16}
+            height={16}
             rounded={999}
             items="center"
             justify="center"
@@ -1374,11 +1651,11 @@ export function ThreadRow({
             borderColor={isSelected ? 'var(--foreground)' : 'var(--muted-foreground)'}
             opacity={isSelected ? 1 : 0.65}
           >
-            {isSelected ? <Check size={11} strokeWidth={3} color="var(--background)" aria-hidden /> : null}
+            {isSelected ? <Check size={10} strokeWidth={3} color="var(--background)" aria-hidden /> : null}
           </XStack>
         </XStack>
       ) : null}
-      {menus.selecting ? <YStack paddingInlineStart={22}>{children}</YStack> : children}
+      <YStack paddingInlineStart={menus.selecting ? 26 : 0}>{children}</YStack>
       <Text id={about} display="none">
         {titleOf(thread, t('Untitled'))}
       </Text>

@@ -90,10 +90,10 @@ import { useDevMode } from './lib/dev-mode'
 import { orgNavKey, resolveNavSeed, saveOrgNavDefaults, useOrgNavDefaults } from './lib/org-nav'
 import { usePref } from './pref'
 export { orgNavKey, readOrgNavDefaults, resolveNavSeed, saveOrgNavDefaults, useOrgNavDefaults } from './lib/org-nav'
-import { HEAD, MARK, TOUCH_HEAD } from './ground'
+import { HEAD, MARK, TOP_INSET, TOUCH_HEAD } from './ground'
 import { railKeys } from './keys'
 import { out } from './help'
-import { apex, app, CYBER, design, flow, hosted, LEARN, learn, SCIENCE, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
+import { apex, app, CYBER, design, flow, hosted, LEARN, learn, SCIENCE, studio, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
 import { site } from './where'
 
 export { MARK }
@@ -165,7 +165,7 @@ export const NAV_PINNED_KEY = 'hanzo.nav.pinned'
 export const NAV_PINS_KEY = 'hanzo.nav.pins'
 
 /** The menu as it stands when nothing is pinned, in its order: each app's default place. */
-export const DEFAULT_NAV: readonly string[] = ['chat', 'dev', 'design', 'flow', 'learn', 'library', 'tabs']
+export const DEFAULT_NAV: readonly string[] = ['chat', 'dev', 'design', 'studio', 'flow', 'learn', 'library', 'tabs']
 /** The old name of `DEFAULT_NAV`, for importers that still read it. */
 export const DEFAULT_PINNED_NAV = DEFAULT_NAV
 
@@ -320,6 +320,7 @@ export function useNavEntries({
   onChat,
   onDev,
   onDesign,
+  onStudio,
   onFlow,
   onLearn,
   onTabs,
@@ -334,6 +335,7 @@ export function useNavEntries({
   onChat: () => void
   onDev: () => void
   onDesign?: () => void
+  onStudio?: () => void
   onFlow?: () => void
   onLearn?: () => void
   onTabs: () => void
@@ -347,8 +349,8 @@ export function useNavEntries({
   const anon = host.person === null
   const here = mode === 'dev' ? raised(at) : null
   const to = (p: string) => () => go(app(p))
-  const team = mode !== 'design'
-  const rawGranted = BETAS.filter((b) => b.href && b.embed === undefined && b.id !== 'flow' && b.id !== 'science' && b.id !== 'cyber' && opened(b.id))
+  const team = mode !== 'design' && mode !== 'studio'
+  const rawGranted = BETAS.filter((b) => b.href && b.embed === undefined && b.id !== 'flow' && b.id !== 'studio' && b.id !== 'science' && b.id !== 'cyber' && opened(b.id))
   const cyberEnabled = !anon && opened('cyber')
   const rawApps = HOSTED_APPS.filter((a) => opened(a.id))
   const reach = (address: string) => (address.startsWith('/') ? go(address) : out(address))
@@ -388,7 +390,16 @@ export function useNavEntries({
             href: design(''),
             on: mode === 'design',
             icon: <MARKS.design.icon aria-hidden />,
-            onPress: () => onDesign?.(),
+            onPress: () => (onDesign ? onDesign() : go(design(''))),
+          } satisfies NavEntry,
+          {
+            id: 'studio',
+            slot: 'rail-studio',
+            label: 'Studio',
+            href: studio(''),
+            on: mode === 'studio',
+            icon: <MARKS.studio.icon aria-hidden />,
+            onPress: () => (onStudio ? onStudio() : go(studio(''))),
           } satisfies NavEntry,
           {
             id: 'flow',
@@ -678,6 +689,7 @@ export function Rail({
   onChat,
   onDev,
   onDesign,
+  onStudio,
   onFlow,
   onLearn,
   onTabs,
@@ -702,10 +714,11 @@ export function Rail({
   compact?: boolean
   /** The hosted app (lib/hosted) the reader is in, if any. */
   inside?: string | null
-  /** To Chat, Dev, Design and Flow, each where the reader left it. */
+  /** To Chat, Dev, Design, Studio and Flow, each where the reader left it. */
   onChat: () => void
   onDev: () => void
   onDesign?: () => void
+  onStudio?: () => void
   onFlow?: () => void
   onLearn?: () => void
   onTabs: () => void
@@ -729,6 +742,7 @@ export function Rail({
     onChat,
     onDev,
     onDesign,
+    onStudio,
     onFlow,
     onLearn,
     onTabs,
@@ -761,16 +775,16 @@ export function Rail({
         width={RAIL_FOLDED}
         flex={1}
         minH={0}
-        pt={6}
+        pt={TOP_INSET}
         pb={0}
         gap={4}
         shrink={0}
         items="center"
-        $touchable={{ pt: (TOUCH_HEAD - TOUCH) / 2, pb: 0 }}
+        $touchable={{ pt: TOP_INSET, pb: 0 }}
       >
-        {/* Top sidebar toggle, anchored in place above the product marks */}
+        {/* Top sidebar toggle, anchored in place on the exact same centerline as Sidebar app-head */}
         {!compact && toggleHandler ? (
-          <XStack height={HEAD} items="center" justify="center" shrink={0} $touchable={{ height: TOUCH_HEAD }}>
+          <XStack data-slot="rail-head" height={HEAD} items="center" justify="center" shrink={0} $touchable={{ height: TOUCH_HEAD }}>
             <Toggle open={open} tooltip onPress={toggleHandler} />
           </XStack>
         ) : null}

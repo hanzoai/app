@@ -8,7 +8,7 @@ const { empty, asked } = vi.hoisted(() => ({ empty: vi.fn(), asked: [] as unknow
 const { MARKS } = vi.hoisted(() => {
   const mark = () => () => null
   const one = { icon: mark(), make: mark() }
-  return { MARKS: { chat: one, dev: one, design: one, tabs: one, library: one, scheduled: one, customize: one } }
+  return { MARKS: { chat: one, dev: one, design: one, studio: one, tabs: one, library: one, scheduled: one, customize: one } }
 })
 vi.mock('@hanzo/ai/react', () => ({ useAi: () => ({}) }))
 vi.mock('@hanzo/ui', () => ({ Dialog: () => null, DialogContent: () => null, DialogTitle: () => null,
@@ -101,16 +101,18 @@ describe('Go to', () => {
 
   test('the products lead, then Dev’s places from its registry, New run left to the action', () => {
     const { top } = places(host, vi.fn())
-    expect(top.slice(0, 10).map((r) => r.label)).toEqual(['Chat', 'Dev', 'Design', 'Flow', 'Tabs', 'Science', 'Learn', 'Team', 'Projects', 'Machines'])
+    expect(top.slice(0, 11).map((r) => r.label)).toEqual(['Chat', 'Dev', 'Design', 'Studio', 'Flow', 'Tabs', 'Science', 'Learn', 'Team', 'Projects', 'Machines'])
     expect(top.some((r) => r.label === 'New run')).toBe(false)
   })
 
-  test('a place two registries hold is listed once; Design’s, Flow’s, Science’s and Learn’s places open their routes', () => {
+  test('a place two registries hold is listed once; Design’s, Studio’s, Flow’s, Science’s and Learn’s places open their routes', () => {
     const go = vi.fn()
     const { top, deep } = places(host, go)
     expect([...top, ...deep].filter((r) => r.label === 'Machines')).toHaveLength(1)
     take(deep, 'design-explore')
     expect(go).toHaveBeenCalledWith('/design/explore')
+    take(top, 'studio')
+    expect(go).toHaveBeenCalledWith('/studio')
     take(top, 'flow')
     expect(go).toHaveBeenCalledWith('/flow')
     take(deep, 'flow-templates')
@@ -127,7 +129,7 @@ describe('Go to', () => {
 
   test('without a host the products and the site’s pages are still there', () => {
     const { top, deep } = places(undefined, vi.fn())
-    expect(top.map((r) => r.id)).toEqual(['chat', 'dev', 'design', 'flow', 'tabs', 'science', 'learn', 'settings', 'referral', 'beta', 'help-help'])
+    expect(top.map((r) => r.id)).toEqual(['chat', 'dev', 'design', 'studio', 'flow', 'tabs', 'science', 'learn', 'settings', 'referral', 'beta', 'help-help'])
     expect(deep.every((r) => r.where === 'Help')).toBe(true)
   })
 })

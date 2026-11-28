@@ -42,34 +42,34 @@ import {
   Search,
   Settings,
 } from 'lucide-react'
-import { DOTS, Gutter, library, NEW, own, Rename, tabs, useLanguage, useScheduled, useSessions, type Host } from '@hanzo/dev/builder'
+import { Gutter, library, NEW, own, Rename, tabs, useLanguage, useScheduled, type Host } from '@hanzo/dev/builder'
 import { rename, useDeviceNames, type Names } from '@hanzo/dev/names'
 import { showDevice, showShell, type Shown } from './lib/devices'
 
 type Theme = NonNullable<Host['theme']>
-import { tidy } from './lib/title'
 import { Button, Dialog, DialogContent, DialogTitle, DropdownMenu, Switch, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, toast, type DropdownMenuProps } from '@hanzo/ui'
-import { Sidebar as Base, SidebarIconButton, SidebarItem, StatusDot, type RailLink } from '@hanzo/ui/chat'
+import { Sidebar as Base, SidebarIconButton, SidebarItem, type RailLink } from '@hanzo/ui/chat'
 import { useEffect, useId, useMemo, useState, type DragEvent, type ReactNode } from 'react'
 import { Account, Made } from './Account'
 import { useBetas } from './Betas'
 import { Recents } from './Recents'
 import { MARKS } from './icons'
-import { ChatList, DevList, useScope } from './DevPane'
+import { DevList } from './DevPane'
 import { DEFAULT_NAV, fullNavUrl, raised, useNavEntries, type NavEntry, type Pins, type Raised } from './Rail'
 import { MoreMenu } from './MoreMenu'
 import { Setup } from './Setup'
-import { ago, PINNED, UNTITLED_RUN, type Recent } from './recent'
+import { useKept } from './kept'
+import type { Recent } from './recent'
 import { empty } from './open'
 import { useSpan } from './span'
 import { useDevMode } from './lib/dev-mode'
-import { app, cyber, CYBER_SUBROUTES, design, flow, hosted, learn, science, talk, TERMINALS, type Place } from './lib/host'
+import { app, cyber, CYBER_SUBROUTES, design, flow, hosted, learn, science, studio, talk, TERMINALS, type Place } from './lib/host'
 import { enter, LOGIN, signUp } from './lib/destination'
 import { HOSTED_APPS } from './lib/hosted'
 import { pick } from './lib/session'
 import { brand, site } from './where'
 import { dragWindow, toggleWindowMaximize } from './WindowControls'
-import { BAND, HEAD as LINE, pane, SIDE, TOUCH_HEAD } from './ground'
+import { BAND, HEAD as LINE, pane, SIDE, TOP_INSET, TOUCH_HEAD } from './ground'
 import { railKeys } from './keys'
 import { useWindowed } from './windowed'
 import { dispatchTabsAction } from './tabsAction'
@@ -115,9 +115,6 @@ const COMPACT_ROW = ROW
 /** A row under a place: `hint` is its info tip; `rename`, a device's or a shell's, opens Rename from its menu. */
 type SidebarPlaceLink = RailLink & { hint?: string; rename?: () => void }
 
-/** The run activity behind the bell: the runs that moved last, newest first. */
-const RECENT = 6
-
 /** What a place that takes the sidebar is called at its head. */
 const TITLE: Record<Raised, string> = { library: phrase('Library'), scheduled: phrase('Scheduled tasks'), customize: phrase('Customize') }
 
@@ -155,7 +152,7 @@ function resolvePlaceHref(id: string, mode: Place['mode']): string | null {
   }
   switch (id) {
     case NEW:
-      return mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'tabs' ? TERMINALS : talk()
+      return mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'studio' ? studio('') : mode === 'tabs' ? TERMINALS : talk()
     case 'projects':
       return app('-/projects')
     case 'issues':
@@ -801,61 +798,47 @@ function useTabsGroups(
   }, [active, bind, devMode, fleet, names, onRename, t])
 }
 
-function Activity({ host }: { host: Host }) {
+/**
+ * In-place `≡` filter-triangle mode switch in the Sidebar header:
+ * toggles the sidebar list in place between Standard mode (`Pinned / Projects / Recents`)
+ * and Priority / Day-by-Day Context mode (`Priority / Today / Yesterday / Weekday / Older`
+ * with 3-line cards by default). No floating popup.
+ */
+function PriorityModeToggle({ active, onToggle }: { active: boolean; onToggle: () => void }) {
   const { t } = useI18n()
-  const store = useSessions(host)
-  const latest = [...store.value].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)).slice(0, RECENT)
-  const hasLive = latest.some((s) => s.status === 'running' || s.status === 'pending' || s.status === 'starting')
-  const items: NonNullable<DropdownMenuProps['items']> = [
-    { type: 'label', key: 'head', label: t('Activity') },
-    ...(latest.length
-      ? latest.map((s) => ({
-          key: s.id,
-          label: tidy(s.title, 56, t(UNTITLED_RUN)),
-          // The run's state is the service's word; when it moved is ours.
-          description: [s.status, ago(s.updatedAt || s.createdAt, new Date(), t)].filter(Boolean).join(' · '),
-          icon: <StatusDot status={DOTS[s.status as keyof typeof DOTS] ?? 'idle'} />,
-          onSelect: () => host.go(s.id),
-        }))
-      : [{ key: 'none', label: t('Nothing new'), disabled: true, onSelect: () => {} }]),
-  ]
+  const label = active ? t('Switch to standard view') : t('Switch to priority timeline')
   return (
-    <DropdownMenu
-      minWidth={280}
-      trigger={
+    <Tooltip placement="bottom" offset={6}>
+      <TooltipTrigger asChild>
         <XStack
           render={<button type="button" />}
-          data-slot="activity-bell"
-          aria-label={t('Activity')}
-          {...({ title: t('Activity') } as object)}
+          data-slot="priority-toggle"
+          data-active={active ? 'true' : 'false'}
+          data-tauri-drag-region="false"
+          aria-label={label}
+          aria-pressed={active}
+          onClick={onToggle}
           {...HEAD}
           position="relative"
-          borderWidth={0}
-          bg="transparent"
+          borderWidth={active ? 1 : 0}
+          borderColor={active ? 'var(--border-strong)' : 'transparent'}
+          bg={active ? '$raised' : 'transparent'}
           items="center"
           justify="center"
           cursor="pointer"
-          opacity={0.7}
-          hoverStyle={{ bg: '$hover', opacity: 1 }}
+          opacity={active ? 1 : 0.72}
+          hoverStyle={{ bg: active ? '$raised' : '$hover', opacity: 1 }}
           focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
         >
-          <ListFilter size={15} aria-hidden />
-          {hasLive ? (
-            <YStack
-              position="absolute"
-              t={5}
-              r={5}
-              width={6}
-              height={6}
-              rounded={999}
-              bg="var(--state-online)"
-              aria-hidden
-            />
-          ) : null}
+          <ListFilter size={15} color={active ? 'var(--foreground)' : 'var(--muted-foreground)'} aria-hidden />
         </XStack>
-      }
-      items={items}
-    />
+      </TooltipTrigger>
+      <TooltipContent px="$2" py="$1" rounded="$2" bg="var(--popover)" borderWidth={1} borderColor="$edge" z="var(--z-tooltip)">
+        <Text fontSize="$1" color="$ink">
+          {label}
+        </Text>
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -871,6 +854,7 @@ export function Sidebar({
   onChat,
   onDev,
   onDesign,
+  onStudio,
   onFlow,
   onLearn,
   onTabs,
@@ -900,6 +884,7 @@ export function Sidebar({
   onChat?: () => void
   onDev?: () => void
   onDesign?: () => void
+  onStudio?: () => void
   onFlow?: () => void
   onLearn?: () => void
   onTabs?: () => void
@@ -913,11 +898,12 @@ export function Sidebar({
   foot?: ReactNode
   /** The mode's places, where they are not Dev's (@hanzo/studio's `nav`). */
   places?: { id: string; label: string; links: RailLink[] }[]
-  /** The host Design is mounted with (App.tsx `maker`): where its conversations are read and opened. */
+  /** The host Design/Studio is mounted with (App.tsx `maker`): where its conversations are read and opened. */
   made?: Host
 }) {
   const { t, dir } = useI18n()
   const [devMode, setDevMode] = useDevMode()
+  const [priorityMode, setPriorityMode] = useKept<boolean>(`hanzo.sidebar.priority.${mode}`, false)
   const [pinnedIds, togglePin, reorderPin, movePin] = pins
   const pinnedSet = useMemo(() => new Set(pinnedIds), [pinnedIds])
   const [dragId, setDragId] = useState<string | null>(null)
@@ -955,9 +941,8 @@ export function Sidebar({
   const span = useSpan(SPAN, WIDTH, FLOOR, CEIL)
 
   const dev = (p: string) => host.go(p)
-  const runtime = useScope()?.runtime
   const at = mode === 'dev' ? raised(host.path) : null
-  const Make = mode === 'chat' || mode === 'dev' || mode === 'tabs' ? MARKS[mode].make : MARKS.chat.make
+  const Make = mode === 'chat' || mode === 'dev' || mode === 'design' || mode === 'studio' || mode === 'tabs' ? MARKS[mode].make : MARKS.chat.make
 
   const scheduled = useScheduled(host, dev, at === 'scheduled')
   // The names a person gave their devices and shells, read from their account once per page (hanzo-inc/app issue 311).
@@ -1028,6 +1013,7 @@ export function Sidebar({
     else if (mode === 'tabs') dispatchTabsAction({ kind: 'shell' })
     else if (mode === 'dev') dev('')
     else if (mode === 'design') made ? made.go('') : go(design(''))
+    else if (mode === 'studio') made ? made.go('') : go(studio(''))
     else if (mode === 'flow') go(flow('new'))
     else if (mode === 'research') go(science('autonomy'))
     else if (mode === 'cyber') {
@@ -1045,6 +1031,7 @@ export function Sidebar({
     onChat: onChat ?? (() => go(talk())),
     onDev: onDev ?? (() => go(app(''))),
     onDesign: onDesign ?? (() => go(design(''))),
+    onStudio: onStudio ?? (() => go(studio(''))),
     onFlow: onFlow ?? (() => go(flow(''))),
     onLearn: onLearn ?? (() => go(learn())),
     onTabs: onTabs ?? (() => go(TERMINALS)),
@@ -1067,21 +1054,23 @@ export function Sidebar({
           ? 'Dev'
           : mode === 'design'
             ? 'Design'
-            : mode === 'flow'
-              ? 'Flow'
-              : mode === 'learn'
-                ? t('Learn')
-                : mode === 'tabs'
-                ? t('Tabs')
-                : mode === 'research'
-                  ? t('Science')
-                  : mode === 'cyber'
-                    ? t('Cyber')
-                    : mode === 'beta'
-                  ? t('Betas')
-                  : mode === 'hosted'
-                    ? (HOSTED_APPS.find((a) => a.id === inside)?.name ?? brand())
-                    : brand()
+            : mode === 'studio'
+              ? 'Studio'
+              : mode === 'flow'
+                ? 'Flow'
+                : mode === 'learn'
+                  ? t('Learn')
+                  : mode === 'tabs'
+                  ? t('Tabs')
+                  : mode === 'research'
+                    ? t('Science')
+                    : mode === 'cyber'
+                      ? t('Cyber')
+                      : mode === 'beta'
+                    ? t('Betas')
+                    : mode === 'hosted'
+                      ? (HOSTED_APPS.find((a) => a.id === inside)?.name ?? brand())
+                      : brand()
 
   // Active place's own contextual places on desktop (when !at and !drawer); excludes NEW because
   // the primary "+ New …" action row stands above them.
@@ -1091,7 +1080,7 @@ export function Sidebar({
       const links = own(host, dev, t).flatMap((g) => g.links).filter((l) => l.id !== NEW)
       return links.length ? [{ id: 'dev-places', label: '', links }] : []
     }
-    if ((mode === 'design' || mode === 'flow' || mode === 'learn' || mode === 'research' || mode === 'cyber') && places) {
+    if ((mode === 'design' || mode === 'studio' || mode === 'flow' || mode === 'learn' || mode === 'research' || mode === 'cyber') && places) {
       return places
         .map((g) => ({ ...g, links: g.links.filter((l) => l.id !== NEW) }))
         .filter((g) => g.links.length > 0)
@@ -1114,6 +1103,10 @@ export function Sidebar({
     if (entryId === 'design' && mode === 'design' && places) {
       const links = places.flatMap((g) => g.links).filter((l) => l.id !== NEW)
       return links.length ? [{ id: 'design-sub', label: '', links }] : []
+    }
+    if (entryId === 'studio' && mode === 'studio' && places) {
+      const links = places.flatMap((g) => g.links).filter((l) => l.id !== NEW)
+      return links.length ? [{ id: 'studio-sub', label: '', links }] : []
     }
     if (entryId === 'flow' && mode === 'flow' && places) {
       const links = places.flatMap((g) => g.links).filter((l) => l.id !== NEW)
@@ -1252,10 +1245,10 @@ export function Sidebar({
       ? t('Choose your adventure')
       : anon
         ? t('New chat')
-        : mode === 'dev' ? t('New run') : mode === 'design' ? t('New design') : mode === 'flow' ? t('New flow') : mode === 'tabs' ? t('New terminal') : mode === 'research' ? t('New hypothesis') : mode === 'cyber' ? t('New engagement') : t('New chat')
+        : mode === 'dev' ? t('New run') : mode === 'design' ? t('New design') : mode === 'studio' ? t('New creation') : mode === 'flow' ? t('New flow') : mode === 'tabs' ? t('New terminal') : mode === 'research' ? t('New hypothesis') : mode === 'cyber' ? t('New engagement') : t('New chat')
 
   const showPrimaryNew = !at && (drawer || (mode !== 'beta' && mode !== 'hosted' && mode !== 'research'))
-  const showRecents = !(mode === 'dev' && runtime) && !(mode === 'hosted' || mode === 'beta' || mode === 'research' || mode === 'cyber' || mode === 'learn' || mode === 'tabs' || mode === 'flow' || anon || at)
+  const showRecents = !(mode === 'hosted' || mode === 'beta' || mode === 'research' || mode === 'cyber' || mode === 'learn' || mode === 'tabs' || mode === 'flow' || anon || at)
 
   return (
     <TooltipProvider delay={120}>
@@ -1279,14 +1272,21 @@ export function Sidebar({
           {...({ onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => railKeys(e, e.currentTarget) } as object)}
           bg="transparent"
           borderWidth={0}
+          borderTopWidth={0}
+          borderBottomWidth={0}
+          borderInlineStartWidth={0}
+          borderInlineEndWidth={0}
+          borderColor="transparent"
           {...FILL}
+          p={0}
           px={8}
-          pt={drawer ? 'var(--pane-gap)' : 6}
-          pb={drawer ? 0 : '$2'}
-          gap="$0"
+          pt={drawer ? 'var(--pane-gap)' : TOP_INSET}
+          pb={drawer ? 0 : 8}
+          gap={0}
+          $touchable={drawer ? undefined : { pt: TOP_INSET }}
           $platform-web={anon && !drawer ? { overflow: 'visible' } : undefined}
         >
-          {/* 1. Single Top Header Row — vertically centered with first rail icon, filter/search aligned directly under < > */}
+          {/* 1. Single Top Header Row — vertically centered with Rail's Toggle (0px offset) */}
           {at ? (
             <XStack
               data-slot="app-head"
@@ -1308,7 +1308,6 @@ export function Sidebar({
               <Text flex={1} minW={0} fontSize={17} lineHeight={22} fontWeight="600" letterSpacing={-0.25} color="$ink" numberOfLines={1} data-slot="place-name">
                 {t(TITLE[at])}
               </Text>
-              {drawer || anon ? null : <Activity host={host} />}
               {anon ? null : (
                 <SidebarIconButton
                   label={t('Search')}
@@ -1342,7 +1341,9 @@ export function Sidebar({
                   {modeTitle}
                 </Text>
               </XStack>
-              {drawer || anon ? null : <Activity host={host} />}
+              {!drawer && showRecents ? (
+                <PriorityModeToggle active={priorityMode} onToggle={() => setPriorityMode(!priorityMode)} />
+              ) : null}
               {anon && drawer ? null : (
                 <SidebarIconButton
                   label={t('Search')}
@@ -1562,10 +1563,28 @@ export function Sidebar({
             </YStack>
           ) : !showRecents ? (
             <YStack flex={1} minH={0} />
-          ) : mode === 'design' ? (
-            made ? <Recents host={made} mode="design" thread={null} onOpen={open} onNew={create} /> : <YStack flex={1} minH={0} />
+          ) : mode === 'design' || mode === 'studio' ? (
+            made ? (
+              <Recents
+                host={made}
+                mode={mode}
+                thread={null}
+                priorityMode={priorityMode}
+                onOpen={open}
+                onNew={create}
+              />
+            ) : (
+              <YStack flex={1} minH={0} />
+            )
           ) : (
-            mode === 'chat' ? <ChatList host={host} path={thread ? talk(thread) : (host.path ?? '')} onGo={go} /> : <Recents host={host} mode={mode === 'dev' ? 'dev' : 'chat'} thread={thread} onOpen={open} onNew={create} />
+            <Recents
+              host={host}
+              mode={mode === 'dev' ? 'dev' : 'chat'}
+              thread={thread}
+              priorityMode={priorityMode}
+              onOpen={open}
+              onNew={create}
+            />
           )}
 
           {/* More: one small row under Recents that pops a menu, so the sidebar never changes height. */}
@@ -1741,6 +1760,7 @@ export function Sidebar({
             onKeep={span.keep}
             onShut={onShut}
             label={t('Resize sidebar')}
+            bg="transparent"
           />
         )}
         <Dialog open={gated !== null} onOpenChange={(o) => !o && setGated(null)}>
