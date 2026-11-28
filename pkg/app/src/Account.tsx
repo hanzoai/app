@@ -11,7 +11,7 @@
 import { forget, trusts } from './lib/spend'
 import { phrase, locales } from '@hanzo/i18n'
 import { useI18n } from '@hanzo/i18n/react'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { SizableText, XStack, YStack } from '@hanzo/gui'
 import {
   ArrowUpRight,
@@ -290,6 +290,231 @@ export const upgrade = (family: string | null | undefined): string =>
 /** The keys a row prints, in this platform's spelling. */
 const mac = (): boolean => typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
 
+/** Grace window (ms) before closing a hovered submenu so diagonal mouse transit never drops it. */
+export const SUBMENU_CLOSE_GRACE_MS = 220
+
+/**
+ * Horizontal placement for Account submenus: always open beside the parent menu
+ * (inline-end: right in LTR, left in RTL) with a small 4px seam covered by an
+ * invisible hover bridge, flipping horizontally first and only falling back
+ * below the trigger on narrow viewports where neither side fits.
+ */
+export function submenuPlacement(rtl: boolean) {
+  return {
+    placement: (rtl ? 'left-start' : 'right-start') as 'left-start' | 'right-start',
+    offset: 4,
+    allowFlip: {
+      padding: 10,
+      fallbackPlacements: (rtl
+        ? ['left-end', 'right-start', 'right-end', 'bottom-start']
+        : ['right-end', 'left-start', 'left-end', 'bottom-start']) as Array<'left-start' | 'left-end' | 'right-start' | 'right-end' | 'bottom-start'>,
+    },
+  }
+}
+
+interface SubmenuControl {
+  open: boolean
+  closeNow: () => void
+  enterContent: () => void
+  subProps: {
+    open: boolean
+    onOpenChange: (next: boolean) => void
+  }
+  triggerProps: {
+    onMouseEnter: () => void
+    onMouseLeave: () => void
+    onPointerEnter: (e?: unknown) => void
+    onPointerLeave: (e?: unknown) => void
+    onClick: (e?: unknown) => void
+    onPress: (e?: unknown) => void
+  }
+  contentProps: {
+    onMouseEnter: () => void
+    onMouseLeave: () => void
+    onPointerEnter: (e?: unknown) => void
+    onPointerLeave: (e?: unknown) => void
+    onEscapeKeyDown: () => void
+    onKeyDown: (e?: unknown) => void
+  }
+}
+
+/**
+ * Hover-grace + click-to-toggle controller for nested Account submenus:
+ * - Hovering the trigger opens immediately and cancels any pending close timer.
+ * - Leaving the trigger or submenu waits `SUBMENU_CLOSE_GRACE_MS` (~220ms) before
+ *   closing, cancelled on entering either the trigger, hover bridge, or submenu.
+ * - Clicking/pressing the trigger pins the submenu open (or toggles it closed if
+ *   already pinned) so mouse, keyboard, and touch users can always reach every item.
+ */
+function useSubmenuHover({
+  initialOpen = false,
+  rtl = false,
+  onBeforeOpen,
+  onAfterClose,
+}: {
+  initialOpen?: boolean
+  rtl?: boolean
+  onBeforeOpen?: () => void
+  onAfterClose?: () => void
+} = {}): SubmenuControl {
+  const [open, setOpen] = useState(initialOpen)
+  const openRef = useRef(open)
+  openRef.current = open
+  const pinnedRef = useRef(false)
+  const insideRef = useRef(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastToggleEventRef = useRef<unknown>(null)
+  const beforeOpenRef = useRef(onBeforeOpen)
+  beforeOpenRef.current = onBeforeOpen
+  const afterCloseRef = useRef(onAfterClose)
+  afterCloseRef.current = onAfterClose
+
+  const cancelClose = useCallback(() => {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+  }, [])
+
+  const closeNow = useCallback(() => {
+    cancelClose()
+    pinnedRef.current = false
+    insideRef.current = false
+    setOpen(false)
+    afterCloseRef.current?.()
+  }, [cancelClose])
+
+  const scheduleClose = useCallback(() => {
+    if (pinnedRef.current) return
+    cancelClose()
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null
+      if (!insideRef.current && !pinnedRef.current) {
+        setOpen(false)
+        afterCloseRef.current?.()
+      }
+    }, SUBMENU_CLOSE_GRACE_MS)
+  }, [cancelClose])
+
+  useEffect(() => cancelClose, [cancelClose])
+
+  const enterTrigger = useCallback(() => {
+    insideRef.current = true
+    cancelClose()
+    beforeOpenRef.current?.()
+    setOpen(true)
+  }, [cancelClose])
+
+  const leaveTrigger = useCallback(() => {
+    insideRef.current = false
+    scheduleClose()
+  }, [scheduleClose])
+
+  const enterContent = useCallback(() => {
+    insideRef.current = true
+    cancelClose()
+  }, [cancelClose])
+
+  const leaveContent = useCallback(() => {
+    insideRef.current = false
+    scheduleClose()
+  }, [scheduleClose])
+
+  const toggleByClick = useCallback(
+    (raw?: unknown) => {
+      const e = raw as { preventDefault?: () => void; nativeEvent?: unknown } | undefined
+      const token = e?.nativeEvent ?? e
+      if (token && lastToggleEventRef.current === token) return
+      if (token) lastToggleEventRef.current = token
+      e?.preventDefault?.()
+      cancelClose()
+      if (openRef.current && pinnedRef.current) {
+        pinnedRef.current = false
+        setOpen(false)
+        afterCloseRef.current?.()
+        return
+      }
+      beforeOpenRef.current?.()
+      pinnedRef.current = true
+      setOpen(true)
+    },
+    [cancelClose],
+  )
+
+  const onOpenChange = useCallback(
+    (next: boolean) => {
+      if (next) {
+        cancelClose()
+        beforeOpenRef.current?.()
+        setOpen(true)
+        return
+      }
+      if (pinnedRef.current || insideRef.current) return
+      scheduleClose()
+    },
+    [cancelClose, scheduleClose],
+  )
+
+  const isHoverPointer = (raw?: unknown) => {
+    const pt = (raw as { pointerType?: string } | undefined)?.pointerType
+    return !pt || pt === 'mouse' || pt === 'pen'
+  }
+
+  return {
+    open,
+    closeNow,
+    enterContent,
+    subProps: { open, onOpenChange },
+    triggerProps: {
+      onMouseEnter: enterTrigger,
+      onMouseLeave: leaveTrigger,
+      onPointerEnter: (e) => {
+        if (isHoverPointer(e)) enterTrigger()
+      },
+      onPointerLeave: (e) => {
+        if (isHoverPointer(e)) leaveTrigger()
+      },
+      onClick: toggleByClick,
+      onPress: toggleByClick,
+    },
+    contentProps: {
+      onMouseEnter: enterContent,
+      onMouseLeave: leaveContent,
+      onPointerEnter: (e) => {
+        if (isHoverPointer(e)) enterContent()
+      },
+      onPointerLeave: (e) => {
+        if (isHoverPointer(e)) leaveContent()
+      },
+      onEscapeKeyDown: closeNow,
+      onKeyDown: (raw) => {
+        const key = (raw as { key?: string } | undefined)?.key
+        if (key === 'Escape' || key === (rtl ? 'ArrowRight' : 'ArrowLeft')) {
+          closeNow()
+        }
+      },
+    },
+  }
+}
+
+/** Invisible seam bridge along the submenu's inline-start edge so pointer transit never drops hover. */
+function SubmenuBridge({ slot, onEnter }: { slot: string; onEnter: () => void }) {
+  return (
+    <XStack
+      data-slot={slot}
+      aria-hidden
+      position="absolute"
+      t={-12}
+      b={-12}
+      insetInlineStart={-20}
+      width={24}
+      pointerEvents="auto"
+      onMouseEnter={onEnter}
+      onPointerEnter={onEnter}
+    />
+  )
+}
+
 export function Account({
   host,
   narrow = false,
@@ -319,11 +544,42 @@ export function Account({
   const leaving = (which: 'one' | 'all' | 'hover') => signingOut && pressed === which
   const [menuOpen, setMenuOpen] = useState(false)
   const [workspacesOpen, setWorkspacesOpen] = useState(false)
-  const [account, setAccount] = useState(defaultAccountOpen ?? false)
-  const [orgsOpen, setOrgsOpen] = useState(false)
-  const [lang, setLang] = useState(false)
   const [langQuery, setLangQuery] = useState('')
-  const [help, setHelp] = useState(false)
+  const submenuClosers = useRef<Record<string, () => void>>({})
+  const closeOtherSubmenus = useCallback((except?: string) => {
+    for (const [key, close] of Object.entries(submenuClosers.current)) {
+      if (key !== except) close()
+    }
+  }, [])
+  const accountSub = useSubmenuHover({
+    initialOpen: defaultAccountOpen ?? false,
+    rtl,
+    onBeforeOpen: () => closeOtherSubmenus('account'),
+  })
+  const orgsSub = useSubmenuHover({
+    rtl,
+    onBeforeOpen: () => closeOtherSubmenus('orgs'),
+  })
+  const langSub = useSubmenuHover({
+    rtl,
+    onBeforeOpen: () => closeOtherSubmenus('lang'),
+    onAfterClose: () => setLangQuery(''),
+  })
+  const helpSub = useSubmenuHover({
+    rtl,
+    onBeforeOpen: () => closeOtherSubmenus('help'),
+  })
+  submenuClosers.current = {
+    account: accountSub.closeNow,
+    orgs: orgsSub.closeNow,
+    lang: langSub.closeNow,
+    help: helpSub.closeNow,
+  }
+  const account = accountSub.open
+  const orgsOpen = orgsSub.open
+  const lang = langSub.open
+  const help = helpSub.open
+  const subPlacement = useMemo(() => submenuPlacement(rtl), [rtl])
   const [creating, setCreating] = useState(false)
   const [keys, setKeys] = useState(false)
   const row = useRef<HTMLElement | null>(null)
@@ -411,6 +667,7 @@ export function Account({
   const apple = mac()
 
   const goSettings = (section: string) => {
+    closeOtherSubmenus()
     setHoverOpen(false)
     setMenuOpen(false)
     rememberSettingsReturn()
@@ -418,6 +675,7 @@ export function Account({
   }
 
   const triggerUpgrade = () => {
+    closeOtherSubmenus()
     setHoverOpen(false)
     setMenuOpen(false)
     if (stays(read.value?.label?.name)) {
@@ -502,10 +760,7 @@ export function Account({
         onOpenChange={(next) => {
           setMenuOpen(next)
           if (next) return
-          setAccount(false)
-          setOrgsOpen(false)
-          setLang(false)
-          setHelp(false)
+          closeOtherSubmenus()
         }}
         placement={narrow && !above ? (rtl ? 'left-end' : 'right-end') : 'top-start'}
         offset={8}
@@ -562,8 +817,8 @@ export function Account({
           aria-label={t('Account')}
           onCloseAutoFocus={back}
         >
-          <DropdownMenuSub open={account} onOpenChange={setAccount}>
-            <DropdownMenuSubTrigger minH={42} gap="$2.5" data-slot="me-account">
+          <DropdownMenuSub {...accountSub.subProps} {...subPlacement}>
+            <DropdownMenuSubTrigger minH={42} gap="$2.5" data-slot="me-account" {...accountSub.triggerProps}>
               <Face host={host} size={26} />
               <YStack flex={1} minW={0}>
                 <XStack items="center" gap="$1.5" minW={0}>
@@ -579,23 +834,28 @@ export function Account({
             </DropdownMenuSubTrigger>
                     {account ? (
                       <DropdownMenuSubContent
+                        data-slot="me-account-submenu"
                         minW={230}
                         maxW="calc(100vw - 24px)"
                         bg="var(--popover)"
                         borderWidth={1}
                         borderColor={STRONG}
+                        overflow="visible"
+                        position="relative"
                         pointerEvents="auto"
+                        {...accountSub.contentProps}
                       >
-                        <DropdownMenuItem onSelect={() => goSettings('account')}>
+                        <SubmenuBridge slot="me-account-bridge" onEnter={accountSub.enterContent} />
+                        <DropdownMenuItem data-slot="me-profile" onSelect={() => goSettings('account')}>
                           <Line icon={<CircleUserRound size={16} aria-hidden />}>{t('Profile')}</Line>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => goSettings('personalization')}>
+                        <DropdownMenuItem data-slot="me-personalization" onSelect={() => goSettings('personalization')}>
                           <Line icon={<Palette size={16} aria-hidden />}>{t('Personalization')}</Line>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => goSettings('account')}>
+                        <DropdownMenuItem data-slot="me-settings" onSelect={() => goSettings('account')}>
                           <Line icon={<Settings size={16} aria-hidden />}>{t('Settings')}</Line>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => window.location.assign(site('/beta'))}>
+                        <DropdownMenuItem data-slot="me-beta" onSelect={() => window.location.assign(site('/beta'))}>
                           <Line icon={<FlaskConical size={16} aria-hidden />}>{t('Beta')}</Line>
                         </DropdownMenuItem>
                       </DropdownMenuSubContent>
@@ -617,21 +877,26 @@ export function Account({
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
 
-                  <DropdownMenuSub open={orgsOpen} onOpenChange={setOrgsOpen}>
-                    <DropdownMenuSubTrigger data-slot="me-orgs">
+                  <DropdownMenuSub {...orgsSub.subProps} {...subPlacement}>
+                    <DropdownMenuSubTrigger data-slot="me-orgs" {...orgsSub.triggerProps}>
                       <Line icon={<Mark org={here ?? all[0] ?? null} />} trail={<Check size={16} aria-label={t('Current')} />}>
                         {t('{org} · {plan}', { org: (here ? (here.personal ? t('Personal') : here.display) : currentOrg) || t('Personal'), plan: planName || t('No plan') })}
                       </Line>
                     </DropdownMenuSubTrigger>
                     {orgsOpen ? (
                       <DropdownMenuSubContent
+                        data-slot="me-orgs-submenu"
                         minW={250}
                         maxW="calc(100vw - 24px)"
                         bg="var(--popover)"
                         borderWidth={1}
                         borderColor={STRONG}
+                        overflow="visible"
+                        position="relative"
                         pointerEvents="auto"
+                        {...orgsSub.contentProps}
                       >
+                        <SubmenuBridge slot="me-orgs-bridge" onEnter={orgsSub.enterContent} />
                         <DropdownMenuLabel>{t('Organizations')}</DropdownMenuLabel>
                         {all.map((o) => (
                           <DropdownMenuItem key={o.name} onSelect={() => o.name !== currentOrg && onOrg(o.name)}>
@@ -691,25 +956,24 @@ export function Account({
                   </XStack>
                   <DropdownMenuSeparator />
 
-                  <DropdownMenuSub
-                    open={lang}
-                    onOpenChange={(next) => {
-                      setLang(next)
-                      if (!next) setLangQuery('')
-                    }}
-                  >
-                    <DropdownMenuSubTrigger>
+                  <DropdownMenuSub {...langSub.subProps} {...subPlacement}>
+                    <DropdownMenuSubTrigger data-slot="me-lang" {...langSub.triggerProps}>
                       <Line icon={<Languages size={16} aria-hidden />}>{t('Language')}</Line>
                     </DropdownMenuSubTrigger>
                     {lang ? (
                       <DropdownMenuSubContent
+                        data-slot="me-lang-submenu"
                         minW={220}
                         maxW="calc(100vw - 24px)"
                         bg="var(--popover)"
                         borderWidth={1}
                         borderColor={STRONG}
+                        overflow="visible"
+                        position="relative"
                         pointerEvents="auto"
+                        {...langSub.contentProps}
                       >
+                        <SubmenuBridge slot="me-lang-bridge" onEnter={langSub.enterContent} />
                         <XStack px="$2" pt="$1.5" pb="$1">
                           <SizableText
                             render={
@@ -758,19 +1022,24 @@ export function Account({
                     ) : null}
                   </DropdownMenuSub>
 
-                  <DropdownMenuSub open={help} onOpenChange={setHelp}>
-                    <DropdownMenuSubTrigger>
+                  <DropdownMenuSub {...helpSub.subProps} {...subPlacement}>
+                    <DropdownMenuSubTrigger data-slot="me-help" {...helpSub.triggerProps}>
                       <Line icon={<LifeBuoy size={16} aria-hidden />}>{t('Help')}</Line>
                     </DropdownMenuSubTrigger>
                     {help ? (
                       <DropdownMenuSubContent
+                        data-slot="me-help-submenu"
                         minW={240}
                         maxW="calc(100vw - 24px)"
                         bg="var(--popover)"
                         borderWidth={1}
                         borderColor={STRONG}
+                        overflow="visible"
+                        position="relative"
                         pointerEvents="auto"
+                        {...helpSub.contentProps}
                       >
+                        <SubmenuBridge slot="me-help-bridge" onEnter={helpSub.enterContent} />
                         {pages().map((p) => (
                           <DropdownMenuItem key={p.key} onSelect={() => out(p.href)}>
                             <Line icon={ICONS[p.key]} trail={p.key === 'help' ? <ArrowUpRight size={14} color="var(--text-tertiary)" aria-hidden /> : null}>

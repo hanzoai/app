@@ -150,6 +150,27 @@ export interface Titlebar {
   railFooter?: React.ReactNode
 }
 
+/** CSS custom property reserving top-right width for floating host shell chrome (e.g. web pane toggles). */
+export const SHELL_TOP_RIGHT_INSET_VAR = '--hanzo-shell-top-right-inset'
+export const SHELL_TOP_RIGHT_INSET_STYLE_ID = 'hanzo-shell-top-right-inset-style'
+export const SHELL_TOP_RIGHT_INSET_CSS = `
+[data-slot="window"] [data-slot="workspace-bar"],
+[data-slot="window"] [data-slot="flow-toolbar"],
+[data-slot="window"] [data-slot="cyber-header"] {
+  padding-inline-end: max(16px, var(--hanzo-shell-top-right-inset, 0px)) !important;
+}
+`.trim()
+
+/** Normalize a host-provided top-right chrome inset (`112` -> `"112px"`, `"0px"` -> `"0px"`). */
+export function formatTopRightInset(inset?: number | string): string | undefined {
+  if (typeof inset === 'number') return Number.isFinite(inset) ? `${Math.max(0, inset)}px` : undefined
+  if (typeof inset === 'string') {
+    const trimmed = inset.trim()
+    return trimmed || undefined
+  }
+  return undefined
+}
+
 /**
  * `betas`, what a host draws as Betas' whole pane (`/beta`) in place of the
  * app's own list (Betas.tsx `BetasPane`): a site that runs its own beta program
@@ -159,35 +180,70 @@ export interface Titlebar {
 export interface Hosted {
   bar?: Titlebar
   betas?: React.ReactNode
+  /**
+   * Width (px or CSS length) occupied by floating top-right shell controls over
+   * the main pane (e.g. web pane-toggle icons). Applied as
+   * `--hanzo-shell-top-right-inset` on `[data-slot="window"]`; when omitted,
+   * any ancestor CSS value for `--hanzo-shell-top-right-inset` is inherited
+   * (defaulting to `0px`).
+   */
+  topRightInset?: number | string
 }
 
 
 /** Where each mode was last, so the rail goes back to it. */
 const last: Record<string, string> = { chat: '', dev: '', design: '', flow: '', learn: '', tabs: '', research: '', cyber: '' }
 
-export function App({ bar, betas }: Hosted = {}) {
+export function App({ bar, betas, topRightInset }: Hosted = {}) {
   return (
     <Gate>
-      <Window bar={bar} betas={betas} />
+      <Window bar={bar} betas={betas} topRightInset={topRightInset} />
     </Gate>
   )
 }
 
 /** The window itself, drawn once the organization is settled. */
-function Window({ bar, betas }: Hosted) {
+function Window({ bar, betas, topRightInset }: Hosted) {
   const { t } = useI18n()
   const drawer = useDrawer()
   const { close: shut, depart, exit } = drawer
   // On a phone the window stands in the visual viewport, so the keyboard never covers the composer (view.ts).
   const view = useView()
   const hold = drawer.window
+  const windowElRef = useRef<HTMLElement | null>(null)
+  const resolvedTopRightInset = formatTopRightInset(topRightInset)
   const windowRef = useCallback(
     (node: unknown) => {
+      windowElRef.current = node instanceof HTMLElement ? node : null
+      if (windowElRef.current) {
+        if (resolvedTopRightInset !== undefined) {
+          windowElRef.current.style.setProperty('--hanzo-shell-top-right-inset', resolvedTopRightInset)
+        } else {
+          windowElRef.current.style.removeProperty('--hanzo-shell-top-right-inset')
+        }
+      }
       view(node)
       hold(node)
     },
-    [view, hold],
+    [view, hold, resolvedTopRightInset],
   )
+  useEffect(() => {
+    const el = windowElRef.current
+    if (!el) return
+    if (resolvedTopRightInset !== undefined) {
+      el.style.setProperty('--hanzo-shell-top-right-inset', resolvedTopRightInset)
+    } else {
+      el.style.removeProperty('--hanzo-shell-top-right-inset')
+    }
+  }, [resolvedTopRightInset])
+  useEffect(() => {
+    if (typeof document === 'undefined' || !document.head) return
+    if (document.getElementById(SHELL_TOP_RIGHT_INSET_STYLE_ID)) return
+    const tag = document.createElement('style')
+    tag.id = SHELL_TOP_RIGHT_INSET_STYLE_ID
+    tag.textContent = SHELL_TOP_RIGHT_INSET_CSS
+    document.head.appendChild(tag)
+  }, [])
   // The sidebar shut, kept per browser under the key the builder's rail kept it under.
   const [closed, setClosed] = useKept('hanzo.build.rail', false)
   // The palette is open (the sidebar's search; ⌘K toggles it).
@@ -445,6 +501,7 @@ function Window({ bar, betas }: Hosted) {
         <YStack
           ref={windowRef}
           data-slot="window"
+          data-shell-top-right-inset={resolvedTopRightInset}
           {...floor}
           flex={1}
           minW={0}
@@ -765,7 +822,7 @@ function Window({ bar, betas }: Hosted) {
                 ) : (
                   <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...(run ? null : { ...pane(), overflow: 'hidden' })} position="relative" flex={1} minW={0} minH={0}>
                     {!plans && !run && !inPlace && closed && free && host.person !== null ? (
-                      <XStack position="absolute" t={8} r={12} z="var(--z-raised)" items="center" $max-md={{ display: 'none' }}>
+                      <XStack position="absolute" t={8} insetInlineEnd="calc(12px + var(--hanzo-shell-top-right-inset, 0px))" z="var(--z-raised)" items="center" $max-md={{ display: 'none' }}>
                         <XStack
                           render="button"
                           data-slot="header-upgrade"

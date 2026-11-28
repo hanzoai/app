@@ -373,7 +373,7 @@ export function DevInterior({
   // opens the real workspace instead of falling through to the active Chat thread.
   if (!misroutedChat && mode === 'dev' && (!dev.runtime || isBuilderSubRoute(host?.path))) {
     return (
-      <YStack flex={1} minW={0} minH={0} height="100%" overflow="hidden">
+      <YStack data-slot="dev-builder" flex={1} minW={0} minH={0} height="100%" overflow="hidden">
         <Builder host={host} rail={false} />
       </YStack>
     )
