@@ -68,7 +68,7 @@ vi.mock('@hanzo/ui', () => ({
 vi.mock('@hanzo/ui/chat', () => ({ Sidebar: part, SidebarIconButton: part, SidebarItem: part, StatusDot: () => null }))
 vi.mock('@hanzogui/shell', () => ({ HanzoMark: () => null }))
 vi.mock('./Betas', () => ({ BetasDialog: () => null, useBetas: () => ({ open: (id: string) => devState.opened.has(id) }) }))
-vi.mock('@hanzo/build', () => {
+vi.mock('@hanzo/dev/builder', () => {
   const route = (at: string) =>
     at === '-/artifacts'
       ? { kind: 'screen', screen: 'artifacts' }

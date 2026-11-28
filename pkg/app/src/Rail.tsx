@@ -72,7 +72,7 @@ import { useState, type ComponentType, type DragEvent, type ReactNode } from 're
 import { XStack, YStack, Text } from '@hanzo/gui'
 import { Toggle } from './Toggle'
 export { Toggle, TOGGLE } from './Toggle'
-import { route, type Host } from '@hanzo/build'
+import { route, type Host } from '@hanzo/dev/builder'
 import { MARKS } from './icons'
 import {
   Tooltip,

@@ -28,7 +28,7 @@ vi.mock('@hanzo/tabs', async (real) => ({
     account: fleet.account,
   }),
 }))
-vi.mock('@hanzo/build/names', async (real) => ({ ...(await real<typeof import('@hanzo/build/names')>()), useDeviceNames: () => ({}) }))
+vi.mock('@hanzo/dev/names', async (real) => ({ ...(await real<typeof import('@hanzo/dev/names')>()), useDeviceNames: () => ({}) }))
 vi.mock('./lib/dev-mode', () => ({ useDevMode: () => [false] }))
 vi.mock('./lib/session', async (real) => ({ ...(await real<typeof import('./lib/session')>()), bearer: () => 'tk', subject: () => 'ada', org: () => 'acme' }))
 vi.mock('./lib/api', () => ({ api: () => 'https://api.test' }))

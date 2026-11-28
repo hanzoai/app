@@ -118,8 +118,8 @@ import {
   useIam,
   useOrganizations,
 } from "@hanzo/iam/react";
-import { Gutter, SideProvider, useSplit } from "@hanzo/build";
-import { label as planLabel } from "@hanzo/build/plan";
+import { Gutter, SideProvider, useSplit } from "@hanzo/dev/builder";
+import { label as planLabel } from "@hanzo/dev/plan";
 import { restoreActiveMod } from "@hanzo/mod";
 import {
   HanzoMark,

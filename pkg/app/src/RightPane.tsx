@@ -34,7 +34,7 @@ import {
   YStack,
 } from '@hanzo/ui'
 import { useAi, type ChatMessage } from '@hanzo/ai/react'
-import { artifacts, name as titleOf, PAGE, type Deck, type Entry, type Section, type Tabs } from '@hanzo/build'
+import { artifacts, name as titleOf, PAGE, type Deck, type Entry, type Section, type Tabs } from '@hanzo/dev/builder'
 import { said as told } from './lib/attach'
 import { download, fileOf, type Api } from './lib/files'
 import { live, org, scope } from './lib/session'

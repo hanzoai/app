@@ -26,7 +26,7 @@ const { part, row, convMenu, presses, state, devState, capturedActions, marked }
 vi.mock('@hanzo/i18n/react', () => ({ useI18n: () => ({ t: (s: string) => s, dir: 'ltr' }) }))
 vi.mock('@hanzo/gui', () => ({ ScrollView: part, SizableText: part, XStack: part, YStack: part }))
 vi.mock('lucide-react', () => ({ CheckSquare: () => null, ChevronDown: () => null, ChevronRight: () => null, GitPullRequest: () => null, ListFilter: () => null }))
-vi.mock('@hanzo/build', () => ({
+vi.mock('@hanzo/dev/builder', () => ({
   DOTS: { running: 'running', done: 'done', error: 'error' },
   route: () => ({ kind: 'new' }),
   useSessions: () => ({ value: devState.sessions, loading: false, error: null, reload: () => {} }),

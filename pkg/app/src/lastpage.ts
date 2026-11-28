@@ -1,7 +1,7 @@
 // The page a conversation last wrote: what Chat's Preview opens (Chat.tsx
 // `PreviewButton`, and `see`). Pure, so the tests read it without a pane.
 
-import { artifacts, renders, type Artifact } from '@hanzo/build'
+import { artifacts, renders, type Artifact } from '@hanzo/dev/builder'
 
 /** One turn as the thread holds it: who said it, and what. */
 interface Turn {

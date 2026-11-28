@@ -12,7 +12,7 @@
 // the skills and agents picked there go into every message, which costs context
 // whether or not a message needs them, and Hanzo adds nothing of its own.
 
-import { detect, skillsSaid, type Target } from '@hanzo/build'
+import { detect, skillsSaid, type Target } from '@hanzo/dev/builder'
 import { TEAM } from './team'
 
 /** At most this many skills join one message. */

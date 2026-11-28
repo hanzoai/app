@@ -29,7 +29,7 @@ import {
   X,
   XCircle,
 } from 'lucide-react'
-import type { Host } from '@hanzo/build'
+import type { Host } from '@hanzo/dev/builder'
 import { useHost } from '../host'
 import { go as navGo } from '../lib/host'
 import { org as currentOrg } from '../lib/session'

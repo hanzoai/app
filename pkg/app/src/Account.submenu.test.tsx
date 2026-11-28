@@ -104,8 +104,8 @@ vi.mock('@hanzo/ui', () => ({
   View: Draw,
 }))
 vi.mock('@hanzo/iam/react', () => ({ useOrganizations: () => ({ roles: { acme: 'owner' } }) }))
-vi.mock('@hanzo/build', async () => {
-  const { label, said } = await import('@hanzo/build/plan')
+vi.mock('@hanzo/dev/builder', async () => {
+  const { label, said } = await import('@hanzo/dev/plan')
   return {
     label,
     Meter: () => null,

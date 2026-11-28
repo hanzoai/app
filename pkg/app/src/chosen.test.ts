@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 
 // Kai's answer and the skills' words, as @hanzo/build gives them: each test says what Kai picks.
 const kai = vi.hoisted(() => ({ found: [] as { name: string; skill: boolean; probability?: number }[], asked: [] as string[], taught: [] as string[][], fail: false }))
-vi.mock('@hanzo/build', () => ({
+vi.mock('@hanzo/dev/builder', () => ({
   detect: async (_t: unknown, prompt: string) => {
     kai.asked.push(prompt)
     if (kai.fail) throw new Error('kai is away')

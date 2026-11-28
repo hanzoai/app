@@ -13,7 +13,7 @@ import { Fragment, useCallback, useId, useRef, useState, type ReactNode } from '
 import { useI18n } from '@hanzo/i18n/react'
 import { Button, Checkbox, Dialog, DialogContent, DialogDescription, DialogTitle, Label, XStack } from '@hanzo/ui'
 import { fromBuild, rememberable, trust, trusted, type Spend } from './lib/spend'
-import type { Spend as BuildSpend } from '@hanzo/build'
+import type { Spend as BuildSpend } from '@hanzo/dev/builder'
 
 /**
  * Whether a key belongs to an open confirm: Escape there closes the confirm alone,

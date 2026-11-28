@@ -39,7 +39,7 @@ vi.mock('@hanzo/ui/product/Filters', () => ({
   SearchInput: ({ placeholder, actions }: { placeholder?: string; actions?: ReactNode }) =>
     createElement('div', null, createElement('input', { placeholder }), actions),
 }))
-vi.mock('@hanzo/build/plan', () => ({ label: () => null, said: () => '' }))
+vi.mock('@hanzo/dev/plan', () => ({ label: () => null, said: () => '' }))
 vi.mock('@hanzogui/shell', () => ({ HanzoWordmark: () => null }))
 vi.mock('lucide-react', () => ({ Check: () => null, LogOut: () => null, Minus: () => null, Plus: () => null, X: () => null }))
 vi.mock('@hanzo/iam/react', () => ({ useIam: () => state.iam }))

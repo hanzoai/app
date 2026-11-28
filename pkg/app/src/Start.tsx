@@ -30,7 +30,7 @@ import {
   runLocalDev,
   type LocalWorkspace,
 } from './lib/local-fs'
-import { deviceKey, useDeviceNames } from '@hanzo/build/names'
+import { deviceKey, useDeviceNames } from '@hanzo/dev/names'
 import { formatDeviceLabel, useDevMode } from './lib/dev-mode'
 import { InfoHint } from './lib/info-hint'
 import { usePromptPlus } from './lib/promptPlus'

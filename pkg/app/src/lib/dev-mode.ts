@@ -1,11 +1,11 @@
-import { formatDeviceLabel as formatBuilt } from '@hanzo/build/dev-mode'
+import { formatDeviceLabel as formatBuilt } from '@hanzo/dev/dev-mode'
 
 // ONE DEVELOPER MODE. The switch, its key and the choice made once for a device
 // that never made it (on where Tabs listed a terminal or a linked machine, or
 // Dev's transcript asks for more; off for everyone else) are @hanzo/build's,
 // which Dev reads too: a run's transcript folds its process into one plain line
 // while it is off (hanzo-inc/app issues 317 and 321).
-export { DEV_MODE_EVENT, DEV_MODE_KEY, getDevMode, setDevMode, useDevMode } from '@hanzo/build/dev-mode'
+export { DEV_MODE_EVENT, DEV_MODE_KEY, getDevMode, setDevMode, useDevMode } from '@hanzo/dev/dev-mode'
 
 export const SETTINGS_RETURN_KEY = 'hanzo.settings.return'
 

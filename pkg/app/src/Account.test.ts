@@ -82,8 +82,8 @@ vi.mock('@hanzo/ui', () => ({
   View: Draw,
 }))
 vi.mock('@hanzo/iam/react', () => ({ useOrganizations: () => ({ roles: { acme: 'owner' } }) }))
-vi.mock('@hanzo/build', async () => {
-  const { label, said } = await import('@hanzo/build/plan')
+vi.mock('@hanzo/dev/builder', async () => {
+  const { label, said } = await import('@hanzo/dev/plan')
   return { label, Meter: () => createElement('div', { 'data-slot': 'meter' }), said, useStanding: () => ({ value: standing.value, error: null, loading: false, reload: () => {} }) }
 })
 const sessionState = vi.hoisted(() => ({ org: 'acme' as string | null, orgs: ['acme'] as string[], signingOut: false }))

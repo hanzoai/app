@@ -21,7 +21,7 @@
 import { useI18n } from '@hanzo/i18n/react'
 import type { ReactNode } from 'react'
 import { XStack } from '@hanzo/gui'
-import { nav, NEW, type Host } from '@hanzo/build'
+import { nav, NEW, type Host } from '@hanzo/dev/builder'
 import { MARKS } from './icons'
 import type { RailLink } from '@hanzo/ui/chat'
 import { BAND, pane } from './ground'

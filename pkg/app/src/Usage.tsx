@@ -20,7 +20,7 @@ import {
 import { ComposerStatusProvider } from '@hanzo/ui/chat'
 import { CLASSES, classesLabel } from '@hanzo/ui/product/limits'
 import type { UseLimits } from '@hanzo/ui/product/useLimits'
-import { label } from '@hanzo/build/plan'
+import { label } from '@hanzo/dev/plan'
 import { showSettings } from './open'
 import { settings } from './lib/host'
 import { hasSession, org, subject } from './lib/session'

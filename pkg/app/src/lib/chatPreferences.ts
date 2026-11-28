@@ -10,7 +10,7 @@
  *   bring in what each one needs, 'preload' carries only what the person picked, in every message (issue 314)
  */
 import { useEffect, useState } from 'react'
-import { EFFORTS as DEV, type Effort as Level } from '@hanzo/build/mind'
+import { EFFORTS as DEV, type Effort as Level } from '@hanzo/dev/mind'
 import { EFFORTS, type Effort } from '@hanzo/ui/chat/pure'
 
 export type ApprovalMode = 'auto' | 'manual'

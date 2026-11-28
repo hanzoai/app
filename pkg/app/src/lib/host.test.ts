@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest'
-import { SECTIONS } from '@hanzo/build/route'
+import { SECTIONS } from '@hanzo/dev/route'
 import { app, BETA, CHAT, DEV, design, dev, flow, follow, LEARN, learn, page, paged, place, resume, SETTINGS, settings, talk, visit } from './host'
 import { configure } from '../where'
 

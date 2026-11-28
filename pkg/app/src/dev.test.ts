@@ -1,7 +1,7 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import type { Host } from '@hanzo/build'
+import type { Host } from '@hanzo/dev/builder'
 
 // The host is read off one render; everything it asks of IAM, the router and
 // the look is answered here, and a move inside the app or through the router is
@@ -14,7 +14,7 @@ const { MARKS } = vi.hoisted(() => {
   const one = { icon: mark(), make: mark() }
   return { MARKS: { chat: one, dev: one, design: one, studio: one, tabs: one, library: one, scheduled: one, customize: one } }
 })
-vi.mock('@hanzo/build', () => {
+vi.mock('@hanzo/dev/builder', () => {
   type Route = { kind: string; screen?: string; section?: string }
   const path = (r: Route) => (r.kind === 'settings' ? `-/settings/${r.section}` : r.kind === 'screen' ? `-/${r.screen}` : '')
   const route = (p: string): Route =>
@@ -32,7 +32,7 @@ vi.mock('./lib/destination', () => ({ enter: () => {} }))
 vi.mock('./lib/api', () => ({ api: () => 'https://api.hanzo.ai' }))
 vi.mock('./open', () => ({ showSettings: () => {}, useOpen: () => ({ settings: null }) }))
 
-import { path } from '@hanzo/build'
+import { path } from '@hanzo/dev/builder'
 import { leave, useDevHost } from './dev'
 
 /** The host as one render hands it out. */

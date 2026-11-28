@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { mount, press, tap, type Mounted } from '../vitest.real'
 import { Confirm, useBuildSpend, useSpend } from './Confirm'
 import { NeedMoreUsageModal } from './NeedMoreUsage'
-import type { Spend as BuildSpend } from '@hanzo/build'
+import type { Spend as BuildSpend } from '@hanzo/dev/builder'
 import { trusted } from './lib/spend'
 
 vi.mock('./lib/session', async (real) => ({ ...(await real<typeof import('./lib/session')>()), subject: () => 'ada', org: () => 'acme' }))

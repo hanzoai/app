@@ -126,7 +126,7 @@ import {
   name as tabName,
   type Kind,
   type Listen,
-} from "@hanzo/build";
+} from "@hanzo/dev/builder";
 import type { ModelCatalogEntry as Model } from "@hanzo/ui/models/catalog";
 import { payUrl, topUp } from './lib/pay';
 import { requestUpgrade, Upgrade, useFree, type Ask } from './Upgrade';
