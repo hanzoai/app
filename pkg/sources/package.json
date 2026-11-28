@@ -1,6 +1,6 @@
 {
   "name": "@hanzo/sources",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Hanzo's linked sources: the one view of every desktop and browser a person linked, the account picker, the cloud client and the availability rule (HIP-1350).",
   "type": "module",
   "main": "./dist/index.js",

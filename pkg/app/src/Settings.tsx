@@ -66,7 +66,7 @@ const GROUPS: Group[] = [
       { id: 'billing', label: phrase('Billing') },
       { id: 'referrals', label: phrase('Referrals & Rewards') },
       { id: 'usage', label: phrase('Usage') },
-      { id: 'sources', label: phrase('Linked sources') },
+      { id: 'sources', label: phrase('Linked machines') },
       { id: 'capabilities', label: phrase('Capabilities'), note: phrase('What a model may reach for on your behalf.') },
       { id: 'privacy', label: phrase('Privacy'), href: site('/legal/privacy') },
       { id: 'dev', label: 'Hanzo Dev', product: true, href: dev() },
