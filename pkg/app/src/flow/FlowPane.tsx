@@ -724,7 +724,8 @@ export function FlowPane({
               </Button>
               <Button
                 size="sm"
-                variant="primary"
+                variant="outline"
+                borderColor="var(--border-strong)"
                 data-slot="flow-playground-open"
                 onPress={() => {
                   setShowMcpDrawer(false)
@@ -1082,7 +1083,8 @@ export function FlowPane({
                       </Button>
                       <Button
                         size="sm"
-                        variant="primary"
+                        variant="outline"
+                        borderColor="var(--border-strong)"
                         data-slot={`scheduled-run-${item.id}`}
                         disabled={running || item.status === 'paused'}
                         onPress={() => {
@@ -1255,7 +1257,8 @@ export function FlowPane({
                       <XStack items="center" gap="$2" flexWrap="wrap" pt="$1">
                         <Button
                           size="sm"
-                          variant="primary"
+                          variant="outline"
+                          borderColor="var(--border-strong)"
                           data-slot={`run-retry-${run.id}`}
                           disabled={running}
                           onPress={() =>
@@ -1525,7 +1528,8 @@ export function FlowPane({
                   </Button>
                   <Button
                     size="sm"
-                    variant="primary"
+                    variant="outline"
+                    borderColor="var(--border-strong)"
                     data-slot={`use-template-${tpl.id}`}
                     onPress={() => handleUseTemplate(tpl, false)}
                   >

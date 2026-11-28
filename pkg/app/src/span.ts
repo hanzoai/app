@@ -60,22 +60,28 @@ export function useSpan(store: string, initial: number, floor: number, ceil: num
     },
     [span],
   )
-  const move = useCallback((n: number) => {
-    el.current?.style.setProperty('--span', `${n}px`)
-    ;(el.current?.closest?.('[data-slot="window"]') as HTMLElement | null)?.style.setProperty('--app-sidebar-span', `${n}px`)
-  }, [])
+  const clamp = useCallback((n: number) => Math.max(floor, Math.min(ceil, Math.round(n))), [floor, ceil])
+  const move = useCallback(
+    (n: number) => {
+      const next = clamp(n)
+      el.current?.style.setProperty('--span', `${next}px`)
+      ;(el.current?.closest?.('[data-slot="window"]') as HTMLElement | null)?.style.setProperty('--app-sidebar-span', `${next}px`)
+    },
+    [clamp],
+  )
   const keep = useCallback(
     (n: number) => {
-      el.current?.style.setProperty('--span', `${n}px`)
-      ;(el.current?.closest?.('[data-slot="window"]') as HTMLElement | null)?.style.setProperty('--app-sidebar-span', `${n}px`)
-      setSpan(n)
+      const next = clamp(n)
+      el.current?.style.setProperty('--span', `${next}px`)
+      ;(el.current?.closest?.('[data-slot="window"]') as HTMLElement | null)?.style.setProperty('--app-sidebar-span', `${next}px`)
+      setSpan(next)
       try {
-        localStorage.setItem(store, String(n))
+        localStorage.setItem(store, String(next))
       } catch {
         // A browser that stores nothing still resizes; it just forgets.
       }
     },
-    [store],
+    [store, clamp],
   )
   // gui emits a custom property from `$platform-web` as its own class; its
   // types name only CSS properties, so the props are handed over as a bag.

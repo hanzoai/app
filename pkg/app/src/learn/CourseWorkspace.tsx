@@ -154,7 +154,9 @@ export function CourseWorkspace({
             </XStack>
             <Button
               size="sm"
-              variant={facultyOpen ? 'outline' : 'primary'}
+              variant="outline"
+              bg={facultyOpen ? '$raised' : 'transparent'}
+              aria-pressed={facultyOpen}
               data-slot="toggle-faculty-sidebar"
               onPress={() => setFacultyOpen((v) => !v)}
             >
@@ -719,7 +721,10 @@ export function CourseWorkspace({
                   <XStack gap="$2" flexWrap="wrap">
                     <Button
                       size="sm"
-                      variant={capstoneDraft.preregisteredMet ? 'primary' : 'outline'}
+                      variant="outline"
+                      bg={capstoneDraft.preregisteredMet ? '$raised' : 'transparent'}
+                      borderColor={capstoneDraft.preregisteredMet ? 'var(--border-strong)' : '$edge'}
+                      aria-pressed={capstoneDraft.preregisteredMet}
                       data-slot="capstone-toggle-prereg"
                       onPress={() =>
                         setCapstoneDraft((p) => ({ ...p, preregisteredMet: !p.preregisteredMet }))
@@ -730,7 +735,10 @@ export function CourseWorkspace({
                     </Button>
                     <Button
                       size="sm"
-                      variant={capstoneDraft.regressionFree ? 'primary' : 'outline'}
+                      variant="outline"
+                      bg={capstoneDraft.regressionFree ? '$raised' : 'transparent'}
+                      borderColor={capstoneDraft.regressionFree ? 'var(--border-strong)' : '$edge'}
+                      aria-pressed={capstoneDraft.regressionFree}
                       data-slot="capstone-toggle-regression"
                       onPress={() =>
                         setCapstoneDraft((p) => ({ ...p, regressionFree: !p.regressionFree }))

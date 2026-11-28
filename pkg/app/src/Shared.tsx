@@ -165,7 +165,7 @@ function Body({ state, signedIn, onOpen }: { state: State; signedIn: boolean; on
             {state.said}
           </Text>
         </YStack>
-        <Button size="sm" variant="primary" minH={36} $max-sm={{ minH: 44 }} onClick={() => window.location.reload()}>
+        <Button size="sm" variant="outline" borderColor="var(--border-strong)" minH={36} $max-sm={{ minH: 44 }} onClick={() => window.location.reload()}>
           {t('Try again')}
         </Button>
       </YStack>

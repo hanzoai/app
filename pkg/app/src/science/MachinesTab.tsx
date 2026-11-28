@@ -396,7 +396,10 @@ export function MachinesTab({
                     </Text>
                     <Button
                       size="sm"
-                      variant={isSelected ? 'primary' : 'outline'}
+                      variant="outline"
+                      bg={isSelected ? '$raised' : 'transparent'}
+                      borderColor={isSelected ? 'var(--border-strong)' : '$edge'}
+                      aria-pressed={isSelected}
                       data-slot={`select-machine-${m.id}`}
                       onPress={() => toggleMachineTarget(m.id)}
                     >
@@ -458,7 +461,9 @@ export function MachinesTab({
               <Button
                 key={tp}
                 size="sm"
-                variant={activityType === tp ? 'primary' : 'ghost'}
+                variant={activityType === tp ? 'outline' : 'ghost'}
+                bg={activityType === tp ? '$raised' : 'transparent'}
+                aria-pressed={activityType === tp}
                 onPress={() => setActivityType(tp)}
               >
                 {tp}

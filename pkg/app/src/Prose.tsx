@@ -43,6 +43,8 @@ const decode = (s: string): string =>
     return NAMED[name.toLowerCase()] ?? all
   })
 
+const WRAP = { overflowWrap: 'anywhere', wordBreak: 'break-word' } as const
+
 /** One run of inline tokens, in `tone`, at the block's `rung`. */
 function inline(tokens: Token[] | undefined, tone: Tone, rung: Rung = BODY): ReactNode[] {
   return (tokens ?? []).map((t, i) => {
@@ -67,7 +69,17 @@ function inline(tokens: Token[] | undefined, tone: Tone, rung: Rung = BODY): Rea
         )
       case 'codespan':
         return (
-          <Text key={i} render="code" color={tone} fontFamily="$mono" fontSize={Math.round(rung * 0.875)} px="$1" rounded={4} bg={GROUND}>
+          <Text
+            key={i}
+            render="code"
+            color={tone}
+            fontFamily="$mono"
+            fontSize={Math.round(rung * 0.875)}
+            px="$1"
+            rounded={4}
+            bg={GROUND}
+            $platform-web={WRAP}
+          >
             {decode(t.text)}
           </Text>
         )
@@ -89,6 +101,7 @@ function inline(tokens: Token[] | undefined, tone: Tone, rung: Rung = BODY): Rea
             color={INK}
             textDecorationLine="none"
             hoverStyle={{ textDecorationLine: 'none' }}
+            $platform-web={WRAP}
           >
             {inline(t.tokens, INK, rung)}
           </Anchor>
@@ -109,10 +122,45 @@ function inline(tokens: Token[] | undefined, tone: Tone, rung: Rung = BODY): Rea
   })
 }
 
+/** Display math block delimited by `$$ ... $$` on its own paragraph, contained in a horizontal scroller. */
+function displayMathText(tokens: Token[] | undefined): string | null {
+  if (!tokens || tokens.length !== 1) return null
+  const only = tokens[0]
+  if (!only || only.type !== 'text' || !('text' in only)) return null
+  const raw = String(only.text).trim()
+  if (raw.length > 4 && raw.startsWith('$$') && raw.endsWith('$$')) {
+    const inner = raw.slice(2, -2).trim()
+    return inner || null
+  }
+  return null
+}
+
 /** Running text: a paragraph, or a list item's own words. */
 function Line({ tokens, tone }: { tokens: Token[] | undefined; tone: Tone }) {
+  const math = displayMathText(tokens)
+  if (math) {
+    return (
+      <View
+        data-slot="prose-math"
+        width="100%"
+        maxW="100%"
+        minW={0}
+        overflowX="auto"
+        px="$3"
+        py="$2"
+        rounded="$3"
+        bg={GROUND}
+        borderWidth={1}
+        borderColor={EDGE}
+      >
+        <Text fontFamily="$mono" fontSize={14} lineHeight={22} color={tone} whiteSpace="pre">
+          {math}
+        </Text>
+      </View>
+    )
+  }
   return (
-    <Text render="p" color={tone} fontSize={BODY} lineHeight={LINE}>
+    <Text render="p" color={tone} fontSize={BODY} lineHeight={LINE} maxW="100%" minW={0} $platform-web={WRAP}>
       {inline(tokens, tone)}
     </Text>
   )
@@ -121,13 +169,13 @@ function Line({ tokens, tone }: { tokens: Token[] | undefined; tone: Tone }) {
 function List({ list, tone }: { list: Tokens.List; tone: Tone }) {
   const start = typeof list.start === 'number' ? list.start : 1
   return (
-    <YStack render={list.ordered ? 'ol' : 'ul'} m={0} p={0} gap="$1">
+    <YStack render={list.ordered ? 'ol' : 'ul'} m={0} p={0} gap="$1" width="100%" maxW="100%" minW={0}>
       {list.items.map((item, i) => (
-        <XStack key={i} render="li" gap="$1">
-          <Text aria-hidden color={tone} fontSize={BODY} lineHeight={LINE} minW={16} text="right">
+        <XStack key={i} render="li" gap="$1" minW={0} maxW="100%">
+          <Text aria-hidden color={tone} fontSize={BODY} lineHeight={LINE} minW={16} shrink={0} text="right">
             {item.task ? (item.checked ? '☑' : '☐') : list.ordered ? `${start + i}.` : '•'}
           </Text>
-          <YStack flex={1} minW={0} gap="$1">
+          <YStack flex={1} minW={0} maxW="100%" gap="$1">
             {blocks(item.tokens, tone)}
           </YStack>
         </XStack>
@@ -143,33 +191,35 @@ function List({ list, tone }: { list: Tokens.List; tone: Tone }) {
 function Table({ table, tone }: { table: Tokens.Table; tone: Tone }) {
   const align = (c: number) => table.align[c] ?? 'left'
   return (
-    <View role="table" display="grid" gridTemplateColumns={`repeat(${table.header.length}, max-content)`} self="flex-start" maxW="100%" overflowX="auto">
-      {[table.header, ...table.rows].map((row, r) => (
-        <View key={r} role="row" display="contents">
-          {row.map((cell, c) => (
-            <Text
-              key={c}
-              role={r ? 'cell' : 'columnheader'}
-              color={tone}
-              fontSize={14}
-              lineHeight={20}
-              fontWeight={r ? '400' : '600'}
-              text={align(c)}
-              px="$2"
-              py="$1"
-              bg={r ? undefined : GROUND}
-              borderColor={EDGE}
-              borderStyle="solid"
-              borderRightWidth={1}
-              borderBottomWidth={1}
-              borderTopWidth={r ? 0 : 1}
-              borderLeftWidth={c ? 0 : 1}
-            >
-              {inline(cell.tokens, tone, 14)}
-            </Text>
-          ))}
-        </View>
-      ))}
+    <View data-slot="prose-table-scroll" width="100%" maxW="100%" minW={0} overflowX="auto">
+      <View role="table" display="grid" gridTemplateColumns={`repeat(${table.header.length}, max-content)`} self="flex-start">
+        {[table.header, ...table.rows].map((row, r) => (
+          <View key={r} role="row" display="contents">
+            {row.map((cell, c) => (
+              <Text
+                key={c}
+                role={r ? 'cell' : 'columnheader'}
+                color={tone}
+                fontSize={14}
+                lineHeight={20}
+                fontWeight={r ? '400' : '600'}
+                text={align(c)}
+                px="$2"
+                py="$1"
+                bg={r ? undefined : GROUND}
+                borderColor={EDGE}
+                borderStyle="solid"
+                borderRightWidth={1}
+                borderBottomWidth={1}
+                borderTopWidth={r ? 0 : 1}
+                borderLeftWidth={c ? 0 : 1}
+              >
+                {inline(cell.tokens, tone, 14)}
+              </Text>
+            ))}
+          </View>
+        ))}
+      </View>
     </View>
   )
 }
@@ -184,7 +234,19 @@ function blocks(tokens: Token[] | undefined, tone: Tone): ReactNode[] {
         return <Line key={i} tokens={'tokens' in t && t.tokens ? t.tokens : [t]} tone={tone} />
       case 'heading':
         return (
-          <Text key={i} render={`h${t.depth}` as 'h1'} m={0} mt={t.depth < 3 ? 8 : 4} color={tone} fontSize={RUNG[t.depth - 1]} lineHeight={LEAD[t.depth - 1]} fontWeight="600">
+          <Text
+            key={i}
+            render={`h${t.depth}` as 'h1'}
+            m={0}
+            mt={t.depth < 3 ? 8 : 4}
+            color={tone}
+            fontSize={RUNG[t.depth - 1]}
+            lineHeight={LEAD[t.depth - 1]}
+            fontWeight="600"
+            maxW="100%"
+            minW={0}
+            $platform-web={WRAP}
+          >
             {inline(t.tokens, tone, RUNG[t.depth - 1])}
           </Text>
         )
@@ -197,20 +259,21 @@ function blocks(tokens: Token[] | undefined, tone: Tone): ReactNode[] {
       // own, because wrapping code changes what it says.
       case 'code':
         return (
-          <Code
-            key={i}
-            language={(t as Tokens.Code).lang || 'text'}
-            value={t.text}
-            rounded={12}
-            borderColor={EDGE}
-            bg="var(--side-fill, var(--card))"
-          >
-            {t.text}
-          </Code>
+          <YStack key={i} data-slot="prose-code-scroll" width="100%" maxW="100%" minW={0} overflow="hidden">
+            <Code
+              language={(t as Tokens.Code).lang || 'text'}
+              value={t.text}
+              rounded={12}
+              borderColor={EDGE}
+              bg="var(--side-fill, var(--card))"
+            >
+              {t.text}
+            </Code>
+          </YStack>
         )
       case 'blockquote':
         return (
-          <YStack key={i} render="blockquote" m={0} pl="$3" gap="$2" borderWidth={0} borderLeftWidth={2} borderStyle="solid" borderColor={EDGE}>
+          <YStack key={i} render="blockquote" m={0} pl="$3" gap="$2" width="100%" maxW="100%" minW={0} borderWidth={0} borderLeftWidth={2} borderStyle="solid" borderColor={EDGE}>
             {blocks(t.tokens, QUIET)}
           </YStack>
         )
@@ -229,7 +292,7 @@ function blocks(tokens: Token[] | undefined, tone: Tone): ReactNode[] {
 export function Prose({ text }: { text: string }) {
   if (!text) return null
   return (
-    <YStack data-slot="prose" gap="$2" minW={0}>
+    <YStack data-slot="prose" gap="$2" width="100%" maxW="100%" minW={0}>
       {blocks(read(text), INK)}
     </YStack>
   )

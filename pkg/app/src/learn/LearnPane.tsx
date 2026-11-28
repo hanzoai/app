@@ -177,7 +177,7 @@ export function LearnPane({
           <Text fontSize="$2" color="$soft" text="center" maxW={420}>
             {t('No Hanzo University course matches')} "{route.slug}". {t('Browse all 25 courses on the Learn launchpad.')}
           </Text>
-          <Button size="sm" variant="primary" onPress={() => navigate(learnPath())}>
+          <Button size="sm" variant="outline" onPress={() => navigate(learnPath())}>
             {t('Back to Hanzo University')}
           </Button>
         </YStack>

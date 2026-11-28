@@ -259,7 +259,9 @@ export function KaiLabPlayground({
           <XStack gap="$1.5">
             <Button
               size="sm"
-              variant={endpointMode === 'decisions' ? 'primary' : 'outline'}
+              variant={endpointMode === 'decisions' ? 'outline' : 'ghost'}
+              bg={endpointMode === 'decisions' ? '$raised' : 'transparent'}
+              aria-pressed={endpointMode === 'decisions'}
               data-slot="kai-mode-decisions"
               onPress={() => setEndpointMode('decisions')}
             >
@@ -267,7 +269,9 @@ export function KaiLabPlayground({
             </Button>
             <Button
               size="sm"
-              variant={endpointMode === 'train' ? 'primary' : 'outline'}
+              variant={endpointMode === 'train' ? 'outline' : 'ghost'}
+              bg={endpointMode === 'train' ? '$raised' : 'transparent'}
+              aria-pressed={endpointMode === 'train'}
               data-slot="kai-mode-train"
               onPress={() => setEndpointMode('train')}
             >

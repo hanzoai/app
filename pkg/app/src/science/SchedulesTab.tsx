@@ -246,14 +246,18 @@ export function SchedulesTab({
           <XStack gap="$1.5">
             <Button
               size="sm"
-              variant={cadenceMode === 'interval' ? 'primary' : 'ghost'}
+              variant={cadenceMode === 'interval' ? 'outline' : 'ghost'}
+              bg={cadenceMode === 'interval' ? '$raised' : 'transparent'}
+              aria-pressed={cadenceMode === 'interval'}
               onPress={() => setCadenceMode('interval')}
             >
               {t('Interval')}
             </Button>
             <Button
               size="sm"
-              variant={cadenceMode === 'cron' ? 'primary' : 'ghost'}
+              variant={cadenceMode === 'cron' ? 'outline' : 'ghost'}
+              bg={cadenceMode === 'cron' ? '$raised' : 'transparent'}
+              aria-pressed={cadenceMode === 'cron'}
               onPress={() => setCadenceMode('cron')}
             >
               {t('Cron')}
@@ -343,14 +347,18 @@ export function SchedulesTab({
           <XStack gap="$1.5">
             <Button
               size="sm"
-              variant={activityType === 'research.tick' ? 'primary' : 'ghost'}
+              variant={activityType === 'research.tick' ? 'outline' : 'ghost'}
+              bg={activityType === 'research.tick' ? '$raised' : 'transparent'}
+              aria-pressed={activityType === 'research.tick'}
               onPress={() => setActivityType('research.tick')}
             >
               research.tick
             </Button>
             <Button
               size="sm"
-              variant={activityType === 'research.bench' ? 'primary' : 'ghost'}
+              variant={activityType === 'research.bench' ? 'outline' : 'ghost'}
+              bg={activityType === 'research.bench' ? '$raised' : 'transparent'}
+              aria-pressed={activityType === 'research.bench'}
               onPress={() => setActivityType('research.bench')}
             >
               research.bench

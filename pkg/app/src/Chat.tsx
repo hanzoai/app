@@ -68,7 +68,7 @@ import { useHydrated } from "./lib/hydrated";
 import { base, served } from "./lib/ai";
 import { onServed, type Served as Heard } from "./lib/served";
 import { refused as worded, speech, useDictation, useTalk, useVoice } from "@hanzo/voice";
-import { CalendarClock, Check, Copy, Download, FileText, Ghost, GitBranch, Globe, Image as ImageMark, KanbanSquare, Library as LibraryMark, PanelRight, Paperclip, Pencil, RefreshCw, ShieldCheck, Sparkles, Upload, X } from "lucide-react";
+import { CalendarClock, Check, ChevronDown, ChevronRight, Copy, Download, FileText, Ghost, GitBranch, Globe, Image as ImageMark, KanbanSquare, Library as LibraryMark, PanelRight, Paperclip, Pencil, Plug, RefreshCw, ShieldCheck, Sparkles, Upload, X } from "lucide-react";
 import { branchName, branched } from "./lib/branch";
 import { openModelPicker } from "./lib/model-picker";
 import { open as openBoardCard, home as boardHome } from "./lib/todo";
@@ -79,7 +79,7 @@ import { InfoHint } from "./lib/info-hint";
 import { ENSO } from "./lib/ai";
 import { openThread, empty as emptyOpen, useOpen } from "./open";
 import { Side } from "./Shell";
-import { OutputsCard, SEED, look, useSections, useSites, type Mark } from "./RightPane";
+import { OutputsCard, SEED, classifySourceOrigin, extractCitations, look, useSections, useSites, type CitedLink, type Mark } from "./RightPane";
 import { Share } from "./Share";
 import { useBuildSpend, useSpend } from "./Confirm";
 import { ended, why, type Failed } from "./lib/unanswered";
@@ -142,6 +142,154 @@ import { shared, useChatPreferences } from './lib/chatPreferences'
 import { handleHint } from './hint'
 import { ProviderMark } from './ProviderMark'
 import { ToBottom } from './ToBottom'
+import { useThreadScrollAnchor } from './lib/scrollAnchor'
+
+/**
+ * Expandable research activity disclosure for completed assistant turns.
+ * Shows elapsed work time, distinguishes live web sources from connected
+ * workspace/MCP tools, and reveals reasoning when carried by the turn.
+ */
+export function ResearchActivity({
+  worked,
+  reasoning,
+  toolCalls,
+  citations,
+}: {
+  worked: number;
+  reasoning?: string;
+  toolCalls?: ChatMessage["tool_calls"];
+  citations: readonly CitedLink[];
+}) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const calls = toolCalls ?? [];
+  const webCalls = calls.filter((c) => classifySourceOrigin(c.function.name) === "web");
+  const connectedCalls = calls.filter((c) => classifySourceOrigin(c.function.name) === "connected");
+  const cleanReasoning = (reasoning ?? "").trim();
+  const webCount = webCalls.length + citations.length;
+  const hasDetails = Boolean(cleanReasoning || webCount > 0 || connectedCalls.length > 0);
+
+  if (!worked && !hasDetails) return null;
+
+  const workedLabel = worked ? t("Worked for {n}s", { n: Math.round(worked / 1000) }) : t("Research activity");
+
+  if (!hasDetails) {
+    return (
+      <Text data-slot="worked-for" fontSize="$2" color="$soft">
+        {workedLabel}
+      </Text>
+    );
+  }
+
+  const summaryParts = [
+    workedLabel,
+    webCount > 0 ? t("{n} web", { n: webCount }) : "",
+    connectedCalls.length > 0 ? t("{n} connected", { n: connectedCalls.length }) : "",
+  ].filter(Boolean);
+
+  return (
+    <YStack gap="$1.5" data-slot="research-activity" width="100%" minW={0}>
+      <XStack
+        render={<button type="button" />}
+        data-slot="research-activity-toggle"
+        aria-expanded={open}
+        onClick={() => setOpen((prev) => !prev)}
+        self="flex-start"
+        items="center"
+        gap="$1.5"
+        px="$1.5"
+        py="$1"
+        rounded="$2"
+        bg="transparent"
+        cursor="pointer"
+        hoverStyle={{ bg: "$hover" }}
+        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: "var(--ring)" }}
+      >
+        {open ? (
+          <ChevronDown size={13} color="var(--muted-foreground)" aria-hidden />
+        ) : (
+          <ChevronRight size={13} color="var(--muted-foreground)" aria-hidden />
+        )}
+        <Text data-slot="worked-for" fontSize="$2" color="$soft">
+          {summaryParts.join(" · ")}
+        </Text>
+      </XStack>
+
+      {open ? (
+        <YStack
+          data-slot="research-activity-panel"
+          pl="$3"
+          py="$1.5"
+          borderLeftWidth={1}
+          borderColor="$edge"
+          gap="$2"
+          width="100%"
+          minW={0}
+        >
+          {webCount > 0 ? (
+            <YStack gap="$1" data-slot="research-web-sources" minW={0}>
+              <XStack items="center" gap="$1.5">
+                <Globe size={12} color="var(--muted-foreground)" aria-hidden />
+                <Text fontSize="$1" fontWeight="600" color="$soft">
+                  {t("Web sources")}
+                </Text>
+              </XStack>
+              {webCalls.map((call) => (
+                <Text key={call.id} fontSize="$1" color="$soft" fontFamily="$mono" numberOfLines={1}>
+                  {call.function.name}
+                </Text>
+              ))}
+              {citations.map((cite) => (
+                <Text
+                  key={cite.id}
+                  render={<a href={cite.url} target="_blank" rel="noopener noreferrer nofollow" />}
+                  fontSize="$2"
+                  color="$ink"
+                  textDecorationLine="underline"
+                  $platform-web={{ overflowWrap: "anywhere", wordBreak: "break-word", textUnderlineOffset: "2px" }}
+                >
+                  {cite.title} ({cite.host})
+                </Text>
+              ))}
+            </YStack>
+          ) : null}
+
+          {connectedCalls.length > 0 ? (
+            <YStack gap="$1" data-slot="research-connected-sources" minW={0}>
+              <XStack items="center" gap="$1.5">
+                <Plug size={12} color="var(--muted-foreground)" aria-hidden />
+                <Text fontSize="$1" fontWeight="600" color="$soft">
+                  {t("Connected sources")}
+                </Text>
+              </XStack>
+              {connectedCalls.map((call) => (
+                <Text key={call.id} fontSize="$1" color="$soft" fontFamily="$mono" numberOfLines={1}>
+                  {call.function.name}
+                </Text>
+              ))}
+            </YStack>
+          ) : null}
+
+          {cleanReasoning ? (
+            <YStack gap="$1" data-slot="research-reasoning" minW={0}>
+              <Text fontSize="$1" fontWeight="600" color="$soft">
+                {t("Reasoning")}
+              </Text>
+              <Text
+                fontSize="$2"
+                color="$soft"
+                lineHeight="$3"
+                $platform-web={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
+              >
+                {cleanReasoning}
+              </Text>
+            </YStack>
+          ) : null}
+        </YStack>
+      ) : null}
+    </YStack>
+  );
+}
 
 /** A message that asks for a review: a pull request, a diff, a commit, or the review itself. */
 const reviewing = (text: string): boolean =>
@@ -1009,7 +1157,7 @@ function Chip({
 
   if (kind === "file")
     return (
-      <XStack {...marks} self="center" items="center" gap="$1" paddingInlineEnd={onRemove ? "$1" : "$2.5"} rounded="$10" borderWidth={1} borderColor="$edge" hoverStyle={{ borderColor: "var(--border-strong)" }} maxW={320}>
+      <XStack {...marks} self="center" items="center" gap="$1" paddingInlineEnd={onRemove ? "$1" : "$2.5"} rounded="$10" borderWidth={1} borderColor="$edge" hoverStyle={{ borderColor: "var(--border-strong)" }} maxW="100%" minW={0} $sm={{ maxW: 320 }}>
         <XStack
           render="button"
           aria-label={t("Open {name}", { name })}
@@ -1039,7 +1187,7 @@ function Chip({
   const drawn = kind === "image" && picture && broken !== picture;
   const Glyph = kind === "pdf" ? FileText : ImageMark;
   return (
-    <XStack {...marks} items="center" gap="$1" p="$1" paddingInlineEnd={onRemove ? "$1" : "$2.5"} rounded="$4" borderWidth={1} borderColor="$edge" hoverStyle={{ borderColor: "var(--border-strong)" }} maxW={280}>
+    <XStack {...marks} items="center" gap="$1" p="$1" paddingInlineEnd={onRemove ? "$1" : "$2.5"} rounded="$4" borderWidth={1} borderColor="$edge" hoverStyle={{ borderColor: "var(--border-strong)" }} maxW="100%" minW={0} $sm={{ maxW: 280 }}>
       <XStack
         render="button"
         aria-label={t("Open {name}", { name })}
@@ -1434,6 +1582,11 @@ function Thread({
   const media = useMedia();
   const [talkBox, setTalkBox] = useState<HTMLElement | null>(null);
   const talkRef = useCallback((el: unknown) => setTalkBox(el instanceof HTMLElement ? el : null), []);
+  const findThreadScroller = useCallback(
+    (root: HTMLElement) => root.querySelector<HTMLElement>('[data-slot="thread"]'),
+    [],
+  );
+  const scrollAnchor = useThreadScrollAnchor(talkBox, at, findThreadScroller);
   const wide = media.lg;
   const [panel, setPanel] = usePanel(`chat:${at}`, false, wide);
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -2249,6 +2402,7 @@ function Thread({
    */
   const speak = useCallback((text: string, again?: string, attached?: readonly Part[]) => {
     if (!text) return;
+    scrollAnchor.onSubmit();
     // Activation: the first question this browser asks (a retry is not one).
     if (!again) first("chat_message");
     if (anonymous) {
@@ -2266,7 +2420,7 @@ function Thread({
       return;
     }
     void latest.current(text);
-  }, [anonymous, sendAnon]);
+  }, [anonymous, sendAnon, scrollAnchor]);
 
   // THE WAYS PAST A PAUSE. The upgrade opens the plans over the app; a page opens; Continue
   // with credits turns the org's choice on and asks the last question again on
@@ -2780,6 +2934,7 @@ function Thread({
   const submit = (ask: string = draft) => {
     const rawText = ask.trim();
     if (preparing || (!rawText && !files.length)) return;
+    scrollAnchor.onSubmit();
     setWalletRecovery(null);
     const skillCmd = parseSkillCommand(rawText);
     if (skillCmd !== null && !skillCmd.query) {
@@ -3553,7 +3708,7 @@ function Thread({
         data-tauri-drag-region="deep"
         onMouseDown={dragWindow}
         onDoubleClick={toggleWindowMaximize}
-        $max-md={!mine && !cast.length ? { display: 'none' } : undefined}
+        $max-md={!mine && !cast.length && !said.length && !deck.tabs.length ? { display: 'none' } : undefined}
       >
         <XStack items="center" gap="$2" minW={0}>
           {editingTitle && shownTitle && (sidebarClosed || !media.md) ? (
@@ -3790,7 +3945,7 @@ function Thread({
           {/* THE TABS' OWN CONTROL, at the header's end while they are shut;
               open, the strip beside the conversation holds it. Its mark is
               never the sidebar's: that toggle is the window's, at its top-left. */}
-          <XStack $max-md={{ display: 'none' }}>
+          <XStack $max-md={said.length > 0 || deck.tabs.length > 0 ? undefined : { display: 'none' }}>
             <PanelToggle open={panel} onToggle={() => setPanel(!panel)} />
           </XStack>
         </XStack>
@@ -3892,7 +4047,7 @@ function Thread({
                 );
               if (editingTurnId === turn.id) {
                 return (
-                  <YStack gap="$2" width="100%" minW={240} maxW={560} data-slot="user-turn-editor">
+                  <YStack gap="$2" width="100%" minW={0} maxW={560} data-slot="user-turn-editor">
                     <Input
                       autoFocus
                       value={editingTurnDraft}
@@ -4037,12 +4192,20 @@ function Thread({
             }
             const ms = (turn as unknown as { durationMs?: unknown }).durationMs;
             const worked = turn.role === "assistant" && typeof ms === "number" && ms >= 1000 ? ms : 0;
+            const turnReasoning = turn.role === "assistant" ? (turn as { reasoning?: string }).reasoning : undefined;
+            const turnToolCalls =
+              turn.role === "assistant"
+                ? (turn as unknown as { tool_calls?: ChatMessage["tool_calls"] }).tool_calls
+                : undefined;
             return (
-              <YStack gap="$2" data-turn-id={String(turn.id)} data-turn-role={turn.role}>
-                {worked ? (
-                  <Text data-slot="worked-for" fontSize="$2" color="$soft">
-                    {t("Worked for {n}s", { n: Math.round(worked / 1000) })}
-                  </Text>
+              <YStack gap="$2" data-turn-id={String(turn.id)} data-turn-role={turn.role} width="100%" minW={0}>
+                {turn.role === "assistant" && !isStreamingThisTurn ? (
+                  <ResearchActivity
+                    worked={worked}
+                    reasoning={turnReasoning}
+                    toolCalls={turnToolCalls}
+                    citations={extractCitations([{ id: String(turn.id), role: "assistant", content: said }])}
+                  />
                 ) : null}
                 <Prose text={said} />
                 {/* A host's engine that would not answer: Settings is where its model is chosen (the one door). */}

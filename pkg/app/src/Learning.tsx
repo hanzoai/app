@@ -458,7 +458,7 @@ export function Learning({
                 </XStack>
 
                 {tab === 'research' && !form ? (
-                  <Button size="sm" variant="primary" tone="accent" $max-sm={{ width: '100%' }} onPress={() => setForm(true)}>
+                  <Button size="sm" variant="outline" borderColor={STRONG} $max-sm={{ width: '100%' }} onPress={() => setForm(true)}>
                     <Plus size={14} /> {t('New improvement study')}
                   </Button>
                 ) : tab === 'benchmarks' && !showCompareForm ? (

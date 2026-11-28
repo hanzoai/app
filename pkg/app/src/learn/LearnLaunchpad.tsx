@@ -130,7 +130,8 @@ export function LearnLaunchpad({
           <XStack items="center" gap="$2" flexWrap="wrap">
             <Button
               size="sm"
-              variant="primary"
+              variant="outline"
+              borderColor="var(--border-strong)"
               data-slot="learn-free-starter-cta"
               onPress={() => onNavigate(learnPath('continuous-improvement'))}
             >

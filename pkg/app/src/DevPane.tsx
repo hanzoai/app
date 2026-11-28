@@ -22,6 +22,7 @@ import { bearer, hasSession } from './lib/session'
 import { machines } from './devRuntime'
 import { Builder, route, type Host } from '@hanzo/dev/builder'
 import { app, go, talk, TERMINALS } from './lib/host'
+import { createScrollAnchor, type ScrollAnchorHandle } from './lib/scrollAnchor'
 import { org as currentOrg } from './lib/session'
 
 const Core = lazy(() => import('./core').then((m) => ({ default: m.DevWorkspace })))
@@ -239,71 +240,51 @@ export const guestChat = (mode: 'dev' | 'chat'): boolean => mode === 'chat' && !
  * composer. `mode` says which of the two the address is: Chat hides the code
  * tools, and its conversation is the shell's `/chat/<id>`.
  */
-/** Keeps DevHome's chat transcript scrolled into view as messages arrive or the mobile keyboard opens (preventing iOS viewport panning). */
+/**
+ * 5-mode scroll stability for DevHome's chat transcript (§7.3):
+ * follows at bottom while streaming, preserves viewport when scrolled up or selecting text,
+ * restores saved thread position on return, and brings newly submitted messages into view.
+ */
 function useAutoScrollChat(conversation: string | null) {
-  const hostRef = useRef<HTMLElement | null>(null)
-  const pinnedRef = useRef(true)
+  const [rootEl, setRootEl] = useState<HTMLElement | null>(null)
+  const anchorRef = useRef<ScrollAnchorHandle | null>(null)
 
   useEffect(() => {
-    pinnedRef.current = true
-  }, [conversation])
-
-  useEffect(() => {
-    const root = hostRef.current
+    const root = rootEl
     if (!root || typeof window === 'undefined') return
-    let raf = 0
-    const scroller = () => root.querySelector<HTMLElement>('.overflow-y-auto')
-    const scrollToBottom = (force = false) => {
-      if (raf) return
-      raf = window.requestAnimationFrame(() => {
-        raf = 0
-        const el = scroller()
-        if (!el) return
-        if (force || pinnedRef.current) {
-          el.scrollTop = el.scrollHeight
-        }
-      })
-    }
-    const onScroll = () => {
-      const el = scroller()
-      if (!el) return
-      pinnedRef.current = el.scrollHeight - el.scrollTop - el.clientHeight <= 96
-    }
-    const onFocusIn = (e: FocusEvent) => {
+    const handle = createScrollAnchor({
+      root,
+      findScroller: (r) => r.querySelector<HTMLElement>('[data-slot="thread"], .overflow-y-auto'),
+      threadKey: conversation ? `dev-chat:${conversation}` : '',
+    })
+    anchorRef.current = handle
+
+    const onSubmit = () => handle.onSubmit()
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return
       const target = e.target as HTMLElement | null
-      if (!target || !target.matches('textarea, input, [contenteditable="true"]')) return
-      pinnedRef.current = true
-      if (window.scrollY !== 0) window.scrollTo(0, 0)
-      scrollToBottom(true)
-      window.setTimeout(() => {
-        if (window.scrollY !== 0) window.scrollTo(0, 0)
-        scrollToBottom(true)
-      }, 280)
+      if (!target || !target.matches('textarea, [contenteditable="true"]')) return
+      handle.onSubmit()
     }
     const onViewport = () => {
       if (window.scrollY !== 0) window.scrollTo(0, 0)
-      if (pinnedRef.current) scrollToBottom(true)
+      if (handle.mode() === 'at-bottom') handle.scrollToBottom(false)
     }
-    const mo = new MutationObserver(() => scrollToBottom(false))
-    mo.observe(root, { childList: true, subtree: true, characterData: true })
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => scrollToBottom(false)) : null
-    ro?.observe(root)
-    root.addEventListener('scroll', onScroll, true)
-    root.addEventListener('focusin', onFocusIn)
+
+    root.addEventListener('submit', onSubmit, true)
+    root.addEventListener('keydown', onKeyDown, true)
     window.visualViewport?.addEventListener('resize', onViewport)
-    scrollToBottom(true)
     return () => {
-      if (raf) window.cancelAnimationFrame(raf)
-      mo.disconnect()
-      ro?.disconnect()
-      root.removeEventListener('scroll', onScroll, true)
-      root.removeEventListener('focusin', onFocusIn)
+      root.removeEventListener('submit', onSubmit, true)
+      root.removeEventListener('keydown', onKeyDown, true)
       window.visualViewport?.removeEventListener('resize', onViewport)
+      handle.dispose()
+      if (anchorRef.current === handle) anchorRef.current = null
     }
-  }, [conversation])
+  }, [rootEl, conversation])
 
   return useCallback((node: unknown) => {
-    hostRef.current = node instanceof HTMLElement ? node : null
+    setRootEl(node instanceof HTMLElement ? node : null)
   }, [])
 }
 
