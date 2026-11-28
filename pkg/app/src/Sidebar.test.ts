@@ -13,16 +13,29 @@ const { part, menu, menuItem, menuLabel, menuBack, menuSeparator, through, devSt
     label?: string
     'aria-label'?: string
     'aria-current'?: string
+    'aria-pressed'?: boolean
     'data-slot'?: string
     role?: string
     'data-item'?: string
     active?: boolean
+    pt?: number | string
+    borderInlineEndWidth?: number | string
     onPress?: () => void
   }
   const devState = { on: false, opened: new Set(['finance']) }
   const through = ({ children }: { children?: ReactNode }) => createElement(Fragment, null, children)
-  const part = ({ children, render, icon, label, 'aria-label': named, 'aria-current': current, 'data-slot': slot, 'data-item': item, role, active, onPress }: Part) => {
-    const attrs = { onClick: onPress, 'data-slot': slot, 'data-item': item, 'aria-label': label ?? named, 'aria-current': current ?? (active ? 'page' : undefined), role }
+  const part = ({ children, render, icon, label, 'aria-label': named, 'aria-current': current, 'aria-pressed': pressed, 'data-slot': slot, 'data-item': item, role, active, pt, borderInlineEndWidth, onPress }: Part) => {
+    const attrs = {
+      onClick: onPress,
+      'data-slot': slot,
+      'data-item': item,
+      'data-pt': pt !== undefined ? String(pt) : undefined,
+      'data-border-ie': borderInlineEndWidth !== undefined ? String(borderInlineEndWidth) : undefined,
+      'aria-label': label ?? named,
+      'aria-current': current ?? (active ? 'page' : undefined),
+      'aria-pressed': pressed !== undefined ? String(pressed) : undefined,
+      role,
+    }
     const kids = [icon, children].filter((k) => k != null)
     if (isValidElement(render)) return cloneElement(render, attrs, ...kids)
     return createElement(typeof render === 'string' ? render : 'div', attrs, ...kids)
@@ -39,7 +52,7 @@ const { part, menu, menuItem, menuLabel, menuBack, menuSeparator, through, devSt
 const { MARKS } = vi.hoisted(() => {
   const mark = () => () => null
   const one = { icon: mark(), make: mark() }
-  return { MARKS: { chat: one, dev: one, design: one, flow: one, tabs: one, library: one, scheduled: one, customize: one } }
+  return { MARKS: { chat: one, dev: one, design: one, studio: one, flow: one, tabs: one, library: one, scheduled: one, customize: one } }
 })
 vi.mock('@hanzo/gui', () => ({ Text: part, XStack: part, YStack: part }))
 vi.mock('@hanzo/ui', () => ({
@@ -98,11 +111,12 @@ vi.mock('@hanzo/dev/builder', () => {
 })
 vi.mock('./Account', () => ({ Made: () => null, Account: () => createElement('div', { 'data-slot': 'me' }) }))
 vi.mock('./Recents', () => ({
-  Recents: ({ mode, host }: { mode: string; host: { name?: string } }) => createElement('div', { 'data-slot': 'recents', 'data-mode': mode, 'data-host': host.name ?? '' }),
+  Recents: ({ mode, host, priorityMode }: { mode: string; host: { name?: string }; priorityMode?: boolean }) =>
+    createElement('div', { 'data-slot': 'recents', 'data-mode': mode, 'data-host': host.name ?? '', 'data-priority': String(Boolean(priorityMode)) }),
 }))
 vi.mock('./DevPane', () => ({
-  // The Dev core's lists are fetched lazily and draw only in a browser; the sidebar's own structure is what is read here.
-  ChatList: () => createElement('div', { 'data-slot': 'recents', 'data-mode': 'chat' }),
+  // Chat now uses unified Recents directly; ChatList is no longer rendered by Sidebar.
+  ChatList: () => createElement('div', { 'data-slot': 'legacy-chat-list' }),
   DevList: () => null,
   useScope: () => undefined,
 }))
@@ -113,6 +127,7 @@ vi.mock('./lib/dev-mode', () => ({ useDevMode: () => [devState.on, () => {}], re
 import { AnonSettingsPane, Sidebar } from './Sidebar'
 import { moreGroups } from './MoreMenu'
 import { Rail, type Pins } from './Rail'
+import { pane, TOP_INSET } from './ground'
 import { TABS, WORKSPACE, type Place } from './lib/host'
 import { Windowed } from './windowed'
 import { LOGIN } from './lib/destination'
@@ -123,7 +138,7 @@ const host = hostAt()
 const noop = () => {}
 /** Nothing pinned: the menu as it stands for someone who never pinned. */
 const pins: Pins = [[], noop, noop, noop]
-const SIX = ['chat', 'dev', 'design', 'flow', 'learn', 'library', 'tabs']
+const EIGHT = ['chat', 'dev', 'design', 'studio', 'flow', 'learn', 'library', 'tabs']
 
 const column = (mode: Place['mode'], path = '', held: Pins = pins) => renderToStaticMarkup(createElement(Sidebar, { pins: held, host: hostAt(path), mode, thread: null, go: noop, onShut: noop, onBack: noop }))
 const drawerColumn = (mode: Place['mode'], path = '', held: Pins = pins) =>
@@ -263,13 +278,22 @@ describe('the contextual desktop sidebar (beside the stationary icon rail)', () 
     expect(devHtml).toContain('data-slot="setup-card"')
   })
 
-  test('carries active place title, Activity bell, Search, primary New action, and Recents without duplicating the Rail', () => {
+  test('carries active place title, in-place Priority toggle, Search, primary New action, and unified Recents without duplicating the Rail', () => {
     const html = column('chat')
-    expect(at(html, '>Chat<')).toBeLessThan(at(html, 'aria-label="Activity"'))
-    expect(at(html, 'aria-label="Activity"')).toBeLessThan(at(html, 'aria-label="Search"'))
+    expect(at(html, '>Chat<')).toBeLessThan(at(html, 'data-slot="priority-toggle"'))
+    expect(at(html, 'data-slot="priority-toggle"')).toBeLessThan(at(html, 'aria-label="Search"'))
     expect(at(html, 'aria-label="Search"')).toBeLessThan(at(html, 'New chat'))
     expect(at(html, 'New chat')).toBeLessThan(at(html, 'data-slot="recents"'))
+    expect(html).toContain('data-slot="recents" data-mode="chat"')
+    expect(html).not.toContain('data-slot="legacy-chat-list"')
     expect(html).not.toContain('data-slot="nav-latest"')
+    expect(html).not.toContain('Nothing new')
+  })
+
+  test('aligns Rail and Sidebar headers to shared TOP_INSET and removes bright white border on Dev left sidebar', () => {
+    const devHtml = column('dev')
+    expect(devHtml).toContain(`data-slot="app-rail" data-pt="${TOP_INSET}" data-border-ie="0"`)
+    expect(pane().borderColor).toBe('var(--edge)')
   })
 
   test('Dev: renders Dev title, New run, Dev places (Projects, Issues, Templates), then Recents', () => {
@@ -297,16 +321,17 @@ describe('the contextual desktop sidebar (beside the stationary icon rail)', () 
       const html = drawerColumn('chat', '', held)
       return [...html.matchAll(/data-item="move-(up|down)"/g)].map((m) => m[1])
     }
-    // All seven primary apps are freely reorderable: first has down only, middle five have up+down, last has up only.
-    expect(moves(pins)).toEqual(['down', 'up', 'down', 'up', 'down', 'up', 'down', 'up', 'down', 'up', 'down', 'up'])
-    expect(moves([SIX, noop, noop, noop])).toEqual(['down', 'up', 'down', 'up', 'down', 'up', 'down', 'up', 'down', 'up', 'down', 'up'])
+    // All eight primary apps are freely reorderable: first has down only, middle six have up+down, last has up only.
+    const expected = ['down', 'up', 'down', 'up', 'down', 'up', 'down', 'up', 'down', 'up', 'down', 'up', 'down', 'up']
+    expect(moves(pins)).toEqual(expected)
+    expect(moves([EIGHT, noop, noop, noop])).toEqual(expected)
   })
 
   test('mobile drawer appends pinned extras to the unified nav list without splitting a Pinned section above everything', () => {
     const order = (html: string) => [...html.matchAll(/data-slot="rail-([a-z-]+)"[^>]*aria-label=/g)].map((m) => m[1])
-    expect(order(drawerColumn('chat'))).toEqual(SIX)
+    expect(order(drawerColumn('chat'))).toEqual(EIGHT)
     const withScheduled = drawerColumn('chat', '', [['scheduled'], noop, noop, noop])
-    expect(order(withScheduled)).toEqual(['chat', 'dev', 'design', 'flow', 'learn', 'library', 'tabs', 'scheduled'])
+    expect(order(withScheduled)).toEqual(['chat', 'dev', 'design', 'studio', 'flow', 'learn', 'library', 'tabs', 'scheduled'])
     expect(withScheduled).not.toContain('data-slot="nav-pins-head"')
     // Scheduled tasks pinned is out of More; unpinned it is back in it.
     expect(withScheduled).not.toContain('data-item="pin-scheduled"')
@@ -405,14 +430,18 @@ describe('the contextual desktop sidebar (beside the stationary icon rail)', () 
     expect(at(machines, 'New run')).toBeLessThan(at(machines, 'data-slot="recents"'))
   })
 
-  test('the bell lists the runs and leaves for no Settings page', () => {
-    const html = column('chat')
-    expect(html).toContain('Nothing new')
-    expect(html).not.toContain('Notification settings')
+  test('the filter-triangle toggle switches Priority mode in-place with no floating Activity popup', () => {
+    for (const mode of ['chat', 'dev', 'design', 'studio'] as const) {
+      const html = column(mode)
+      expect(html, mode).toContain('data-slot="priority-toggle"')
+      expect(html, mode).toContain('aria-pressed="false"')
+      expect(html, mode).not.toContain('Nothing new')
+      expect(html, mode).not.toContain('Notification settings')
+    }
   })
 
   test('the search is the palette, in every mode: the sidebar holds no field of its own', () => {
-    for (const mode of ['chat', 'dev', 'design'] as const) {
+    for (const mode of ['chat', 'dev', 'design', 'studio'] as const) {
       const html = column(mode, '')
       expect(html).toContain('aria-label="Search"')
       expect(html).not.toContain('<input')
@@ -438,12 +467,18 @@ describe('the contextual desktop sidebar (beside the stationary icon rail)', () 
     }
   })
 
-  test('Design lists its own conversations, through the host it is mounted with; Flow lists none, never Chat’s', () => {
+  test('Design and Studio list their own conversations through their mounted hosts; Flow lists none, never Chat’s', () => {
     expect(column('flow')).not.toContain('data-slot="recents"')
     expect(column('design')).not.toContain('data-slot="recents"')
-    const made = { ...hostAt(''), name: 'Design' }
-    const design = renderToStaticMarkup(createElement(Sidebar, { pins, host: hostAt(''), mode: 'design', thread: null, go: noop, onShut: noop, onBack: noop, made }))
+    expect(column('studio')).not.toContain('data-slot="recents"')
+    const designHost = { ...hostAt(''), name: 'Design' }
+    const design = renderToStaticMarkup(createElement(Sidebar, { pins, host: hostAt(''), mode: 'design', thread: null, go: noop, onShut: noop, onBack: noop, made: designHost }))
     expect(design).toContain('data-slot="recents" data-mode="design" data-host="Design"')
+    const studioHost = { ...hostAt(''), name: 'Studio' }
+    const studioHtml = renderToStaticMarkup(createElement(Sidebar, { pins, host: hostAt(''), mode: 'studio', thread: null, go: noop, onShut: noop, onBack: noop, made: studioHost }))
+    expect(studioHtml).toContain('>Studio<')
+    expect(studioHtml).toContain('New creation')
+    expect(studioHtml).toContain('data-slot="recents" data-mode="studio" data-host="Studio"')
     expect(column('chat')).toContain('data-slot="recents" data-mode="chat"')
     expect(column('dev')).toContain('data-slot="recents" data-mode="dev"')
   })

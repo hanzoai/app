@@ -2,31 +2,36 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useI18n } from '@hanzo/i18n/react'
-import { ArrowUpRight, Gauge, Sparkles } from 'lucide-react'
+import { ArrowUpRight, Gauge, RotateCcw, Sparkles } from 'lucide-react'
 import {
   Anchor,
   Box,
-  Button,
   Popover,
   PopoverContent,
   PopoverTrigger,
   Progress,
   ProgressRing,
   Text,
-  View,
   XStack,
   YStack,
+  toast,
 } from '@hanzo/ui'
 import { ComposerStatusProvider } from '@hanzo/ui/chat'
-import { CLASSES, classesLabel } from '@hanzo/ui/product/limits'
+import type { Limits, LimitWindow } from '@hanzo/ui/product/limits'
 import type { UseLimits } from '@hanzo/ui/product/useLimits'
 import { label } from '@hanzo/dev/plan'
 import { showSettings } from './open'
-import { settings } from './lib/host'
 import { hasSession, org, subject } from './lib/session'
 import { cents } from './lib/org'
 import { payPage } from './lib/pay'
-import { resets, useLimits } from './lib/limits'
+import {
+  resets,
+  resetUsageLimits,
+  useLimits,
+  type ExtendedClassLimit,
+  type ExtendedLimits,
+  type UseExtendedLimits,
+} from './lib/limits'
 import { useTier } from './lib/tier'
 import { rememberSettingsReturn, useDevMode } from './lib/dev-mode'
 import { contextOf, readTokens, subscribeTokens, tokenKey, type Turn } from './lib/tokens'
@@ -37,6 +42,161 @@ export interface ContextUsage {
   messages: readonly Turn[]
   draft?: string
   tools?: unknown
+}
+
+export interface UsageSummary {
+  /** Bounded 5-hour/session percent used (0-100), or null when not reported. */
+  sessionPercent: number | null
+  sessionResetsAt: string | null
+  sessionCapped: boolean
+  /** Bounded weekly Hanzo allowance percent used (0-100), or null when not reported. */
+  weeklyPercent: number | null
+  weeklyResetsAt: string | null
+  weeklyCapped: boolean
+  /** Peak bounded Hanzo usage percent across session and weekly windows, or null. */
+  peakPercent: number | null
+  /** Live percent displayed in the composer gauge (falls back to context window percent). */
+  livePercent: number | null
+  /** True only when bounded plan-paid Hanzo usage is actually exhausted. */
+  isCapped: boolean
+  /** True when bounded plan-paid Hanzo usage is >= 85% and not yet capped. */
+  isNear: boolean
+  /** True when the user's Hanzo plan class (`ours`) is unbounded (unlimited/enterprise). */
+  oursUnbounded: boolean
+  /** True when prepaid balance is strictly positive. */
+  hasPositiveCredits: boolean
+  /** True when the 1×/week free usage reset is available and there is usage to reset. */
+  canFreeReset: boolean
+  /** Earliest relevant reset timestamp for the active bounded limit. */
+  resetIso: string | null
+}
+
+/**
+ * Single source of truth for Hanzo usage status shared by `UsageControl` and `RailUsageButton`.
+ *
+ * Only bounded, plan-paid Hanzo classes count toward Hanzo plan exhaustion:
+ * - Unbounded plans (`classes.ours.unbounded === true` or `plan === 'unlimited'`) are NEVER capped.
+ * - Credit-paid classes (`paying === 'credits'`, e.g. third-party `premium` models paid from a
+ *   positive prepaid credit balance) NEVER cause a false "You're out of Hanzo usage" alert.
+ */
+export function summarizeUsage(
+  limits: ExtendedLimits | Limits | null | undefined,
+  effectiveAvailable: number | null | undefined,
+  contextPercent: number | null = null,
+): UsageSummary {
+  const ext = limits as ExtendedLimits | null | undefined
+  const ours = ext?.classes?.ours as ExtendedClassLimit | undefined
+  const oursUnbounded = Boolean(ours?.unbounded || ext?.plan === 'unlimited')
+  const hasPositiveCredits = typeof effectiveAvailable === 'number' && Number.isFinite(effectiveAvailable) && effectiveAvailable > 0
+
+  const entries = ext?.classes
+    ? (Object.entries(ext.classes) as [string, ExtendedClassLimit | undefined][]).filter(
+        (entry): entry is [string, ExtendedClassLimit] => Boolean(entry[1]),
+      )
+    : []
+
+  // Only bounded, plan-paid Hanzo classes contribute to Hanzo allowance exhaustion.
+  // Exclude unbounded classes, credit-paid classes, and the free fallback lane.
+  const boundedPlanClasses = entries
+    .filter(([id, c]) => {
+      if (id === 'free') return false
+      if (c.unbounded) return false
+      if (c.paying === 'credits') return false
+      if (id === 'ours' && oursUnbounded) return false
+      return true
+    })
+    .map(([, c]) => c)
+
+  const boundedWindows: LimitWindow[] = boundedPlanClasses.flatMap((c) => (c.window ? [c.window] : []))
+  const highestWindow = boundedWindows.length
+    ? boundedWindows.reduce((best, w) => (w.percent > best.percent ? w : best), boundedWindows[0]!)
+    : null
+
+  const sessionSource = ext?.session ?? highestWindow
+  const sessionPercent =
+    sessionSource && !oursUnbounded
+      ? Math.max(0, Math.min(100, Math.round(sessionSource.percent)))
+      : oursUnbounded
+        ? 0
+        : null
+  const sessionResetsAt = sessionSource?.resets_at ?? null
+  const sessionCapped =
+    !oursUnbounded &&
+    Boolean(sessionSource && (sessionSource.state === 'limited' || (sessionPercent !== null && sessionPercent >= 100)))
+
+  const highestBoundedWeekly = boundedPlanClasses.length
+    ? Math.max(0, ...boundedPlanClasses.map((c) => c.percent ?? 0))
+    : null
+
+  const weeklyPercent = oursUnbounded
+    ? 0
+    : ours
+      ? ours.paying === 'credits' && hasPositiveCredits
+        ? 0
+        : Math.max(0, Math.min(100, Math.round(ours.window?.percent ?? ours.percent ?? 0)))
+      : highestBoundedWeekly !== null
+        ? Math.max(0, Math.min(100, Math.round(highestBoundedWeekly)))
+        : null
+
+  const weeklyResetsAt = ours?.window?.resets_at ?? ours?.resets_at ?? boundedPlanClasses[0]?.resets_at ?? null
+  const weeklyCapped =
+    !oursUnbounded &&
+    Boolean(
+      (ours && ours.paying !== 'credits' && (ours.state === 'limited' || ours.window?.state === 'limited')) ||
+        (boundedPlanClasses.length > 0 && weeklyPercent !== null && weeklyPercent >= 100),
+    )
+
+  const peakPercent =
+    oursUnbounded
+      ? 0
+      : sessionPercent !== null || weeklyPercent !== null
+        ? Math.max(sessionPercent ?? 0, weeklyPercent ?? 0)
+        : null
+
+  const allCreditsWithBalance =
+    hasPositiveCredits &&
+    entries.length > 0 &&
+    entries.every(([id, c]) => id === 'free' || c.unbounded || c.paying === 'credits')
+
+  const anyBoundedLimited =
+    !oursUnbounded &&
+    (boundedPlanClasses.some((c) => c.state === 'limited' || c.window?.state === 'limited') ||
+      sessionSource?.state === 'limited')
+
+  const topLimitedCounts =
+    !oursUnbounded &&
+    !allCreditsWithBalance &&
+    ext?.state === 'limited' &&
+    (boundedPlanClasses.length > 0 ||
+      Boolean(ext.limited?.classes?.includes('ours')) ||
+      (!ext.limited?.classes?.length && !hasPositiveCredits))
+
+  const isCapped =
+    !oursUnbounded &&
+    !allCreditsWithBalance &&
+    (anyBoundedLimited || topLimitedCounts || (boundedPlanClasses.length > 0 && (peakPercent ?? 0) >= 100))
+
+  const isNear = !oursUnbounded && !isCapped && peakPercent !== null && peakPercent >= 85
+  const livePercent = oursUnbounded ? contextPercent : peakPercent !== null ? peakPercent : contextPercent
+  const canFreeReset = Boolean(ext?.reset?.available) && ((peakPercent ?? 0) > 0 || isCapped)
+  const resetIso = sessionResetsAt ?? weeklyResetsAt
+
+  return {
+    sessionPercent,
+    sessionResetsAt,
+    sessionCapped,
+    weeklyPercent,
+    weeklyResetsAt,
+    weeklyCapped,
+    peakPercent,
+    livePercent,
+    isCapped,
+    isNear,
+    oursUnbounded,
+    hasPositiveCredits,
+    canFreeReset,
+    resetIso,
+  }
 }
 
 const HOVER_CLOSE_MS = 150
@@ -51,10 +211,11 @@ function barColor(percent: number, capped = false): `var(--${string})` {
 }
 
 /** Compact live usage symbol + hover breakdown shared by Chat, Dev, and Studio. */
-export function UsageControl({ context, read }: { context?: ContextUsage; read?: UseLimits }) {
+export function UsageControl({ context, read }: { context?: ContextUsage; read?: UseLimits | UseExtendedLimits }) {
   const { t, format } = useI18n()
   const [devMode] = useDevMode()
   const [open, setOpen] = useState(false)
+  const [resetting, setResetting] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hoverOpenedAt = useRef(0)
@@ -63,7 +224,7 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
   const currentOrg = org()
   const fallback = useLimits(!read && signedIn, currentOrg)
   const usage = read ?? fallback
-  const { limits, answered } = usage
+  const { limits } = usage
   const { tier } = useTier(signedIn && Boolean(currentOrg), currentOrg)
 
   const key = signedIn && context ? tokenKey(currentOrg, context.model, context.messages, subject() ?? '') : ''
@@ -94,7 +255,7 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
     if (!open) {
       hoverOpenedAt.current = Date.now()
       setOpen(true)
-      if (read) read.reload()
+      usage.reload()
     }
   }
 
@@ -111,21 +272,9 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
   const capacity = context?.window && context.window > 0 ? context.window : null
   const contextPercent = estimate && capacity ? Math.round((estimate.total / capacity) * 100) : null
 
-  const classEntries = limits ? Object.values(limits.classes).filter(Boolean) : []
-  const windows = classEntries.flatMap((c) => (c?.window ? [c.window] : []))
-  const highestWindow = windows.length ? windows.reduce((best, w) => (w.percent > best.percent ? w : best), windows[0]!) : null
-  const highestWeekly = classEntries.length
-    ? Math.max(0, ...classEntries.map((c) => c?.percent ?? 0))
-    : null
-  const highest =
-    highestWindow || highestWeekly !== null
-      ? Math.max(highestWindow?.percent ?? 0, highestWeekly ?? 0)
-      : null
-
-  const livePercent = highest !== null ? Math.round(highest) : contextPercent
+  const summary = summarizeUsage(limits, tier?.balance?.effectiveAvailable, contextPercent)
+  const { livePercent, isCapped, isNear, canFreeReset } = summary
   const showPercent = livePercent !== null && livePercent > 0
-  const isCapped = limits?.state === 'limited' || (livePercent !== null && livePercent >= 100)
-  const isNear = !isCapped && livePercent !== null && livePercent >= 85
 
   const toneColor = isCapped
     ? 'var(--state-error)'
@@ -177,21 +326,14 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
     return r.time ? t('Resets at {time}', { time: r.time }) : t('Resets at midnight')
   }
 
-  const sessionPercent = highestWindow?.percent ?? contextPercent ?? livePercent ?? 0
-  const sessionCapped = highestWindow?.state === 'limited' || sessionPercent >= 100
-  const windowResetText = formatReset(highestWindow?.resets_at)
+  const sessionPercent = summary.sessionPercent ?? contextPercent ?? 0
+  const sessionCapped = summary.sessionCapped
+  const windowResetText = formatReset(summary.sessionResetsAt)
+  const weeklyPercent = summary.weeklyPercent
+  const weeklyCapped = summary.weeklyCapped
+  const weeklyResetText = formatReset(summary.weeklyResetsAt)
 
-  const weeklyRows = limits
-    ? CLASSES.flatMap((c) => {
-        const k = limits.classes[c]
-        return k ? [{ id: c, name: classesLabel([c], t), limit: k }] : []
-      })
-    : []
-
-  const showSafetyNet =
-    isCapped ||
-    isNear ||
-    weeklyRows.some(({ limit }) => limit.state === 'limited' || limit.percent >= 85)
+  const showSafetyNet = isCapped || isNear
 
   const hasCredits = typeof tier?.balance?.effectiveAvailable === 'number'
   const creditsLabel = hasCredits
@@ -203,13 +345,27 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
   const toggle = (next: boolean) => {
     clearCloseTimer()
     setOpen(next)
-    if (next && read) read.reload()
+    if (next) usage.reload()
   }
 
   const openSettingsTab = (section: 'billing' | 'usage') => {
     setOpen(false)
     rememberSettingsReturn()
     showSettings(section)
+  }
+
+  const handleFreeReset = async () => {
+    if (resetting) return
+    setResetting(true)
+    try {
+      await resetUsageLimits()
+      usage.reload()
+      toast.success(t('Usage reset for this week'))
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('Could not reset usage'))
+    } finally {
+      setResetting(false)
+    }
   }
 
   return (
@@ -338,7 +494,7 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
           <YStack gap="$1" data-slot="composer-current-window">
             <XStack justify="space-between" items="baseline" gap="$2">
               <Text fontFamily="$body" fontSize="$1" color="$aside">
-                {t('Session')}
+                {t('5-hour limit')}
               </Text>
               <Text fontFamily="$body" fontSize="$1" color="$ink" fontVariant={['tabular-nums']}>
                 {Math.round(sessionPercent)}%
@@ -353,42 +509,64 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
             />
           </YStack>
 
-          {/* Weekly summary bar (single calm bar — full breakdown lives in Settings → Usage) */}
-          {(() => {
-            const topWeekly = weeklyRows.reduce<(typeof weeklyRows)[number] | null>(
-              (best, row) => (!best || row.limit.percent > best.limit.percent ? row : best),
-              null,
-            )
-            if (!topWeekly) return null
-            const pct = Math.round(topWeekly.limit.percent)
-            const capped = topWeekly.limit.state === 'limited' || pct >= 100
-            const resetLine = formatReset(topWeekly.limit.resets_at)
-            return (
-              <YStack gap="$1" data-slot="composer-plan-usage">
-                <XStack justify="space-between" items="baseline" gap="$2">
-                  <Text fontFamily="$body" fontSize="$1" color="$aside">
-                    {t('Weekly')}
-                  </Text>
-                  <Text
-                    fontFamily="$body"
-                    fontSize="$1"
-                    color={capped ? 'var(--state-error)' : '$ink'}
-                    fontVariant={['tabular-nums']}
-                  >
-                    {pct}%{resetLine ? ` · ${resetLine.replace(/^Resets in\s+/i, '')}` : ''}
-                  </Text>
-                </XStack>
-                <Progress
-                  value={Math.min(100, pct)}
-                  height={3}
-                  indicatorColor={barColor(pct, capped)}
-                  aria-label={t('Weekly allowance: {percent}% used', { percent: pct })}
-                />
-              </YStack>
-            )
-          })()}
+          {/* Weekly summary bar */}
+          {weeklyPercent !== null ? (
+            <YStack gap="$1" data-slot="composer-plan-usage">
+              <XStack justify="space-between" items="baseline" gap="$2">
+                <Text fontFamily="$body" fontSize="$1" color="$aside">
+                  {t('Weekly limit')}
+                </Text>
+                <Text
+                  fontFamily="$body"
+                  fontSize="$1"
+                  color={weeklyCapped ? 'var(--state-error)' : '$ink'}
+                  fontVariant={['tabular-nums']}
+                >
+                  {summary.oursUnbounded
+                    ? t('Unlimited')
+                    : `${weeklyPercent}%${weeklyResetText ? ` · ${weeklyResetText.replace(/^Resets in\s+/i, '')}` : ''}`}
+                </Text>
+              </XStack>
+              <Progress
+                value={Math.min(100, weeklyPercent)}
+                height={3}
+                indicatorColor={barColor(weeklyPercent, weeklyCapped)}
+                aria-label={t('Weekly allowance: {percent}% used', { percent: weeklyPercent })}
+              />
+            </YStack>
+          ) : null}
 
-          {/* Credit-low safety net — shown ONLY at >=85% or 100% */}
+          {/* 1×/week free usage reset button */}
+          {canFreeReset ? (
+            <XStack
+              render={<button type="button" disabled={resetting} />}
+              data-slot="composer-usage-free-reset"
+              onClick={() => void handleFreeReset()}
+              width="100%"
+              minH={30}
+              px="$2.5"
+              py="$1"
+              rounded="$3"
+              bg="$panel"
+              borderWidth={1}
+              borderColor={STRONG}
+              items="center"
+              justify="center"
+              gap="$1.5"
+              cursor={resetting ? 'default' : 'pointer'}
+              opacity={resetting ? 0.6 : 1}
+              hoverStyle={resetting ? undefined : { bg: '$hover' }}
+              focusVisibleStyle={FOCUS_RING}
+              $max-sm={{ minH: 40 }}
+            >
+              <RotateCcw size={12} color="var(--foreground)" aria-hidden />
+              <Text fontFamily="$body" fontSize="$1" fontWeight="500" color="$ink" numberOfLines={1}>
+                {resetting ? t('Resetting…') : t('Reset usage (1×/wk free)')}
+              </Text>
+            </XStack>
+          ) : null}
+
+          {/* Credit-low safety net — shown ONLY at >=85% or 100% bounded Hanzo usage */}
           {showSafetyNet ? (
             <XStack
               data-slot="composer-credit-safety-net"
@@ -504,11 +682,13 @@ export function UsageControl({ context, read }: { context?: ContextUsage; read?:
 /**
  * Compact circular `(!)` usage indicator anchored in the bottom-left rail directly
  * above the user avatar. Clicking or hovering opens a concise limits card showing
- * 5-hour limit, weekly limit, credits, Add credits CTA, and Manage usage.
+ * 5-hour limit, weekly limit, credits, 1×/week free reset (when available), Add credits CTA,
+ * and Manage usage.
  */
 export function RailUsageButton() {
   const { t, format } = useI18n()
   const [open, setOpen] = useState(false)
+  const [resetting, setResetting] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hoverOpenedAt = useRef(0)
@@ -555,34 +735,24 @@ export function RailUsageButton() {
     closeTimer.current = setTimeout(() => setOpen(false), HOVER_CLOSE_MS)
   }
 
-  const classEntries = limits ? Object.values(limits.classes).filter(Boolean) : []
-  const windows = classEntries.flatMap((c) => (c?.window ? [c.window] : []))
-  const highestWindow = windows.length
-    ? windows.reduce((best, w) => (w.percent > best.percent ? w : best), windows[0]!)
-    : null
-  const highestWeeklyEntry = classEntries.reduce<(typeof classEntries)[number] | null>(
-    (best, c) => (!best || (c?.percent ?? 0) > (best?.percent ?? 0) ? c : best),
-    null,
-  )
-
-  const sessionUsed = Math.max(0, Math.min(100, Math.round(highestWindow?.percent ?? 0)))
-  const weeklyUsed = Math.max(0, Math.min(100, Math.round(highestWeeklyEntry?.percent ?? 0)))
+  const summary = summarizeUsage(limits, tier?.balance?.effectiveAvailable, null)
+  const sessionUsed = summary.sessionPercent ?? 0
+  const weeklyUsed = summary.weeklyPercent ?? 0
   const sessionLeft = Math.max(0, 100 - sessionUsed)
   const weeklyLeft = Math.max(0, 100 - weeklyUsed)
-  const peakUsed = Math.max(sessionUsed, weeklyUsed)
 
-  const isCapped = limits?.state === 'limited' || peakUsed >= 100
-  const isNear = !isCapped && peakUsed >= 85
+  const { isCapped, isNear, canFreeReset } = summary
   const hasBalanceZero =
+    !summary.oursUnbounded &&
     typeof tier?.balance?.effectiveAvailable === 'number' &&
     tier.balance.effectiveAvailable <= 0 &&
-    !tier.plan
+    !tier.plan &&
+    !limits?.plan
 
-  // Only surface the `(!)` warning indicator in the rail when usage is near (>=85%) or exceeded.
+  // Only surface the `(!)` warning indicator in the rail when bounded Hanzo usage is near (>=85%) or exceeded.
   if (!isCapped && !isNear && !hasBalanceZero) return null
 
-  const resetIso = highestWindow?.resets_at ?? highestWeeklyEntry?.resets_at
-  const resetParts = resetIso ? resets(resetIso, now, format) : null
+  const resetParts = summary.resetIso ? resets(summary.resetIso, now, format) : null
   const resetSentence = resetParts
     ? resetParts.date && resetParts.time
       ? t('Your rate limit resets {date} at {time}.', { date: resetParts.date, time: resetParts.time })
@@ -630,6 +800,20 @@ export function RailUsageButton() {
     clearCloseTimer()
     setOpen(next)
     if (next) usage.reload()
+  }
+
+  const handleFreeReset = async () => {
+    if (resetting) return
+    setResetting(true)
+    try {
+      await resetUsageLimits()
+      usage.reload()
+      toast.success(t('Usage reset for this week'))
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('Could not reset usage'))
+    } finally {
+      setResetting(false)
+    }
   }
 
   return (
@@ -712,6 +896,32 @@ export function RailUsageButton() {
               {subtitle}
             </Text>
           </YStack>
+
+          {canFreeReset ? (
+            <XStack
+              render={<button type="button" disabled={resetting} />}
+              data-slot="rail-usage-free-reset"
+              onClick={() => void handleFreeReset()}
+              width="100%"
+              height={34}
+              rounded={9999}
+              items="center"
+              justify="center"
+              gap={6}
+              bg="$panel"
+              borderWidth={1}
+              borderColor={STRONG}
+              cursor={resetting ? 'default' : 'pointer'}
+              opacity={resetting ? 0.6 : 1}
+              hoverStyle={resetting ? undefined : { bg: '$hover' }}
+              focusVisibleStyle={FOCUS_RING}
+            >
+              <RotateCcw size={13} color="var(--foreground)" aria-hidden />
+              <Text fontFamily="$body" fontSize={12.5} fontWeight="600" color="$ink">
+                {resetting ? t('Resetting…') : t('Reset usage (1×/wk free)')}
+              </Text>
+            </XStack>
+          ) : null}
 
           <XStack
             render={<a href={payPage('/amount/card', typeof window !== 'undefined' ? window.location.href : undefined)} />}

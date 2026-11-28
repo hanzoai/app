@@ -61,7 +61,7 @@
 // so the builder's own plans are never drawn.
 
 import { useI18n } from '@hanzo/i18n/react'
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 import { ChevronLeft, ChevronRight, RefreshCw, Sparkles } from 'lucide-react'
 import { AiProvider } from '@hanzo/ai/react'
 import { XStack, YStack } from '@hanzo/gui'
@@ -94,7 +94,7 @@ import { Upgrade, useFree } from './Upgrade'
 import { payUrl } from './lib/pay'
 import { FIRST, isSettingsPath, settingsPathFor, settingsRowOf, SettingsList, type Row as SettingsRow } from './Settings'
 import { useMaking } from './Confirm'
-import { app, CHAT, CYBER, cyber, design, flow, go, hosted, LEARN, learn, place, SCIENCE, science, settings, talk, TERMINALS, visit, type Place } from './lib/host'
+import { app, CHAT, CYBER, cyber, design, flow, go, hosted, LEARN, learn, place, SCIENCE, science, settings, studio, talk, TERMINALS, visit, type Place } from './lib/host'
 import { cyberNav } from './cyber/nav'
 import { parseCyberTab } from './cyber/types'
 import { flowNav } from './flow/nav'
@@ -110,8 +110,12 @@ import { dragWindow, toggleWindowMaximize, WindowControls } from './WindowContro
 import { AppContextMenu } from './ContextMenu'
 import { Windowed } from './windowed'
 
-/** Design (@hanzo/studio's `Studio`), fetched the first time the reader stands in it. */
-const Studio = lazy(() => import('@hanzo/studio').then((m) => ({ default: m.Studio })))
+type StudioMode = 'design' | 'studio'
+type StudioComponentProps = { host: Host & { spend?: unknown }; rail?: boolean; mode?: StudioMode }
+const studioPlaces = places as unknown as (host: Host, go: (p: string) => void, mode?: StudioMode) => ReturnType<typeof places>
+
+/** Design & Studio (@hanzo/studio's `Studio`), fetched the first time the reader stands in either. */
+const Studio = lazy(() => import('@hanzo/studio').then((m) => ({ default: m.Studio as unknown as ComponentType<StudioComponentProps> })))
 /** Flow: native Hanzo Flow visual agentic workflow builder & scheduler (`/flow`). */
 const FlowPane = lazy(() => import('./flow/FlowPane'))
 /** Tabs, the same way: the terminals on the reader's machines (Terminals.tsx). */
@@ -132,7 +136,7 @@ const SettingsPane = lazy(() => import('./SettingsPane').then((m) => ({ default:
 const HOME: Place = { mode: 'chat', thread: null }
 
 /** What a window's bar names the page by; Chat names itself in the sidebar. */
-const TITLES: Record<string, string> = { dev: 'Dev', design: 'Design', flow: 'Flow', learn: 'Learn', tabs: 'Tabs', research: 'Science', cyber: 'Cyber' }
+const TITLES: Record<string, string> = { dev: 'Dev', design: 'Design', studio: 'Studio', flow: 'Flow', learn: 'Learn', tabs: 'Tabs', research: 'Science', cyber: 'Cyber' }
 
 /**
  * The window's bar, for a host that is a window of its own: `inset` px kept
@@ -192,7 +196,7 @@ export interface Hosted {
 
 
 /** Where each mode was last, so the rail goes back to it. */
-const last: Record<string, string> = { chat: '', dev: '', design: '', flow: '', learn: '', tabs: '', research: '', cyber: '' }
+const last: Record<string, string> = { chat: '', dev: '', design: '', studio: '', flow: '', learn: '', tabs: '', research: '', cyber: '' }
 
 export function App({ bar, betas, topRightInset }: Hosted = {}) {
   return (
@@ -293,28 +297,39 @@ function Window({ bar, betas, topRightInset }: Hosted) {
   // The hosted app the address names (lib/hosted), for the rail to light.
   const inside = at.mode === 'hosted' ? at.id : null
   const where = at.mode === 'dev' ? at.at : null
-  // Design's & Flow's host: Dev's, at Design's (/design) or Flow's (/flow) address.
-  const inDesign = at.mode === 'design'
-  const inFlow = at.mode === 'flow'
-  const made = inDesign || inFlow ? at.at : ''
-  const modeRoute = inFlow ? flow : design
-  const modeName = inFlow ? 'Flow' : 'Design'
-  // Design's and Flow's paid calls ask through the one spend confirm: @hanzo/studio reads `spend` off its host.
+  // Design's and Studio's hosts: Dev's host scoped to /design or /studio, both using the shared spend confirm.
   const making = useMaking()
-  const maker = useMemo<Host & { spend: typeof making.spend }>(
+  const designAt = at.mode === 'design' ? at.at : ''
+  const studioAt = at.mode === 'studio' ? at.at : ''
+  const designMaker = useMemo<Host & { spend: typeof making.spend }>(
     () => ({
       ...host,
-      name: modeName,
-      path: made,
-      go: (to, how) => depart((replace) => go(modeRoute(to), replace || how?.replace)),
+      name: 'Design',
+      path: designAt,
+      go: (to, how) => depart((replace) => go(design(to), replace || how?.replace)),
       chooseOrg: (next) => {
         pick(next)
-        window.location.assign(modeRoute(''))
+        window.location.assign(design(''))
       },
       spend: making.spend,
     }),
-    [host, modeName, modeRoute, made, depart, making.spend],
+    [host, designAt, depart, making.spend],
   )
+  const studioMaker = useMemo<Host & { spend: typeof making.spend }>(
+    () => ({
+      ...host,
+      name: 'Studio',
+      path: studioAt,
+      go: (to, how) => depart((replace) => go(studio(to), replace || how?.replace)),
+      chooseOrg: (next) => {
+        pick(next)
+        window.location.assign(studio(''))
+      },
+      spend: making.spend,
+    }),
+    [host, studioAt, depart, making.spend],
+  )
+  const maker = mode === 'studio' ? studioMaker : designMaker
   // A run floats two panes of its own, so the pane it stands in is not cut.
   const run = where !== null && route(where).kind === 'run'
   const asked = at.mode === 'chat' ? at.thread : null
@@ -408,7 +423,7 @@ function Window({ bar, betas, topRightInset }: Hosted) {
   }, [wanted, move, host])
 
   // The app's keys: the one keymap's, handled once (keys.ts). A section is the nth of the rail.
-  const sections = [() => toChat(), () => toDev(), () => toDesign(), () => toFlow(), () => toTabs()]
+  const sections = [() => toChat(), () => toDev(), () => toDesign(), () => toStudio(), () => toFlow(), () => toTabs()]
   useGlobalKeys({
     desktop: Boolean(bar),
     find: () => setFinding((open) => !open),
@@ -455,13 +470,14 @@ function Window({ bar, betas, topRightInset }: Hosted) {
   const toChat = () => move(last.chat || talk())
   const toDev = () => move(mode === 'dev' && !inPlace ? app('') : last.dev || app(''))
   const toDesign = () => move(last.design || design(''))
+  const toStudio = () => move(last.studio || studio(''))
   const toFlow = () => move(last.flow || flow(''))
   const toLearn = () => move(last.learn || learn())
   const toTabs = () => move(TERMINALS)
   // Another organization: picked, and the app opened in it at the mode's New.
   const org = (o: string) => {
     pick(o)
-    window.location.assign(mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'flow' ? flow('') : mode === 'learn' ? LEARN : mode === 'tabs' ? TERMINALS : mode === 'research' ? SCIENCE : mode === 'cyber' ? CYBER : inside ? hosted(inside) : talk())
+    window.location.assign(mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'studio' ? studio('') : mode === 'flow' ? flow('') : mode === 'learn' ? LEARN : mode === 'tabs' ? TERMINALS : mode === 'research' ? SCIENCE : mode === 'cyber' ? CYBER : inside ? hosted(inside) : talk())
   }
   const sidebar =
     mode === 'beta' || mode === 'hosted'
@@ -471,17 +487,19 @@ function Window({ bar, betas, topRightInset }: Hosted) {
         : mode === 'cyber'
           ? cyberNav(parseCyberTab(here), move, t)
           : mode === 'design'
-          ? places(maker, (p) => maker.go(p))
-          : mode === 'flow'
-            ? flowNav(parseFlowRoute(here).view, move, t)
-            : mode === 'learn'
-              ? learnNav(parseLearnRoute(here, typeof window !== 'undefined' ? window.location.search : ''), move, t)
-              : mode === 'dev' && raised(where) === 'customize'
-              ? tabs(host, (p) => host.go(p), t).map((group) => ({ ...group, links: [...group.links, {
-                id: 'learning', label: t('Learning'), active: learning, icon: <RefreshCw size={16} aria-hidden />,
-                onPress: () => { shut(); setLearning(true) },
-              }] }))
-              : undefined
+            ? studioPlaces(designMaker, (p) => designMaker.go(p), 'design')
+            : mode === 'studio'
+              ? studioPlaces(studioMaker, (p) => studioMaker.go(p), 'studio')
+              : mode === 'flow'
+                ? flowNav(parseFlowRoute(here).view, move, t)
+                : mode === 'learn'
+                  ? learnNav(parseLearnRoute(here, typeof window !== 'undefined' ? window.location.search : ''), move, t)
+                  : mode === 'dev' && raised(where) === 'customize'
+                  ? tabs(host, (p) => host.go(p), t).map((group) => ({ ...group, links: [...group.links, {
+                    id: 'learning', label: t('Learning'), active: learning, icon: <RefreshCw size={16} aria-hidden />,
+                    onPress: () => { shut(); setLearning(true) },
+                  }] }))
+                  : undefined
   const seek = () => {
     shut()
     setFinding(true)
@@ -614,6 +632,7 @@ function Window({ bar, betas, topRightInset }: Hosted) {
                 onChat={toChat}
                 onDev={toDev}
                 onDesign={toDesign}
+                onStudio={toStudio}
                 onFlow={toFlow}
                 onLearn={toLearn}
                 onTabs={toTabs}
@@ -699,6 +718,7 @@ function Window({ bar, betas, topRightInset }: Hosted) {
                     onChat={toChat}
                     onDev={toDev}
                     onDesign={toDesign}
+                    onStudio={toStudio}
                     onFlow={toFlow}
                     onLearn={toLearn}
                     onTabs={toTabs}
@@ -785,7 +805,15 @@ function Window({ bar, betas, topRightInset }: Hosted) {
                   <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
                     <YStack flex={1} minH={0} height="100%">
                       <Suspense fallback={null}>
-                        <Studio host={maker} rail={false} />
+                        <Studio host={designMaker} mode="design" rail={false} />
+                      </Suspense>
+                    </YStack>
+                  </YStack>
+                ) : mode === 'studio' ? (
+                  <YStack id="main-content" tabIndex={-1} render="main" data-slot="pane" {...pane()} overflow="hidden" flex={1} minW={0} minH={0}>
+                    <YStack flex={1} minH={0} height="100%">
+                      <Suspense fallback={null}>
+                        <Studio host={studioMaker} mode="studio" rail={false} />
                       </Suspense>
                     </YStack>
                   </YStack>
@@ -873,6 +901,7 @@ function Window({ bar, betas, topRightInset }: Hosted) {
                       onChat={toChat}
                       onDev={toDev}
                       onDesign={toDesign}
+                      onStudio={toStudio}
                       onFlow={toFlow}
                       onLearn={toLearn}
                       onTabs={toTabs}

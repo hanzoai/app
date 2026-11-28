@@ -29,7 +29,7 @@ const through = ({ children }: { children?: ReactNode }) => createElement(Fragme
 const { MARKS } = vi.hoisted(() => {
   const mark = () => () => null
   const one = { icon: mark(), make: mark() }
-  return { MARKS: { chat: one, dev: one, design: one, flow: one, tabs: one, library: one, scheduled: one, customize: one } }
+  return { MARKS: { chat: one, dev: one, design: one, studio: one, flow: one, tabs: one, library: one, scheduled: one, customize: one } }
 })
 vi.mock('@hanzo/gui', () => ({ Text: draw, XStack: draw, YStack: draw }))
 vi.mock('@hanzo/dev/builder', () => ({ MARKS, route: () => ({ kind: 'home' }) }))
@@ -95,10 +95,11 @@ beforeEach(() => {
 })
 
 describe('persistent 52px icons-only rail with monochrome chrome', () => {
-  test('defaults primary apps to Chat, Dev, Design, Flow, Learn, Library, Tabs without captions or duplicate + button', () => {
-    expect(DEFAULT_PINNED_NAV).toEqual(['chat', 'dev', 'design', 'flow', 'learn', 'library', 'tabs'])
+  test('defaults primary apps to Chat, Dev, Design, Studio, Flow, Learn, Library, Tabs without captions or duplicate + button', () => {
+    expect(DEFAULT_PINNED_NAV).toEqual(['chat', 'dev', 'design', 'studio', 'flow', 'learn', 'library', 'tabs'])
     const html = draw5()
     expect(html).toContain('data-expanded="false"')
+    expect(html).toContain('data-slot="rail-head"')
     expect(html).toContain('data-slot="sidebar-toggle"')
     expect(html).not.toContain('data-slot="rail-new"')
     expect(html).not.toContain('data-slot="rail-caption"')
@@ -106,6 +107,8 @@ describe('persistent 52px icons-only rail with monochrome chrome', () => {
     expect(html).toContain('aria-label="Chat"')
     expect(html).toContain('aria-label="Dev"')
     expect(html).toContain('aria-label="Design"')
+    expect(html).toContain('aria-label="Studio"')
+    expect(html).toContain('data-slot="rail-studio"')
     expect(html).toContain('aria-label="Flow"')
     expect(html).toContain('aria-label="Learn"')
     expect(html).toContain('aria-label="Library"')
@@ -149,24 +152,24 @@ describe('persistent 52px icons-only rail with monochrome chrome', () => {
     const withCrm = toggledPinnedNav([], 'app-crm')
     expect(withCrm).toEqual(['app-crm'])
     // Pinning one extra app appends it to the normal list instead of hoisting it above Chat.
-    expect(unifiedNavOrder(withCrm)).toEqual(['chat', 'dev', 'design', 'flow', 'learn', 'library', 'tabs', 'app-crm'])
+    expect(unifiedNavOrder(withCrm)).toEqual(['chat', 'dev', 'design', 'studio', 'flow', 'learn', 'library', 'tabs', 'app-crm'])
     expect(toggledPinnedNav(withCrm, 'app-crm')).toEqual([])
     // Dragging ANY app onto ANY other app reorders the entire unified rail freely, including moving the top item down.
-    expect(reorderedPinnedNav(withCrm, 'app-crm', 'chat')).toEqual(['app-crm', 'chat', 'dev', 'design', 'flow', 'learn', 'library', 'tabs'])
-    expect(reorderedPinnedNav([], 'chat', 'dev')).toEqual(['dev', 'chat', 'design', 'flow', 'learn', 'library', 'tabs'])
-    expect(reorderedPinnedNav([], 'chat', 'tabs', 'after')).toEqual(['dev', 'design', 'flow', 'learn', 'library', 'tabs', 'chat'])
-    expect(reorderedPinnedNav([], 'tabs', 'chat', 'before')).toEqual(['tabs', 'chat', 'dev', 'design', 'flow', 'learn', 'library'])
-    expect(reorderedPinnedNav([], 'flow', 'chat')).toEqual(['flow', 'chat', 'dev', 'design', 'learn', 'library', 'tabs'])
-    expect(reorderedPinnedNav(['flow', 'chat', 'dev', 'design', 'learn', 'library', 'tabs'], 'tabs', 'dev')).toEqual(['flow', 'chat', 'tabs', 'dev', 'design', 'learn', 'library'])
-    expect(shiftedPinnedNav([], 'dev', -1)).toEqual(['dev', 'chat', 'design', 'flow', 'learn', 'library', 'tabs'])
-    expect(shiftedPinnedNav([], 'chat', -1)).toEqual(['chat', 'dev', 'design', 'flow', 'learn', 'library', 'tabs'])
+    expect(reorderedPinnedNav(withCrm, 'app-crm', 'chat')).toEqual(['app-crm', 'chat', 'dev', 'design', 'studio', 'flow', 'learn', 'library', 'tabs'])
+    expect(reorderedPinnedNav([], 'chat', 'dev')).toEqual(['dev', 'chat', 'design', 'studio', 'flow', 'learn', 'library', 'tabs'])
+    expect(reorderedPinnedNav([], 'chat', 'tabs', 'after')).toEqual(['dev', 'design', 'studio', 'flow', 'learn', 'library', 'tabs', 'chat'])
+    expect(reorderedPinnedNav([], 'tabs', 'chat', 'before')).toEqual(['tabs', 'chat', 'dev', 'design', 'studio', 'flow', 'learn', 'library'])
+    expect(reorderedPinnedNav([], 'flow', 'chat')).toEqual(['flow', 'chat', 'dev', 'design', 'studio', 'learn', 'library', 'tabs'])
+    expect(reorderedPinnedNav(['flow', 'chat', 'dev', 'design', 'studio', 'learn', 'library', 'tabs'], 'tabs', 'dev')).toEqual(['flow', 'chat', 'tabs', 'dev', 'design', 'studio', 'learn', 'library'])
+    expect(shiftedPinnedNav([], 'dev', -1)).toEqual(['dev', 'chat', 'design', 'studio', 'flow', 'learn', 'library', 'tabs'])
+    expect(shiftedPinnedNav([], 'chat', -1)).toEqual(['chat', 'dev', 'design', 'studio', 'flow', 'learn', 'library', 'tabs'])
     // A hidden item is stepped over when shifting among visible items.
-    const kept = ['chat', 'dev', 'ghost', 'design', 'flow', 'learn', 'library', 'tabs']
+    const kept = ['chat', 'dev', 'ghost', 'design', 'studio', 'flow', 'learn', 'library', 'tabs']
     const seen = kept.filter((id) => id !== 'ghost')
-    expect(shiftedPinnedNav(kept, 'design', -1, seen)).toEqual(['chat', 'design', 'ghost', 'dev', 'flow', 'learn', 'library', 'tabs'])
+    expect(shiftedPinnedNav(kept, 'design', -1, seen)).toEqual(['chat', 'design', 'ghost', 'dev', 'studio', 'flow', 'learn', 'library', 'tabs'])
     // Legacy carry-over keeps extra pins from More.
-    expect(carriedPinnedNav(['chat', 'dev', 'design', 'flow', 'learn', 'library', 'tabs', 'app-crm', 'scheduled'])).toEqual(['app-crm', 'scheduled'])
-    expect(carriedPinnedNav(['dev', 'chat', 'design', 'flow', 'learn', 'library', 'tabs'])).toEqual([])
+    expect(carriedPinnedNav(['chat', 'dev', 'design', 'studio', 'flow', 'learn', 'library', 'tabs', 'app-crm', 'scheduled'])).toEqual(['app-crm', 'scheduled'])
+    expect(carriedPinnedNav(['dev', 'chat', 'design', 'studio', 'flow', 'learn', 'library', 'tabs'])).toEqual([])
     expect(carriedPinnedNav(null)).toEqual([])
     expect(carriedPinnedNav('chat')).toEqual([])
   })
@@ -174,24 +177,24 @@ describe('persistent 52px icons-only rail with monochrome chrome', () => {
   test('the rail stays strictly icon-only (no visible text captions under marks; full names live in aria-label and tooltip)', () => {
     const html = draw5()
     expect(html).not.toContain('data-slot="rail-caption"')
-    for (const label of ['Chat', 'Dev', 'Design', 'Flow', 'Learn', 'Library', 'Tabs', 'More']) {
+    for (const label of ['Chat', 'Dev', 'Design', 'Studio', 'Flow', 'Learn', 'Library', 'Tabs', 'More']) {
       expect(html).toContain(`aria-label="${label}"`)
     }
   })
 
   test('pinning an app adds it to the normal rail list without splitting pinned apps above everything, and custom drag order is preserved', () => {
     const order = (html: string) => [...html.matchAll(/data-nav-id="([^"]+)"/g)].map((m) => m[1])
-    expect(order(draw5())).toEqual(['chat', 'dev', 'design', 'flow', 'learn', 'library', 'tabs'])
+    expect(order(draw5())).toEqual(['chat', 'dev', 'design', 'studio', 'flow', 'learn', 'library', 'tabs'])
     expect(draw5()).not.toContain('data-slot="rail-pins-end"')
     const withOne = draw5({ pinned: ['scheduled'] })
-    expect(order(withOne)).toEqual(['chat', 'dev', 'design', 'flow', 'learn', 'library', 'tabs', 'scheduled'])
+    expect(order(withOne)).toEqual(['chat', 'dev', 'design', 'studio', 'flow', 'learn', 'library', 'tabs', 'scheduled'])
     expect(withOne).not.toContain('data-slot="rail-pins-end"')
     // A custom full drag order (from dragging any icon onto any other) is honored verbatim.
-    const reordered = draw5({ pinned: ['scheduled', 'design', 'chat', 'dev', 'flow', 'learn', 'library', 'tabs'] })
-    expect(order(reordered)).toEqual(['scheduled', 'design', 'chat', 'dev', 'flow', 'learn', 'library', 'tabs'])
+    const reordered = draw5({ pinned: ['scheduled', 'design', 'studio', 'chat', 'dev', 'flow', 'learn', 'library', 'tabs'] })
+    expect(order(reordered)).toEqual(['scheduled', 'design', 'studio', 'chat', 'dev', 'flow', 'learn', 'library', 'tabs'])
     expect(reordered).not.toContain('data-slot="rail-pins-end"')
     // Unpinned, Scheduled tasks returns to More.
-    expect(order(draw5({ pinned: [] }))).toEqual(['chat', 'dev', 'design', 'flow', 'learn', 'library', 'tabs'])
+    expect(order(draw5({ pinned: [] }))).toEqual(['chat', 'dev', 'design', 'studio', 'flow', 'learn', 'library', 'tabs'])
   })
 })
 

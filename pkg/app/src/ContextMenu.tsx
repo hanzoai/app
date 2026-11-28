@@ -8,6 +8,7 @@ import {
   Archive,
   ArchiveRestore,
   CheckSquare,
+  Clapperboard,
   Clock,
   Code2,
   Copy,
@@ -38,7 +39,7 @@ import {
   Workflow,
 } from 'lucide-react'
 import type { Host } from '@hanzo/dev/builder'
-import { app, design, flow, learn, settings, talk, TERMINALS, type Place } from './lib/host'
+import { app, design, flow, learn, settings, studio, talk, TERMINALS, type Place } from './lib/host'
 import { rememberSettingsReturn } from './lib/dev-mode'
 import { useOpen } from './open'
 import { usePinnedNav, type Pins } from './Rail'
@@ -101,7 +102,7 @@ const fullUrl = (path: string): string => {
 const placePath = (id: string, mode: Place['mode']): string | null => {
   switch (id) {
     case 'new':
-      return mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'flow' ? flow('new') : talk()
+      return mode === 'dev' ? app('') : mode === 'design' ? design('') : mode === 'studio' ? studio('') : mode === 'flow' ? flow('new') : talk()
     case 'projects':
       return app('-/projects')
     case 'issues':
@@ -137,6 +138,9 @@ const railPath = (slot: string): string | null => {
     case 'rail-design':
     case 'place-design':
       return design('')
+    case 'rail-studio':
+    case 'place-studio':
+      return studio('')
     case 'rail-flow':
     case 'place-flow':
       return flow('')
@@ -238,7 +242,7 @@ export function AppContextMenu({
 
       // Let ConversationMenu handle [data-thread] rows, and never override native menu in inputs, standalone SVGs, or active text selections
       if (target.closest('[data-thread], [role="menu"], [role="dialog"]')) return
-      if (target.closest('svg') && !target.closest('button, a, [role="button"], [data-slot^="rail-"], [data-place-id], [data-project]')) return
+      if (target.closest('svg') && !target.closest('button, a, [role="button"], [data-slot="rail"], [data-slot^="rail-"], [data-slot="app-column"], [data-place-id], [data-project]')) return
       const htmlEl = target as HTMLElement
       if (
         htmlEl.isContentEditable ||
@@ -448,15 +452,38 @@ export function AppContextMenu({
         }
       }
 
-      // 4. Sidebar / Recents column (`[data-slot="app-column"]`, `[data-slot="recents"]`)
-      if (!entries.length && target.closest('[data-slot="app-column"], [data-slot="recents"]')) {
-        title = mode === 'dev' ? 'Hanzo Dev' : 'Hanzo AI'
+      // 4. Sidebar / Recents / Rail background (`[data-slot="app-column"]`, `[data-slot="recents"]`, `[data-slot="rail"]`)
+      if (!entries.length && target.closest('[data-slot="app-column"], [data-slot="recents"], [data-slot="rail"]')) {
+        title =
+          mode === 'dev'
+            ? 'Hanzo Dev'
+            : mode === 'design'
+              ? 'Hanzo Design'
+              : mode === 'studio'
+                ? 'Hanzo Studio'
+                : mode === 'flow'
+                  ? 'Hanzo Flow'
+                  : 'Hanzo AI'
         entries.push(
           {
             key: 'sidebar-new',
-            label: mode === 'dev' ? t('New run') : t('New chat'),
+            label:
+              mode === 'dev'
+                ? t('New run')
+                : mode === 'design'
+                  ? t('New design')
+                  : mode === 'studio'
+                    ? t('New creation')
+                    : t('New chat'),
             icon: <SquarePen size={15} aria-hidden />,
-            run: () => (mode === 'dev' ? go(app('')) : onNewChat()),
+            run: () =>
+              mode === 'dev'
+                ? go(app(''))
+                : mode === 'design'
+                  ? go(design(''))
+                  : mode === 'studio'
+                    ? go(studio(''))
+                    : onNewChat(),
           },
           ...selecting(listed, 'sidebar-select', t, { key: 'sidebar-select-all', shortcut: apple ? '⌘A' : 'Ctrl+A' }),
           {
@@ -475,7 +502,7 @@ export function AppContextMenu({
           },
           {
             key: 'sidebar-shut',
-            label: t('Close sidebar'),
+            label: t(closed ? 'Open sidebar' : 'Close sidebar'),
             icon: <PanelLeft size={15} aria-hidden />,
             run: onToggleSidebar,
           },
@@ -683,6 +710,12 @@ export function AppContextMenu({
             label: 'Design',
             icon: <WandSparkles size={15} aria-hidden />,
             run: () => go(design('')),
+          },
+          {
+            key: 'stage-studio',
+            label: 'Studio',
+            icon: <Clapperboard size={15} aria-hidden />,
+            run: () => go(studio('')),
           },
           {
             key: 'stage-flow',

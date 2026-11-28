@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 import { SECTIONS } from '@hanzo/dev/route'
-import { app, BETA, CHAT, DEV, design, dev, flow, follow, LEARN, learn, page, paged, place, resume, SETTINGS, settings, talk, visit } from './host'
+import { app, BETA, CHAT, DEV, design, dev, flow, follow, LEARN, learn, page, paged, place, resume, SETTINGS, settings, studio, talk, visit } from './host'
 import { configure } from '../where'
 
 const RUN = `sess_${'0123456789abcdef'.repeat(2)}`
@@ -163,12 +163,15 @@ describe('Design is the third root', () => {
     expect(design('/explore')).toBe('/design/explore')
   })
 
-  test('Studio was Design under a second name: every /studio address opens Design, and no mode is Studio', () => {
-    expect(place('/studio')).toEqual({ mode: 'design', at: '' })
-    expect(place('/studio/')).toEqual({ mode: 'design', at: '' })
-    expect(place('/studio/c/abc')).toEqual({ mode: 'design', at: 'c/abc' })
-    expect(page('/studio/c/abc')).toBe('/design')
-    expect(place('/studios'), 'a neighbour of /studio is not Design').toBeNull()
+  test('Studio (/studio) is a first-class root distinct from Design (/design), and writes back under /studio', () => {
+    expect(place('/studio')).toEqual({ mode: 'studio', at: '' })
+    expect(place('/studio/')).toEqual({ mode: 'studio', at: '' })
+    expect(place('/studio/c/abc')).toEqual({ mode: 'studio', at: 'c/abc' })
+    expect(page('/studio')).toBe('/studio')
+    expect(page('/studio/c/abc')).toBe('/studio')
+    expect(studio('')).toBe('/studio')
+    expect(studio('/explore')).toBe('/studio/explore')
+    expect(place('/studios'), 'a neighbour of /studio is not Studio').toBeNull()
   })
 
   test("Design's own Library is gone: its old address opens the app's one Library", () => {

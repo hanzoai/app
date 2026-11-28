@@ -123,8 +123,8 @@ export function Bar({
         ? { label: t('New terminal'), onPress: () => dispatchTabsAction({ kind: 'shell' }) }
         : { label: made?.label ?? t('New'), onPress: made?.onPress }
   const Make =
-    mode === 'chat' || mode === 'dev' || mode === 'tabs' || mode === 'flow' || mode === 'cyber'
-      ? MARKS[mode].make
+    mode === 'chat' || mode === 'dev' || mode === 'design' || mode === 'studio' || mode === 'tabs' || mode === 'flow' || mode === 'cyber'
+      ? MARKS[mode]?.make ?? MARKS.chat.make
       : MARKS.chat.make
   return (
     // The gap above the bar is the gap the pane keeps all round, under the device's inset; the bar's row is the

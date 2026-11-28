@@ -21,7 +21,7 @@ const rightClick = (el: Element) =>
 
 const menu = () => document.querySelector('[data-slot="app-context-menu"]')?.textContent ?? ''
 
-async function openOver(recents: boolean): Promise<string> {
+async function openOver(recents: boolean, mode: 'chat' | 'studio' = 'chat'): Promise<string> {
   const window_ = document.createElement('div')
   window_.setAttribute('data-slot', 'window')
   window_.innerHTML = `<div data-slot="app-column">${recents ? '<div data-slot="recents"></div>' : ''}<span id="spot">Sidebar</span></div>`
@@ -30,7 +30,7 @@ async function openOver(recents: boolean): Promise<string> {
   await at.draw(
     createElement(AppContextMenu as never, {
       host: {},
-      mode: 'chat',
+      mode,
       closed: false,
       onToggleSidebar() {},
       onSeek() {},
@@ -56,5 +56,36 @@ describe('Select multiple and Select all in the sidebar menu', () => {
     expect(shown).toContain('New chat')
     expect(shown).not.toContain('Select multiple…')
     expect(shown).not.toContain('Select all')
+  })
+
+  test('Studio sidebar context menu offers New creation and Select controls', async () => {
+    const shown = await openOver(true, 'studio')
+    expect(shown).toContain('New creation')
+    expect(shown).toContain('Select multiple…')
+    expect(shown).toContain('Select all')
+  })
+
+  test('empty Rail space right-click opens the shell context menu', async () => {
+    const window_ = document.createElement('div')
+    window_.setAttribute('data-slot', 'window')
+    window_.innerHTML = `<div data-slot="rail"><span id="rail-empty">Empty</span></div>`
+    document.body.append(window_)
+    at = await mount()
+    await at.draw(
+      createElement(AppContextMenu as never, {
+        host: {},
+        mode: 'chat',
+        closed: false,
+        onToggleSidebar() {},
+        onSeek() {},
+        onNewChat() {},
+        go() {},
+        pins: [[], () => {}],
+      } as never),
+    )
+    await rightClick(window_.querySelector('#rail-empty')!)
+    const shown = menu()
+    expect(shown).toContain('New chat')
+    expect(shown).toContain('Close sidebar')
   })
 })

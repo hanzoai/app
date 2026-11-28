@@ -106,7 +106,7 @@ import { openModelPicker } from './lib/model-picker'
 import { useSignOut, useSigningOut } from './lib/signout'
 import { choose } from './lib/session'
 import { getDevMode, rememberSettingsReturn, setDevMode, useDevMode } from './lib/dev-mode'
-import { app, design, flow, hosted, learn, paged, science, settings, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
+import { app, design, flow, hosted, learn, paged, science, settings, studio, talk, TERMINALS, WORKSPACE, type Place } from './lib/host'
 import { BETAS } from './lib/betas'
 import { useBetas } from './Betas'
 import { tidy } from './lib/title'
@@ -202,6 +202,7 @@ export function places(host: Host | undefined, go: (address: string) => void, t:
     ...(!anon
       ? [
           { id: 'design', label: 'Design', icon: <MARKS.design.icon {...ICON} />, run: () => go(design('')) },
+          { id: 'studio', label: 'Studio', icon: <MARKS.studio.icon {...ICON} />, keywords: ['studio', 'video', 'film', 'audio', '3d', 'media', 'production'], run: () => go(studio('')) },
           { id: 'flow', label: 'Flow', icon: <MARKS.flow.icon {...ICON} />, keywords: ['flow', 'workflow', 'automation', 'schedule', 'pipeline', 'enso', 'agents'], run: () => go(flow('')) },
           { id: 'tabs', label: 'Tabs', icon: <MARKS.tabs.icon {...ICON} />, run: () => go(TERMINALS) },
           { id: 'science', label: t('Science'), icon: <Atom {...ICON} />, keywords: ['research', 'studies', 'autonomy', 'experiments', 'benchmarks'], run: () => go(science()) },
@@ -420,8 +421,15 @@ export function Search({
         id: 'new-design',
         label: t('New Design'),
         icon: <MARKS.design.make {...ICON} />,
-        keywords: ['design', 'canvas', 'studio', 'image', 'ui', 'new'],
+        keywords: ['design', 'canvas', 'image', 'ui', 'new'],
         run: () => go(design('')),
+      },
+      {
+        id: 'new-studio',
+        label: t('New Studio'),
+        icon: <MARKS.studio.make {...ICON} />,
+        keywords: ['studio', 'video', 'film', 'audio', '3d', 'media', 'new'],
+        run: () => go(studio('')),
       },
       {
         id: 'open-flow',

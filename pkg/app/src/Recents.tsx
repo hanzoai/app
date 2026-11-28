@@ -1,44 +1,89 @@
 'use client'
 
-// The reader's Recents in the column's mode, and only that mode's: Chat lists its
-// conversations (`/v1/agents/chat/conversations`, `useThreadList`), Dev its
-// coding runs (`/v1/agent/sessions?kind=coding`, @hanzo/build `useSessions`),
-// Design what Studio keeps of its conversations (@hanzo/studio `useRecent`). Each
-// mode reads its own store. The menu beside the heading narrows, groups and sorts
-// the list; the choice is kept per mode in this browser. Chat's rows share one
-// menu (thread.tsx `ConversationMenu`): pinned ones list first, under Pinned,
-// and Chat's Status shows the archived ones apart.
+// The one unified sidebar list across Chat, Dev, Design, and Studio:
+// - Chat reads `/v1/agents/chat/conversations` (`useThreadList`)
+// - Dev reads `/v1/agent/sessions` (`@hanzo/dev/builder` `useSessions`)
+// - Design & Studio read `@hanzo/studio` `useRecent`
+//
+// Standard mode (`≡` OFF):
+//   - Collapsible `Pinned` section
+//   - Collapsible `Projects` section (Chat `[Project]` groups & Dev repos/projects)
+//   - `Recents` section with Organize / Sort / Density (1, 2, 3 lines) / Show / Select multiple
+//
+// Priority / Day-by-Day Context mode (`≡` ON):
+//   - `Priority` section at top (running / paused / error / unread / pinned)
+//   - Day-by-day chronological sections (`Today`, `Yesterday`, exact weekdays, `Older`)
+//   - Defaults to 3-line cards (title + 2 lines of context), while supporting 1/2/3 lines in either view.
+//
+// ONE `<ConversationMenu>` wraps the whole list so Shift+click range select, Cmd/Ctrl+click,
+// click-drag, mobile touch-drag, right-click context menu, and the borderless icon-only
+// multi-select bar work identically across every section and every app.
 
 import { useI18n } from '@hanzo/i18n/react'
 import { useEffect, useId, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react'
 import { ScrollView, SizableText, XStack, YStack } from '@hanzo/gui'
-import { CheckSquare, ChevronDown, ChevronRight, GitPullRequest, ListFilter } from 'lucide-react'
+import { CheckSquare, ChevronDown, ChevronRight, Folder, GitBranch, GitPullRequest, ListFilter } from 'lucide-react'
 import type { Thread } from '@hanzo/ai'
 import { DOTS, route, useRunMarks, useSessions, type Host } from '@hanzo/dev/builder'
-import * as studio from '@hanzo/studio'
+import * as studioPkg from '@hanzo/studio'
 import { DropdownMenu, type DropdownMenuProps } from '@hanzo/ui'
 import { SidebarItem, StatusDot } from '@hanzo/ui/chat'
 import { useKept } from './kept'
-import { app, design } from './lib/host'
+import { app, design, studio } from './lib/host'
 import { site } from './where'
-import { ago, arrange, chats, designs, hasUnreadUpdate, MENUS, PINNED, PLAIN, runs, SINCE, UNFILED, UNTITLED, UNTITLED_RUN, viewOf, type Mode, type Option, type Recent, type View } from './recent'
+import {
+  ago,
+  arrange,
+  arrangePriority,
+  chats,
+  DENSITIES,
+  densityOf,
+  designs,
+  hasUnreadUpdate,
+  MENUS,
+  PINNED,
+  PLAIN,
+  PRIORITY,
+  projectGroups,
+  PROJECTS,
+  runs,
+  SINCE,
+  UNFILED,
+  UNTITLED,
+  UNTITLED_RUN,
+  viewOf,
+  type Density,
+  type Mode,
+  type Option,
+  type Recent,
+  type View,
+} from './recent'
 import type { Say } from '@hanzo/i18n'
 import { ConversationMenu, ThreadRow, useThreadList, type ThreadActions } from './thread'
 
-/** A Design conversation as Studio lists it (@hanzo/studio `Listed`). */
-type Made = { id: string; title: string; updated: number; state: 'making' | 'done' | 'failed' }
+/** A Design/Studio conversation as `@hanzo/studio` lists it (`Listed`). */
+type Made = { id: string; title: string; updated: number; state: 'making' | 'done' | 'failed'; count?: number; preview?: string; prompt?: string }
 
 /**
- * Studio's own read of Design's conversations (@hanzo/studio `useRecent`, from
- * 0.1.11): this browser's store, shared with Studio's panes. An older Studio has
- * none, and Design then lists nothing here, never Chat's.
+ * Studio's own read of Design/Studio conversations (`@hanzo/studio` `useRecent`):
+ * this browser's store, shared with Studio's panes. An older Studio has none,
+ * and Design/Studio then lists nothing here, never Chat's.
  */
-const useMade = Reflect.get(studio, 'useRecent') as ((host: Host) => { rows: Made[]; error: string }) | undefined
+const useMade = Reflect.get(studioPkg, 'useRecent') as ((host: Host) => { rows: Made[]; error: string }) | undefined
 
-/** The menu's items: each section a heading and its options (recent.ts's phrases, drawn through `t`), the one in force checked; Select multiple where the rows carry a menu. */
-function items(mode: Mode, view: View, set: (v: View) => void, t: Say, select: boolean): NonNullable<DropdownMenuProps['items']> {
+/** The view/organize menu items: Organize by, Sort by, Density (1/2/3 lines), Show, Last activity, Select multiple. */
+function items(
+  mode: Mode,
+  view: View,
+  set: (v: View) => void,
+  density: Density,
+  setDensity: (d: Density) => void,
+  priorityMode: boolean,
+  t: Say,
+  select: boolean,
+): NonNullable<DropdownMenuProps['items']> {
   const m = MENUS[mode]
-  const section = <K extends keyof View>(key: K, label: string, options: Option<View[K]>[]): NonNullable<DropdownMenuProps['items']> =>
+  const section = <K extends keyof View>(key: K, label: string, options: Option<NonNullable<View[K]>>[]): NonNullable<DropdownMenuProps['items']> =>
     options.length
       ? [
           { type: 'label', key: `${key}-label`, label },
@@ -51,9 +96,26 @@ function items(mode: Mode, view: View, set: (v: View) => void, t: Say, select: b
           })),
         ]
       : []
-  const parts = [section('status', t('Status'), m.status), section('since', t('Last activity'), SINCE), section('group', t('Group by'), m.group), section('sort', t('Sort by'), m.sort)].filter(
-    (p) => p.length,
-  )
+
+  const densitySection: NonNullable<DropdownMenuProps['items']> = [
+    { type: 'label', key: 'density-label', label: t('Density') },
+    ...DENSITIES.map((d) => ({
+      key: `density-${d.id}`,
+      label: t(d.label),
+      selected: density === d.id,
+      closeOnSelect: false,
+      onSelect: () => setDensity(d.id),
+    })),
+  ]
+
+  const parts = [
+    ...(priorityMode ? [] : [section('group', t('Organize by'), m.group)]),
+    section('sort', t('Sort by'), m.sort),
+    densitySection,
+    section('status', t('Show'), m.status),
+    section('since', t('Last activity'), SINCE),
+  ].filter((p) => p.length)
+
   const base = parts.flatMap((p, i) => (i ? [{ type: 'separator' as const, key: `sep-${i}` }, ...p] : p))
   if (!select) return base
   return [
@@ -79,34 +141,96 @@ export function Recents({
   host,
   mode,
   thread,
+  priorityMode = false,
   onOpen,
   onNew,
 }: {
-  /** The mode's host: Design's is the one Studio is mounted with (App.tsx `maker`), whose path is Studio's. */
+  /** The mode's host: Design/Studio's is the one Studio is mounted with (App.tsx `maker`), whose path is Studio's. */
   host: Host
   mode: Mode
   /** The Chat conversation the pane holds, or null. */
   thread: string | null
+  /** In-place `≡` Priority / Day-by-Day context mode toggled from Sidebar header. */
+  priorityMode?: boolean
   onOpen: (r: Recent) => void
   /** Moves the pane to a new conversation: where it goes when the one it holds is deleted. */
   onNew: () => void
 }) {
   const [kept, keep] = useKept<unknown>(`hanzo.recents.${mode}`, PLAIN)
+  const [priorityDensity, setPriorityDensity] = useKept<Density | null>(`hanzo.recents.priorityDensity.${mode}`, null)
   const view = viewOf(mode, kept)
-  if (mode === 'chat') return <Chats thread={thread} view={view} keep={keep} onOpen={onOpen} onNew={onNew} />
-  if (mode === 'design') return useMade ? <Designs host={host} view={view} keep={keep} /> : <YStack flex={1} minH={0} />
-  return <Runs host={host} view={view} keep={keep} onOpen={onOpen} />
+  const density = densityOf(mode, view, priorityMode, priorityDensity ?? undefined)
+  const updateDensity = (d: Density) => {
+    if (priorityMode) setPriorityDensity(d)
+    else keep({ ...view, density: d })
+  }
+  if (mode === 'chat') {
+    return (
+      <Chats
+        thread={thread}
+        view={view}
+        keep={keep}
+        density={density}
+        onDensity={updateDensity}
+        priorityMode={priorityMode}
+        onOpen={onOpen}
+        onNew={onNew}
+      />
+    )
+  }
+  if (mode === 'design' || mode === 'studio') {
+    return useMade ? (
+      <CreativeRecents
+        host={host}
+        mode={mode}
+        view={view}
+        keep={keep}
+        density={density}
+        onDensity={updateDensity}
+        priorityMode={priorityMode}
+      />
+    ) : (
+      <YStack flex={1} minH={0} />
+    )
+  }
+  return (
+    <Runs
+      host={host}
+      view={view}
+      keep={keep}
+      density={density}
+      onDensity={updateDensity}
+      priorityMode={priorityMode}
+      onOpen={onOpen}
+    />
+  )
 }
 
-type DesignMeta = { title?: string; pinned?: boolean; archived?: boolean; deleted?: boolean }
+type CreativeMeta = { title?: string; pinned?: boolean; archived?: boolean; deleted?: boolean }
 
-/** Design's Recents: Studio's conversations, each opened in Design at its own address (@hanzo/studio `path`). */
-function Designs({ host, view, keep }: { host: Host; view: View; keep: (v: View) => void }) {
+/** Design & Studio Recents: `@hanzo/studio` conversations opened at `/design` or `/studio`. */
+function CreativeRecents({
+  host,
+  mode,
+  view,
+  keep,
+  density,
+  onDensity,
+  priorityMode,
+}: {
+  host: Host
+  mode: 'design' | 'studio'
+  view: View
+  keep: (v: View) => void
+  density: Density
+  onDensity: (d: Density) => void
+  priorityMode: boolean
+}) {
   const { rows: made, error } = useMade!(host)
-  const [meta, setMeta] = useKept<Record<string, DesignMeta>>('hanzo.design.meta', {})
+  const [meta, setMeta] = useKept<Record<string, CreativeMeta>>(`hanzo.${mode}.meta`, {})
   const metaRef = useRef(meta)
   metaRef.current = meta
-  const patchMeta = (id: string, patch: Partial<DesignMeta>) => {
+  const patchMeta = (id: string, patch: Partial<CreativeMeta>) => {
     const next = {
       ...(metaRef.current ?? {}),
       [id]: { ...(metaRef.current?.[id] ?? {}), ...patch },
@@ -123,13 +247,13 @@ function Designs({ host, view, keep }: { host: Host; view: View; keep: (v: View)
   )
   const rows = useMemo(
     () =>
-      designs(visibleMade).map((r) => ({
+      designs(visibleMade, mode).map((r) => ({
         ...r,
         title: meta?.[r.id]?.title || r.title,
         status: view.status === 'archived' ? 'archived' : r.status,
         ...(meta?.[r.id]?.pinned ? { pinned: true } : {}),
       })),
-    [visibleMade, meta, view.status],
+    [visibleMade, meta, mode, view.status],
   )
   const byId = useMemo(
     () =>
@@ -147,7 +271,7 @@ function Designs({ host, view, keep }: { host: Host; view: View; keep: (v: View)
       ),
     [rows, meta],
   )
-  const designActions = useMemo<ThreadActions>(
+  const actions = useMemo<ThreadActions>(
     () => ({
       pin: async (t: Thread) => {
         patchMeta(t.id, { pinned: !t.pinned })
@@ -170,25 +294,29 @@ function Designs({ host, view, keep }: { host: Host; view: View; keep: (v: View)
     }),
     [],
   )
-  const designHref = (id: string) => new URL(site(design(studio.path({ kind: 'chat', id }))), window.location.href).href
+  const routeFor = mode === 'studio' ? studio : design
+  const creativeHref = (id: string) => new URL(site(routeFor(studioPkg.path({ kind: 'chat', id }))), window.location.href).href
   const failed = useMemo(() => (error ? new Error(error) : null), [error])
-  const at = studio.route(host.path)
+  const at = studioPkg.route(host.path)
   const held = at.kind === 'chat' ? at.id : null
   return (
     <List
-      mode="design"
+      mode={mode}
       rows={rows}
       view={view}
       keep={keep}
+      density={density}
+      onDensity={onDensity}
+      priorityMode={priorityMode}
       open={(r) => r.id === held}
       reading={false}
       error={failed}
-      onOpen={(r) => host.go(studio.path({ kind: 'chat', id: r.id }))}
+      onOpen={(r) => host.go(studioPkg.path({ kind: 'chat', id: r.id }))}
       threads={byId}
       held={held}
       onNew={() => host.go('')}
-      customActions={designActions}
-      hrefOf={designHref}
+      customActions={actions}
+      hrefOf={creativeHref}
     />
   )
 }
@@ -200,17 +328,22 @@ function Chats({
   thread,
   view,
   keep,
+  density,
+  onDensity,
+  priorityMode,
   onOpen,
   onNew,
 }: {
   thread: string | null
   view: View
   keep: (v: View) => void
+  density: Density
+  onDensity: (d: Density) => void
+  priorityMode: boolean
   onOpen: (r: Recent) => void
   onNew: () => void
 }) {
   const store = useThreadList(view.status === 'archived', thread)
-  const rows = useMemo(() => chats(store.threads), [store.threads])
   const byId = useMemo(() => new Map(store.threads.map((t) => [t.id, t])), [store.threads])
   const [seenAt, setSeenAt] = useKept<Record<string, number>>('hanzo.chat.seen.v1', EMPTY_SEEN)
   const seenRef = useRef(seenAt)
@@ -250,12 +383,21 @@ function Chats({
     return out
   }, [store.threads, thread, seenAt])
 
+  const rows = useMemo(
+    () =>
+      chats(store.threads).map((r) => (unreadIds.has(r.id) ? { ...r, unread: true } : r)),
+    [store.threads, unreadIds],
+  )
+
   return (
     <List
       mode="chat"
       rows={rows}
       view={view}
       keep={keep}
+      density={density}
+      onDensity={onDensity}
+      priorityMode={priorityMode}
       open={(r) => r.id === thread}
       reading={store.loading && !store.threads.length}
       error={store.error}
@@ -268,13 +410,28 @@ function Chats({
   )
 }
 
-/** Dev's Recents: the org's coding runs alone. What a person did to a run (pinned, archived, deleted, renamed) is @hanzo/build's store, the one a run's own menu writes too. */
-function Runs({ host, view, keep, onOpen }: { host: Host; view: View; keep: (v: View) => void; onOpen: (r: Recent) => void }) {
+/** Dev's Recents: the org's coding runs with repo, branch, git work status, PR badge, and unified controls. */
+function Runs({
+  host,
+  view,
+  keep,
+  density,
+  onDensity,
+  priorityMode,
+  onOpen,
+}: {
+  host: Host
+  view: View
+  keep: (v: View) => void
+  density: Density
+  onDensity: (d: Density) => void
+  priorityMode: boolean
+  onOpen: (r: Recent) => void
+}) {
   const store = useSessions(host)
   const [meta, patchMeta] = useRunMarks()
   const r = route(host.path)
   const run = r.kind === 'run' ? r.id : null
-  // A run this list has not seen is one just begun: read the store again, once for it.
   const asked = useRef(new Set<string>())
   const reload = store.reload
   useEffect(() => {
@@ -359,6 +516,9 @@ function Runs({ host, view, keep, onOpen }: { host: Host; view: View; keep: (v: 
       rows={rows}
       view={view}
       keep={keep}
+      density={density}
+      onDensity={onDensity}
+      priorityMode={priorityMode}
       open={(row) => row.id === run}
       reading={store.loading && !store.value.length}
       error={store.error}
@@ -410,6 +570,9 @@ function List({
   rows,
   view,
   keep,
+  density,
+  onDensity,
+  priorityMode,
   open,
   reading,
   error,
@@ -425,64 +588,66 @@ function List({
   rows: Recent[]
   view: View
   keep: (v: View) => void
+  density: Density
+  onDensity: (d: Density) => void
+  priorityMode: boolean
   open: (r: Recent) => boolean
   reading: boolean
   error: Error | null | undefined
   onOpen: (r: Recent) => void
-  /** Chat's conversations by id: a row of one carries its menu. */
   threads?: Map<string, Thread>
-  /** The conversation the pane holds, listed or not: a deleted one leaves the list before the store answers. */
   held?: string | null
-  /** Moves the pane to a new conversation: where it goes when the one it holds is deleted. */
   onNew?: () => void
-  /** Custom actions for non-Chat threads (e.g. Dev runs). */
   customActions?: ThreadActions
-  /** Custom Markdown export for non-Chat threads (e.g. Dev runs, Design). */
-  /** Address builder for Copy link / Open in new tab. */
   hrefOf?: (id: string) => string
-  /** Background-updated conversation IDs showing a blue unread dot. */
   unreadIds?: Set<string>
 }) {
   const { t } = useI18n()
   const label = useId()
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
+  const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>({})
   const [savedOrder, setSavedOrder] = useKept<string[]>(`hanzo.recents.order.${mode}`, [])
   const [dragRowId, setDragRowId] = useState<string | null>(null)
   const [dropRowId, setDropRowId] = useState<string | null>(null)
-  const groups = useMemo(
-    () =>
-      arrange(rows, view).map((g) => ({
-        ...g,
-        rows: applyRecentsOrder(g.rows, savedOrder ?? []),
-      })),
-    [rows, view, savedOrder],
+
+  const groups = useMemo(() => {
+    const raw = priorityMode ? arrangePriority(rows, view) : arrange(rows, view)
+    return raw.map((g) => ({
+      ...g,
+      rows: applyRecentsOrder(g.rows, savedOrder ?? []),
+    }))
+  }, [rows, view, priorityMode, savedOrder])
+
+  const projects = useMemo(
+    () => (!priorityMode && view.group !== 'project' ? projectGroups(rows) : []),
+    [rows, priorityMode, view.group],
   )
+
   const visibleRowIds = useMemo(() => groups.flatMap((g) => g.rows.map((r) => r.id)), [groups])
   const handleRowReorder = (src: string, target: string) => {
     if (!src || !target || src === target) return
     setSavedOrder(reorderRecentsIds(visibleRowIds, src, target))
   }
-  // A heading is authored (recent.ts's phrases), save a project's name in a list grouped by project.
+
   const head = (title: string) => (view.group === 'project' && title !== UNFILED && title !== PINNED ? title : t(title))
-  // A row's title is the reader's; only the name a row without one is given is ours.
   const named = (title: string) => (title === UNTITLED || title === UNTITLED_RUN ? t(title) : title)
   const narrowed = view.status !== PLAIN.status || view.since !== PLAIN.since
   const running = mode === 'dev' ? rows.filter((r) => r.status === 'running').length : 0
-  // A row is its title alone, as the reference draws it: a conversation's ⋯
-  // shows on hover and focus, a run's state is a dot at its end.
-  const row = (r: Recent) => {
+
+  const renderRow = (r: Recent, keyPrefix = '') => {
     const one = threads?.get(r.id)
-    const isUnread = Boolean(r.kind === 'chat' && !open(r) && unreadIds?.has(r.id))
+    const active = open(r)
+    const isUnread = Boolean(r.kind === 'chat' && !active && (r.unread || unreadIds?.has(r.id)))
     const age = ago(r.at, new Date(), t)
     const when = age ? (
       <SizableText data-slot="row-age" size="$1" color="var(--muted-foreground)">
         {age}
       </SizableText>
     ) : null
-    // A Design conversation's dot is there while it works or when it failed; at rest it wears its age alone.
-    const settled = r.kind === 'design' && r.status === 'done'
+
+    const settled = (r.kind === 'design' || r.kind === 'studio') && r.status === 'done'
     const rowAside =
-      r.kind === 'design' ? (
+      r.kind === 'design' || r.kind === 'studio' ? (
         <XStack items="center" gap="$1.5">
           {when}
           {settled ? null : <StatusDot status={DOTS[r.status as keyof typeof DOTS] ?? 'idle'} />}
@@ -501,37 +666,206 @@ function List({
           ) : null}
         </XStack>
       ) : undefined
-    const item = (
-      <SidebarItem
-        data-kind={r.kind}
-        active={open(r)}
-        rounded={8}
-        minH={29}
-        minW={0}
-        width="100%"
-        overflow="hidden"
-        pl="$2"
-        pr={one || rowAside ? 68 : '$2'}
-        focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)', outlineOffset: -2 }}
-        // A thumb's 44 on a touch screen; a conversation's ⋯ is a thumb wide there and always there: the title stops short of it.
-        $touchable={one ? { minH: 44, pr: 68 } : { minH: 44 }}
-        $max-sm={one ? { minH: 44, pr: 68 } : { minH: 44 }}
-        onKeyDown={(e: { key?: string; preventDefault?: () => void }) => {
-          if (e.key !== 'Enter' && e.key !== ' ') return
-          e.preventDefault?.()
-          onOpen(r)
-        }}
-        onPress={() => onOpen(r)}
-      >
-        {named(r.title)}
-      </SidebarItem>
-    )
-    if (one)
+
+    const titleText = named(r.title)
+    const devMetaLine = r.meta || [r.repo || r.project, r.branch].filter(Boolean).join(' · ')
+    const contextLine1 =
+      r.kind === 'dev'
+        ? devMetaLine || r.preview || (r.status ? t(r.status) : '')
+        : r.kind === 'design' || r.kind === 'studio'
+          ? r.meta || r.preview || ''
+          : r.preview || [r.project, r.status === 'archived' ? t('Archived') : ''].filter(Boolean).join(' · ')
+    const contextLine2 =
+      r.kind === 'dev'
+        ? r.preview && r.preview !== devMetaLine
+          ? r.preview
+          : ''
+        : r.kind === 'design' || r.kind === 'studio'
+          ? r.preview && r.preview !== r.meta
+            ? r.preview
+            : ''
+          : r.preview
+            ? r.preview
+            : ''
+
+    const handleKeyDown = (e: { key?: string; preventDefault?: () => void }) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return
+      e.preventDefault?.()
+      onOpen(r)
+    }
+
+    const item =
+      density === 1 ? (
+        <SidebarItem
+          data-kind={r.kind}
+          data-density="1"
+          active={active}
+          rounded={8}
+          minH={29}
+          minW={0}
+          width="100%"
+          overflow="hidden"
+          pl="$2"
+          pr={one || rowAside ? 68 : '$2'}
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)', outlineOffset: -2 }}
+          $touchable={one ? { minH: 44, pr: 68 } : { minH: 44 }}
+          $max-sm={one ? { minH: 44, pr: 68 } : { minH: 44 }}
+          onKeyDown={handleKeyDown}
+          onPress={() => onOpen(r)}
+        >
+          {titleText}
+        </SidebarItem>
+      ) : (
+        <XStack
+          render={<button type="button" />}
+          data-slot="sidebar-item"
+          data-kind={r.kind}
+          data-density={String(density)}
+          aria-current={active ? 'page' : undefined}
+          width="100%"
+          minW={0}
+          minH={density === 3 ? 62 : 46}
+          px="$2"
+          py={density === 3 ? '$1.5' : '$1'}
+          rounded={8}
+          borderWidth={0}
+          bg={active ? '$edge' : 'transparent'}
+          hoverStyle={{ bg: active ? '$edge' : '$hover' }}
+          pressStyle={{ bg: '$raised' }}
+          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)', outlineOffset: -2 }}
+          cursor="pointer"
+          items="flex-start"
+          overflow="hidden"
+          $touchable={{ minH: density === 3 ? 64 : 48 }}
+          $max-sm={{ minH: density === 3 ? 64 : 48 }}
+          onKeyDown={handleKeyDown}
+          onClick={() => onOpen(r)}
+        >
+          <YStack flex={1} minW={0} gap={2} items="flex-start">
+            <XStack width="100%" minW={0} pr={one || rowAside ? 60 : 0} items="center">
+              <SizableText
+                size="$2"
+                fontWeight="500"
+                color={active ? '$ink' : '$color'}
+                numberOfLines={1}
+                flex={1}
+                minW={0}
+                text="start"
+                $platform-web={{ textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden', display: 'block' }}
+              >
+                {titleText}
+              </SizableText>
+            </XStack>
+
+            {density === 2 ? (
+              <XStack width="100%" minW={0} items="center" gap="$1" pr="$1">
+                {r.kind === 'dev' && (r.branch || r.repo) ? (
+                  <XStack shrink={0} items="center">
+                    <GitBranch size={11} color="var(--muted-foreground)" aria-hidden />
+                  </XStack>
+                ) : null}
+                <SizableText
+                  data-slot="row-context"
+                  size="$1"
+                  color="$soft"
+                  numberOfLines={1}
+                  flex={1}
+                  minW={0}
+                  text="start"
+                  $platform-web={{ textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden', display: 'block' }}
+                >
+                  {contextLine1 || (age ? age : t(r.kind === 'dev' ? 'Coding run' : 'Conversation'))}
+                </SizableText>
+              </XStack>
+            ) : (
+              <YStack width="100%" minW={0} gap={1.5} pr="$1">
+                {r.kind === 'dev' ? (
+                  <>
+                    {devMetaLine ? (
+                      <XStack width="100%" minW={0} items="center" gap="$1">
+                        <XStack shrink={0} items="center">
+                          <GitBranch size={11} color="var(--muted-foreground)" aria-hidden />
+                        </XStack>
+                        <SizableText
+                          data-slot="row-meta"
+                          size="$1"
+                          color="$soft"
+                          numberOfLines={1}
+                          flex={1}
+                          minW={0}
+                          text="start"
+                          $platform-web={{ textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden', display: 'block' }}
+                        >
+                          {devMetaLine}
+                        </SizableText>
+                      </XStack>
+                    ) : null}
+                    <SizableText
+                      data-slot="row-context"
+                      size="$1"
+                      color="$hint"
+                      lineHeight={15}
+                      numberOfLines={devMetaLine ? 1 : 2}
+                      width="100%"
+                      text="start"
+                    >
+                      {contextLine2 || r.preview || (r.status ? t(r.status) : t('Coding run'))}
+                    </SizableText>
+                  </>
+                ) : r.kind === 'design' || r.kind === 'studio' ? (
+                  <>
+                    {r.meta ? (
+                      <SizableText data-slot="row-meta" size="$1" color="$soft" numberOfLines={1} width="100%" text="start">
+                        {r.meta}
+                      </SizableText>
+                    ) : null}
+                    {r.preview ? (
+                      <SizableText
+                        data-slot="row-context"
+                        size="$1"
+                        color="$hint"
+                        lineHeight={15}
+                        numberOfLines={r.meta ? 1 : 2}
+                        width="100%"
+                        text="start"
+                      >
+                        {r.preview}
+                      </SizableText>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    {r.project ? (
+                      <SizableText data-slot="row-meta" size="$1" color="$soft" numberOfLines={1} width="100%" text="start">
+                        {r.project}
+                      </SizableText>
+                    ) : null}
+                    <SizableText
+                      data-slot="row-context"
+                      size="$1"
+                      color="$hint"
+                      lineHeight={15}
+                      numberOfLines={r.project ? 1 : 2}
+                      width="100%"
+                      text="start"
+                    >
+                      {r.preview || (r.status === 'archived' ? t('Archived conversation') : age ? t('Updated {age}', { age }) : t('Conversation'))}
+                    </SizableText>
+                  </>
+                )}
+              </YStack>
+            )}
+          </YStack>
+        </XStack>
+      )
+
+    const key = keyPrefix ? `${keyPrefix}:${r.id}` : r.id
+    if (one) {
       return (
         <ThreadRow
-          key={r.id}
+          key={key}
           t={one}
-          active={open(r)}
+          active={active}
           aside={rowAside}
           dragging={dragRowId === r.id}
           dropTarget={dropRowId === r.id && dragRowId !== null && dragRowId !== r.id}
@@ -564,8 +898,9 @@ function List({
           {item}
         </ThreadRow>
       )
+    }
     return (
-      <YStack role="listitem" key={r.id} position="relative">
+      <YStack role="listitem" key={key} position="relative">
         {item}
         {rowAside ? (
           <XStack position="absolute" insetInlineEnd="$2.5" t={0} b={0} items="center" pointerEvents="none">
@@ -576,13 +911,13 @@ function List({
     )
   }
 
-  // The view menu stands at the end of the Recents heading: the target's own, quiet until the pointer is near.
   const menu = (
     <DropdownMenu
-      minWidth={200}
+      minWidth={210}
       trigger={
         <XStack
           render="button"
+          data-slot="recents-view-menu"
           aria-label={t('Recents view')}
           width={26}
           height={26}
@@ -605,18 +940,17 @@ function List({
           <ListFilter size={14} color={narrowed ? 'var(--foreground)' : 'var(--muted-foreground)'} aria-hidden />
         </XStack>
       }
-      items={items(mode, view, keep, t, Boolean(threads))}
+      items={items(mode, view, keep, density, onDensity, priorityMode, t, Boolean(threads))}
     />
   )
-  /** A section's heading: quiet label, the Recents one carrying the count and the menu. */
+
   const heading = (title: string, id?: string, lead = false) => (
-    <XStack group items="center" justify="space-between" minH={26} paddingInlineStart="$2" paddingInlineEnd="$1" mt="$2.5" shrink={0}>
+    <XStack group items="center" justify="space-between" minH={26} paddingInlineStart="$2" paddingInlineEnd="$1" mt="$2" shrink={0}>
       <XStack items="center" gap="$2">
         <SizableText id={id} size="$1" fontWeight="500" color="var(--muted-foreground)">
           {title}
         </SizableText>
         {lead && running ? (
-          // A count where there is one to keep an eye on: the runs still working.
           <XStack aria-label={t('{n} running', { n: running })} minW={18} height={18} px="$1.5" rounded={999} items="center" justify="center" bg="$edge" borderWidth={1} borderColor="$borderColor">
             <SizableText size="$1" fontWeight="600" color="$ink" aria-hidden data-i18n-ltr>
               {String(running)}
@@ -658,43 +992,109 @@ function List({
     </XStack>
   )
 
-  const loose = groups.filter((g) => g.title !== PINNED)
-  const pinned = groups.find((g) => g.title === PINNED)
   const note = reading ? (
     <Note>{t(mode === 'chat' ? 'Reading your chats…' : 'Reading your runs…')}</Note>
   ) : error ? null : view.status === 'archived' ? (
-    <Note>{t('No archived chats.')}</Note>
+    <Note>{t(mode === 'dev' ? 'No archived runs.' : mode === 'design' ? 'No archived designs.' : mode === 'studio' ? 'No archived creations.' : 'No archived chats.')}</Note>
   ) : narrowed ? (
     <Note>{t('Nothing in this view.')}</Note>
   ) : (
-    <Note>{t(mode === 'chat' ? 'No chats yet.' : mode === 'design' ? 'Nothing made yet.' : 'No runs yet.')}</Note>
+    <Note>{t(mode === 'chat' ? 'No chats yet.' : mode === 'design' || mode === 'studio' ? 'Nothing made yet.' : 'No runs yet.')}</Note>
   )
-  // Each list of conversations holds its own menu (thread.tsx): the view menu
-  // in the Recents heading between them is a menu of its own, never inside one.
-  const menus = (rows: ReactNode, primary = true) =>
+
+  const wrapMenu = (body: ReactNode) =>
     threads ? (
-      // Held while the list empties, so a dialog its last row opened closes in place.
       <ConversationMenu
         threads={threads}
         active={held}
         onGone={onNew}
         customActions={customActions}
         canShare={mode === 'chat'}
-        noun={mode === 'dev' ? 'run' : mode === 'design' ? 'design' : 'chat'}
+        noun={mode === 'dev' ? 'run' : mode === 'studio' ? 'studio' : mode === 'design' ? 'design' : 'chat'}
         hrefOf={hrefOf}
-        primary={primary}
+        primary
       >
-        <YStack>{rows}</YStack>
+        <YStack gap={1}>{body}</YStack>
       </ConversationMenu>
     ) : (
-      rows
+      <YStack gap={1}>{body}</YStack>
     )
+
+  // Priority / Day-by-Day Context mode (`≡` ON)
+  if (priorityMode) {
+    const priorityGroup = groups.find((g) => g.title === PRIORITY)
+    const dayGroups = groups.filter((g) => g.title !== PRIORITY)
+    return (
+      <YStack data-slot="recents" data-mode={mode} data-view="priority" data-density={String(density)} flex={1} minH={0}>
+        {heading(t(PRIORITY), label, true)}
+        <ScrollView flex={1} showsVerticalScrollIndicator={false} {...({ overscrollBehavior: 'contain' } as object)}>
+          {error ? <Note>{error.message}</Note> : null}
+          {wrapMenu(
+            <YStack role="list" aria-labelledby={label} gap={2}>
+              {priorityGroup ? (
+                <YStack role="listitem" data-slot="priority-section" gap={1}>
+                  <YStack role="list" aria-label={t(PRIORITY)} gap={1}>
+                    {priorityGroup.rows.map((r) => renderRow(r))}
+                  </YStack>
+                </YStack>
+              ) : null}
+              {dayGroups.length > 0
+                ? dayGroups.map((g) => {
+                    const isShut = Boolean(collapsedGroups[`day:${g.title}`])
+                    return (
+                      <YStack key={g.title} role="listitem" data-slot="day-group" data-day={g.title} gap={1} pt="$1.5">
+                        <XStack
+                          render="button"
+                          aria-expanded={!isShut}
+                          onClick={() => setCollapsedGroups((prev) => ({ ...prev, [`day:${g.title}`]: !prev[`day:${g.title}`] }))}
+                          items="center"
+                          justify="space-between"
+                          minH={24}
+                          px="$2"
+                          rounded="$2"
+                          cursor="pointer"
+                          transition="quickest"
+                          hoverStyle={{ bg: '$hover' }}
+                          focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                          $max-sm={{ minH: 44 }}
+                        >
+                          <SizableText size="$1" fontWeight="500" color="var(--muted-foreground)">
+                            {t(g.title)}
+                          </SizableText>
+                          {isShut ? (
+                            <ChevronRight size={11} color="var(--muted-foreground)" aria-hidden />
+                          ) : (
+                            <ChevronDown size={11} color="var(--muted-foreground)" aria-hidden />
+                          )}
+                        </XStack>
+                        {isShut ? null : (
+                          <YStack role="list" aria-label={t(g.title)} gap={1}>
+                            {g.rows.map((r) => renderRow(r))}
+                          </YStack>
+                        )}
+                      </YStack>
+                    )
+                  })
+                : !priorityGroup
+                  ? note
+                  : null}
+            </YStack>,
+          )}
+        </ScrollView>
+      </YStack>
+    )
+  }
+
+  // Standard mode (`≡` OFF): Pinned -> Projects -> Recents
+  const pinned = groups.find((g) => g.title === PINNED)
+  const loose = groups.filter((g) => g.title !== PINNED)
+
   const rest = loose.length
     ? loose.map((g) => {
         if (!g.title) {
           return (
             <YStack key="all" role="list" aria-label={t('All')} gap={1}>
-              {g.rows.map(row)}
+              {g.rows.map((r) => renderRow(r))}
             </YStack>
           )
         }
@@ -724,7 +1124,7 @@ function List({
             </XStack>
             {isShut ? null : (
               <YStack role="list" aria-label={head(g.title)} gap={1}>
-                {g.rows.map(row)}
+                {g.rows.map((r) => renderRow(r))}
               </YStack>
             )}
           </YStack>
@@ -735,64 +1135,145 @@ function List({
       : note
 
   return (
-    <YStack data-slot="recents" flex={1} minH={0}>
-
-      {/* Its end is its own: a scroll that reaches it does not move the page behind (a phone's menu). */}
+    <YStack data-slot="recents" data-mode={mode} data-view="standard" data-density={String(density)} flex={1} minH={0}>
       <ScrollView flex={1} showsVerticalScrollIndicator={false} {...({ overscrollBehavior: 'contain' } as object)}>
         {error ? <Note>{error.message}</Note> : null}
-        <YStack role="list" aria-labelledby={label} gap={1}>
-          {pinned ? (
-            <YStack role="listitem" gap={1}>
-              <XStack
-                render="button"
-                data-slot="pinned-group-toggle"
-                aria-expanded={!collapsedGroups[PINNED]}
-                onClick={() => setCollapsedGroups((prev) => ({ ...prev, [PINNED]: !prev[PINNED] }))}
-                items="center"
-                justify="space-between"
-                minH={26}
-                px="$2"
-                mt="$2.5"
-                rounded="$2"
-                cursor="pointer"
-                transition="quickest"
-                hoverStyle={{ bg: '$hover' }}
-                focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
-                $max-sm={{ minH: 44 }}
-              >
-                <XStack items="center" gap="$1.5">
-                  <SizableText size="$1" fontWeight="500" color="var(--muted-foreground)">
-                    {t(PINNED)}
-                  </SizableText>
-                  <SizableText size="$1" color="$hint" aria-hidden data-i18n-ltr>
-                    {String(pinned.rows.length)}
-                  </SizableText>
-                </XStack>
-                {collapsedGroups[PINNED] ? (
-                  <ChevronRight size={12} color="var(--muted-foreground)" aria-hidden />
-                ) : (
-                  <ChevronDown size={12} color="var(--muted-foreground)" aria-hidden />
-                )}
-              </XStack>
-              {collapsedGroups[PINNED]
-                ? null
-                : menus(
-                    <YStack role="list" aria-label={t(PINNED)} gap={1}>
-                      {pinned.rows.map(row)}
-                    </YStack>,
-                    !loose.length,
+        {wrapMenu(
+          <YStack role="list" aria-labelledby={label} gap={1}>
+            {/* 1. Pinned section (collapsible) */}
+            {pinned ? (
+              <YStack role="listitem" gap={1}>
+                <XStack
+                  render="button"
+                  data-slot="pinned-group-toggle"
+                  aria-expanded={!collapsedGroups[PINNED]}
+                  onClick={() => setCollapsedGroups((prev) => ({ ...prev, [PINNED]: !prev[PINNED] }))}
+                  items="center"
+                  justify="space-between"
+                  minH={26}
+                  px="$2"
+                  mt="$2"
+                  rounded="$2"
+                  cursor="pointer"
+                  transition="quickest"
+                  hoverStyle={{ bg: '$hover' }}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  $max-sm={{ minH: 44 }}
+                >
+                  <XStack items="center" gap="$1.5">
+                    <SizableText size="$1" fontWeight="500" color="var(--muted-foreground)">
+                      {t(PINNED)}
+                    </SizableText>
+                    <SizableText size="$1" color="$hint" aria-hidden data-i18n-ltr>
+                      {String(pinned.rows.length)}
+                    </SizableText>
+                  </XStack>
+                  {collapsedGroups[PINNED] ? (
+                    <ChevronRight size={12} color="var(--muted-foreground)" aria-hidden />
+                  ) : (
+                    <ChevronDown size={12} color="var(--muted-foreground)" aria-hidden />
                   )}
+                </XStack>
+                {collapsedGroups[PINNED] ? null : (
+                  <YStack role="list" aria-label={t(PINNED)} gap={1}>
+                    {pinned.rows.map((r) => renderRow(r))}
+                  </YStack>
+                )}
+              </YStack>
+            ) : null}
+
+            {/* 2. Projects section (collapsible, for Chat project groups & Dev repos/projects) */}
+            {projects.length > 0 ? (
+              <YStack role="listitem" data-slot="projects-group" gap={1}>
+                <XStack
+                  render="button"
+                  data-slot="projects-group-toggle"
+                  aria-expanded={!collapsedGroups[PROJECTS]}
+                  onClick={() => setCollapsedGroups((prev) => ({ ...prev, [PROJECTS]: !prev[PROJECTS] }))}
+                  items="center"
+                  justify="space-between"
+                  minH={26}
+                  px="$2"
+                  mt="$2"
+                  rounded="$2"
+                  cursor="pointer"
+                  transition="quickest"
+                  hoverStyle={{ bg: '$hover' }}
+                  focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                  $max-sm={{ minH: 44 }}
+                >
+                  <XStack items="center" gap="$1.5">
+                    <SizableText size="$1" fontWeight="500" color="var(--muted-foreground)">
+                      {t(PROJECTS)}
+                    </SizableText>
+                    <SizableText size="$1" color="$hint" aria-hidden data-i18n-ltr>
+                      {String(projects.length)}
+                    </SizableText>
+                  </XStack>
+                  {collapsedGroups[PROJECTS] ? (
+                    <ChevronRight size={12} color="var(--muted-foreground)" aria-hidden />
+                  ) : (
+                    <ChevronDown size={12} color="var(--muted-foreground)" aria-hidden />
+                  )}
+                </XStack>
+                {collapsedGroups[PROJECTS] ? null : (
+                  <YStack role="list" aria-label={t(PROJECTS)} gap={1}>
+                    {projects.map((p) => {
+                      const isOpen = Boolean(expandedProjects[p.name])
+                      return (
+                        <YStack key={p.name} role="listitem" gap={1}>
+                          <XStack
+                            render="button"
+                            data-project={p.name}
+                            aria-expanded={isOpen}
+                            onClick={() => setExpandedProjects((prev) => ({ ...prev, [p.name]: !prev[p.name] }))}
+                            items="center"
+                            justify="space-between"
+                            minH={29}
+                            px="$2"
+                            rounded={8}
+                            cursor="pointer"
+                            hoverStyle={{ bg: '$hover' }}
+                            focusVisibleStyle={{ outlineWidth: 2, outlineStyle: 'solid', outlineColor: 'var(--ring)' }}
+                            $max-sm={{ minH: 44 }}
+                          >
+                            <XStack items="center" gap="$2" flex={1} minW={0}>
+                              <Folder size={13} color="var(--muted-foreground)" aria-hidden />
+                              <SizableText size="$2" color="$aside" numberOfLines={1} flex={1} minW={0} text="start">
+                                {p.name}
+                              </SizableText>
+                            </XStack>
+                            <XStack items="center" gap="$1">
+                              <SizableText size="$1" color="$hint" data-i18n-ltr>
+                                {String(p.rows.length)}
+                              </SizableText>
+                              {isOpen ? (
+                                <ChevronDown size={11} color="var(--muted-foreground)" aria-hidden />
+                              ) : (
+                                <ChevronRight size={11} color="var(--muted-foreground)" aria-hidden />
+                              )}
+                            </XStack>
+                          </XStack>
+                          {isOpen ? (
+                            <YStack paddingInlineStart="$2.5" gap={1}>
+                              {p.rows.map((r) => renderRow(r, `proj:${p.name}`))}
+                            </YStack>
+                          ) : null}
+                        </YStack>
+                      )
+                    })}
+                  </YStack>
+                )}
+              </YStack>
+            ) : null}
+
+            {/* 3. Recents section */}
+            <YStack role="listitem" gap={1}>
+              {heading(t('Recents'), label, true)}
+              {rest}
             </YStack>
-          ) : null}
-          <YStack role="listitem" gap={1}>
-            {/* The heading stays: it holds the view menu (Archived, grouping) and Select multiple. */}
-            {heading(t('Recents'), label, true)}
-            {menus(
-              rest,
-              true,
-            )}
-          </YStack>
-        </YStack>
+          </YStack>,
+        )}
       </ScrollView>
     </YStack>
   )
