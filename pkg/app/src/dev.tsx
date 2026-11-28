@@ -31,7 +31,7 @@
 // (App.tsx). A page load, at once, not a move inside the app: the pay site is
 // where a plan is bought.
 
-import { useMemo } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { useLook, useHost } from './host'
 import { useIam } from '@hanzo/iam/react'
 import { clearActiveMod } from '@hanzo/mod'
@@ -89,11 +89,49 @@ const at = (pathname: string | null): string => {
  * builder's only asker.
  */
 export function useDevHost(confirm?: Host['confirm']): Host {
-  const { user, accessToken } = useIam()
+  const { user, accessToken, sdk } = useIam()
   const logout = useSignOut()
   const { router, path: pathname } = useHost()
   const here = path(route(at(pathname)))
   const look = useLook()
+
+  // Keep the latest IAM state token reachable even when storage fell back to
+  // sessionStorage / memoryStorage (e.g. Safari private mode) where bearer() is null.
+  const tokenRef = useRef<string | null>(accessToken ?? null)
+  tokenRef.current = accessToken ?? null
+
+  const readToken = useCallback(
+    () => bearer() || sdk?.getAccessToken?.() || tokenRef.current || null,
+    [sdk],
+  )
+
+  // Stable across normal renders, fresh whenever accessToken changes (sign-in or
+  // async refresh on mount) so useTarget() / useRead() immediately re-fetch.
+  const token = useCallback(() => readToken(), [readToken, accessToken]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // On-demand token refresh for @hanzo/dev's call(): proactively refreshes an
+  // expired/missing token (force = false) and forces a refresh-token exchange on
+  // 401 (force = true) so backgrounded mobile tabs never stay stuck on 401.
+  const refresh = useCallback(
+    async (force = false): Promise<string | null> => {
+      if (!sdk) return readToken()
+      if (force) {
+        if (!sdk.getRefreshToken?.()) return null
+        try {
+          const next = await sdk.refreshAccessToken()
+          return next?.accessToken || readToken()
+        } catch {
+          return null
+        }
+      }
+      try {
+        return (await sdk.getValidAccessToken?.()) || null
+      } catch {
+        return null
+      }
+    },
+    [sdk, readToken],
+  )
 
   // The token's claims change only when the token does: a sign-in, a refresh.
   const memberships = useMemo(() => orgs(), [accessToken]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -104,72 +142,74 @@ export function useDevHost(confirm?: Host['confirm']): Host {
   const name = u?.displayName || u?.name || claimed?.name || ''
   const email = u?.email || claimed?.email || ''
   const avatar = typeof u?.avatar === 'string' && u.avatar.startsWith('https://') ? u.avatar : ''
-  const signedIn = Boolean(accessToken || bearer() || u)
+  const signedIn = Boolean(accessToken || readToken() || u)
   // Hanzo Desktop's folders, so Dev offers This computer (hanzo-inc/app issues 309 and 310); none in a browser.
   const local = useMemo(() => desktopLocal(), [])
   // The same window opens a site, saves a copy for the agent and serves its redesign live (hanzo-inc/app issue 312).
   const site = useMemo(() => desktopSite(), [])
 
   return useMemo<Host>(
-    () => ({
-      name: 'Dev',
-      api: api(),
-      token: bearer,
-      org: scoped,
-      memberships,
-      // Scope this browser to one of the token's organizations and open Dev's
-      // New in it: a run or a project read under the last one is not this one's.
-      chooseOrg: (next) => {
-        if (!orgs().includes(next)) return
-        pick(next)
-        window.location.assign(app(''))
-      },
-      theme: theme(look.pref.theme),
-      chooseTheme: (t) => {
-        clearActiveMod()
-        look.set({
-          theme: theme(t),
-          ...(look.pref.background !== undefined ? { background: undefined } : {}),
-          ...(look.pref.contrast !== undefined ? { contrast: undefined } : {}),
-        })
-      },
-      person: signedIn ? { name, email, avatar } : null,
-      admin: administers(bearer(), scoped),
-      path: here,
-      go: (to, how) =>
-        to === CHAT || to.startsWith(`${CHAT}/`)
-          ? visit(router, to, how?.replace)
-          : isPlans(to)
-            ? leave('here')
-            : visit(router, app(to), how?.replace),
-      topUp: signedIn ? topUp : undefined,
-      links: LINKS,
-      // The sidebar lists Settings' sections and Customize's tabs (Sidebar.tsx), and Customize › Agents offers the cast.
-      sections: true,
-      cast: CAST,
-      personas,
-      // An address of the app moves the app, another of this site moves in the
-      // router, and another origin is left in this tab. platform.hanzo.ai is
-      // another product, and a click that names it stays here — everything the
-      // builder had it for is in its Settings.
-      open: (href) => {
-        let url: URL
-        try {
-          url = new URL(href, window.location.origin)
-        } catch {
-          return
-        }
-        if (url.hostname === 'platform.hanzo.ai') return
-        const to = `${url.pathname}${url.search}${url.hash}`
-        if (url.origin !== window.location.origin) window.location.assign(link(url.href))
-        else visit(router, to)
-      },
-      signIn: () => enter(),
-      signOut: () => void logout(),
-      ...(local ? { local } : {}),
-      ...(site ? { site } : {}),
-      ...(confirm ? { confirm } : {}),
-    }),
-    [scoped, memberships, look.pref.theme, look.set, signedIn, name, email, avatar, here, router, logout, local, site, confirm],
+    () =>
+      ({
+        name: 'Dev',
+        api: api(),
+        token,
+        refresh,
+        org: scoped,
+        memberships,
+        // Scope this browser to one of the token's organizations and open Dev's
+        // New in it: a run or a project read under the last one is not this one's.
+        chooseOrg: (next) => {
+          if (!orgs().includes(next)) return
+          pick(next)
+          window.location.assign(app(''))
+        },
+        theme: theme(look.pref.theme),
+        chooseTheme: (t) => {
+          clearActiveMod()
+          look.set({
+            theme: theme(t),
+            ...(look.pref.background !== undefined ? { background: undefined } : {}),
+            ...(look.pref.contrast !== undefined ? { contrast: undefined } : {}),
+          })
+        },
+        person: signedIn ? { name, email, avatar } : null,
+        admin: administers(readToken(), scoped),
+        path: here,
+        go: (to, how) =>
+          to === CHAT || to.startsWith(`${CHAT}/`)
+            ? visit(router, to, how?.replace)
+            : isPlans(to)
+              ? leave('here')
+              : visit(router, app(to), how?.replace),
+        topUp: signedIn ? topUp : undefined,
+        links: LINKS,
+        // The sidebar lists Settings' sections and Customize's tabs (Sidebar.tsx), and Customize › Agents offers the cast.
+        sections: true,
+        cast: CAST,
+        personas,
+        // An address of the app moves the app, another of this site moves in the
+        // router, and another origin is left in this tab. platform.hanzo.ai is
+        // another product, and a click that names it stays here — everything the
+        // builder had it for is in its Settings.
+        open: (href) => {
+          let url: URL
+          try {
+            url = new URL(href, window.location.origin)
+          } catch {
+            return
+          }
+          if (url.hostname === 'platform.hanzo.ai') return
+          const to = `${url.pathname}${url.search}${url.hash}`
+          if (url.origin !== window.location.origin) window.location.assign(link(url.href))
+          else visit(router, to)
+        },
+        signIn: () => enter(),
+        signOut: () => void logout(),
+        ...(local ? { local } : {}),
+        ...(site ? { site } : {}),
+        ...(confirm ? { confirm } : {}),
+      }) as Host,
+    [token, refresh, readToken, scoped, memberships, look.pref.theme, look.set, signedIn, name, email, avatar, here, router, logout, local, site, confirm],
   )
 }
