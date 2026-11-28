@@ -19,7 +19,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useI18n } from '@hanzo/i18n/react'
-import { FileCode, Globe, Image as ImageMark, Paperclip, Plus } from 'lucide-react'
+import { FileCode, Globe, Image as ImageMark, Paperclip, Plug, Plus } from 'lucide-react'
 import {
   Box,
   DropdownMenu,
@@ -117,13 +117,68 @@ function sources(said: ChatMessage[], held: Held[], t: Say): Mark[] {
   return out
 }
 
+/** Distinguishes live web lookups from connected workspace/MCP tool integrations. */
+export type SourceOrigin = 'web' | 'connected'
+
+const WEB_TOOLS = /^(?:web[-_]?search|search|crawl|fetch|browse|open[-_]?url|read[-_]?url)$/i
+
+export function classifySourceOrigin(toolName: string): SourceOrigin {
+  return WEB_TOOLS.test(toolName.trim()) ? 'web' : 'connected'
+}
+
+export interface CitedLink {
+  id: string
+  title: string
+  url: string
+  host: string
+}
+
+const MD_LINK_RE = /\[([^\]\n]{1,160})\]\((https?:\/\/[^\s)]+)\)/g
+
+/** Extracts unique inline web citations `[title](https://...)` from assistant turns. */
+export function extractCitations(said: readonly ChatMessage[]): CitedLink[] {
+  const seen = new Set<string>()
+  const out: CitedLink[] = []
+  said.forEach((m, turn) => {
+    if (m.role !== 'assistant') return
+    const text = words(m)
+    let match: RegExpExecArray | null
+    MD_LINK_RE.lastIndex = 0
+    while ((match = MD_LINK_RE.exec(text)) !== null) {
+      const title = match[1]?.trim() ?? ''
+      const url = match[2]?.trim() ?? ''
+      if (!url || seen.has(url)) continue
+      try {
+        const parsed = new URL(url)
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') continue
+        seen.add(url)
+        out.push({
+          id: `cite:${turn}:${out.length}`,
+          title: title || parsed.hostname.replace(/^www\./, ''),
+          url,
+          host: parsed.hostname.replace(/^www\./, ''),
+        })
+      } catch {
+        // Ignore malformed links
+      }
+    }
+  })
+  return out
+}
+
 /** What the conversation looked up: each call, what it asked, and what came back, keyed by the call. */
 function lookups(said: ChatMessage[]) {
   const back = new Map<string, string>()
   for (const m of said) if (m.role === 'tool' && m.tool_call_id) back.set(m.tool_call_id, typeof m.content === 'string' ? m.content : '')
   return said
     .flatMap((m) => m.tool_calls ?? [])
-    .map((call) => ({ id: call.id, name: call.function.name, asked: call.function.arguments, got: back.get(call.id) ?? null }))
+    .map((call) => ({
+      id: call.id,
+      name: call.function.name,
+      origin: classifySourceOrigin(call.function.name),
+      asked: call.function.arguments,
+      got: back.get(call.id) ?? null,
+    }))
 }
 
 const GLYPH: Record<Mark['kind'], typeof ImageMark> = { image: ImageMark, code: FileCode, file: Paperclip }
@@ -192,7 +247,7 @@ function Add({ at }: { at: string }) {
           <Plus size={16} aria-hidden />
         </Box>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" maxW="calc(100vw - 24px)">
         <DropdownMenuItem onClick={() => take(at, { api: ai, org: org() })}>
           <Word>{t('Attach files')}</Word>
         </DropdownMenuItem>
@@ -299,16 +354,30 @@ export function useSections({ at, said, held, deck, onCreate }: { at: string; sa
   const made = useMemo(() => outputs(said, t), [said, t])
   const took = useMemo(() => sources(said, held, t), [said, held, t])
   const done = useMemo(() => lookups(said), [said])
+  const cited = useMemo(() => extractCitations(said), [said])
   return useMemo(() => {
     const row = (m: Mark): Entry => {
       const Glyph = GLYPH[m.kind]
       return { id: m.id, title: m.name, icon: <Glyph size={15} aria-hidden />, open: () => void look(deck, m, ai) }
     }
     const asked = done.map((call) => {
+      const isWeb = call.origin === 'web'
       const m: Mark = { id: call.id, name: call.name, kind: 'file', body: [call.asked, call.got ?? ''].filter(Boolean).join('\n\n'), mime: 'text/plain' }
-      return { ...row(m), title: call.name === 'web_search' || call.name === 'search' ? t('Web search') : call.name, icon: <Globe size={15} aria-hidden />, detail: call.asked }
+      return {
+        ...row(m),
+        title: isWeb && /^(?:web[-_]?search|search)$/i.test(call.name) ? t('Web search') : call.name,
+        icon: isWeb ? <Globe size={15} aria-hidden /> : <Plug size={15} aria-hidden />,
+        detail: `${isWeb ? t('Web') : t('Connected')}${call.asked ? ` · ${call.asked}` : ''}`,
+      }
     })
-    const sourceRows = [...asked, ...took.map(row)]
+    const citedRows: Entry[] = cited.map((c) => ({
+      id: c.id,
+      title: c.title,
+      icon: <Globe size={15} aria-hidden />,
+      detail: `${t('Web')} · ${c.host}`,
+      open: () => deck.open({ kind: PAGE, title: c.title, url: c.url }),
+    }))
+    const sourceRows = [...citedRows, ...asked, ...took.map(row)]
     return [
       {
         id: 'outputs',
@@ -329,7 +398,7 @@ export function useSections({ at, said, held, deck, onCreate }: { at: string; sa
         entries: sourceRows,
       },
     ]
-  }, [at, made, took, done, deck, ai, onCreate, t])
+  }, [at, made, took, done, cited, deck, ai, onCreate, t])
 }
 
 /**
@@ -364,6 +433,8 @@ export function OutputsCard({
       role="complementary"
       aria-label={label}
       width={268}
+      maxW="calc(100vw - 24px)"
+      maxH="calc(100% - 24px)"
       shrink={0}
       self="flex-start"
       mt={12}
@@ -372,7 +443,8 @@ export function OutputsCard({
       borderWidth={1}
       borderColor="var(--pane-edge, var(--border))"
       bg="var(--side-fill, var(--card))"
-      overflow="hidden"
+      overflowY="auto"
+      overflowX="hidden"
     >
       {sections.map((s, i) => (
         <YStack
@@ -434,9 +506,16 @@ export function OutputsCard({
                   {e.icon}
                 </XStack>
               ) : null}
-              <Text flex={1} minW={0} fontSize="$2" fontWeight="500" color="$ink" numberOfLines={1}>
-                {e.title}
-              </Text>
+              <YStack flex={1} minW={0} gap={1}>
+                <Text fontSize="$2" fontWeight="500" color="$ink" numberOfLines={1} text="start">
+                  {e.title}
+                </Text>
+                {e.detail ? (
+                  <Text fontSize="$1" color="$soft" numberOfLines={1} text="start">
+                    {e.detail}
+                  </Text>
+                ) : null}
+              </YStack>
             </XStack>
           ))}
         </YStack>

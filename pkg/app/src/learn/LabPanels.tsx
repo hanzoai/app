@@ -85,7 +85,7 @@ export function ScienceLabPanel({
               <RefreshCw size={13} aria-hidden />
               {loading ? t('Syncing…') : t('Sync /v1/research')}
             </Button>
-            <Button size="sm" variant="primary" data-slot="science-jump-studies" onPress={() => onNavigate('/science/studies')}>
+            <Button size="sm" variant="outline" data-slot="science-jump-studies" onPress={() => onNavigate('/science/studies')}>
               <Atom size={13} aria-hidden />
               {t('Open /science Studies')}
             </Button>
@@ -488,7 +488,7 @@ export function StandardLabPanel({
                 </Button>
                 <Button
                   size="sm"
-                  variant={done ? 'outline' : 'primary'}
+                  variant={done ? 'ghost' : 'outline'}
                   data-slot={`lab-step-toggle-${step.stepNumber}`}
                   onPress={() => onToggleStep(step.id)}
                 >

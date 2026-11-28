@@ -777,8 +777,8 @@ export function AppContextMenu({
           : (target.closest('button, a, [role="button"], [tabindex]') as HTMLElement | null)
       const vw = window.innerWidth
       const vh = window.innerHeight
-      const menuW = 240
-      const menuH = entries.length * 32 + 24
+      const menuW = Math.min(280, Math.max(200, vw - 16))
+      const menuH = Math.min(entries.length * 34 + 24, Math.floor(vh * 0.75))
       const x = Math.max(8, Math.min(e.clientX, vw - menuW - 8))
       const y = Math.max(8, Math.min(e.clientY, vh - menuH - 8))
       setCompact(vw < 640)
@@ -928,7 +928,7 @@ export function AppContextMenu({
       aria-label={state.title ?? t('Application menu')}
       data-slot="app-context-menu"
       minW={228}
-      maxW={280}
+      maxW="calc(100vw - 16px)"
       maxH="75dvh"
       overflowY="auto"
       p="$1.5"

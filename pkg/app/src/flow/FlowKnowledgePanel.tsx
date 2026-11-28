@@ -372,7 +372,8 @@ export function FlowKnowledgePanel({ orgId }: { orgId?: string | null }) {
             />
             <Button
               size="sm"
-              variant="primary"
+              variant="outline"
+              borderColor="var(--border-strong)"
               data-slot="knowledge-search-submit"
               disabled={searching || !searchQuery.trim()}
               onPress={() => void handleSearch()}

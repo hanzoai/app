@@ -2076,13 +2076,15 @@ function ShellProfileHover({
             <Button
               type="button"
               size="xs"
+              variant="outline"
+              borderColor="var(--border-strong)"
               flex={1}
               onClick={() => {
                 window.location.assign(payUrl("/cart", { returnUrl: window.location.href }));
               }}
             >
               <Sparkles size={12} aria-hidden />
-              <Text fontFamily="$body" fontSize="$1" fontWeight="600" color="var(--primary-foreground)">
+              <Text fontFamily="$body" fontSize="$1" fontWeight="600" color="$ink">
                 {t("Upgrade")}
               </Text>
             </Button>

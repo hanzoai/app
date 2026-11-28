@@ -546,8 +546,9 @@ export function CalScheduler() {
               <Button
                 key={tab.id}
                 size="sm"
-                variant={activeTab === tab.id ? 'primary' : 'ghost'}
-                {...(activeTab === tab.id ? null : { color: '$soft' })}
+                variant={activeTab === tab.id ? 'outline' : 'ghost'}
+                bg={activeTab === tab.id ? '$raised' : 'transparent'}
+                color={activeTab === tab.id ? '$ink' : '$soft'}
                 aria-pressed={activeTab === tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
               >
@@ -627,7 +628,7 @@ export function CalScheduler() {
                   >
                     {t('Copy link')}
                   </Button>
-                  <Button asChild variant="primary" size="sm">
+                  <Button asChild variant="outline" size="sm">
                     <a href={`https://cal.hanzo.ai/alex/${card.slug}`} target="_blank" rel="noopener noreferrer">
                       {t('Open')}
                       <ExternalLink size={12} />
@@ -846,14 +847,14 @@ export function CalScheduler() {
                     $max-md={{ width: '100%', justify: 'space-between', pt: 4, borderTopWidth: 1, borderTopColor: '$borderColor' }}
                   >
                     {isMeeting ? (
-                      <Button asChild variant="primary" size="sm">
+                      <Button asChild variant="outline" size="sm">
                         <a href="/meet">
                           <Video size={13} />
                           {t('Join meeting')}
                         </a>
                       </Button>
                     ) : (
-                      <Button asChild variant="primary" size="sm">
+                      <Button asChild variant="outline" size="sm">
                         <a href="/bots">
                           <Bot size={13} />
                           {t('View bots')}

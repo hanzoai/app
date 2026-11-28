@@ -95,7 +95,7 @@ export function MoreMenu({
       }}
       {...rest}
     >
-      <DropdownMenuContent minW={rest.minWidth ?? 240} maxH={rest.maxHeight ?? 320}>
+      <DropdownMenuContent minW={rest.minWidth ?? 240} maxW="calc(100vw - 24px)" maxH={rest.maxHeight ?? 320}>
         <DropdownMenuPage id="main">
           <DropdownMenuSearch
             value={query}
