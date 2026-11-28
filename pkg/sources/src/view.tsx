@@ -36,6 +36,9 @@ const EDGE = 'var(--border-strong)'
 /** Where a signed-out person goes. IAM owns sign-in; the host's origin decides nothing here. */
 export const SIGN_IN = 'https://hanzo.ai/login'
 
+/** Where a web user downloads Hanzo Desktop to track local providers across machines. */
+export const DOWNLOAD_APP = 'https://hanzo.ai/download'
+
 export interface SourcesViewProps {
   client: Client
   /** Where this view runs: decides which accounts are usable here. */
@@ -49,9 +52,10 @@ export interface SourcesViewProps {
   /** The account in use, marked on its row. */
   selected?: Choice | null
   signIn?: string
+  downloadApp?: string
 }
 
-export function SourcesView({ client, surface, deviceId, admin, onPick, selected, signIn = SIGN_IN }: SourcesViewProps) {
+export function SourcesView({ client, surface, deviceId, admin, onPick, selected, signIn = SIGN_IN, downloadApp = DOWNLOAD_APP }: SourcesViewProps) {
   const { t } = useI18n()
   const [range, setRange] = useState<Range>(7)
   const [bump, setBump] = useState(0)
@@ -63,7 +67,7 @@ export function SourcesView({ client, surface, deviceId, admin, onPick, selected
   return (
     <YStack gap="$5" data-slot="sources">
       <YStack gap="$1.5">
-        <Text fontSize="$3" color="$soft">{t('Every desktop and browser you linked to Hanzo, and what each used.')}</Text>
+        <Text fontSize="$3" color="$soft">{t('Every machine and browser you linked to Hanzo, and what each used.')}</Text>
         <Text fontSize="$2" color="$aside" data-slot="sources-copy">
           {t('Only metadata is reported: token counts, cost and plan limits. Never your prompts, replies or code. A subscription login stays on the device that holds it.')}
         </Text>
@@ -73,7 +77,7 @@ export function SourcesView({ client, surface, deviceId, admin, onPick, selected
         {admin ? (
           <Tabs value={tab} onValueChange={(v) => setTab(v === 'people' ? 'people' : 'mine')}>
             <TabsList>
-              <TabsTrigger value="mine">{t('Your sources')}</TabsTrigger>
+              <TabsTrigger value="mine">{t('Your machines')}</TabsTrigger>
               <TabsTrigger value="people">{t('People')}</TabsTrigger>
             </TabsList>
           </Tabs>
@@ -90,7 +94,7 @@ export function SourcesView({ client, surface, deviceId, admin, onPick, selected
       ) : read.is === 'error' ? (
         <Failed status={read.status} onRetry={() => setBump((n) => n + 1)} signIn={signIn} />
       ) : (
-        <Ready read={read} client={client} surface={surface} deviceId={deviceId} range={range} onPick={onPick} selected={selected} onRevoked={() => setBump((n) => n + 1)} />
+        <Ready read={read} client={client} surface={surface} deviceId={deviceId} range={range} onPick={onPick} selected={selected} downloadApp={downloadApp} onRevoked={() => setBump((n) => n + 1)} />
       )}
     </YStack>
   )
@@ -100,7 +104,7 @@ export function SignedOut({ href }: { href: string }) {
   const { t } = useI18n()
   return (
     <YStack gap="$2" data-slot="sources-signed-out">
-      <Text fontSize="$3" color="$soft">{t('Sign in to see your linked sources.')}</Text>
+      <Text fontSize="$3" color="$soft">{t('Sign in to see your linked machines.')}</Text>
       <XStack>
         <Button size="sm" variant="primary" render={<a href={href} />}>{t('Sign in')}</Button>
       </XStack>
@@ -113,7 +117,7 @@ export function Loading() {
   return (
     <XStack gap="$2" items="center" role="status">
       <Spinner size={16} />
-      <Text fontSize="$3" color="$soft">{t('Reading your sources…')}</Text>
+      <Text fontSize="$3" color="$soft">{t('Reading your machines…')}</Text>
     </XStack>
   )
 }
@@ -138,10 +142,10 @@ export function Failed({ status, onRetry, signIn = SIGN_IN }: { status: number; 
     <YStack gap="$2" role="alert" data-slot="sources-error">
       <Text fontSize="$3" color="var(--state-error)">
         {denied
-          ? t('Sign in again to see your linked sources.')
+          ? t('Sign in again to see your linked machines.')
           : status === 0
             ? t('Could not reach Hanzo. Check your connection.')
-            : t('Hanzo could not read your linked sources ({status}).', { status })}
+            : t('Hanzo could not read your linked machines ({status}).', { status })}
       </Text>
       <XStack gap="$2">
         {denied ? <Button size="sm" variant="primary" render={<a href={signIn} />}>{t('Sign in')}</Button> : null}
@@ -159,6 +163,7 @@ function Ready({
   range,
   onPick,
   selected,
+  downloadApp,
   onRevoked,
 }: {
   read: Loaded
@@ -168,28 +173,46 @@ function Ready({
   range: Range
   onPick?: (pick: Picked) => void
   selected?: Choice | null
+  downloadApp: string
   onRevoked: () => void
 }) {
   const { t } = useI18n()
   if (read.sources.length === 0 && read.accounts.length === 0) {
     return (
-      <YStack gap="$1.5" borderWidth={1} borderColor={EDGE} rounded="$3" p="$4" data-slot="sources-empty">
-        <Text fontSize="$4" fontWeight="600" color="$ink">{t('Nothing is linked yet')}</Text>
-        <Text fontSize="$3" color="$soft">
-          {t('Link the Hanzo Dev desktop app or the Hanzo browser extension to your account and it appears here, with its usage.')}
-        </Text>
+      <YStack gap="$3" borderWidth={1} borderColor={EDGE} rounded="$3" p="$4" data-slot="sources-empty">
+        <YStack gap="$1.5">
+          <Text fontSize="$4" fontWeight="600" color="$ink">{t('Nothing is linked yet')}</Text>
+          <Text fontSize="$3" color="$soft">
+            {t('Download Hanzo Desktop (or run hanzo link on a server) to link a machine and report unified provider usage here.')}
+          </Text>
+        </YStack>
+        <XStack gap="$2" flexWrap="wrap">
+          <Button size="sm" variant="primary" render={<a href={downloadApp} target="_blank" rel="noopener noreferrer" />} data-slot="sources-download">
+            {t('Download Hanzo Desktop')}
+          </Button>
+        </XStack>
       </YStack>
     )
   }
   const by = (id: string) => read.source.rows.find((r) => r.key === id)
   return (
     <YStack gap="$6">
-      <Section title={t('Linked sources')} slot="sources-list">
+      <Section
+        title={t('Linked machines')}
+        slot="sources-list"
+        action={
+          surface === 'web' ? (
+            <Button size="sm" variant="outline" render={<a href={downloadApp} target="_blank" rel="noopener noreferrer" />} data-slot="sources-download">
+              {t('Download Hanzo Desktop')}
+            </Button>
+          ) : undefined
+        }
+      >
         {ordered(read.sources).map((s) => (
           <SourceRow key={s.id} client={client} source={s} used={by(s.id)} now={read.at} onRevoked={onRevoked} />
         ))}
       </Section>
-      <Section title={t('Accounts')} slot="sources-accounts">
+      <Section title={t('Providers')} slot="sources-accounts">
         {read.accounts.length === 0 ? (
           <Text fontSize="$3" color="$soft">{t('No provider accounts reported.')}</Text>
         ) : null}
@@ -201,10 +224,13 @@ function Ready({
   )
 }
 
-export function Section({ title, slot, children }: { title: string; slot: string; children: React.ReactNode }) {
+export function Section({ title, slot, action, children }: { title: string; slot: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <YStack gap="$2.5" data-slot={slot}>
-      <Text fontSize="$4" fontWeight="600" color="$ink" render="h3">{title}</Text>
+      <XStack gap="$2" items="center" justify="space-between" flexWrap="wrap">
+        <Text fontSize="$4" fontWeight="600" color="$ink" render="h3">{title}</Text>
+        {action ?? null}
+      </XStack>
       {children}
     </YStack>
   )
@@ -255,7 +281,7 @@ function SourceRow({ client, source: s, used, now, onRevoked }: { client: Client
           <YStack flex={1} minW={0}>
             <Text fontSize="$3" fontWeight="600" color="$ink" numberOfLines={1}>{s.name}</Text>
             <Text fontSize="$2" color="$aside">
-              {[s.kind === 'browser' ? t('Browser') : t('Desktop'), s.os, s.version].filter(Boolean).join(' · ')} · {seen}
+              {[s.kind === 'browser' ? t('Browser') : t('Machine'), s.os, s.version].filter(Boolean).join(' · ')} · {seen}
             </Text>
           </YStack>
         </XStack>
@@ -344,7 +370,7 @@ function People({ client, range }: { client: Client; range: Range }) {
   if (read.is === 'error') return <Failed status={read.status} onRetry={() => setBump((n) => n + 1)} />
   return (
     <Section title={t('People · last {n} days', { n: range })} slot="sources-people">
-      <Text fontSize="$2" color="$aside">{t('Totals only. An admin never sees another person’s sources, plans or labels.')}</Text>
+      <Text fontSize="$2" color="$aside">{t('Totals only. An admin never sees another person’s machines, plans or labels.')}</Text>
       {read.rows.length === 0 ? (
         <Text fontSize="$3" color="$soft">{t('No usage reported in this range.')}</Text>
       ) : (
