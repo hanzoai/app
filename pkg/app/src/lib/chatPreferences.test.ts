@@ -7,7 +7,7 @@ import { DEFAULT_EFFORT, getChatPreferences, setChatPreferences, shared } from '
 describe('what Chat does', () => {
   test('offers the composer’s efforts, auto by default', () => {
     expect(DEFAULT_EFFORT).toBe('auto')
-    expect(EFFORTS.map((s) => s.id)).toEqual(['auto', 'instant', 'low', 'medium', 'high', 'max'])
+    expect(EFFORTS.map((s) => s.id)).toEqual(['auto', 'off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'])
     for (const step of EFFORTS) {
       expect(step.label.length).toBeGreaterThan(0)
       expect(step.note.length).toBeGreaterThan(0)
@@ -19,7 +19,7 @@ describe('what Chat does', () => {
     expect(dev).toEqual(['auto', 'low', 'high', 'max']) // Low/Fast added for Dev: a Fast mode for coding
     // Same labels as Chat's, except Dev calls Low "Fast"; the notes are each side's own wording, so are not compared.
     expect(EFFORTS.filter((s) => dev.includes(s.id as never)).map((s) => [s.id, s.id === 'low' ? 'Fast' : s.label])).toEqual(DEV.map((e) => [e.id, e.label]))
-    expect(EFFORTS.map((s) => shared(s.id))).toEqual(['auto', null, 'low', null, 'high', 'max'])
+    expect(EFFORTS.map((s) => shared(s.id))).toEqual(['auto', null, null, 'low', null, 'high', null, 'max'])
   })
 
   test('resets an effort kept under an older default to auto, and persists a chosen effort', () => {

@@ -43,7 +43,7 @@ export interface ExtendedClassLimit extends ClassLimit {
 }
 
 /** Limits extended with top-level `session`, `day`, `reset`, and per-class `unbounded`. */
-export interface ExtendedLimits extends Limits {
+export interface ExtendedLimits extends Omit<Limits, 'session' | 'day' | 'reset'> {
   classes: Partial<Record<LimitClass, ExtendedClassLimit>>
   session?: LimitWindow | null
   day?: LimitWindow | null
@@ -220,7 +220,7 @@ export function useLimits(enabled = true, orgId: string | null = null, name?: (i
  * Whether a reader's dollar spend may be shown: their limits came back and name no
  * paid plan, or could not be read. A plan holder sees usage as shares, never money.
  */
-export const spendShown = ({ limits, answered }: Pick<UseLimits, 'limits' | 'answered'>): boolean =>
+export const spendShown = ({ limits, answered }: Pick<UseLimits | UseExtendedLimits, 'limits' | 'answered'>): boolean =>
   answered && !paidPlan(limits)
 
 export { paidPlan }
